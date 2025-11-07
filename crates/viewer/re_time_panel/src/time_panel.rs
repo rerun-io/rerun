@@ -143,6 +143,10 @@ pub struct TimePanel {
     /// It is applied only after removing focus.
     #[serde(skip)]
     pub time_edit_string: Option<String>,
+
+    /// If we're hovering a specific event - what time is it?
+    #[serde(skip)]
+    hovered_event_time: Option<TimeInt>,
 }
 
 impl Default for TimePanel {
@@ -161,6 +165,7 @@ impl Default for TimePanel {
             range_selection_anchor_item: None,
             scroll_to_me_item: None,
             time_edit_string: None,
+            hovered_event_time: None,
         }
     }
 }
@@ -210,6 +215,7 @@ impl TimePanel {
         }
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
+        self.hovered_event_time = None;
 
         let mut time_commands = Vec::new();
 
@@ -611,8 +617,7 @@ impl TimePanel {
         }
 
         // Put time-marker on top and last, so that you can always drag it
-        time_marker_ui(
-            &self.time_ranges_ui,
+        self.time_marker_ui(
             ui,
             ctx,
             time_ctrl,
@@ -832,17 +837,15 @@ impl TimePanel {
 
                 // show the density graph only if that item is closed
                 if is_closed {
-                    data_density_graph::data_density_graph_ui(
-                        &mut self.data_density_graph_painter,
+                    self.data_density_graph_ui(
                         ctx,
                         time_ctrl,
                         entity_db,
                         time_area_painter,
                         ui,
-                        &self.time_ranges_ui,
                         row_rect,
                         &item,
-                        true,
+                        time_commands,
                     );
                 }
             }
@@ -1040,17 +1043,15 @@ impl TimePanel {
                             TimePanelSource::Blueprint => ctx.store_context.blueprint,
                         };
 
-                        data_density_graph::data_density_graph_ui(
-                            &mut self.data_density_graph_painter,
+                        self.data_density_graph_ui(
                             ctx,
                             time_ctrl,
                             db,
                             time_area_painter,
                             ui,
-                            &self.time_ranges_ui,
                             row_rect,
                             &item,
-                            true,
+                            time_commands,
                         );
                     }
                 }
@@ -1089,6 +1090,70 @@ impl TimePanel {
         if Some(item) == self.scroll_to_me_item {
             response.scroll_to_me(None);
             self.scroll_to_me_item = None;
+        }
+    }
+
+    /// Paint a data density graph, supporting tooltips.
+    #[expect(clippy::too_many_arguments)]
+    fn data_density_graph_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        time_ctrl: &TimeControl,
+        db: &re_entity_db::EntityDb,
+        time_area_painter: &egui::Painter,
+        ui: &egui::Ui,
+        row_rect: Rect,
+        item: &TimePanelItem,
+        time_commands: &mut Vec<TimeControlCommand>,
+    ) {
+        let hovered_time = data_density_graph::data_density_graph_ui(
+            &mut self.data_density_graph_painter,
+            ctx,
+            time_ctrl,
+            db,
+            time_area_painter,
+            ui,
+            &self.time_ranges_ui,
+            row_rect,
+            item,
+        );
+
+        if let Some(hovered_time) = hovered_time {
+            self.hovered_event_time = Some(hovered_time);
+
+            ctx.selection_state().set_hovered(item.to_item());
+
+            if ui.input(|i| i.pointer.primary_clicked()) {
+                ctx.command_sender()
+                    .send_system(SystemCommand::SetSelection(item.to_item().into()));
+
+                time_commands.push(TimeControlCommand::SetTime(hovered_time.into()));
+                time_commands.push(TimeControlCommand::Pause);
+            } else {
+                ctx.selection_state().set_hovered(item.to_item());
+            }
+
+            if ui.ctx().dragged_id().is_none() {
+                // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+                //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+                egui::Tooltip::always_open(
+                    ui.ctx().clone(),
+                    ui.layer_id(),
+                    egui::Id::new("data_tooltip"),
+                    egui::PopupAnchor::Pointer,
+                )
+                .gap(12.0)
+                .show(|ui| {
+                    data_density_graph::show_row_ids_tooltip(
+                        ctx,
+                        ui,
+                        time_ctrl,
+                        db,
+                        item,
+                        hovered_time,
+                    );
+                });
+            }
         }
     }
 
@@ -1355,11 +1420,9 @@ impl TimePanel {
                     &self.time_ranges_ui,
                     time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
                     &TimePanelItem::entity_path(EntityPath::root()),
-                    false,
                 );
 
-                time_marker_ui(
-                    &self.time_ranges_ui,
+                self.time_marker_ui(
                     ui,
                     ctx,
                     time_ctrl,
@@ -1906,116 +1969,114 @@ fn copy_time_properties_context_menu(ui: &mut egui::Ui, time: TimeReal) {
     }
 }
 
-/// A vertical line that shows the current time.
-///
-/// This function both paints it and allows click and drag to interact with the current time.
-#[expect(clippy::too_many_arguments)]
-fn time_marker_ui(
-    time_ranges_ui: &TimeRangesUi,
-    ui: &egui::Ui,
-    ctx: &ViewerContext<'_>,
-    time_ctrl: &TimeControl,
-    time_area_response: Option<egui::Response>,
-    time_area_painter: &egui::Painter,
-    timeline_rect: &Rect,
-    interact_rect: &Rect,
-    time_commands: &mut Vec<TimeControlCommand>,
-) {
-    // timeline_rect: top part with the second ticks and time marker
+impl TimePanel {
+    /// A vertical line that shows the current time.
+    ///
+    /// This function both paints it and allows click and drag to interact with the current time.
+    #[expect(clippy::too_many_arguments)]
+    fn time_marker_ui(
+        &self,
+        ui: &egui::Ui,
+        ctx: &ViewerContext<'_>,
+        time_ctrl: &TimeControl,
+        time_area_response: Option<egui::Response>,
+        time_area_painter: &egui::Painter,
+        timeline_rect: &Rect,
+        interact_rect: &Rect,
+        time_commands: &mut Vec<TimeControlCommand>,
+    ) {
+        // timeline_rect: top part with the second ticks and time marker
 
-    let pointer_pos = ui.input(|i| i.pointer.hover_pos());
+        // We only check for drags in the streams rect, because
+        // drags in the timeline rect should create loop selections.
+        let response = time_area_response
+            .unwrap_or_else(|| {
+                ui.interact(
+                    *interact_rect,
+                    ui.id().with("time_cursor_interact"),
+                    egui::Sense::click_and_drag(),
+                )
+            })
+            .on_hover_cursor(MOVE_TIME_CURSOR_ICON);
 
-    // We only check for drags in the streams rect, because
-    // drags in the timeline rect should create loop selections.
-    let response = time_area_response
-        .unwrap_or_else(|| {
-            ui.interact(
-                *interact_rect,
-                ui.id().with("time_cursor_interact"),
-                egui::Sense::click_and_drag(),
-            )
-        })
-        .on_hover_cursor(MOVE_TIME_CURSOR_ICON);
+        let hovered_time = self.hovered_event_time.map(TimeReal::from).or_else(|| {
+            let pointer_pos = response.hover_pos()?;
+            self.time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
+        });
 
-    let hovered_time = if response.hovered()
-        && let Some(pointer_pos) = pointer_pos
-    {
-        time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
-    } else {
-        None
-    };
+        // Press to move time:
+        if ui.input(|i| i.pointer.primary_down())
+            // `interact_pointer_pos` is set as soon as the mouse button is down on it,
+            // without having to wait for the drag to go far enough or long enough
+            && response.interact_pointer_pos().is_some()
+            && let Some(time) = hovered_time
+        {
+            time_commands.push(TimeControlCommand::SetTime(time));
+            time_commands.push(TimeControlCommand::Pause);
+        }
 
-    // Press to move time:
-    if ui.input(|i| i.pointer.primary_down())
-        // `interact_pointer_pos` is set as soon as the mouse button is down on it,
-        // without having to wait for the drag to go far enough or long enough
-        && response.interact_pointer_pos().is_some()
-        && let Some(time) = hovered_time
-    {
-        time_commands.push(TimeControlCommand::SetTime(time));
-        time_commands.push(TimeControlCommand::Pause);
-    }
+        // Show hover preview, and right-click context menu:
+        {
+            let right_clicked_time_id = egui::Id::new("__right_clicked_time");
 
-    // Show hover preview, and right-click context menu:
-    {
-        let right_clicked_time_id = egui::Id::new("__right_clicked_time");
+            let right_clicked_time = ui
+                .ctx()
+                .memory(|mem| mem.data.get_temp(right_clicked_time_id));
 
-        let right_clicked_time = ui
-            .ctx()
-            .memory(|mem| mem.data.get_temp(right_clicked_time_id));
+            // If we have right-clicked a time, we show it, else the hovered time.
+            let preview_time = right_clicked_time.or(hovered_time);
 
-        // If we have right-clicked a time, we show it, else the hovered time.
-        let preview_time = right_clicked_time.or(hovered_time);
+            if let Some(preview_time) = preview_time {
+                let preview_x = self.time_ranges_ui.x_from_time_f32(preview_time);
 
-        if let Some(preview_time) = preview_time {
-            let preview_x = time_ranges_ui.x_from_time_f32(preview_time);
+                if let Some(preview_x) = preview_x {
+                    time_area_painter.vline(
+                        preview_x,
+                        timeline_rect.top()..=ui.max_rect().bottom(),
+                        ui.visuals().widgets.noninteractive.fg_stroke,
+                    );
+                }
 
-            if let Some(preview_x) = preview_x {
-                time_area_painter.vline(
-                    preview_x,
-                    timeline_rect.top()..=ui.max_rect().bottom(),
-                    ui.visuals().widgets.noninteractive.fg_stroke,
+                let popup_is_open = egui::Popup::context_menu(&response)
+                    .width(300.0)
+                    .show(|ui| {
+                        copy_timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
+                    })
+                    .is_some();
+                if popup_is_open {
+                    ui.ctx().memory_mut(|mem| {
+                        mem.data.insert_temp(right_clicked_time_id, preview_time);
+                    });
+                } else {
+                    ui.ctx()
+                        .memory_mut(|mem| mem.data.remove::<TimeReal>(right_clicked_time_id));
+                }
+            }
+        }
+
+        // Paint current time:
+        {
+            // Use latest available time to avoid frame delay:
+            let mut current_time = time_ctrl.time();
+            for cmd in time_commands {
+                if let TimeControlCommand::SetTime(time) = cmd {
+                    current_time = Some(*time);
+                }
+            }
+
+            if let Some(time) = current_time
+                && let Some(x) = self.time_ranges_ui.x_from_time_f32(time)
+                && timeline_rect.x_range().contains(x)
+            {
+                ui.paint_time_cursor(
+                    time_area_painter,
+                    None,
+                    x,
+                    Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
                 );
             }
-
-            let popup_is_open = egui::Popup::context_menu(&response)
-                .width(300.0)
-                .show(|ui| {
-                    copy_timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
-                })
-                .is_some();
-            if popup_is_open {
-                ui.ctx()
-                    .memory_mut(|mem| mem.data.insert_temp(right_clicked_time_id, preview_time));
-            } else {
-                ui.ctx()
-                    .memory_mut(|mem| mem.data.remove::<TimeReal>(right_clicked_time_id));
-            }
-        }
+        };
     }
-
-    // Paint current time:
-    {
-        // Use latest available time to avoid frame delay:
-        let mut current_time = time_ctrl.time();
-        for cmd in time_commands {
-            if let TimeControlCommand::SetTime(time) = cmd {
-                current_time = Some(*time);
-            }
-        }
-
-        if let Some(time) = current_time
-            && let Some(x) = time_ranges_ui.x_from_time_f32(time)
-            && timeline_rect.x_range().contains(x)
-        {
-            ui.paint_time_cursor(
-                time_area_painter,
-                None,
-                x,
-                Rangef::new(timeline_rect.top(), ui.max_rect().bottom()),
-            );
-        }
-    };
 }
 
 #[test]

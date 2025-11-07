@@ -281,7 +281,7 @@ impl TimeRangesUi {
         value
     }
 
-    // Make sure playback time doesn't get stuck between non-continuous regions:
+    /// Make sure playback time doesn't get stuck between non-continuous regions:
     pub fn snap_time_control(
         &self,
         time_ctrl: &re_viewer_context::TimeControl,
