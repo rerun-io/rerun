@@ -25,7 +25,6 @@ workspace = true
 cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
 
 oauth = [
-  "dep:base64",
   "dep:directories",
   "dep:ehttp",
   "dep:getrandom",
@@ -41,6 +40,7 @@ oauth = [
 re_log.workspace = true
 
 async-trait.workspace = true
+base64.workspace = true
 http.workspace = true
 jsonwebtoken.workspace = true
 saturating_cast.workspace = true
@@ -50,7 +50,6 @@ tonic.workspace = true
 tower.workspace = true
 
 ## Optional dependencies
-base64 = { workspace = true, optional = true }
 getrandom = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
