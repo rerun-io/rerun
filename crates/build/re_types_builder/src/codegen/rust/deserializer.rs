@@ -746,8 +746,8 @@ fn quote_arrow_field_deserializer(
                                 // .collect::<DeserializationResult<Vec<_>>>()?;
 
                                 #comment_note_unwrap
-                                #[expect(clippy::unwrap_used)]
-                                Ok(array_init::from_iter(data).unwrap())
+                                Ok(array_init::from_iter(data)
+                                    .expect("Array length must match expected size"))
                             }).transpose()
                         )
                         #quoted_iter_transparency

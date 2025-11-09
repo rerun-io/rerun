@@ -635,8 +635,8 @@ fn quote_arrow_field_serializer(
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[expect(clippy::unwrap_used)]
-                    let capacity = offsets.last().copied().unwrap() as usize;
+                    let capacity = offsets.last().copied()
+                        .expect("Offsets buffer must have at least one element") as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
@@ -654,8 +654,8 @@ fn quote_arrow_field_serializer(
 
                     // Offsets is always non-empty. The last element is the total length of buffer we need.
                     // We want this capacity in order to allocate exactly as much memory as we need.
-                    #[expect(clippy::unwrap_used)]
-                    let capacity = offsets.last().copied().unwrap() as usize;
+                    let capacity = offsets.last().copied()
+                        .expect("Offsets buffer must have at least one element") as usize;
 
                     let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                     for data in &#data_src {
