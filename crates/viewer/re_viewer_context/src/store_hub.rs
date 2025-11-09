@@ -340,6 +340,21 @@ impl StoreHub {
                     .retain(|_, id| id != store_id);
             }
         }
+
+        // Drop the store itself on a separate thread,
+        // so that recursing through it and freeing the memory doesn’t block the UI thread.
+        #[allow(
+            clippy::allow_attributes,
+            clippy::disallowed_methods,
+            reason = "If this thread spawn fails due to running on Wasm (or for any other reason),
+                      the error will be ignored and the store will be dropped on this thread."
+        )]
+        let (Ok(_) | Err(_)) = std::thread::Builder::new()
+            .name("drop-removed-store".into())
+            .spawn(|| {
+                re_tracing::profile_scope!("drop store");
+                drop(removed_store);
+            });
     }
 
     pub fn remove(&mut self, entry: &RecordingOrTable) {
