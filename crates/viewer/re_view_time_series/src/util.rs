@@ -263,8 +263,10 @@ fn add_series_runs(
             let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
             let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
 
-            #[expect(clippy::unwrap_used)] // prev_series.points can't be empty here
-            let prev_point = *prev_series.points.last().unwrap();
+            let prev_point = *prev_series
+                .points
+                .last()
+                .expect("Previous series must have at least one point");
             all_series.push(prev_series);
 
             // If the previous point was continuous and the current point is continuous

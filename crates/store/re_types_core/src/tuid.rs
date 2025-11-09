@@ -15,9 +15,8 @@ use crate::{DeserializationError, Loggable};
 const BYTE_WIDTH: i32 = std::mem::size_of::<Tuid>() as i32;
 
 pub fn tuids_to_arrow(tuids: &[Tuid]) -> FixedSizeBinaryArray {
-    #[expect(clippy::unwrap_used)] // Can't fail
     <Tuid as Loggable>::to_arrow(tuids.iter())
-        .unwrap()
+        .expect("TUID serialization should never fail")
         .as_fixed_size_binary()
         .clone()
 }
@@ -51,8 +50,9 @@ impl Loggable for Tuid {
 
         let mut builder = FixedSizeBinaryBuilder::with_capacity(iter.size_hint().0, BYTE_WIDTH);
         for tuid in iter {
-            #[expect(clippy::unwrap_used)] // Can't fail because `BYTE_WIDTH` is correct.
-            builder.append_value(tuid.into().as_bytes()).unwrap();
+            builder
+                .append_value(tuid.into().as_bytes())
+                .expect("Failed to append TUID bytes with correct BYTE_WIDTH");
         }
 
         Ok(Arc::new(builder.finish()))

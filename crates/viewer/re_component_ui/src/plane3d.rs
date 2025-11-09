@@ -93,8 +93,9 @@ pub fn edit_or_view_plane3d(
                 .height(250.0)
                 .show_ui(ui, |ui| {
                     let mut variants = AxisDirection::VARIANTS.iter();
-                    #[expect(clippy::unwrap_used)] // We know there's more than zero variants.
-                    let variant = variants.next().unwrap();
+                    let variant = variants
+                        .next()
+                        .expect("AxisDirection::VARIANTS must have at least one element");
 
                     let mut response =
                         ui.selectable_value(&mut axis_dir, *variant, variant.to_string());
