@@ -228,6 +228,14 @@ rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run
 
 rs-check = "python scripts/ci/rust_checks.py"
 
+# Run basic rust checks: formatting, clippy, and tests.
+# Faster alternative to rs-check-everything, skips lint-rerun and extra checks.
+rs-check-basics = "python scripts/ci/rust_checks.py --only base_checks tests"
+
+# Run all comprehensive checks: linting, tests, clippy, and formatting.
+# This is equivalent to what you should run before pushing to ensure CI will pass.
+rs-check-everything = "python scripts/lint.py && cargo run nextest --quiet --all-targets --all-features && cargo clippy --quiet --all-targets --all-features -- --deny warnings && cargo fmt --all -- --check"
+
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
 check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features --quiet rrd verify" }
