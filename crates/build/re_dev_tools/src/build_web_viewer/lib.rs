@@ -135,9 +135,9 @@ pub fn build(
             cmd.arg("--profile=web-release");
         }
 
-        // Note that we can't use RUSTFLAGS here directly since having more than one flag on set via
+        // Note: .cargo/config.toml is automatically loaded by cargo, so we don't need to specify it.
+        // We can't use RUSTFLAGS directly since having more than one flag set via
         // `cmd.env("RUSTFLAGS", rustflags)` completely messes up the rustc invocation no matter how we quote it.
-        cmd.arg("--config=.cargo/config.toml");
 
         // When executing this script from a Rust build script, do _not_, under any circumstances,
         // allow pre-encoded `RUSTFLAGS` to leak into the current environment.
