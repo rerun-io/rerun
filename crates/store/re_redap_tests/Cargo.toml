@@ -28,6 +28,7 @@ re_arrow_util.workspace = true
 re_chunk.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
+re_sorbet.workspace = true
 re_sdk.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true

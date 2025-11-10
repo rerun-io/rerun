@@ -57,7 +57,7 @@ fn create_example_record_batch(base: i32) -> RecordBatch {
             .map(|field| {
                 if field.name() == "int32_nullable" || field.name() == "int64_not_nullable" {
                     field.as_ref().clone().with_metadata(HashMap::from([(
-                        "rerun:is_table_index".to_owned(),
+                        re_sorbet::metadata::SORBET_IS_TABLE_INDEX.to_owned(),
                         "true".to_owned(),
                     )]))
                 } else {

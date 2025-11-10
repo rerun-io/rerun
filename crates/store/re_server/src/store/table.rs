@@ -175,7 +175,7 @@ impl Table {
                     .filter_map(|field| {
                         if field
                             .metadata
-                            .get("rerun:is_table_index")
+                            .get(re_sorbet::metadata::SORBET_IS_TABLE_INDEX)
                             .map(|v| v.to_lowercase() == "true")
                             == Some(true)
                         {
