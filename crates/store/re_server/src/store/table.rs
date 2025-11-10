@@ -6,11 +6,6 @@ use datafusion::{
     error::DataFusionError, execution::SessionStateBuilder, logical_expr::dml::InsertOp,
 };
 use futures::StreamExt as _;
-use lance::{
-    Dataset as LanceDataset,
-    datafusion::LanceTableProvider,
-    dataset::{MergeInsertBuilder, WhenMatched, WhenNotMatched, WriteMode, WriteParams},
-};
 
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
@@ -22,7 +17,7 @@ use re_protos::cloud::v1alpha1::{
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
     #[cfg(feature = "lance")]
-    LanceDataset(Arc<LanceDataset>),
+    LanceDataset(Arc<lance::Dataset>),
 }
 
 #[derive(Clone)]
@@ -110,11 +105,13 @@ impl Table {
         match &self.table {
             TableType::DataFusionTable(t) => Arc::clone(t),
             #[cfg(feature = "lance")]
-            TableType::LanceDataset(dataset) => Arc::new(LanceTableProvider::new(
-                Arc::new(dataset.as_ref().clone()),
-                false,
-                false,
-            )),
+            TableType::LanceDataset(dataset) => {
+                Arc::new(lance::datafusion::LanceTableProvider::new(
+                    Arc::new(dataset.as_ref().clone()),
+                    false,
+                    false,
+                ))
+            }
         }
     }
 
@@ -147,6 +144,9 @@ impl Table {
         rb: RecordBatch,
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
+        use lance::dataset::{
+            MergeInsertBuilder, WhenMatched, WhenNotMatched, WriteMode, WriteParams,
+        };
         let schema = rb.schema();
         let mut params = WriteParams::default();
 
@@ -201,7 +201,7 @@ impl Table {
                 params.mode = WriteMode::Overwrite;
 
                 let _ =
-                    LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
+                    lance::Dataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
                         .await
                         .map_err(|err| DataFusionError::External(err.into()))?;
             }
