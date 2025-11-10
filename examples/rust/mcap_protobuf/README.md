@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Convert and send custom Protobuf messages from an MCAP file to Rerun"
+title = "Convert and send custom protobuf messages from an MCAP file to Rerun"
 channel = "main"
 -->
 
