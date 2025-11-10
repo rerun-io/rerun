@@ -290,7 +290,7 @@ fn selection_context_menu(
         time_commands.push(TimeControlCommand::RemoveLoopSelection);
     }
 
-    let mut button = egui::Button::new("Save curent time selection…");
+    let mut button = egui::Button::new("Save current time selection…");
     if let Some(shortcut) = UICommand::SaveRecordingSelection.formatted_kb_shortcut(ui.ctx()) {
         button = button.shortcut_text(shortcut);
     }
