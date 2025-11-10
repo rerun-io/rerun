@@ -51,6 +51,7 @@ mod metrics_server;
 mod prometheus;
 mod shared_reader;
 mod telemetry;
+mod tracestate;
 mod utils;
 
 use opentelemetry_sdk::propagation::TraceContextPropagator;

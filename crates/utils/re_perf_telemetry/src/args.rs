@@ -234,6 +234,18 @@ pub struct TelemetryArgs {
     /// Part of the `OpenTelemetry` spec.
     #[clap(long, env = "OTEL_METRIC_EXPORT_INTERVAL", default_value = "10000")]
     pub metric_interval: String,
+    /// Additional key-value pairs to include in the tracestate for trace context propagation.
+    ///
+    /// Expects a comma-separated string of key=value pairs, e.g. `bench_id=my_bench,env=prod`.
+    /// These will be added to the W3C tracestate header for distributed tracing.
+    ///
+    /// This is useful for passing application-specific context that should propagate
+    /// across service boundaries.
+    ///
+    /// Keys must conform to the W3C tracestate spec: lowercase letters, digits,
+    /// underscores, dashes, asterisks, and forward slashes only.
+    #[clap(long, env = "OTEL_PROPAGATORS_TRACESTATE", default_value = "")]
+    pub tracestate: String,
 
     /// Listening address for dedicated HTTP /metrics endpoint for scraping.
     ///

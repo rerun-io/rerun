@@ -138,6 +138,7 @@ impl Telemetry {
             trace_endpoint,
             trace_sampler,
             trace_sampler_args,
+            tracestate,
             metric_endpoint,
             metric_interval,
             metrics_listen_address: _, // TelemetryArgs only, used at the caller site
@@ -326,11 +327,11 @@ impl Telemetry {
                 .with_batch_exporter(exporter)
                 .build();
 
-            // This will be used by the `TracingInjectorInterceptor` to
-            // encode the trace information into the request headers.
-            opentelemetry::global::set_text_map_propagator(
-                opentelemetry_sdk::propagation::TraceContextPropagator::new(),
-            );
+            // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
+            // Additional `tracestate` can be added through the relevant env var and the custom propagator below.
+            let propagator = crate::tracestate::EnrichingTraceStatePropagator::new(&tracestate)
+                .map_err(|err| anyhow::anyhow!("Invalid OTEL_PROPAGATORS_TRACESTATE: {err}"))?;
+            opentelemetry::global::set_text_map_propagator(propagator);
 
             // This is to make sure that if some third-party system is logging raw OpenTelemetry
             // spans (as opposed to `tracing` spans), we will catch them and forward them
@@ -420,7 +421,7 @@ impl Telemetry {
 
         crate::memory_telemetry::install_memory_use_meters();
 
-        tracing::info!("Telemetry initialized");
+        tracing::info!("Telemetry initialized with tracestate: {:?}", tracestate);
 
         Ok(Self {
             drop_behavior,
