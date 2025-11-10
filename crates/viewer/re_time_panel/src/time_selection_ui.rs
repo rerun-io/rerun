@@ -163,6 +163,10 @@ pub fn loop_selection_ui(
                         );
                     });
 
+                middle_response.context_menu(|ui| {
+                    selection_context_menu(time_commands, ui, true);
+                });
+
                 let left_response = ui
                     .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
                     .on_hover_and_drag_cursor(CursorIcon::ResizeWest)
@@ -208,12 +212,16 @@ pub fn loop_selection_ui(
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
 
                 if middle_response.clicked() {
-                    let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
-                        LoopMode::Off
+                    if ui.ctx().input(|i| i.modifiers.alt) {
+                        time_commands.push(TimeControlCommand::RemoveLoopSelection);
                     } else {
-                        LoopMode::Selection
-                    };
-                    time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                        let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
+                            LoopMode::Off
+                        } else {
+                            LoopMode::Selection
+                        };
+                        time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                    }
                 }
             }
         }
@@ -253,6 +261,24 @@ pub fn loop_selection_ui(
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
+    }
+}
+
+pub fn selection_context_menu(
+    time_commands: &mut Vec<TimeControlCommand>,
+    ui: &mut egui::Ui,
+    enabled: bool,
+) {
+    let modifier = ui.ctx().format_modifiers(egui::Modifiers::ALT);
+    if ui
+        .add_enabled(
+            enabled,
+            egui::Button::new("Remove time selection").shortcut_text(format!("{modifier}+Click")),
+        )
+        .on_disabled_hover_text("Open the context menu on selected time to remove it")
+        .clicked()
+    {
+        time_commands.push(TimeControlCommand::RemoveLoopSelection);
     }
 }
 

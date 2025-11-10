@@ -26,6 +26,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
+use crate::time_selection_ui::selection_context_menu;
 use crate::{
     MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks,
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
@@ -1893,13 +1894,19 @@ fn pan_and_zoom_interaction(
 }
 
 /// Context menu that shows up when interacting with the streams rect.
-fn copy_timeline_properties_context_menu(
+fn timeline_properties_context_menu(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
+    time_commands: &mut Vec<TimeControlCommand>,
     time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
     let mut url = ViewerOpenUrl::from_context(ctx);
+    if let Some(time_selection) = time_ctrl.loop_selection() {
+        let enabled = time_selection.contains(hovered_time);
+        selection_context_menu(time_commands, ui, enabled);
+    }
+
     if let Some(selected_time_range) = time_ctrl.active_loop_selection()
         && selected_time_range.contains(hovered_time)
     {
@@ -2004,8 +2011,17 @@ impl TimePanel {
             self.time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         });
 
+        // Remove loop section with alt click
+        if let Some(time) = hovered_time
+            && let Some(time_selection) = time_ctrl.loop_selection()
+            && time_selection.contains(time)
+            && response.clicked()
+            && ui.input(|ctx| ctx.modifiers.alt)
+        {
+            time_commands.push(TimeControlCommand::RemoveLoopSelection);
+        }
         // Press to move time:
-        if ui.input(|i| i.pointer.primary_down())
+        else if ui.input(|i| i.pointer.primary_down())
             // `interact_pointer_pos` is set as soon as the mouse button is down on it,
             // without having to wait for the drag to go far enough or long enough
             && response.interact_pointer_pos().is_some()
@@ -2040,7 +2056,13 @@ impl TimePanel {
                 let popup_is_open = egui::Popup::context_menu(&response)
                     .width(300.0)
                     .show(|ui| {
-                        copy_timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
+                        timeline_properties_context_menu(
+                            ui,
+                            ctx,
+                            time_commands,
+                            time_ctrl,
+                            preview_time,
+                        );
                     })
                     .is_some();
                 if popup_is_open {
