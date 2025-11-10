@@ -54,6 +54,8 @@ mod telemetry;
 mod tracestate;
 mod utils;
 
+use std::collections::HashMap;
+
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 
 pub use self::{
@@ -140,6 +142,15 @@ impl TraceHeaders {
         Self {
             traceparent: String::new(),
             tracestate: None,
+        }
+    }
+
+    pub fn tracestate(&self) -> anyhow::Result<HashMap<String, String>> {
+        if let Some(tracestate_str) = &self.tracestate {
+            crate::tracestate::parse_pairs(tracestate_str)
+                .map(|pairs| pairs.into_iter().collect::<HashMap<String, String>>())
+        } else {
+            Ok(HashMap::default())
         }
     }
 }

@@ -328,10 +328,22 @@ impl Telemetry {
                 .build();
 
             // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
-            // Additional `tracestate` can be added through the relevant env var and the custom propagator below.
-            let propagator = crate::tracestate::EnrichingTraceStatePropagator::new(&tracestate)
-                .map_err(|err| anyhow::anyhow!("Invalid OTEL_PROPAGATORS_TRACESTATE: {err}"))?;
-            opentelemetry::global::set_text_map_propagator(propagator);
+            // Additional `tracestate` can be added through the relevant env var and the custom enricher below.
+            let mut propagators: Vec<
+                Box<dyn opentelemetry::propagation::TextMapPropagator + Send + Sync>,
+            > = vec![Box::new(
+                opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+            )];
+
+            if !tracestate.is_empty() {
+                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate)
+                    .map_err(|err| anyhow::anyhow!("Invalid OTEL_PROPAGATORS_TRACESTATE: {err}"))?;
+                propagators.push(Box::new(enricher));
+            }
+
+            opentelemetry::global::set_text_map_propagator(
+                opentelemetry::propagation::TextMapCompositePropagator::new(propagators),
+            );
 
             // This is to make sure that if some third-party system is logging raw OpenTelemetry
             // spans (as opposed to `tracing` spans), we will catch them and forward them
@@ -421,7 +433,7 @@ impl Telemetry {
 
         crate::memory_telemetry::install_memory_use_meters();
 
-        tracing::info!("Telemetry initialized with tracestate: {:?}", tracestate);
+        tracing::info!("Telemetry initialized");
 
         Ok(Self {
             drop_behavior,
