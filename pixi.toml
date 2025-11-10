@@ -50,24 +50,9 @@ libc = "2.28"
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 
-# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
-# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
-# See https://github.com/rerun-io/rerun/issues/10934 for more.
-#
-# TODO(prefix-dev/pixi#4431): Environment variable resolving doesn't work with this on Windows,
-# which is why we have to use the `%` syntax for Windows instead of `$`.
-CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
-
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
-
-# See `target.unix.activation.env`.
-CARGO_TARGET_DIR = "%PIXI_PROJECT_ROOT%/target_pixi"
-
-# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
-[target.osx-arm64.activation.env]
-AR = "llvm-ar"
 
 # python-dev
 
@@ -422,7 +407,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 

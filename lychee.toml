@@ -61,8 +61,6 @@ exclude_path = [
   "rerun_js/node_modules/",
   "rerun_notebook/node_modules/",
   "rerun_py/site/",
-  "target_pixi_wasm",
-  "target_pixi",
   "target_ra",
   "target_wasm",
   "target",

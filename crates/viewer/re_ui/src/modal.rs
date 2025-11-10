@@ -24,16 +24,39 @@ use crate::{DesignTokens, UiExt as _, context_ext::ContextExt as _};
 /// });
 /// # });
 /// ```
-#[derive(Default)]
 pub struct ModalHandler {
     modal: Option<ModalWrapper>,
+    allow_escape: bool,
     should_open: bool,
+    should_close: bool,
+}
+
+impl Default for ModalHandler {
+    fn default() -> Self {
+        Self {
+            modal: None,
+            allow_escape: true,
+            should_open: false,
+            should_close: false,
+        }
+    }
 }
 
 impl ModalHandler {
-    /// Open the model the next time the [`ModalHandler::ui`] method is called.
+    /// Allow the user to close the modal by interacting with the backdrop and/or pressing escape.
+    pub fn allow_escape(mut self, v: bool) -> Self {
+        self.allow_escape = v;
+        self
+    }
+
+    /// Open the modal the next time the [`ModalHandler::ui`] method is called.
     pub fn open(&mut self) {
         self.should_open = true;
+    }
+
+    /// Close the modal the next time the [`ModalHandler::ui`] method is called.
+    pub fn close(&mut self) {
+        self.should_close = true;
     }
 
     /// Draw the modal window, creating/destroying it as required.
@@ -51,7 +74,7 @@ impl ModalHandler {
         if let Some(modal) = &mut self.modal {
             let response = modal.ui(ctx, content_ui);
 
-            if response.should_close() {
+            if self.should_close || (self.allow_escape && response.should_close()) {
                 self.modal = None;
             }
 

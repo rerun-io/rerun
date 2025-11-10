@@ -51,9 +51,13 @@ impl FrameIdRegistry {
         // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
         let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
         let parent_frame_component = archetypes::Transform3D::descriptor_parent_frame().component;
+        let coordinate_frame_component =
+            archetypes::CoordinateFrame::descriptor_frame_id().component;
+
         for frame_id_strings in chunk
             .iter_slices::<String>(child_frame_component)
             .chain(chunk.iter_slices::<String>(parent_frame_component))
+            .chain(chunk.iter_slices::<String>(coordinate_frame_component))
         {
             for frame_id_string in frame_id_strings {
                 let (frame_id_hash, entity_path) =
@@ -173,6 +177,15 @@ mod tests {
                 .build()
                 .unwrap(),
         );
+        registry.register_all_frames_in_chunk(
+            &Chunk::builder("root/surprise")
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::CoordinateFrame::new("frame0"),
+                )
+                .build()
+                .unwrap(),
+        );
 
         // Verify explicit frame IDs from the first chunk.
         assert_eq!(
@@ -188,6 +201,12 @@ mod tests {
         assert_eq!(
             registry.lookup_frame_id(TransformFrameIdHash::from_str("parent0")),
             Some(&TransformFrameId::new("parent0"))
+        );
+
+        // Verify explicit frame IDs from the third chunk.
+        assert_eq!(
+            registry.lookup_frame_id(TransformFrameIdHash::from_str("frame0")),
+            Some(&TransformFrameId::new("frame0"))
         );
 
         // Verify implicit frame IDs from entity paths.

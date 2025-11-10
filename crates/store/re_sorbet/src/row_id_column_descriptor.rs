@@ -42,7 +42,7 @@ impl RowIdColumnDescriptor {
 
         let mut metadata = std::collections::HashMap::from([
             (
-                "rerun:kind".to_owned(),
+                crate::metadata::RERUN_KIND.to_owned(),
                 crate::ColumnKind::RowId.to_string(),
             ),
             (
