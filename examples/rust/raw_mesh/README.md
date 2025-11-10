@@ -4,12 +4,11 @@ thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c326739090
 thumbnail_dimensions = [480, 480]
 -->
 
-This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy. Simple material properties are supported.
+This example demonstrates how to use the Rerun SDK to construct and log raw 3D meshes (so-called "triangle soups") programmatically from scratch.
 
-Note that while this example loads GLTF meshes to illustrate [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites, you can also send various kinds of mesh assets
-directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
+This example shows how to create mesh geometry by manually defining vertices, normals, colors, and texture coordinates for various geometric primitives, each demonstrating different features of the [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d) archetype.
 
-<!-- TODO(#1957): How about we load something elseto avoid confusion? -->
+If you want to log existing mesh files (like GLTF, OBJ, STL, etc.), use the [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) archetype instead.
 
 <picture>
   <img src="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/full.png" alt="">
@@ -19,6 +18,23 @@ directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/1200w.png">
 </picture>
 
+## Geometric Primitives
+
+The example generates several geometric primitives, each showcasing different `Mesh3D` features:
+
+- **Cube**: Per-vertex colors (each face has a different color)
+- **Pyramid**: UV texture coordinates with a procedural checkerboard texture
+- **Sphere**: Vertex normals for smooth shading
+- **Icosahedron**: Flat shading (no vertex normals)
+
+## Running
+
 ```bash
-cargo run --release
+cargo run --release -p raw_mesh
+```
+
+You can customize the sphere subdivisions for more or less detail:
+
+```bash
+cargo run --release -p raw_mesh -- --sphere-subdivisions 64
 ```

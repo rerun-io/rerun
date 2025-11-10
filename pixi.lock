@@ -33998,12 +33998,10 @@ packages:
 - pypi: ./examples/python/raw_mesh
   name: raw-mesh
   version: 0.1.0
-  sha256: 941add74b4fc4866e3e91bb4a5866d8556ab1ae39cc7819e5d1ab0463ad3fc33
+  sha256: 6642e4bba2bc86870238ea9c19d4f32e37611ef19ffd002405936a03a3ff6d7c
   requires_dist:
   - numpy
-  - requests>=2.31,<3
   - rerun-sdk
-  - trimesh
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/re2-2024.07.02-h9925aae_2.conda
   sha256: d213c44958d49ce7e0d4d5b81afec23640cce5016685dbb2d23571a99caa4474
