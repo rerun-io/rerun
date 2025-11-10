@@ -3,7 +3,10 @@
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, GenericBinaryArray, GenericListArray, OffsetSizeTrait};
+use arrow::array::{
+    Array as _, GenericBinaryArray, GenericListArray, Int32Array, Int64Array, OffsetSizeTrait,
+    StructArray,
+};
 use arrow::datatypes::{DataType, Field};
 
 use crate::{Error, Transform};
@@ -60,5 +63,65 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
         );
 
         Ok(list)
+    }
+}
+
+/// Converts `StructArray` of timestamps with `seconds` (i64) and `nanos` (i32) fields
+/// to `Int64Array` containing the corresponding total nanoseconds timestamps.
+#[derive(Default)]
+pub struct TimeSpecToNanos {}
+
+impl Transform for TimeSpecToNanos {
+    type Source = StructArray;
+    type Target = Int64Array;
+
+    fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
+        let available_fields: Vec<String> =
+            source.fields().iter().map(|f| f.name().clone()).collect();
+
+        let seconds_array =
+            source
+                .column_by_name("seconds")
+                .ok_or_else(|| Error::MissingStructField {
+                    field_name: "seconds".to_owned(),
+                    struct_fields: available_fields.clone(),
+                })?;
+        let nanos_array =
+            source
+                .column_by_name("nanos")
+                .ok_or_else(|| Error::MissingStructField {
+                    field_name: "nanos".to_owned(),
+                    struct_fields: available_fields,
+                })?;
+
+        let seconds_array = seconds_array
+            .as_any()
+            .downcast_ref::<Int64Array>()
+            .ok_or_else(|| Error::UnexpectedListValueType {
+                expected: "Int64Array".to_owned(),
+                actual: seconds_array.data_type().clone(),
+            })?;
+        let nanos_array = nanos_array
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .ok_or_else(|| Error::UnexpectedListValueType {
+                expected: "Int32Array".to_owned(),
+                actual: nanos_array.data_type().clone(),
+            })?;
+
+        let mut output_builder = Int64Array::builder(source.len());
+
+        for i in 0..source.len() {
+            if source.is_null(i) {
+                output_builder.append_null();
+            } else {
+                let seconds = seconds_array.value(i);
+                let nanos = nanos_array.value(i);
+                let total_nanos = seconds * 1_000_000_000 + nanos as i64;
+                output_builder.append_value(total_nanos);
+            }
+        }
+
+        Ok(output_builder.finish())
     }
 }
