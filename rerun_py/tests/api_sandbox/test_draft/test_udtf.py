@@ -5,12 +5,12 @@ import pyarrow.dataset as ds
 from datafusion import SessionContext, udtf
 from inline_snapshot import snapshot as inline_snapshot
 
-
 # TODO: remove this file
 
 
 def test_simple_udtf() -> None:
-    """Test a simple user-defined table function (UDTF) that generates a sequence of numbers.
+    """
+    Test a simple user-defined table function (UDTF) that generates a sequence of numbers.
 
     This test demonstrates how to create and use a UDTF with DataFusion.
     UDTFs are table-valued functions that can generate data dynamically.
@@ -51,7 +51,8 @@ value: int64\
 
 
 def test_udtf_with_transformation() -> None:
-    """Test a UDTF that generates data and then applies transformations.
+    """
+    Test a UDTF that generates data and then applies transformations.
 
     This demonstrates using a UDTF in combination with SQL operations
     like filtering, transformations, and ordering.
@@ -95,7 +96,8 @@ def test_udtf_with_transformation() -> None:
 
 
 def test_udtf_with_multiple_arguments() -> None:
-    """Test a UDTF that accepts multiple arguments.
+    """
+    Test a UDTF that accepts multiple arguments.
 
     This shows how to create a more complex UDTF with multiple parameters
     and demonstrates generating a multiplication table.

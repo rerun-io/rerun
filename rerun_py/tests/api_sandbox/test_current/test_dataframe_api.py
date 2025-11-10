@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import rerun as rr
-from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
