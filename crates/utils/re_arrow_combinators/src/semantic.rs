@@ -7,7 +7,7 @@ use arrow::array::{
     Array as _, GenericBinaryArray, GenericListArray, Int32Array, Int64Array, OffsetSizeTrait,
     StringArray, StructArray, UInt32Array, UInt32Builder,
 };
-use arrow::datatypes::{DataType, Field};
+use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 
 use re_types::components::VideoCodec;
 
@@ -111,20 +111,13 @@ impl Transform for TimeSpecToNanos {
                 actual: nanos_array.data_type().clone(),
             })?;
 
-        let mut output_builder = Int64Array::builder(source.len());
-
-        for i in 0..source.len() {
-            if source.is_null(i) {
-                output_builder.append_null();
-            } else {
-                let seconds = seconds_array.value(i);
-                let nanos = nanos_array.value(i);
-                let total_nanos = seconds * 1_000_000_000 + nanos as i64;
-                output_builder.append_value(total_nanos);
-            }
-        }
-
-        Ok(output_builder.finish())
+        Ok(
+            arrow::compute::binary::<Int64Type, Int32Type, _, Int64Type>(
+                seconds_array,
+                nanos_array,
+                |seconds, nanos| seconds * 1_000_000_000 + nanos as i64,
+            )?,
+        )
     }
 }
 
