@@ -313,7 +313,9 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if state.last_tracked_entity() != Some(entity_path) {
+                if ui.ctx().input(|i| i.modifiers.alt)
+                    && state.last_tracked_entity() != Some(entity_path)
+                {
                     eye_property.save_blueprint_component(
                         ctx,
                         &EyeControls3D::descriptor_tracking_entity(),

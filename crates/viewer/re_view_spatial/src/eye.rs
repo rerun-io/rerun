@@ -187,13 +187,6 @@ impl EyeInterpolation {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-struct TrackingInterpolation {
-    last_pos: Vec3,
-    new_pos: Vec3,
-    elapsed_time: f32,
-}
-
 /// Some non-persistent state for the eye.
 ///
 /// Note: we use "eye" so we don't confuse this with logged camera.
