@@ -7,6 +7,7 @@ use arrow::{
     datatypes::{Fields, Schema},
 };
 use itertools::Either;
+use parking_lot::Mutex;
 
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -33,6 +34,10 @@ pub struct Dataset {
     store_kind: StoreKind,
     created_at: jiff::Timestamp,
     inner: Tracked<DatasetInner>,
+
+    /// Cached schema with the timestamp when it was computed.
+    /// Invalidated when `updated_at` changes.
+    cached_schema: Mutex<Option<(jiff::Timestamp, Arc<Schema>)>>,
 }
 
 impl Dataset {
@@ -46,6 +51,7 @@ impl Dataset {
                 details,
                 partitions: HashMap::default(),
             }),
+            cached_schema: Mutex::new(None),
         }
     }
 
@@ -160,7 +166,23 @@ impl Dataset {
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))
+        let mut cache = self.cached_schema.lock();
+
+        let updated_at = self.updated_at();
+
+        // Check if we have a valid cached schema
+        if let Some((cached_at, schema)) = cache.as_ref() {
+            if *cached_at == updated_at {
+                return Ok(Schema::clone(schema));
+            }
+        }
+
+        // Recompute schema
+        let schema = Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))?;
+        let schema_arc = Arc::new(schema.clone());
+        *cache = Some((updated_at, Arc::clone(&schema_arc)));
+
+        Ok(schema)
     }
 
     pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {

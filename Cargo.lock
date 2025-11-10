@@ -9558,6 +9558,7 @@ dependencies = [
  "jiff",
  "lance",
  "nohash-hasher",
+ "parking_lot",
  "re_arrow_util",
  "re_build_info",
  "re_build_tools",
