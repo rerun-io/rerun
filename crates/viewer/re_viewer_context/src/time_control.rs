@@ -509,6 +509,7 @@ impl TimeControl {
             }
 
             let bp_loop_section = blueprint_ctx.time_selection();
+            // If we've switched timeline, use the new timeline's cached time selection.
             if old_timeline != timeline {
                 match state.loop_selection {
                     Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
@@ -827,6 +828,7 @@ impl TimeControl {
                 }
 
                 if let Some(state) = self.states.get(timeline_name) {
+                    // Use the new timeline's cached time selection.
                     if let Some(blueprint_ctx) = blueprint_ctx {
                         match state.loop_selection {
                             Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
