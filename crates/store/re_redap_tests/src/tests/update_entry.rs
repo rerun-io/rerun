@@ -179,6 +179,71 @@ pub async fn update_entry_tests(service: impl RerunCloudService) {
     );
 }
 
+pub async fn update_entry_bumps_timestamp(service: impl RerunCloudService) {
+    //
+    // Create a dataset
+    //
+
+    let dataset_name = "timestamp_test_dataset";
+    let dataset_entry = create_dataset_entry(&service, dataset_name).await.unwrap();
+
+    let dataset_id = dataset_entry.details.id;
+    let initial_updated_at = dataset_entry.details.updated_at;
+
+    // Small delay to ensure timestamp difference
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    //
+    // Rename the dataset - this should update the timestamp
+    //
+
+    let new_name = "renamed_dataset";
+    let response = update_entry(
+        &service,
+        UpdateEntryRequest {
+            id: dataset_id,
+            entry_details_update: EntryDetailsUpdate {
+                name: Some(new_name.to_owned()),
+            },
+        },
+    )
+    .await
+    .unwrap();
+
+    let after_rename_updated_at = response.entry_details.updated_at;
+
+    assert!(
+        after_rename_updated_at > initial_updated_at,
+        "Timestamp should be updated after rename. Initial: {initial_updated_at:?}, After rename: {after_rename_updated_at:?}"
+    );
+
+    // Small delay to ensure timestamp difference
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+    //
+    // Rename to the same name
+    //
+
+    let response2 = update_entry(
+        &service,
+        UpdateEntryRequest {
+            id: dataset_id,
+            entry_details_update: EntryDetailsUpdate {
+                name: Some(new_name.to_owned()),
+            },
+        },
+    )
+    .await
+    .unwrap();
+
+    let after_second_rename_updated_at = response2.entry_details.updated_at;
+
+    assert_eq!(
+        after_second_rename_updated_at, after_rename_updated_at,
+        "Timestamp should NOT be updated when renaming to the same name. After first rename: {after_rename_updated_at:?}, After second rename: {after_second_rename_updated_at:?}"
+    );
+}
+
 // ---
 
 async fn create_dataset_entry(
