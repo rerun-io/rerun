@@ -199,7 +199,7 @@ fn print_msg(options: &Options, msg: LogMsg) -> anyhow::Result<()> {
                 if let Some(only_this_entity) = &options.entity
                     && let metadata = original_batch.schema_ref().metadata()
                     && let Some(chunk_entity_path) = metadata
-                        .get("rerun:entity_path")
+                        .get(re_sorbet::metadata::SORBET_ENTITY_PATH)
                         .or_else(|| metadata.get("rerun.entity_path"))
                     && only_this_entity != &EntityPath::parse_forgiving(chunk_entity_path)
                 {

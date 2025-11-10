@@ -225,7 +225,6 @@ impl TestContext {
             component_ui_registry,
             component_fallback_registry,
             reflection,
-            // TODO(jan): We don't use CLI credentials in tests, it would be nice to test at some point.
             connection_registry:
                 re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
 

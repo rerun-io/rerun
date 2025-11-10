@@ -42,10 +42,17 @@ fn drop_indicators(batch: RecordBatch) -> RecordBatch {
                     );
                     Some(i) // Keep
                 }
-            } else if field.metadata().get("rerun:component").is_some_and(|val| {
-                val.starts_with("rerun.components.") && val.ends_with("Indicator")
-            }) {
-                let Some(indicator) = field.metadata().get("rerun:component") else {
+            } else if field
+                .metadata()
+                .get(re_types_core::FIELD_METADATA_KEY_COMPONENT)
+                .is_some_and(|val| {
+                    val.starts_with("rerun.components.") && val.ends_with("Indicator")
+                })
+            {
+                let Some(indicator) = field
+                    .metadata()
+                    .get(re_types_core::FIELD_METADATA_KEY_COMPONENT)
+                else {
                     debug_assert!(
                         false,
                         "missing 'rerun:component' entry that should be present"
