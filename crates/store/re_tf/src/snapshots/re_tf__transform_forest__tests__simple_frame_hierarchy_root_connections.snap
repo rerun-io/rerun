@@ -55,7 +55,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     top: TransformInfo {
         root: root,
@@ -109,7 +108,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     tf#/: TransformInfo {
         root: tf#/,
@@ -163,7 +161,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     root: TransformInfo {
         root: root,
@@ -217,7 +214,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     child0: TransformInfo {
         root: root,
@@ -271,7 +267,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     tf#/transforms0: TransformInfo {
         root: tf#/,
@@ -325,7 +320,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     child1: TransformInfo {
         root: root,
@@ -379,7 +373,6 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
     tf#/transforms2: TransformInfo {
         root: tf#/,
@@ -433,6 +426,5 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 ),
             },
         ],
-        target_from_archetype: {},
     },
 }

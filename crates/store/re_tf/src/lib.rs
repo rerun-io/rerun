@@ -138,8 +138,6 @@
 //! for referring to built-in transform frames.
 //!
 
-mod component_type_info;
-pub(crate) mod convert;
 mod entity_to_frame_tracking;
 mod frame_id_registry;
 mod transform_aspect;
@@ -147,11 +145,12 @@ mod transform_forest;
 mod transform_queries;
 mod transform_resolution_cache;
 
+pub mod convert;
+
 pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TransformInfo};
 pub use transform_queries::{query_view_coordinates, query_view_coordinates_at_closest_ancestor};
 pub use transform_resolution_cache::{
-    CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformResolutionCache,
+    CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,
 };
 
 // Re-export the transform frame id types from re_types.

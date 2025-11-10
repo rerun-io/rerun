@@ -4,8 +4,8 @@ use vec1::smallvec_v1::SmallVec1;
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_resolution_cache::ParentFromChildTransform;
 use crate::{
-    CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
-    TransformFrameIdHash, TransformResolutionCache, image_view_coordinates,
+    CachedTransformsForTimeline, ResolvedPinholeProjection, TransformFrameIdHash,
+    TransformResolutionCache, image_view_coordinates,
 };
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
@@ -35,16 +35,8 @@ pub struct TransformInfo {
     ///
     /// If no poses are present, this is always the same as [`Self::target_from_source`].
     /// (also implying that in this case there is only a single element).
-    /// If there are poses there may be more than one element.
-    ///
-    /// Does not take into account archetype specific transforms.
+    /// If there are poses, there may be more than one element.
     target_from_instances: SmallVec1<[glam::DAffine3; 1]>,
-
-    /// Like [`Self::target_from_instances`] but _on top_ also has archetype specific transforms applied
-    /// if there are any present.
-    ///
-    /// For example, this may have different poses for spheres & boxes.
-    target_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::DAffine3; 1]>>,
 }
 
 impl TransformInfo {
@@ -53,7 +45,6 @@ impl TransformInfo {
             root,
             target_from_source: glam::DAffine3::IDENTITY,
             target_from_instances: SmallVec1::new(glam::DAffine3::IDENTITY),
-            target_from_archetype: Default::default(),
         }
     }
 
@@ -83,25 +74,13 @@ impl TransformInfo {
         archetype: ArchetypeName,
     ) -> glam::DAffine3 {
         self.warn_on_per_instance_transform(entity_name, archetype);
-
-        if let Some(transform) = self.target_from_archetype.get(&archetype) {
-            *transform.first()
-        } else {
-            *self.target_from_instances.first()
-        }
+        *self.target_from_instances.first()
     }
 
     /// Returns the target from instance transforms.
     #[inline]
-    pub fn target_from_instances(
-        &self,
-        archetype: ArchetypeName,
-    ) -> &SmallVec1<[glam::DAffine3; 1]> {
-        if let Some(transform) = self.target_from_archetype.get(&archetype) {
-            transform
-        } else {
-            &self.target_from_instances
-        }
+    pub fn target_from_instances(&self) -> &SmallVec1<[glam::DAffine3; 1]> {
+        &self.target_from_instances
     }
 
     /// Multiplies all transforms from the left by `target_from_reference`
@@ -114,7 +93,6 @@ impl TransformInfo {
             root,
             target_from_source: reference_from_source,
             target_from_instances: reference_from_source_instances,
-            target_from_archetype: reference_from_source_archetypes,
         } = self;
 
         let target_from_source = target_from_reference * reference_from_source;
@@ -122,21 +100,11 @@ impl TransformInfo {
             target_from_reference,
             reference_from_source_instances,
         );
-        let target_from_source_archetypes = reference_from_source_archetypes
-            .iter()
-            .map(|(archetype, transforms)| {
-                (
-                    *archetype,
-                    left_multiply_smallvec1_of_transforms(target_from_reference, transforms),
-                )
-            })
-            .collect();
 
         Self {
             root: *root,
             target_from_source,
             target_from_instances: target_from_source_instances,
-            target_from_archetype: target_from_source_archetypes,
         }
     }
 }
@@ -384,20 +352,14 @@ impl TransformForest {
             }
 
             // Collect & compute poses.
-            let root_from_instances = compute_root_from_instances(
-                root_from_current_frame,
-                transforms.child_from_instance_poses.as_ref(),
-            );
-            let root_from_archetype = compute_root_from_archetype(
-                root_from_current_frame,
-                transforms.child_from_instance_poses.as_ref(),
-            );
+            let pose_transforms = &transforms.child_from_instance_poses;
+            let root_from_instances =
+                compute_root_from_poses(root_from_current_frame, pose_transforms);
 
             let transform_root_from_current = TransformInfo {
                 root: root_frame,
                 target_from_source: root_from_current_frame,
                 target_from_instances: root_from_instances,
-                target_from_archetype: root_from_archetype,
             };
 
             let previous_transform = self
@@ -545,8 +507,6 @@ impl TransformForest {
                 target_from_source: root_from_entity,
                 // Don't care about instance transforms on the target frame, as they don't tree-propagate.
                 target_from_instances: _,
-                // Don't care about archetype specific transforms on the target frame, as they don't tree-propagate.
-                target_from_archetype: _,
             } = &root_from_target;
 
             TargetInfo {
@@ -733,36 +693,6 @@ fn compute_root_from_poses(
     reference_from_poses
 }
 
-fn compute_root_from_instances(
-    reference_from_entity: glam::DAffine3,
-    pose_transforms: Option<&PoseTransformArchetypeMap>,
-) -> SmallVec1<[glam::DAffine3; 1]> {
-    compute_root_from_poses(
-        reference_from_entity,
-        pose_transforms.map_or(&[], |poses| &poses.instance_from_poses),
-    )
-}
-
-fn compute_root_from_archetype(
-    reference_from_entity: glam::DAffine3,
-    entity_from_instance_poses: Option<&PoseTransformArchetypeMap>,
-) -> IntMap<ArchetypeName, SmallVec1<[glam::DAffine3; 1]>> {
-    entity_from_instance_poses
-        .map(|poses| {
-            poses
-                .instance_from_archetype_poses_per_archetype
-                .iter()
-                .map(|(archetype, poses)| {
-                    (
-                        *archetype,
-                        compute_root_from_poses(reference_from_entity, poses),
-                    )
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 fn pinhole3d_from_image_plane(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: f64,
@@ -810,7 +740,7 @@ fn pinhole3d_from_image_plane(
 struct ParentChildTransforms {
     child_frame: TransformFrameIdHash,
     parent_from_child: Option<ParentFromChildTransform>,
-    child_from_instance_poses: Option<PoseTransformArchetypeMap>,
+    child_from_instance_poses: Vec<glam::DAffine3>,
     pinhole_projection: Option<ResolvedPinholeProjection>,
 }
 
@@ -824,7 +754,7 @@ fn transforms_at(
         return ParentChildTransforms {
             child_frame,
             parent_from_child: None,
-            child_from_instance_poses: None,
+            child_from_instance_poses: Vec::new(),
             pinhole_projection: None,
         };
     };
@@ -854,7 +784,7 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
     use re_types::components::TransformFrameId;
-    use re_types::{Archetype as _, RowId, archetypes};
+    use re_types::{RowId, archetypes};
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
@@ -878,12 +808,6 @@ mod tests {
                     // Add some instance transforms - we need to make sure they don't propagate.
                     &archetypes::InstancePoses3D::new()
                         .with_translations([[10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]),
-                )
-                .with_archetype_auto_row(
-                    TimePoint::STATIC,
-                    // Add some boxes - its centers are handled treated like special instance transforms.
-                    &archetypes::Boxes3D::update_fields()
-                        .with_centers([[0.0, 10.0, 0.0], [0.0, 20.0, 0.0]]),
                 )
                 .build()?,
         ))?;
@@ -953,7 +877,7 @@ mod tests {
                     &transform_cache
                 )
             );
-            // .. but it's hard to reason about the parent root id, so let's verify that just to be sure.
+            // … but it's hard to reason about the parent root id, so let's verify that just to be sure.
             assert_eq!(
                 transform_forest
                     .pinhole_tree_root_info(TransformFrameIdHash::from_entity_path(
@@ -1020,87 +944,6 @@ mod tests {
         }
 
         Ok(())
-    }
-
-    /// Regression test for <https://github.com/rerun-io/rerun/issues/11496>
-    ///
-    /// This is redundant with `test_simple_entity_hierarchy` but it's good to call this out separately since
-    /// it might easily be missed in the snapshot update.
-    #[test]
-    fn test_instance_transforms_at_target_frame() {
-        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
-        entity_db
-            .add_chunk(&Arc::new(
-                Chunk::builder(EntityPath::from("box"))
-                    .with_archetype_auto_row(
-                        TimePoint::STATIC,
-                        &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
-                    )
-                    .with_archetype_auto_row(
-                        TimePoint::STATIC,
-                        &archetypes::InstancePoses3D::new()
-                            .with_translations([[0.0, 10.0, 0.0], [0.0, 20.0, 0.0]]),
-                    )
-                    .with_archetype_auto_row(
-                        TimePoint::STATIC,
-                        &archetypes::Boxes3D::update_fields()
-                            .with_centers([[0.0, 0.0, 100.0], [0.0, 0.0, 200.0]]),
-                    )
-                    .build()
-                    .unwrap(),
-            ))
-            .unwrap();
-
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(entity_db.storage_engine().store().iter_chunks());
-
-        let query = LatestAtQuery::latest(TimelineName::log_tick());
-        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
-
-        let target = TransformFrameIdHash::from_entity_path(&EntityPath::from("box"));
-        let sources = [TransformFrameIdHash::from_entity_path(&EntityPath::from(
-            "box",
-        ))];
-
-        let result = transform_forest
-            .transform_from_to(target, sources.iter().copied(), &|_| 1.0)
-            .collect::<Vec<_>>();
-
-        assert_eq!(result.len(), 1);
-        let (source, result) = &result[0];
-        assert_eq!(source, &target);
-        let info = result.as_ref().unwrap();
-        assert_eq!(
-            info.root,
-            TransformFrameIdHash::entity_path_hierarchy_root()
-        );
-
-        // It *is* the target, so identity for this!
-        assert_eq!(info.target_from_source, glam::DAffine3::IDENTITY);
-
-        // Instance transforms still apply.
-        assert_eq!(
-            info.target_from_instances,
-            SmallVec1::<[glam::DAffine3; 1]>::try_from_slice(&[
-                glam::DAffine3::from_translation(glam::dvec3(0.0, 10.0, 0.0)),
-                glam::DAffine3::from_translation(glam::dvec3(0.0, 20.0, 0.0))
-            ])
-            .unwrap()
-        );
-
-        // Archetype-specific transforms still apply _on top_ of the instance transforms.
-        assert_eq!(
-            info.target_from_archetype,
-            std::iter::once((
-                archetypes::Boxes3D::name(),
-                SmallVec1::<[glam::DAffine3; 1]>::try_from_slice(&[
-                    glam::DAffine3::from_translation(glam::dvec3(0.0, 10.0, 100.0)),
-                    glam::DAffine3::from_translation(glam::dvec3(0.0, 20.0, 200.0))
-                ])
-                .unwrap(),
-            ))
-            .collect()
-        );
     }
 
     /// A test scene that exclusively uses the parent/child farme ids.
@@ -1405,7 +1248,6 @@ mod tests {
                         target_from_instances: SmallVec1::new(glam::DAffine3::from_translation(
                             glam::dvec3(-5.0, 0.0, 0.0)
                         )),
-                        target_from_archetype: Default::default(),
                     })
                 )] // TODO(RR-2897): this is broken right now. This is what the result should be:
                    // vec![(
