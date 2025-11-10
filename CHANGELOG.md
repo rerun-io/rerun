@@ -5,7 +5,7 @@
 ### ✨ Overview & highlights
 
 #### 🗄️ OSS server upgrades
-Our OSS server has server has recieved some attention this version. And now supports properties, layers and blueprint datasets to name a few.
+Our OSS server has server has received some attention this version. And now supports properties, layers and blueprint datasets to name a few.
 
 #### 🟦 More blueprint properties
 The viewer is now even more configurable via blueprints. With more options for time series, bar chart, graph views, time panel, and the 3D view. With the latter now having the option to control the 3D eye position and look target.
