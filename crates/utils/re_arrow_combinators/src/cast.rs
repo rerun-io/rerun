@@ -71,7 +71,7 @@ where
     type Source = ArrayRef;
     type Target = PrimitiveArray<T>;
 
-    fn transform(&self, source: &Self::Source) -> Result<PrimitiveArray<T>, Error> {
+    fn transform(&self, source: &ArrayRef) -> Result<PrimitiveArray<T>, Error> {
         source
             .as_any()
             .downcast_ref::<PrimitiveArray<T>>()

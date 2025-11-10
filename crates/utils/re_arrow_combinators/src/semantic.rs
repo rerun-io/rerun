@@ -4,8 +4,8 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int32Array,
-    Int64Array, OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
+    Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int64Array,
+    OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
 };
 use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 use arrow::error::ArrowError;
