@@ -406,10 +406,11 @@ impl RecordingStreamBuilder {
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_grpc()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "grpc_client")]
     pub fn connect_grpc(self) -> RecordingStreamResult<RecordingStream> {
         self.connect_grpc_opts(format!(
             "rerun+http://127.0.0.1:{}/proxy",
-            re_grpc_server::DEFAULT_SERVER_PORT
+            crate::DEFAULT_SERVER_PORT
         ))
     }
 
@@ -423,6 +424,7 @@ impl RecordingStreamBuilder {
     ///     .connect_grpc_opts("rerun+http://127.0.0.1:9876/proxy")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "grpc_client")]
     pub fn connect_grpc_opts(
         self,
         url: impl Into<String>,
@@ -464,6 +466,7 @@ impl RecordingStreamBuilder {
     /// It is highly recommended that you use [`Self::serve_grpc_opts`] and set the memory limit to `0B`
     /// if both the server and client are running on the same machine, otherwise you're potentially
     /// doubling your memory usage!
+    #[cfg(feature = "grpc_server")]
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
         use re_grpc_server::ServerOptions;
 
@@ -477,7 +480,7 @@ impl RecordingStreamBuilder {
         )
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "grpc_server")]
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// locally hosted gRPC server.
     ///
@@ -493,6 +496,7 @@ impl RecordingStreamBuilder {
     /// If server & client are running on the same machine and all clients are expected to connect before
     /// any data is sent, it is highly recommended that you set the memory limit to `0B`,
     /// otherwise you're potentially doubling your memory usage!
+    #[cfg(feature = "grpc_server")]
     pub fn serve_grpc_opts(
         self,
         bind_ip: impl AsRef<str>,
@@ -601,6 +605,7 @@ impl RecordingStreamBuilder {
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").spawn()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "grpc_client")]
     pub fn spawn(self) -> RecordingStreamResult<RecordingStream> {
         self.spawn_opts(&Default::default())
     }
@@ -625,6 +630,7 @@ impl RecordingStreamBuilder {
     ///     .spawn_opts(&re_sdk::SpawnOptions::default())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "grpc_client")]
     pub fn spawn_opts(self, opts: &crate::SpawnOptions) -> RecordingStreamResult<RecordingStream> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");
@@ -2036,10 +2042,11 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
+    #[cfg(feature = "grpc_client")]
     pub fn connect_grpc(&self) -> RecordingStreamResult<()> {
         self.connect_grpc_opts(format!(
             "rerun+http://127.0.0.1:{}/proxy",
-            re_grpc_server::DEFAULT_SERVER_PORT
+            crate::DEFAULT_SERVER_PORT
         ))
     }
 
@@ -2053,6 +2060,7 @@ impl RecordingStream {
     /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
+    #[cfg(feature = "grpc_client")]
     pub fn connect_grpc_opts(&self, url: impl Into<String>) -> RecordingStreamResult<()> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new GrpcSink since {ENV_FORCE_SAVE} is set");
@@ -2070,7 +2078,7 @@ impl RecordingStream {
         Ok(())
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "grpc_server")]
     /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://127.0.0.1:9876/proxy`.
     ///
@@ -2088,7 +2096,7 @@ impl RecordingStream {
         self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_options)
     }
 
-    #[cfg(feature = "server")]
+    #[cfg(feature = "grpc_server")]
     /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://{bind_ip}:{port}/proxy`.
     ///
@@ -2127,6 +2135,7 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
+    #[cfg(feature = "grpc_client")]
     pub fn spawn(&self) -> RecordingStreamResult<()> {
         self.spawn_opts(&Default::default())
     }
@@ -2148,6 +2157,7 @@ impl RecordingStream {
     /// `flush_timeout` is the minimum time the [`GrpcSink`][`crate::log_sink::GrpcSink`] will
     /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
+    #[cfg(feature = "grpc_client")]
     pub fn spawn_opts(&self, opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             re_log::debug!("Rerun disabled - call to spawn() ignored");

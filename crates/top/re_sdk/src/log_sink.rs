@@ -4,6 +4,7 @@ use std::{fmt, time::Duration};
 use parking_lot::Mutex;
 
 use re_chunk::ChunkBatcherConfig;
+#[cfg(feature = "grpc_client")]
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::{EncodeError, Encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
@@ -239,8 +240,10 @@ impl private::Sealed for crate::sink::FileSink {}
 
 impl MultiSinkCompatible for crate::sink::FileSink {}
 
+#[cfg(feature = "grpc_client")]
 impl private::Sealed for crate::sink::GrpcSink {}
 
+#[cfg(feature = "grpc_client")]
 impl MultiSinkCompatible for crate::sink::GrpcSink {}
 
 // ----------------------------------------------------------------------------
@@ -523,16 +526,20 @@ impl LogSink for CallbackSink {
 // ----------------------------------------------------------------------------
 
 /// Stream log messages to an a remote Rerun server.
+#[cfg(feature = "grpc_client")]
 pub struct GrpcSink {
     client: MessageProxyClient,
 }
 
 /// The connection state of the underlying gRPC connection of a [`GrpcSink`].
+#[cfg(feature = "grpc_client")]
 pub type GrpcSinkConnectionState = re_grpc_client::write::ClientConnectionState;
 
 /// The reason why a [`GrpcSink`] was disconnected.
+#[cfg(feature = "grpc_client")]
 pub type GrpcSinkConnectionFailure = re_grpc_client::write::ClientConnectionFailure;
 
+#[cfg(feature = "grpc_client")]
 impl GrpcSink {
     /// Connect to the in-memory storage node over HTTP.
     ///
@@ -562,6 +569,7 @@ impl GrpcSink {
     }
 }
 
+#[cfg(feature = "grpc_client")]
 impl Default for GrpcSink {
     fn default() -> Self {
         use std::str::FromStr as _;
@@ -571,6 +579,7 @@ impl Default for GrpcSink {
     }
 }
 
+#[cfg(feature = "grpc_client")]
 impl LogSink for GrpcSink {
     fn send(&self, msg: LogMsg) {
         self.client.send(msg);

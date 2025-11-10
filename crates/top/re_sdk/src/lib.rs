@@ -31,7 +31,9 @@ pub use self::recording_stream::{
     forced_sink_path,
 };
 
-/// The default port of a Rerun gRPC /proxy server.
+/// The default port of a Rerun gRPC server.
+///
+/// This is defined locally to avoid requiring `re_grpc_server` as a dependency.
 pub const DEFAULT_SERVER_PORT: u16 = re_uri::DEFAULT_PROXY_PORT;
 
 /// The default URL of a Rerun gRPC /proxy server.
@@ -88,6 +90,7 @@ pub mod sink {
         MultiSink, SinkFlushError,
     };
 
+    #[cfg(feature = "grpc_client")]
     pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -133,16 +136,20 @@ pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, Loaded
 pub mod web_viewer;
 
 /// Method for spawning a gRPC server and streaming the SDK log stream to it.
-#[cfg(feature = "server")]
+#[cfg(feature = "grpc_server")]
 pub mod grpc_server;
 
-#[cfg(feature = "server")]
+#[cfg(feature = "grpc_server")]
 pub use re_grpc_server::{MemoryLimit, PlaybackBehavior, ServerOptions};
 
 /// Re-exports of other crates.
 pub mod external {
+    #[cfg(feature = "grpc_client")]
     pub use re_grpc_client;
+
+    #[cfg(feature = "grpc_server")]
     pub use re_grpc_server;
+
     pub use re_log;
     pub use re_log_encoding;
     pub use re_log_types;

@@ -31,6 +31,7 @@ default = [
   "image",
   "log",
   "map_view",
+  "networking",  # Include networking by default for backward compatibility
   "sdk",
   "server",
 ]
@@ -68,6 +69,12 @@ ecolor = ["re_types?/ecolor"]
 ## Only relevant if feature `sdk` is enabled.
 glam = ["re_types?/glam"]
 
+## Support connecting to remote Rerun gRPC servers (client).
+grpc_client = ["re_sdk?/grpc_client"]
+
+## Support hosting a gRPC server.
+grpc_server = ["re_sdk?/grpc_server"]
+
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_types?/image"]
 
@@ -81,6 +88,9 @@ map_view = ["re_viewer?/map_view"]
 ## Add support for math type conversions using [`mint`](https://crates.io/crates/mint/).
 ## Only relevant if feature `sdk` is enabled.
 mint = ["re_types?/mint"]
+
+## Enable both gRPC client and server support (convenience feature).
+networking = ["grpc_client", "grpc_server"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
