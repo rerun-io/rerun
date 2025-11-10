@@ -7,6 +7,7 @@
 
 - Minimum supported Python is now 3.10.
 - Dropped support for Intel Mac
+- Removed the `*_cursor` option from the time panel in the python api.
 
 
 ## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-27 - More bug fixes
