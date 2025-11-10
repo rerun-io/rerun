@@ -2,8 +2,6 @@
 //!
 //! On the left is a 2D view, on the right a 3D view of the same scene.
 
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors
 
 use itertools::Itertools as _;
@@ -33,10 +31,15 @@ impl framework::Example for Render2D {
     }
 
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
-        let rerun_logo =
-            image::load_from_memory(include_bytes!("../re_ui/data/logo_dark_mode.png")).unwrap();
+        let rerun_logo = image::load_from_memory(include_bytes!(
+            "../re_ui/data/logo_dark_mode.png"
+        ))
+        .expect("Failed to load embedded rerun logo");
 
-        let image_data = rerun_logo.as_rgba8().unwrap().to_vec();
+        let image_data = rerun_logo
+            .as_rgba8()
+            .expect("Rerun logo should be RGBA8")
+            .to_vec();
 
         let rerun_logo_texture = re_ctx
             .texture_manager_2d
@@ -73,8 +76,8 @@ impl framework::Example for Render2D {
         );
 
         let mut line_strip_builder = LineDrawableBuilder::new(re_ctx);
-        line_strip_builder.reserve_strips(128).unwrap();
-        line_strip_builder.reserve_vertices(2048).unwrap();
+        line_strip_builder.reserve_strips(128)?;
+        line_strip_builder.reserve_vertices(2048)?;
 
         // Blue rect outline around the bottom right quarter.
         {
@@ -179,7 +182,7 @@ impl framework::Example for Render2D {
         // Also, it looks different under perspective projection.
         // The third point is automatic thickness which is determined by the point renderer implementation.
         let mut point_cloud_builder = PointCloudBuilder::new(re_ctx);
-        point_cloud_builder.reserve(128).unwrap();
+        point_cloud_builder.reserve(128)?;
         point_cloud_builder.batch("points").add_points_2d(
             &[
                 glam::vec3(500.0, 120.0, 0.0),
@@ -310,9 +313,7 @@ impl framework::Example for Render2D {
                 view_builder.queue_draw(re_ctx, line_strip_draw_data.clone());
                 view_builder.queue_draw(re_ctx, point_draw_data.clone());
                 view_builder.queue_draw(re_ctx, rectangle_draw_data.clone());
-                let command_buffer = view_builder
-                    .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
-                    .unwrap();
+                let command_buffer = view_builder.draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,
@@ -336,8 +337,7 @@ impl framework::Example for Render2D {
                             camera_position,
                             camera_rotation_center,
                             glam::Vec3::Y,
-                        )
-                        .unwrap(),
+                        )?,
                         projection_from_view: Projection::Perspective {
                             vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                             near_plane_distance: 0.01,
@@ -351,8 +351,7 @@ impl framework::Example for Render2D {
                     .queue_draw(re_ctx, line_strip_draw_data)
                     .queue_draw(re_ctx, point_draw_data)
                     .queue_draw(re_ctx, rectangle_draw_data)
-                    .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
-                    .unwrap();
+                    .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,

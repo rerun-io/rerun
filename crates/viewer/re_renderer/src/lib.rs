@@ -26,9 +26,6 @@
 //! These encapsulate the knowledge (i.e. renderpipelines etc.) of how to render a certain kind of primitive.
 //! Unlike [`renderer::DrawData`]s, [`renderer::Renderer`]s are immutable and long-lived.
 
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
 mod allocator;
 pub mod device_caps;
 pub mod importer;

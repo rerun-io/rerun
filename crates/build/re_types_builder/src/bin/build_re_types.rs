@@ -3,9 +3,6 @@
 //! It is easiest to call this using `pixi run codegen`,
 //! which will set up the necessary tools.
 
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
@@ -73,13 +70,13 @@ fn main() {
     rayon::ThreadPoolBuilder::new()
         .thread_name(|i| format!("rayon-{i}"))
         .build_global()
-        .unwrap();
+        .expect("Failed to build global rayon thread pool");
 
     let workspace_dir = Utf8Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(|p| p.parent())
         .and_then(|p| p.parent())
-        .unwrap();
+        .expect("Failed to find workspace root from CARGO_MANIFEST_DIR");
 
     assert!(
         workspace_dir.join("CODE_OF_CONDUCT.md").exists(),

@@ -1,6 +1,3 @@
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
 thread_local! {
@@ -75,14 +72,14 @@ fn log_messages() {
             std::iter::once(log_msg).map(Ok),
             &mut bytes,
         )
-        .unwrap();
+        .expect("Failed to encode log message");
         bytes
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
         let mut messages = re_log_encoding::Decoder::decode_lazy(&mut bytes)
             .collect::<Result<Vec<LogMsg>, _>>()
-            .unwrap();
+            .expect("Failed to decode log messages");
         assert!(bytes.is_empty());
         assert_eq!(messages.len(), 1);
         messages.remove(0)
@@ -125,11 +122,13 @@ fn log_messages() {
                 )],
             )
             .build()
-            .unwrap();
+            .expect("Failed to build chunk");
         let chunk_bytes = live_bytes() - used_bytes_start;
         let log_msg = Box::new(LogMsg::ArrowMsg(
             store_id.clone(),
-            chunk.to_arrow_msg().unwrap(),
+            chunk
+                .to_arrow_msg()
+                .expect("Failed to convert chunk to arrow message"),
         ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow payload containing a Pos2 uses {chunk_bytes} bytes in RAM");
@@ -153,9 +152,14 @@ fn log_messages() {
                 )],
             )
             .build()
-            .unwrap();
+            .expect("Failed to build chunk");
         let chunk_bytes = live_bytes() - used_bytes_start;
-        let log_msg = Box::new(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg().unwrap()));
+        let log_msg = Box::new(LogMsg::ArrowMsg(
+            store_id,
+            chunk
+                .to_arrow_msg()
+                .expect("Failed to convert chunk to arrow message"),
+        ));
         let log_msg_bytes = live_bytes() - used_bytes_start;
         println!("Arrow payload containing a Pos2 uses {chunk_bytes} bytes in RAM");
         let encoded = encode_log_msg(&log_msg);

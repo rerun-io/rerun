@@ -101,8 +101,6 @@
 
 // ---
 
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
 // NOTE: This crate isn't only okay with `unimplemented`, it actively encourages it.
 #![expect(clippy::unimplemented)]
 
@@ -232,7 +230,7 @@ pub fn compile_binary_schemas(
     let entrypoint_path = entrypoint_path.as_ref().as_str();
 
     use xshell::{Shell, cmd};
-    let sh = Shell::new().unwrap();
+    let sh = Shell::new().expect("Failed to create shell");
     cmd!(
         sh,
         "flatc -I {include_dir_path}
@@ -241,7 +239,7 @@ pub fn compile_binary_schemas(
             {entrypoint_path}"
     )
     .run()
-    .unwrap();
+    .expect("Failed to run flatc command");
 }
 
 /// Handles the first 3 language-agnostic passes of the codegen pipeline:
@@ -262,18 +260,24 @@ pub fn generate_lang_agnostic(
 
     use xshell::Shell;
 
-    let sh = Shell::new().unwrap();
-    let tmp = sh.create_temp_dir().unwrap();
-    let tmp_path = Utf8PathBuf::try_from(tmp.path().to_path_buf()).unwrap();
+    let sh = Shell::new().expect("Failed to create shell");
+    let tmp = sh
+        .create_temp_dir()
+        .expect("Failed to create temp directory");
+    let tmp_path = Utf8PathBuf::try_from(tmp.path().to_path_buf())
+        .expect("Temp directory path should be valid UTF-8");
 
     let entrypoint_path = entrypoint_path.as_ref();
-    let entrypoint_filename = entrypoint_path.file_name().unwrap();
+    let entrypoint_filename = entrypoint_path
+        .file_name()
+        .expect("Entrypoint path should have a file name");
 
     let include_dir_path = include_dir_path.as_ref();
     let include_dir_path = include_dir_path
         .canonicalize_utf8()
-        .with_context(|| format!("failed to canonicalize include path: {include_dir_path:?}"))
-        .unwrap();
+        .unwrap_or_else(|err| {
+            panic!("Failed to canonicalize include path {include_dir_path:?}: {err}")
+        });
 
     // generate bfbs definitions
     compile_binary_schemas(&include_dir_path, &tmp_path, entrypoint_path);
@@ -282,11 +286,12 @@ pub fn generate_lang_agnostic(
     binary_entrypoint_path.set_extension("bfbs");
 
     // semantic pass: high level objects from low-level reflection data
+    let binary_path = tmp_path.join(&binary_entrypoint_path);
     let mut objects = Objects::from_buf(
         reporter,
         include_dir_path,
-        sh.read_binary_file(tmp_path.join(binary_entrypoint_path))
-            .unwrap()
+        sh.read_binary_file(&binary_path)
+            .unwrap_or_else(|err| panic!("Failed to read binary file {binary_path:?}: {err}"))
             .as_slice(),
     );
 
@@ -308,7 +313,9 @@ fn generate_gitattributes_for_generated_files(files_to_write: &mut GeneratedFile
     let mut filepaths_per_folder = BTreeMap::default();
 
     for filepath in files_to_write.keys() {
-        let dirpath = filepath.parent().unwrap();
+        let dirpath = filepath
+            .parent()
+            .expect("Generated file path should have a parent directory");
         let files: &mut Vec<_> = filepaths_per_folder.entry(dirpath.to_owned()).or_default();
         files.push(filepath.clone());
     }
@@ -321,10 +328,9 @@ fn generate_gitattributes_for_generated_files(files_to_write: &mut GeneratedFile
                 format_path(
                     filepath
                         .strip_prefix(&dirpath)
-                        .with_context(|| {
-                            format!("Failed to make {filepath} relative to {dirpath}.")
-                        })
-                        .unwrap(),
+                        .unwrap_or_else(|err| {
+                            panic!("Failed to make {filepath} relative to {dirpath}: {err}")
+                        }),
                 )
             }))
             .map(|s| format!("{s} linguist-generated=true"))
@@ -366,13 +372,21 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
     let snippets_index_hash = PathBuf::from(locations.snippets_dir)
         .parent()
         .map_or(String::new(), |dir| {
-            compute_dir_filtered_hash(dir, |path| path.to_str().unwrap().ends_with("INDEX.md"))
+            compute_dir_filtered_hash(dir, |path| {
+                path.to_str()
+                    .expect("Path should be valid UTF-8")
+                    .ends_with("INDEX.md")
+            })
         });
     let python_extensions_hash = compute_dir_filtered_hash(locations.python_output_dir, |path| {
-        path.to_str().unwrap().ends_with("_ext.py")
+        path.to_str()
+            .expect("Path should be valid UTF-8")
+            .ends_with("_ext.py")
     });
     let cpp_extensions_hash = compute_dir_filtered_hash(locations.cpp_output_dir, |path| {
-        path.to_str().unwrap().ends_with("_ext.cpp")
+        path.to_str()
+            .expect("Path should be valid UTF-8")
+            .ends_with("_ext.cpp")
     });
 
     let new_hash = compute_strings_hash(&[
@@ -431,7 +445,8 @@ fn generate_code(
 
     if check {
         files.par_iter().for_each(|(filepath, contents)| {
-            let cur_contents = std::fs::read_to_string(filepath).unwrap();
+            let cur_contents = std::fs::read_to_string(filepath)
+                .unwrap_or_else(|err| panic!("Failed to read {filepath:?}: {err}"));
             if *contents != cur_contents {
                 reporter.error(filepath.as_str(), "", "out of sync");
             }
@@ -640,26 +655,28 @@ pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, c
 
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
     let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir)
+        let manifest_dir = camino::Utf8PathBuf::from(&manifest_dir)
             .canonicalize_utf8()
-            .unwrap();
+            .unwrap_or_else(|err| {
+                panic!("Failed to canonicalize CARGO_MANIFEST_DIR {manifest_dir:?}: {err}")
+            });
         manifest_dir
             .parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
-            .unwrap()
+            .expect("Failed to find workspace root from CARGO_MANIFEST_DIR")
             .to_path_buf()
     } else {
         let file_path = camino::Utf8PathBuf::from(file!())
             .canonicalize_utf8()
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to canonicalize {} : {err}", file!()));
         file_path
             .parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
-            .unwrap()
+            .expect("Failed to find workspace root from file path")
             .to_path_buf()
     };
 
@@ -674,7 +691,11 @@ pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
         "Failed to find workspace root, expected it at {workspace_root:?}"
     );
 
-    workspace_root.canonicalize_utf8().unwrap()
+    workspace_root
+        .canonicalize_utf8()
+        .unwrap_or_else(|err| {
+            panic!("Failed to canonicalize workspace root {workspace_root:?}: {err}")
+        })
 }
 
 /// Format the path with forward slashes, even on Windows.

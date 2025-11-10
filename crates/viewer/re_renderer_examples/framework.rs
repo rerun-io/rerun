@@ -1,7 +1,5 @@
 //! Example framework
 
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
 use std::sync::Arc;
 
 use anyhow::Context as _;
@@ -116,7 +114,9 @@ impl<E: Example + 'static> Application<E> {
         instance_desc.flags.remove(wgpu::InstanceFlags::VALIDATION);
 
         let instance = wgpu::Instance::new(&instance_desc);
-        let surface = instance.create_surface(window.clone()).unwrap();
+        let surface = instance
+            .create_surface(window.clone())
+            .context("Failed to create window surface")?;
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -346,7 +346,10 @@ impl<E: Example + 'static> ApplicationHandler for WrapApp<E> {
             let window = _event_loop
                 .create_window(attributes)
                 .expect("Failed to create window");
-            self.app = Some(pollster::block_on(Application::new(window)).unwrap());
+            self.app = Some(
+                pollster::block_on(Application::new(window))
+                    .expect("Failed to create application"),
+            );
         }
     }
 
@@ -369,20 +372,26 @@ impl<E: Example + 'static> ApplicationHandler for WrapApp<E> {
 pub fn start<E: Example + 'static>() {
     re_log::setup_logging();
 
-    let event_loop = EventLoop::new().unwrap();
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
 
     #[cfg(not(target_arch = "wasm32"))]
     {
         let mut wrap_app = WrapApp::<E> { app: None };
-        event_loop.run_app(&mut wrap_app).unwrap();
+        event_loop
+            .run_app(&mut wrap_app)
+            .expect("Failed to run event loop");
     }
 
     #[cfg(target_arch = "wasm32")]
     {
         async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
-            let app = Application::<E>::new(window).await.unwrap();
+            let app = Application::<E>::new(window)
+                .await
+                .expect("Failed to create application");
             let mut wrap_app = WrapApp::<E> { app: Some(app) };
-            event_loop.run_app(&mut wrap_app).unwrap();
+            event_loop
+                .run_app(&mut wrap_app)
+                .expect("Failed to run event loop");
         }
 
         // Make sure panics are logged using `console.error`.
@@ -399,7 +408,9 @@ pub fn start<E: Example + 'static>() {
 
         // TODO(emilk): port this to the winit 0.30 API, using maybe https://docs.rs/winit/latest/winit/platform/web/trait.EventLoopExtWebSys.html ?
         #[expect(deprecated)]
-        let window = event_loop.create_window(window).unwrap();
+        let window = event_loop
+            .create_window(window)
+            .expect("Failed to create window");
 
         use winit::platform::web::WindowExtWebSys;
         let canvas = window.canvas().expect("Couldn't get canvas");

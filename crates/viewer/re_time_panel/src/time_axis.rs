@@ -1,6 +1,3 @@
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
 use re_entity_db::TimeHistogram;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
 use vec1::Vec1;
@@ -50,7 +47,14 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
         return u64::MAX;
     }
 
-    let total_time_span = times.min_key().unwrap().abs_diff(times.max_key().unwrap());
+    let total_time_span = times
+        .min_key()
+        .expect("TimeHistogram is non-empty (asserted above)")
+        .abs_diff(
+            times
+                .max_key()
+                .expect("TimeHistogram is non-empty (asserted above)"),
+        );
 
     if total_time_span == 0 {
         return u64::MAX;
@@ -64,7 +68,11 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     let min_gap_size: u64 = match time_type {
         TimeType::Sequence => 9,
         TimeType::DurationNs | TimeType::TimestampNs => {
-            TimeInt::from_millis(100.try_into().unwrap()).as_i64() as _
+            TimeInt::from_millis(
+                100.try_into()
+                    .expect("100 fits in any reasonable NonZeroI64"),
+            )
+            .as_i64() as _
         }
     };
     // Collect all gaps larger than our minimum gap size.
@@ -109,7 +117,12 @@ fn collect_candidate_gaps(
     // So we start with a large granularity, and then we reduce it until we get enough gaps.
     // This ensures a logarithmic runtime.
 
-    let max_gap_size = times.max_key().unwrap() - times.min_key().unwrap();
+    let max_gap_size = times
+        .max_key()
+        .expect("TimeHistogram is non-empty (checked by caller)")
+        - times
+            .min_key()
+            .expect("TimeHistogram is non-empty (checked by caller)");
     let mut granularity = max_gap_size as u64;
 
     let mut gaps = collect_gaps_with_granularity(times, granularity, min_gap_size)?;
@@ -158,7 +171,10 @@ fn collect_gaps_with_granularity(
 fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<AbsoluteTimeRange> {
     re_tracing::profile_function!();
     let mut it = times.range(.., gap_threshold);
-    let first_range = it.next().unwrap().0;
+    let first_range = it
+        .next()
+        .expect("TimeHistogram is non-empty (checked by caller)")
+        .0;
     let mut ranges = vec1::vec1![AbsoluteTimeRange::new(first_range.min, first_range.max,)];
 
     for (new_range, _count) in it {

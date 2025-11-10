@@ -1,6 +1,3 @@
-// TODO(#3408): remove unwrap()
-#![expect(clippy::unwrap_used)]
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Target {
     Cpp,

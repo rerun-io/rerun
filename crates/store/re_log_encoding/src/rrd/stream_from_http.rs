@@ -129,8 +129,6 @@ pub fn stream_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
 }
 
 #[cfg(target_arch = "wasm32")]
-// TODO(#3408): remove unwrap()
-#[expect(clippy::unwrap_used)]
 mod web_event_listener {
     use super::HttpMessageCallback;
     use js_sys::Uint8Array;
@@ -146,7 +144,10 @@ mod web_event_listener {
     /// window.postMessage(rrd, "*")
     /// ```
     pub fn stream_rrd_from_event_listener(on_msg: Arc<HttpMessageCallback>) {
-        let window = web_sys::window().expect("no global `window` exists");
+        let Some(window) = web_sys::window() else {
+            re_log::error!("Cannot install event listener: no global `window` exists");
+            return;
+        };
         let closure = Closure::wrap(Box::new({
             move |event: JsValue| match event.dyn_into::<MessageEvent>() {
                 Ok(message_event) => {
@@ -159,9 +160,12 @@ mod web_event_listener {
                 }
             }
         }) as Box<dyn FnMut(_)>);
-        window
+        if let Err(err) = window
             .add_event_listener_with_callback("message", closure.as_ref().unchecked_ref())
-            .unwrap();
+        {
+            re_log::error!("Failed to add event listener: {err:?}");
+            return;
+        }
         closure.forget();
     }
 }
@@ -170,8 +174,6 @@ mod web_event_listener {
 pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
-// TODO(#3408): remove unwrap()
-#[expect(clippy::unwrap_used)]
 pub mod web_decode {
     use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
@@ -229,13 +231,20 @@ pub mod web_decode {
     // Hack to get async sleep on wasm
     async fn sleep_ms(millis: i32) {
         let mut cb = |resolve: js_sys::Function, _reject: js_sys::Function| {
-            web_sys::window()
-                .unwrap()
-                .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
-                .expect("Failed to call set_timeout");
+            let Some(window) = web_sys::window() else {
+                re_log::warn_once!("Cannot sleep: no global window exists");
+                return;
+            };
+            if let Err(err) =
+                window.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
+            {
+                re_log::warn_once!("Failed to call set_timeout: {err:?}");
+            }
         };
         let p = js_sys::Promise::new(&mut cb);
-        wasm_bindgen_futures::JsFuture::from(p).await.unwrap();
+        if let Err(err) = wasm_bindgen_futures::JsFuture::from(p).await {
+            re_log::warn_once!("Failed to await promise: {err:?}");
+        }
     }
 }
 
