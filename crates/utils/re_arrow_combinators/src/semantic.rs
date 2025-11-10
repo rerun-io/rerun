@@ -129,7 +129,7 @@ impl Transform for StringToVideoCodecUInt32 {
                     "h264" => Ok(VideoCodec::H264),
                     "h265" => Ok(VideoCodec::H265),
                     unsupported => Err(Error::UnexpectedValue {
-                        expected: "'h264' or 'h265'".to_owned(),
+                        expected: &["h264", "h265"],
                         actual: unsupported.to_owned(),
                     }),
                 }?;
