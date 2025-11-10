@@ -29,6 +29,13 @@ namespace rerun::components {
     ///
     enum class VideoCodec : uint32_t {
 
+        /// AOMedia Video 1 (AV1)
+        ///
+        /// See <https://en.wikipedia.org/wiki/AV1>
+        ///
+        /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
+        AV1 = 0x61763031,
+
         /// Advanced Video Coding (AVC/H.264)
         ///
         /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>

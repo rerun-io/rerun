@@ -31,6 +31,15 @@ class VideoCodec(Enum):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
+    AV1 = 0x61763031
+    """
+    AOMedia Video 1 (AV1)
+
+    See <https://en.wikipedia.org/wiki/AV1>
+
+    Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
+    """
+
     H264 = 0x61766331
     """
     Advanced Video Coding (AVC/H.264)
@@ -80,10 +89,12 @@ class VideoCodec(Enum):
         return self.name
 
 
-VideoCodecLike = VideoCodec | Literal["H264", "H265", "h264", "h265"] | int
+VideoCodecLike = VideoCodec | Literal["AV1", "H264", "H265", "av1", "h264", "h265"] | int
 """A type alias for any VideoCodec-like object."""
 
-VideoCodecArrayLike = VideoCodec | Literal["H264", "H265", "h264", "h265"] | int | Sequence[VideoCodecLike]
+VideoCodecArrayLike = (
+    VideoCodec | Literal["AV1", "H264", "H265", "av1", "h264", "h265"] | int | Sequence[VideoCodecLike]
+)
 """A type alias for any VideoCodec-like array object."""
 
 

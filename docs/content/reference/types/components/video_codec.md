@@ -10,6 +10,13 @@ Support of these codecs by the Rerun Viewer is platform dependent.
 For more details see check the [video reference](https://rerun.io/docs/reference/video).
 
 ## Variants
+#### `AV1` = 0x61763031
+AOMedia Video 1 (AV1)
+
+See <https://en.wikipedia.org/wiki/AV1>
+
+Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
+
 #### `H264` = 0x61766331
 Advanced Video Coding (AVC/H.264)
 
