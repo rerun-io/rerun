@@ -118,6 +118,9 @@ from .archetypes import (
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
 )
+from .auth import (
+    WorkOSAuth as WorkOSAuth,
+)
 from .components import (
     AlbedoFactor as AlbedoFactor,
     GraphEdge as GraphEdge,
@@ -226,6 +229,8 @@ EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE = 66
 When an external `DataLoader` is asked to load some data that it doesn't know how to load, it
 should exit with this exit code.
 """
+
+_auth = None
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
@@ -356,6 +361,13 @@ def init(
         from rerun.sinks import spawn as _spawn
 
         _spawn(default_blueprint=default_blueprint)
+
+
+def auth() -> None:
+    global _auth
+    if _auth is None:
+        _auth = WorkOSAuth()
+    return _auth
 
 
 def version() -> str:

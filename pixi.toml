@@ -557,6 +557,7 @@ colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*" # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 fd-find = ">=10.1.0" # Used by `cpp-fmt` to find C++ files
 ffmpeg = ">=7.1.0,<8" # Needed for consistent results on tests that use ffmpeg to render video.
+flask = ">=3,<4"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
