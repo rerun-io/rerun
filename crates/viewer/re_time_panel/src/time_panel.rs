@@ -2012,13 +2012,14 @@ impl TimePanel {
         });
 
         // Remove loop section with alt click
-        if let Some(time) = hovered_time
-            && let Some(time_selection) = time_ctrl.loop_selection()
-            && time_selection.contains(time)
-            && response.clicked()
-            && ui.input(|ctx| ctx.modifiers.alt)
-        {
-            time_commands.push(TimeControlCommand::RemoveLoopSelection);
+        if ui.input(|ctx| ctx.modifiers.alt) {
+            if let Some(time) = hovered_time
+                && let Some(time_selection) = time_ctrl.loop_selection()
+                && time_selection.contains(time)
+                && response.clicked()
+            {
+                time_commands.push(TimeControlCommand::RemoveLoopSelection);
+            }
         }
         // Press to move time:
         else if ui.input(|i| i.pointer.primary_down())
