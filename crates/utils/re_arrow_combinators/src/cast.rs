@@ -1,6 +1,6 @@
 //! Transforms that cast arrays to different types.
 
-use arrow::array::{Array, ArrowPrimitiveType, PrimitiveArray};
+use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
 use arrow::compute::cast;
 
 use crate::{Error, Transform};
@@ -45,13 +45,40 @@ where
         let target_type = T::DATA_TYPE;
         let casted = cast(source_ref, &target_type)?;
 
-        casted
+        DowncastRef::<T>::new().transform(&casted)
+    }
+}
+
+/// Downcasts an `ArrayRef` to a `PrimitiveArray<T>` if the inner value is of type `T`.
+#[derive(Clone, Default)]
+pub struct DowncastRef<T> {
+    _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> DowncastRef<T> {
+    /// Create a new downcast transformation.
+    pub fn new() -> Self {
+        Self {
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T> Transform for DowncastRef<T>
+where
+    T: ArrowPrimitiveType,
+{
+    type Source = ArrayRef;
+    type Target = PrimitiveArray<T>;
+
+    fn transform(&self, source: &Self::Source) -> Result<PrimitiveArray<T>, Error> {
+        source
             .as_any()
             .downcast_ref::<PrimitiveArray<T>>()
             .ok_or_else(|| Error::TypeMismatch {
                 expected: std::any::type_name::<PrimitiveArray<T>>().to_owned(),
-                actual: casted.data_type().clone(),
-                context: "cast result".to_owned(),
+                actual: source.data_type().clone(),
+                context: "downcast_ref".to_owned(),
             })
             .cloned()
     }

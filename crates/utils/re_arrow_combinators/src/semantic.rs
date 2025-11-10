@@ -7,12 +7,12 @@ use arrow::array::{
     Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int32Array,
     Int64Array, OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
 };
-use arrow::datatypes::{DataType, Field};
+use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 use arrow::error::ArrowError;
 
 use re_types::components::VideoCodec;
 
-use crate::{Error, Transform, reshape::GetField};
+use crate::{Error, Transform, cast::DowncastRef, reshape::GetField};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
@@ -79,27 +79,14 @@ impl Transform for TimeSpecToNanos {
     type Target = Int64Array;
 
     fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
-        let seconds_array = GetField::new("seconds").transform(source)?;
-        let nanos_array = GetField::new("nanos").transform(source)?;
-
-        let seconds_array = seconds_array
-            .as_any()
-            .downcast_ref::<Int64Array>()
-            .ok_or_else(|| Error::UnexpectedListValueType {
-                expected: "Int64Array".to_owned(),
-                actual: seconds_array.data_type().clone(),
-            })?;
-        let nanos_array = nanos_array
-            .as_any()
-            .downcast_ref::<Int32Array>()
-            .ok_or_else(|| Error::UnexpectedListValueType {
-                expected: "Int32Array".to_owned(),
-                actual: nanos_array.data_type().clone(),
-            })?;
+        let seconds_array = DowncastRef::<Int64Type>::new()
+            .transform(&GetField::new("seconds").transform(source)?)?;
+        let nanos_array = DowncastRef::<Int32Type>::new()
+            .transform(&GetField::new("nanos").transform(source)?)?;
 
         Ok(arrow::compute::try_binary(
-            seconds_array,
-            nanos_array,
+            &seconds_array,
+            &nanos_array,
             |seconds: i64, nanos: i32| -> Result<i64, ArrowError> {
                 seconds
                     .mul_checked(1_000_000_000)?
