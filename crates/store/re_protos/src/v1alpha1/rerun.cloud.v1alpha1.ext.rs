@@ -189,9 +189,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -199,9 +202,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_partition_id() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -221,9 +227,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_entity_path() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -231,9 +240,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_is_static() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -560,7 +572,7 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
 
 // --- DatasetDetails ---
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DatasetDetails {
     pub blueprint_dataset: Option<EntryId>,
     pub default_blueprint: Option<PartitionId>,

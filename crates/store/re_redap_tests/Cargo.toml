@@ -43,6 +43,7 @@ insta.workspace = true
 itertools.workspace = true
 prost-types.workspace = true
 tempfile.workspace = true
+tokio.workspace = true
 tonic.workspace = true
 url.workspace = true
 

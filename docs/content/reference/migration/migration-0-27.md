@@ -19,3 +19,6 @@ There are instructions for that in [`BUILD.md`](https://github.com/rerun-io/reru
 Support for Python 3.9 is past end-of-life.
 See https://docs.python.org/3/whatsnew/3.10.html for more details on upgrading to 3.10 if necessary.
 
+## Python SDK: removed *_cursor options from `TimePanel`.
+
+The `sequence_cursor`, `duration_cursor` and `timestamp_cursor` options on the blueprint for `TimePanel` has been removed. There is no direct replacement for them in 0.27.0.

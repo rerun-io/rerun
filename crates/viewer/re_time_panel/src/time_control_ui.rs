@@ -249,7 +249,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                     }
                 }
                 LoopMode::Selection => {
-                    // ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color(); // we have one color for the button, and a slightly different shade of it for the actual selection :/
+                    // No need for this - the selection color is already same as the loop color.
+                    // ui.visuals_mut().selection.bg_fill = ui.tokens().loop_selection_color.to_opaque();
+
                     if ui
                         .large_button_selected(icon, true)
                         .on_hover_text("Looping selection")
