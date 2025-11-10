@@ -11,7 +11,7 @@ use arrow::{
     datatypes::DataType,
 };
 
-use re_arrow_combinators::{self as transform, Transform as _};
+use re_arrow_combinators::{Transform as _, reshape::Flatten};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkComponents, ChunkId, ComponentIdentifier, EntityPath, Timeline,
     TimelineName,
@@ -131,9 +131,7 @@ impl Op {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
-            Self::Flatten => transform::Flatten::new()
-                .transform(list_array)
-                .map_err(Into::into),
+            Self::Flatten => Flatten::new().transform(list_array).map_err(Into::into),
             Self::Func(func) => func(list_array),
         }
     }

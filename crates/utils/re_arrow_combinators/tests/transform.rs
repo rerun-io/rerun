@@ -2,7 +2,13 @@
 
 use std::sync::Arc;
 
-use re_arrow_combinators::*;
+use re_arrow_combinators::{
+    Error, Transform as _,
+    cast::PrimitiveCast,
+    map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull},
+    reshape::{Flatten, GetField, StructToFixedList},
+    semantic::BinaryToListUInt8,
+};
 
 use arrow::{
     array::{
@@ -201,7 +207,7 @@ fn convert_to_f32() {
     let pipeline = MapList::new(GetField::new("poses"))
         .then(Flatten::new())
         .then(MapList::new(StructToFixedList::new(["x", "y"])))
-        .then(MapList::new(MapFixedSizeList::new(Cast::<
+        .then(MapList::new(MapFixedSizeList::new(PrimitiveCast::<
             Float64Array,
             Float32Array,
         >::new())));
