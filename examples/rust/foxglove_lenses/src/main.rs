@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
                 TimeType::TimestampNs,
                 [
                     Op::access_field("timestamp"),
-                    Op::func(conversions::list_seconds_nanos_to_list_nanos),
+                    Op::func(conversions::list_timespec_to_list_nanos),
                 ],
             )
             .add_component_column(

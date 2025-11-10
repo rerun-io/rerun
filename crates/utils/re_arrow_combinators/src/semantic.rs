@@ -5,9 +5,11 @@ use std::sync::Arc;
 
 use arrow::array::{
     Array as _, GenericBinaryArray, GenericListArray, Int32Array, Int64Array, OffsetSizeTrait,
-    StructArray,
+    StringArray, StructArray, UInt32Array, UInt32Builder,
 };
 use arrow::datatypes::{DataType, Field};
+
+use re_types::components::VideoCodec;
 
 use crate::{Error, Transform};
 
@@ -123,5 +125,72 @@ impl Transform for TimeSpecToNanos {
         }
 
         Ok(output_builder.finish())
+    }
+}
+
+/// Transforms a `StringArray` of video codec names to a `UInt32Array`,
+/// where each u32 corresponds to a Rerun `VideoCodec` enum value.
+#[derive(Default)]
+pub struct StringToVideoCodecUInt32 {}
+
+impl Transform for StringToVideoCodecUInt32 {
+    type Source = StringArray;
+    type Target = UInt32Array;
+
+    fn transform(&self, source: &StringArray) -> Result<Self::Target, Error> {
+        let mut output_builder = UInt32Builder::with_capacity(source.len());
+
+        for i in 0..source.len() {
+            if source.is_null(i) {
+                output_builder.append_null();
+            } else {
+                // The actual conversion:
+                let codec = match source.value(i).to_lowercase().as_str() {
+                    "h264" => Ok(VideoCodec::H264),
+                    "h265" => Ok(VideoCodec::H265),
+                    unsupported => Err(Error::UnexpectedValue {
+                        expected: "'h264' or 'h265'".to_owned(),
+                        actual: unsupported.to_owned(),
+                    }),
+                }?;
+                output_builder.append_value(codec as u32);
+            }
+        }
+
+        Ok(output_builder.finish())
+    }
+}
+
+/// Tests that supported codecs are correctly converted, and checks case-insensitivity and null handling.
+#[test]
+fn test_string_to_codec_uint32() {
+    // Note: mixed codecs normally don't make sense, but should be fine from a pure conversion perspective.
+    let input_array = StringArray::from(vec![Some("H264"), None, Some("h264"), Some("H265")]);
+    assert_eq!(input_array.null_count(), 1);
+    let output_array = StringToVideoCodecUInt32::default()
+        .transform(&input_array)
+        .expect("transformation failed");
+    assert_eq!(output_array.null_count(), 1);
+    let expected_array = UInt32Array::from(vec![
+        Some(VideoCodec::H264 as u32),
+        None,
+        Some(VideoCodec::H264 as u32),
+        Some(VideoCodec::H265 as u32),
+    ]);
+    assert_eq!(output_array, expected_array);
+}
+
+/// Tests that we return the correct error when an unsupported codec is in the data.
+#[test]
+fn test_string_to_codec_uint32_unsupported() {
+    let unsupported_codecs = ["vp9", "av1"];
+    for &bad_codec in &unsupported_codecs {
+        let input_array = StringArray::from(vec![Some("h264"), Some(bad_codec)]);
+        let result = StringToVideoCodecUInt32::default().transform(&input_array);
+        assert!(result.is_err());
+        let Err(Error::UnexpectedValue { actual, .. }) = result else {
+            panic!("wrong error type");
+        };
+        assert_eq!(actual, bad_codec);
     }
 }
