@@ -3,7 +3,8 @@ use arrow::array::{
     UInt32Array, UInt32Builder,
 };
 use re_arrow_combinators::{
-    BinaryToListUInt8, Cast, MapFixedSizeList, MapList, StructToFixedList, Transform,
+    Transform, cast::PrimitiveCast, map::MapFixedSizeList, map::MapList,
+    reshape::StructToFixedList, semantic::BinaryToListUInt8,
 };
 
 use rerun::{components::VideoCodec, lenses::Error};
@@ -17,7 +18,7 @@ pub fn list_binary_to_list_uint8(input: &ListArray) -> Result<ListArray, Error> 
 pub fn list_xyz_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArray, Error> {
     // Arrow transformations can work on any Arrow-level.
     let pipeline = MapList::new(StructToFixedList::new(["x", "y", "z"]).then(
-        MapFixedSizeList::new(Cast::<Float64Array, Float32Array>::new()),
+        MapFixedSizeList::new(PrimitiveCast::<Float64Array, Float32Array>::new()),
     ));
     Ok(pipeline.transform(list_array)?)
 }
