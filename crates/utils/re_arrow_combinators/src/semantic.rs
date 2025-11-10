@@ -137,7 +137,6 @@ impl Transform for StringToVideoCodecUInt32 {
             if source.is_null(i) {
                 output_builder.append_null();
             } else {
-                // The actual conversion:
                 let codec = match source.value(i).to_lowercase().as_str() {
                     "h264" => Ok(VideoCodec::H264),
                     "h265" => Ok(VideoCodec::H265),
