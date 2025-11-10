@@ -102,23 +102,6 @@ class CatalogClient:
         return self._inner.ctx
 
 
-class _SectionTableWrapper:
-    """Wrapper that renames partition columns to section columns in the dataframe."""
-
-    def __init__(self, partition_table: Any) -> None:
-        self._partition_table = partition_table
-        # Get the dataframe and rename columns eagerly
-        self._df = partition_table.df().with_column_renamed("rerun_partition_id", "rerun_section_id")
-
-    def df(self) -> Any:
-        """Get the dataframe with renamed columns."""
-        return self._df
-
-    def __getattr__(self, name: str) -> Any:
-        """Forward all other attribute accesses to the underlying dataframe."""
-        return getattr(self._df, name)
-
-
 class Entry:
     """An entry in the catalog."""
 
@@ -159,7 +142,7 @@ class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
 
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
-        super().__init__(inner)
+        self._inner = inner
 
     @property
     def manifest_url(self) -> str:
@@ -187,9 +170,9 @@ class DatasetEntry(Entry):
     def section_ids(self) -> list[str]:
         return self._inner.partition_ids()
 
-    def section_table(self) -> Any:
+    def section_table(self) -> datafusion.DataFrame:
         # Get the partition table from the inner object
-        return _SectionTableWrapper(self._inner.partition_table())
+        return self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_section_id")
 
     def manifest(self) -> Any:
         return self._inner.manifest()
@@ -224,13 +207,25 @@ class DatasetEntry(Entry):
         contents: Any,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-    ) -> DataframeQueryView:
-        return self._inner.dataframe_query_view(
+        using_index_values: Any = None,
+        fill_latest_at: bool = False,
+    ) -> datafusion.DataFrame:
+        view = self._inner.dataframe_query_view(
             index=index,
             contents=contents,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
         )
+
+        # Apply using_index_values if provided
+        if using_index_values is not None:
+            view = view.using_index_values(using_index_values)
+
+        # Apply fill_latest_at if requested
+        if fill_latest_at:
+            view = view.fill_latest_at()
+
+        return view.df().with_column_renamed("rerun_partition_id", "rerun_section_id")
 
     def create_fts_index(
         self,
@@ -300,15 +295,23 @@ class TableEntry(Entry):
 
     def __init__(self, inner: _catalog.TableEntry) -> None:
         super().__init__(inner)
+        # Cache the dataframe for forwarding
+        self._df = inner.df()
 
     def __datafusion_table_provider__(self) -> Any:
         return self._inner.__datafusion_table_provider__()
 
-    def df(self) -> Any:
-        return self._inner.df()
-
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         return self._inner.to_arrow_reader()
+
+    def __getattr__(self, name: str) -> Any:
+        """Forward DataFrame methods to the underlying dataframe."""
+        # First try to get from Entry base class
+        try:
+            return super().__getattribute__(name)
+        except AttributeError:
+            # Then forward to the dataframe
+            return getattr(self._df, name)
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError
