@@ -765,15 +765,28 @@ fn quote_arrow_field_serializer(
 
                 match inner_repr {
                     InnerRepr::ScalarBuffer => {
-                        // TODO(emilk): this can probably be optimized
+                        // Reuse the ScalarBuffer for the single-blob case.
+                        // Fall back to concat for multple blobs.
                         quote! {
-                            #data_src
-                                .iter()
-                                #flatten_if_needed
-                                .map(|b| b as &[_])
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into()
+                            {
+                                let buffers: Vec<_> = #data_src
+                                    .iter()
+                                    #flatten_if_needed
+                                    .collect();
+
+                                if buffers.len() == 1 {
+                                    // Single buffer: Cheap, Arc-based clone
+                                    buffers[0].clone()
+                                } else {
+                                    // Multiple buffers: need to concat
+                                    buffers
+                                        .iter()
+                                        .map(|b| b.as_ref() as &[_])
+                                        .collect::<Vec<_>>()
+                                        .concat()
+                                        .into()
+                                }
+                            }
                         }
                     }
                     InnerRepr::NativeIterable => {

@@ -69,13 +69,25 @@ impl ::re_types_core::Loggable for Blob {
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
-                let data0_inner_data: ScalarBuffer<_> = data0
-                    .iter()
-                    .flatten()
-                    .map(|b| b as &[_])
-                    .collect::<Vec<_>>()
-                    .concat()
-                    .into();
+                let data0_inner_data: ScalarBuffer<_> = {
+                    let buffers: Vec<_> = data0
+                        .iter()
+                        .flatten()
+                        .collect();
+
+                    if buffers.len() == 1 {
+                        // Single buffer: cheap, Arc-based clone
+                        buffers[0].clone()
+                    } else {
+                        // Multiple buffers: need to concat
+                        buffers
+                            .iter()
+                            .map(|b| b.as_ref() as &[_])
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into()
+                    }
+                };
                 let data0_inner_validity: Option<arrow::buffer::NullBuffer> = None;
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
