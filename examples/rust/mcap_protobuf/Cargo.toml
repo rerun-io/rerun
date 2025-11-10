@@ -1,5 +1,5 @@
 [package]
-name = "foxglove_lenses"
+name = "mcap_protobuf"
 version = "0.26.0-alpha.1+dev"
 edition = "2024"
 rust-version = "1.88"

@@ -3904,18 +3904,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "795cbfc56d419a7ce47ccbb7504dd9a5b7c484c083c356e797de08bd988d9629"
 
 [[package]]
-name = "foxglove_lenses"
-version = "0.26.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "arrow",
- "clap",
- "re_arrow_combinators",
- "re_log_types",
- "rerun",
-]
-
-[[package]]
 name = "fs4"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6131,6 +6119,18 @@ dependencies = [
  "static_assertions",
  "thiserror 1.0.69",
  "zstd",
+]
+
+[[package]]
+name = "mcap_protobuf"
+version = "0.26.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "re_arrow_combinators",
+ "re_log_types",
+ "rerun",
 ]
 
 [[package]]
