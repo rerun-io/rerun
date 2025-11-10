@@ -313,15 +313,24 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if ui.ctx().input(|i| i.modifiers.alt)
-                    && state.last_tracked_entity() != Some(entity_path)
-                {
-                    eye_property.save_blueprint_component(
-                        ctx,
-                        &EyeControls3D::descriptor_tracking_entity(),
-                        &re_types::components::EntityPath::from(entity_path),
-                    );
-                    state.state_3d.eye_state.last_interaction_time = Some(ui.time());
+                if ui.ctx().input(|i| i.modifiers.alt) {
+                    if state.last_tracked_entity() != Some(entity_path) {
+                        eye_property.save_blueprint_component(
+                            ctx,
+                            &EyeControls3D::descriptor_tracking_entity(),
+                            &re_types::components::EntityPath::from(entity_path),
+                        );
+                        state.state_3d.eye_state.last_interaction_time = Some(ui.time());
+                    }
+                } else {
+                    state.state_3d.eye_state.start_interpolation();
+                    state.state_3d.eye_state.focus_entity(
+                        &self.view_context(ctx, query.view_id, state),
+                        space_cameras,
+                        &state.bounding_boxes,
+                        &eye_property,
+                        entity_path,
+                    )?;
                 }
             }
 
