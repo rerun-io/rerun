@@ -6123,7 +6123,7 @@ dependencies = [
 
 [[package]]
 name = "mcap_protobuf"
-version = "0.26.0-alpha.1+dev"
+version = "0.27.0-alpha.8+dev"
 dependencies = [
  "anyhow",
  "arrow",

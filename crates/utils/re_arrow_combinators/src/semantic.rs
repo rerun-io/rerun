@@ -4,10 +4,11 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use arrow::array::{
-    Array as _, GenericBinaryArray, GenericListArray, Int32Array, Int64Array, OffsetSizeTrait,
-    StringArray, StructArray, UInt32Array, UInt32Builder,
+    Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int32Array,
+    Int64Array, OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
 };
-use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
+use arrow::datatypes::{DataType, Field};
+use arrow::error::ArrowError;
 
 use re_types::components::VideoCodec;
 
@@ -111,13 +112,15 @@ impl Transform for TimeSpecToNanos {
                 actual: nanos_array.data_type().clone(),
             })?;
 
-        Ok(
-            arrow::compute::binary::<Int64Type, Int32Type, _, Int64Type>(
-                seconds_array,
-                nanos_array,
-                |seconds, nanos| seconds * 1_000_000_000 + nanos as i64,
-            )?,
-        )
+        Ok(arrow::compute::try_binary(
+            seconds_array,
+            nanos_array,
+            |seconds: i64, nanos: i32| -> Result<i64, ArrowError> {
+                seconds
+                    .mul_checked(1_000_000_000)?
+                    .add_checked(nanos as i64)
+            },
+        )?)
     }
 }
 
