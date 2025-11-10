@@ -117,7 +117,9 @@ impl Dataset {
     }
 
     pub fn set_dataset_details(&mut self, details: DatasetDetails) {
-        self.inner.modify().details = details;
+        if details != self.inner.details {
+            self.inner.modify().details = details;
+        }
     }
 
     pub fn as_entry_details(&self) -> EntryDetails {
