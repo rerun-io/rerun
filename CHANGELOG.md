@@ -7,7 +7,7 @@
 #### 🗄️ OSS server upgrades
 Our OSS server has server has received some attention this version. And now supports properties, layers and blueprint datasets to name a few.
 
-#### 🟦 More blueprint properties
+#### 🟦 more blueprint properties
 The viewer is now even more configurable via blueprints. With more options for time series, bar chart, graph views, time panel, and the 3D view. With the latter now having the option to control the 3D eye position and look target.
 
 <picture>
@@ -27,7 +27,7 @@ The viewer is now even more configurable via blueprints. With more options for t
 </picture>
 
 
-#### ⌨🖱️User interface improvements
+#### ⌨🖱️User Interface improvements
 You can now use just a keyboard to navigate in panels with trees (blueprint / streams / recordings).
 
 The UI for the time panel has also been improved, easier to select specific times, snap to round times by holding shift, and clearer UI.
