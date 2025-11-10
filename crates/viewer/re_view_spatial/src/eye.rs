@@ -210,8 +210,6 @@ pub struct EyeState {
     /// via view properties instead.
     pub last_tracked_entity: Option<EntityPath>,
 
-    tracking_interpolation: Option<TrackingInterpolation>,
-
     interpolation: Option<EyeInterpolation>,
 
     /// How many radians the camera has spun.
@@ -723,8 +721,9 @@ impl EyeState {
             // Don't do normal interpolation when tracking.
             self.stop_interpolation();
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
-            if self.last_tracked_entity.as_ref() != Some(&tracking_entity) {
-                self.tracking_interpolation = None;
+
+            let new_tracking = self.last_tracked_entity.as_ref() != Some(&tracking_entity);
+            if new_tracking {
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
@@ -763,7 +762,7 @@ impl EyeState {
                 // }) = ctx.selection_state().hovered_space_context()
 
                 if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
-                    if self.tracking_interpolation.is_none() {
+                    if new_tracking {
                         let fwd = eye.fwd();
                         let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
                         let radius = if radius < 0.0001 {
@@ -790,48 +789,7 @@ impl EyeState {
 
                     let orbit_radius = eye.pos.distance(eye.look_target);
 
-                    const TARGET_TIME: f32 = 0.1;
-                    let tracking_interpolation =
-                        self.tracking_interpolation
-                            .get_or_insert(TrackingInterpolation {
-                                last_pos: entity_bbox.center(),
-                                new_pos: entity_bbox.center(),
-                                elapsed_time: TARGET_TIME,
-                            });
-
-                    if tracking_interpolation
-                        .new_pos
-                        .distance(entity_bbox.center())
-                        < 0.0001
-                    {
-                        tracking_interpolation.new_pos = entity_bbox.center();
-                    }
-                    let dt = ctx.egui_ctx().input(|i| i.stable_dt).at_most(0.1);
-                    tracking_interpolation.elapsed_time += dt;
-                    let t = tracking_interpolation.elapsed_time / TARGET_TIME;
-                    let t = t.clamp(0.0, 1.0);
-
-                    let current_pos = Vec3::lerp(
-                        tracking_interpolation.last_pos,
-                        tracking_interpolation.new_pos,
-                        t,
-                    );
-                    let pos = if tracking_interpolation.new_pos == entity_bbox.center() {
-                        current_pos
-                    } else {
-                        tracking_interpolation.last_pos = current_pos;
-                        tracking_interpolation.new_pos = entity_bbox.center();
-                        tracking_interpolation.elapsed_time = dt;
-                        let t = tracking_interpolation.elapsed_time / TARGET_TIME;
-                        let t = t.clamp(0.0, 1.0);
-                        let t = ease_out(t);
-
-                        Vec3::lerp(
-                            tracking_interpolation.last_pos,
-                            tracking_interpolation.new_pos,
-                            t,
-                        )
-                    };
+                    let pos = entity_bbox.center();
 
                     let fwd = eye.fwd();
 
@@ -846,6 +804,10 @@ impl EyeState {
                         }
                     }
                 }
+
+                self.last_look_target = Some(eye.look_target);
+                self.last_eye_up = Some(eye.eye_up);
+                self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
 
                 return Some(eye.get_eye());
             }
