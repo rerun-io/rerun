@@ -12,7 +12,7 @@ use arrow::error::ArrowError;
 
 use re_types::components::VideoCodec;
 
-use crate::{Error, Transform};
+use crate::{Error, Transform, reshape::GetField};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
@@ -79,23 +79,8 @@ impl Transform for TimeSpecToNanos {
     type Target = Int64Array;
 
     fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
-        let available_fields: Vec<String> =
-            source.fields().iter().map(|f| f.name().clone()).collect();
-
-        let seconds_array =
-            source
-                .column_by_name("seconds")
-                .ok_or_else(|| Error::MissingStructField {
-                    field_name: "seconds".to_owned(),
-                    struct_fields: available_fields.clone(),
-                })?;
-        let nanos_array =
-            source
-                .column_by_name("nanos")
-                .ok_or_else(|| Error::MissingStructField {
-                    field_name: "nanos".to_owned(),
-                    struct_fields: available_fields,
-                })?;
+        let seconds_array = GetField::new("seconds").transform(source)?;
+        let nanos_array = GetField::new("nanos").transform(source)?;
 
         let seconds_array = seconds_array
             .as_any()
