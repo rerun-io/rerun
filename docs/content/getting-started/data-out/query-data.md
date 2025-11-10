@@ -11,6 +11,8 @@ This supports a workflow to first develop or debug locally on a single recording
 
 ## Launching the server
 
+### Commandline
+
 The server needs to be opened in a separate window.
 Launch the server using the Rerun CLI:
 
@@ -28,6 +30,19 @@ For all available options, run:
 
 ```console
 rerun server --help
+```
+
+### SDK
+
+The server can also be managed with a python object.
+The server will shutdown when the object goes out of scope.
+
+```python
+server = rr.server.Server()
+client = server.client()
+# Or as a context manager
+with rr.server.Server() as srv:
+    client = srv.client()
 ```
 
 ## Connecting to the server
@@ -73,6 +88,12 @@ Otherwise we can create a new dataset:
 dataset = client.create_dataset(
     name="oss_demo",
 )
+```
+
+We can list all of the existing datasets with:
+
+```python
+client.all_entries()
 ```
 
 In order to add additional recordings to a dataset we use the `register` API.

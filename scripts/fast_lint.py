@@ -177,6 +177,7 @@ def main() -> None:
         LintJob("toml-fmt-check", extensions=[".toml"]),
         LintJob("lint-typos --force-exclude"),
         LintJob("check-large-files"),
+        LintJob("nb-strip-check", accepts_files=False),
     ]
 
     for command in skip:
