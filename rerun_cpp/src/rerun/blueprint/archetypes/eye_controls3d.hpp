@@ -5,6 +5,7 @@
 
 #include "../../blueprint/components/angular_speed.hpp"
 #include "../../blueprint/components/eye3d_kind.hpp"
+#include "../../blueprint/components/eye3d_projection.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -32,6 +33,9 @@ namespace rerun::blueprint::archetypes {
         /// This controls how the eye movement behaves when the user interact with the view.
         /// Defaults to orbital.
         std::optional<ComponentBatch> kind;
+
+        /// TODO: document
+        std::optional<ComponentBatch> projection;
 
         /// The cameras current position.
         std::optional<ComponentBatch> position;
@@ -74,6 +78,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_kind = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:kind",
             Loggable<rerun::blueprint::components::Eye3DKind>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `projection` field.
+        static constexpr auto Descriptor_projection = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:projection",
+            Loggable<rerun::blueprint::components::Eye3DProjection>::ComponentType
         );
         /// `ComponentDescriptor` for the `position` field.
         static constexpr auto Descriptor_position = ComponentDescriptor(
@@ -127,6 +136,15 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to orbital.
         EyeControls3D with_kind(const rerun::blueprint::components::Eye3DKind& _kind) && {
             kind = ComponentBatch::from_loggable(_kind, Descriptor_kind).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// TODO: document
+        EyeControls3D with_projection(
+            const rerun::blueprint::components::Eye3DProjection& _projection
+        ) && {
+            projection =
+                ComponentBatch::from_loggable(_projection, Descriptor_projection).value_or_throw();
             return std::move(*this);
         }
 

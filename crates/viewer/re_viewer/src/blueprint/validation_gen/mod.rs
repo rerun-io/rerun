@@ -17,6 +17,7 @@ pub use re_types::blueprint::components::ContainerKind;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::Enabled;
 pub use re_types::blueprint::components::Eye3DKind;
+pub use re_types::blueprint::components::Eye3DProjection;
 pub use re_types::blueprint::components::FilterByRange;
 pub use re_types::blueprint::components::FilterIsNotNull;
 pub use re_types::blueprint::components::ForceDistance;
@@ -69,6 +70,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<Corner2D>(blueprint)
         && validate_component::<Enabled>(blueprint)
         && validate_component::<Eye3DKind>(blueprint)
+        && validate_component::<Eye3DProjection>(blueprint)
         && validate_component::<FilterByRange>(blueprint)
         && validate_component::<FilterIsNotNull>(blueprint)
         && validate_component::<ForceDistance>(blueprint)

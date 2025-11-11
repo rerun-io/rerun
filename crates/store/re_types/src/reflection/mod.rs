@@ -168,6 +168,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Eye3DProjection as Component>::name(),
+            ComponentReflection {
+                docstring_md: "TODO: document",
+                deprecation_summary: None,
+                custom_placeholder: Some(Eye3DProjection::default().to_arrow()?),
+                datatype: Eye3DProjection::arrow_datatype(),
+                verify_arrow_array: Eye3DProjection::verify_arrow_array,
+            },
+        ),
+        (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3473,6 +3483,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Kind",
                         component_type: "rerun.blueprint.components.Eye3DKind".into(),
                         docstring_md: "The kind of the eye for the spatial 3D view.\n\nThis controls how the eye movement behaves when the user interact with the view.\nDefaults to orbital.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "projection",
+                        display_name: "Projection",
+                        component_type: "rerun.blueprint.components.Eye3DProjection".into(),
+                        docstring_md: "TODO: document",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

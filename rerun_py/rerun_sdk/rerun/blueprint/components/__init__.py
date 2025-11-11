@@ -15,6 +15,7 @@ from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKind
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .enabled import Enabled, EnabledBatch
 from .eye3d_kind import Eye3DKind, Eye3DKindArrayLike, Eye3DKindBatch, Eye3DKindLike
+from .eye3d_projection import Eye3DProjection, Eye3DProjectionArrayLike, Eye3DProjectionBatch, Eye3DProjectionLike
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
 from .force_distance import ForceDistance, ForceDistanceBatch
@@ -85,6 +86,10 @@ __all__ = [
     "Eye3DKindArrayLike",
     "Eye3DKindBatch",
     "Eye3DKindLike",
+    "Eye3DProjection",
+    "Eye3DProjectionArrayLike",
+    "Eye3DProjectionBatch",
+    "Eye3DProjectionLike",
     "FilterByRange",
     "FilterByRangeBatch",
     "FilterIsNotNull",

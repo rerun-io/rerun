@@ -1,0 +1,15 @@
+namespace rerun.blueprint.components;
+
+/// TODO: document
+enum Eye3DProjection: ubyte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// TODO: document
+    Orthographic,
+
+    /// TODO: document
+    Perspective (default),
+}

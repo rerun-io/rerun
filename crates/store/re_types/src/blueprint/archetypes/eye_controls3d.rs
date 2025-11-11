@@ -34,6 +34,9 @@ pub struct EyeControls3D {
     /// Defaults to orbital.
     pub kind: Option<SerializedComponentBatch>,
 
+    /// TODO: document
+    pub projection: Option<SerializedComponentBatch>,
+
     /// The cameras current position.
     pub position: Option<SerializedComponentBatch>,
 
@@ -78,6 +81,18 @@ impl EyeControls3D {
             archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
             component: "EyeControls3D:kind".into(),
             component_type: Some("rerun.blueprint.components.Eye3DKind".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::projection`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Eye3DProjection`].
+    #[inline]
+    pub fn descriptor_projection() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+            component: "EyeControls3D:projection".into(),
+            component_type: Some("rerun.blueprint.components.Eye3DProjection".into()),
         }
     }
 
@@ -160,10 +175,11 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             EyeControls3D::descriptor_kind(),
+            EyeControls3D::descriptor_projection(),
             EyeControls3D::descriptor_position(),
             EyeControls3D::descriptor_look_target(),
             EyeControls3D::descriptor_eye_up(),
@@ -173,10 +189,11 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             EyeControls3D::descriptor_kind(),
+            EyeControls3D::descriptor_projection(),
             EyeControls3D::descriptor_position(),
             EyeControls3D::descriptor_look_target(),
             EyeControls3D::descriptor_eye_up(),
@@ -187,8 +204,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     });
 
 impl EyeControls3D {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 8 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for EyeControls3D {
@@ -232,6 +249,11 @@ impl ::re_types_core::Archetype for EyeControls3D {
         let kind = arrays_by_descr
             .get(&Self::descriptor_kind())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_kind()));
+        let projection = arrays_by_descr
+            .get(&Self::descriptor_projection())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_projection())
+            });
         let position = arrays_by_descr
             .get(&Self::descriptor_position())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_position()));
@@ -258,6 +280,7 @@ impl ::re_types_core::Archetype for EyeControls3D {
             });
         Ok(Self {
             kind,
+            projection,
             position,
             look_target,
             eye_up,
@@ -274,6 +297,7 @@ impl ::re_types_core::AsComponents for EyeControls3D {
         use ::re_types_core::Archetype as _;
         [
             self.kind.clone(),
+            self.projection.clone(),
             self.position.clone(),
             self.look_target.clone(),
             self.eye_up.clone(),
@@ -295,6 +319,7 @@ impl EyeControls3D {
     pub fn new() -> Self {
         Self {
             kind: None,
+            projection: None,
             position: None,
             look_target: None,
             eye_up: None,
@@ -318,6 +343,10 @@ impl EyeControls3D {
             kind: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Eye3DKind::arrow_empty(),
                 Self::descriptor_kind(),
+            )),
+            projection: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::Eye3DProjection::arrow_empty(),
+                Self::descriptor_projection(),
             )),
             position: Some(SerializedComponentBatch::new(
                 crate::components::Position3D::arrow_empty(),
@@ -353,6 +382,16 @@ impl EyeControls3D {
     #[inline]
     pub fn with_kind(mut self, kind: impl Into<crate::blueprint::components::Eye3DKind>) -> Self {
         self.kind = try_serialize_field(Self::descriptor_kind(), [kind]);
+        self
+    }
+
+    /// TODO: document
+    #[inline]
+    pub fn with_projection(
+        mut self,
+        projection: impl Into<crate::blueprint::components::Eye3DProjection>,
+    ) -> Self {
+        self.projection = try_serialize_field(Self::descriptor_projection(), [projection]);
         self
     }
 
@@ -428,6 +467,7 @@ impl ::re_byte_size::SizeBytes for EyeControls3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.kind.heap_size_bytes()
+            + self.projection.heap_size_bytes()
             + self.position.heap_size_bytes()
             + self.look_target.heap_size_bytes()
             + self.eye_up.heap_size_bytes()
