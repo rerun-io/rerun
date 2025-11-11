@@ -891,7 +891,7 @@ fn start_native_viewer(
         let (log_server, table_server): (
             Receiver<DataSourceMessage>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
-        ) = re_grpc_server::spawn_with_recv_decoded(
+        ) = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
@@ -1164,7 +1164,7 @@ fn save_or_test_receive(
         let (log_server, table_server): (
             Receiver<DataSourceMessage>,
             crossbeam::channel::Receiver<re_log_types::TableMsg>,
-        ) = re_grpc_server::spawn_with_recv_decoded(
+        ) = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),

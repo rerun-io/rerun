@@ -353,7 +353,7 @@ pub fn spawn_from_rx_set(
 /// runtime is not available.
 ///
 /// See [`serve`] for more information about what a Rerun server is.
-pub fn spawn_with_recv(
+pub fn spawn_with_recv_raw(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
@@ -371,18 +371,22 @@ pub fn spawn_with_recv(
     (broadcast_log_rx, broadcast_table_rx)
 }
 
-/// Start a Rerun server and return decoded messages as smart channels.
+/// Start a Rerun server, listening on `addr`.
 ///
-/// This is a compatibility wrapper around [`spawn_with_recv`] that decodes messages
-/// to application-level types. Note that decoding involves expensive Arrow IPC
-/// deserialization and LZ4 decompression. If you're building a proxy or don't need
-/// to inspect message contents, prefer using [`spawn_with_recv`] directly.
+/// This function additionally creates smart channels and returns their receiving ends.
+/// Any messages received by the server are decoded and sent through the channels.
+/// This is similar to creating a client and calling `ReadMessages`, but without the overhead
+/// of a localhost connection.
+///
+/// Note that decoding involves expensive Arrow IPC deserialization and LZ4 decompression.
+/// If you're building a proxy or don't need to inspect message contents, prefer using
+/// [`spawn_with_recv_raw`] to avoid this overhead.
 ///
 /// The server is spawned as a task on a `tokio` runtime. This function panics if the
 /// runtime is not available.
 ///
 /// See [`serve`] for more information about what a Rerun server is.
-pub fn spawn_with_recv_decoded(
+pub fn spawn_with_recv(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
@@ -390,7 +394,7 @@ pub fn spawn_with_recv_decoded(
     re_smart_channel::Receiver<re_log_types::DataSourceMessage>,
     crossbeam::channel::Receiver<re_log_types::TableMsg>,
 ) {
-    let (mut broadcast_log_rx, mut broadcast_table_rx) = spawn_with_recv(addr, options, shutdown);
+    let (mut broadcast_log_rx, mut broadcast_table_rx) = spawn_with_recv_raw(addr, options, shutdown);
 
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
