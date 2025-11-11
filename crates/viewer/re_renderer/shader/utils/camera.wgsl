@@ -75,10 +75,19 @@ fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> ve
     return vec2f(d, -b - sqrt(max(h, 0.0)));
 }
 
-// Returns the projected size of a pixel at a given distance from the camera.
+// Returns the projected size of a pixel at a given distance from the camera, for both x and y directions.
 //
 // This is accurate for objects in the middle of the screen, (depending on the angle) less so at the corners
 // since an object parallel to the camera (like a conceptual pixel) has a bigger projected surface at higher angles.
-fn approx_pixel_world_size_at(camera_distance: f32) -> f32 {
+//
+// For anamorphic cameras, returns different values for x and y components.
+fn approx_pixel_world_size_at(camera_distance: f32) -> vec2f {
     return select(frame.pixel_world_size_from_camera_distance, camera_distance * frame.pixel_world_size_from_camera_distance, is_camera_perspective());
+}
+
+// Returns the average projected pixel size at a given distance from the camera.
+// Useful for isotropic operations like point radii and antialiasing that don't need directional information.
+fn average_approx_pixel_world_size_at(camera_distance: f32) -> f32 {
+    let pixel_size = approx_pixel_world_size_at(camera_distance);
+    return (pixel_size.x + pixel_size.y) * 0.5;
 }

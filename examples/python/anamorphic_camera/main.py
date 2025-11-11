@@ -41,7 +41,7 @@ def create_test_grid(width: int, height: int) -> np.ndarray:
 
 def log_camera_with_image(
     path: str,
-    focal_length: float | list[float, float],
+    focal_length: float | tuple[float, float],
     width: int,
     height: int,
     image: np.ndarray,

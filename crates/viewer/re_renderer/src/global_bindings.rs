@@ -23,9 +23,13 @@ pub struct FrameUniformBuffer {
     /// Camera position in world space.
     pub camera_position: glam::Vec3,
 
-    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// Padding to align to 16 bytes after Vec3.
+    pub _padding0: f32,
+
+    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units (x and y separately for anamorphic cameras).
     /// For orthographic: This is the world size value, independent of distance.
-    pub pixel_world_size_from_camera_distance: f32,
+    /// Using Vec2RowPadded to match WGSL vec2f alignment in structs (16 bytes).
+    pub pixel_world_size_from_camera_distance: wgpu_buffer_types::Vec2RowPadded,
 
     /// Camera direction in world space.
     /// Same as `-view_from_world.row(2).truncate()`
