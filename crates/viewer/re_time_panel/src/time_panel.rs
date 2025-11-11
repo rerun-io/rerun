@@ -1893,65 +1893,44 @@ fn pan_and_zoom_interaction(
 }
 
 /// Context menu that shows up when interacting with the streams rect.
-fn copy_timeline_properties_context_menu(
+fn timeline_properties_context_menu(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
     let mut url = ViewerOpenUrl::from_context(ctx);
-    if let Some(selected_time_range) = time_ctrl.active_loop_selection()
-        && selected_time_range.contains(hovered_time)
-    {
-        let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
-        let copy_command = url.and_then(|url| url.copy_url_command());
-        if ui
-            .add_enabled(
-                copy_command.is_ok() && has_time_range,
-                egui::Button::new("Copy link to trimmed range"),
-            )
-            .on_disabled_hover_text(if copy_command.is_err() {
-                "Can't share links to the current recording"
-            } else {
-                "The current recording doesn't support time range links"
-            })
-            .clicked()
-            && let Ok(copy_command) = copy_command
-        {
-            ctx.command_sender().send_system(copy_command);
+    let has_fragment = url.as_mut().is_ok_and(|url| {
+        url.clear_time_range();
+        if let Some(fragment) = url.fragment_mut() {
+            fragment.when = Some((
+                *time_ctrl.timeline().name(),
+                re_log_types::TimeCell {
+                    typ: time_ctrl.time_type(),
+                    value: hovered_time.floor().into(),
+                },
+            ));
+            true
+        } else {
+            false
         }
-    } else {
-        let has_fragment = url.as_mut().is_ok_and(|url| {
-            if let Some(fragment) = url.fragment_mut() {
-                fragment.when = Some((
-                    *time_ctrl.timeline().name(),
-                    re_log_types::TimeCell {
-                        typ: time_ctrl.time_type(),
-                        value: hovered_time.floor().into(),
-                    },
-                ));
-                true
-            } else {
-                false
-            }
-        });
-        let copy_command = url.and_then(|url| url.copy_url_command());
+    });
+    let copy_command = url.and_then(|url| url.copy_url_command());
 
-        if ui
-            .add_enabled(
-                copy_command.is_ok() && has_fragment,
-                egui::Button::new("Copy link to timestamp"),
-            )
-            .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
-                format!("Can't share links to the current recording: {err}")
-            } else {
-                "The current recording doesn't support time stamp links".to_owned()
-            })
-            .clicked()
-            && let Ok(copy_command) = copy_command
-        {
-            ctx.command_sender().send_system(copy_command);
-        }
+    if ui
+        .add_enabled(
+            copy_command.is_ok() && has_fragment,
+            egui::Button::new("Copy link to timestamp"),
+        )
+        .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+            format!("Can't share links to the current recording: {err}")
+        } else {
+            "The current recording doesn't support time stamp links".to_owned()
+        })
+        .clicked()
+        && let Ok(copy_command) = copy_command
+    {
+        ctx.command_sender().send_system(copy_command);
     }
 
     if ui.button("Copy timestamp").clicked() {
@@ -2040,7 +2019,7 @@ impl TimePanel {
                 let popup_is_open = egui::Popup::context_menu(&response)
                     .width(300.0)
                     .show(|ui| {
-                        copy_timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
+                        timeline_properties_context_menu(ui, ctx, time_ctrl, preview_time);
                     })
                     .is_some();
                 if popup_is_open {

@@ -182,7 +182,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
     }
 
     fn clear_time_selection(&self) {
-        self.clear_static_blueprint_component(
+        self.clear_blueprint_component(
             time_panel_blueprint_entity_path(),
             TimePanelBlueprint::descriptor_time_selection(),
         );
@@ -453,6 +453,7 @@ impl TimeControl {
             self.timeline = ActiveTimeline::Auto(*self.timeline());
         }
 
+        let old_timeline = *self.timeline().name();
         // Make sure we are on a valid timeline.
         if let Some(times_per_timeline) = times_per_timeline {
             self.select_valid_timeline(times_per_timeline);
@@ -501,13 +502,23 @@ impl TimeControl {
         let play_state = self.play_state();
 
         // Update the last paused time if we are paused.
-        if let Some(state) = self.states.get_mut(self.timeline.name()) {
+        let timeline = *self.timeline.name();
+        if let Some(state) = self.states.get_mut(&timeline) {
             if let Some(fps) = blueprint_ctx.fps() {
                 state.fps = fps as f32;
             }
 
-            if let Some(new_time_selection) = blueprint_ctx.time_selection() {
-                state.loop_selection = Some(new_time_selection.into());
+            let bp_loop_section = blueprint_ctx.time_selection();
+            // If we've switched timeline, use the new timeline's cached time selection.
+            if old_timeline != timeline {
+                match state.loop_selection {
+                    Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
+                    None => {
+                        blueprint_ctx.clear_time_selection();
+                    }
+                }
+            } else {
+                state.loop_selection = bp_loop_section.map(|r| r.into());
             }
 
             match play_state {
@@ -816,9 +827,15 @@ impl TimeControl {
                     self.timeline = ActiveTimeline::Pending(Timeline::new_sequence(*timeline_name));
                 }
 
-                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline)
-                    && !self.states.contains_key(timeline_name)
-                {
+                if let Some(state) = self.states.get(timeline_name) {
+                    // Use the new timeline's cached time selection.
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        match state.loop_selection {
+                            Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
+                            None => blueprint_ctx.clear_time_selection(),
+                        }
+                    }
+                } else if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
                     self.states
                         .insert(*timeline_name, TimeState::new(full_valid_range.min));
                 }
@@ -949,6 +966,13 @@ impl TimeControl {
                         blueprint_ctx.clear_time_selection();
                     }
                     state.loop_selection = None;
+                    if self.loop_mode == LoopMode::Selection {
+                        self.loop_mode = LoopMode::Off;
+
+                        if let Some(blueprint_ctx) = blueprint_ctx {
+                            blueprint_ctx.set_loop_mode(self.loop_mode);
+                        }
+                    }
 
                     NeedsRepaint::Yes
                 } else {
