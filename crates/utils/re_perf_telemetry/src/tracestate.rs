@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use opentelemetry::Context;
 use opentelemetry::propagation::{Extractor, Injector, TextMapPropagator};
 use opentelemetry::trace::TraceContextExt as _;
@@ -9,10 +11,10 @@ pub struct TraceStateEnricher {
 }
 
 impl TraceStateEnricher {
-    pub fn new(tracestate_str: &str) -> anyhow::Result<Self> {
-        Ok(Self {
-            additional_entries: parse_pairs(tracestate_str)?,
-        })
+    pub fn new(tracestate_str: &str) -> Self {
+        Self {
+            additional_entries: parse_pairs(tracestate_str).into_iter().collect(),
+        }
     }
 }
 
@@ -55,25 +57,30 @@ impl TextMapPropagator for TraceStateEnricher {
     }
 }
 
-pub fn parse_pairs(input: &str) -> anyhow::Result<Vec<(String, String)>> {
+/// Parse `tracestate` pairs, keeping only valid pairs and ignoring malformed ones as
+/// per W3C spec guidance. We should never fail a request because of malformed tracestate.
+pub fn parse_pairs(input: &str) -> HashMap<String, String> {
     if input.is_empty() {
-        return Ok(Vec::new());
+        return HashMap::default();
     }
 
     input
         .split(',')
-        .map(|pair| {
+        .filter_map(|pair| {
             let pair = pair.trim();
             if pair.is_empty() {
-                anyhow::bail!("empty tracestate pair for input {input}");
+                return None;
             }
 
             let mut parts = pair.splitn(2, '=');
             match (parts.next(), parts.next()) {
                 (Some(k), Some(v)) if !k.is_empty() && !v.is_empty() => {
-                    Ok((k.trim().to_owned(), v.trim().to_owned()))
+                    Some((k.trim().to_owned(), v.trim().to_owned()))
                 }
-                _ => anyhow::bail!("invalid tracestate pair format: '{pair}'"),
+                _ => {
+                    tracing::debug!("Ignoring malformed tracestate pair: '{}'", pair);
+                    None
+                }
             }
         })
         .collect()
@@ -84,24 +91,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_pairs() {
-        let result = parse_pairs("my_id=id123,env=prod").unwrap();
+    fn test_parse_pairs_resilient() {
+        // Valid pairs
+        let result = parse_pairs("my_id=id123,env=prod");
         assert_eq!(result.len(), 2);
-        assert_eq!(result[0], ("my_id".to_owned(), "id123".to_owned()));
-        assert_eq!(result[1], ("env".to_owned(), "prod".to_owned()));
-    }
+        assert_eq!(result.get("my_id"), Some(&"id123".to_owned()));
+        assert_eq!(result.get("env"), Some(&"prod".to_owned()));
 
-    #[test]
-    fn test_empty_string() {
-        let result = parse_pairs("").unwrap();
+        // Mixed valid and invalid pairs - keeps only valid ones
+        let result = parse_pairs("valid=ok,invalid,key=,=value,also_valid=good");
+        assert_eq!(result.len(), 2);
+        assert_eq!(result.get("valid"), Some(&"ok".to_owned()));
+        assert_eq!(result.get("also_valid"), Some(&"good".to_owned()));
+
+        // Empty string
+        let result = parse_pairs("");
         assert!(result.is_empty());
-    }
 
-    #[test]
-    fn test_invalid_format() {
-        assert!(parse_pairs("invalid").is_err());
-        assert!(parse_pairs("key=").is_err());
-        assert!(parse_pairs("=value").is_err());
-        assert!(parse_pairs("key1=value1,,key2=value2").is_err());
+        // All invalid pairs
+        let result = parse_pairs("invalid,key=,=value");
+        assert!(result.is_empty());
     }
 }

@@ -336,8 +336,7 @@ impl Telemetry {
             )];
 
             if !tracestate.is_empty() {
-                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate)
-                    .map_err(|err| anyhow::anyhow!("Invalid OTEL_PROPAGATORS_TRACESTATE: {err}"))?;
+                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate);
                 propagators.push(Box::new(enricher));
             }
 
