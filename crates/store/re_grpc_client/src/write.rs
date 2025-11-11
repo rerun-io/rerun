@@ -126,7 +126,8 @@ pub struct Options {
     /// If we have not yet connected to the client, then
     /// do not block [`Client::flush_blocking`] for longer than this.
     ///
-    /// We will still retry connecting for however long it takes.
+    /// By default, we will retry connecting for however long it takes
+    /// (see [`Options::initial_connect_timeout`]).
     /// But blocking [`Client::flush_blocking`] forever when the
     /// server just isn't there is not a good idea.
     pub connect_timeout_on_flush: Duration,
@@ -137,9 +138,10 @@ pub struct Options {
     /// the client will transition to a permanent disconnected state
     /// and stop accepting new messages.
     ///
-    /// Use `None` for unlimited connection attempts (original behavior).
+    /// Use `None` for unlimited connection attempts (default, original behavior).
+    /// Set to `Some(duration)` to enable fail-fast behavior for resource-constrained scenarios.
     ///
-    /// Default: 30 seconds
+    /// Default: None (unlimited retries)
     pub initial_connect_timeout: Option<Duration>,
 
     /// Maximum number of pending messages to buffer when the client
@@ -148,9 +150,10 @@ pub struct Options {
     /// When the limit is reached, new messages will be dropped with a warning.
     /// This prevents unbounded memory growth when the server is unreachable.
     ///
-    /// Use `None` for unlimited buffering (original behavior, not recommended).
+    /// Use `None` for unlimited buffering (default, original behavior).
+    /// Set to `Some(limit)` to enable memory limits for resource-constrained scenarios.
     ///
-    /// Default: 10,000 messages
+    /// Default: None (unlimited buffering)
     pub max_pending_messages: Option<usize>,
 }
 
@@ -159,8 +162,8 @@ impl Default for Options {
         Self {
             compression: Compression::LZ4,
             connect_timeout_on_flush: Duration::from_secs(5),
-            initial_connect_timeout: Some(Duration::from_secs(30)),
-            max_pending_messages: Some(10_000),
+            initial_connect_timeout: None, // Unlimited retries (original behavior)
+            max_pending_messages: None,    // Unlimited buffering (original behavior)
         }
     }
 }
@@ -295,6 +298,26 @@ impl Client {
     /// returning an error.
     pub fn flush_blocking(&self, timeout: Duration) -> Result<(), GrpcFlushError> {
         re_tracing::profile_function!();
+
+        // Check connection status before attempting to queue flush.
+        // This prevents blocking_send from hanging when the bounded queue is full
+        // and we're still trying to connect (queue won't drain until connection succeeds).
+        match self.status() {
+            ClientConnectionState::Connecting { started } => {
+                if self.options.connect_timeout_on_flush < started.elapsed() {
+                    return Err(GrpcFlushError::FailedToConnect {
+                        uri: self.uri.clone(),
+                        duration_sec: started.elapsed().as_secs_f32(),
+                    });
+                }
+            }
+            ClientConnectionState::Disconnected(_) => {
+                return Err(GrpcFlushError::from_status(self.uri.clone(), self.status()));
+            }
+            ClientConnectionState::Connected => {
+                // Good to proceed
+            }
+        }
 
         let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(1); // oneshot
 

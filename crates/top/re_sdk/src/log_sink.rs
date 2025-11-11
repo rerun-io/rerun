@@ -556,14 +556,17 @@ impl GrpcSink {
 
     /// Connect to the in-memory storage node over HTTP with custom options.
     ///
-    /// This allows you to configure memory limits and connection timeouts.
+    /// By default, the client will retry connections indefinitely and buffer unlimited messages.
+    /// This method allows you to opt-in to memory limits and connection timeouts for
+    /// resource-constrained scenarios (e.g., embedded devices, strict memory budgets).
     ///
     /// ### Example
     ///
     /// ```ignore
+    /// // Opt-in to limits for resource-constrained scenarios
     /// let options = GrpcSinkOptions {
-    ///     max_pending_messages: Some(5000),
-    ///     initial_connect_timeout: Some(Duration::from_secs(10)),
+    ///     max_pending_messages: Some(5000),           // Limit buffering to 5000 messages
+    ///     initial_connect_timeout: Some(Duration::from_secs(10)),  // Give up after 10s
     ///     ..Default::default()
     /// };
     /// GrpcSink::new_with_options("rerun+http://127.0.0.1:9434/proxy", options);
