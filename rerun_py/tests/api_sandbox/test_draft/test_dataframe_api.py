@@ -19,7 +19,7 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
         ds = client.get_dataset_entry(name="ds")
 
         # Create a view with all partitions
-        view = ds.dataframe_query_view(index="timeline", contents="/**").filter(
+        view = ds.query(index="timeline", contents="/**").filter(
             in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
         )
 
@@ -73,7 +73,7 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
         ds = client.get_dataset_entry(name="ds")
 
         # Create a view with all partitions
-        df = ds.dataframe_query_view(
+        df = ds.query(
             index="timeline",
             contents="/**",
             using_index_values=np.array(
