@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray};
+use arrow::array::{Array, ArrayRef, AsArray as _, FixedSizeListArray, ListArray, StructArray};
+use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::Field;
 
 use crate::{Error, Transform};
@@ -274,6 +275,85 @@ impl Transform for StructToFixedList {
         })?;
         Ok(FixedSizeListArray::new(
             field, list_size, values, None, // No outer nulls
+        ))
+    }
+}
+
+/// Explodes a list by scattering each inner element to a separate row.
+///
+/// Takes a `List<T>` and returns a flattened `List<T>` where each inner element
+/// becomes its own row.
+///
+/// # Example
+///
+/// - `[[1, 2, 3], [4, 5]]` → `[[1], [2], [3], [4], [5]]` (each element becomes a row)
+/// - `[[1, 2], null, [], [3]]` → `[[1], [2], null, [], [3]]` (nulls and empties preserved)
+/// - `[[[1, 2], [3]], [[4, 5, 6]]]` → `[[1, 2], [3], [4, 5, 6]]` (flatten one level)
+pub struct Explode;
+
+impl Transform for Explode {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+        let (outer_field, offsets, values, nulls) = source.clone().into_parts();
+
+        // Check if the inner type is also a List - if so, unwrap one level
+        let (field, new_values, inner_list_opt) =
+            if let Some(inner_list) = values.as_list_opt::<i32>() {
+                // Nested case: List<List<T>> → extract inner field
+                let (inner_field, _offsets, inner_values, _nulls) = inner_list.clone().into_parts();
+                (inner_field, inner_values, Some(inner_list))
+            } else {
+                // Simple case: List<T> → use outer field
+                (outer_field, values, None)
+            };
+
+        let mut new_offsets = vec![0i32];
+        let mut new_validity = Vec::new();
+        let mut current_offset = 0i32;
+
+        for i in 0..source.len() {
+            if nulls.as_ref().is_some_and(|n| n.is_null(i)) {
+                // Preserve null as a single null row
+                new_validity.push(false);
+                new_offsets.push(current_offset);
+            } else {
+                let start = offsets[i] as usize;
+                let end = offsets[i + 1] as usize;
+                let len = end - start;
+
+                if len == 0 {
+                    // Preserve empty list as a single empty row
+                    new_validity.push(true);
+                    new_offsets.push(current_offset);
+                } else if let Some(inner_list) = inner_list_opt {
+                    // Nested case: scatter inner lists
+                    let inner_offsets = inner_list.value_offsets();
+
+                    for j in start..end {
+                        new_validity.push(!inner_list.is_null(j));
+                        let inner_start = inner_offsets[j];
+                        let inner_end = inner_offsets[j + 1];
+                        current_offset += inner_end - inner_start;
+                        new_offsets.push(current_offset);
+                    }
+                } else {
+                    // Simple case: each element becomes a single-element list
+                    for _j in start..end {
+                        new_validity.push(true);
+                        current_offset += 1;
+                        new_offsets.push(current_offset);
+                    }
+                }
+            }
+        }
+
+        Ok(ListArray::new(
+            field,
+            OffsetBuffer::new(new_offsets.into()),
+            new_values.clone(),
+            Some(NullBuffer::from(new_validity)),
         ))
     }
 }
