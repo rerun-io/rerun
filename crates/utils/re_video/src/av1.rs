@@ -1,14 +1,20 @@
-use cros_codecs::codec::av1::parser::{FrameHeaderObu, FrameType, ObuAction, ParsedObu, Parser};
+use cros_codecs::codec::av1::parser::{
+    ColorConfig, FrameHeaderObu, FrameType, ObuAction, ParsedObu, Parser,
+};
 
-use crate::{DetectGopStartError, GopStartDetection, VideoEncodingDetails};
+use crate::{ChromaSubsamplingModes, DetectGopStartError, GopStartDetection, VideoEncodingDetails};
 
 /// Try to determine whether an AV1 frame chunk is the start of a GOP.
-/// This is a simplified approach that only looks for keyframes, `INTRA_ONLY` frames are not considered GOP starts.
+///
+/// This is a simplified approach that only looks for keyframes, we don't
+/// consider `INTRA_ONLY` frames as GOP starts because they technically can rely on existing
+/// decoder state.
 pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
     let mut parser = Parser::default();
     let mut offset = 0usize;
 
     let mut gop_found = false;
+    let mut chroma: Option<ChromaSubsamplingModes> = None;
     let mut dimensions: Option<[u16; 2]> = None;
     let mut bit_depth: Option<u8> = None;
 
@@ -54,6 +60,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                             sequence.max_frame_width_minus_1,
                             sequence.max_frame_height_minus_1,
                         ]);
+                        chroma.get_or_insert(chroma_mode_from_color_config(&sequence.color_config));
                     }
                     _ => {
                         // ignore other OBUs
@@ -83,4 +90,23 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
 #[inline]
 fn is_gop_start(header: &FrameHeaderObu) -> bool {
     header.frame_type == FrameType::KeyFrame && header.show_frame && !header.show_existing_frame
+}
+
+#[inline]
+fn chroma_mode_from_color_config(config: &ColorConfig) -> ChromaSubsamplingModes {
+    let subsampling_x = config.subsampling_x;
+    let subsampling_y = config.subsampling_y;
+
+    if config.mono_chrome {
+        ChromaSubsamplingModes::Monochrome
+    } else if !subsampling_x && !subsampling_y {
+        // Not subsampling => 4:4:4
+        ChromaSubsamplingModes::Yuv444
+    } else if subsampling_x && !subsampling_y {
+        // Subsampling in X only => 4:2:2
+        ChromaSubsamplingModes::Yuv422
+    } else {
+        // Subsampling in both X and Y => 4:2:0
+        ChromaSubsamplingModes::Yuv420
+    }
 }
