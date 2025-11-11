@@ -4,8 +4,11 @@ use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
 };
 use re_types::blueprint::components::LoopMode;
-use re_ui::{HasDesignTokens as _, UiExt as _, list_item};
-use re_viewer_context::{TimeControl, TimeControlCommand, ViewerContext};
+use re_ui::{HasDesignTokens as _, UICommand, UICommandSender as _, UiExt as _, list_item};
+use re_viewer_context::{
+    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
+    open_url::ViewerOpenUrl,
+};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -82,7 +85,7 @@ pub fn loop_selection_ui(
         .interact(
             *timeline_rect,
             ui.id().with("timeline"),
-            egui::Sense::drag(),
+            egui::Sense::click_and_drag(),
         )
         .on_hover_cursor(crate::CREATE_TIME_LOOP_CURSOR_ICON);
 
@@ -163,6 +166,11 @@ pub fn loop_selection_ui(
                         );
                     });
 
+                middle_response.context_menu(|ui| {
+                    let is_on_selection = true;
+                    selection_context_menu(ui, ctx, time_commands, is_on_selection);
+                });
+
                 let left_response = ui
                     .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
                     .on_hover_and_drag_cursor(CursorIcon::ResizeWest)
@@ -208,12 +216,16 @@ pub fn loop_selection_ui(
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
 
                 if middle_response.clicked() {
-                    let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
-                        LoopMode::Off
+                    if ui.ctx().input(|i| i.modifiers.alt) {
+                        time_commands.push(TimeControlCommand::RemoveLoopSelection);
                     } else {
-                        LoopMode::Selection
-                    };
-                    time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                        let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
+                            LoopMode::Off
+                        } else {
+                            LoopMode::Selection
+                        };
+                        time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                    }
                 }
             }
         }
@@ -230,20 +242,25 @@ pub fn loop_selection_ui(
         }
     }
 
+    timeline_response.context_menu(|ui| {
+        let is_on_selection = false;
+        selection_context_menu(ui, ctx, time_commands, is_on_selection);
+    });
+
     // Start new selection?
-    if let Some(pointer_pos) = pointer_pos
+    if !timeline_response.context_menu_opened()
         && timeline_response.hovered()
+        && let Some(pointer_pos) = pointer_pos
         && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
     {
         // Show preview:
-        let x = time_ranges_ui
-            .x_from_time_f32(time)
-            .unwrap_or(pointer_pos.x);
-        ui.painter().vline(
-            x,
-            timeline_rect.y_range(),
-            ui.visuals().widgets.noninteractive.fg_stroke,
-        );
+        if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
+            ui.painter().vline(
+                x,
+                timeline_rect.y_range(),
+                ui.visuals().widgets.noninteractive.fg_stroke,
+            );
+        }
 
         if timeline_response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
             // Start new selection
@@ -253,6 +270,59 @@ pub fn loop_selection_ui(
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
+    }
+}
+
+fn selection_context_menu(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    time_commands: &mut Vec<TimeControlCommand>,
+    is_on_selection: bool,
+) {
+    let modifier = ui.ctx().format_modifiers(egui::Modifiers::ALT);
+    if ui
+        .add_enabled(
+            is_on_selection,
+            egui::Button::new("Remove time selection").shortcut_text(format!("{modifier}+Click")),
+        )
+        .on_disabled_hover_text("Open the context menu on selected time to remove it")
+        .clicked()
+    {
+        time_commands.push(TimeControlCommand::RemoveLoopSelection);
+    }
+
+    let mut button = egui::Button::new("Save current time selection…");
+    if let Some(shortcut) = UICommand::SaveRecordingSelection.formatted_kb_shortcut(ui.ctx()) {
+        button = button.shortcut_text(shortcut);
+    }
+    if ui
+        .add_enabled(is_on_selection, button)
+        .on_disabled_hover_text("Open the context menu on selected time to save it")
+        .clicked()
+    {
+        ctx.command_sender()
+            .send_ui(UICommand::SaveRecordingSelection);
+    }
+
+    let mut url = ViewerOpenUrl::from_context(ctx);
+    let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
+    let copy_command = url.and_then(|url| url.copy_url_command());
+    if ui
+        .add_enabled(
+            is_on_selection && copy_command.is_ok() && has_time_range,
+            egui::Button::new("Copy link to trimmed time range"),
+        )
+        .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+            format!("Can't share links to the current recording: {err}")
+        } else if !has_time_range {
+            "The current recording doesn't support time range links".to_owned()
+        } else {
+            "Open the context menu on selected time to copy link".to_owned()
+        })
+        .clicked()
+        && let Ok(copy_command) = copy_command
+    {
+        ctx.command_sender().send_system(copy_command);
     }
 }
 
