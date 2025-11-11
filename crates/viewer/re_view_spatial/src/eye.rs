@@ -543,17 +543,18 @@ impl EyeController {
             return;
         }
 
-        if self.projection == Eye3DProjection::Orthographic {
-            // With an orthographic camera, changing the distance would have no effect on the view.
-            // Instead, we change the vertical world size. This works in both orbital and first-person mode.
-            self.vertical_world_size = Some(
-                self.vertical_world_size
-                    .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
-                    / zoom_factor,
-            );
-            self.did_interact = true;
-            return;
-        }
+        // With an orthographic camera, changing the distance would have no effect on the view.
+        // Instead, we change the vertical world size. This works in both orbital and first-person mode.
+        //
+        // Note that while that property is only relevant for orthographic views, we always update it here,
+        // regardless of the current projection. This ensures a nice consistent zoom when switching projections.
+        self.vertical_world_size = Some(
+            self.vertical_world_size
+                .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
+                / zoom_factor,
+        );
+        // Only consider this as interaction that shall update the blueprint if we are actually orthographic.
+        self.did_interact = self.projection == Eye3DProjection::Orthographic;
 
         match self.kind {
             Eye3DKind::Orbital => {
