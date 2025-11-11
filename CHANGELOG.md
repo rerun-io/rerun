@@ -1,7 +1,7 @@
 # Rerun changelog
 
 
-## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - More blueprint properties
+## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - Viewer improvements and more blueprint configuration
 ### ✨ Overview & highlights
 
 #### 🟦 more properties configurable from blueprint
