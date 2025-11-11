@@ -1,5 +1,5 @@
 ---
 title: Blueprint
 hidden: true
-redirect: /docs/concepts/blueprints
+redirect: concepts/blueprints
 ---
