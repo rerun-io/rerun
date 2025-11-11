@@ -7,9 +7,10 @@ use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
         archetypes::EyeControls3D,
-        components::{AngularSpeed, Eye3DKind},
+        components::{AngularSpeed, Eye3DKind, Eye3DProjection},
     },
     components::{LinearSpeed, Position3D, Vector3D},
+    datatypes::Float32,
 };
 use re_ui::ContextExt as _;
 use re_view::controls::{
@@ -30,12 +31,18 @@ use crate::{pinhole_wrapper::PinholeWrapper, scene_bounding_boxes::SceneBounding
 pub struct Eye {
     pub world_from_rub_view: IsoTransform,
 
-    /// If no angle is present, this is an orthographic camera.
+    /// Only set if this is a perspective camera.
     pub fov_y: Option<f32>,
+
+    /// Only set if this is an orthographic camera.
+    pub vertical_world_size: Option<f32>,
 }
 
 impl Eye {
+    /// Only used by perspective projection.
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
+    /// Only used by orthographic projection.
+    pub const DEFAULT_VERTICAL_WORLD_SIZE: f32 = 10.0;
 
     pub fn from_camera(camera: &PinholeWrapper) -> Option<Self> {
         let fov_y = camera.pinhole.fov_y();
@@ -43,6 +50,7 @@ impl Eye {
         Some(Self {
             world_from_rub_view: camera.world_from_rub_view()?,
             fov_y: Some(fov_y),
+            vertical_world_size: None,
         })
     }
 
@@ -50,7 +58,7 @@ impl Eye {
         if self.is_perspective() {
             0.01 // TODO(emilk)
         } else {
-            -1000.0 // TODO(andreas)
+            0.0
         }
     }
 
@@ -58,7 +66,7 @@ impl Eye {
         if self.is_perspective() {
             f32::INFINITY
         } else {
-            1000.0
+            10000.0
         }
     }
 
@@ -152,6 +160,7 @@ impl Eye {
         Self {
             world_from_rub_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
+            vertical_world_size: None, // TODO(michael): check this when interpolating ortho projection.
         }
     }
 }
@@ -192,6 +201,9 @@ pub struct EyeState {
     /// Vertical field of view in radians.
     fov_y: Option<f32>,
 
+    /// Only used by orthographic projection.
+    vertical_world_size: Option<f32>,
+
     velocity: Vec3,
 
     /// The lasst tracked entity.
@@ -222,9 +234,11 @@ struct EyeController {
     pos: Vec3,
     look_target: Vec3,
     kind: Eye3DKind,
+    projection: Eye3DProjection,
     speed: f64,
     eye_up: Vec3,
     fov_y: Option<f32>,
+    vertical_world_size: Option<f32>,
 
     did_interact: bool,
 }
@@ -246,7 +260,17 @@ impl EyeController {
             )
             .unwrap_or_else(|| IsoTransform::from_translation(self.pos))
             .inverse(),
-            fov_y: Some(self.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y)),
+            fov_y: match self.projection {
+                Eye3DProjection::Perspective => Some(self.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y)),
+                Eye3DProjection::Orthographic => None,
+            },
+            vertical_world_size: match self.projection {
+                Eye3DProjection::Orthographic => Some(
+                    self.vertical_world_size
+                        .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE),
+                ),
+                Eye3DProjection::Perspective => None,
+            },
         }
     }
 
@@ -257,6 +281,18 @@ impl EyeController {
     ) -> Result<Self, ViewPropertyQueryError> {
         let kind = eye_property
             .component_or_fallback::<Eye3DKind>(ctx, EyeControls3D::descriptor_kind().component)?;
+
+        let projection = eye_property.component_or_fallback::<Eye3DProjection>(
+            ctx,
+            EyeControls3D::descriptor_projection().component,
+        )?;
+
+        let vertical_world_size = Some(
+            **eye_property.component_or_fallback::<re_types::components::Length>(
+                ctx,
+                EyeControls3D::descriptor_vertical_world_size().component,
+            )?,
+        );
 
         let speed = **eye_property.component_or_fallback::<LinearSpeed>(
             ctx,
@@ -287,10 +323,12 @@ impl EyeController {
             pos,
             look_target,
             kind,
+            projection,
             speed,
             eye_up,
             did_interact: false,
             fov_y,
+            vertical_world_size,
         })
     }
 
@@ -303,9 +341,18 @@ impl EyeController {
         old_pos: Vec3,
         old_look_target: Vec3,
         old_eye_up: Vec3,
+        old_vertical_world_size: Option<f32>,
     ) {
         if !self.did_interact {
             return;
+        }
+
+        if self.pos != old_pos {
+            eye_property.save_blueprint_component(
+                ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::from(self.pos),
+            );
         }
 
         if self.pos != old_pos {
@@ -329,6 +376,17 @@ impl EyeController {
                 ctx,
                 &EyeControls3D::descriptor_eye_up(),
                 &Vector3D::from(self.eye_up),
+            );
+        }
+
+        if self.vertical_world_size != old_vertical_world_size {
+            eye_property.save_blueprint_component(
+                ctx,
+                &EyeControls3D::descriptor_vertical_world_size(),
+                &re_types::components::Length(Float32::from(
+                    self.vertical_world_size
+                        .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE),
+                )),
             );
         }
     }
@@ -482,6 +540,18 @@ impl EyeController {
         });
 
         if zoom_factor == 1.0 {
+            return;
+        }
+
+        if self.projection == Eye3DProjection::Orthographic {
+            // With an orthographic camera, changing the distance would have no effect on the view.
+            // Instead, we change the vertical world size. This works in both orbital and first-person mode.
+            self.vertical_world_size = Some(
+                self.vertical_world_size
+                    .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
+                    / zoom_factor,
+            );
+            self.did_interact = true;
             return;
         }
 
@@ -651,6 +721,7 @@ impl EyeState {
             pos: old_pos,
             look_target: old_look_target,
             eye_up: old_eye_up,
+            vertical_world_size: old_vertical_world_size,
             ..
         } = eye_controller;
 
@@ -685,6 +756,7 @@ impl EyeState {
             old_pos,
             old_look_target,
             old_eye_up,
+            old_vertical_world_size,
         );
 
         // Handle spinning after saving to blueprint to not continuously write to the blueprint.
@@ -884,6 +956,7 @@ impl EyeState {
             pos: old_pos,
             look_target: old_look_target,
             eye_up: old_eye_up,
+            vertical_world_size: old_vertical_world_size,
             ..
         } = eye_controller;
         // Focusing cameras is not something that happens now, since those are always tracked.
@@ -913,6 +986,7 @@ impl EyeState {
             old_pos,
             old_look_target,
             old_eye_up,
+            old_vertical_world_size,
         );
 
         eye_property

@@ -18,6 +18,9 @@ table EyeControls3D (
     /// The cameras current position.
     position: rerun.components.Position3D ("attr.rerun.component_optional", nullable, order: 200);
 
+    /// TODO: document
+    vertical_world_size: rerun.components.Length ("attr.rerun.component_optional", nullable, order: 250);
+
     /// The position the camera is currently looking at.
     ///
     /// If this is an orbital camera, this also is the center it orbits around.

@@ -18,6 +18,9 @@ namespace rerun::blueprint::archetypes {
         archetype.position =
             ComponentBatch::empty<rerun::components::Position3D>(Descriptor_position)
                 .value_or_throw();
+        archetype.vertical_world_size =
+            ComponentBatch::empty<rerun::components::Length>(Descriptor_vertical_world_size)
+                .value_or_throw();
         archetype.look_target =
             ComponentBatch::empty<rerun::components::Position3D>(Descriptor_look_target)
                 .value_or_throw();
@@ -36,7 +39,7 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> EyeControls3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(8);
+        columns.reserve(9);
         if (kind.has_value()) {
             columns.push_back(kind.value().partitioned(lengths_).value_or_throw());
         }
@@ -45,6 +48,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (position.has_value()) {
             columns.push_back(position.value().partitioned(lengths_).value_or_throw());
+        }
+        if (vertical_world_size.has_value()) {
+            columns.push_back(vertical_world_size.value().partitioned(lengths_).value_or_throw());
         }
         if (look_target.has_value()) {
             columns.push_back(look_target.value().partitioned(lengths_).value_or_throw());
@@ -74,6 +80,9 @@ namespace rerun::blueprint::archetypes {
         if (position.has_value()) {
             return columns(std::vector<uint32_t>(position.value().length(), 1));
         }
+        if (vertical_world_size.has_value()) {
+            return columns(std::vector<uint32_t>(vertical_world_size.value().length(), 1));
+        }
         if (look_target.has_value()) {
             return columns(std::vector<uint32_t>(look_target.value().length(), 1));
         }
@@ -101,7 +110,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(8);
+        cells.reserve(9);
 
         if (archetype.kind.has_value()) {
             cells.push_back(archetype.kind.value());
@@ -111,6 +120,9 @@ namespace rerun {
         }
         if (archetype.position.has_value()) {
             cells.push_back(archetype.position.value());
+        }
+        if (archetype.vertical_world_size.has_value()) {
+            cells.push_back(archetype.vertical_world_size.value());
         }
         if (archetype.look_target.has_value()) {
             cells.push_back(archetype.look_target.value());

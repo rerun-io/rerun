@@ -10,6 +10,7 @@
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/entity_path.hpp"
+#include "../../components/length.hpp"
 #include "../../components/linear_speed.hpp"
 #include "../../components/position3d.hpp"
 #include "../../components/vector3d.hpp"
@@ -39,6 +40,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The cameras current position.
         std::optional<ComponentBatch> position;
+
+        /// TODO: document
+        std::optional<ComponentBatch> vertical_world_size;
 
         /// The position the camera is currently looking at.
         ///
@@ -88,6 +92,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_position = ComponentDescriptor(
             ArchetypeName, "EyeControls3D:position",
             Loggable<rerun::components::Position3D>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `vertical_world_size` field.
+        static constexpr auto Descriptor_vertical_world_size = ComponentDescriptor(
+            ArchetypeName, "EyeControls3D:vertical_world_size",
+            Loggable<rerun::components::Length>::ComponentType
         );
         /// `ComponentDescriptor` for the `look_target` field.
         static constexpr auto Descriptor_look_target = ComponentDescriptor(
@@ -152,6 +161,15 @@ namespace rerun::blueprint::archetypes {
         EyeControls3D with_position(const rerun::components::Position3D& _position) && {
             position =
                 ComponentBatch::from_loggable(_position, Descriptor_position).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// TODO: document
+        EyeControls3D with_vertical_world_size(const rerun::components::Length& _vertical_world_size
+        ) && {
+            vertical_world_size =
+                ComponentBatch::from_loggable(_vertical_world_size, Descriptor_vertical_world_size)
+                    .value_or_throw();
             return std::move(*this);
         }
 

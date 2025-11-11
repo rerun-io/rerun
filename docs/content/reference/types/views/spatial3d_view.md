@@ -32,6 +32,7 @@ Configuration for the 3D eye
 * `kind`: The kind of the eye for the spatial 3D view.
 * `projection`: TODO: document
 * `position`: The cameras current position.
+* `vertical_world_size`: TODO: document
 * `look_target`: The position the camera is currently looking at.
 * `eye_up`: The up-axis of the eye itself, in world-space.
 * `speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).

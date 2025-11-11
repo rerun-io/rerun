@@ -4,7 +4,7 @@ use glam::Vec3;
 use macaw::BoundingBox;
 use re_renderer::{
     LineDrawableBuilder, Size,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
+    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
 };
 use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_types::{
@@ -250,6 +250,24 @@ impl SpatialView3D {
             (response, None)
         };
 
+        // TODO: ensure that eye.fov is only set for perspective cameras.
+        // Right now this is just a loose convention... maybe to improve?
+        let projection_from_view = if let Some(vertical_fov) = eye.fov_y {
+            Projection::Perspective {
+                vertical_fov,
+                near_plane_distance: eye.near(),
+                aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
+            }
+        } else {
+            Projection::Orthographic {
+                vertical_world_size: eye
+                    .vertical_world_size
+                    .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE),
+                camera_mode: OrthographicCameraMode::NearPlaneCenter,
+                far_plane_distance: eye.far(),
+            }
+        };
+
         let target_config = TargetConfiguration {
             name: query.space_origin.to_string().into(),
             render_mode: ctx.render_mode(),
@@ -257,11 +275,7 @@ impl SpatialView3D {
             resolution_in_pixel,
 
             view_from_world: eye.world_from_rub_view.inverse(),
-            projection_from_view: Projection::Perspective {
-                vertical_fov: eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y),
-                near_plane_distance: eye.near(),
-                aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
-            },
+            projection_from_view,
             viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
             pixels_per_point: ui.ctx().pixels_per_point(),
