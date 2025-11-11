@@ -593,6 +593,7 @@ inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"
 Pillow = ">=10.0.0" # For `thumbnails.py`
+polars = "==1.35.2" # For api_sandbox
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 types-decorator = "*" # Type hint stubs
