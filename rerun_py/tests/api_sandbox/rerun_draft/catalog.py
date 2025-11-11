@@ -158,33 +158,33 @@ class DatasetEntry(Entry):
         result = self._inner.blueprint_dataset()
         return DatasetEntry(result) if result is not None else None
 
-    def default_blueprint_section_id(self) -> str | None:
+    def default_blueprint_segment_id(self) -> str | None:
         return self._inner.default_blueprint_partition_id()
 
-    def set_default_blueprint_section_id(self, section_id: str | None) -> None:
-        return self._inner.set_default_blueprint_partition_id(section_id)
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
+        return self._inner.set_default_blueprint_partition_id(segment_id)
 
     def schema(self) -> Any:
         return self._inner.schema()
 
-    def section_ids(self) -> list[str]:
+    def segment_ids(self) -> list[str]:
         return self._inner.partition_ids()
 
-    def section_table(self) -> datafusion.DataFrame:
+    def segment_table(self) -> datafusion.DataFrame:
         # Get the partition table from the inner object
-        return self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_section_id")
+        return self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def manifest(self) -> Any:
         return self._inner.manifest()
 
-    def section_url(
+    def segment_url(
         self,
-        section_id: str,
+        segment_id: str,
         timeline: str | None = None,
         start=None,
         end=None,
     ) -> str:
-        return self._inner.partition_url(section_id, timeline, start, end)
+        return self._inner.partition_url(segment_id, timeline, start, end)
 
     def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
@@ -197,8 +197,8 @@ class DatasetEntry(Entry):
     def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Any:
         return self._inner.register_prefix(recordings_prefix, layer_name)
 
-    def download_section(self, section_id: str) -> Any:
-        return self._inner.download_partition(section_id)
+    def download_segment(self, segment_id: str) -> Any:
+        return self._inner.download_partition(segment_id)
 
     def dataframe_query_view(
         self,
@@ -225,7 +225,7 @@ class DatasetEntry(Entry):
         if fill_latest_at:
             view = view.fill_latest_at()
 
-        return view.df().with_column_renamed("rerun_partition_id", "rerun_section_id")
+        return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def create_fts_index(
         self,

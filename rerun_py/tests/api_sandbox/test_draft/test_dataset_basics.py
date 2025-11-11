@@ -17,10 +17,10 @@ def test_dataset_basics(simple_dataset_prefix: Path) -> None:
 
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        section_df = ds.section_table()
+        segment_df = ds.segment_table()
 
-        assert str(section_df.schema()) == inline_snapshot("""\
-rerun_section_id: string not null
+        assert str(segment_df.schema()) == inline_snapshot("""\
+rerun_segment_id: string not null
 rerun_layer_names: list<rerun_layer_names: string not null> not null
   child 0, rerun_layer_names: string not null
 rerun_storage_urls: list<rerun_storage_urls: string not null> not null
@@ -33,14 +33,14 @@ sorbet:version: '0.1.1'\
 """)
 
         assert str(
-            section_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_section_id")
+            segment_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
         ) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                        │
 │ * version: 0.1.1                                                                 │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
-│ │ rerun_section_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
+│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
 │ │ ---                ┆ ---               ┆ ---              ┆ ---              │ │
 │ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │ │
 │ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╡ │

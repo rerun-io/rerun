@@ -20,11 +20,11 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
 
         # Create a view with all partitions
         view = ds.dataframe_query_view(index="timeline", contents="/**").filter(
-            in_list(col("rerun_section_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
+            in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
         )
 
         # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
-        df = view.sort("rerun_section_id")
+        df = view.sort("rerun_segment_id")
 
         assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -32,7 +32,7 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
 │ * version: 0.1.1                                                                                                                                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌────────────────────┬──────────────────────────────┬───────────────────────────────────┬─────────────────────────────────────────────────────┐ │
-│ │ rerun_section_id   ┆ timeline                     ┆ /points:Points2D:colors           ┆ /points:Points2D:positions                          │ │
+│ │ rerun_segment_id   ┆ timeline                     ┆ /points:Points2D:colors           ┆ /points:Points2D:positions                          │ │
 │ │ ---                ┆ ---                          ┆ ---                               ┆ ---                                                 │ │
 │ │ type: Utf8         ┆ type: nullable Timestamp(ns) ┆ type: nullable List[nullable u32] ┆ type: nullable List[nullable FixedSizeList[f32; 2]] │ │
 │ │                    ┆ index_name: timeline         ┆ archetype: Points2D               ┆ archetype: Points2D                                 │ │
@@ -52,7 +52,7 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
 
         assert str(table) == inline_snapshot("""\
 pyarrow.Table
-rerun_section_id: string not null
+rerun_segment_id: string not null
 timeline: timestamp[ns]
 /points:Points2D:colors: list<item: uint32>
   child 0, item: uint32
@@ -60,7 +60,7 @@ timeline: timestamp[ns]
   child 0, item: fixed_size_list<item: float not null>[2]
       child 0, item: float not null
 ----
-rerun_section_id: [["simple_recording_0","simple_recording_2"]]
+rerun_segment_id: [["simple_recording_0","simple_recording_2"]]
 timeline: [[2000-01-01 00:00:00.000000000,2000-01-01 00:00:02.000000000]]
 /points:Points2D:colors: [[[4278190335,16711935],[4278190847,16712447]]]
 /points:Points2D:positions: [[[[0,1],[3,4]],[[2,3],[5,6]]]]\
@@ -85,7 +85,7 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
                 dtype=np.datetime64,
             ),
             fill_latest_at=True,
-        ).sort("rerun_section_id", "timeline")
+        ).sort("rerun_segment_id", "timeline")
 
         assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -93,7 +93,7 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
 │ * version: 0.1.1                                                                                                                                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌────────────────────┬──────────────────────────────┬───────────────────────────────────┬─────────────────────────────────────────────────────┐ │
-│ │ rerun_section_id   ┆ timeline                     ┆ /points:Points2D:colors           ┆ /points:Points2D:positions                          │ │
+│ │ rerun_segment_id   ┆ timeline                     ┆ /points:Points2D:colors           ┆ /points:Points2D:positions                          │ │
 │ │ ---                ┆ ---                          ┆ ---                               ┆ ---                                                 │ │
 │ │ type: Utf8         ┆ type: nullable Timestamp(ns) ┆ type: nullable List[nullable u32] ┆ type: nullable List[nullable FixedSizeList[f32; 2]] │ │
 │ │                    ┆ index_name: timeline         ┆ archetype: Points2D               ┆ archetype: Points2D                                 │ │
@@ -127,7 +127,7 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
 
         assert str(table) == inline_snapshot("""\
 pyarrow.Table
-rerun_section_id: string not null
+rerun_segment_id: string not null
 timeline: timestamp[ns]
 /points:Points2D:colors: list<item: uint32>
   child 0, item: uint32
@@ -135,7 +135,7 @@ timeline: timestamp[ns]
   child 0, item: fixed_size_list<item: float not null>[2]
       child 0, item: float not null
 ----
-rerun_section_id: [["simple_recording_0","simple_recording_0","simple_recording_0","simple_recording_1","simple_recording_1","simple_recording_1","simple_recording_2","simple_recording_2","simple_recording_2"]]
+rerun_segment_id: [["simple_recording_0","simple_recording_0","simple_recording_0","simple_recording_1","simple_recording_1","simple_recording_1","simple_recording_2","simple_recording_2","simple_recording_2"]]
 timeline: [[1999-12-31 23:59:59.000000000,2000-01-01 00:00:01.000500000,2000-01-01 00:00:06.000000000,1999-12-31 23:59:59.000000000,2000-01-01 00:00:01.000500000,2000-01-01 00:00:06.000000000,1999-12-31 23:59:59.000000000,2000-01-01 00:00:01.000500000,2000-01-01 00:00:06.000000000]]
 /points:Points2D:colors: [[null,[4278190335,16711935],...,null,[4278190847,16712447]]]
 /points:Points2D:positions: [[null,[[0,1],[3,4]],...,null,[[2,3],[5,6]]]]\
