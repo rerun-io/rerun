@@ -190,6 +190,9 @@ impl ViewClass for SpatialView3D {
             },
         );
 
+        // How much padding to add around the scene when computing fallbacks for eye position or vertical world size in orthographic views.
+        const RADIUS_PADDING_FACTOR: f32 = 1.5;
+
         system_registry.register_fallback_provider(
             re_types::blueprint::archetypes::EyeControls3D::descriptor_position().component,
             |ctx| {
@@ -205,7 +208,7 @@ impl ViewClass for SpatialView3D {
                     center = Vec3::ZERO;
                 }
 
-                let mut radius = 1.5 * view_state.bounding_boxes.current.half_size().length();
+                let mut radius = RADIUS_PADDING_FACTOR * view_state.bounding_boxes.current.half_size().length();
                 if !radius.is_finite() || radius == 0.0 {
                     radius = 1.0;
                 }
@@ -241,6 +244,23 @@ impl ViewClass for SpatialView3D {
                 Position3D::from(eye_pos)
             },
         );
+
+        system_registry.register_fallback_provider(re_types::blueprint::archetypes::EyeControls3D::descriptor_vertical_world_size().component, |ctx| {
+            let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                re_log::error_once!(
+                    "Fallback for `Length` queried on 3D view outside the context of a spatial view."
+                );
+                return re_types::components::Length::from(1.0);
+            };
+
+            let vertical_size = RADIUS_PADDING_FACTOR * view_state.bounding_boxes.current.half_size().length();
+
+            if vertical_size.is_finite() && vertical_size > 0.0 {
+                re_types::components::Length::from(vertical_size)
+            } else {
+                re_types::components::Length::from(1.0)
+            }
+        });
 
         system_registry.register_fallback_provider(
             re_types::blueprint::archetypes::EyeControls3D::descriptor_eye_up().component,
