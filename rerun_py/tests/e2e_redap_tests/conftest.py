@@ -58,8 +58,15 @@ def table_filepath(tmp_path_factory: pytest.TempPathFactory) -> Generator[pathli
     yield temp_dir / "simple_datatypes"
 
 
+# TODO(ab): make this fixture configurable, such that the entire test suite can be run against different servers
 @pytest.fixture(scope="function")
 def catalog_client() -> Generator[CatalogClient, None, None]:
+    """
+    Return a `CatalogClient` instance connected to a test server.
+
+    This is the core fixture that spins up a test server and returns the corresponding client. All other fixtures and
+    tests should directly or indirectly depend on this.
+    """
     server = Server()
     yield server.client()
     server.shutdown()
@@ -67,6 +74,11 @@ def catalog_client() -> Generator[CatalogClient, None, None]:
 
 @pytest.fixture(scope="function")
 def test_dataset(catalog_client: CatalogClient) -> Generator[DatasetEntry, None, None]:
+    """
+    Register a dataset and returns the corresponding `DatasetEntry`.
+
+    Convenient for tests which focus on a single test dataset.
+    """
     assert DATASET_FILEPATH.is_dir()
 
     ds = catalog_client.create_dataset(DATASET_NAME)
@@ -81,10 +93,13 @@ class PrefilledCatalog:
     dataset: DatasetEntry
 
 
+# TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
 @pytest.fixture(scope="function")
 def prefilled_catalog(
     catalog_client: CatalogClient, table_filepath: pathlib.Path
 ) -> Generator[PrefilledCatalog, None, None]:
+    """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
+
     assert DATASET_FILEPATH.is_dir()
     assert table_filepath.is_dir()
 
