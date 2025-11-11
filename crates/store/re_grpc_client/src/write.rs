@@ -67,6 +67,58 @@ enum Cmd {
     },
 }
 
+/// Wrapper for bounded or unbounded command sender
+enum CommandSender {
+    Bounded(Sender<Cmd>),
+    Unbounded(UnboundedSender<Cmd>),
+}
+
+impl CommandSender {
+    fn send(&self, cmd: Cmd) -> Result<(), ()> {
+        match self {
+            Self::Bounded(sender) => sender.try_send(cmd).map_err(|err| {
+                match err {
+                    tokio::sync::mpsc::error::TrySendError::Full(_) => {
+                        re_log::warn_once!("gRPC message buffer is full, dropping message");
+                    }
+                    tokio::sync::mpsc::error::TrySendError::Closed(_) => {
+                        re_log::debug!("gRPC client channel closed");
+                    }
+                }
+            }),
+            Self::Unbounded(sender) => sender.send(cmd).map_err(|_| {
+                re_log::debug!("gRPC client channel closed");
+            }),
+        }
+    }
+
+    fn blocking_send(&self, cmd: Cmd) -> Result<(), ()> {
+        match self {
+            Self::Bounded(sender) => sender.blocking_send(cmd).map_err(|_| {
+                re_log::debug!("gRPC client channel closed");
+            }),
+            Self::Unbounded(sender) => sender.send(cmd).map_err(|_| {
+                re_log::debug!("gRPC client channel closed");
+            }),
+        }
+    }
+}
+
+/// Wrapper for bounded or unbounded command receiver
+enum CommandReceiver {
+    Bounded(Receiver<Cmd>),
+    Unbounded(UnboundedReceiver<Cmd>),
+}
+
+impl CommandReceiver {
+    async fn recv(&mut self) -> Option<Cmd> {
+        match self {
+            Self::Bounded(receiver) => receiver.recv().await,
+            Self::Unbounded(receiver) => receiver.recv().await,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Options {
     pub compression: Compression,
@@ -78,6 +130,28 @@ pub struct Options {
     /// But blocking [`Client::flush_blocking`] forever when the
     /// server just isn't there is not a good idea.
     pub connect_timeout_on_flush: Duration,
+
+    /// Maximum time to attempt initial connection before giving up permanently.
+    ///
+    /// If the connection cannot be established within this duration,
+    /// the client will transition to a permanent disconnected state
+    /// and stop accepting new messages.
+    ///
+    /// Use `None` for unlimited connection attempts (original behavior).
+    ///
+    /// Default: 30 seconds
+    pub initial_connect_timeout: Option<Duration>,
+
+    /// Maximum number of pending messages to buffer when the client
+    /// cannot connect or send messages fast enough.
+    ///
+    /// When the limit is reached, new messages will be dropped with a warning.
+    /// This prevents unbounded memory growth when the server is unreachable.
+    ///
+    /// Use `None` for unlimited buffering (original behavior, not recommended).
+    ///
+    /// Default: 10,000 messages
+    pub max_pending_messages: Option<usize>,
 }
 
 impl Default for Options {
@@ -85,6 +159,8 @@ impl Default for Options {
         Self {
             compression: Compression::LZ4,
             connect_timeout_on_flush: Duration::from_secs(5),
+            initial_connect_timeout: Some(Duration::from_secs(30)),
+            max_pending_messages: Some(10_000),
         }
     }
 }
@@ -100,6 +176,9 @@ pub enum ClientConnectionFailure {
 
     #[error("Failed to send messages: {0}")]
     FailedToSendMessages(tonic::Code),
+
+    #[error("Failed to connect within timeout")]
+    InitialConnectionTimeout,
 }
 
 /// The connection state of a client.
@@ -122,22 +201,39 @@ pub struct Client {
     uri: ProxyUri,
     options: Options,
     thread: Option<JoinHandle<()>>,
-    cmd_tx: UnboundedSender<Cmd>,
+    cmd_tx: CommandSender,
     shutdown_tx: Sender<()>,
     status: Arc<AtomicCell<ClientConnectionState>>,
 }
 
 impl Client {
     pub fn new(uri: ProxyUri, options: Options) -> Self {
-        let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
         let status = Arc::new(AtomicCell::new(ClientConnectionState::Connecting {
             started: Instant::now(),
         }));
+
+        // Create bounded or unbounded channel based on options
+        let (cmd_tx, cmd_rx) = if let Some(limit) = options.max_pending_messages {
+            let (tx, rx) = mpsc::channel(limit);
+            (
+                CommandSender::Bounded(tx),
+                CommandReceiver::Bounded(rx),
+            )
+        } else {
+            let (tx, rx) = mpsc::unbounded_channel();
+            (
+                CommandSender::Unbounded(tx),
+                CommandReceiver::Unbounded(rx),
+            )
+        };
+
         let thread = {
             let uri = uri.clone();
             let status = status.clone();
+            let initial_connect_timeout = options.initial_connect_timeout;
+            let compression = options.compression;
             thread::Builder::new()
                 .name("message_proxy_client".to_owned())
                 .spawn(move || {
@@ -150,8 +246,9 @@ impl Client {
                             uri.clone(),
                             cmd_rx,
                             shutdown_rx,
-                            options.compression,
+                            compression,
                             status,
+                            initial_connect_timeout,
                         ));
                 })
                 .expect("Failed to spawn message proxy client thread")
@@ -168,6 +265,14 @@ impl Client {
     }
 
     pub fn send(&self, msg: LogMsg) {
+        // Check if we're permanently disconnected
+        if let ClientConnectionState::Disconnected(Err(_)) = self.status() {
+            re_log::warn_once!(
+                "gRPC client is disconnected, rejecting message. Connection will not be retried."
+            );
+            return;
+        }
+
         self.cmd_tx.send(Cmd::LogMsg(msg)).ok();
     }
 
@@ -192,9 +297,11 @@ impl Client {
         re_tracing::profile_function!();
 
         let (flush_done_tx, flush_done_rx) = crossbeam::channel::bounded(1); // oneshot
+
+        // Use blocking_send for flush commands to ensure they always get through
         if self
             .cmd_tx
-            .send(Cmd::Flush {
+            .blocking_send(Cmd::Flush {
                 on_done: flush_done_tx,
             })
             .is_err()
@@ -309,10 +416,11 @@ impl Drop for Client {
 
 async fn message_proxy_client(
     uri: ProxyUri,
-    mut cmd_rx: UnboundedReceiver<Cmd>,
+    mut cmd_rx: CommandReceiver,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
     status: Arc<AtomicCell<ClientConnectionState>>,
+    initial_connect_timeout: Option<Duration>,
 ) {
     let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
         Ok(endpoint) => endpoint,
@@ -325,8 +433,28 @@ async fn message_proxy_client(
         }
     };
 
+    let connection_start_time = if let ClientConnectionState::Connecting { started } = status.load() {
+        started
+    } else {
+        Instant::now()
+    };
+
     let mut last_connect_failure_log_time: Option<Instant> = None;
     let channel = loop {
+        // Check if we've exceeded the initial connection timeout
+        if let Some(timeout) = initial_connect_timeout {
+            if connection_start_time.elapsed() >= timeout {
+                status.store(ClientConnectionState::Disconnected(Err(
+                    ClientConnectionFailure::InitialConnectionTimeout,
+                )));
+                re_log::error!(
+                    "Failed to connect to {uri} within {:.1}s, giving up. No more messages will be sent.",
+                    timeout.as_secs_f32()
+                );
+                return;
+            }
+        }
+
         match endpoint.connect().await {
             Ok(channel) => break channel,
             Err(err) => {
@@ -334,7 +462,16 @@ async fn message_proxy_client(
                 if last_connect_failure_log_time
                     .is_none_or(|last_log_time| log_interval < last_log_time.elapsed())
                 {
-                    re_log::debug!("Failed to connect to {uri}: {err}, retrying…");
+                    if let Some(timeout) = initial_connect_timeout {
+                        let elapsed = connection_start_time.elapsed();
+                        let remaining = timeout.saturating_sub(elapsed);
+                        re_log::debug!(
+                            "Failed to connect to {uri}: {err}. Retrying for {:.1}s more…",
+                            remaining.as_secs_f32()
+                        );
+                    } else {
+                        re_log::debug!("Failed to connect to {uri}: {err}, retrying…");
+                    }
                     last_connect_failure_log_time = Some(Instant::now());
                 }
 

@@ -4,7 +4,9 @@ use std::{fmt, time::Duration};
 use parking_lot::Mutex;
 
 use re_chunk::ChunkBatcherConfig;
-use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
+use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError};
+
+pub use re_grpc_client::write::Options as GrpcSinkOptions;
 use re_log_encoding::{EncodeError, Encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
@@ -548,7 +550,28 @@ impl GrpcSink {
     #[inline]
     pub fn new(uri: re_uri::ProxyUri) -> Self {
         Self {
-            client: MessageProxyClient::new(uri, Options::default()),
+            client: MessageProxyClient::new(uri, GrpcSinkOptions::default()),
+        }
+    }
+
+    /// Connect to the in-memory storage node over HTTP with custom options.
+    ///
+    /// This allows you to configure memory limits and connection timeouts.
+    ///
+    /// ### Example
+    ///
+    /// ```ignore
+    /// let options = GrpcSinkOptions {
+    ///     max_pending_messages: Some(5000),
+    ///     initial_connect_timeout: Some(Duration::from_secs(10)),
+    ///     ..Default::default()
+    /// };
+    /// GrpcSink::new_with_options("rerun+http://127.0.0.1:9434/proxy", options);
+    /// ```
+    #[inline]
+    pub fn new_with_options(uri: re_uri::ProxyUri, options: GrpcSinkOptions) -> Self {
+        Self {
+            client: MessageProxyClient::new(uri, options),
         }
     }
 
