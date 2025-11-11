@@ -131,9 +131,7 @@ pub fn current_trace_headers() -> Option<TraceHeaders> {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceHeaders {
     pub traceparent: String,
-    #[serde(skip)]
-    pub tracestate: HashMap<String, String>,
-    tracestate_header_raw: Option<String>,
+    pub tracestate: Option<String>,
 }
 
 impl TraceHeaders {
@@ -143,9 +141,15 @@ impl TraceHeaders {
     fn empty() -> Self {
         Self {
             traceparent: String::new(),
-            tracestate: HashMap::default(),
-            tracestate_header_raw: None,
+            tracestate: None,
         }
+    }
+
+    pub fn tracestate(&self) -> HashMap<String, String> {
+        self.tracestate
+            .as_ref()
+            .map(|s| crate::tracestate::parse_pairs(s))
+            .unwrap_or_default()
     }
 }
 
@@ -155,9 +159,7 @@ impl opentelemetry::propagation::Injector for TraceHeaders {
             Self::TRACEPARENT_KEY => self.traceparent = value,
             Self::TRACESTATE_KEY => {
                 if !value.is_empty() {
-                    // Parse tracestate, keeping only valid pairs
-                    self.tracestate = crate::tracestate::parse_pairs(&value);
-                    self.tracestate_header_raw = Some(value);
+                    self.tracestate = Some(value);
                 }
             }
             _ => {}
@@ -169,7 +171,7 @@ impl opentelemetry::propagation::Extractor for TraceHeaders {
     fn get(&self, key: &str) -> Option<&str> {
         match key {
             Self::TRACEPARENT_KEY => Some(self.traceparent.as_str()),
-            Self::TRACESTATE_KEY => self.tracestate_header_raw.as_deref(),
+            Self::TRACESTATE_KEY => self.tracestate.as_deref(),
             _ => None,
         }
     }
