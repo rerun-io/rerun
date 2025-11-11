@@ -170,9 +170,13 @@ mod test {
     #[test]
     fn test_detect_av1_invalid_data() {
         // Random invalid data, the parser will panic on invalid OBU structure.
-        // Make sure we handle that gracefully.
+        // Make sure we handle that gracefully and don't forward to the parser.
         let invalid_data = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
-        let _result = detect_av1_keyframe_start(invalid_data);
+
+        assert!(matches!(
+            detect_av1_keyframe_start(invalid_data),
+            Err(crate::DetectGopStartError::Av1ParserError(..))
+        ));
     }
 
     #[test]
