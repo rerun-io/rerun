@@ -1,5 +1,5 @@
 ---
 title: Navigating the viewer
-order: 600
+hidden: true
 redirect: getting-started/configure-the-viewer/navigating-the-viewer
 ---
