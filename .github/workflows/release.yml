@@ -395,6 +395,7 @@ jobs:
           gh release create $version --verify-tag --draft --title $version $pre_arg
 
       - name: Create comment
+        if: inputs.release-type == 'rc' || inputs.release-type == 'final'
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
