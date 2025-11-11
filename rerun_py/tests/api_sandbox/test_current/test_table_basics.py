@@ -159,7 +159,7 @@ def test_table_overwrite_mode(tmp_path: Path) -> None:
 
 
 def test_read_table_entry(tmp_path: Path) -> None:
-    """Read table data using get_table_entry."""
+    """Demonstrate three ways to read table data: get_table, get_table_entry, and via DataFusion context."""
     with rr.server.Server() as server:
         client = server.client()
 
@@ -170,12 +170,43 @@ def test_read_table_entry(tmp_path: Path) -> None:
         # Add some data
         client.append_to_table("products", product_id=[101, 102, 103], price=[29.99, 49.99, 19.99])
 
-        # Get table entry and read data
+        # Method 1: get_table - returns a DataFrame directly
+        df1 = client.get_table(name="products")
+        assert str(df1.sort("product_id")) == inline_snapshot("""\
+┌────────────────────┬────────────────────┐
+│ product_id         ┆ price              │
+│ ---                ┆ ---                │
+│ type: nullable i32 ┆ type: nullable f64 │
+╞════════════════════╪════════════════════╡
+│ 101                ┆ 29.99              │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 102                ┆ 49.99              │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 103                ┆ 19.99              │
+└────────────────────┴────────────────────┘\
+""")
+
+        # Method 2: get_table_entry - returns a TableEntry with metadata access
         table_entry = client.get_table_entry(name="products")
+        df2 = table_entry.df()
+        assert str(df2.sort("product_id")) == inline_snapshot("""\
+┌────────────────────┬────────────────────┐
+│ product_id         ┆ price              │
+│ ---                ┆ ---                │
+│ type: nullable i32 ┆ type: nullable f64 │
+╞════════════════════╪════════════════════╡
+│ 101                ┆ 29.99              │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 102                ┆ 49.99              │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 103                ┆ 19.99              │
+└────────────────────┴────────────────────┘\
+""")
 
-        df = table_entry.df()
-
-        assert str(df.sort("product_id")) == inline_snapshot("""\
+        # Method 3: via DataFusion SessionContext - useful for SQL queries
+        ctx = client.ctx
+        df3 = ctx.table("products")
+        assert str(df3.sort("product_id")) == inline_snapshot("""\
 ┌────────────────────┬────────────────────┐
 │ product_id         ┆ price              │
 │ ---                ┆ ---                │
