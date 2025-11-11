@@ -3500,6 +3500,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "vertical_world_size",
+                        display_name: "Vertical world size",
+                        component_type: "rerun.components.Length".into(),
+                        docstring_md: "TODO: document",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "look_target",
                         display_name: "Look target",
                         component_type: "rerun.components.Position3D".into(),

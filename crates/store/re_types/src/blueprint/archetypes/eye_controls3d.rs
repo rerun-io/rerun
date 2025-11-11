@@ -40,6 +40,9 @@ pub struct EyeControls3D {
     /// The cameras current position.
     pub position: Option<SerializedComponentBatch>,
 
+    /// TODO: document
+    pub vertical_world_size: Option<SerializedComponentBatch>,
+
     /// The position the camera is currently looking at.
     ///
     /// If this is an orbital camera, this also is the center it orbits around.
@@ -105,6 +108,18 @@ impl EyeControls3D {
             archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
             component: "EyeControls3D:position".into(),
             component_type: Some("rerun.components.Position3D".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::vertical_world_size`].
+    ///
+    /// The corresponding component is [`crate::components::Length`].
+    #[inline]
+    pub fn descriptor_vertical_world_size() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+            component: "EyeControls3D:vertical_world_size".into(),
+            component_type: Some("rerun.components.Length".into()),
         }
     }
 
@@ -175,12 +190,13 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     std::sync::LazyLock::new(|| {
         [
             EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_projection(),
             EyeControls3D::descriptor_position(),
+            EyeControls3D::descriptor_vertical_world_size(),
             EyeControls3D::descriptor_look_target(),
             EyeControls3D::descriptor_eye_up(),
             EyeControls3D::descriptor_speed(),
@@ -189,12 +205,13 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     std::sync::LazyLock::new(|| {
         [
             EyeControls3D::descriptor_kind(),
             EyeControls3D::descriptor_projection(),
             EyeControls3D::descriptor_position(),
+            EyeControls3D::descriptor_vertical_world_size(),
             EyeControls3D::descriptor_look_target(),
             EyeControls3D::descriptor_eye_up(),
             EyeControls3D::descriptor_speed(),
@@ -204,8 +221,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     });
 
 impl EyeControls3D {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 8 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 9 optional
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 impl ::re_types_core::Archetype for EyeControls3D {
@@ -257,6 +274,11 @@ impl ::re_types_core::Archetype for EyeControls3D {
         let position = arrays_by_descr
             .get(&Self::descriptor_position())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_position()));
+        let vertical_world_size = arrays_by_descr
+            .get(&Self::descriptor_vertical_world_size())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_vertical_world_size())
+            });
         let look_target = arrays_by_descr
             .get(&Self::descriptor_look_target())
             .map(|array| {
@@ -282,6 +304,7 @@ impl ::re_types_core::Archetype for EyeControls3D {
             kind,
             projection,
             position,
+            vertical_world_size,
             look_target,
             eye_up,
             speed,
@@ -299,6 +322,7 @@ impl ::re_types_core::AsComponents for EyeControls3D {
             self.kind.clone(),
             self.projection.clone(),
             self.position.clone(),
+            self.vertical_world_size.clone(),
             self.look_target.clone(),
             self.eye_up.clone(),
             self.speed.clone(),
@@ -321,6 +345,7 @@ impl EyeControls3D {
             kind: None,
             projection: None,
             position: None,
+            vertical_world_size: None,
             look_target: None,
             eye_up: None,
             speed: None,
@@ -351,6 +376,10 @@ impl EyeControls3D {
             position: Some(SerializedComponentBatch::new(
                 crate::components::Position3D::arrow_empty(),
                 Self::descriptor_position(),
+            )),
+            vertical_world_size: Some(SerializedComponentBatch::new(
+                crate::components::Length::arrow_empty(),
+                Self::descriptor_vertical_world_size(),
             )),
             look_target: Some(SerializedComponentBatch::new(
                 crate::components::Position3D::arrow_empty(),
@@ -399,6 +428,19 @@ impl EyeControls3D {
     #[inline]
     pub fn with_position(mut self, position: impl Into<crate::components::Position3D>) -> Self {
         self.position = try_serialize_field(Self::descriptor_position(), [position]);
+        self
+    }
+
+    /// TODO: document
+    #[inline]
+    pub fn with_vertical_world_size(
+        mut self,
+        vertical_world_size: impl Into<crate::components::Length>,
+    ) -> Self {
+        self.vertical_world_size = try_serialize_field(
+            Self::descriptor_vertical_world_size(),
+            [vertical_world_size],
+        );
         self
     }
 
@@ -469,6 +511,7 @@ impl ::re_byte_size::SizeBytes for EyeControls3D {
         self.kind.heap_size_bytes()
             + self.projection.heap_size_bytes()
             + self.position.heap_size_bytes()
+            + self.vertical_world_size.heap_size_bytes()
             + self.look_target.heap_size_bytes()
             + self.eye_up.heap_size_bytes()
             + self.speed.heap_size_bytes()

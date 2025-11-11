@@ -35,6 +35,7 @@ class EyeControls3D(Archetype):
         kind: blueprint_components.Eye3DKindLike | None = None,
         projection: blueprint_components.Eye3DProjectionLike | None = None,
         position: datatypes.Vec3DLike | None = None,
+        vertical_world_size: datatypes.Float32Like | None = None,
         look_target: datatypes.Vec3DLike | None = None,
         eye_up: datatypes.Vec3DLike | None = None,
         speed: datatypes.Float64Like | None = None,
@@ -55,6 +56,8 @@ class EyeControls3D(Archetype):
             TODO: document
         position:
             The cameras current position.
+        vertical_world_size:
+            TODO: document
         look_target:
             The position the camera is currently looking at.
 
@@ -89,6 +92,7 @@ class EyeControls3D(Archetype):
                 kind=kind,
                 projection=projection,
                 position=position,
+                vertical_world_size=vertical_world_size,
                 look_target=look_target,
                 eye_up=eye_up,
                 speed=speed,
@@ -104,6 +108,7 @@ class EyeControls3D(Archetype):
             kind=None,
             projection=None,
             position=None,
+            vertical_world_size=None,
             look_target=None,
             eye_up=None,
             speed=None,
@@ -126,6 +131,7 @@ class EyeControls3D(Archetype):
         kind: blueprint_components.Eye3DKindLike | None = None,
         projection: blueprint_components.Eye3DProjectionLike | None = None,
         position: datatypes.Vec3DLike | None = None,
+        vertical_world_size: datatypes.Float32Like | None = None,
         look_target: datatypes.Vec3DLike | None = None,
         eye_up: datatypes.Vec3DLike | None = None,
         speed: datatypes.Float64Like | None = None,
@@ -148,6 +154,8 @@ class EyeControls3D(Archetype):
             TODO: document
         position:
             The cameras current position.
+        vertical_world_size:
+            TODO: document
         look_target:
             The position the camera is currently looking at.
 
@@ -182,6 +190,7 @@ class EyeControls3D(Archetype):
                 "kind": kind,
                 "projection": projection,
                 "position": position,
+                "vertical_world_size": vertical_world_size,
                 "look_target": look_target,
                 "eye_up": eye_up,
                 "speed": speed,
@@ -230,6 +239,15 @@ class EyeControls3D(Archetype):
         converter=components.Position3DBatch._converter,  # type: ignore[misc]
     )
     # The cameras current position.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    vertical_world_size: components.LengthBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.LengthBatch._converter,  # type: ignore[misc]
+    )
+    # TODO: document
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
