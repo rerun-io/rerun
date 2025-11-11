@@ -19,6 +19,29 @@ use re_arrow_combinators::{
     semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
 };
 
+/// Foxglove timestamp fields are by definition relative to a custom epoch.
+/// In this example, we default to an UNIX epoch timestamp interpretation.
+#[derive(Clone, Debug, Default, clap::ValueEnum)]
+enum Epoch {
+    #[default]
+    #[clap(name = "unix")]
+    /// UNIX epoch (1970-01-01T00:00:00Z)
+    Unix,
+    #[clap(name = "custom")]
+    /// A custom, unknown epoch.
+    Custom,
+}
+
+impl Epoch {
+    /// Rerun `TimeType` for the selected epoch.
+    fn time_type(&self) -> TimeType {
+        match self {
+            Epoch::Unix => TimeType::TimestampNs,
+            Epoch::Custom => TimeType::DurationNs,
+        }
+    }
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 struct Args {
@@ -27,6 +50,11 @@ struct Args {
 
     /// The path to the MCAP file.
     filepath: std::path::PathBuf,
+
+    /// The epoch to use for timestamps.
+    /// If set to 'custom', timestamps will be added as a duration since an unknown epoch.
+    #[clap(long, default_value = "unix")]
+    epoch: Epoch,
 }
 
 /// Converts a list of binary arrays to a list of uint8 arrays.
@@ -63,6 +91,9 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
+    // Name of the timestamp field in Foxglove messages, and name of the corresponding Rerun timeline.
+    const TIME_NAME: &str = "timestamp";
+
     // The following could be improved with columnar archetype APIs.
     let dummy_point = Points3D::new([[0.0f32, 0.0, 0.0]])
         .columns_of_unit_batches()
@@ -73,6 +104,14 @@ fn main() -> anyhow::Result<()> {
     // plural
     let instance_poses_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.PosesInFrame:message")
+            .add_time_column(
+                TIME_NAME,
+                args.epoch.time_type(),
+                [
+                    Op::access_field("timestamp"),
+                    Op::func(list_timespec_to_list_nanos),
+                ],
+            )
             .add_component_column(
                 InstancePoses3D::descriptor_translations(),
                 [
@@ -92,6 +131,14 @@ fn main() -> anyhow::Result<()> {
     // singular
     let instance_pose_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.PoseInFrame:message")
+            .add_time_column(
+                TIME_NAME,
+                args.epoch.time_type(),
+                [
+                    Op::access_field("timestamp"),
+                    Op::func(list_timespec_to_list_nanos),
+                ],
+            )
             .add_component_column(
                 InstancePoses3D::descriptor_translations(),
                 [
@@ -109,6 +156,14 @@ fn main() -> anyhow::Result<()> {
 
     let image_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedImage:message")
+            .add_time_column(
+                TIME_NAME,
+                args.epoch.time_type(),
+                [
+                    Op::access_field("timestamp"),
+                    Op::func(list_timespec_to_list_nanos),
+                ],
+            )
             // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
             .add_component_column(
                 EncodedImage::descriptor_blob(),
@@ -119,17 +174,10 @@ fn main() -> anyhow::Result<()> {
             )
             .build();
 
+    // Note: we don't set a timestamp timeline for video streams here, to avoid mixing video durations with real time.
     // TODO(michael): add support for frame_id.
     let video_lens =
         LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedVideo:message")
-            .add_time_column(
-                "timestamp",
-                TimeType::TimestampNs,
-                [
-                    Op::access_field("timestamp"),
-                    Op::func(list_timespec_to_list_nanos),
-                ],
-            )
             .add_component_column(
                 VideoStream::descriptor_codec(),
                 [
