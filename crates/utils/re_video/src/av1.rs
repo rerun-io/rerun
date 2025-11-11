@@ -152,11 +152,9 @@ mod test {
                 // Bit depth should be present, but its zero in this test data
                 assert_eq!(details.bit_depth, Some(0));
             }
+            Err(err) => panic!("Failed to parse valid AV1 data: {err}"),
             Ok(GopStartDetection::NotStartOfGop) => {
-                panic!("Expected to detect GOP start but got NotStartOfGop");
-            }
-            Err(e) => {
-                panic!("Failed to parse valid AV1 data: {e:?}");
+                panic!("Expected to detect GOP start but got `NotStartOfGop`")
             }
         }
     }
