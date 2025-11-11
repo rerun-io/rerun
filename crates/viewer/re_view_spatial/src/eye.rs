@@ -591,7 +591,7 @@ impl ControlEye {
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<Eye> {
+pub fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<Eye> {
     let mut found_camera = None;
 
     for camera in space_cameras {
@@ -649,9 +649,17 @@ impl EyeState {
 
         let mut drag_threshold = 0.0;
 
-        let tracking_entity = eye_property.component_or_empty::<re_types::components::EntityPath>(
-            EyeControls3D::descriptor_tracking_entity().component,
-        )?;
+        let tracking_entity = eye_property
+            .component_or_empty::<re_types::components::EntityPath>(
+                EyeControls3D::descriptor_tracking_entity().component,
+            )?
+            .and_then(|tracking_entity| {
+                if tracking_entity.is_empty() {
+                    None
+                } else {
+                    Some(tracking_entity)
+                }
+            });
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
@@ -868,6 +876,7 @@ impl EyeState {
             eye_up: old_eye_up,
             ..
         } = eye;
+        // Focusing cameras is not something that happens now, since those are always tracked.
         if let Some(target_eye) = find_camera(space_cameras, focused_entity) {
             eye.pos = target_eye.pos_in_world();
             eye.look_target = target_eye.pos_in_world() + target_eye.forward_in_world();

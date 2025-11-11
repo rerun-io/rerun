@@ -27,6 +27,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     SpatialView3D,
+    eye::find_camera,
     space_camera_3d::SpaceCamera3D,
     ui::{SpatialViewState, create_labels},
     view_kind::SpatialViewKind,
@@ -313,7 +314,9 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if ui.ctx().input(|i| i.modifiers.alt) {
+                if ui.ctx().input(|i| i.modifiers.alt)
+                    || find_camera(space_cameras, entity_path).is_some()
+                {
                     if state.last_tracked_entity() != Some(entity_path) {
                         eye_property.save_blueprint_component(
                             ctx,
