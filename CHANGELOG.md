@@ -31,9 +31,6 @@ https://github.com/user-attachments/assets/3cabd74c-8227-4e9d-bd42-fdff36f0466e
 
 You can now also use just a keyboard to navigate in panels with trees (blueprint / streams / recordings).
 
-#### 🗄️ OSS server upgrades
-Our OSS server has server has received some attention this version. And now supports properties, layers and blueprint datasets to name a few.
-
 ### ⚠️ Breaking changes
 - Dropped support for python 3.9, and the minimum supported version is now 3.10.
 - Official Intel (x86) macOS binaries are no longer provided (compiling from source is still possible).
