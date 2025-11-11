@@ -106,25 +106,30 @@ impl Transform for StringToVideoCodecUInt32 {
     type Target = UInt32Array;
 
     fn transform(&self, source: &StringArray) -> Result<Self::Target, Error> {
-        let mut output_builder = UInt32Builder::with_capacity(source.len());
-
-        for i in 0..source.len() {
-            if source.is_null(i) {
-                output_builder.append_null();
-            } else {
-                let codec = match source.value(i).to_lowercase().as_str() {
-                    "h264" => Ok(VideoCodec::H264),
-                    "h265" => Ok(VideoCodec::H265),
-                    unsupported => Err(Error::UnexpectedValue {
-                        expected: &["h264", "h265"],
-                        actual: unsupported.to_owned(),
-                    }),
-                }?;
-                output_builder.append_value(codec as u32);
-            }
-        }
-
-        Ok(output_builder.finish())
+        Ok(source
+            .iter()
+            .try_fold(
+                UInt32Builder::with_capacity(source.len()),
+                |mut builder, maybe_str| {
+                    if let Some(codec_str) = maybe_str {
+                        let codec = match codec_str.to_lowercase().as_str() {
+                            "h264" => VideoCodec::H264,
+                            "h265" => VideoCodec::H265,
+                            _ => {
+                                return Err(Error::UnexpectedValue {
+                                    expected: &["h264", "h265"],
+                                    actual: codec_str.to_owned(),
+                                });
+                            }
+                        };
+                        builder.append_value(codec as u32);
+                    } else {
+                        builder.append_null();
+                    }
+                    Ok(builder)
+                },
+            )?
+            .finish())
     }
 }
 
