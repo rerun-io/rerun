@@ -345,7 +345,7 @@ impl StoreHub {
         // so that recursing through it and freeing the memory doesn’t block the UI thread.
         #[allow(
             clippy::allow_attributes,
-            clippy::disallowed_types
+            clippy::disallowed_types,
             reason = "If this thread spawn fails due to running on Wasm (or for any other reason),
                       the error will be ignored and the store will be dropped on this thread."
         )]
