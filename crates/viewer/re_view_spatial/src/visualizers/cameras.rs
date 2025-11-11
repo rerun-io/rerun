@@ -41,7 +41,10 @@ impl IdentifiedViewSystem for CamerasVisualizer {
 }
 
 struct CameraComponentDataWithFallbacks {
-    pinhole: crate::Pinhole,
+    image_from_camera: glam::Mat3,
+    resolution: glam::Vec2,
+    color: egui::Color32,
+    line_width: re_renderer::Size,
     camera_xyz: components::ViewCoordinates,
     image_plane_distance: f32,
 }
@@ -49,7 +52,6 @@ struct CameraComponentDataWithFallbacks {
 impl CamerasVisualizer {
     fn visit_instance(
         &mut self,
-        tokens: &re_ui::DesignTokens,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
         data_result: &DataResult,
@@ -57,13 +59,10 @@ impl CamerasVisualizer {
         entity_highlight: &ViewOutlineMasks,
     ) {
         // Check for valid resolution.
-        let w = pinhole_properties.pinhole.resolution.x;
-        let h = pinhole_properties.pinhole.resolution.y;
+        let w = pinhole_properties.resolution.x;
+        let h = pinhole_properties.resolution.y;
         let z = pinhole_properties.image_plane_distance;
-        let color = pinhole_properties
-            .pinhole
-            .color
-            .unwrap_or(tokens.frustum_color);
+        let color = pinhole_properties.color;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
             return;
         }
@@ -72,13 +71,20 @@ impl CamerasVisualizer {
         let ent_path = &data_result.entity_path;
         let frame_id = transforms.transform_frame_id_for(ent_path.hash());
 
+        let pinhole = crate::Pinhole {
+            image_from_camera: pinhole_properties.image_from_camera,
+            resolution: pinhole_properties.resolution,
+            color: Some(pinhole_properties.color),
+            line_width: Some(pinhole_properties.line_width),
+        };
+
         // If the camera is the target frame, there is nothing for us to display.
         if transforms.target_frame() == frame_id {
             self.space_cameras.push(SpaceCamera3D {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
-                pinhole: Some(pinhole_properties.pinhole),
+                pinhole: Some(pinhole),
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
             return;
@@ -109,24 +115,22 @@ impl CamerasVisualizer {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,
-            pinhole: Some(pinhole_properties.pinhole),
+            pinhole: Some(pinhole),
             picture_plane_distance: pinhole_properties.image_plane_distance,
         });
 
         // Setup a RDF frustum (for non-RDF we apply a transformation matrix later).
         let corners = [
-            pinhole_properties.pinhole.unproject(vec3(0.0, 0.0, z)),
-            pinhole_properties.pinhole.unproject(vec3(0.0, h, z)),
-            pinhole_properties.pinhole.unproject(vec3(w, h, z)),
-            pinhole_properties.pinhole.unproject(vec3(w, 0.0, z)),
+            pinhole.unproject(vec3(0.0, 0.0, z)),
+            pinhole.unproject(vec3(0.0, h, z)),
+            pinhole.unproject(vec3(w, h, z)),
+            pinhole.unproject(vec3(w, 0.0, z)),
         ];
 
         let up_triangle = [
-            pinhole_properties.pinhole.unproject(vec3(0.4 * w, 0.0, z)),
-            pinhole_properties
-                .pinhole
-                .unproject(vec3(0.5 * w, -0.1 * w, z)),
-            pinhole_properties.pinhole.unproject(vec3(0.6 * w, 0.0, z)),
+            pinhole.unproject(vec3(0.4 * w, 0.0, z)),
+            pinhole.unproject(vec3(0.5 * w, -0.1 * w, z)),
+            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
         ];
 
         let strips = vec![
@@ -158,11 +162,7 @@ impl CamerasVisualizer {
             ),
         ];
 
-        let radius = pinhole_properties
-            .pinhole
-            .line_width
-            .unwrap_or(re_renderer::Size::new_ui_points(1.0));
-
+        let radius = pinhole_properties.line_width;
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id =
@@ -262,19 +262,20 @@ impl VisualizerSystem for CamerasVisualizer {
                     Pinhole::descriptor_image_plane_distance().component,
                 );
             let color = query_results
-                .get_mono::<components::Color>(Pinhole::descriptor_color().component)
-                .map(|color| color.into());
-            let line_width = query_results
-                .get_mono::<components::Radius>(Pinhole::descriptor_line_width().component)
-                .map(|radius| process_radius(&data_result.entity_path, radius));
+                .get_mono_with_fallback::<components::Color>(Pinhole::descriptor_color().component)
+                .into();
+            let line_width = process_radius(
+                &data_result.entity_path,
+                query_results.get_mono_with_fallback::<components::Radius>(
+                    Pinhole::descriptor_line_width().component,
+                ),
+            );
 
             let component_data = CameraComponentDataWithFallbacks {
-                pinhole: crate::Pinhole {
-                    image_from_camera: pinhole_projection.0.into(),
-                    resolution: resolution.into(),
-                    color,
-                    line_width,
-                },
+                image_from_camera: pinhole_projection.0.into(),
+                resolution: resolution.into(),
+                color,
+                line_width,
                 camera_xyz,
                 image_plane_distance: image_plane_distance.into(),
             };
@@ -284,7 +285,6 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             self.visit_instance(
-                ctx.tokens(),
                 &mut line_builder,
                 transforms,
                 data_result,
