@@ -102,6 +102,21 @@ pub enum Projection {
         aspect_ratio: f32,
     },
 
+    /// Perspective camera with different horizontal and vertical fields of view (anamorphic).
+    ///
+    /// This is used for cameras with non-square pixels or asymmetric optical properties,
+    /// where the focal lengths in x and y directions differ (fx ≠ fy).
+    PerspectiveAnamorphic {
+        /// Viewing angle in view space x direction (horizontal screen axis) in radian.
+        horizontal_fov: f32,
+
+        /// Viewing angle in view space y direction (vertical screen axis) in radian.
+        vertical_fov: f32,
+
+        /// Distance of the near plane.
+        near_plane_distance: f32,
+    },
+
     /// Orthographic projection with the camera position at the near plane's center,
     /// looking along the negative z view space axis.
     Orthographic {
@@ -130,6 +145,31 @@ impl Projection {
                     vertical_fov,
                     aspect_ratio,
                     near_plane_distance,
+                )
+            }
+            Self::PerspectiveAnamorphic {
+                horizontal_fov,
+                vertical_fov,
+                near_plane_distance,
+            } => {
+                // Build custom infinite reverse-z projection matrix for anamorphic cameras
+                // Based on standard perspective projection but with separate focal lengths
+                let tan_half_fov_x = (horizontal_fov * 0.5).tan();
+                let tan_half_fov_y = (vertical_fov * 0.5).tan();
+
+                // For infinite reverse-z projection:
+                // x_ndc = x_view / (z_view * tan_half_fov_x)
+                // y_ndc = y_view / (z_view * tan_half_fov_y)
+                // z_ndc = near / z_view (reverse-z, maps near plane to 1.0, infinity to 0.0)
+
+                let x_scale = 1.0 / tan_half_fov_x;
+                let y_scale = 1.0 / tan_half_fov_y;
+
+                glam::Mat4::from_cols(
+                    glam::vec4(x_scale, 0.0, 0.0, 0.0),
+                    glam::vec4(0.0, y_scale, 0.0, 0.0),
+                    glam::vec4(0.0, 0.0, 0.0, -1.0),
+                    glam::vec4(0.0, 0.0, near_plane_distance, 0.0),
                 )
             }
             Self::Orthographic {
@@ -175,6 +215,17 @@ impl Projection {
                 // (btw. this is the same as [1.0 / projection_from_view[0].x, 1.0 / projection_from_view[1].y])
                 glam::vec2(
                     (vertical_fov * 0.5).tan() * aspect_ratio,
+                    (vertical_fov * 0.5).tan(),
+                )
+            }
+            Self::PerspectiveAnamorphic {
+                horizontal_fov,
+                vertical_fov,
+                ..
+            } => {
+                // For anamorphic cameras, calculate tan_half_fov directly from the FOVs
+                glam::vec2(
+                    (horizontal_fov * 0.5).tan(),
                     (vertical_fov * 0.5).tan(),
                 )
             }
@@ -481,7 +532,7 @@ impl ViewBuilder {
             config.resolution_in_pixel[1] as f32,
         );
         let pixel_world_size_from_camera_distance = match config.projection_from_view {
-            Projection::Perspective { .. } => {
+            Projection::Perspective { .. } | Projection::PerspectiveAnamorphic { .. } => {
                 // Determine how wide a pixel is in world space at unit distance from the camera.
                 //
                 // derivation:
@@ -491,6 +542,8 @@ impl ViewBuilder {
                 // want: pixels in world per distance, i.e (screen_in_world / resolution / distance)
                 // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
                 //                                              = tan(FOV / 2) * 2.0 / resolution
+                //
+                // For anamorphic cameras, tan_half_fov already contains separate x and y components
                 tan_half_fov * 2.0 / resolution
             }
             Projection::Orthographic {
@@ -530,7 +583,7 @@ impl ViewBuilder {
                 }
                 OrthographicCameraMode::NearPlaneCenter => {}
             },
-            Projection::Perspective { .. } => {}
+            Projection::Perspective { .. } | Projection::PerspectiveAnamorphic { .. } => {}
         }
 
         let camera_position = config.view_from_world.inverse().translation();

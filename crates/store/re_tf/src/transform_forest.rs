@@ -714,12 +714,12 @@ fn pinhole3d_from_image_plane(
     let translation = (glam::DVec2::from(-image_from_camera.principal_point()) * scale)
         .extend(pinhole_image_plane_distance);
 
+    // For anamorphic cameras, use geometric mean for z-scale to balance both dimensions equally
+    let z_scale = (scale.x * scale.y).sqrt();
+
     let image_plane3d_from_2d_content = glam::DAffine3::from_translation(translation)
             // We want to preserve any depth that might be on the pinhole image.
-            // Use harmonic mean of x/y scale for those.
-            * glam::DAffine3::from_scale(
-                scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
-            );
+            * glam::DAffine3::from_scale(scale.extend(z_scale));
 
     // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
     // determine how the image plane is oriented.
