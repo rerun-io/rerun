@@ -346,6 +346,7 @@ fn test_video_stream_codec_h265() {
 //     test_video(VideoType::VideoStream, VideoCodec::VP9);
 // }
 
+#[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms otherwise we error.
 #[test]
 fn test_video_stream_codec_av1() {
     test_video(VideoType::VideoStream, VideoCodec::AV1);
