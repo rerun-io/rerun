@@ -37,7 +37,6 @@ enum VideoCodec: uint (
     /// AOMedia Video 1 (AV1)
     ///
     /// See <https://en.wikipedia.org/wiki/AV1>
-    // TODO(#10184): Add support for AV1.
     ///
     /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
     AV1 = 0x61763031, // b'av01'.hex()
