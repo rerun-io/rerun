@@ -28,9 +28,11 @@ The viewer is now even more configurable via blueprints. With more options for t
 
 
 #### ⌨🖱️User Interface improvements
-You can now use just a keyboard to navigate in panels with trees (blueprint / streams / recordings).
+We’ve changed the interaction of the time panel! Now the top bar is only for making selections, while the bottom panel is for moving the time cursor. Hold down shift for snap-to-grid! You can also click on events now to select them.
 
-The UI for the time panel has also been improved, easier to select specific times, snap to round times by holding shift, and clearer UI.
+https://github.com/user-attachments/assets/3cabd74c-8227-4e9d-bd42-fdff36f0466e
+
+You can now also use just a keyboard to navigate in panels with trees (blueprint / streams / recordings).
 
 ### ⚠️ Breaking changes
 - Dropped support for python 3.9, and the minimum supported version is now 3.10.
