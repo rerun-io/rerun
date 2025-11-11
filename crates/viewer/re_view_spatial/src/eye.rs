@@ -143,24 +143,36 @@ impl Eye {
             .rotation()
             .slerp(other.world_from_rub_view.rotation(), t);
 
-        let fov_y = if t < 0.02 {
-            self.fov_y
+        let (fov_y, vertical_world_size) = if t < 0.02 {
+            (self.fov_y, self.vertical_world_size)
         } else if t > 0.98 {
-            other.fov_y
+            (other.fov_y, other.vertical_world_size)
         } else if self.fov_y.is_none() && other.fov_y.is_none() {
-            None
+            (None, None)
         } else {
             // TODO(andreas): Interpolating between perspective and ortho is untested and likely more involved than this.
-            Some(egui::lerp(
-                self.fov_y.unwrap_or(0.01)..=other.fov_y.unwrap_or(0.01),
-                t,
-            ))
+            (
+                // Interpolate fov_y for perspective projection.
+                Some(egui::lerp(
+                    self.fov_y.unwrap_or(0.01)..=other.fov_y.unwrap_or(0.01),
+                    t,
+                )),
+                // Interpolate vertical_world_size for orthographic projection.
+                Some(egui::lerp(
+                    self.vertical_world_size
+                        .unwrap_or(Self::DEFAULT_VERTICAL_WORLD_SIZE)
+                        ..=other
+                            .vertical_world_size
+                            .unwrap_or(Self::DEFAULT_VERTICAL_WORLD_SIZE),
+                    t,
+                )),
+            )
         };
 
         Self {
             world_from_rub_view: IsoTransform::from_rotation_translation(rotation, translation),
             fov_y,
-            vertical_world_size: None, // TODO(michael): check this when interpolating ortho projection.
+            vertical_world_size,
         }
     }
 }
@@ -617,6 +629,19 @@ impl EyeController {
             };
             let delta = eye_state.velocity * dt;
 
+            if self.projection == Eye3DProjection::Orthographic {
+                // Changing the eye distance in orthographic projection has no effect.
+                // In order to avoid surprising effects when switching projections, we instead
+                // change the vertical size with W/S in orthographic mode and only move laterally with A/D/Q/E.
+                // if delta.z != 0.0 {
+                //     self.vertical_world_size = Some(
+                //         self.vertical_world_size
+                //             .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
+                //             + delta.z,
+                //     );
+                // }
+                // delta.z = 0.0;
+            }
             self.pos += delta;
             self.look_target += delta;
 
