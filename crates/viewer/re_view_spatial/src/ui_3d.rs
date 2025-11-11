@@ -591,14 +591,14 @@ fn show_orbit_eye_center(
 
 fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    space_cameras: &[PinholeWrapper],
+    cameras: &[PinholeWrapper],
     state: &SpatialViewState,
     item_context: &ItemContext,
     ray_color: egui::Color32,
 ) {
     match item_context {
         ItemContext::TwoD { space_2d, pos } => {
-            if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
+            if let Some(cam) = cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 // Render a thick line to the actual z value if any and a weaker one as an extension
                 // If we don't have a z value, we only render the thick one.
                 let depth = if 0.0 < pos.z && pos.z.is_finite() {
@@ -637,7 +637,7 @@ fn show_projections_from_2d_space(
             ..
         } => {
             if state.last_tracked_entity() != Some(tracked_entity)
-                && let Some(tracked_camera) = space_cameras
+                && let Some(tracked_camera) = cameras
                     .iter()
                     .find(|cam| &cam.ent_path == tracked_entity)
             {

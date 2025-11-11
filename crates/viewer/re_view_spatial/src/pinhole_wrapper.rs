@@ -18,11 +18,9 @@ pub struct PinholeWrapper {
     /// The coordinate system of the pinhole entity ("view-space").
     pub pinhole_view_coordinates: ViewCoordinates,
 
-    /// Camera "Extrinsics", i.e. the pose of the camera.
+    /// Camera "extrinsics", i.e. the pose of the camera.
     pub world_from_camera: IsoTransform,
 
-    // -------------------------
-    // Optional projection-related things:
     /// The projection transform of a child-entity.
     pub pinhole: Pinhole,
 
