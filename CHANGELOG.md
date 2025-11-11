@@ -1,13 +1,10 @@
 # Rerun changelog
 
 
-## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - 
+## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - More blueprint properties
 ### ✨ Overview & highlights
 
-#### 🗄️ OSS server upgrades
-Our OSS server has server has received some attention this version. And now supports properties, layers and blueprint datasets to name a few.
-
-#### 🟦 more blueprint properties
+#### 🟦 more properties configurable from blueprint
 The viewer is now even more configurable via blueprints. With more options for time series, bar chart, graph views, time panel, and the 3D view. With the latter now having the option to control the 3D eye position and look target.
 
 <picture>
@@ -34,10 +31,13 @@ https://github.com/user-attachments/assets/3cabd74c-8227-4e9d-bd42-fdff36f0466e
 
 You can now also use just a keyboard to navigate in panels with trees (blueprint / streams / recordings).
 
+#### 🗄️ OSS server upgrades
+Our OSS server has server has received some attention this version. And now supports properties, layers and blueprint datasets to name a few.
+
 ### ⚠️ Breaking changes
 - Dropped support for python 3.9, and the minimum supported version is now 3.10.
-- Dropped support for Intel (x86) macOS.
-- Removed the `*_cursor` options from the time panel in the python api.
+- Official Intel (x86) macOS binaries are no longer provided (compiling from source is still possible).
+- Removed the option to specify the current time cursor via Blueprint.
 
 See the
 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-27) for more details.
@@ -128,7 +128,7 @@ See the
 
 #### 🤷‍ Other
 - Add client object table writing functions [#11657](https://github.com/rerun-io/rerun/pull/11657)
-- Drop official support for Intel Macs [#11719](https://github.com/rerun-io/rerun/pull/11719)
+- No longer providing official Intel Macs binaries for rerun [#11719](https://github.com/rerun-io/rerun/pull/11719)
 
 ## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-27 - More bug fixes
 
