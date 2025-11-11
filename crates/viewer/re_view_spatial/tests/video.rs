@@ -241,9 +241,13 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
                         (components::VideoCodec::H265, sample_bytes)
                     }
+                    VideoCodec::AV1 => {
+                        // Extract raw sample bytes, under av1 they're OBUs already!
+                        let sample_bytes = sample.get(&samples_buffers, sample_idx).unwrap().data;
+                        (components::VideoCodec::AV1, sample_bytes)
+                    }
                     VideoCodec::VP9 => panic!("VP9 is not supported for video streams"),
                     VideoCodec::VP8 => panic!("VP8 is not supported for video streams"),
-                    VideoCodec::AV1 => panic!("AV1 is not supported for video streams"),
                 };
 
                 let time_ns = sample
@@ -342,8 +346,8 @@ fn test_video_stream_codec_h265() {
 //     test_video(VideoType::VideoStream, VideoCodec::VP9);
 // }
 
-// TODO(#10184): Unsupported codec for VideoStream
-// #[test]
-// fn test_video_stream_codec_av1() {
-//     test_video(VideoType::VideoStream, VideoCodec::AV1);
-// }
+#[cfg(feature = "nasm")] // Need nasm for Av1 decoding on some platforms otherwise we error.
+#[test]
+fn test_video_stream_codec_av1() {
+    test_video(VideoType::VideoStream, VideoCodec::AV1);
+}
