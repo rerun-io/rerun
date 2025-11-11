@@ -477,5 +477,5 @@ class Viewer:
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
         self._event_callbacks.append(callback)
 
-    def set_access_token(self, access_token: str, refresh_token: str) -> None:
-        self._viewer.set_access_token(access_token, refresh_token)
+    def set_access_token(self, access_token: str, refresh_token: str, email: str) -> None:
+        self._viewer.set_access_token(access_token, refresh_token, email)

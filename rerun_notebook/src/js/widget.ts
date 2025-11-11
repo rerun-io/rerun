@@ -140,7 +140,7 @@ class ViewerWidget {
       case "set_access_token": {
         // this.viewer.set_access_token(msg.access_token)
         console.log("XX widget.ts set_access_token", msg)
-        this.viewer.set_access_token(msg.access_token, msg.refresh_token)
+        this.viewer.set_access_token(msg.access_token, msg.refresh_token, msg.email)
         break;
       }
       default: {

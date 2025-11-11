@@ -1151,10 +1151,11 @@ impl App {
             SystemCommand::SetAuthCredentials {
                 access_token,
                 refresh_token,
+                email,
             } => {
                 println!("app.rs SetAuthCredentials");
                 let credentials =
-                    match re_auth::oauth::Credentials::new(access_token, refresh_token) {
+                    match re_auth::oauth::Credentials::new(access_token, refresh_token, email) {
                         Ok(credentials) => credentials,
                         Err(err) => {
                             re_log::error!("Failed to create credentials: {err}");

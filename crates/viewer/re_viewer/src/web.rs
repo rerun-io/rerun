@@ -596,7 +596,7 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn set_access_token(&self, access_token: &str, refresh_token: &str) {
+    pub fn set_access_token(&self, access_token: &str, refresh_token: &str, email: &str) {
         println!("XX widget.ts set_access_token {}", access_token);
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
@@ -622,6 +622,7 @@ impl WebHandle {
         command_sender.send_system(SystemCommand::SetAuthCredentials {
             access_token: access_token.to_owned(),
             refresh_token: refresh_token.to_owned(),
+            email: email.to_owned(),
         });
         println!("XX widget.ts 3");
         egui_ctx.request_repaint();

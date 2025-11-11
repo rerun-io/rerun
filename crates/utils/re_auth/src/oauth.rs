@@ -221,12 +221,13 @@ impl Credentials {
     pub fn new(
         access_token: String,
         refresh_token: String,
+        email: String,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         let claims = Jwt(access_token.clone()).claims()?;
 
         let user = User {
             id: claims.sub,
-            email: "foo@example.com".to_owned(),
+            email,
         };
         let access_token = AccessToken {
             token: access_token,

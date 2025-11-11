@@ -137,6 +137,7 @@ pub enum SystemCommand {
     SetAuthCredentials {
         access_token: String,
         refresh_token: String,
+        email: String,
     },
 }
 
