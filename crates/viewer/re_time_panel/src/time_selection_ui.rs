@@ -6,7 +6,8 @@ use re_log_types::{
 use re_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UICommand, UICommandSender as _, UiExt as _, list_item};
 use re_viewer_context::{
-    SystemCommandSender, TimeControl, TimeControlCommand, ViewerContext, open_url::ViewerOpenUrl,
+    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
+    open_url::ViewerOpenUrl,
 };
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -311,12 +312,12 @@ fn selection_context_menu(
             is_on_selection && copy_command.is_ok() && has_time_range,
             egui::Button::new("Copy link to trimmed time range"),
         )
-        .on_disabled_hover_text(if copy_command.is_err() {
-            "Can't share links to the current recording"
+        .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+            format!("Can't share links to the current recording: {err}")
         } else if !has_time_range {
-            "The current recording doesn't support time range links"
+            "The current recording doesn't support time range links".to_owned()
         } else {
-            "Open the context menu on selected time to copy link"
+            "Open the context menu on selected time to copy link".to_owned()
         })
         .clicked()
         && let Ok(copy_command) = copy_command
