@@ -13,8 +13,8 @@ use tonic::transport::{Server, server::TcpIncoming};
 use tower_http::cors::CorsLayer;
 
 use re_byte_size::SizeBytes;
-use re_log_encoding::{ToApplication as _, ToTransport as _};
-use re_log_types::{DataSourceMessage, TableMsg};
+use re_log_encoding::ToTransport as _;
+use re_log_types::DataSourceMessage;
 use re_protos::sdk_comms::v1alpha1::{
     ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
     WriteTableResponse,
@@ -343,10 +343,11 @@ pub fn spawn_from_rx_set(
 
 /// Start a Rerun server, listening on `addr`.
 ///
-/// This function additionally creates a smart channel, and returns its receiving end.
-/// Any messages received by the server are sent through the channel. This is similar
-/// to creating a client and calling `ReadMessages`, but without the overhead of a
-/// localhost connection.
+/// This function additionally returns broadcast receivers for messages received by the server.
+/// Messages are returned in their transport-level (protobuf) format without decoding,
+/// which avoids expensive Arrow IPC decoding and LZ4 decompression in the proxy server.
+/// This is similar to creating a client and calling `ReadMessages`, but without the overhead
+/// of a localhost connection.
 ///
 /// The server is spawned as a task on a `tokio` runtime. This function panics if the
 /// runtime is not available.
@@ -357,9 +358,40 @@ pub fn spawn_with_recv(
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> (
+    broadcast::Receiver<LogMsgProto>,
+    broadcast::Receiver<TableMsgProto>,
+) {
+    let (message_proxy, broadcast_log_rx, broadcast_table_rx) =
+        MessageProxy::new_with_recv(options);
+    tokio::spawn(async move {
+        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
+            re_log::error!("message proxy server crashed: {err}");
+        }
+    });
+    (broadcast_log_rx, broadcast_table_rx)
+}
+
+/// Start a Rerun server and return decoded messages as smart channels.
+///
+/// This is a compatibility wrapper around [`spawn_with_recv`] that decodes messages
+/// to application-level types. Note that decoding involves expensive Arrow IPC
+/// deserialization and LZ4 decompression. If you're building a proxy or don't need
+/// to inspect message contents, prefer using [`spawn_with_recv`] directly.
+///
+/// The server is spawned as a task on a `tokio` runtime. This function panics if the
+/// runtime is not available.
+///
+/// See [`serve`] for more information about what a Rerun server is.
+pub fn spawn_with_recv_decoded(
+    addr: SocketAddr,
+    options: ServerOptions,
+    shutdown: shutdown::Shutdown,
+) -> (
     re_smart_channel::Receiver<re_log_types::DataSourceMessage>,
     crossbeam::channel::Receiver<re_log_types::TableMsg>,
 ) {
+    let (mut broadcast_log_rx, mut broadcast_table_rx) = spawn_with_recv(addr, options, shutdown);
+
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
@@ -369,20 +401,18 @@ pub fn spawn_with_recv(
         re_smart_channel::SmartChannelSource::MessageProxy(uri),
     );
     let (channel_table_tx, channel_table_rx) = crossbeam::channel::unbounded();
-    let (message_proxy, mut broadcast_log_rx, mut broadcast_table_rx) =
-        MessageProxy::new_with_recv(options);
-    tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, message_proxy, shutdown).await {
-            re_log::error!("message proxy server crashed: {err}");
-        }
-    });
+
+    // Spawn task to decode log messages
     tokio::spawn(async move {
         let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
 
         loop {
             let msg = match broadcast_log_rx.recv().await {
                 Ok(msg) => match msg.msg {
-                    Some(msg) => msg.to_application((&mut app_id_cache, None)),
+                    Some(msg) => {
+                        use re_log_encoding::ToApplication as _;
+                        msg.to_application((&mut app_id_cache, None))
+                    }
                     None => Err(re_protos::missing_field!(
                         re_protos::log_msg::v1alpha1::LogMsg,
                         "msg"
@@ -404,8 +434,6 @@ pub fn spawn_with_recv(
             match msg {
                 Ok(mut log_msg) => {
                     // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements.
-                    // Note that this function is only called by the viewer
-                    // (that's what the message-receiver is connected to).
                     log_msg.insert_arrow_record_batch_metadata(
                         re_sorbet::timestamp_metadata::KEY_TIMESTAMP_VIEWER_IPC_DECODED.to_owned(),
                         re_sorbet::timestamp_metadata::now_timestamp(),
@@ -424,16 +452,17 @@ pub fn spawn_with_recv(
             }
         }
     });
+
+    // Spawn task to decode table messages
     tokio::spawn(async move {
         loop {
             let msg = match broadcast_table_rx.recv().await {
-                Ok(msg) => msg.data.try_into().map(|data| TableMsg {
+                Ok(msg) => msg.data.try_into().map(|data| re_log_types::TableMsg {
                     id: msg.id.into(),
                     data,
                 }),
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
-                    // `crossbeam` does not have a `quit` method, so we're done here.
                     break;
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {
@@ -458,6 +487,7 @@ pub fn spawn_with_recv(
             }
         }
     });
+
     (channel_log_rx, channel_table_rx)
 }
 
@@ -478,10 +508,13 @@ enum Event {
     Table(TableMsgProto),
 }
 
+/// A table message in protobuf format.
 #[derive(Clone)]
-struct TableMsgProto {
-    id: TableIdProto,
-    data: DataframePartProto,
+pub struct TableMsgProto {
+    /// The table ID.
+    pub id: TableIdProto,
+    /// The dataframe part.
+    pub data: DataframePartProto,
 }
 
 #[derive(Clone)]
@@ -1035,6 +1068,7 @@ mod tests {
 
     use re_chunk::RowId;
     use re_log_encoding::rrd::Compression;
+    use re_log_encoding::ToApplication as _;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
     use re_protos::sdk_comms::v1alpha1::{
         message_proxy_service_client::MessageProxyServiceClient,

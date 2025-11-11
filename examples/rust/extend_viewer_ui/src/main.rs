@@ -25,7 +25,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let (rx, _) = re_grpc_server::spawn_with_recv(
+    //
+    // Note: We use `spawn_with_recv_decoded` which decodes messages to application-level types.
+    // For a pure proxy that just relays messages, use `spawn_with_recv` instead to avoid
+    // expensive Arrow IPC decoding and LZ4 decompression.
+    let (rx, _) = re_grpc_server::spawn_with_recv_decoded(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
