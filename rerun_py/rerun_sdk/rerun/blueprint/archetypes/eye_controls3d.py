@@ -33,6 +33,7 @@ class EyeControls3D(Archetype):
         self: Any,
         *,
         kind: blueprint_components.Eye3DKindLike | None = None,
+        projection: blueprint_components.Eye3DProjectionLike | None = None,
         position: datatypes.Vec3DLike | None = None,
         look_target: datatypes.Vec3DLike | None = None,
         eye_up: datatypes.Vec3DLike | None = None,
@@ -50,6 +51,8 @@ class EyeControls3D(Archetype):
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
+        projection:
+            TODO: document
         position:
             The cameras current position.
         look_target:
@@ -84,6 +87,7 @@ class EyeControls3D(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 kind=kind,
+                projection=projection,
                 position=position,
                 look_target=look_target,
                 eye_up=eye_up,
@@ -98,6 +102,7 @@ class EyeControls3D(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             kind=None,
+            projection=None,
             position=None,
             look_target=None,
             eye_up=None,
@@ -119,6 +124,7 @@ class EyeControls3D(Archetype):
         *,
         clear_unset: bool = False,
         kind: blueprint_components.Eye3DKindLike | None = None,
+        projection: blueprint_components.Eye3DProjectionLike | None = None,
         position: datatypes.Vec3DLike | None = None,
         look_target: datatypes.Vec3DLike | None = None,
         eye_up: datatypes.Vec3DLike | None = None,
@@ -138,6 +144,8 @@ class EyeControls3D(Archetype):
 
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
+        projection:
+            TODO: document
         position:
             The cameras current position.
         look_target:
@@ -172,6 +180,7 @@ class EyeControls3D(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "kind": kind,
+                "projection": projection,
                 "position": position,
                 "look_target": look_target,
                 "eye_up": eye_up,
@@ -203,6 +212,15 @@ class EyeControls3D(Archetype):
     #
     # This controls how the eye movement behaves when the user interact with the view.
     # Defaults to orbital.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    projection: blueprint_components.Eye3DProjectionBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.Eye3DProjectionBatch._converter,  # type: ignore[misc]
+    )
+    # TODO: document
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

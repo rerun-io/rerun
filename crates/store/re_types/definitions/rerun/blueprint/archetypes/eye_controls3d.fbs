@@ -12,6 +12,9 @@ table EyeControls3D (
     /// Defaults to orbital.
     kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_optional", nullable, order: 100);
 
+    /// TODO: document
+    projection: rerun.blueprint.components.Eye3DProjection ("attr.rerun.component_optional", nullable, order: 150);
+
     /// The cameras current position.
     position: rerun.components.Position3D ("attr.rerun.component_optional", nullable, order: 200);
 

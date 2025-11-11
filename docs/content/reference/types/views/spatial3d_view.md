@@ -30,6 +30,7 @@ Configuration of debug drawing in the 3D view.
 Configuration for the 3D eye
 
 * `kind`: The kind of the eye for the spatial 3D view.
+* `projection`: TODO: document
 * `position`: The cameras current position.
 * `look_target`: The position the camera is currently looking at.
 * `eye_up`: The up-axis of the eye itself, in world-space.
