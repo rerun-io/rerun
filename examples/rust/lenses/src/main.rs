@@ -57,17 +57,11 @@ fn lens_flag() -> anyhow::Result<Lens> {
         .unwrap();
 
     let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
-        .add_component_column(Scalars::descriptor_scalars(), [Op::func(step_fn)])
-        .add_static_component_column_entity(
-            "/flag",
-            series_points.descriptor,
-            [Op::constant(series_points.list_array)],
-        )
-        .add_static_component_column_entity(
-            "/flag",
-            series_lines.descriptor,
-            [Op::constant(series_lines.list_array)],
-        )
+        .output_columns(|out| out.component(Scalars::descriptor_scalars(), [Op::func(step_fn)]))
+        .output_static_columns_at("/flag", |out| {
+            out.component(series_points.descriptor, [Op::constant(series_points.list_array)])
+                .component(series_lines.descriptor, [Op::constant(series_lines.list_array)])
+        })
         .build();
 
     Ok(lens)
@@ -77,25 +71,26 @@ fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let instruction = Lens::for_input_column("/instructions".parse()?, "example:Instruction:text")
-        .add_component_column(TextDocument::descriptor_text(), [])
+        .output_columns(|out| out.component(TextDocument::descriptor_text(), []))
         .build();
 
     let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
-        .add_component_column_entity(
-            "nested/a",
-            Scalars::descriptor_scalars(),
-            [Op::access_field("a"), Op::cast(DataType::Float64)],
-        )
-        .add_component_column_entity(
-            "nested/b",
-            Scalars::descriptor_scalars(),
-            [Op::access_field("b")],
-        )
+        .output_columns_at("nested/a", |out| {
+            out.component(
+                Scalars::descriptor_scalars(),
+                [Op::access_field("a"), Op::cast(DataType::Float64)],
+            )
+        })
+        .output_columns_at("nested/b", |out| {
+            out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
+        })
         .build();
 
     let time = Lens::for_input_column("/timestamped".parse()?, "my_timestamp")
-        .add_time_column("my_timeline", rerun::time::TimeType::Sequence, [])
-        .add_component_column(ComponentDescriptor::partial("value"), [])
+        .output_columns(|out| {
+            out.time("my_timeline", rerun::time::TimeType::Sequence, [])
+                .component(ComponentDescriptor::partial("value"), [])
+        })
         .build();
 
     let lenses_sink = LensesSink::new(GrpcSink::default())

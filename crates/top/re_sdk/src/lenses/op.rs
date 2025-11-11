@@ -7,13 +7,10 @@
 use std::sync::Arc;
 
 use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
-use re_chunk::{
-    ArrowArray as _,
-    external::arrow::{
-        array::ListArray,
-        compute,
-        datatypes::{DataType, Field},
-    },
+use re_chunk::external::arrow::{
+    array::{Array as _, ListArray},
+    compute,
+    datatypes::{DataType, Field},
 };
 
 use super::Error;
@@ -50,3 +47,4 @@ impl Cast {
         ))
     }
 }
+
