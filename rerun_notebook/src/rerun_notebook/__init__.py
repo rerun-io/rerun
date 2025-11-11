@@ -269,6 +269,13 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def close_url(self, url: str) -> None:
         self.send({"type": "close_url", "url": url})
 
+    def set_access_token(self, access_token: str, refresh_token: str) -> None:
+        self.send({
+            "type": "set_access_token",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        })
+
     def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
         # TODO(jan): maybe allow unregister by making this a map instead

@@ -13,6 +13,7 @@ import urllib.parse
 import secrets
 import hashlib
 import base64
+import uuid
 from typing import Optional, Dict, Any, Tuple
 from flask import Flask, redirect, request, make_response, jsonify
 from IPython.display import display, HTML
@@ -34,10 +35,10 @@ class WorkOSAuth:
         """
 
         self.oauth_server_url = os.getenv("RERUN_OAUTH_SERVER_URL") or "https://api.workos.com/user_management"
-        self.client_id = os.getenv("RERUN_OAUTH_CLIENT_ID") or "client_01JZ3JVQW6JNVXME6HV9G4VR0H"
+        self.client_id = os.getenv("RERUN_OAUTH_CLIENT_ID") or "client_01JZ3JVR1PEVQMS73V86MC4CE2"
         self.code_verifier, self.code_challenge = self.generate_pkce_pair()
-        self.port = 5001
-        self.redirect_uri = f"http://127.0.0.1:{self.port}/login-callback"
+        self.port = 17340
+        self.redirect_uri = f"http://127.0.0.1:{self.port}/logged-in"
 
         if not self.client_id:
             raise ValueError("OAuth2 client ID is required.")
@@ -49,7 +50,7 @@ class WorkOSAuth:
         self.user_profile = None
         self.access_token = None
         self.refresh_token = None
-        self.organization_id = os.getenv("RERUN_OAUTH_ORGANIZATION_ID") or "org_01K6MTXXG0YSAFP6Q7AREM0DJQ"
+        # self.organization_id = os.getenv("RERUN_OAUTH_ORGANIZATION_ID") or "org_01K6MTXXG0YSAFP6Q7AREM0DJQ"
 
         redirect_url_safe = urllib.parse.quote(self.redirect_uri, safe="")
 
@@ -58,7 +59,9 @@ class WorkOSAuth:
             f"?client_id={self.client_id}"
             f"&redirect_uri={redirect_url_safe}"
             f"&response_type=code"
-            f"&organization_id={self.organization_id}"
+            f"&state={str(uuid.uuid4())}"
+            f"&provider=authkit"
+            # f"&organization_id={self.organization_id}"
             f"&code_challenge={self.code_challenge}"
             f"&code_challenge_method=S256"
         )
@@ -126,7 +129,7 @@ class WorkOSAuth:
                     500,
                 )
 
-        @self.app.route("/login-callback")
+        @self.app.route("/logged-in")
         def callback():
             """Handle OAuth callback from WorkOS."""
             try:

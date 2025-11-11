@@ -137,6 +137,12 @@ class ViewerWidget {
         this.viewer.close(msg.url)
         break;
       }
+      case "set_access_token": {
+        // this.viewer.set_access_token(msg.access_token)
+        console.log("XX widget.ts set_access_token", msg)
+        this.viewer.set_access_token(msg.access_token, msg.refresh_token)
+        break;
+      }
       default: {
         console.error("received unknown message type", msg, buffers);
         throw new Error(`unknown message type ${msg}, check console for more details`);

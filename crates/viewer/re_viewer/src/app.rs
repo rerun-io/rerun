@@ -1147,6 +1147,25 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+
+            SystemCommand::SetAuthCredentials {
+                access_token,
+                refresh_token,
+            } => {
+                println!("app.rs SetAuthCredentials");
+                let credentials =
+                    match re_auth::oauth::Credentials::new(access_token, refresh_token) {
+                        Ok(credentials) => credentials,
+                        Err(err) => {
+                            re_log::error!("Failed to create credentials: {err}");
+                            return;
+                        }
+                    };
+                // TODO(aedm): handle errors
+                if let Err(err) = credentials.ensure_stored() {
+                    re_log::error!("Failed to store credentials: {err}");
+                }
+            }
         }
     }
 

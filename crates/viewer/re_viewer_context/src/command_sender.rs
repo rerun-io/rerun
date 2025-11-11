@@ -132,6 +132,12 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+
+    /// Set OAuth credentials
+    SetAuthCredentials {
+        access_token: String,
+        refresh_token: String,
+    },
 }
 
 impl SystemCommand {

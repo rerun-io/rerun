@@ -217,6 +217,30 @@ impl Credentials {
         }))
     }
 
+    // TODO(aedm): doc
+    pub fn new(
+        access_token: String,
+        refresh_token: String,
+    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+        let claims = Jwt(access_token.clone()).claims()?;
+
+        let user = User {
+            id: claims.sub,
+            email: "foo@example.com".to_owned(),
+        };
+        let access_token = AccessToken {
+            token: access_token,
+            expires_at: claims.exp,
+        };
+        let refresh_token = RefreshToken(refresh_token);
+
+        Ok(InMemoryCredentials(Self {
+            user,
+            access_token,
+            refresh_token,
+        }))
+    }
+
     pub fn access_token(&self) -> &AccessToken {
         &self.access_token
     }
@@ -261,6 +285,11 @@ impl AccessToken {
         // Time in seconds since unix epoch
         let now: i64 = jsonwebtoken::get_current_timestamp().saturating_cast();
         self.expires_at - now
+    }
+
+    // TODO(aedm): document
+    pub fn new(token: String, expires_at: i64) -> Self {
+        Self { token, expires_at }
     }
 
     /// Construct an [`AccessToken`] without verifying it.
@@ -311,6 +340,9 @@ pub enum MalformedTokenError {
 
     #[error("failed to deserialize payload: {0}")]
     Serde(serde_json::Error),
+
+    #[error("[temp] JWT error: {0}")]
+    TempJwtError(String),
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
