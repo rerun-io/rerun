@@ -29,7 +29,6 @@ fn send_chunk_builder(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
     chunk: ChunkBuilder,
-    _timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     tx.send(LoadedData::Chunk(
         UrdfDataLoader.name(),
@@ -54,7 +53,6 @@ fn send_archetype(
             timepoint.clone(),
             archetype,
         ),
-        timepoint,
     )
 }
 
@@ -455,7 +453,6 @@ fn log_debug_format(
                 array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
             }],
         ),
-        timepoint,
     )
 }
 
@@ -550,7 +547,6 @@ fn log_link(
                         &re_types::components::Visible::from(false),
                     ),
                 ),
-                timepoint,
             )?;
         }
     }
