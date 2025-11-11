@@ -1,11 +1,11 @@
+"""AI generated examples of udtf because I couldn't find any in Datafusion."""
+
 from __future__ import annotations
 
 import pyarrow as pa
 import pyarrow.dataset as ds
 from datafusion import SessionContext, udtf
 from inline_snapshot import snapshot as inline_snapshot
-
-# TODO: remove this file
 
 
 def test_simple_udtf() -> None:
