@@ -85,6 +85,7 @@ See the
 - Improve data density visualization by sampling dense chunks [#11766](https://github.com/rerun-io/rerun/pull/11766)
 - 3D eye position and other properties in blueprint [#11788](https://github.com/rerun-io/rerun/pull/11788)
 - Support arbitrary transform frame based hierarchies, fully independent of entity hierarchy [#11790](https://github.com/rerun-io/rerun/pull/11790)
+- Removing time selection with context menu [#11845](https://github.com/rerun-io/rerun/pull/11845)
 
 #### 🗄️ OSS server
 - Add support for layers in OSS server [#11532](https://github.com/rerun-io/rerun/pull/11532)
