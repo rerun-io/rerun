@@ -51,7 +51,10 @@ mod metrics_server;
 mod prometheus;
 mod shared_reader;
 mod telemetry;
+mod tracestate;
 mod utils;
+
+use std::collections::HashMap;
 
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 
@@ -128,7 +131,9 @@ pub fn current_trace_headers() -> Option<TraceHeaders> {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TraceHeaders {
     pub traceparent: String,
-    pub tracestate: Option<String>,
+    #[serde(skip)]
+    pub tracestate: HashMap<String, String>,
+    tracestate_header_raw: Option<String>,
 }
 
 impl TraceHeaders {
@@ -138,7 +143,8 @@ impl TraceHeaders {
     fn empty() -> Self {
         Self {
             traceparent: String::new(),
-            tracestate: None,
+            tracestate: HashMap::default(),
+            tracestate_header_raw: None,
         }
     }
 }
@@ -149,7 +155,9 @@ impl opentelemetry::propagation::Injector for TraceHeaders {
             Self::TRACEPARENT_KEY => self.traceparent = value,
             Self::TRACESTATE_KEY => {
                 if !value.is_empty() {
-                    self.tracestate = Some(value);
+                    // Parse tracestate, keeping only valid pairs
+                    self.tracestate = crate::tracestate::parse_pairs(&value);
+                    self.tracestate_header_raw = Some(value);
                 }
             }
             _ => {}
@@ -161,7 +169,7 @@ impl opentelemetry::propagation::Extractor for TraceHeaders {
     fn get(&self, key: &str) -> Option<&str> {
         match key {
             Self::TRACEPARENT_KEY => Some(self.traceparent.as_str()),
-            Self::TRACESTATE_KEY => self.tracestate.as_deref(),
+            Self::TRACESTATE_KEY => self.tracestate_header_raw.as_deref(),
             _ => None,
         }
     }
