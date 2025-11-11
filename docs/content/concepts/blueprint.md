@@ -1,5 +1,5 @@
 ---
-title: Code of Conduct
-order: 100
-redirect: /docs/concepts/blueprints
+title: Blueprint
+hidden: true
+redirect: concepts/blueprints
 ---
