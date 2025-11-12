@@ -1,5 +1,5 @@
-use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
-use smallvec::{SmallVec, smallvec};
+use egui::{os::OperatingSystem, Key, KeyboardShortcut, Modifiers};
+use smallvec::{smallvec, SmallVec};
 
 use crate::context_ext::ContextExt as _;
 
@@ -375,8 +375,8 @@ impl UICommand {
             Self::CloseCurrentRecording => smallvec![],
             Self::CloseAllEntries => smallvec![],
 
-            Self::NextRecording => smallvec![cmd(Key::CloseBracket)],
-            Self::PreviousRecording => smallvec![cmd(Key::OpenBracket)],
+            Self::NextRecording => smallvec![cmd_alt(Key::ArrowDown)],
+            Self::PreviousRecording => smallvec![cmd_alt(Key::ArrowUp)],
 
             Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {
