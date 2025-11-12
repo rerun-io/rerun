@@ -23,8 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A depth image encoded with a codec (e.g. RVL or PNG).
 ///
-/// Mirrors [`archetypes::DepthImage`][crate::archetypes::DepthImage], but stores an encoded blob instead of raw pixels while
-/// carrying enough metadata to decode and render it later.
+/// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Default)]
