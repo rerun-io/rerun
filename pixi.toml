@@ -589,9 +589,11 @@ gh = ">=2.79.0,<3"
 cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0" # For `rerun_notebook`
+inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"
 Pillow = ">=10.0.0" # For `thumbnails.py`
+polars = "==1.35.2" # For api_sandbox
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 types-decorator = "*" # Type hint stubs
