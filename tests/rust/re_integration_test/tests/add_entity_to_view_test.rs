@@ -1,3 +1,5 @@
+//! Tests for adding entities to new views. Checks whether the origin and entity path filter are set correctly.
+
 use egui::accesskit::Role;
 use egui_kittest::kittest::NodeT as _;
 use egui_kittest::kittest::Queryable as _;
@@ -76,7 +78,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness
 }
 
-// Adds `count` views to the given container, names them sequentially from an index base.
+// Adds `count` number of views to the given container, names them sequentially from an index base.
 fn add_views_to_container(
     harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
     cid: Option<ContainerId>,
