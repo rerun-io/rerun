@@ -1,12 +1,15 @@
 use ahash::HashMap;
+use bytemuck::Pod;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
+use re_depth_compression::{decode_ros_rvl_f32, decode_ros_rvl_u16, parse_ros_rvl_metadata};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_types::{
     ComponentIdentifier,
-    components::{ImageBuffer, MediaType},
+    components::{ImageBuffer, ImageFormat as ImageFormatComponent, MediaType},
+    datatypes::{Blob, ChannelDatatype},
     image::{ImageKind, ImageLoadError},
 };
 
@@ -26,7 +29,7 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches the results of decoding [`re_types::archetypes::EncodedImage`].
+/// Caches the results of decoding [`re_types::archetypes::EncodedImage`] and [`re_types::archetypes::EncodedDepthImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
     cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,
@@ -49,9 +52,6 @@ impl ImageDecodeCache {
     ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
-        // In order to avoid loading the same video multiple times with
-        // known and unknown media type, we have to resolve the media type before
-        // loading & building the cache key.
         let Some(media_type) = media_type
             .cloned()
             .or_else(|| MediaType::guess_from_data(image_bytes))
@@ -61,36 +61,82 @@ impl ImageDecodeCache {
 
         let inner_key = Hash64::hash(&media_type);
 
-        // The descriptor should always be the one in the encoded image archetype, but in the future
-        // we may allow overrides such that it is sourced from somewhere else.
+        self.cache_lookup_or_decode(blob_row_id, blob_component, inner_key, || {
+            decode_color_image(
+                blob_row_id,
+                blob_component,
+                image_bytes,
+                media_type.as_str(),
+            )
+        })
+    }
+
+    pub fn entry_encoded_depth(
+        &mut self,
+        blob_row_id: RowId,
+        blob_component: ComponentIdentifier,
+        image_bytes: &[u8],
+        media_type: Option<&MediaType>,
+        format: &ImageFormatComponent,
+    ) -> Result<ImageInfo, ImageLoadError> {
+        re_tracing::profile_function!();
+
+        let Some(media_type) = media_type.cloned() else {
+            return Err(ImageLoadError::UnrecognizedMimeType);
+        };
+
+        let inner_key = Hash64::hash(&(media_type.clone(), *format));
+
+        self.cache_lookup_or_decode(blob_row_id, blob_component, inner_key, || {
+            decode_encoded_depth(
+                blob_row_id,
+                blob_component,
+                image_bytes,
+                media_type.as_str(),
+                format,
+            )
+        })
+    }
+
+    fn cache_lookup_or_decode<F>(
+        &mut self,
+        blob_row_id: RowId,
+        blob_component: ComponentIdentifier,
+        cache_key: Hash64,
+        decode: F,
+    ) -> Result<ImageInfo, ImageLoadError>
+    where
+        F: FnOnce() -> Result<ImageInfo, ImageLoadError>,
+    {
         let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component);
 
-        let lookup = self
+        if let Some(existing) = self
             .cache
-            .entry(blob_cache_key)
-            .or_default()
-            .entry(inner_key)
-            .or_insert_with(|| {
-                let result = decode_image(
-                    blob_row_id,
-                    blob_component,
-                    image_bytes,
-                    media_type.as_str(),
-                );
-                let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
-                self.memory_used += memory_used;
-                DecodedImageResult {
-                    result,
-                    memory_used,
-                    last_use_generation: 0,
-                }
-            });
-        lookup.last_use_generation = self.generation;
-        lookup.result.clone()
+            .get_mut(&blob_cache_key)
+            .and_then(|per_blob| per_blob.get_mut(&cache_key))
+        {
+            existing.last_use_generation = self.generation;
+            return existing.result.clone();
+        }
+
+        let result = decode();
+        let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
+        self.memory_used += memory_used;
+
+        self.cache.entry(blob_cache_key).or_default().insert(
+            cache_key,
+            DecodedImageResult {
+                result: result.clone(),
+                memory_used,
+                last_use_generation: self.generation,
+            },
+        );
+
+        result
     }
 }
 
-fn decode_image(
+fn decode_color_image(
     blob_row_id: RowId,
     blob_component: ComponentIdentifier,
     image_bytes: &[u8],
@@ -117,6 +163,66 @@ fn decode_image(
         format.0,
         ImageKind::Color,
     ))
+}
+
+fn decode_encoded_depth(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    media_type: &str,
+    format: &ImageFormatComponent,
+) -> Result<ImageInfo, ImageLoadError> {
+    match media_type {
+        "application/rvl" => decode_rvl_depth(blob_row_id, blob_component, image_bytes, format),
+        other => Err(ImageLoadError::UnsupportedMimeType(other.to_owned())),
+    }
+}
+
+fn decode_rvl_depth(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    format: &ImageFormatComponent,
+) -> Result<ImageInfo, ImageLoadError> {
+    let metadata = parse_ros_rvl_metadata(image_bytes)
+        .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?;
+
+    let expected_pixels = (format.width as usize) * (format.height as usize);
+    if metadata.num_pixels() != expected_pixels {
+        re_log::warn_once!(
+            "RVL encoded depth metadata {metadata_width}x{metadata_height} disagrees with ImageFormat {}x{}",
+            format.width,
+            format.height,
+            metadata_width = metadata.width,
+            metadata_height = metadata.height
+        );
+    }
+
+    let buffer = match format.datatype() {
+        ChannelDatatype::U16 => decode_ros_rvl_u16(image_bytes, &metadata)
+            .map(vec_into_bytes)
+            .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
+        ChannelDatatype::F32 => decode_ros_rvl_f32(image_bytes, &metadata)
+            .map(vec_into_bytes)
+            .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
+        other => {
+            return Err(ImageLoadError::DecodeError(format!(
+                "Unsupported RVL channel datatype {other:?}"
+            )));
+        }
+    };
+
+    Ok(ImageInfo::from_stored_blob(
+        blob_row_id,
+        blob_component,
+        Blob::from(buffer),
+        format.0,
+        ImageKind::Depth,
+    ))
+}
+
+fn vec_into_bytes<T: Pod>(vec: Vec<T>) -> Vec<u8> {
+    bytemuck::cast_slice(&vec).to_vec()
 }
 
 impl Cache for ImageDecodeCache {
