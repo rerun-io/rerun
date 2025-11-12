@@ -15,7 +15,7 @@ use arrow::{
     datatypes::{DataType, Field, GenericBinaryType},
 };
 
-use re_types::components::VideoCodec;
+use re_types::{components::VideoCodec, reflection::Enum as _};
 
 mod testing_utils;
 
@@ -225,4 +225,30 @@ fn test_string_to_codec_uint32_unsupported() {
         };
         assert_eq!(actual, bad_codec);
     }
+}
+
+/// Tests that all codecs defined in `VideoCodec` are accepted.
+#[test]
+fn test_string_to_codec_uint32_all_supported() {
+    let variants = VideoCodec::variants();
+    let variant_names = variants
+        .iter()
+        .map(|v| format!("{v:?}").to_lowercase())
+        .collect::<Vec<String>>();
+    let input_array = StringArray::from(
+        variant_names
+            .iter()
+            .map(|name| Some(name.as_str()))
+            .collect::<Vec<Option<&str>>>(),
+    );
+    let output_array = StringToVideoCodecUInt32::default()
+        .transform(&input_array)
+        .expect("transformation failed - are all variants of VideoCodec supported?");
+    let expected_array = UInt32Array::from(
+        variants
+            .iter()
+            .map(|v| Some(*v as u32))
+            .collect::<Vec<Option<u32>>>(),
+    );
+    assert_eq!(output_array, expected_array);
 }
