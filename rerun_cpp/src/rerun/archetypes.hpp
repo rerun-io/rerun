@@ -16,6 +16,7 @@
 #include "archetypes/cylinders3d.hpp"
 #include "archetypes/depth_image.hpp"
 #include "archetypes/ellipsoids3d.hpp"
+#include "archetypes/encoded_depth_image.hpp"
 #include "archetypes/encoded_image.hpp"
 #include "archetypes/geo_line_strings.hpp"
 #include "archetypes/geo_points.hpp"

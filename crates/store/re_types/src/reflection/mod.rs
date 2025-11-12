@@ -2068,6 +2068,73 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.EncodedDepthImage"),
+            ArchetypeReflection {
+                display_name: "Encoded depth image",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial2DView", "Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "blob",
+                        display_name: "Blob",
+                        component_type: "rerun.components.Blob".into(),
+                        docstring_md: "The encoded depth payload (e.g. RVL, depth-PNG).",
+                        is_required: true,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "format",
+                        display_name: "Format",
+                        component_type: "rerun.components.ImageFormat".into(),
+                        docstring_md: "Image format (width, height, datatype).\n\nUnlike generic [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image), most depth codecs do not carry full headers,\nso width/height/datatype must be logged explicitly.",
+                        is_required: true,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "media_type",
+                        display_name: "Media type",
+                        component_type: "rerun.components.MediaType".into(),
+                        docstring_md: "Media type of the blob, e.g.:\n\n * `application/rvl` (RVL-compressed 16-bit)\n * `image/png`",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "meter",
+                        display_name: "Meter",
+                        component_type: "rerun.components.DepthMeter".into(),
+                        docstring_md: "Conversion from native units to meters (e.g. `0.001` for millimeters).",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colormap",
+                        display_name: "Colormap",
+                        component_type: "rerun.components.Colormap".into(),
+                        docstring_md: "Optional colormap for visualization of decoded depth.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "depth_range",
+                        display_name: "Depth range",
+                        component_type: "rerun.components.ValueRange".into(),
+                        docstring_md: "Optional visualization range for depth values.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "point_fill_ratio",
+                        display_name: "Point fill ratio",
+                        component_type: "rerun.components.FillRatio".into(),
+                        docstring_md: "Optional point fill ratio for point-cloud projection.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "draw_order",
+                        display_name: "Draw order",
+                        component_type: "rerun.components.DrawOrder".into(),
+                        docstring_md: "Optional 2D draw order.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.EncodedImage"),
             ArchetypeReflection {
                 display_name: "Encoded image",

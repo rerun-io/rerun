@@ -1,0 +1,48 @@
+namespace rerun.archetypes;
+
+/// A depth image encoded with a codec (e.g. RVL or PNG).
+///
+/// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
+table EncodedDepthImage(
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Image & tensor",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq"
+) {
+  // --- Required ---
+
+  /// The encoded depth payload (e.g. RVL, depth-PNG).
+  blob: rerun.components.Blob ("attr.rerun.component_required", order: 1000);
+
+  /// Image format (width, height, datatype).
+  ///
+  /// Unlike generic [archetypes.EncodedImage], most depth codecs do not carry full headers,
+  /// so width/height/datatype must be logged explicitly.
+  format: rerun.components.ImageFormat ("attr.rerun.component_required", order: 1100);
+
+  // --- Recommended ---
+
+  /// Media type of the blob, e.g.:
+  ///
+  ///  * `application/rvl` (RVL-compressed 16-bit)
+  ///  * `image/png`
+  media_type: rerun.components.MediaType ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Conversion from native units to meters (e.g. `0.001` for millimeters).
+  meter: rerun.components.DepthMeter ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// Optional colormap for visualization of decoded depth.
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional visualization range for depth values.
+  depth_range: rerun.components.ValueRange ("attr.rerun.component_optional", nullable, order: 3050);
+
+  /// Optional point fill ratio for point-cloud projection.
+  point_fill_ratio: rerun.components.FillRatio ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional 2D draw order.
+  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3200);
+}
