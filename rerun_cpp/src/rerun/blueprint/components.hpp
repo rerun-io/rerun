@@ -4,6 +4,7 @@
 
 #include "blueprint/components/absolute_time_range.hpp"
 #include "blueprint/components/active_tab.hpp"
+#include "blueprint/components/angular_speed.hpp"
 #include "blueprint/components/apply_latest_at.hpp"
 #include "blueprint/components/auto_layout.hpp"
 #include "blueprint/components/auto_views.hpp"

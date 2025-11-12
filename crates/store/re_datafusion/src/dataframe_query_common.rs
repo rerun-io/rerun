@@ -308,6 +308,12 @@ fn compute_schema_for_query(
     dataset_schema: &Schema,
     query_expression: &QueryExpression,
 ) -> Result<SchemaRef, DataFusionError> {
+    // Short circuit for empty datasets. Needed because `ChunkColumnDescriptors::try_from_arrow_fields`
+    // needs row ids, which we only have for non-empty datasets.
+    if dataset_schema.fields.is_empty() {
+        return Ok(Arc::new(Schema::empty()));
+    }
+
     // Schema returned from `get_dataset_schema` does not match the required ChunkColumnDescriptors ordering
     // which is row id, then time, then data. We don't need perfect ordering other than that.
     let mut fields = dataset_schema

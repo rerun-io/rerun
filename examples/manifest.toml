@@ -182,6 +182,7 @@ examples = [
   "graph_lattice",
   "incremental_logging",
   "lenses",
+  "mcap_protobuf",
   "minimal_serve",
   "server_tables",
   "shared_recording",

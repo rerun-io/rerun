@@ -807,7 +807,7 @@ impl RecordingStreamBuilder {
 /// Shutting down cannot ever block.
 #[derive(Clone)]
 pub struct RecordingStream {
-    inner: Either<Arc<Option<RecordingStreamInner>>, Weak<Option<RecordingStreamInner>>>,
+    inner: Either<Arc<RecordingStreamInner>, Weak<RecordingStreamInner>>,
 }
 
 impl RecordingStream {
@@ -816,10 +816,9 @@ impl RecordingStream {
     /// This works whether the underlying stream is strong or weak.
     #[inline]
     fn with<F: FnOnce(&RecordingStreamInner) -> R, R>(&self, f: F) -> Option<R> {
-        use std::ops::Deref as _;
         match &self.inner {
-            Either::Left(strong) => strong.deref().as_ref().map(f),
-            Either::Right(weak) => weak.upgrade()?.deref().as_ref().map(f),
+            Either::Left(strong) => Some(f(strong)),
+            Either::Right(weak) => Some(f(&*weak.upgrade()?)),
         }
     }
 
@@ -840,6 +839,10 @@ impl RecordingStream {
     }
 
     /// Returns the current reference count of the [`RecordingStream`].
+    ///
+    /// Returns 0 if the stream was created by [`RecordingStream::disabled()`],
+    /// or if it is a [`clone_weak()`][Self::clone_weak] of a stream whose strong instances
+    /// have all been dropped.
     pub fn ref_count(&self) -> usize {
         match &self.inner {
             Either::Left(strong) => Arc::strong_count(strong),
@@ -1102,7 +1105,7 @@ impl RecordingStream {
             sink,
         )
         .map(|inner| Self {
-            inner: Either::Left(Arc::new(Some(inner))),
+            inner: Either::Left(Arc::new(inner)),
         })?;
 
         Ok(stream)
@@ -1112,9 +1115,9 @@ impl RecordingStream {
     /// any memory and doesn't spawn any threads.
     ///
     /// [`Self::is_enabled`] will return `false`.
-    pub fn disabled() -> Self {
+    pub const fn disabled() -> Self {
         Self {
-            inner: Either::Left(Arc::new(None)),
+            inner: Either::Right(Weak::new()),
         }
     }
 }
@@ -2980,6 +2983,8 @@ mod tests {
             .batcher_config(ChunkBatcherConfig::ALWAYS)
             .memory()
             .unwrap();
+
+        assert_eq!(rec.ref_count(), 0);
 
         let rows = example_rows(false);
         for row in rows.clone() {

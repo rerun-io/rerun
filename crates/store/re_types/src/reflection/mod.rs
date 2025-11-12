@@ -58,6 +58,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AngularSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Angular speed, used for rotation speed for example.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(AngularSpeed::default().to_arrow()?),
+                datatype: AngularSpeed::arrow_datatype(),
+                verify_arrow_array: AngularSpeed::verify_arrow_array,
+            },
+        ),
+        (
             <ApplyLatestAt as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3173,14 +3183,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "child_frame",
                         display_name: "Child frame",
                         component_type: "rerun.components.TransformFrameId".into(),
-                        docstring_md: "The child frame this transform transforms from.\n\nThe entity at which the transform relationship of any given child frame is specified mustn't change over time.\nE.g. if you specified the child frame `\"robot_arm\"` on an entity named `\"my_transforms\"`, you may not log transforms\nwith the child frame `\"robot_arm\"` on any other entity than `\"my_transforms\"`.\nAn exception to this rule is static time - you may first mention a child frame on one entity statically and later on\nanother one temporally.\n\n⚠ This currently also affects the child frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        docstring_md: "The child frame this transform transforms from.\n\nThe entity at which the transform relationship of any given child frame is specified mustn't change over time.\nE.g. if you specified the child frame `\"robot_arm\"` on an entity named `\"my_transforms\"`, you may not log transforms\nwith the child frame `\"robot_arm\"` on any other entity than `\"my_transforms\"`.\nAn exception to this rule is static time - you may first mention a child frame on one entity statically and later on\nanother one temporally.\n\n⚠ This currently also affects the child frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
                         name: "parent_frame",
                         display_name: "Parent frame",
                         component_type: "rerun.components.TransformFrameId".into(),
-                        docstring_md: "The parent frame this transform transforms into.\n\n⚠ This currently also affects the parent frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame?speculative-link).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        docstring_md: "The parent frame this transform transforms into.\n\n⚠ This currently also affects the parent frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
@@ -3466,6 +3476,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "position",
+                        display_name: "Position",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The cameras current position.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "look_target",
+                        display_name: "Look target",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The position the camera is currently looking at.\n\nIf this is an orbital camera, this also is the center it orbits around.\n\nBy default this is the center of the scene bounds.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "eye_up",
+                        display_name: "Eye up",
+                        component_type: "rerun.components.Vector3D".into(),
+                        docstring_md: "The up-axis of the eye itself, in world-space.\n\nInitially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if\nthe scene has no up axis defined).",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "speed",
                         display_name: "Speed",
                         component_type: "rerun.components.LinearSpeed".into(),
@@ -3477,6 +3508,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Tracking entity",
                         component_type: "rerun.components.EntityPath".into(),
                         docstring_md: "Currently tracked entity.\n\nIf this is a camera, it takes over the camera pose, otherwise follows the entity.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "spin_speed",
+                        display_name: "Spin speed",
+                        component_type: "rerun.blueprint.components.AngularSpeed".into(),
+                        docstring_md: "What speed, if any, the camera should spin around the eye-up axis.\n\nDefaults to zero, meaning no spinning.",
                         is_required: false,
                     },
                 ],
@@ -3830,6 +3868,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.SpatialInformation"),
+            ArchetypeReflection {
+                display_name: "Spatial information",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "show_axes",
+                        display_name: "Show axes",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether axes should be shown at the origin.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
@@ -3972,13 +4035,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
-                        name: "time",
-                        display_name: "Time",
-                        component_type: "rerun.blueprint.components.TimeInt".into(),
-                        docstring_md: "What time the time cursor should be on.",
-                        is_required: false,
-                    },
-                    ArchetypeFieldReflection {
                         name: "playback_speed",
                         display_name: "Playback speed",
                         component_type: "rerun.blueprint.components.PlaybackSpeed".into(),
@@ -4042,7 +4098,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "space_origin",
                         display_name: "Space origin",
                         component_type: "rerun.blueprint.components.ViewOrigin".into(),
-                        docstring_md: "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
+                        docstring_md: "The \"anchor point\" of this view.\n\nIn other words, the coordinate frame at this entity becomes the reference frame of the view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

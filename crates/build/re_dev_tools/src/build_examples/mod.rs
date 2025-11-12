@@ -13,6 +13,7 @@
 mod example;
 mod install;
 mod manifest;
+mod notebook;
 mod rrd;
 mod snippets;
 mod wait_for_output;
@@ -41,6 +42,7 @@ enum Cmd {
     Rrd(rrd::Rrd),
     Manifest(manifest::Manifest),
     Snippets(snippets::Snippets),
+    Notebook(notebook::Notebook),
 }
 
 pub fn main(args: Args) -> anyhow::Result<()> {
@@ -51,5 +53,6 @@ pub fn main(args: Args) -> anyhow::Result<()> {
         Cmd::Rrd(cmd) => cmd.run(),
         Cmd::Manifest(cmd) => cmd.run(),
         Cmd::Snippets(cmd) => cmd.run(),
+        Cmd::Notebook(cmd) => cmd.run(),
     }
 }

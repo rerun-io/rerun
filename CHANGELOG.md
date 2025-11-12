@@ -1,13 +1,131 @@
 # Rerun changelog
 
 
-## 0.27.0 - TBD - TBD
+## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - Viewer improvements and more blueprint configuration
+### ✨ Overview & highlights
+
+#### 🟦 more properties configurable from blueprint
+The viewer is now even more configurable via blueprints. With more options for time series, bar chart, graph views, time panel, and the 3D view. With the latter now having the option to control the 3D eye position and look target.
+
+<picture>
+  <img src="https://static.rerun.io/changelog-timeseries-blueprint/32be1d5ba351656a39075b4d227f5794d8ebca88/full.png" alt="time series view blueprint example">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/changelog-timeseries-blueprint/32be1d5ba351656a39075b4d227f5794d8ebca88/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/changelog-timeseries-blueprint/32be1d5ba351656a39075b4d227f5794d8ebca88/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/changelog-timeseries-blueprint/32be1d5ba351656a39075b4d227f5794d8ebca88/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/changelog-timeseries-blueprint/32be1d5ba351656a39075b4d227f5794d8ebca88/1200w.png">
+</picture>
+
+<picture>
+  <img src="https://static.rerun.io/changelog-view3d-blueprint/2e50733573a801b052647491d0aabe1feae48855/full.png" alt="3D spatial view blueprint example">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/changelog-view3d-blueprint/2e50733573a801b052647491d0aabe1feae48855/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/changelog-view3d-blueprint/2e50733573a801b052647491d0aabe1feae48855/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/changelog-view3d-blueprint/2e50733573a801b052647491d0aabe1feae48855/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/changelog-view3d-blueprint/2e50733573a801b052647491d0aabe1feae48855/1200w.png">
+</picture>
+
+
+#### ⌨🖱️User Interface improvements
+We’ve changed the interaction of the time panel! Now the top bar is only for making selections, while the bottom panel is for moving the time cursor. Hold down shift for snap-to-grid! You can also click on events now to select them.
+
+https://github.com/user-attachments/assets/3cabd74c-8227-4e9d-bd42-fdff36f0466e
+
+You can now also use just a keyboard to navigate in panels with trees (blueprint / streams / recordings).
 
 ### ⚠️ Breaking changes
+- Dropped support for python 3.9, and the minimum supported version is now 3.10.
+- Official Intel (x86) macOS binaries are no longer provided (compiling from source is still possible).
+- Removed the option to specify the current time cursor via Blueprint.
 
-- Minimum supported Python is now 3.10.
-- Dropped support for Intel Mac
+See the
+🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-27) for more details.
 
+### 🔎 Details
+
+#### 🪵 Log API
+- Functionality to `add_time_column` via lenses [#11596](https://github.com/rerun-io/rerun/pull/11596)
+
+#### 🌊 C++ API
+- CMake: Download Arrow from Tarball URL Instead of Git [#11558](https://github.com/rerun-io/rerun/pull/11558) (thanks [@threeal](https://github.com/threeal)!)
+- Fix in-repo CMake build not resolving builds of rerun_c that weren't made with pixi [#11751](https://github.com/rerun-io/rerun/pull/11751)
+
+#### 🐍 Python API
+- Expose view container visibility in python blueprint api [#11602](https://github.com/rerun-io/rerun/pull/11602)
+- Drop Python 3.9 Support [#11426](https://github.com/rerun-io/rerun/pull/11426)
+- Try to avoid timestamp footguns [#11601](https://github.com/rerun-io/rerun/pull/11601)
+- py-sdk: add register_prefix SDK call [#11600](https://github.com/rerun-io/rerun/pull/11600)
+- [Python] Improve errors in mesh3d_ext [#11662](https://github.com/rerun-io/rerun/pull/11662) (thanks [@iwanders](https://github.com/iwanders)!)
+- Return optional DebugInfo with `memory_used` as part of CreateIndexResponse [#11691](https://github.com/rerun-io/rerun/pull/11691)
+- Add a new `target_partition_num_rows` API parameter to the CreateIndex API [#11686](https://github.com/rerun-io/rerun/pull/11686)
+- Add Ability to Launch OSS Server From Python [#11689](https://github.com/rerun-io/rerun/pull/11689)
+- Our IndexValuesLike type is overly strict. Allow np.datetime64 inputs [#11721](https://github.com/rerun-io/rerun/pull/11721)
+- Add play state, loop mode and loop selection to blueprint [#11664](https://github.com/rerun-io/rerun/pull/11664)
+- Index management APIs: Python bindings, types cleanup, and index statistics [#11729](https://github.com/rerun-io/rerun/pull/11729)
+- Remove time from blueprint [#11823](https://github.com/rerun-io/rerun/pull/11823)
+
+#### 🦀 Rust API
+- Make `Debug` for Utf8 datatype derived component types readable [#11780](https://github.com/rerun-io/rerun/pull/11780)
+
+#### 🪳 Bug fixes
+- Fix handling of components that only vary by descriptors [#11593](https://github.com/rerun-io/rerun/pull/11593)
+- Fix selection panel infinite redraw [#11623](https://github.com/rerun-io/rerun/pull/11623)
+- Allow editing times in the time panel [#11774](https://github.com/rerun-io/rerun/pull/11774)
+- Allow moving text cursor while holding down options/alt [#11773](https://github.com/rerun-io/rerun/pull/11773)
+- Fix 3D eye speed-up modifier not working with scroll-to-zoom [#11814](https://github.com/rerun-io/rerun/pull/11814)
+
+#### 🌁 Viewer improvements
+- Background of graph view is now blueprint configurable [#11522](https://github.com/rerun-io/rerun/pull/11522)
+- Enable multiple instance poses for `Points3D` [#11572](https://github.com/rerun-io/rerun/pull/11572)
+- Disable toast when copying component path [#11495](https://github.com/rerun-io/rerun/pull/11495)
+- Add cyclic colormap [#11498](https://github.com/rerun-io/rerun/pull/11498)
+- Allow eye-camera tracking arbitrary entities in 3D view [#11554](https://github.com/rerun-io/rerun/pull/11554) (thanks [@Gentlegg](https://github.com/Gentlegg)!)
+- Introduce experimental `CoordinateFrame` archetype [#11674](https://github.com/rerun-io/rerun/pull/11674)
+- Add experimental `child_frame` & `parent_frame` to `Transform3D` [#11730](https://github.com/rerun-io/rerun/pull/11730)
+- Expose `TimeSeries` time range & zoom in the Blueprint API [#11621](https://github.com/rerun-io/rerun/pull/11621)
+- Improve data density visualization by sampling dense chunks [#11766](https://github.com/rerun-io/rerun/pull/11766)
+- 3D eye position and other properties in blueprint [#11788](https://github.com/rerun-io/rerun/pull/11788)
+- Support arbitrary transform frame based hierarchies, fully independent of entity hierarchy [#11790](https://github.com/rerun-io/rerun/pull/11790)
+- Removing time selection with context menu [#11845](https://github.com/rerun-io/rerun/pull/11845)
+
+#### 🗄️ OSS server
+- Add support for layers in OSS server [#11532](https://github.com/rerun-io/rerun/pull/11532)
+- Add support for properties in OSS server [#11630](https://github.com/rerun-io/rerun/pull/11630)
+- Simplify `CreateIndexRequest` [#11636](https://github.com/rerun-io/rerun/pull/11636)
+- Improve column projection specification and implement it for OSS server [#11687](https://github.com/rerun-io/rerun/pull/11687)
+- Index management APIs [#11693](https://github.com/rerun-io/rerun/pull/11693)
+- Add support for blueprint dataset [#11758](https://github.com/rerun-io/rerun/pull/11758)
+- Add support for renaming entries [#11777](https://github.com/rerun-io/rerun/pull/11777)
+
+#### 🚀 Performance improvements
+- Perform transform tree walk only once per frame, rather than for every View [#11470](https://github.com/rerun-io/rerun/pull/11470)
+- Significantly improve transform ingestion speed [#11655](https://github.com/rerun-io/rerun/pull/11655)
+- Update mimalloc allocator from v2 to v3 [#11703](https://github.com/rerun-io/rerun/pull/11703)
+- Small performance improvement for many entities [#11720](https://github.com/rerun-io/rerun/pull/11720) (thanks [@joelreymont](https://github.com/joelreymont)!)
+
+#### 🧑‍🏫 Examples
+- Create and write tables in the Rerun server [#11694](https://github.com/rerun-io/rerun/pull/11694)
+
+#### 📚 Docs
+- Clarify that 0B memory limit for grpc server only makes sense if client/server are connected from the start [#11599](https://github.com/rerun-io/rerun/pull/11599)
+- Add documentation to dataframe query workflow and fix api rendering for bindings [#11650](https://github.com/rerun-io/rerun/pull/11650)
+- Expose all the python apis I could find for web docs [#11709](https://github.com/rerun-io/rerun/pull/11709)
+- Reorganize Docs Overview / Getting Started [#11781](https://github.com/rerun-io/rerun/pull/11781)
+
+#### 🖼 UI improvements
+- Fix blueprint / streams tree navigation ignoring focus [#11574](https://github.com/rerun-io/rerun/pull/11574)
+- Keyboard navigation in tree UIs (left panel, streams panel, etc.) [#11595](https://github.com/rerun-io/rerun/pull/11595)
+- Improve formatting of durations and timestamps [#11659](https://github.com/rerun-io/rerun/pull/11659)
+- When scrubbing time, intelligently round to a nice value [#11658](https://github.com/rerun-io/rerun/pull/11658)
+- Hold down shift for snap to grid when moving time cursor [#11757](https://github.com/rerun-io/rerun/pull/11757)
+- Time panel: pick sub-second precision based on zoom level [#11761](https://github.com/rerun-io/rerun/pull/11761)
+- Change how to select loop region in the time panel [#11675](https://github.com/rerun-io/rerun/pull/11675)
+- Click events in the streams view [#11806](https://github.com/rerun-io/rerun/pull/11806)
+
+#### 🗣 Refactors
+- Transform computations are internally now using double precision [#11756](https://github.com/rerun-io/rerun/pull/11756)
+
+#### 🤷‍ Other
+- Add client object table writing functions [#11657](https://github.com/rerun-io/rerun/pull/11657)
+- No longer providing official Intel Macs binaries for rerun [#11719](https://github.com/rerun-io/rerun/pull/11719)
 
 ## [0.26.2](https://github.com/rerun-io/rerun/compare/0.26.1...0.26.2) - 2025-10-27 - More bug fixes
 

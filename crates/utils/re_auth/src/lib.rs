@@ -17,11 +17,14 @@ mod token;
 
 pub mod credentials;
 
-#[cfg(feature = "cli")]
+#[cfg(all(feature = "cli", feature = "oauth", not(target_arch = "wasm32")))]
 pub mod cli;
 
 #[cfg(feature = "oauth")]
 pub mod oauth;
+
+#[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
+pub mod callback_server;
 
 pub use service::client;
 pub use token::{Jwt, TokenError};

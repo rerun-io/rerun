@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 absolute_time_range.rs linguist-generated=true
 active_tab.rs linguist-generated=true
+angular_speed.rs linguist-generated=true
 apply_latest_at.rs linguist-generated=true
 auto_layout.rs linguist-generated=true
 auto_views.rs linguist-generated=true

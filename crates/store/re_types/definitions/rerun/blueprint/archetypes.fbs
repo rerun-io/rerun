@@ -17,6 +17,7 @@ include "./archetypes/near_clip_plane.fbs";
 include "./archetypes/panel_blueprint.fbs";
 include "./archetypes/plot_legend.fbs";
 include "./archetypes/scalar_axis.fbs";
+include "./archetypes/spatial_information.fbs";
 include "./archetypes/tensor_scalar_mapping.fbs";
 include "./archetypes/tensor_slice_selection.fbs";
 include "./archetypes/tensor_view_fit.fbs";

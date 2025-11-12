@@ -12,7 +12,6 @@ namespace rerun.components;
 // TODO(RR-2486): Reference `CoordinateFrame` & `FrameTransform` once they exist.
 // TODO(RR-2698): Explain implicit transform frames in more detail.
 table TransformFrameId (
-  "attr.docs.unreleased",
   "attr.rerun.state": "unstable",
   "attr.arrow.transparent",
   "attr.python.aliases": "str",

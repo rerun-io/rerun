@@ -495,7 +495,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
+                if display_mode.has_time_panel() {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -511,7 +511,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
+                if display_mode.has_selection_panel() {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
