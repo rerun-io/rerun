@@ -637,9 +637,8 @@ fn show_projections_from_2d_space(
             ..
         } => {
             if state.last_tracked_entity() != Some(tracked_entity)
-                && let Some(tracked_camera) = cameras
-                    .iter()
-                    .find(|cam| &cam.ent_path == tracked_entity)
+                && let Some(tracked_camera) =
+                    cameras.iter().find(|cam| &cam.ent_path == tracked_entity)
             {
                 let cam_to_pos = *pos - tracked_camera.position();
                 let distance = cam_to_pos.length();
