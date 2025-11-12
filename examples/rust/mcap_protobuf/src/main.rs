@@ -5,7 +5,7 @@ use rerun::{
     EncodedImage, InstancePoses3D, Points3D, VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
-    lenses::{Error, LensBuilder, LensesSink, Op},
+    lenses::{Error, Lens, LensesSink, Op},
     sink::GrpcSink,
 };
 
@@ -104,95 +104,98 @@ fn main() -> anyhow::Result<()> {
 
     // plural
     let instance_poses_lens =
-        LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.PosesInFrame:message")
-            .add_time_column(
-                TIME_NAME,
-                args.epoch.time_type(),
-                [
-                    Op::access_field("timestamp"),
-                    Op::func(list_timespec_to_list_nanos),
-                ],
-            )
-            .add_component_column(
-                InstancePoses3D::descriptor_translations(),
-                [
-                    // Lens operations always work on component-column level.
-                    Op::access_field("poses"),
-                    Op::flatten(),
-                    Op::access_field("position"),
-                    Op::func(list_xyz_struct_to_list_fixed),
-                ],
-            )
-            .add_static_component_column(
-                dummy_point.descriptor.clone(),
-                [Op::constant(dummy_point.list_array.clone())],
-            )
+        Lens::for_input_column(EntityPathFilter::all(), "foxglove.PosesInFrame:message")
+            .output_columns(|out| {
+                out.time(
+                    TIME_NAME,
+                    args.epoch.time_type(),
+                    [
+                        Op::access_field("timestamp"),
+                        Op::func(list_timespec_to_list_nanos),
+                    ],
+                )
+                .component(
+                    InstancePoses3D::descriptor_translations(),
+                    [
+                        // Lens operations always work on component-column level.
+                        Op::access_field("poses"),
+                        Op::flatten(),
+                        Op::access_field("position"),
+                        Op::func(list_xyz_struct_to_list_fixed),
+                    ],
+                )
+            })
+            .output_static_columns(|out| {
+                out.component(
+                    dummy_point.descriptor.clone(),
+                    [Op::constant(dummy_point.list_array.clone())],
+                )
+            })
             .build();
 
     // singular
     let instance_pose_lens =
-        LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.PoseInFrame:message")
-            .add_time_column(
-                TIME_NAME,
-                args.epoch.time_type(),
-                [
-                    Op::access_field("timestamp"),
-                    Op::func(list_timespec_to_list_nanos),
-                ],
-            )
-            .add_component_column(
-                InstancePoses3D::descriptor_translations(),
-                [
-                    // Lens operations always work on component-column level.
-                    Op::access_field("pose"),
-                    Op::access_field("position"),
-                    Op::func(list_xyz_struct_to_list_fixed),
-                ],
-            )
-            .add_static_component_column(
-                dummy_point.descriptor,
-                [Op::constant(dummy_point.list_array)],
-            )
+        Lens::for_input_column(EntityPathFilter::all(), "foxglove.PoseInFrame:message")
+            .output_columns(|out| {
+                out.time(
+                    TIME_NAME,
+                    args.epoch.time_type(),
+                    [
+                        Op::access_field("timestamp"),
+                        Op::func(list_timespec_to_list_nanos),
+                    ],
+                )
+                .component(
+                    InstancePoses3D::descriptor_translations(),
+                    [
+                        // Lens operations always work on component-column level.
+                        Op::access_field("pose"),
+                        Op::access_field("position"),
+                        Op::func(list_xyz_struct_to_list_fixed),
+                    ],
+                )
+            })
+            .output_static_columns(|out| {
+                out.component(dummy_point.descriptor, [Op::constant(dummy_point.list_array)])
+            })
             .build();
 
     let image_lens =
-        LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedImage:message")
-            .add_time_column(
-                TIME_NAME,
-                args.epoch.time_type(),
-                [
-                    Op::access_field("timestamp"),
-                    Op::func(list_timespec_to_list_nanos),
-                ],
-            )
-            // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
-            .add_component_column(
-                EncodedImage::descriptor_blob(),
-                [
-                    Op::access_field("data"),
-                    Op::func(list_binary_to_list_uint8),
-                ],
-            )
+        Lens::for_input_column(EntityPathFilter::all(), "foxglove.CompressedImage:message")
+            .output_columns(|out| {
+                out.time(
+                    TIME_NAME,
+                    args.epoch.time_type(),
+                    [
+                        Op::access_field("timestamp"),
+                        Op::func(list_timespec_to_list_nanos),
+                    ],
+                )
+                // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
+                .component(
+                    EncodedImage::descriptor_blob(),
+                    [Op::access_field("data"), Op::func(list_binary_to_list_uint8)],
+                )
+            })
             .build();
 
     // Note: we don't set a timestamp timeline for video streams here, to avoid mixing video durations with real time.
     // TODO(michael): add support for frame_id.
     let video_lens =
-        LensBuilder::for_input_column(EntityPathFilter::all(), "foxglove.CompressedVideo:message")
-            .add_component_column(
-                VideoStream::descriptor_codec(),
-                [
-                    Op::access_field("format"),
-                    Op::func(list_string_to_list_codec_uint32),
-                ],
-            )
-            .add_component_column(
-                VideoStream::descriptor_sample(),
-                [
-                    Op::access_field("data"),
-                    Op::func(list_binary_to_list_uint8),
-                ],
-            )
+        Lens::for_input_column(EntityPathFilter::all(), "foxglove.CompressedVideo:message")
+            .output_columns(|out| {
+                out.component(
+                    VideoStream::descriptor_codec(),
+                    [
+                        Op::access_field("format"),
+                        Op::func(list_string_to_list_codec_uint32),
+                    ],
+                )
+                .component(
+                    VideoStream::descriptor_sample(),
+                    [Op::access_field("data"), Op::func(list_binary_to_list_uint8)],
+                )
+            })
             .build();
 
     let lenses_sink = LensesSink::new(GrpcSink::default())
