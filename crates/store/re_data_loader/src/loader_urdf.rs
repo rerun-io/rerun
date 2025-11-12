@@ -495,7 +495,7 @@ fn log_link(
         let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let vis_entity = link_entity / EntityPathPart::new(name);
 
-        // Prefer inline defined material properties, if there's no properties fall back to global material.
+        // Prefer inline defined material properties if present, otherwise fall back to global material.
         let material = material.as_ref().and_then(|mat| {
             if mat.color.is_some() || mat.texture.is_some() {
                 Some(mat)
