@@ -21,6 +21,7 @@ use re_arrow_combinators::{
 
 /// Foxglove timestamp fields are by definition relative to a custom epoch.
 /// In this example, we default to an UNIX epoch timestamp interpretation.
+// TODO(michael): consider adding an "auto" option that picks UNIX if timestamps are above a threshold.
 #[derive(Clone, Debug, Default, clap::ValueEnum)]
 enum Epoch {
     #[default]
