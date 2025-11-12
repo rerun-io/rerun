@@ -79,10 +79,12 @@ impl Transform for TimeSpecToNanos {
     type Target = Int64Array;
 
     fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
-        let seconds_array = DowncastRef::<Int64Type>::new()
-            .transform(&GetField::new("seconds").transform(source)?)?;
-        let nanos_array = DowncastRef::<Int32Type>::new()
-            .transform(&GetField::new("nanos").transform(source)?)?;
+        let seconds_array = GetField::new("seconds")
+            .then(DowncastRef::<Int64Type>::new())
+            .transform(source)?;
+        let nanos_array = GetField::new("nanos")
+            .then(DowncastRef::<Int32Type>::new())
+            .transform(source)?;
 
         Ok(arrow::compute::try_binary(
             &seconds_array,
