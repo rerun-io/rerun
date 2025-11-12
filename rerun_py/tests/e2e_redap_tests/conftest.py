@@ -42,10 +42,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 DATASET_NAME = "dataset"
 
-DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
-TABLE_FILEPATH = (
-    pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
-)
+# Test resources are stored locally in the e2e_redap_tests/resources directory
+RESOURCES_DIR = pathlib.Path(__file__).parent / "resources"
+DATASET_FILEPATH = RESOURCES_DIR / "dataset"
+TABLE_FILEPATH = RESOURCES_DIR / "simple_datatypes"
 
 
 @pytest.fixture(scope="session", autouse=True)
