@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
-import pytest
 from rerun.catalog import EntryKind
 from rerun.server import Server
 
@@ -38,8 +37,6 @@ def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
     assert entry.kind == EntryKind.TABLE
 
 
-# TODO(#11852): fix this
-@pytest.mark.skip(reason="This currently fails because of #11852")
 def test_datafusion_catalog_get_tables(prefilled_catalog: PrefilledCatalog) -> None:
     ctx = prefilled_catalog.client.ctx
 
