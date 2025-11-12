@@ -12,10 +12,9 @@ use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
 use re_protos::TypeConversionError;
-use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableEntry};
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
 use re_protos::external::prost;
-use re_protos::external::prost::Name as _;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
@@ -169,10 +168,10 @@ async fn fetch_entries_and_register_tables(
         });
 
         let is_system_table = match &inner_result {
-            Ok(EntryInner::Table(table)) => {
-                table.table_entry.provider_details.type_url
-                    == re_protos::cloud::v1alpha1::SystemTable::type_url()
-            }
+            Ok(EntryInner::Table(table)) => matches!(
+                table.table_entry.provider_details,
+                ProviderDetails::SystemTable(_)
+            ),
             Err(_) | Ok(EntryInner::Dataset(_)) => false,
         };
         if !is_system_table {

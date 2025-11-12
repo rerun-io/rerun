@@ -1,28 +1,36 @@
 use re_chunk_store::RowId;
-use re_log_types::TimePoint;
+use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
-#[test]
-pub fn test_transform_clamping() {
+/// Whether everything is affected by a base-transform and how it is expressed.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum BaseTransform {
+    None,
+    EntityHierarchy,
+    FrameHierarchy,
+}
+
+fn test_transform_clamping(base_transform: BaseTransform) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     {
-        test_context.log_entity("boxes/clamped_colors", |builder| {
+        test_context.log_entity("base/boxes/clamped_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_types::archetypes::Boxes3D::from_half_sizes([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)])
                     .with_colors([0xFF0000FF]),
             )
         });
 
-        test_context.log_entity("boxes/ignored_colors", |builder| {
+        test_context.log_entity("base/boxes/ignored_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                     [(5.0, 0.0, 0.0)],
                     [(1.0, 1.0, 1.0)],
@@ -31,11 +39,11 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("boxes/more_transforms_than_sizes", |builder| {
+        test_context.log_entity("base/boxes/more_transforms_than_sizes", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                         [(0.0, 5.0, 0.0)], // translation <- `InstancePoseTranslation3D`
                         [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
@@ -44,7 +52,7 @@ pub fn test_transform_clamping() {
                 )
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     // Note that the scale is applied _after_ the translation.
                     // This means that the scales "scales the translation".
                     // Prior to 0.24, the translation and the scale were on "the same transform",
@@ -54,18 +62,18 @@ pub fn test_transform_clamping() {
                 )
         });
 
-        test_context.log_entity("boxes/no_primaries", |builder| {
+        test_context.log_entity("base/boxes/no_primaries", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::Boxes3D::update_fields()
                         .with_centers([(5.0, 0.0, 0.0)])
                         .with_colors([0xFF00FFFF]),
                 )
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
@@ -73,10 +81,10 @@ pub fn test_transform_clamping() {
     }
 
     {
-        test_context.log_entity("spheres/clamped_colors", |builder| {
+        test_context.log_entity("base/spheres/clamped_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_types::archetypes::Ellipsoids3D::from_half_sizes([
                     (1.0, 1.0, 1.0),
                     (2.0, 2.0, 2.0),
@@ -85,10 +93,10 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("spheres/ignored_colors", |builder| {
+        test_context.log_entity("base/spheres/ignored_colors", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_types::archetypes::Ellipsoids3D::from_centers_and_half_sizes(
                     [(5.0, 0.0, 0.0)],
                     [(1.0, 1.0, 1.0)],
@@ -97,11 +105,11 @@ pub fn test_transform_clamping() {
             )
         });
 
-        test_context.log_entity("spheres/more_transforms_than_sizes", |builder| {
+        test_context.log_entity("base/spheres/more_transforms_than_sizes", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::Ellipsoids3D::from_centers_and_half_sizes(
                         [(0.0, 5.0, 0.0)],
                         [(1.0, 1.0, 1.0)],
@@ -110,41 +118,41 @@ pub fn test_transform_clamping() {
                 )
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
 
-        test_context.log_entity("spheres/no_primaries", |builder| {
+        test_context.log_entity("base/spheres/no_primaries", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::Ellipsoids3D::update_fields()
                         .with_centers([(5.0, 0.0, 0.0)])
                         .with_colors([0xFF00FFFF]),
                 )
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
 
-        test_context.log_entity("points/more_transforms_than_positions", |builder| {
+        test_context.log_entity("base/points/more_transforms_than_positions", |builder| {
             builder
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
-                    &re_types::archetypes::Points3D::new([(0.0, 5.0, 0.0), (0.1, 5.1, 0.1)])
+                    TimePoint::STATIC,
+                    &re_types::archetypes::Points3D::new([(0.0, -2.0, 0.0), (0.0, 1.0, 0.0)])
                         .with_colors([0x0000FFFF, 0xFF0000FF])
                         .with_radii([-15.]),
                 )
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_types::archetypes::InstancePoses3D::new().with_translations([
                         (1.0, 1.0, 1.0),
                         (2.0, 2.0, 2.0),
@@ -154,11 +162,76 @@ pub fn test_transform_clamping() {
         });
     }
 
+    match base_transform {
+        BaseTransform::None => {
+            // Done.
+        }
+
+        BaseTransform::EntityHierarchy => {
+            test_context.log_entity("base", |builder| {
+                builder.with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &re_types::archetypes::Transform3D::from_rotation(
+                        re_types::components::RotationAxisAngle::new(
+                            glam::Vec3::Z,
+                            0.5 * std::f32::consts::PI,
+                        ),
+                    ),
+                )
+            });
+        }
+
+        BaseTransform::FrameHierarchy => {
+            // Put everything under a frame that has an identity relationship with a frame called "base".
+            let entity_paths = test_context
+                .store_hub
+                .lock()
+                .active_recording()
+                .expect("expected an active recording")
+                .entity_paths()
+                .into_iter()
+                .cloned()
+                .collect::<Vec<_>>();
+            for path in entity_paths {
+                let frame = format!("frame_{path}");
+                test_context.log_entity(path, |builder| {
+                    builder
+                        .with_archetype_auto_row(
+                            TimePoint::STATIC,
+                            &re_types::archetypes::CoordinateFrame::new(frame.clone()),
+                        )
+                        .with_archetype_auto_row(
+                            TimePoint::STATIC,
+                            &re_types::archetypes::Transform3D::default()
+                                .with_child_frame(frame)
+                                .with_parent_frame("base"),
+                        )
+                    // TODO(RR-2627): Where there's an instance transform we also have to change its frame!
+                });
+            }
+
+            // Create a relationship between `tf#/` and `base`.
+            test_context.log_entity("transforms", |builder| {
+                builder.with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &re_types::archetypes::Transform3D::from_rotation(
+                        re_types::components::RotationAxisAngle::new(
+                            glam::Vec3::Z,
+                            0.5 * std::f32::consts::PI,
+                        ),
+                    )
+                    .with_parent_frame("tf#/")
+                    .with_child_frame("base"),
+                )
+            });
+        }
+    }
+
     let view_ids = setup_blueprint(&mut test_context);
     run_view_ui_and_save_snapshot(
         &test_context,
         view_ids,
-        "transform_clamping",
+        &format!("transform_clamping_with_base_transform_{base_transform:?}"),
         egui::vec2(300.0, 300.0),
     );
 }
@@ -169,24 +242,24 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId, ViewId) {
         let view_blueprint_boxes = ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
-                origin: "/boxes".into(),
-                query_filter: "+ $origin/**".parse().unwrap(),
+                origin: EntityPath::root(),
+                query_filter: "+ /base/boxes/**".parse().unwrap(),
             },
         );
 
         let view_blueprint_spheres = ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
-                origin: "/spheres".into(),
-                query_filter: "+ $origin/**".parse().unwrap(),
+                origin: EntityPath::root(),
+                query_filter: "+ /base/spheres/**".parse().unwrap(),
             },
         );
 
         let view_blueprint_points = ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
-                origin: "/points".into(),
-                query_filter: "+ $origin/**".parse().unwrap(),
+                origin: EntityPath::root(),
+                query_filter: "+ /base/points/**".parse().unwrap(),
             },
         );
 
@@ -234,14 +307,22 @@ fn run_view_ui_and_save_snapshot(
             // * NO other boxes/spheres, in particular no magenta ones!
 
             let name = format!("{name}_{target}");
-            let raw_input = harness.input_mut();
-            raw_input
-                .events
-                .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-            raw_input.events.push(egui::Event::MouseWheel {
-                unit: egui::MouseWheelUnit::Line,
-                delta: egui::Vec2::UP * 2.0,
-                modifiers: egui::Modifiers::default(),
+            test_context.with_blueprint_ctx(|ctx, _| {
+                let property = ViewProperty::from_archetype::<EyeControls3D>(
+                    ctx.current_blueprint(),
+                    ctx.blueprint_query(),
+                    view_id,
+                );
+                property.save_blueprint_component(
+                    &ctx,
+                    &EyeControls3D::descriptor_position(),
+                    &Position3D::new(12.0, 5.0, 12.0),
+                );
+                property.save_blueprint_component(
+                    &ctx,
+                    &EyeControls3D::descriptor_look_target(),
+                    &Position3D::new(0.0, 5.0, 0.0),
+                );
             });
             harness.run_steps(10);
 
@@ -263,17 +344,40 @@ fn run_view_ui_and_save_snapshot(
         // * these points should be in three distinct clusters.
 
         let name = format!("{name}_points");
-        let raw_input = harness.input_mut();
-        raw_input
-            .events
-            .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-        raw_input.events.push(egui::Event::MouseWheel {
-            unit: egui::MouseWheelUnit::Line,
-            delta: egui::Vec2::UP * 2.0,
-            modifiers: egui::Modifiers::default(),
+        test_context.with_blueprint_ctx(|ctx, _| {
+            let property = ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                view_id_points,
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::new(0.0, 0.0, 12.0),
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_look_target(),
+                &Position3D::new(0.0, 0.0, 0.0),
+            );
         });
         harness.run_steps(10);
 
         harness.snapshot(&name);
     }
+}
+
+#[test]
+fn test_transform_clamping_no_base_transform() {
+    test_transform_clamping(BaseTransform::None);
+}
+
+#[test]
+fn test_transform_clamping_entity_hierarchy_base_transform() {
+    test_transform_clamping(BaseTransform::EntityHierarchy);
+}
+
+#[test]
+fn test_transform_clamping_frame_hierarchy_base_transform() {
+    test_transform_clamping(BaseTransform::FrameHierarchy);
 }

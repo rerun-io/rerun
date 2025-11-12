@@ -112,7 +112,7 @@ Run your program with `cargo run` and you should now see this scene in the viewe
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](../navigating-the-viewer.md) and [viewer reference](../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
+_Checkout the [Viewer Walkthrough](../configure-the-viewer/navigating-the-viewer.md) and [viewer reference](../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ## Under the hood
 
@@ -346,7 +346,7 @@ For more details and potential limitations, please refer to [our blog post](http
 
 ### Spawning the Viewer from your process
 
-If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over gRPC.
+If the Rerun Viewer is [installed](../../overview/installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over gRPC.
 If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 ```rust

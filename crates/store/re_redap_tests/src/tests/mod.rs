@@ -11,13 +11,17 @@ mod create_table {
     ) {
     }
 }
+mod create_dataset;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod indexes;
 mod query_dataset;
 mod register_partition;
+mod update_entry;
 #[cfg(feature = "lance")]
 mod write_table;
+
 #[cfg(not(feature = "lance"))]
 mod write_table {
     // This is a stub test so that we do not have issues with setting
@@ -67,23 +71,31 @@ macro_rules! define_redap_tests {
 }
 
 define_redap_tests! {
-    column_projection::test_partition_table_column_projections,
     column_projection::test_dataset_manifest_column_projections,
+    column_projection::test_partition_table_column_projections,
+    create_dataset::create_dataset_tests,
     create_table::create_table_entry,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    indexes::column_doesnt_exist,
+    indexes::index_lifecycle,
+    indexes::dataset_doesnt_exist,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    register_partition::register_and_scan_blueprint_dataset,
     register_partition::register_and_scan_empty_dataset,
     register_partition::register_and_scan_simple_dataset,
     register_partition::register_and_scan_simple_dataset_with_layers,
     register_partition::register_and_scan_simple_dataset_with_properties,
     register_partition::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_partition::register_with_prefix,
+    register_partition::register_partition_bumps_timestamp,
+    update_entry::update_entry_tests,
+    update_entry::update_entry_bumps_timestamp,
     write_table::write_table
 }

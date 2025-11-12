@@ -15,6 +15,9 @@ pub enum Error {
     #[error("Entry name '{0}' already exists")]
     DuplicateEntryNameError(String),
 
+    #[error("Entry id '{0}' already exists")]
+    DuplicateEntryIdError(EntryId),
+
     #[error("Entry name '{0}' not found")]
     EntryNameNotFound(String),
 
@@ -76,9 +79,9 @@ impl From<Error> for tonic::Status {
                 Self::internal(format!("{err:#}"))
             }
 
-            Error::DuplicateEntryNameError(_) | Error::LayerAlreadyExists(_) => {
-                Self::already_exists(format!("{err:#}"))
-            }
+            Error::DuplicateEntryNameError(_)
+            | Error::DuplicateEntryIdError(_)
+            | Error::LayerAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
         }
     }
 }

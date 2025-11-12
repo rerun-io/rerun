@@ -7,8 +7,8 @@ use re_tf::{TransformFrameId, TransformFrameIdHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewContextSystem, ViewContextSystemOncePerFrameResult,
-    typed_fallback_for,
+    DataResult, IdentifiedViewSystem, ViewContext, ViewContextSystem,
+    ViewContextSystemOncePerFrameResult, typed_fallback_for,
 };
 use vec1::smallvec_v1::SmallVec1;
 
@@ -67,14 +67,11 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let mut transform_cache = caches
+        let transform_cache = caches
             .entry(|c: &mut TransformDatabaseStoreCache| c.lock_transform_cache(ctx.recording()));
 
-        let transform_forest = re_tf::TransformForest::new(
-            ctx.recording(),
-            &mut transform_cache,
-            &ctx.current_query(),
-        );
+        let transform_forest =
+            re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
 
         Box::new(TransformTreeContextOncePerFrameResult {
             transform_forest: Arc::new(transform_forest),
@@ -87,7 +84,6 @@ impl ViewContextSystem for TransformTreeContext {
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
-        self.target_frame = TransformFrameIdHash::from_entity_path(query.space_origin);
         self.transform_forest = static_execution_result
             .downcast_ref::<TransformTreeContextOncePerFrameResult>()
             .expect("Unexpected static execution result type")
@@ -95,8 +91,11 @@ impl ViewContextSystem for TransformTreeContext {
             .clone();
 
         // Build a lookup table from entity paths to their transform frame id hashes.
-        // Currently we don't keep it around during the frame, but we may do so in the future.
-        self.entity_transform_id_mapping = collect_entity_to_transform_frame_id_mapping(ctx, query);
+        // Currently, we don't keep it around during the frame, but we may do so in the future.
+        self.entity_transform_id_mapping = EntityTransformIdMapping::new(ctx, query);
+
+        // Target frame is the coordinate frame of the space origin entity.
+        self.target_frame = self.transform_frame_id_for(query.space_origin.hash());
 
         let latest_at_query = query.latest_at_query();
 
@@ -116,6 +115,7 @@ impl ViewContextSystem for TransformTreeContext {
                             || 1.0,
                             |entity_paths| {
                                 lookup_image_plane_distance(ctx, entity_paths, &latest_at_query)
+                                    as f64
                             },
                         )
                 },
@@ -218,26 +218,42 @@ fn lookup_image_plane_distance(
         .into()
 }
 
-/// Build a lookup table from entity paths to their transform frame id hashes.
-fn collect_entity_to_transform_frame_id_mapping(
-    ctx: &ViewContext<'_>,
-    query: &re_viewer_context::ViewQuery<'_>,
-) -> EntityTransformIdMapping {
-    // This is blueprint dependent data and may also change over recording time,
-    // making it non-trivial to cache.
-    // That said, it changes rarely, so there's definitely an opportunity here for lazy updates!
-    re_tracing::profile_function!();
+impl EntityTransformIdMapping {
+    /// Build a lookup table from entity paths to their transform frame id hashes.
+    fn new(ctx: &ViewContext<'_>, query: &re_viewer_context::ViewQuery<'_>) -> Self {
+        // This is blueprint-dependent data and may also change over recording time,
+        // making it non-trivial to cache.
+        // That said, it rarely changes, so there's definitely an opportunity here for lazy updates!
+        re_tracing::profile_function!();
 
-    let latest_at_query = ctx.current_query();
-    let transform_frame_id_component = archetypes::CoordinateFrame::descriptor_frame_id().component;
+        let mut mapping = Self::default();
 
-    let mut entity_transform_id_mapping = EntityTransformIdMapping::default();
-    let EntityTransformIdMapping {
-        transform_frame_id_to_entity_path,
-        entity_path_to_transform_frame_id,
-    } = &mut entity_transform_id_mapping;
+        // Determine mapping for all _visible_ data results.
+        for data_result in query.iter_all_data_results() {
+            mapping.determine_frame_id_mapping_for(ctx, data_result);
+        }
 
-    for data_result in query.iter_all_data_results() {
+        // The origin entity may not be visible, make sure it's included.
+        if !mapping
+            .entity_path_to_transform_frame_id
+            .contains_key(&query.space_origin.hash())
+            && let Some(origin_data_result) = ctx
+                .query_result
+                .tree
+                .lookup_result_by_path(query.space_origin.hash())
+        {
+            mapping.determine_frame_id_mapping_for(ctx, origin_data_result);
+        }
+
+        mapping
+    }
+
+    fn determine_frame_id_mapping_for(&mut self, ctx: &ViewContext<'_>, data_result: &DataResult) {
+        let latest_at_query = ctx.current_query();
+
+        let transform_frame_id_component =
+            archetypes::CoordinateFrame::descriptor_frame_id().component;
+
         let query_shadowed_components = false;
         let results = latest_at_with_blueprint_resolved_data(
             ctx,
@@ -268,7 +284,7 @@ fn collect_entity_to_transform_frame_id_mapping(
 
         let entity_path_hash = data_result.entity_path.hash();
 
-        match transform_frame_id_to_entity_path.entry(frame_id) {
+        match self.transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {
                 entry.insert(SmallVec1::new(entity_path_hash));
             }
@@ -276,8 +292,7 @@ fn collect_entity_to_transform_frame_id_mapping(
                 entry.into_mut().push(entity_path_hash);
             }
         }
-        entity_path_to_transform_frame_id.insert(entity_path_hash, frame_id);
+        self.entity_path_to_transform_frame_id
+            .insert(entity_path_hash, frame_id);
     }
-
-    entity_transform_id_mapping
 }

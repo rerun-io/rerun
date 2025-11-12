@@ -56,12 +56,15 @@ class ValuedEnum(Enum):
 
 
 ValuedEnumLike = ValuedEnum | Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"] | int
+"""A type alias for any ValuedEnum-like object."""
+
 ValuedEnumArrayLike = (
     ValuedEnum
     | Literal["One", "TheAnswer", "Three", "Two", "one", "theanswer", "three", "two"]
     | int
     | Sequence[ValuedEnumLike]
 )
+"""A type alias for any ValuedEnum-like array object."""
 
 
 class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):

@@ -92,6 +92,11 @@ jobs:
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
+      - name: Build notebooks
+        run: |
+          pixi run -e wheel-test build-examples notebook \
+            --channel ${{ inputs.CHANNEL }}
+
       - name: Build & run snippets
         run: |
           pixi run -e wheel-test build-examples snippets \

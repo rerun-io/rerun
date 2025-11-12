@@ -2,8 +2,9 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
 pub fn test_transform_hierarchy() {
@@ -149,12 +150,28 @@ pub fn test_transform_hierarchy() {
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
-    test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+    test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint =
             ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
 
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
+
+        let property = ViewProperty::from_archetype::<EyeControls3D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query(),
+            view_id,
+        );
+        property.save_blueprint_component(
+            ctx,
+            &EyeControls3D::descriptor_position(),
+            &Position3D::new(0.0, 8.0, 10.0),
+        );
+        property.save_blueprint_component(
+            ctx,
+            &EyeControls3D::descriptor_look_target(),
+            &Position3D::new(0.0, 0.0, 2.0),
+        );
 
         view_id
     })
@@ -186,17 +203,6 @@ fn run_view_ui_and_save_snapshot(
         // * 6: The logo rotated 45 degrees around the y axis (green).
         // * 7: The logo is back to normal (frame 0) again.
 
-        let raw_input = harness.input_mut();
-        raw_input
-            .events
-            .push(egui::Event::PointerMoved((100.0, 100.0).into()));
-        raw_input.events.push(egui::Event::MouseWheel {
-            unit: egui::MouseWheelUnit::Line,
-            delta: egui::Vec2::UP * 3.0,
-            modifiers: egui::Modifiers::default(),
-        });
-        harness.run_steps(8);
-
         let mut errors = Vec::new();
         for time in 0..=7 {
             let name = format!("{name}_{}_{time}", timeline.name());
@@ -208,8 +214,9 @@ fn run_view_ui_and_save_snapshot(
                     TimeControlCommand::SetTime((time as i64).into()),
                 ],
             );
+            test_context.handle_system_commands(&harness.ctx);
 
-            harness.run_steps(8);
+            harness.run();
 
             if let Err(err) = harness.try_snapshot(&name) {
                 errors.push(err);

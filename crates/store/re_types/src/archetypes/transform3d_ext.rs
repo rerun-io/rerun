@@ -8,7 +8,7 @@ use super::Transform3D;
 impl Transform3D {
     /// The identity transform.
     ///
-    /// This is the same as [`Self::clear`], i.e. it logs an empty (default)
+    /// This is the same as [`Self::clear_fields`], i.e. it logs an empty (default)
     /// value for all components.
     pub const IDENTITY: Self = Self {
         translation: None,
@@ -18,6 +18,8 @@ impl Transform3D {
         mat3x3: None,
         relation: None,
         axis_length: None,
+        child_frame: None,
+        parent_frame: None,
     };
 
     /// Clear all the fields of a `Transform3D`.

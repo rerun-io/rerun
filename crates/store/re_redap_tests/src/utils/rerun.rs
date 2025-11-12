@@ -6,11 +6,12 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
-use crate::TempPath;
 use re_log_types::{TimePoint, TimeType, Timeline};
 use re_sdk::RecordingStreamBuilder;
 use re_tuid::Tuid;
 use re_types_core::AsComponents;
+
+use crate::TempPath;
 
 // ---
 
@@ -153,6 +154,45 @@ pub fn create_simple_recording_in(
 
         rec.send_chunk(static_chunk);
     }
+
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
+/// Creates a simple blueprint.
+pub fn create_simple_blueprint(
+    tuid_prefix: TuidPrefix,
+    partition_id: &str,
+) -> anyhow::Result<TempPath> {
+    use re_chunk::Chunk;
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_types::blueprint::archetypes::TimePanelBlueprint;
+
+    let tmp_path = {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join(format!("{partition_id}.rbl"));
+        TempPath::new(dir, path)
+    };
+
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
+        .blueprint()
+        .recording_id(partition_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/time_panel"))
+        .with_archetype(
+            next_row_id(),
+            [build_frame_nr(TimeInt::new_temporal(0))],
+            &TimePanelBlueprint::default().with_fps(60.0),
+        )
+        .build()?;
+
+    rec.send_chunk(chunk);
 
     rec.flush_blocking()?;
 

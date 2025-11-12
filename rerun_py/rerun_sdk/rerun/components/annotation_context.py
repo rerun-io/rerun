@@ -69,10 +69,12 @@ if TYPE_CHECKING:
     AnnotationContextLike = (
         AnnotationContext | datatypes.ClassDescriptionArrayLike | Sequence[datatypes.ClassDescriptionMapElemLike]
     )
+    """A type alias for any AnnotationContext-like object."""
 else:
     AnnotationContextLike = Any
 
 AnnotationContextArrayLike = AnnotationContext | Sequence[AnnotationContextLike]
+"""A type alias for any AnnotationContext-like array object."""
 
 
 class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBatchMixin):

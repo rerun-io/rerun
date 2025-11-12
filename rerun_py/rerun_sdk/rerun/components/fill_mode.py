@@ -73,12 +73,15 @@ class FillMode(Enum):
 FillModeLike = (
     FillMode | Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"] | int
 )
+"""A type alias for any FillMode-like object."""
+
 FillModeArrayLike = (
     FillMode
     | Literal["DenseWireframe", "MajorWireframe", "Solid", "densewireframe", "majorwireframe", "solid"]
     | int
     | Sequence[FillModeLike]
 )
+"""A type alias for any FillMode-like array object."""
 
 
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):

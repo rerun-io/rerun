@@ -94,6 +94,9 @@ pub struct DesignTokens {
     /// The color we use to mean "loop this selection"
     pub loop_selection_color: Color32,
 
+    /// Like [`Self::loop_selection_color`], but inactive.
+    pub loop_selection_color_inactive: Color32,
+
     /// The color we use to mean "loop all the data"
     pub loop_everything_color: Color32,
 
@@ -247,6 +250,13 @@ impl DesignTokens {
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
+        let selection_bg_fill = get_color("selection_bg_fill");
+
+        let loop_selection_color =
+            selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha")?);
+        let loop_selection_color_inactive =
+            selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha_inactive")?);
+
         Ok(Self {
             theme,
             typography,
@@ -280,7 +290,8 @@ impl DesignTokens {
             label_button_icon_color: get_color("label_button_icon_color"),
             section_header_color: get_color("section_header_color"),
 
-            loop_selection_color: get_color("loop_selection_color"),
+            loop_selection_color,
+            loop_selection_color_inactive,
             loop_everything_color: get_color("loop_everything_color"),
 
             thumbnail_background_color: get_color("thumbnail_background_color"),
@@ -294,7 +305,7 @@ impl DesignTokens {
             text_color_on_primary_hovered: get_color("text_color_on_primary_hovered"),
             icon_color_on_primary: get_color("icon_color_on_primary"),
             icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
-            selection_bg_fill: get_color("selection_bg_fill"),
+            selection_bg_fill,
             selection_stroke_color: get_color("selection_stroke_color"),
             focus_outline_stroke: get_stroke("focus_outline_stroke"),
             focus_halo_stroke: get_stroke("focus_halo_stroke"),
@@ -615,16 +626,16 @@ impl DesignTokens {
         6.0
     }
 
-    pub fn window_corner_radius(&self) -> f32 {
-        6.0
+    pub fn window_corner_radius(&self) -> u8 {
+        6
     }
 
-    pub fn normal_corner_radius(&self) -> f32 {
-        6.0
+    pub fn normal_corner_radius(&self) -> u8 {
+        6
     }
 
-    pub fn small_corner_radius(&self) -> f32 {
-        4.0
+    pub fn small_corner_radius(&self) -> u8 {
+        4
     }
 
     pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {

@@ -38,6 +38,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
     re_tracing::profile_function!();
     let array = [
         (
+            <AbsoluteTimeRange as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A reference to a range of time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: AbsoluteTimeRange::arrow_datatype(),
+                verify_arrow_array: AbsoluteTimeRange::verify_arrow_array,
+            },
+        ),
+        (
             <ActiveTab as Component>::name(),
             ComponentReflection {
                 docstring_md: "The active tab in a tabbed container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -45,6 +55,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(ActiveTab::default().to_arrow()?),
                 datatype: ActiveTab::arrow_datatype(),
                 verify_arrow_array: ActiveTab::verify_arrow_array,
+            },
+        ),
+        (
+            <AngularSpeed as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Angular speed, used for rotation speed for example.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(AngularSpeed::default().to_arrow()?),
+                datatype: AngularSpeed::arrow_datatype(),
+                verify_arrow_array: AngularSpeed::verify_arrow_array,
             },
         ),
         (
@@ -258,6 +278,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LoopMode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "If playing, whether and how the playback time should loop.",
+                deprecation_summary: None,
+                custom_placeholder: Some(LoopMode::default().to_arrow()?),
+                datatype: LoopMode::arrow_datatype(),
+                verify_arrow_array: LoopMode::verify_arrow_array,
+            },
+        ),
+        (
             <MapProvider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
@@ -285,6 +315,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: Some(PanelState::default().to_arrow()?),
                 datatype: PanelState::arrow_datatype(),
                 verify_arrow_array: PanelState::verify_arrow_array,
+            },
+        ),
+        (
+            <PlayState as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The current play state.",
+                deprecation_summary: None,
+                custom_placeholder: Some(PlayState::default().to_arrow()?),
+                datatype: PlayState::arrow_datatype(),
+                verify_arrow_array: PlayState::verify_arrow_array,
             },
         ),
         (
@@ -355,6 +395,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: None,
                 datatype: TimeInt::arrow_datatype(),
                 verify_arrow_array: TimeInt::verify_arrow_array,
+            },
+        ),
+        (
+            <TimeRange as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A time range on an unspecified timeline using either relative or absolute boundaries.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TimeRange::arrow_datatype(),
+                verify_arrow_array: TimeRange::verify_arrow_array,
             },
         ),
         (
@@ -3130,6 +3180,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "child_frame",
+                        display_name: "Child frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The child frame this transform transforms from.\n\nThe entity at which the transform relationship of any given child frame is specified mustn't change over time.\nE.g. if you specified the child frame `\"robot_arm\"` on an entity named `\"my_transforms\"`, you may not log transforms\nwith the child frame `\"robot_arm\"` on any other entity than `\"my_transforms\"`.\nAn exception to this rule is static time - you may first mention a child frame on one entity statically and later on\nanother one temporally.\n\n⚠ This currently also affects the child frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).\n\nIf not specified, this is set to the implicit transform frame of the current entity path.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "parent_frame",
+                        display_name: "Parent frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The parent frame this transform transforms into.\n\n⚠ This currently also affects the parent frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "axis_length",
                         display_name: "Axis length",
                         component_type: "rerun.components.AxisLength".into(),
@@ -3412,6 +3476,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
+                        name: "position",
+                        display_name: "Position",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The cameras current position.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "look_target",
+                        display_name: "Look target",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The position the camera is currently looking at.\n\nIf this is an orbital camera, this also is the center it orbits around.\n\nBy default this is the center of the scene bounds.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "eye_up",
+                        display_name: "Eye up",
+                        component_type: "rerun.components.Vector3D".into(),
+                        docstring_md: "The up-axis of the eye itself, in world-space.\n\nInitially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if\nthe scene has no up axis defined).",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "speed",
                         display_name: "Speed",
                         component_type: "rerun.components.LinearSpeed".into(),
@@ -3423,6 +3508,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Tracking entity",
                         component_type: "rerun.components.EntityPath".into(),
                         docstring_md: "Currently tracked entity.\n\nIf this is a camera, it takes over the camera pose, otherwise follows the entity.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "spin_speed",
+                        display_name: "Spin speed",
+                        component_type: "rerun.blueprint.components.AngularSpeed".into(),
+                        docstring_md: "What speed, if any, the camera should spin around the eye-up axis.\n\nDefaults to zero, meaning no spinning.",
                         is_required: false,
                     },
                 ],
@@ -3776,6 +3868,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.SpatialInformation"),
+            ArchetypeReflection {
+                display_name: "Spatial information",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "show_axes",
+                        display_name: "Show axes",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether axes should be shown at the origin.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
@@ -3870,13 +3987,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "link",
-                    display_name: "Link",
-                    component_type: "rerun.blueprint.components.LinkAxis".into(),
-                    docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?",
-                    is_required: false,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "link",
+                        display_name: "Link",
+                        component_type: "rerun.blueprint.components.LinkAxis".into(),
+                        docstring_md: "How should the horizontal/X/time axis be linked across multiple plots?\n\nLinking with global will ignore `view_range`.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "view_range",
+                        display_name: "View range",
+                        component_type: "rerun.blueprint.components.TimeRange".into(),
+                        docstring_md: "The view range of the horizontal/X/time axis.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "zoom_lock",
+                        display_name: "Zoom lock",
+                        component_type: "rerun.blueprint.components.LockRangeDuringZoom".into(),
+                        docstring_md: "If enabled, the X axis range will remain locked to the specified range when zooming.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (
@@ -3902,13 +4035,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
-                        name: "time",
-                        display_name: "Time",
-                        component_type: "rerun.blueprint.components.TimeInt".into(),
-                        docstring_md: "What time the time cursor should be on.",
-                        is_required: false,
-                    },
-                    ArchetypeFieldReflection {
                         name: "playback_speed",
                         display_name: "Playback speed",
                         component_type: "rerun.blueprint.components.PlaybackSpeed".into(),
@@ -3920,6 +4046,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Fps",
                         component_type: "rerun.blueprint.components.Fps".into(),
                         docstring_md: "Frames per second. Only applicable for sequence timelines.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "play_state",
+                        display_name: "Play state",
+                        component_type: "rerun.blueprint.components.PlayState".into(),
+                        docstring_md: "If the time is currently paused, playing, or following.\n\nDefaults to either playing or following, depending on the data source.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "loop_mode",
+                        display_name: "Loop mode",
+                        component_type: "rerun.blueprint.components.LoopMode".into(),
+                        docstring_md: "How the time should loop. A selection loop only works if there is also a `time_selection` passed.\n\nDefaults to off.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "time_selection",
+                        display_name: "Time selection",
+                        component_type: "rerun.blueprint.components.AbsoluteTimeRange".into(),
+                        docstring_md: "Selects a range of time on the time panel.",
                         is_required: false,
                     },
                 ],
@@ -3951,7 +4098,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "space_origin",
                         display_name: "Space origin",
                         component_type: "rerun.blueprint.components.ViewOrigin".into(),
-                        docstring_md: "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
+                        docstring_md: "The \"anchor point\" of this view.\n\nIn other words, the coordinate frame at this entity becomes the reference frame of the view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

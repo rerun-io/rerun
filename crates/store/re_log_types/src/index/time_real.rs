@@ -26,12 +26,6 @@ impl TimeReal {
     pub const ZERO: Self = Self(FixedI128::ZERO);
     pub const MAX: Self = Self(FixedI128::MAX);
 
-    /// Return the integer part
-    #[inline]
-    pub(crate) fn int(&self) -> i64 {
-        self.0.int().lossy_into()
-    }
-
     #[inline]
     pub fn floor(&self) -> TimeInt {
         let int: i64 = self.0.saturating_floor().lossy_into();

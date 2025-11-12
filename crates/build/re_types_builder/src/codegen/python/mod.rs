@@ -5,6 +5,7 @@ mod views;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     iter,
+    ops::Deref,
 };
 
 use anyhow::Context as _;
@@ -318,6 +319,19 @@ impl ExtensionClass {
     }
 }
 
+struct ExtensionClasses {
+    classes: BTreeMap<String, ExtensionClass>,
+}
+
+impl Deref for ExtensionClasses {
+    type Target = BTreeMap<String, ExtensionClass>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.classes
+    }
+}
+
 impl PythonCodeGenerator {
     fn generate_folder(
         &self,
@@ -334,6 +348,25 @@ impl PythonCodeGenerator {
         let mut mods = BTreeMap::<String, Vec<String>>::new();
         let mut scoped_mods = BTreeMap::<String, BTreeMap<String, Vec<String>>>::new();
         let mut test_mods = BTreeMap::<String, Vec<String>>::new();
+
+        let ext_classes = ExtensionClasses {
+            classes: objects
+                .objects_of_kind(object_kind)
+                .map(|obj| {
+                    let kind_path = if let Some(scope) = obj.scope() {
+                        self.pkg_path
+                            .join(scope)
+                            .join(object_kind.plural_snake_case())
+                    } else {
+                        kind_path.clone()
+                    };
+
+                    let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
+
+                    (obj.fqname.clone(), ext_class)
+                })
+                .collect(),
+        };
 
         // Generate folder contents:
         for obj in objects.objects_of_kind(object_kind) {
@@ -353,7 +386,9 @@ impl PythonCodeGenerator {
                 kind_path.join(format!("{}.py", obj.snake_case_name()))
             };
 
-            let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
+            let ext_class = ext_classes
+                .get(&obj.fqname)
+                .expect("We created this for every object");
 
             let names = match obj.kind {
                 ObjectKind::Datatype | ObjectKind::Component => {
@@ -493,17 +528,29 @@ impl PythonCodeGenerator {
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
                     if obj.kind == ObjectKind::View {
-                        code_for_view(reporter, objects, &ext_class, obj)
+                        code_for_view(reporter, objects, ext_class, obj)
                     } else {
-                        code_for_struct(reporter, type_registry, &ext_class, objects, obj)
+                        code_for_struct(
+                            reporter,
+                            type_registry,
+                            ext_class,
+                            objects,
+                            &ext_classes,
+                            obj,
+                        )
                     }
                 }
                 crate::objects::ObjectClass::Enum(_) => {
-                    code_for_enum(reporter, type_registry, &ext_class, objects, obj)
+                    code_for_enum(reporter, type_registry, ext_class, objects, obj)
                 }
-                crate::objects::ObjectClass::Union => {
-                    code_for_union(reporter, type_registry, &ext_class, objects, obj)
-                }
+                crate::objects::ObjectClass::Union => code_for_union(
+                    reporter,
+                    type_registry,
+                    ext_class,
+                    objects,
+                    &ext_classes,
+                    obj,
+                ),
             };
 
             code.push_indented(0, &obj_code, 1);
@@ -591,6 +638,7 @@ fn code_for_struct(
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
+    ext_classes: &ExtensionClasses,
     obj: &Object,
 ) -> String {
     assert!(obj.is_struct());
@@ -608,7 +656,7 @@ fn code_for_struct(
     if !obj.is_delegating_component() {
         for field in fields {
             let (default_converter, converter_function) =
-                quote_field_converter_from_field(obj, objects, field);
+                quote_field_converter_from_field(obj, objects, ext_classes, field);
 
             let converter_override_name = format!("{}{FIELD_CONVERTER_SUFFIX}", field.name);
 
@@ -997,7 +1045,16 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
     code.push_unindented(
         format!(
             r#"
+            """A type alias for any {enum_name}-like object."""
+            "#,
+        ),
+        1,
+    );
+    code.push_unindented(
+        format!(
+            r#"
             {enum_name}ArrayLike = {enum_name} | {variants} | int |Sequence[{enum_name}Like]
+            """A type alias for any {enum_name}-like array object."""
             "#,
         ),
         2,
@@ -1027,6 +1084,7 @@ fn code_for_union(
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
+    ext_classes: &ExtensionClasses,
     obj: &Object,
 ) -> String {
     assert_eq!(obj.class, ObjectClass::Union);
@@ -1106,7 +1164,7 @@ fn code_for_union(
 
     // provide a default converter if *all* arms are of the same type
     let default_converter = if field_types.len() == 1 {
-        quote_field_converter_from_field(obj, objects, &fields[0]).0
+        quote_field_converter_from_field(obj, objects, ext_classes, &fields[0]).0
     } else {
         String::new()
     };
@@ -1520,13 +1578,19 @@ fn quote_aliases_from_object(obj: &Object) -> String {
                 r#"
                 if TYPE_CHECKING:
                     {name}Like = {name}{aliases}
+                    """A type alias for any {name}-like object."""
                 else:
                     {name}Like = Any
                 "#,
                 aliases = format!(" | {aliases}").trim_end_matches(" | "),
             )
         } else {
-            format!("{name}Like = {name}")
+            format!(
+                r#"
+                {name}Like = {name}
+                """A type alias for any {name}-like object."""
+                "#,
+            )
         },
         1,
     );
@@ -1535,6 +1599,7 @@ fn quote_aliases_from_object(obj: &Object) -> String {
         format!(
             r#"
             {name}ArrayLike = {name} | Sequence[{name}Like]{array_aliases}
+            """A type alias for any {name}-like array object."""
             "#,
             array_aliases = format!(" | {array_aliases}").trim_end_matches(" | "),
         ),
@@ -1566,7 +1631,10 @@ fn quote_union_aliases_from_object<'a>(
         r#"
             if TYPE_CHECKING:
                 {name}Like = {name} | {union_fields}{aliases}
+                """A type alias for any {name}-like object."""
+
                 {name}ArrayLike = {name} | {union_fields} | Sequence[{name}Like]{array_aliases}
+                """A type alias for any {name}-like array object."""
             else:
                 {name}Like = Any
                 {name}ArrayLike = Any
@@ -1711,6 +1779,7 @@ fn quote_field_type_from_field(
 fn quote_field_converter_from_field(
     obj: &Object,
     objects: &Objects,
+    ext_classes: &ExtensionClasses,
     field: &ObjectField,
 ) -> (String, String) {
     let mut function = String::new();
@@ -1786,9 +1855,14 @@ fn quote_field_converter_from_field(
             });
             let field_obj = &objects[fqname];
 
-            // we generate a default converter only if the field's type can be constructed with a
-            // single argument
-            if field_obj.fields.len() == 1 || field_obj.is_union() {
+            // If the extension class has a custom init we don't know if we can
+            // pass a single argument to it.
+            //
+            // We generate a default converter only if the field's type can be constructed with a
+            // single argument.
+            if ext_classes.get(fqname).is_none_or(|c| !c.has_init)
+                && (field_obj.fields.len() == 1 || field_obj.is_union())
+            {
                 let converter_name = format!(
                     "_{}__{}__special_field_converter_override", // TODO(emilk): why does this have an underscore prefix?
                     obj.snake_case_name(),

@@ -14,10 +14,11 @@ from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
-    AnyColumn,
-    AnyComponentColumn,
-    IndexValuesLike,
-    ViewContentsLike,
+    AnyColumn as AnyColumn,
+    AnyComponentColumn as AnyComponentColumn,
+    IndexValuesLike as IndexValuesLike,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
+    ViewContentsLike as ViewContentsLike,
 )
 
 class IndexColumnDescriptor:
@@ -1567,6 +1568,15 @@ class DatasetEntry(Entry):
 
         """
 
+    def list_indexes(self) -> list[IndexingResult]:
+        """List all user-defined indexes in this dataset."""
+
+    def delete_indexes(
+        self,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
+    ) -> list[IndexConfig]:
+        """Deletes all user-defined indexes for the specified column."""
+
     def search_fts(
         self,
         query: str,
@@ -1607,6 +1617,10 @@ class TableEntry(Entry):
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
+
+    @property
+    def storage_url(self) -> str:
+        """The table's storage URL."""
 
 class TableInsertMode:
     """The modes of operation when writing tables."""
@@ -1799,8 +1813,38 @@ class DataframeQueryView:
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
 
+class IndexProperties:
+    """The properties and configuration of a user-defined index."""
+
+class IndexConfig:
+    """The complete description of a user-defined index."""
+
+    @property
+    def time_column(self) -> IndexColumnSelector:
+        """Returns the time column that this index applies to."""
+
+    @property
+    def component_column(self) -> ComponentColumnSelector:
+        """Returns the component column that this index applies to."""
+
+    @property
+    def properties(self) -> IndexProperties:
+        """Returns the properties/configuration of the index."""
+
 class IndexingResult:
     """Indexing operation status result."""
+
+    @property
+    def properties(self) -> IndexConfig:
+        """Returns configuration information and properties about the newly created index."""
+
+    @property
+    def column(self) -> ComponentColumnSelector:
+        """Returns the component column that this index was created on."""
+
+    @property
+    def statistics(self) -> str:
+        """Returns best-effort backend-specific statistics about the newly created index."""
 
     def debug_info(self) -> dict[str, Any] | None:
         """
@@ -1824,6 +1868,11 @@ class CatalogClientInternal:
 
     @staticmethod
     def datafusion_major_version() -> int: ...
+
+    # ---
+
+    @property
+    def url(self) -> str: ...
 
     # ---
 

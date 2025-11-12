@@ -31,6 +31,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(u32)]
 pub enum VideoCodec {
+    /// AOMedia Video 1 (AV1)
+    ///
+    /// See <https://en.wikipedia.org/wiki/AV1>
+    ///
+    /// [`components::VideoSample`][crate::components::VideoSample]s using this codec should be formatted according the "Low overhead bitstream format",
+    /// as specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).
+    /// Each sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.
+    ///
+    /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
+    #[allow(clippy::upper_case_acronyms)]
+    AV1 = 0x61763031,
+
     /// Advanced Video Coding (AVC/H.264)
     ///
     /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
@@ -125,6 +137,7 @@ impl ::re_types_core::Loggable for VideoCodec {
             .with_context("rerun.components.VideoCodec#enum")?
             .into_iter()
             .map(|typ| match typ {
+                Some(1635135537) => Ok(Some(Self::AV1)),
                 Some(1635148593) => Ok(Some(Self::H264)),
                 Some(1751479857) => Ok(Some(Self::H265)),
                 None => Ok(None),
@@ -142,6 +155,7 @@ impl ::re_types_core::Loggable for VideoCodec {
 impl std::fmt::Display for VideoCodec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::AV1 => write!(f, "AV1"),
             Self::H264 => write!(f, "H264"),
             Self::H265 => write!(f, "H265"),
         }
@@ -151,12 +165,15 @@ impl std::fmt::Display for VideoCodec {
 impl ::re_types_core::reflection::Enum for VideoCodec {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::H264, Self::H265]
+        &[Self::AV1, Self::H264, Self::H265]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
+            Self::AV1 => {
+                "AOMedia Video 1 (AV1)\n\nSee <https://en.wikipedia.org/wiki/AV1>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according the \"Low overhead bitstream format\",\nas specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).\nEach sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.\n\nEnum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian."
+            }
             Self::H264 => {
                 "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)\n\nEnum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian."
             }

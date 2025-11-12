@@ -47,6 +47,8 @@ class ViewBlueprint(Archetype):
         space_origin:
             The "anchor point" of this view.
 
+            In other words, the coordinate frame at this entity becomes the reference frame of the view.
+
             Defaults to the root path '/' if not specified.
 
             The transform at this path forms the reference point for all scene->world transforms in this view.
@@ -107,6 +109,8 @@ class ViewBlueprint(Archetype):
         space_origin:
             The "anchor point" of this view.
 
+            In other words, the coordinate frame at this entity becomes the reference frame of the view.
+
             Defaults to the root path '/' if not specified.
 
             The transform at this path forms the reference point for all scene->world transforms in this view.
@@ -166,6 +170,8 @@ class ViewBlueprint(Archetype):
         converter=blueprint_components.ViewOriginBatch._converter,  # type: ignore[misc]
     )
     # The "anchor point" of this view.
+    #
+    # In other words, the coordinate frame at this entity becomes the reference frame of the view.
     #
     # Defaults to the root path '/' if not specified.
     #

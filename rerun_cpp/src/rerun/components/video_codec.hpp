@@ -29,6 +29,17 @@ namespace rerun::components {
     ///
     enum class VideoCodec : uint32_t {
 
+        /// AOMedia Video 1 (AV1)
+        ///
+        /// See <https://en.wikipedia.org/wiki/AV1>
+        ///
+        /// `components::VideoSample`s using this codec should be formatted according the "Low overhead bitstream format",
+        /// as specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).
+        /// Each sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.
+        ///
+        /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
+        AV1 = 0x61763031,
+
         /// Advanced Video Coding (AVC/H.264)
         ///
         /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>

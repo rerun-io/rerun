@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from .absolute_time_range import AbsoluteTimeRange, AbsoluteTimeRangeBatch
 from .active_tab import ActiveTab, ActiveTabBatch
+from .angular_speed import AngularSpeed, AngularSpeedBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_views import AutoViews, AutoViewsBatch
@@ -24,9 +26,11 @@ from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .link_axis import LinkAxis, LinkAxisArrayLike, LinkAxisBatch, LinkAxisLike
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
+from .loop_mode import LoopMode, LoopModeArrayLike, LoopModeBatch, LoopModeLike
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
 from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
+from .play_state import PlayState, PlayStateArrayLike, PlayStateBatch, PlayStateLike
 from .playback_speed import PlaybackSpeed, PlaybackSpeedBatch
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
@@ -34,6 +38,7 @@ from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .time_int import TimeInt, TimeIntBatch
+from .time_range import TimeRange, TimeRangeBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
@@ -46,8 +51,12 @@ from .visualizer_override import VisualizerOverride, VisualizerOverrideBatch
 from .zoom_level import ZoomLevel, ZoomLevelBatch
 
 __all__ = [
+    "AbsoluteTimeRange",
+    "AbsoluteTimeRangeBatch",
     "ActiveTab",
     "ActiveTabBatch",
+    "AngularSpeed",
+    "AngularSpeedBatch",
     "ApplyLatestAt",
     "ApplyLatestAtBatch",
     "AutoLayout",
@@ -100,6 +109,10 @@ __all__ = [
     "LinkAxisLike",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
+    "LoopMode",
+    "LoopModeArrayLike",
+    "LoopModeBatch",
+    "LoopModeLike",
     "MapProvider",
     "MapProviderArrayLike",
     "MapProviderBatch",
@@ -110,6 +123,10 @@ __all__ = [
     "PanelStateArrayLike",
     "PanelStateBatch",
     "PanelStateLike",
+    "PlayState",
+    "PlayStateArrayLike",
+    "PlayStateBatch",
+    "PlayStateLike",
     "PlaybackSpeed",
     "PlaybackSpeedBatch",
     "QueryExpression",
@@ -124,6 +141,8 @@ __all__ = [
     "TensorDimensionIndexSliderBatch",
     "TimeInt",
     "TimeIntBatch",
+    "TimeRange",
+    "TimeRangeBatch",
     "TimelineName",
     "TimelineNameBatch",
     "ViewClass",
