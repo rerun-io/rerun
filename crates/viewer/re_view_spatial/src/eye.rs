@@ -533,10 +533,16 @@ impl ControlEye {
 
             let world_movement = rot * (self.speed as f32 * local_movement);
 
-            eye_state.velocity = egui::lerp(
-                eye_state.velocity..=world_movement,
-                egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
-            );
+            // If input is zero, don't continue moving with velocity. Since we're no longer interacting
+            // we don't want to continue writing to blueprint and creating undo points.
+            eye_state.velocity = if local_movement == Vec3::ZERO {
+                Vec3::ZERO
+            } else {
+                egui::lerp(
+                    eye_state.velocity..=world_movement,
+                    egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
+                )
+            };
             let delta = eye_state.velocity * dt;
 
             self.pos += delta;
