@@ -84,6 +84,18 @@ class Server:
             tables={name: str(path) for name, path in (tables or {}).items()},
         )
 
+    def address(self) -> str:
+        """
+        Get the address of the server.
+
+        Returns
+        -------
+        str
+            The address of the server.
+
+        """
+        return self._internal.address()
+
     def client(self) -> CatalogClient:
         """
         Get a CatalogClient connected to this server.

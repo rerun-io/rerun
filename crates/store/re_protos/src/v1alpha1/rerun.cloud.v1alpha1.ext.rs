@@ -1,3 +1,4 @@
+use prost::Name as _;
 use std::sync::Arc;
 
 use arrow::array::{
@@ -10,7 +11,6 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
-use prost_types::Any;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::external::re_types_core::ComponentBatch as _;
@@ -189,9 +189,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_ID, DataType::FixedSizeBinary(16), false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -199,9 +202,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_partition_id() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_PARTITION_ID, DataType::Utf8, false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -221,9 +227,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_entity_path() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_ENTITY_PATH, DataType::Utf8, false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -231,9 +240,12 @@ impl QueryDatasetResponse {
     pub fn field_chunk_is_static() -> FieldRef {
         lazy_field_ref!(
             Field::new(Self::FIELD_CHUNK_IS_STATIC, DataType::Boolean, false).with_metadata(
-                [("rerun:kind".to_owned(), "control".to_owned())]
-                    .into_iter()
-                    .collect(),
+                [(
+                    re_sorbet::metadata::RERUN_KIND.to_owned(),
+                    "control".to_owned()
+                )]
+                .into_iter()
+                .collect(),
             )
         )
     }
@@ -560,7 +572,7 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
 
 // --- DatasetDetails ---
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DatasetDetails {
     pub blueprint_dataset: Option<EntryId>,
     pub default_blueprint: Option<PartitionId>,
@@ -649,16 +661,38 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
 
 // --- CreateDatasetEntryRequest ---
 
-impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for String {
+#[derive(Debug, Clone)]
+pub struct CreateDatasetEntryRequest {
+    /// Entry name (must be unique in catalog).
+    pub name: String,
+
+    /// Override, use at your own risk.
+    pub id: Option<EntryId>,
+}
+
+impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
+    fn from(value: CreateDatasetEntryRequest) -> Self {
+        Self {
+            name: Some(value.name),
+            id: value.id.map(Into::into),
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatasetEntryRequest {
     type Error = TypeConversionError;
 
     fn try_from(
         value: crate::cloud::v1alpha1::CreateDatasetEntryRequest,
     ) -> Result<Self, Self::Error> {
-        Ok(value.name.ok_or(missing_field!(
-            crate::cloud::v1alpha1::CreateDatasetEntryRequest,
-            "name"
-        ))?)
+        Ok(Self {
+            name: value.name.ok_or(missing_field!(
+                crate::cloud::v1alpha1::CreateDatasetEntryRequest,
+                "name"
+            ))?,
+
+            id: value.id.map(TryInto::try_into).transpose()?,
+        })
     }
 }
 
@@ -701,7 +735,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 pub struct CreateTableEntryRequest {
     pub name: String,
     pub schema: Schema,
-    pub provider_details: Any,
+    pub provider_details: ProviderDetails,
 }
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
@@ -710,7 +744,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
         Ok(Self {
             name: value.name,
             schema: Some((&value.schema).try_into()?),
-            provider_details: Some(value.provider_details),
+            provider_details: Some((&value.provider_details).try_into()?),
         })
     }
 }
@@ -729,10 +763,12 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            provider_details: value.provider_details.ok_or(missing_field!(
-                crate::cloud::v1alpha1::CreateTableEntryRequest,
-                "provider_details"
-            ))?,
+            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
+                missing_field!(
+                    crate::cloud::v1alpha1::CreateTableEntryRequest,
+                    "provider_details"
+                ),
+            )?)?,
         })
     }
 }
@@ -744,11 +780,12 @@ pub struct CreateTableEntryResponse {
     pub table: TableEntry,
 }
 
-impl From<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
-    fn from(value: CreateTableEntryResponse) -> Self {
-        Self {
-            table: Some(value.table.into()),
-        }
+impl TryFrom<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
+    type Error = TypeConversionError;
+    fn try_from(value: CreateTableEntryResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table: Some(value.table.try_into()?),
+        })
     }
 }
 
@@ -1009,11 +1046,12 @@ pub struct ReadTableEntryResponse {
     pub table_entry: TableEntry,
 }
 
-impl From<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
-    fn from(value: ReadTableEntryResponse) -> Self {
-        Self {
-            table: Some(value.table_entry.into()),
-        }
+impl TryFrom<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
+    type Error = TypeConversionError;
+    fn try_from(value: ReadTableEntryResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            table: Some(value.table_entry.try_into()?),
+        })
     }
 }
 
@@ -1040,15 +1078,16 @@ impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryResponse> for ReadTableEntryR
 #[derive(Debug, Clone)]
 pub struct RegisterTableRequest {
     pub name: String,
-    pub provider_details: Any,
+    pub provider_details: ProviderDetails,
 }
 
-impl From<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
-    fn from(value: RegisterTableRequest) -> Self {
-        Self {
+impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
+    type Error = TypeConversionError;
+    fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
+        Ok(Self {
             name: value.name,
-            provider_details: Some(value.provider_details),
-        }
+            provider_details: Some((&value.provider_details).try_into()?),
+        })
     }
 }
 
@@ -1058,10 +1097,12 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableRequest> for RegisterTableRequ
     fn try_from(value: crate::cloud::v1alpha1::RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            provider_details: value.provider_details.ok_or(missing_field!(
-                crate::cloud::v1alpha1::RegisterTableRequest,
-                "provider_details"
-            ))?,
+            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
+                missing_field!(
+                    crate::cloud::v1alpha1::RegisterTableRequest,
+                    "provider_details"
+                ),
+            )?)?,
         })
     }
 }
@@ -1094,15 +1135,16 @@ impl TryFrom<crate::cloud::v1alpha1::RegisterTableResponse> for RegisterTableRes
 #[derive(Debug, Clone)]
 pub struct TableEntry {
     pub details: EntryDetails,
-    pub provider_details: prost_types::Any,
+    pub provider_details: ProviderDetails,
 }
 
-impl From<TableEntry> for crate::cloud::v1alpha1::TableEntry {
-    fn from(value: TableEntry) -> Self {
-        Self {
+impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
+    type Error = TypeConversionError;
+    fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
+        Ok(Self {
             details: Some(value.details.into()),
-            provider_details: Some(value.provider_details),
-        }
+            provider_details: Some((&value.provider_details).try_into()?),
+        })
     }
 }
 
@@ -1118,21 +1160,68 @@ impl TryFrom<crate::cloud::v1alpha1::TableEntry> for TableEntry {
                     "details"
                 ))?
                 .try_into()?,
-            provider_details: value
-                .provider_details
-                .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
+            provider_details: ProviderDetails::try_from(
+                &value
+                    .provider_details
+                    .ok_or(missing_field!(crate::cloud::v1alpha1::TableEntry, "handle"))?,
+            )?,
         })
     }
 }
 
 // --- ProviderDetails ---
 
-pub trait ProviderDetails {
-    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
+#[derive(Debug, Clone)]
+pub enum ProviderDetails {
+    SystemTable(SystemTable),
+    LanceTable(LanceTable),
+}
 
-    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
-    where
-        Self: Sized;
+impl TryFrom<&prost_types::Any> for ProviderDetails {
+    type Error = TypeConversionError;
+    fn try_from(value: &prost_types::Any) -> Result<Self, Self::Error> {
+        if value.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
+            let as_proto = value.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
+            let table = LanceTable::try_from(as_proto)?;
+            Ok(Self::LanceTable(table))
+        } else if value.type_url == crate::cloud::v1alpha1::SystemTable::type_url() {
+            let as_proto = value.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
+            let table = SystemTable::try_from(as_proto)?;
+            Ok(Self::SystemTable(table))
+        } else {
+            Err(TypeConversionError::InvalidField {
+                package_name: "rerun.cloud.v1alpha1",
+                type_name: "ProviderDetails",
+                field_name: "",
+                reason: "enum value unspecified".to_owned(),
+            })
+        }
+    }
+}
+
+impl TryFrom<&ProviderDetails> for prost_types::Any {
+    type Error = TypeConversionError;
+    fn try_from(value: &ProviderDetails) -> Result<Self, Self::Error> {
+        match value {
+            ProviderDetails::SystemTable(table) => {
+                let as_proto: crate::cloud::v1alpha1::SystemTable = table.clone().into();
+                Ok(prost_types::Any::from_msg(&as_proto)?)
+            }
+            ProviderDetails::LanceTable(table) => {
+                let as_proto: crate::cloud::v1alpha1::LanceTable = table.clone().into();
+                Ok(prost_types::Any::from_msg(&as_proto)?)
+            }
+        }
+    }
+}
+
+impl ProviderDetails {
+    pub fn type_url(&self) -> String {
+        match self {
+            Self::SystemTable(_) => crate::cloud::v1alpha1::SystemTable::type_url(),
+            Self::LanceTable(_) => crate::cloud::v1alpha1::LanceTable::type_url(),
+        }
+    }
 }
 
 // --- SystemTable ---
@@ -1160,18 +1249,6 @@ impl From<SystemTable> for crate::cloud::v1alpha1::SystemTable {
     }
 }
 
-impl ProviderDetails for SystemTable {
-    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        let as_proto: crate::cloud::v1alpha1::SystemTable = self.clone().into();
-        Ok(prost_types::Any::from_msg(&as_proto)?)
-    }
-
-    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        let as_proto = any.to_msg::<crate::cloud::v1alpha1::SystemTable>()?;
-        Ok(as_proto.try_into()?)
-    }
-}
-
 // --- LanceTable ---
 
 #[derive(Debug, Clone)]
@@ -1194,18 +1271,6 @@ impl From<LanceTable> for crate::cloud::v1alpha1::LanceTable {
         Self {
             table_url: value.table_url.to_string(),
         }
-    }
-}
-
-impl ProviderDetails for LanceTable {
-    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
-        let as_proto: crate::cloud::v1alpha1::LanceTable = self.clone().into();
-        Ok(prost_types::Any::from_msg(&as_proto)?)
-    }
-
-    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
-        let as_proto = any.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
-        Ok(as_proto.try_into()?)
     }
 }
 
@@ -1910,20 +1975,60 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
     }
 }
 
+// ---
+
+impl std::fmt::Display for VectorDistanceMetric {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Unspecified => "unspecified",
+            Self::L2 => "l2",
+            Self::Cosine => "cosine",
+            Self::Dot => "dot",
+            Self::Hamming => "hamming",
+        };
+
+        f.write_str(s)
+    }
+}
+
+impl std::str::FromStr for VectorDistanceMetric {
+    type Err = TypeConversionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
+            "l2" => Self::L2,
+            "cosine" => Self::Cosine,
+            "Dot" => Self::Dot,
+            "Hamming" => Self::Hamming,
+            _ => {
+                return Err(invalid_field!(
+                    crate::cloud::v1alpha1::IndexProperties,
+                    "VectorDistanceMetric",
+                    &format!("{s:?} is not a valid value"),
+                ));
+            }
+        })
+    }
+}
+
+// ---
+
 /// Depending on the type of index that is being created, different properties
 /// can be specified. These are defined by `IndexProperties`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IndexProperties {
     Inverted {
         store_position: bool,
         base_tokenizer: String,
     },
+
     VectorIvfPq {
-        num_partitions: Option<usize>,
-        target_partition_num_rows: Option<usize>,
-        num_sub_vectors: usize,
+        num_partitions: Option<u32>,
+        target_partition_num_rows: Option<u32>,
+        num_sub_vectors: u32,
         metric: VectorDistanceMetric,
     },
+
     Btree,
 }
 
@@ -1937,6 +2042,7 @@ impl std::fmt::Display for IndexProperties {
                 f,
                 "Inverted {{ store_position: {store_position}, base_tokenizer: {base_tokenizer} }}"
             ),
+
             Self::VectorIvfPq {
                 num_partitions,
                 target_partition_num_rows,
@@ -1944,22 +2050,23 @@ impl std::fmt::Display for IndexProperties {
                 metric,
             } => {
                 if let Some(target_partition_num_rows) = target_partition_num_rows {
-                    return write!(
+                    write!(
                         f,
-                        "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
-                    );
+                        "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
+                    )
                 } else if let Some(num_partitions) = num_partitions {
-                    return write!(
+                    write!(
                         f,
-                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
-                    );
+                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
+                    )
                 } else {
                     write!(
                         f,
-                        "VectorIvfPq {{ num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+                        "VectorIvfPq {{ num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
                     )
                 }
             }
+
             Self::Btree => write!(f, "Btree"),
         }
     }
@@ -1993,13 +2100,182 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
-                        num_partitions: num_partitions.map(|n| n as u32),
-                        target_partition_num_rows: target_partition_num_rows.map(|n| n as u32),
-                        num_sub_vectors: Some(num_sub_vectors as u32),
+                        num_partitions,
+                        target_partition_num_rows,
+                        num_sub_vectors: Some(num_sub_vectors),
                         distance_metrics: metric.into(),
                     },
                 )),
             },
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexProperties> for IndexProperties {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexProperties) -> Result<Self, Self::Error> {
+        let props = value
+            .props
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexProperties, "props"))?;
+
+        use crate::cloud::v1alpha1::index_properties::Props;
+
+        match props {
+            Props::Inverted(data) => Ok(Self::Inverted {
+                store_position: data.store_position.ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::IndexProperties,
+                        "props.store_position"
+                    )
+                })?,
+                base_tokenizer: data.base_tokenizer.ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::IndexProperties,
+                        "props.base_tokenizer"
+                    )
+                })?,
+            }),
+
+            Props::Vector(data) => Ok(Self::VectorIvfPq {
+                num_partitions: data.num_partitions,
+                target_partition_num_rows: data.target_partition_num_rows,
+                num_sub_vectors: data.num_sub_vectors.ok_or_else(|| {
+                    missing_field!(
+                        crate::cloud::v1alpha1::IndexProperties,
+                        "props.num_sub_vectors"
+                    )
+                })?,
+
+                metric: data.distance_metrics(),
+            }),
+
+            Props::Btree(_) => Ok(Self::Btree),
+        }
+    }
+}
+
+// ---
+
+/// Depending on the type of index that is being queried, different properties
+/// can be specified.
+#[derive(Debug, Clone)]
+pub enum IndexQueryProperties {
+    Inverted,
+    Vector { top_k: u32 },
+    Btree,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexQueryProperties> for IndexQueryProperties {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexQueryProperties) -> Result<Self, Self::Error> {
+        let props = value
+            .props
+            .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexQueryProperties, "props"))?;
+
+        use crate::cloud::v1alpha1::index_query_properties::Props;
+
+        match props {
+            Props::Inverted(_) => Ok(Self::Inverted),
+
+            Props::Vector(vector_index_query) => Ok(Self::Vector {
+                top_k: vector_index_query.top_k.ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::VectorIndexQuery, "top_k")
+                })?,
+            }),
+
+            Props::Btree(_) => Ok(Self::Btree),
+        }
+    }
+}
+
+// ---
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct IndexColumn {
+    pub entity_path: re_chunk::EntityPath,
+    pub descriptor: re_types_core::ComponentDescriptor,
+}
+
+impl std::fmt::Display for IndexColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.entity_path, self.descriptor.display_name())
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexColumn> for IndexColumn {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexColumn) -> Result<Self, Self::Error> {
+        Ok(Self {
+            entity_path: value
+                .entity_path
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexColumn, "entity_path"))?
+                .try_into()?,
+            descriptor: value
+                .component
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexColumn, "component"))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<ComponentColumnDescriptor> for IndexColumn {
+    fn from(value: ComponentColumnDescriptor) -> Self {
+        let descriptor = value.component_descriptor();
+        IndexColumn {
+            entity_path: value.entity_path,
+            descriptor,
+        }
+    }
+}
+
+impl From<IndexColumn> for crate::cloud::v1alpha1::IndexColumn {
+    fn from(value: IndexColumn) -> Self {
+        Self {
+            entity_path: Some(value.entity_path.into()),
+            component: Some(value.descriptor.into()),
+        }
+    }
+}
+
+// ---
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IndexConfig {
+    pub time_index: re_log_types::TimelineName,
+    pub column: IndexColumn,
+    pub properties: IndexProperties,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexConfig> for IndexConfig {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::IndexConfig) -> Result<Self, Self::Error> {
+        Ok(Self {
+            time_index: value
+                .time_index
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "time_index"))?
+                .try_into()?,
+            column: value
+                .column
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "column"))?
+                .try_into()?,
+            properties: value
+                .properties
+                .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "properties"))?
+                .try_into()?,
+        })
+    }
+}
+
+impl From<IndexConfig> for crate::cloud::v1alpha1::IndexConfig {
+    fn from(value: IndexConfig) -> Self {
+        Self {
+            properties: Some(value.properties.into()),
+            column: Some(value.column.into()),
+            time_index: Some(value.time_index.into()),
         }
     }
 }

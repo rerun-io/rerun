@@ -26,6 +26,12 @@ namespace rerun::archetypes {
         archetype.relation =
             ComponentBatch::empty<rerun::components::TransformRelation>(Descriptor_relation)
                 .value_or_throw();
+        archetype.child_frame =
+            ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_child_frame)
+                .value_or_throw();
+        archetype.parent_frame =
+            ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_parent_frame)
+                .value_or_throw();
         archetype.axis_length =
             ComponentBatch::empty<rerun::components::AxisLength>(Descriptor_axis_length)
                 .value_or_throw();
@@ -34,7 +40,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Transform3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(7);
+        columns.reserve(9);
         if (translation.has_value()) {
             columns.push_back(translation.value().partitioned(lengths_).value_or_throw());
         }
@@ -52,6 +58,12 @@ namespace rerun::archetypes {
         }
         if (relation.has_value()) {
             columns.push_back(relation.value().partitioned(lengths_).value_or_throw());
+        }
+        if (child_frame.has_value()) {
+            columns.push_back(child_frame.value().partitioned(lengths_).value_or_throw());
+        }
+        if (parent_frame.has_value()) {
+            columns.push_back(parent_frame.value().partitioned(lengths_).value_or_throw());
         }
         if (axis_length.has_value()) {
             columns.push_back(axis_length.value().partitioned(lengths_).value_or_throw());
@@ -78,6 +90,12 @@ namespace rerun::archetypes {
         if (relation.has_value()) {
             return columns(std::vector<uint32_t>(relation.value().length(), 1));
         }
+        if (child_frame.has_value()) {
+            return columns(std::vector<uint32_t>(child_frame.value().length(), 1));
+        }
+        if (parent_frame.has_value()) {
+            return columns(std::vector<uint32_t>(parent_frame.value().length(), 1));
+        }
         if (axis_length.has_value()) {
             return columns(std::vector<uint32_t>(axis_length.value().length(), 1));
         }
@@ -92,7 +110,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(9);
 
         if (archetype.translation.has_value()) {
             cells.push_back(archetype.translation.value());
@@ -111,6 +129,12 @@ namespace rerun {
         }
         if (archetype.relation.has_value()) {
             cells.push_back(archetype.relation.value());
+        }
+        if (archetype.child_frame.has_value()) {
+            cells.push_back(archetype.child_frame.value());
+        }
+        if (archetype.parent_frame.has_value()) {
+            cells.push_back(archetype.parent_frame.value());
         }
         if (archetype.axis_length.has_value()) {
             cells.push_back(archetype.axis_length.value());

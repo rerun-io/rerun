@@ -24,9 +24,9 @@ To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/c
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `CoordinateFrame`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1CoordinateFrame.html?speculative-link)
- * 🐍 [Python API docs for `CoordinateFrame`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.CoordinateFrame)
- * 🦀 [Rust API docs for `CoordinateFrame`](https://docs.rs/rerun/latest/rerun/archetypes/struct.CoordinateFrame.html?speculative-link)
+ * 🌊 [C++ API docs for `CoordinateFrame`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1CoordinateFrame.html)
+ * 🐍 [Python API docs for `CoordinateFrame`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.CoordinateFrame)
+ * 🦀 [Rust API docs for `CoordinateFrame`](https://docs.rs/rerun/latest/rerun/archetypes/struct.CoordinateFrame.html)
 
 ## Example
 

@@ -4,7 +4,7 @@ use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::WriteTableRequest;
-use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, TableInsertMode};
+use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, ProviderDetails, TableInsertMode};
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
@@ -16,11 +16,11 @@ use re_protos::{
         RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
-            EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails as _,
-            QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
-            ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
-            RegisterWithDatasetTaskDescriptor, TableEntry, UpdateDatasetEntryRequest,
-            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+            EntryDetails, EntryDetailsUpdate, LanceTable, QueryTasksOnCompletionRequest,
+            QueryTasksRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
+            RegisterTableResponse, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
+            TableEntry, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+            UpdateEntryResponse,
         },
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
@@ -588,14 +588,14 @@ where
     ) -> Result<TableEntry, ApiError> {
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
-            provider_details: LanceTable { table_url: url }.try_as_any().map_err(|err| {
-                ApiError::serialization(err, "failed building /RegisterTable request")
-            })?,
+            provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
 
         let response: RegisterTableResponse = self
             .inner()
-            .register_table(tonic::Request::new(request.into()))
+            .register_table(tonic::Request::new(request.try_into().map_err(|err| {
+                ApiError::serialization(err, "failed building /RegisterTable request")
+            })?))
             .await
             .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?
             .into_inner()
@@ -750,11 +750,9 @@ where
         url: &Url,
         schema: SchemaRef,
     ) -> Result<TableEntry, ApiError> {
-        let provider_details = LanceTable {
+        let provider_details = ProviderDetails::LanceTable(LanceTable {
             table_url: url.clone(),
-        }
-        .try_as_any()
-        .map_err(|err| ApiError::serialization(err, "/CreateTable failed"))?;
+        });
         let request = CreateTableEntryRequest {
             name: name.to_owned(),
             schema: schema.as_ref().clone(),

@@ -89,6 +89,7 @@ pub enum Language {
     #[expect(dead_code)]
     C,
     Cpp,
+    Notebook,
 }
 
 impl Language {
@@ -100,6 +101,7 @@ impl Language {
             Self::Python => Path::new("python"),
             Self::C => Path::new("c"),
             Self::Cpp => Path::new("cpp"),
+            Self::Notebook => Path::new("notebook"),
         }
     }
 
@@ -110,6 +112,7 @@ impl Language {
             Self::Python => "py",
             Self::C => "c",
             Self::Cpp => "cpp",
+            Self::Notebook => "ipynb",
         }
     }
 }
@@ -184,7 +187,19 @@ impl Channel {
     pub fn examples(self, workspace_root: impl AsRef<Path>) -> anyhow::Result<Vec<Example>> {
         // currently we only treat Python examples as runnable
         let language = Language::Python;
+        self.collect_language(workspace_root, language)
+    }
 
+    pub fn notebooks(self, workspace_root: impl AsRef<Path>) -> anyhow::Result<Vec<Example>> {
+        let language = Language::Notebook;
+        self.collect_language(workspace_root, language)
+    }
+
+    fn collect_language(
+        self,
+        workspace_root: impl AsRef<Path>,
+        language: Language,
+    ) -> anyhow::Result<Vec<Example>> {
         let mut examples = vec![];
 
         let dir = workspace_root
@@ -238,7 +253,7 @@ impl Channel {
                     thumbnail_dimensions: readme.thumbnail_dimensions,
                     script_args: readme.build_args,
                     readme_body: body,
-                    language: Language::Python,
+                    language,
                     allow_warnings: readme.allow_warnings,
                 });
             }

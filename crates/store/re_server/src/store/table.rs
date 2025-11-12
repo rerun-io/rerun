@@ -1,24 +1,24 @@
-use arrow::datatypes::SchemaRef;
-use arrow::record_batch::RecordBatch;
-use datafusion::catalog::TableProvider;
-use datafusion::common::exec_err;
-use datafusion::datasource::memory::MemorySourceConfig;
-use datafusion::error::DataFusionError;
-use datafusion::execution::SessionStateBuilder;
-use datafusion::logical_expr::dml::InsertOp;
+use std::sync::Arc;
+
+use arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
+use datafusion::{
+    catalog::TableProvider, common::exec_err, datasource::memory::MemorySourceConfig,
+    error::DataFusionError, execution::SessionStateBuilder, logical_expr::dml::InsertOp,
+};
 use futures::StreamExt as _;
+
 #[cfg(feature = "lance")]
 use lance::{
     Dataset as LanceDataset,
     datafusion::LanceTableProvider,
     dataset::{WriteMode, WriteParams},
 };
+
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
     EntryKind,
-    ext::{EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
+    ext::{EntryDetails, ProviderDetails, TableEntry},
 };
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub enum TableType {
@@ -36,7 +36,7 @@ pub struct Table {
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
 
-    system_table: Option<SystemTable>,
+    provider_details: ProviderDetails,
 }
 
 impl Table {
@@ -45,7 +45,7 @@ impl Table {
         name: String,
         table: TableType,
         created_at: Option<jiff::Timestamp>,
-        system_table: Option<SystemTable>,
+        provider_details: ProviderDetails,
     ) -> Self {
         Self {
             id,
@@ -53,12 +53,21 @@ impl Table {
             table,
             created_at: created_at.unwrap_or_else(jiff::Timestamp::now),
             updated_at: jiff::Timestamp::now(),
-            system_table,
+            provider_details,
         }
     }
 
     pub fn id(&self) -> EntryId {
         self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+        self.updated_at = jiff::Timestamp::now();
     }
 
     pub fn created_at(&self) -> jiff::Timestamp {
@@ -76,11 +85,6 @@ impl Table {
     }
 
     pub fn as_table_entry(&self) -> TableEntry {
-        let provider_details = match &self.system_table {
-            Some(s) => s.try_as_any().expect("system_table should always be valid"),
-            None => Default::default(),
-        };
-
         TableEntry {
             details: EntryDetails {
                 id: self.id,
@@ -90,7 +94,7 @@ impl Table {
                 updated_at: self.updated_at,
             },
 
-            provider_details,
+            provider_details: self.provider_details.clone(),
         }
     }
 
@@ -208,6 +212,8 @@ impl Table {
         url: &url::Url,
         schema: SchemaRef,
     ) -> Result<Self, DataFusionError> {
+        use re_protos::cloud::v1alpha1::ext::LanceTable;
+
         let rb = vec![Ok(RecordBatch::new_empty(Arc::clone(&schema)))];
         let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
 
@@ -217,13 +223,16 @@ impl Table {
                 .map_err(|err| DataFusionError::External(err.into()))?,
         );
         let created_at = Some(jiff::Timestamp::now());
+        let provider_details = LanceTable {
+            table_url: url.clone(),
+        };
 
         Ok(Self::new(
             id,
             name.to_owned(),
             TableType::LanceDataset(ds),
             created_at,
-            None,
+            ProviderDetails::LanceTable(provider_details),
         ))
     }
 

@@ -1,12 +1,11 @@
+use std::collections::BTreeMap;
+
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
-use std::collections::BTreeMap;
 use tonic::async_trait;
 use url::Url;
 
-#[cfg(feature = "lance")]
-use re_protos::cloud::v1alpha1::ext::ProviderDetails as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
@@ -20,7 +19,8 @@ use re_types_core::AsComponents;
 
 use crate::{
     RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,
-    create_recording_with_properties, create_simple_recording,
+    create_recording_with_embeddings, create_recording_with_properties,
+    create_recording_with_scalars, create_recording_with_text, create_simple_recording,
 };
 
 /// Extension trait for the most common test setup tasks.
@@ -68,13 +68,14 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");
+        let provider_details = re_protos::cloud::v1alpha1::ext::ProviderDetails::LanceTable(
+            re_protos::cloud::v1alpha1::ext::LanceTable { table_url },
+        );
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name: table_name.to_owned(),
-            provider_details: re_protos::cloud::v1alpha1::ext::LanceTable { table_url }
-                .try_as_any()
-                .expect("Unable to create LanceTable as provider details"),
+            provider_details,
         };
-        let request = tonic::Request::new(request.into());
+        let request = tonic::Request::new(request.try_into().expect("Failed to convert request"));
 
         self.register_table(request)
             .await
@@ -169,6 +170,21 @@ pub enum LayerType {
     Properties {
         properties: BTreeMap<String, Vec<Box<dyn AsComponents>>>,
     },
+
+    /// See [`crate::create_recording_with_scalars`].
+    Scalars { n: usize },
+
+    /// See [`crate::create_recording_with_text`].
+    Text,
+
+    /// See [`crate::create_recording_with_embeddings`].
+    Embeddings {
+        embeddings: u32,
+        embeddings_per_row: u32,
+    },
+
+    /// See [`crate::create_simple_blueprint`]
+    SimpleBlueprint,
 }
 
 impl LayerType {
@@ -186,6 +202,25 @@ impl LayerType {
         Self::Properties {
             properties: properties.into_iter().map(|(k, v)| (k, vec![v])).collect(),
         }
+    }
+
+    pub fn scalars(n: usize) -> Self {
+        Self::Scalars { n }
+    }
+
+    pub fn text() -> Self {
+        Self::Text
+    }
+
+    pub fn embeddings(embeddings: u32, embeddings_per_row: u32) -> Self {
+        Self::Embeddings {
+            embeddings,
+            embeddings_per_row,
+        }
+    }
+
+    pub fn simple_blueprint() -> Self {
+        Self::SimpleBlueprint
     }
 
     fn into_recording(
@@ -211,6 +246,22 @@ impl LayerType {
                     .map(|(k, v)| (k.clone(), v.iter().map(|v| v.as_ref()).collect()))
                     .collect(),
             ),
+
+            Self::Scalars { n } => create_recording_with_scalars(tuid_prefix, partition_id, n),
+
+            Self::Text => create_recording_with_text(tuid_prefix, partition_id),
+
+            Self::Embeddings {
+                embeddings,
+                embeddings_per_row,
+            } => create_recording_with_embeddings(
+                tuid_prefix,
+                partition_id,
+                embeddings,
+                embeddings_per_row,
+            ),
+
+            Self::SimpleBlueprint => crate::create_simple_blueprint(tuid_prefix, partition_id),
         }
     }
 }
@@ -249,6 +300,46 @@ impl LayerDefinition {
             partition_id,
             layer_name: None,
             layer_type: LayerType::properties(properties),
+        }
+    }
+
+    /// A simple layer with a bunch of scalars, for testing B-Tree indexes.
+    pub fn scalars(partition_id: &'static str) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            // TODO(cmc): we can always expose `n` later, if and when it's useful.
+            layer_type: LayerType::scalars(10),
+        }
+    }
+
+    /// A simple layer with a bunch of text, for testing FTS indexes.
+    pub fn text(partition_id: &'static str) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::text(),
+        }
+    }
+
+    /// A simple layer with a bunch of embeddings, for testing Vector indexes.
+    pub fn embeddings(
+        partition_id: &'static str,
+        embeddings: u32,
+        embeddings_per_row: u32,
+    ) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::embeddings(embeddings, embeddings_per_row),
+        }
+    }
+
+    pub fn simple_blueprint(partition_id: &'static str) -> Self {
+        Self {
+            partition_id,
+            layer_name: None,
+            layer_type: LayerType::simple_blueprint(),
         }
     }
 

@@ -48,10 +48,12 @@ class Blob(BlobExt):
 
 if TYPE_CHECKING:
     BlobLike = Blob | bytes | npt.NDArray[np.uint8]
+    """A type alias for any Blob-like object."""
 else:
     BlobLike = Any
 
 BlobArrayLike = Blob | Sequence[BlobLike] | bytes | npt.NDArray[np.uint8]
+"""A type alias for any Blob-like array object."""
 
 
 class BlobBatch(BaseBatch[BlobArrayLike]):

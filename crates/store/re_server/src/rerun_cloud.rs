@@ -14,10 +14,6 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext::{
-    CreateTableEntryRequest, CreateTableEntryResponse, LanceTable, ProviderDetails as _,
-    TableInsertMode,
-};
 use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
@@ -28,8 +24,11 @@ use re_protos::{
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
         ScanPartitionTableResponse, ScanTableResponse,
         ext::{
-            self, CreateDatasetEntryResponse, DataSource, ReadDatasetEntryResponse,
-            ReadTableEntryResponse,
+            self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+            CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate,
+            ProviderDetails, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+            UpdateEntryResponse,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
@@ -251,6 +250,7 @@ impl RerunCloudHandler {
         &self,
         entry_id: Option<EntryId>,
         name: Option<String>,
+        store_kind: Option<StoreKind>,
     ) -> Result<Vec<EntryDetails>, Status> {
         let store = self.store.read().await;
 
@@ -279,6 +279,9 @@ impl RerunCloudHandler {
         };
 
         Ok(dataset_iter
+            .filter(|dataset| {
+                store_kind.is_none_or(|store_kind| dataset.store_kind() == store_kind)
+            })
             .map(Dataset::as_entry_details)
             .map(Into::into)
             .collect())
@@ -384,10 +387,32 @@ impl RerunCloudService for RerunCloudHandler {
             })?;
 
         let entries = match kind {
-            Some(EntryKind::Dataset) => self.find_datasets(entry_id, name).await?,
+            Some(EntryKind::Dataset) => {
+                self.find_datasets(entry_id, name, Some(StoreKind::Recording))
+                    .await?
+            }
+
+            Some(EntryKind::BlueprintDataset) => {
+                self.find_datasets(entry_id, name, Some(StoreKind::Blueprint))
+                    .await?
+            }
+
             Some(EntryKind::Table) => self.find_tables(entry_id, name).await?,
+
+            Some(EntryKind::DatasetView | EntryKind::TableView) => {
+                return Err(Status::unimplemented(
+                    "find_entries: dataset and table views are not supported",
+                ));
+            }
+
+            Some(EntryKind::Unspecified) => {
+                return Err(Status::invalid_argument(
+                    "find_entries: entry kind unspecified",
+                ));
+            }
+
             None => {
-                let mut datasets = match self.find_datasets(entry_id, name.clone()).await {
+                let mut datasets = match self.find_datasets(entry_id, name.clone(), None).await {
                     Ok(datasets) => datasets,
                     Err(err) => {
                         if err.code() == Code::NotFound {
@@ -410,11 +435,6 @@ impl RerunCloudService for RerunCloudHandler {
                 datasets.extend(tables);
                 datasets
             }
-            _ => {
-                return Err(Status::unimplemented(
-                    "find_entries: only datasets and tables are implemented",
-                ));
-            }
         };
 
         let response = re_protos::cloud::v1alpha1::FindEntriesResponse { entries };
@@ -429,12 +449,35 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Response<re_protos::cloud::v1alpha1::CreateDatasetEntryResponse>,
         tonic::Status,
     > {
-        let dataset_name: String = request.into_inner().try_into()?;
+        let CreateDatasetEntryRequest {
+            name: dataset_name,
+            id: dataset_id,
+        } = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-        let dataset = store.create_dataset(&dataset_name).map_err(|err| {
-            tonic::Status::internal(format!("Failed to create dataset entry: {err:#}"))
-        })?;
+
+        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+        let blueprint_dataset_id = EntryId::new();
+        let blueprint_dataset_name = format!("__bp_{dataset_id}");
+
+        store.create_dataset(
+            &blueprint_dataset_name,
+            Some(blueprint_dataset_id),
+            StoreKind::Blueprint,
+            None,
+        )?;
+
+        let dataset_details = DatasetDetails {
+            blueprint_dataset: Some(blueprint_dataset_id),
+            default_blueprint: None,
+        };
+
+        let dataset = store.create_dataset(
+            &dataset_name,
+            Some(dataset_id),
+            StoreKind::Recording,
+            Some(dataset_details),
+        )?;
 
         let dataset_entry = dataset.as_dataset_entry();
 
@@ -465,13 +508,23 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn update_dataset_entry(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> Result<
         tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented(
-            "update_dataset_entry not implemented",
+        let request: UpdateDatasetEntryRequest = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+        let dataset = store.dataset_mut(request.id)?;
+
+        dataset.set_dataset_details(request.dataset_details);
+
+        Ok(tonic::Response::new(
+            UpdateDatasetEntryResponse {
+                dataset_entry: dataset.as_dataset_entry(),
+            }
+            .into(),
         ))
     }
 
@@ -498,7 +551,7 @@ impl RerunCloudService for RerunCloudHandler {
             ReadTableEntryResponse {
                 table_entry: table.as_table_entry(),
             }
-            .into(),
+            .try_into()?,
         ))
     }
 
@@ -514,6 +567,30 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(DeleteEntryResponse {}))
     }
 
+    async fn update_entry(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
+    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>, tonic::Status>
+    {
+        let UpdateEntryRequest {
+            id: entry_id,
+            entry_details_update: EntryDetailsUpdate { name },
+        } = request.into_inner().try_into()?;
+
+        let mut store = self.store.write().await;
+
+        if let Some(name) = name {
+            store.rename_entry(entry_id, name)?;
+        }
+
+        Ok(tonic::Response::new(
+            UpdateEntryResponse {
+                entry_details: store.entry_details(entry_id)?,
+            }
+            .into(),
+        ))
+    }
+
     // --- Manifest Registry ---
 
     async fn register_with_dataset(
@@ -525,9 +602,7 @@ impl RerunCloudService for RerunCloudHandler {
     > {
         let mut store = self.store.write().await;
         let dataset_id = get_entry_id_from_headers(&store, &request)?;
-        let dataset = store.dataset_mut(dataset_id).ok_or_else(|| {
-            tonic::Status::not_found(format!("Dataset with ID {dataset_id} not found"))
-        })?;
+        let dataset = store.dataset_mut(dataset_id)?;
 
         let re_protos::cloud::v1alpha1::ext::RegisterWithDatasetRequest {
             data_sources,
@@ -563,7 +638,12 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(&rrd_path, Some(&layer), on_duplicate)?;
+                let new_partition_ids = dataset.load_rrd(
+                    &rrd_path,
+                    Some(&layer),
+                    on_duplicate,
+                    dataset.store_kind(),
+                )?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
@@ -646,9 +726,7 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let mut store = self.store.write().await;
-        let Some(dataset) = store.dataset_mut(entry_id) else {
-            return Err(tonic::Status::not_found("dataset not found"));
-        };
+        let dataset = store.dataset_mut(entry_id)?;
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
@@ -872,6 +950,28 @@ impl RerunCloudService for RerunCloudHandler {
         tonic::Status,
     > {
         Err(tonic::Status::unimplemented("create_index not implemented"))
+    }
+
+    async fn list_indexes(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
+    ) -> std::result::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented("list_indexes not implemented"))
+    }
+
+    async fn delete_indexes(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
+    ) -> std::result::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented(
+            "delete_indexes not implemented",
+        ))
     }
 
     /* Queries */
@@ -1131,10 +1231,15 @@ impl RerunCloudService for RerunCloudHandler {
             return Err(tonic::Status::invalid_argument("Missing provider details"));
         };
         #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
-        let lance_table = LanceTable::try_from_any(&provider_details)?
-            .table_url
-            .to_file_path()
-            .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
+        let lance_table = match ProviderDetails::try_from(&provider_details) {
+            Ok(ProviderDetails::LanceTable(lance_table)) => lance_table.table_url,
+            Ok(ProviderDetails::SystemTable(_)) => Err(Status::invalid_argument(
+                "System tables cannot be registered",
+            ))?,
+            Err(err) => return Err(err.into()),
+        }
+        .to_file_path()
+        .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
 
         #[cfg(feature = "lance")]
         let entry_id = {
@@ -1157,7 +1262,7 @@ impl RerunCloudService for RerunCloudHandler {
             .as_table_entry();
 
         let response = RegisterTableResponse {
-            table_entry: Some(table_entry.into()),
+            table_entry: Some(table_entry.try_into()?),
         };
 
         Ok(response.into())
@@ -1293,14 +1398,6 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
-    async fn update_entry(
-        &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>, tonic::Status>
-    {
-        Err(tonic::Status::unimplemented("update_entry not implemented"))
-    }
-
     async fn do_maintenance(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::DoMaintenanceRequest>,
@@ -1331,14 +1428,25 @@ impl RerunCloudService for RerunCloudHandler {
 
         let request: CreateTableEntryRequest = request.into_inner().try_into()?;
         let table_name = &request.name;
-        let provider_details = LanceTable::try_from_any(&request.provider_details)?;
+
         let schema = Arc::new(request.schema);
 
-        let table = store
-            .create_table_entry(table_name, &provider_details.table_url, schema)
-            .await?;
+        let table = match &request.provider_details {
+            ProviderDetails::LanceTable(table) => {
+                store
+                    .create_table_entry(table_name, &table.table_url, schema)
+                    .await?
+            }
+            ProviderDetails::SystemTable(_) => {
+                return Err(tonic::Status::invalid_argument(
+                    "Creating system tables is not supported",
+                ));
+            }
+        };
 
-        Ok(Response::new(CreateTableEntryResponse { table }.into()))
+        Ok(Response::new(
+            CreateTableEntryResponse { table }.try_into()?,
+        ))
     }
 }
 

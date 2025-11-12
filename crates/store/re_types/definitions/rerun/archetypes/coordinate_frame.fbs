@@ -12,7 +12,6 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/coordinate_frame_builtin_frames title="Change coordinate frame to different built-in frames" image="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1200w.png"
 table CoordinateFrame (
-  "attr.docs.unreleased",
   "attr.docs.category": "Spatial 3D", // TODO(RR-2699): time to introduce a doc category for transforms?
   "attr.docs.view_types": "Spatial3DView, Spatial2DView",
   "attr.rerun.state": "unstable", // TODO(RR-2777): Mark as stable when we're ready for it.

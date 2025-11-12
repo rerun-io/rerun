@@ -65,6 +65,14 @@ impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyIndexColumnSelector(pub TimeColumnSelector);
 
+impl std::fmt::Display for PyIndexColumnSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(selector) = self;
+
+        f.write_fmt(format_args!("{}", selector.timeline))
+    }
+}
+
 #[pymethods]
 impl PyIndexColumnSelector {
     /// Create a new `IndexColumnSelector`.
@@ -91,5 +99,11 @@ impl PyIndexColumnSelector {
 impl From<PyIndexColumnSelector> for TimeColumnSelector {
     fn from(selector: PyIndexColumnSelector) -> Self {
         selector.0
+    }
+}
+
+impl From<TimeColumnSelector> for PyIndexColumnSelector {
+    fn from(selector: TimeColumnSelector) -> Self {
+        Self(selector)
     }
 }

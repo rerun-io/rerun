@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::RangeInclusive, sync::Arc};
 
 use arrow::datatypes::DataType as ArrowDataType;
 
@@ -47,8 +47,8 @@ impl TimeType {
     pub fn parse_sequence(s: &str) -> Option<TimeInt> {
         match s {
             "<static>" | "static" => Some(TimeInt::STATIC),
-            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
-            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            "beginning" | "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "end" | "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 let s = s.strip_prefix('#').unwrap_or(s);
                 re_format::parse_i64(s).map(TimeInt::new_temporal)
@@ -60,8 +60,8 @@ impl TimeType {
     pub fn parse_time(&self, s: &str, timestamp_format: TimestampFormat) -> Option<TimeInt> {
         match s.to_lowercase().as_str() {
             "<static>" | "static" => Some(TimeInt::STATIC),
-            "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
-            "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
+            "beginning" | "−∞" | "-inf" | "-infinity" => Some(TimeInt::MIN),
+            "end" | "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 match self {
                     Self::Sequence => {
@@ -101,15 +101,27 @@ impl TimeType {
         time_int: impl Into<TimeInt>,
         timestamp_format: TimestampFormat,
     ) -> String {
+        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
+        self.format_opt(time_int, timestamp_format, subsecond_decimals)
+    }
+
+    /// The format will omit trailing sub-second zeroes as far as `subsecond_decimals` perimts it.
+    pub fn format_opt(
+        &self,
+        time_int: impl Into<TimeInt>,
+        timestamp_format: TimestampFormat,
+        subsecond_decimals: RangeInclusive<usize>,
+    ) -> String {
         let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
-            TimeInt::MIN => "−∞".into(),
-            TimeInt::MAX => "+∞".into(),
+            TimeInt::MIN => "beginning".into(),
+            TimeInt::MAX => "end".into(),
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
-                Self::DurationNs => super::Duration::from(time_int).format_secs(),
-                Self::TimestampNs => super::Timestamp::from(time_int).format(timestamp_format),
+                Self::DurationNs => super::Duration::from(time_int).format_secs(subsecond_decimals),
+                Self::TimestampNs => super::Timestamp::from(time_int)
+                    .format_opt(timestamp_format, subsecond_decimals),
             },
         }
     }
@@ -240,8 +252,8 @@ mod tests {
     fn test_format_parse() {
         let cases = [
             (TimeInt::STATIC, "<static>"),
-            (TimeInt::MIN, "−∞"),
-            (TimeInt::MAX, "+∞"),
+            (TimeInt::MIN, "beginning"),
+            (TimeInt::MAX, "end"),
             (TimeInt::new_temporal(-42), "#−42"),
             (TimeInt::new_temporal(12345), "#12 345"),
         ];

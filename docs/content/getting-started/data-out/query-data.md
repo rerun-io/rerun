@@ -4,49 +4,62 @@ order: 4
 ---
 
 The Rerun Cloud offering builds on the open source core.
-Towards that end the Open Source Server provides the capability for small scale local analysis using a similar API surface.
-This supports a workflow to develop or debug locally on a single recording then scale up that same workflow on the cloud for production use.
+Towards that end, the Open Source Server provides the capability for small scale local analysis using a similar API surface.
+This supports a workflow to first develop or debug locally on a single recording, and then scale up that same workflow on the cloud for production use.
 
 <!-- TODO(RR-2818) add link to doc -->
 
-# Open source server
-
 ## Launching the server
 
+### Commandline
+
 The server needs to be opened in a separate window.
-Launch the server using the rerun cli.
+Launch the server using the Rerun CLI:
 
 ```console
 rerun server
 ```
 
-For full details run
+You can also pass a directory containing RRDs to be opened as a dataset in the server:
+
+```console
+rerun server -d directory_containing_rrds/
+```
+
+For all available options, run:
 
 ```console
 rerun server --help
 ```
 
-with the most common utility opening a directory of rrds as a dataset in the server
+### SDK
 
-```console
-rerun server -d <directory_containing_rrds>
+The server can also be managed with a python object.
+The server will shutdown when the object goes out of scope.
+
+```python
+server = rr.server.Server()
+client = server.client()
+# Or as a context manager
+with rr.server.Server() as srv:
+    client = srv.client()
 ```
 
 ## Connecting to the server
 
-When launching the server the cli will print out the host and port it is listening on
+When launching the server, the CLI will print out the host and port it is listening on
 (defaulting to: `localhost:51234`).
 
 ### From the viewer
 
-Either specify the network location with the cli at launch
+Either specify the network location with the CLI at launch:
 
 ```console
 rerun connect localhost:51234
 ```
 
-or after the viewer opens open the command palette select `open redap server`
-set the scheme to `http` and enter the hostname and port.
+or open the command palette in the viewer (`cmd/ctrl + P` or via the menu) and enter/select `Add Redap server`.
+Set the scheme to `http` and enter the hostname and port in the dialog.
 
 ### From the SDK
 
@@ -63,13 +76,13 @@ Everything below assumes that the server has been launched and a client has been
 ### Datasets overview
 
 A dataset is a collection of recordings that can be queried against.
-If we have already created a dataset we can retrieve it,
+If we have already created a dataset, we can retrieve it via:
 
 ```python
 dataset = client.get_dataset_entry(name="oss_demo")
 ```
 
-otherwise we can create it.
+Otherwise we can create a new dataset:
 
 ```python
 dataset = client.create_dataset(
@@ -77,7 +90,13 @@ dataset = client.create_dataset(
 )
 ```
 
-In order to add additional recordings to a dataset we use the `register` api.
+We can list all of the existing datasets with:
+
+```python
+client.all_entries()
+```
+
+In order to add additional recordings to a dataset we use the `register` API.
 
 ```python
 # For OSS server you must register files local to your machine
@@ -91,11 +110,11 @@ tasks.wait(100)
 
 ### Inspecting datasets
 
-Ultimately, we will end up rendering the data as a [DataFusion DataFrame](https://datafusion.apache.org/python/user-guide/dataframe/index.html)
+Ultimately, we will end up rendering the data as a [DataFusion DataFrame](https://datafusion.apache.org/python/user-guide/dataframe/index.html).
 However, there is an intermediate step that allows for some optimization.
 This generates a `DataFrameQueryView`. <!-- TODO(nick) add link to doc -->
 The `DataFrameQueryView` allows selection of the subset of interest for the dataset (index column, and content columns), filtering to specific time ranges, and managing the sparsity of the data (`fill_latest_at`).
-All of these operations occur on the server prior to evaluating future queries so avoid unnecessary computation.
+All of these operations occur on the server prior to evaluating future queries, so avoid unnecessary computation.
 
 ```python
 view = (
@@ -110,14 +129,14 @@ view = (
 )
 ```
 
-After we have identified what data we want we can get a DataFrame.
+After we have identified what data we want, we can get a DataFrame.
 
 ```python
 df = view.df()
 ```
 
 [DataFusion](https://datafusion.apache.org/python/) provides a pythonic dataframe interface to your data as well as [SQL](https://datafusion.apache.org/python/user-guide/sql.html).
-After performing a series of operations this dataframe can be materialized and returned in common data formats.
+After performing a series of operations, this dataframe can be materialized and returned in common data formats. For example:
 
 ```python
 pandas_df = df.to_pandas()

@@ -54,7 +54,6 @@ impl TestServer {
             port: self.port,
             scheme: re_uri::Scheme::RerunHttp,
         };
-        // TODO(jan): We don't use CLI credentials in tests, it would be nice to test at some point.
         ConnectionRegistry::new_without_stored_credentials()
             .client(origin)
             .await

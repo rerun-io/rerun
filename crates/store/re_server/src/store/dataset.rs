@@ -2,52 +2,96 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, RecordBatchOptions};
-use arrow::datatypes::{Fields, Schema};
+use arrow::{
+    array::{RecordBatch, RecordBatchOptions},
+    datatypes::{Fields, Schema},
+};
 use itertools::Either;
+use parking_lot::Mutex;
+
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
         EntryKind, ScanDatasetManifestResponse, ScanPartitionTableResponse,
-        ext::{DataSource, DatasetEntry, EntryDetails},
+        ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails},
     },
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
 
-use crate::store::{Error, InMemoryStore, Layer, Partition};
+use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
+
+/// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
+pub struct DatasetInner {
+    name: String,
+    details: DatasetDetails,
+    partitions: HashMap<PartitionId, Partition>,
+}
 
 pub struct Dataset {
     id: EntryId,
-    name: String,
-    partitions: HashMap<PartitionId, Partition>,
-
+    store_kind: StoreKind,
     created_at: jiff::Timestamp,
-    updated_at: jiff::Timestamp,
+    inner: Tracked<DatasetInner>,
+
+    /// Cached schema with the timestamp when it was computed.
+    /// Invalidated when `updated_at` changes.
+    cached_schema: Mutex<Option<(jiff::Timestamp, Arc<Schema>)>>,
 }
 
 impl Dataset {
-    pub fn new(id: EntryId, name: String) -> Self {
+    pub fn new(id: EntryId, name: String, store_kind: StoreKind, details: DatasetDetails) -> Self {
         Self {
             id,
-            name,
-            partitions: HashMap::default(),
+            store_kind,
             created_at: jiff::Timestamp::now(),
-            updated_at: jiff::Timestamp::now(),
+            inner: Tracked::new(DatasetInner {
+                name,
+                details,
+                partitions: HashMap::default(),
+            }),
+            cached_schema: Mutex::new(None),
         }
     }
 
+    #[inline]
     pub fn id(&self) -> EntryId {
         self.id
     }
 
+    #[inline]
     pub fn name(&self) -> &str {
-        &self.name
+        &self.inner.name
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        if name != self.inner.name {
+            self.inner.modify().name = name;
+        }
+    }
+
+    #[inline]
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_kind
+    }
+
+    #[inline]
+    pub fn entry_kind(&self) -> EntryKind {
+        match self.store_kind() {
+            StoreKind::Recording => EntryKind::Dataset,
+            StoreKind::Blueprint => EntryKind::BlueprintDataset,
+        }
+    }
+
+    #[inline]
+    pub fn updated_at(&self) -> jiff::Timestamp {
+        self.inner.updated_at()
     }
 
     pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
-        self.partitions
+        self.inner
+            .partitions
             .get(partition_id)
             .ok_or_else(|| Error::PartitionIdNotFound(partition_id.clone(), self.id))
     }
@@ -60,28 +104,37 @@ impl Dataset {
         partition_ids: &'a [PartitionId],
     ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Partition)>, Error> {
         if partition_ids.is_empty() {
-            Ok(Either::Left(self.partitions.iter()))
+            Ok(Either::Left(self.inner.partitions.iter()))
         } else {
             // Validate that all partition IDs exist
             for id in partition_ids {
-                if !self.partitions.contains_key(id) {
+                if !self.inner.partitions.contains_key(id) {
                     return Err(Error::PartitionIdNotFound(id.clone(), self.id));
                 }
             }
 
             Ok(Either::Right(partition_ids.iter().filter_map(|id| {
-                self.partitions.get(id).map(|partition| (id, partition))
+                self.inner
+                    .partitions
+                    .get(id)
+                    .map(|partition| (id, partition))
             })))
+        }
+    }
+
+    pub fn set_dataset_details(&mut self, details: DatasetDetails) {
+        if details != self.inner.details {
+            self.inner.modify().details = details;
         }
     }
 
     pub fn as_entry_details(&self) -> EntryDetails {
         EntryDetails {
             id: self.id,
-            name: self.name.clone(),
-            kind: EntryKind::Dataset,
+            name: self.inner.name.clone(),
+            kind: self.entry_kind(),
             created_at: self.created_at,
-            updated_at: self.updated_at,
+            updated_at: self.inner.updated_at(),
         }
     }
 
@@ -89,38 +142,55 @@ impl Dataset {
         DatasetEntry {
             details: EntryDetails {
                 id: self.id,
-                name: self.name.clone(),
-                kind: EntryKind::Dataset,
+                name: self.inner.name.clone(),
+                kind: self.entry_kind(),
                 created_at: self.created_at,
-                updated_at: self.updated_at,
+                updated_at: self.inner.updated_at(),
             },
 
-            dataset_details: Default::default(),
+            dataset_details: self.inner.details.clone(),
 
             handle: DatasetHandle {
                 id: Some(self.id),
-                store_kind: StoreKind::Recording,
+                store_kind: self.store_kind,
                 url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
             },
         }
     }
 
     pub fn iter_layers(&self) -> impl Iterator<Item = &Layer> {
-        self.partitions
+        self.inner
+            .partitions
             .values()
             .flat_map(|partition| partition.iter_layers().map(|(_, layer)| layer))
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))
+        let mut cache = self.cached_schema.lock();
+
+        let updated_at = self.updated_at();
+
+        // Check if we have a valid cached schema
+        if let Some((cached_at, schema)) = cache.as_ref() {
+            if *cached_at == updated_at {
+                return Ok(Schema::clone(schema));
+            }
+        }
+
+        // Recompute schema
+        let schema = Schema::try_merge(self.iter_layers().map(|layer| layer.schema()))?;
+        let schema_arc = Arc::new(schema.clone());
+        *cache = Some((updated_at, Arc::clone(&schema_arc)));
+
+        Ok(schema)
     }
 
     pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
-        self.partitions.keys().cloned()
+        self.inner.partitions.keys().cloned()
     }
 
     pub fn partition_table(&self) -> Result<RecordBatch, Error> {
-        let row_count = self.partitions.len();
+        let row_count = self.inner.partitions.len();
 
         let mut all_partition_properties = Vec::with_capacity(row_count);
 
@@ -131,7 +201,7 @@ impl Dataset {
         let mut num_chunks = Vec::with_capacity(row_count);
         let mut size_bytes = Vec::with_capacity(row_count);
 
-        for (partition_id, partition) in &self.partitions {
+        for (partition_id, partition) in &self.inner.partitions {
             let layer_count = partition.layer_count();
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
@@ -205,7 +275,13 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        let row_count = self.partitions.values().map(|p| p.layer_count()).sum();
+        let row_count = self
+            .inner
+            .partitions
+            .values()
+            .map(|p| p.layer_count())
+            .sum();
+
         let mut layer_names = Vec::with_capacity(row_count);
         let mut partition_ids = Vec::with_capacity(row_count);
         let mut storage_urls = Vec::with_capacity(row_count);
@@ -219,7 +295,8 @@ impl Dataset {
         let mut properties = Vec::with_capacity(row_count);
 
         for (layer_name, partition_id, layer) in
-            self.partitions
+            self.inner
+                .partitions
                 .iter()
                 .flat_map(|(partition_id, partition)| {
                     let partition_id = partition_id.to_string();
@@ -276,7 +353,8 @@ impl Dataset {
         partition_id: &PartitionId,
         layer_name: &str,
     ) -> Option<&ChunkStoreHandle> {
-        self.partitions
+        self.inner
+            .partitions
             .get(partition_id)
             .and_then(|partition| partition.layer(layer_name))
             .map(|layer| layer.store_handle())
@@ -291,21 +369,25 @@ impl Dataset {
     ) -> Result<(), Error> {
         re_log::debug!(?partition_id, ?layer_name, "add_layer");
 
-        self.partitions
+        self.inner
+            .modify()
+            .partitions
             .entry(partition_id)
             .or_default()
             .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
 
-        self.updated_at = jiff::Timestamp::now();
         Ok(())
     }
 
-    /// Load a RRD using its recording id as partition id.
+    /// Load a RRD using its recording id as partition id.¨
+    ///
+    /// Only stores with matching kinds with be loaded.
     pub fn load_rrd(
         &mut self,
         path: &Path,
         layer_name: Option<&str>,
         on_duplicate: IfDuplicateBehavior,
+        store_kind: StoreKind,
     ) -> Result<BTreeSet<PartitionId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let contents =
@@ -317,7 +399,7 @@ impl Dataset {
         let mut new_partition_ids = BTreeSet::default();
 
         for (store_id, chunk_store) in contents {
-            if !store_id.is_recording() {
+            if store_id.kind() != store_kind {
                 continue;
             }
 

@@ -11,6 +11,7 @@
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
+#include "../components/transform_frame_id.hpp"
 #include "../components/transform_mat3x3.hpp"
 #include "../components/transform_relation.hpp"
 #include "../components/translation3d.hpp"
@@ -318,6 +319,33 @@ namespace rerun::archetypes {
         /// Specifies the relation this transform establishes between this entity and its parent.
         std::optional<ComponentBatch> relation;
 
+        /// The child frame this transform transforms from.
+        ///
+        /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+        /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+        /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+        /// An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
+        /// another one temporally.
+        ///
+        /// ⚠ This currently also affects the child frame of `archetypes::Pinhole`.
+        /// ⚠ This currently is also used as the frame id of `archetypes::InstancePoses3D`.
+        ///
+        /// If not specified, this is set to the implicit transform frame of the current entity path.
+        /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+        ///
+        /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        std::optional<ComponentBatch> child_frame;
+
+        /// The parent frame this transform transforms into.
+        ///
+        /// ⚠ This currently also affects the parent frame of `archetypes::Pinhole`.
+        ///
+        /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+        /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+        ///
+        /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        std::optional<ComponentBatch> parent_frame;
+
         /// Visual length of the 3 axes.
         ///
         /// The length is interpreted in the local coordinate system of the transform.
@@ -356,6 +384,16 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_relation = ComponentDescriptor(
             ArchetypeName, "Transform3D:relation",
             Loggable<rerun::components::TransformRelation>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `child_frame` field.
+        static constexpr auto Descriptor_child_frame = ComponentDescriptor(
+            ArchetypeName, "Transform3D:child_frame",
+            Loggable<rerun::components::TransformFrameId>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `parent_frame` field.
+        static constexpr auto Descriptor_parent_frame = ComponentDescriptor(
+            ArchetypeName, "Transform3D:parent_frame",
+            Loggable<rerun::components::TransformFrameId>::ComponentType
         );
         /// `ComponentDescriptor` for the `axis_length` field.
         static constexpr auto Descriptor_axis_length = ComponentDescriptor(
@@ -859,6 +897,65 @@ namespace rerun::archetypes {
         ) && {
             relation =
                 ComponentBatch::from_loggable(_relation, Descriptor_relation).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The child frame this transform transforms from.
+        ///
+        /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+        /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+        /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+        /// An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
+        /// another one temporally.
+        ///
+        /// ⚠ This currently also affects the child frame of `archetypes::Pinhole`.
+        /// ⚠ This currently is also used as the frame id of `archetypes::InstancePoses3D`.
+        ///
+        /// If not specified, this is set to the implicit transform frame of the current entity path.
+        /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+        ///
+        /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        Transform3D with_child_frame(const rerun::components::TransformFrameId& _child_frame) && {
+            child_frame = ComponentBatch::from_loggable(_child_frame, Descriptor_child_frame)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `child_frame` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_child_frame` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_child_frame(
+            const Collection<rerun::components::TransformFrameId>& _child_frame
+        ) && {
+            child_frame = ComponentBatch::from_loggable(_child_frame, Descriptor_child_frame)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The parent frame this transform transforms into.
+        ///
+        /// ⚠ This currently also affects the parent frame of `archetypes::Pinhole`.
+        ///
+        /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+        /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+        ///
+        /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        Transform3D with_parent_frame(const rerun::components::TransformFrameId& _parent_frame) && {
+            parent_frame = ComponentBatch::from_loggable(_parent_frame, Descriptor_parent_frame)
+                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `parent_frame` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_parent_frame` should
+        /// be used when logging a single row's worth of data.
+        Transform3D with_many_parent_frame(
+            const Collection<rerun::components::TransformFrameId>& _parent_frame
+        ) && {
+            parent_frame = ComponentBatch::from_loggable(_parent_frame, Descriptor_parent_frame)
+                               .value_or_throw();
             return std::move(*this);
         }
 

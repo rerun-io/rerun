@@ -8,11 +8,11 @@ import uuid
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
-from rerun_bindings import ChunkBatcherConfig  # noqa: TC002
 from typing_extensions import deprecated
 
 import rerun as rr
 from rerun import bindings
+from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -22,11 +22,11 @@ if TYPE_CHECKING:
 
     import numpy as np
 
-    from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
+    from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
     from rerun.memory import MemoryRecording
     from rerun.sinks import LogSinkLike
 
-    from ._send_columns import TimeColumnLike
+    from ._send_columns import TimeColumnLike as TimeColumnLike
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
@@ -669,8 +669,9 @@ class RecordingStream:
         Closes all gRPC connections, servers, and files.
 
         Closes all gRPC connections, servers, and files that have been opened with
-        [`rerun.RecordingStream.connect_grpc`], [`rerun.RecordingStream.serve`], [`rerun.RecordingStream.save`] or
-        [`rerun.RecordingStream.spawn`].
+        [`rerun.RecordingStream.connect_grpc`][], [`rerun.RecordingStream.serve_grpc`][],
+        [`rerun.RecordingStream.serve_web`][] , [`rerun.RecordingStream.save`][] or
+        [`rerun.RecordingStream.spawn`][].
         """
 
         from .sinks import disconnect
@@ -1070,7 +1071,7 @@ class RecordingStream:
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        This function marks the timeline as being of a _squential_ type.
+        This function marks the timeline as being of a _sequential_ type.
         You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
         on the same timeline, as that will produce undefined behavior.
 
@@ -1209,7 +1210,7 @@ class RecordingStream:
         Log data to Rerun.
 
         This is the main entry point for logging data to rerun. It can be used to log anything
-        that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike` objects.
+        that implements the [`rerun.AsComponents`][] interface, or a collection of [`rerun.ComponentBatchLike`][] objects.
 
         When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
         for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
@@ -1217,7 +1218,7 @@ class RecordingStream:
         such as properties and warnings.
 
         The most common way to log is with one of the rerun archetypes, all of which implement
-        the `AsComponents` interface.
+        the [`rerun.AsComponents`][] interface.
 
         For example, to log a 3D point:
         ```py
@@ -1269,7 +1270,7 @@ class RecordingStream:
         strict:
             If True, raise exceptions on non-loggable data.
             If False, warn on non-loggable data.
-            if None, use the global default from `rerun.strict_mode()`
+            if None, use the global default from [`rerun.strict_mode`][]
 
         """
 
@@ -1410,7 +1411,7 @@ class RecordingStream:
         strict:
             If True, raise exceptions on non-loggable data.
             If False, warn on non-loggable data.
-            If None, use the global default from `rerun.strict_mode()`
+            If None, use the global default from [`rerun.strict_mode`][]
 
         """
 
