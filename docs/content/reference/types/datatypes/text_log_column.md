@@ -21,10 +21,10 @@ Type: `null`
 
 Column for log-level.
 
-#### `Message` = 4
+#### `Body` = 4
 Type: `null`
 
-The text body the log has.
+The text message the log has.
 
 
 ## Arrow datatype
@@ -34,7 +34,7 @@ DenseUnion {
     1 = "Timeline": utf8
     2 = "EntityPath": nullable null
     3 = "LogLevel": nullable null
-    4 = "Message": nullable null
+    4 = "Body": nullable null
 }
 ```
 

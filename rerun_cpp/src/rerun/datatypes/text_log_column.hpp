@@ -27,7 +27,7 @@ namespace rerun::datatypes {
             Timeline,
             EntityPath,
             LogLevel,
-            Message,
+            Body,
         };
 
         /// \private
@@ -66,7 +66,7 @@ namespace rerun::datatypes {
                 } break;
                 case detail::TextLogColumnTag::EntityPath:
                 case detail::TextLogColumnTag::LogLevel:
-                case detail::TextLogColumnTag::Message: {
+                case detail::TextLogColumnTag::Body: {
                     const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                     void* thisbytes = reinterpret_cast<void*>(&this->_data);
                     std::memcpy(thisbytes, otherbytes, sizeof(detail::TextLogColumnData));
@@ -108,7 +108,7 @@ namespace rerun::datatypes {
                 case detail::TextLogColumnTag::LogLevel: {
                     // has a trivial destructor
                 } break;
-                case detail::TextLogColumnTag::Message: {
+                case detail::TextLogColumnTag::Body: {
                     // has a trivial destructor
                 } break;
                 default:
@@ -143,10 +143,10 @@ namespace rerun::datatypes {
             return self;
         }
 
-        /// The text body the log has.
-        static TextLogColumn message() {
+        /// The text message the log has.
+        static TextLogColumn body() {
             TextLogColumn self;
-            self._tag = detail::TextLogColumnTag::Message;
+            self._tag = detail::TextLogColumnTag::Body;
             return self;
         }
 
@@ -169,9 +169,9 @@ namespace rerun::datatypes {
             return _tag == detail::TextLogColumnTag::LogLevel;
         }
 
-        /// Returns true if the union is in the message state.
-        bool is_message() const {
-            return _tag == detail::TextLogColumnTag::Message;
+        /// Returns true if the union is in the body state.
+        bool is_body() const {
+            return _tag == detail::TextLogColumnTag::Body;
         }
 
         /// \private

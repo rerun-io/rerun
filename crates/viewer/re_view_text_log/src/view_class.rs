@@ -29,6 +29,8 @@ pub struct TextViewState {
     monospace: bool,
 
     seen_levels: BTreeSet<String>,
+
+    last_columns: Vec<TextLogColumn>,
 }
 
 impl ViewState for TextViewState {
@@ -89,7 +91,7 @@ Filter message types and toggle column visibility in a selection panel.",
 
                 columns.push(datatypes::TextLogColumn::EntityPath.into());
                 columns.push(datatypes::TextLogColumn::LogLevel.into());
-                columns.push(datatypes::TextLogColumn::Message.into());
+                columns.push(datatypes::TextLogColumn::Body.into());
 
                 columns
             },
@@ -157,99 +159,10 @@ Filter message types and toggle column visibility in a selection panel.",
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TextViewState>()?;
 
-        let view_ctx = self.view_context(ctx, view_id, state);
-        let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
-
-        let mut columns = columns_property.component_array_or_fallback::<TextLogColumn>(
-            &view_ctx,
-            TextLogColumns::descriptor_columns().component,
-        )?;
-
         // We need a custom UI here because we use arrays, whih component UI doesn't support.
         ui.list_item_scope("text_log_selection_ui", |ui| {
-            ui.list_item().show_hierarchical_with_children(
-                ui,
-                ui.id(),
-                false,
-                LabelContent::new("Columns"),
-                |ui| {
-                    let res =
-                        egui_dnd::dnd(ui, "text_log_columns_dnd").show_vec(
-                            &mut columns,
-                            |ui, item, _handle, _state| {
-                                egui::ComboBox::new(
-                                    "column_types",
-                                    match &item.0 {
-                                        datatypes::TextLogColumn::Timeline(_) => "Timeline",
-                                        datatypes::TextLogColumn::EntityPath => "Entity Path",
-                                        datatypes::TextLogColumn::LogLevel => "Level",
-                                        datatypes::TextLogColumn::Message => "Message",
-                                    },
-                                )
-                                .show_ui(ui, |ui| {
-                                    let timeline =
-                                        if let datatypes::TextLogColumn::Timeline(name) = &item.0 {
-                                            name.as_str().to_owned()
-                                        } else {
-                                            ctx.time_ctrl.timeline().name().to_string()
-                                        };
-                                    ui.selectable_value(
-                                        &mut item.0,
-                                        datatypes::TextLogColumn::Timeline(datatypes::Utf8::from(
-                                            timeline,
-                                        )),
-                                        "Timeline",
-                                    );
-
-                                    ui.selectable_value(
-                                        &mut item.0,
-                                        datatypes::TextLogColumn::EntityPath,
-                                        "Entity Path",
-                                    );
-
-                                    ui.selectable_value(
-                                        &mut item.0,
-                                        datatypes::TextLogColumn::LogLevel,
-                                        "Level",
-                                    );
-
-                                    ui.selectable_value(
-                                        &mut item.0,
-                                        datatypes::TextLogColumn::Message,
-                                        "Message",
-                                    );
-                                });
-
-                                if let datatypes::TextLogColumn::Timeline(name) = &mut item.0 {
-                                    egui::ComboBox::new("column_timeline_name", name.as_str())
-                                        .show_ui(ui, |ui| {
-                                            for timeline in
-                                                ctx.recording().times_per_timeline().timelines()
-                                            {
-                                                ui.selectable_value(
-                                                    name,
-                                                    datatypes::Utf8::from(timeline.name().as_str()),
-                                                    timeline.name().as_str(),
-                                                );
-                                            }
-                                        });
-                                }
-                            },
-                        );
-
-                    if res.is_drag_finished() {
-                        columns_property.save_blueprint_component(
-                            ctx,
-                            &TextLogColumns::descriptor_columns(),
-                            &columns,
-                        );
-                    }
-                },
-            )
+            let ctx = self.view_context(ctx, view_id, state);
+            view_property_ui_columns(&ctx, ui);
         });
 
         Ok(())
@@ -270,24 +183,39 @@ Filter message types and toggle column visibility in a selection panel.",
         let state = state.downcast_mut::<TextViewState>()?;
         let text = system_output.view_systems.get::<TextLogSystem>()?;
 
+        let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
         let rows_property = ViewProperty::from_archetype::<TextLogRows>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.view_id,
         );
 
+        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let columns = columns_property.component_array_or_fallback::<TextLogColumn>(
+            &view_ctx,
+            TextLogColumns::descriptor_columns().component,
+        )?;
+        let levels = rows_property.component_array_or_fallback::<TextLogLevel>(
+            &view_ctx,
+            TextLogRows::descriptor_log_levels().component,
+        )?;
+
+        let reset_column_widths = if columns != state.last_columns {
+            state.last_columns = columns.clone();
+            true
+        } else {
+            false
+        };
+
         for te in &text.entries {
             if let Some(lvl) = &te.level {
                 state.seen_levels.insert(lvl.to_string());
             }
         }
-
-        let view_ctx = self.view_context(ctx, query.view_id, state);
-
-        let levels = rows_property.component_array_or_fallback::<TextLogLevel>(
-            &view_ctx,
-            TextLogRows::descriptor_log_levels().component,
-        )?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.
         // this likely requires a way to pass state into a context.
@@ -317,16 +245,20 @@ Filter message types and toggle column visibility in a selection panel.",
             });
 
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                egui::ScrollArea::horizontal()
-                    .show(ui, |ui| {
-                        re_tracing::profile_scope!("render table");
-                        table_ui(&view_ctx, ui, state, &entries, scroll_to_row)
-                    })
-                    .inner
+                egui::ScrollArea::horizontal().show(ui, |ui| {
+                    re_tracing::profile_scope!("render table");
+                    table_ui(
+                        ctx,
+                        ui,
+                        state,
+                        &columns,
+                        reset_column_widths,
+                        &entries,
+                        scroll_to_row,
+                    );
+                })
             })
-            .inner
-        })
-        .inner?;
+        });
         state.latest_time = time;
 
         Ok(())
@@ -339,21 +271,20 @@ Filter message types and toggle column visibility in a selection panel.",
 /// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
 /// scroll in terms of actual points.
 fn table_ui(
-    ctx: &ViewContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &TextViewState,
+    columns: &[TextLogColumn],
+    reset_column_widths: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
-) -> Result<(), ViewSystemExecutionError> {
+) {
     let tokens = ui.tokens();
     let table_style = re_ui::TableStyle::Dense;
 
     use egui_extras::Column;
 
-    let (global_timeline, global_time) = (
-        *ctx.viewer_ctx.time_ctrl.timeline(),
-        ctx.viewer_ctx.time_ctrl.time_int(),
-    );
+    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline(), ctx.time_ctrl.time_int());
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
@@ -363,6 +294,9 @@ fn table_ui(
         .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
 
+    if reset_column_widths {
+        table_builder.reset();
+    }
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
     }
@@ -370,18 +304,7 @@ fn table_ui(
     let mut body_clip_rect = None;
     let mut current_time_y = None; // where to draw the current time indicator cursor
 
-    let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        ctx.view_id,
-    );
-
-    let columns = columns_property.component_array_or_fallback::<TextLogColumn>(
-        ctx,
-        TextLogColumns::descriptor_columns().component,
-    )?;
-
-    for col in &columns {
+    for col in columns {
         match **col {
             datatypes::TextLogColumn::Timeline(_) | datatypes::TextLogColumn::EntityPath => {
                 table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
@@ -389,7 +312,7 @@ fn table_ui(
             datatypes::TextLogColumn::LogLevel => {
                 table_builder = table_builder.column(Column::auto().at_least(30.0));
             }
-            datatypes::TextLogColumn::Message => {
+            datatypes::TextLogColumn::Body => {
                 table_builder = table_builder.column(Column::remainder().at_least(100.0));
             }
         }
@@ -398,21 +321,8 @@ fn table_ui(
     table_builder
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
-            for col in &columns {
-                header.col(|ui| match &col.0 {
-                    datatypes::TextLogColumn::Timeline(name) => {
-                        item_ui::timeline_button(ctx.viewer_ctx, ui, &TimelineName::new(name));
-                    }
-                    datatypes::TextLogColumn::EntityPath => {
-                        ui.strong("Entity path");
-                    }
-                    datatypes::TextLogColumn::LogLevel => {
-                        ui.strong("Level");
-                    }
-                    datatypes::TextLogColumn::Message => {
-                        ui.strong("Body");
-                    }
-                });
+            for c in columns {
+                header.col(|ui| column_name_ui(ctx, ui, c));
             }
         })
         .body(|mut body| {
@@ -428,7 +338,7 @@ fn table_ui(
             body.heterogeneous_rows(row_heights, |mut row| {
                 let entry = &entries[row.index()];
 
-                for col in &columns {
+                for col in columns {
                     row.col(|ui| {
                         match &col.0 {
                             datatypes::TextLogColumn::Timeline(name) => {
@@ -438,7 +348,7 @@ fn table_ui(
                                     .get(&timeline)
                                     .map(re_log_types::TimeInt::from)
                                     .unwrap_or(re_log_types::TimeInt::STATIC);
-                                item_ui::time_button(ctx.viewer_ctx, ui, &timeline, row_time);
+                                item_ui::time_button(ctx, ui, &timeline, row_time);
 
                                 if let Some(global_time) = global_time
                                     && timeline == *global_timeline.name()
@@ -459,7 +369,7 @@ fn table_ui(
                             }
                             datatypes::TextLogColumn::EntityPath => {
                                 item_ui::entity_path_button(
-                                    ctx.viewer_ctx,
+                                    ctx,
                                     &query,
                                     ctx.recording(),
                                     ui,
@@ -474,7 +384,7 @@ fn table_ui(
                                     ui.label("-");
                                 }
                             }
-                            datatypes::TextLogColumn::Message => {
+                            datatypes::TextLogColumn::Body => {
                                 let mut text = egui::RichText::new(entry.body.as_str());
 
                                 if state.monospace {
@@ -501,8 +411,215 @@ fn table_ui(
             (1.0, ui.tokens().strong_fg_color),
         );
     }
+}
 
-    Ok(())
+fn column_kind_name(column: &TextLogColumn) -> &'static str {
+    match &column.0 {
+        datatypes::TextLogColumn::Timeline(_) => "Timeline",
+        datatypes::TextLogColumn::EntityPath => "Entity Path",
+        datatypes::TextLogColumn::LogLevel => "Level",
+        datatypes::TextLogColumn::Body => "Body",
+    }
+}
+
+fn column_name_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, column: &TextLogColumn) {
+    match &column.0 {
+        datatypes::TextLogColumn::Timeline(name) => {
+            item_ui::timeline_button(ctx, ui, &TimelineName::new(name));
+        }
+        _ => {
+            ui.strong(column_kind_name(column));
+        }
+    }
+}
+
+fn view_property_ui_columns(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
+    let property = ViewProperty::from_archetype::<TextLogColumns>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query(),
+        ctx.view_id,
+    );
+
+    let reflection = ctx.viewer_ctx.reflection();
+    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
+        ui.error_label(format!(
+            "Missing reflection data for archetype {:?}.",
+            property.archetype_name
+        ));
+        return;
+    };
+
+    let query_ctx = property.query_context(ctx);
+
+    let sub_prop_ui = |ui: &mut egui::Ui| {
+        for field in &reflection.fields {
+            if field
+                .component_descriptor(property.archetype_name)
+                .component
+                == TextLogColumns::descriptor_columns().component
+            {
+                re_view::view_property_component_ui_custom(
+                    &query_ctx,
+                    ui,
+                    &property,
+                    field.display_name,
+                    field,
+                    &|_| {},
+                    Some(&|ui| {
+                        let Ok(mut columns) = property
+                            .component_array_or_fallback::<TextLogColumn>(
+                                ctx,
+                                TextLogColumns::descriptor_columns().component,
+                            )
+                        else {
+                            ui.error_label("Failed to query columns component");
+                            return;
+                        };
+                        let mut any_change = false;
+                        let mut remove = Vec::new();
+                        let res = egui_dnd::dnd(ui, "text_log_columns_dnd").show(
+                            columns.iter_mut().enumerate(),
+                            |ui, (idx, column), handle, _state| {
+                                ui.horizontal(|ui| {
+                                    handle.ui(ui, |ui| {
+                                        ui.small_icon(
+                                            &re_ui::icons::DND_HANDLE,
+                                            Some(ui.visuals().text_color()),
+                                        );
+                                    });
+
+                                    egui::containers::Sides::new().shrink_left().show(
+                                        ui,
+                                        |ui| {
+                                            column_definition_ui(ctx, ui, column, &mut any_change);
+                                        },
+                                        |ui| {
+                                            if ui
+                                                .small_icon_button(
+                                                    &re_ui::icons::REMOVE,
+                                                    "remove column",
+                                                )
+                                                .on_hover_text("Remove column")
+                                                .clicked()
+                                            {
+                                                remove.push(idx);
+                                            }
+                                        },
+                                    )
+                                });
+                            },
+                        );
+
+                        if res.is_drag_finished() {
+                            res.update_vec(&mut columns);
+                            any_change = true;
+                        }
+                        // Skip removing if we dragged.
+                        else if !remove.is_empty() {
+                            any_change = true;
+                            for i in remove.into_iter().rev() {
+                                columns.remove(i);
+                            }
+                        }
+
+                        if ui
+                            .small_icon_button(&re_ui::icons::ADD, "add column")
+                            .on_hover_text("Add column")
+                            .clicked()
+                        {
+                            let fallback_columns =
+                                re_viewer_context::typed_array_fallback_for::<TextLogColumn>(
+                                    &query_ctx,
+                                    TextLogColumns::descriptor_columns().component,
+                                );
+
+                            let new_column = fallback_columns
+                                .into_iter()
+                                .find(|c| !columns.contains(c))
+                                .or_else(|| columns.last().cloned())
+                                .unwrap_or(TextLogColumn(
+                                    re_types::datatypes::TextLogColumn::EntityPath,
+                                ));
+
+                            columns.push(new_column);
+                            any_change = true;
+                        }
+
+                        if any_change {
+                            property.save_blueprint_component(
+                                ctx.viewer_ctx,
+                                &TextLogColumns::descriptor_columns(),
+                                &columns,
+                            );
+                        }
+                    }),
+                );
+            } else {
+                re_view::view_property_component_ui(
+                    &query_ctx,
+                    ui,
+                    &property,
+                    field.display_name,
+                    field,
+                );
+            }
+        }
+    };
+
+    ui.list_item()
+        .interactive(false)
+        .show_hierarchical_with_children(
+            ui,
+            ui.make_persistent_id(property.archetype_name.full_name()),
+            true,
+            LabelContent::new(reflection.display_name),
+            sub_prop_ui,
+        );
+}
+
+fn column_definition_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    column: &mut TextLogColumn,
+    any_change: &mut bool,
+) {
+    egui::ComboBox::from_id_salt("column_types")
+        .selected_text(column_kind_name(column))
+        .show_ui(ui, |ui| {
+            let timeline = if let datatypes::TextLogColumn::Timeline(name) = &column.0 {
+                name.as_str().to_owned()
+            } else {
+                ctx.viewer_ctx.time_ctrl.timeline().name().to_string()
+            };
+            let mut selectable_value = |value: datatypes::TextLogColumn| {
+                let text = column_kind_name(&TextLogColumn(value.clone()));
+                *any_change |= ui.selectable_value(&mut column.0, value, text).changed();
+            };
+            selectable_value(datatypes::TextLogColumn::Timeline(datatypes::Utf8::from(
+                timeline,
+            )));
+
+            selectable_value(datatypes::TextLogColumn::EntityPath);
+
+            selectable_value(datatypes::TextLogColumn::LogLevel);
+            selectable_value(datatypes::TextLogColumn::Body);
+        });
+
+    if let datatypes::TextLogColumn::Timeline(name) = &mut column.0 {
+        egui::ComboBox::from_id_salt("column_timeline_name")
+            .selected_text(name.as_str())
+            .show_ui(ui, |ui| {
+                for timeline in ctx.recording().times_per_timeline().timelines() {
+                    *any_change |= ui
+                        .selectable_value(
+                            name,
+                            datatypes::Utf8::from(timeline.name().as_str()),
+                            timeline.name().as_str(),
+                        )
+                        .changed();
+                }
+            });
+    }
 }
 
 fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry: &Entry) -> f32 {

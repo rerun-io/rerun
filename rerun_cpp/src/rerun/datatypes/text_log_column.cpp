@@ -17,7 +17,7 @@ namespace rerun {
             arrow::field("Timeline", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
             arrow::field("EntityPath", arrow::null(), true),
             arrow::field("LogLevel", arrow::null(), true),
-            arrow::field("Message", arrow::null(), true),
+            arrow::field("Body", arrow::null(), true),
         });
         return datatype;
     }
@@ -89,7 +89,7 @@ namespace rerun {
                         static_cast<arrow::NullBuilder*>(variant_builder_untyped);
                     ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
                 } break;
-                case TagType::Message: {
+                case TagType::Body: {
                     auto variant_builder =
                         static_cast<arrow::NullBuilder*>(variant_builder_untyped);
                     ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
