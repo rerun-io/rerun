@@ -96,6 +96,45 @@ impl Transform for TimeSpecToNanos {
     }
 }
 
+/// Tests that timespec structs are correctly converted to nanoseconds, including (mixed) null handling.
+#[test]
+fn test_timespec_to_nanos() {
+    let seconds_field = Arc::new(Field::new("seconds", DataType::Int64, true));
+    let nanos_field = Arc::new(Field::new("nanos", DataType::Int32, true));
+
+    let seconds_array = Arc::new(Int64Array::from(vec![
+        Some(1),
+        Some(2),
+        None,
+        Some(3),
+        None,
+    ]));
+    let nanos_array = Arc::new(arrow::array::Int32Array::from(vec![
+        Some(500_000_000),
+        None,
+        Some(0),
+        Some(250_000_000),
+        None,
+    ]));
+
+    let struct_array = StructArray::new(
+        vec![seconds_field, nanos_field].into(),
+        vec![seconds_array, nanos_array],
+        None,
+    );
+    let output_array = TimeSpecToNanos::default()
+        .transform(&struct_array)
+        .expect("transformation failed");
+    let expected_array = Int64Array::from(vec![
+        Some(1_500_000_000),
+        None,
+        None,
+        Some(3_250_000_000),
+        None,
+    ]);
+    assert_eq!(output_array, expected_array);
+}
+
 /// Transforms a `StringArray` of video codec names to a `UInt32Array`,
 /// where each u32 corresponds to a Rerun `VideoCodec` enum value.
 #[derive(Default)]
