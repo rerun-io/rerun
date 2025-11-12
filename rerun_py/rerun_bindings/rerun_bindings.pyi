@@ -1284,7 +1284,7 @@ class Entry:
         """The entry's name."""
 
     @property
-    def catalog(self) -> CatalogClient:
+    def catalog(self) -> CatalogClientInternal:
         """The catalog client that this entry belongs to."""
 
     @property
