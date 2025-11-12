@@ -1,7 +1,9 @@
 use std::collections::{HashMap, hash_map::Entry};
+use std::error::Error as _;
 use std::sync::Arc;
 
 use itertools::Itertools as _;
+use re_auth::credentials::CredentialsProviderError;
 use tokio::sync::RwLock;
 use tonic::Code;
 
@@ -79,6 +81,12 @@ impl ConnectionRegistry {
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientCredentialsError {
+    #[error("error when refreshing credentials\nDetails:{0}")]
+    RefreshError(TonicStatusError),
+
+    #[error("the credentials are expired")]
+    SessionExpired,
+
     #[error("the server requires an authentication token but none was provided\nDetails:{0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
@@ -332,7 +340,24 @@ impl ConnectionRegistryHandle {
                 }
             }
 
-            Err(err) => Err(ApiError::tonic(err, "verifying credentials")),
+            Err(err) => {
+                if let Some(cred_error) = err.source().and_then(|s| {
+                    s.downcast_ref::<re_auth::credentials::CredentialsProviderError>()
+                }) {
+                    match cred_error {
+                        CredentialsProviderError::SessionExpired => Err(ApiError::credentials(
+                            ClientCredentialsError::SessionExpired,
+                            "session expired",
+                        )),
+                        CredentialsProviderError::Custom(_) => Err(ApiError::credentials(
+                            ClientCredentialsError::RefreshError(err.into()),
+                            "refreshing credentials",
+                        )),
+                    }
+                } else {
+                    Err(ApiError::tonic(err, "verifying credentials"))
+                }
+            }
 
             Ok(_) => Ok(raw_client),
         }
