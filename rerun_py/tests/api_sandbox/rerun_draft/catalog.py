@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import datafusion
 from rerun import catalog as _catalog
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-    import datafusion
     import pyarrow as pa
 
 
@@ -290,28 +290,33 @@ class DatasetEntry(Entry):
         )
 
 
-class TableEntry(Entry):
+class TableEntry(Entry, datafusion.DataFrame):
     """A table entry in the catalog."""
 
     def __init__(self, inner: _catalog.TableEntry) -> None:
-        super().__init__(inner)
-        # Cache the dataframe for forwarding
-        self._df = inner.df()
+        Entry.__init__(self, inner)
+        self._df: datafusion.DataFrame = inner.df()
+        datafusion.DataFrame.__init__(self, self._df.df)
+        self._inner = inner
 
     def __datafusion_table_provider__(self) -> Any:
         return self._inner.__datafusion_table_provider__()
 
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        return self._inner.to_arrow_reader()
+    def client(self) -> CatalogClient:
+        """Returns the CatalogClient associated with this table."""
+        inner_catalog = _catalog.CatalogClient.__new__(_catalog.CatalogClient)  # bypass __init__
+        inner_catalog._raw_client = self._inner.catalog
+        outer_catalog = CatalogClient.__new__(CatalogClient)  # bypass __init__
+        outer_catalog._inner = inner_catalog
 
-    def __getattr__(self, name: str) -> Any:
-        """Forward DataFrame methods to the underlying dataframe."""
-        # First try to get from Entry base class
-        try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            # Then forward to the dataframe
-            return getattr(self._df, name)
+        return outer_catalog
+
+    def append(self, **named_params: Any) -> None:
+        """Convert Python objects into columns of data and append them to a table."""
+        self.client().append_to_table(self._inner.name, **named_params)
+
+    def update(self, *, name: str | None = None) -> None:
+        return self._inner.update(name=name)
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError
