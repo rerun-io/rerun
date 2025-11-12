@@ -1,0 +1,9 @@
+---
+source: crates/store/re_redap_tests/src/tests/entries_table.rs
+expression: batch.format_snapshot(false)
+---
+┌───────────┬────────────┐
+│ name      ┆ entry_kind │
+╞═══════════╪════════════╡
+│ __entries ┆ 3          │
+└───────────┴────────────┘

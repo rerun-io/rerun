@@ -19,7 +19,7 @@ use re_view::controls::{
 use re_viewer_context::{ViewContext, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
+use crate::{pinhole_wrapper::PinholeWrapper, scene_bounding_boxes::SceneBoundingBoxes};
 
 /// An eye in a 3D view.
 ///
@@ -37,14 +37,11 @@ pub struct Eye {
 impl Eye {
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
-    pub fn from_camera(space_cameras: &SpaceCamera3D) -> Option<Self> {
-        let fov_y = space_cameras
-            .pinhole
-            .as_ref()
-            .map_or(Self::DEFAULT_FOV_Y, |pinhole| pinhole.fov_y());
+    pub fn from_camera(camera: &PinholeWrapper) -> Option<Self> {
+        let fov_y = camera.pinhole.fov_y();
 
         Some(Self {
-            world_from_rub_view: space_cameras.world_from_rub_view()?,
+            world_from_rub_view: camera.world_from_rub_view()?,
             fov_y: Some(fov_y),
         })
     }
@@ -597,10 +594,10 @@ impl ControlEye {
     }
 }
 
-pub fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<Eye> {
+pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Eye> {
     let mut found_camera = None;
 
-    for camera in space_cameras {
+    for camera in cameras {
         if &camera.ent_path == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
@@ -640,7 +637,7 @@ impl EyeState {
         ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
         response: &egui::Response,
-        space_cameras: &[SpaceCamera3D],
+        cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let mut eye = ControlEye::from_blueprint(ctx, eye_property, self.fov_y)?;
@@ -669,7 +666,7 @@ impl EyeState {
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
-            if find_camera(space_cameras, &tracking_entity).is_some() {
+            if find_camera(cameras, &tracking_entity).is_some() {
                 drag_threshold = 0.04;
             }
         }
@@ -692,7 +689,7 @@ impl EyeState {
         if let Some(tracked_eye) = self.handle_tracking_entity(
             ctx,
             eye_property,
-            space_cameras,
+            cameras,
             bounding_boxes,
             &mut eye,
             old_pos,
@@ -717,7 +714,7 @@ impl EyeState {
         &mut self,
         ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
-        space_cameras: &[SpaceCamera3D],
+        cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
         eye: &mut ControlEye,
         old_pos: Vec3,
@@ -738,7 +735,7 @@ impl EyeState {
                 Eye3DKind::Orbital => eye.look_target != old_look_target,
             };
 
-            if let Some(target_eye) = find_camera(space_cameras, &tracking_entity) {
+            if let Some(target_eye) = find_camera(cameras, &tracking_entity) {
                 if eye.did_interact && (eye.pos != old_pos || eye.look_target != old_look_target) {
                     eye_property.clear_blueprint_component(
                         ctx.viewer_ctx,
@@ -868,7 +865,7 @@ impl EyeState {
     pub fn focus_entity(
         &self,
         ctx: &ViewContext<'_>,
-        space_cameras: &[SpaceCamera3D],
+        cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
         eye_property: &ViewProperty,
         focused_entity: &EntityPath,
@@ -882,7 +879,7 @@ impl EyeState {
             ..
         } = eye;
         // Focusing cameras is not something that happens now, since those are always tracked.
-        if let Some(target_eye) = find_camera(space_cameras, focused_entity) {
+        if let Some(target_eye) = find_camera(cameras, focused_entity) {
             eye.pos = target_eye.pos_in_world();
             eye.look_target = target_eye.pos_in_world() + target_eye.forward_in_world();
             eye.eye_up = target_eye.world_from_rub_view.transform_vector3(Vec3::Y);
@@ -920,7 +917,7 @@ impl EyeState {
         &mut self,
         ctx: &ViewContext<'_>,
         response: &egui::Response,
-        space_cameras: &[SpaceCamera3D],
+        pinhole_cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
@@ -933,7 +930,7 @@ impl EyeState {
             ctx,
             &eye_property,
             response,
-            space_cameras,
+            pinhole_cameras,
             bounding_boxes,
         )?;
 
