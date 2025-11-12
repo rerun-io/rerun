@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col
 from rerun.catalog import TableInsertMode
 
@@ -118,13 +119,12 @@ def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.P
     assert ctx.table(table_name).count() == original_rows + 4
 
 
-# TODO(Task 3): Mark as local-only once we implement that marker
+@pytest.mark.local_only
 def test_write_to_registered_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """
     Test writing to a pre-registered table (not created from scratch).
 
-    This test copies a local table and registers it, then writes to it.
-    This is local-only because:
+    This test is marked as local_only because:
     1. It needs to copy the table to avoid polluting the original
     2. Remote deployments can't access local file:// URIs for the copy
     """

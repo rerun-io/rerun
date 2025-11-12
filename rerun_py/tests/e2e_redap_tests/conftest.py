@@ -46,6 +46,26 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom pytest markers."""
+    config.addinivalue_line(
+        "markers",
+        "local_only: mark test as requiring local resources (e.g., uses RecordingStream to generate .rrd files on-the-fly)",
+    )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip local-only tests when using remote resource prefix."""
+    resource_prefix = config.getoption("--resource-prefix")
+
+    is_local = resource_prefix is None or resource_prefix.startswith("file://")
+    if not is_local:
+        skip_marker = pytest.mark.skip(reason="Local-only test skipped when using remote resource prefix")
+        for item in items:
+            if "local_only" in item.keywords:
+                item.add_marker(skip_marker)
+
+
 DATASET_NAME = "dataset"
 
 # Test resources are stored locally in the e2e_redap_tests/resources directory
