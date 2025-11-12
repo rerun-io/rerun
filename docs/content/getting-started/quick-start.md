@@ -3,9 +3,9 @@ title: Quick start
 order: 200
 ---
 
-Rerun helps robotics and Physical AI teams iterate faster by providing unified infrastructure for working with multimodal data—from collection to training.
+Rerun helps robotics and Physical AI teams iterate faster by providing unified infrastructure for working with multimodal data and time series data.
 
-With Rerun, you can log data from any sensor, visualize it in our interactive viewer, and query it using dataframes—all with a simple SDK that understands time and handles multi-rate data.
+With Rerun, you can log data from any sensor, visualize it in our interactive viewer, and query it using dataframes. You can do this from with a simple SDK that understands time and natively handles multi-rate data.
 
 ## Choose your language
 

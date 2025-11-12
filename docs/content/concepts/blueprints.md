@@ -115,7 +115,7 @@ if robot_error:
     rr.send_blueprint(blueprint, make_active=True)
 ```
 
-See [Configure the Viewer](../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples.
+See [Configure the Viewer](../getting-started/configure-the-viewer.md#programmatic-blueprints) for detailed examples and [Build a blueprint programmatically](../howto/build-a-blueprint-programmatically) to see how to create a blueprint programmatically.
 
 ## Common use cases
 
