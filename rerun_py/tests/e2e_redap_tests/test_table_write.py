@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 def test_datafusion_write_table(prefilled_catalog: PrefilledCatalog) -> None:
-    table_name = "simple_datatypes"
+    table_name = prefilled_catalog.factory.apply_prefix("simple_datatypes")
     ctx: SessionContext = prefilled_catalog.client.ctx
 
     df_prior = ctx.table(table_name)
@@ -30,7 +30,7 @@ def test_datafusion_write_table(prefilled_catalog: PrefilledCatalog) -> None:
 
 
 def test_client_write_table(prefilled_catalog: PrefilledCatalog) -> None:
-    table_name = "simple_datatypes"
+    table_name = prefilled_catalog.factory.apply_prefix("simple_datatypes")
     ctx: SessionContext = prefilled_catalog.client.ctx
 
     df_prior = ctx.table(table_name)
@@ -78,7 +78,7 @@ def test_client_write_table(prefilled_catalog: PrefilledCatalog) -> None:
 
 
 def test_client_append_to_table(prefilled_catalog: PrefilledCatalog) -> None:
-    table_name = "simple_datatypes"
+    table_name = prefilled_catalog.factory.apply_prefix("simple_datatypes")
     ctx: SessionContext = prefilled_catalog.client.ctx
 
     original_rows = ctx.table(table_name).count()

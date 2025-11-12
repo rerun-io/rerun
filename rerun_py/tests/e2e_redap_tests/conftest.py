@@ -7,6 +7,7 @@ Configuration file for pytest.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import pathlib
 import platform
 import shutil
@@ -20,7 +21,7 @@ from rerun.server import Server
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import DatasetEntry
+    from rerun.catalog import DatasetEntry, Entry, TableEntry
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -101,8 +102,90 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
         server.shutdown()
 
 
+class EntryFactory:
+    """
+    Factory for creating catalog entries with automatic cleanup.
+
+    Mirrors the CatalogClient API for entry creation methods but adds automatic resource naming and cleanup.
+    """
+
+    def __init__(self, client: CatalogClient, prefix: str) -> None:
+        self._client = client
+        self._prefix = prefix
+        self._created_entries: list[Entry] = []
+
+    @property
+    def client(self) -> CatalogClient:
+        """Underlying `CatalogClient` instance."""
+        return self._client
+
+    @property
+    def prefix(self) -> str:
+        """Prefix used for entries created by this factory."""
+        return self._prefix
+
+    def apply_prefix(self, name: str) -> str:
+        """
+        Apply prefix to a name, handling qualified names (A.B.C format).
+
+        For qualified names like "catalog.schema.table" or "schema.table",
+        the prefix is applied only to the last component (the table name).
+        """
+        if not self._prefix:
+            return name
+
+        parts = name.split(".")
+        parts[-1] = f"{self._prefix}{parts[-1]}"
+        return ".".join(parts)
+
+    def create_dataset(self, name: str) -> DatasetEntry:
+        """Create a dataset with automatic cleanup. Mirrors CatalogClient.create_dataset()."""
+        prefixed_name = self.apply_prefix(name)
+        entry = self._client.create_dataset(prefixed_name)
+        self._created_entries.append(entry)
+        return entry
+
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """Create a table entry with automatic cleanup. Mirrors CatalogClient.create_table_entry()."""
+        prefixed_name = self.apply_prefix(name)
+        entry = self._client.create_table_entry(prefixed_name, schema, url)
+        self._created_entries.append(entry)
+        return entry
+
+    def register_table(self, name: str, url: str) -> TableEntry:
+        """Register a table with automatic cleanup. Mirrors CatalogClient.register_table()."""
+        prefixed_name = self.apply_prefix(name)
+        entry = self._client.register_table(prefixed_name, url)
+        self._created_entries.append(entry)
+        return entry
+
+    def cleanup(self) -> None:
+        """Delete all created entries in reverse order."""
+        for entry in reversed(self._created_entries):
+            entry_id = entry.id
+            try:
+                entry.delete()
+            except Exception as e:
+                logging.warning("Could not delete entry %s: %s", entry_id, e)
+
+
 @pytest.fixture(scope="function")
-def test_dataset(catalog_client: CatalogClient) -> Generator[DatasetEntry, None, None]:
+def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest) -> Generator[EntryFactory, None, None]:
+    """
+    Factory for creating catalog entries with automatic cleanup.
+
+    Creates entries with test-specific prefixes to avoid collisions in external servers,
+    and automatically deletes them after the test completes.
+    """
+
+    prefix = f"{request.node.name}_"
+    factory = EntryFactory(catalog_client, prefix)
+    yield factory
+    factory.cleanup()
+
+
+@pytest.fixture(scope="function")
+def test_dataset(entry_factory: EntryFactory) -> Generator[DatasetEntry, None, None]:
     """
     Register a dataset and returns the corresponding `DatasetEntry`.
 
@@ -110,7 +193,7 @@ def test_dataset(catalog_client: CatalogClient) -> Generator[DatasetEntry, None,
     """
     assert DATASET_FILEPATH.is_dir()
 
-    ds = catalog_client.create_dataset(DATASET_NAME)
+    ds = entry_factory.create_dataset(DATASET_NAME)
     ds.register_prefix(DATASET_FILEPATH.as_uri())
 
     yield ds
@@ -118,25 +201,30 @@ def test_dataset(catalog_client: CatalogClient) -> Generator[DatasetEntry, None,
 
 @dataclasses.dataclass
 class PrefilledCatalog:
-    client: CatalogClient
+    factory: EntryFactory
     dataset: DatasetEntry
+
+    @property
+    def client(self) -> CatalogClient:
+        """Convenience property to access the underlying CatalogClient."""
+        return self.factory.client
 
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
 @pytest.fixture(scope="function")
 def prefilled_catalog(
-    catalog_client: CatalogClient, table_filepath: pathlib.Path
+    entry_factory: EntryFactory, table_filepath: pathlib.Path
 ) -> Generator[PrefilledCatalog, None, None]:
     """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
 
     assert DATASET_FILEPATH.is_dir()
     assert table_filepath.is_dir()
 
-    dataset = catalog_client.create_dataset(DATASET_NAME)
+    dataset = entry_factory.create_dataset(DATASET_NAME)
     dataset.register_prefix(DATASET_FILEPATH.as_uri())
 
     for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:
-        catalog_client.register_table(table_name, table_filepath.as_uri())
+        entry_factory.register_table(table_name, table_filepath.as_uri())
 
-    resource = PrefilledCatalog(catalog_client, dataset)
+    resource = PrefilledCatalog(entry_factory, dataset)
     yield resource

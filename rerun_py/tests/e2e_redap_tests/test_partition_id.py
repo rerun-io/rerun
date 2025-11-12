@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING
 from .conftest import DATASET_FILEPATH
 
 if TYPE_CHECKING:
-    from rerun.catalog import CatalogClient
     from syrupy import SnapshotAssertion
 
+    from e2e_redap_tests.conftest import EntryFactory
 
-def test_partition_ids(catalog_client: CatalogClient, snapshot: SnapshotAssertion) -> None:
+
+def test_partition_ids(entry_factory: EntryFactory, snapshot: SnapshotAssertion) -> None:
     """Test that we can successfully collect information about partitions."""
 
-    ds = catalog_client.create_dataset("test_dataset")
+    ds = entry_factory.create_dataset("test_dataset")
     tasks = ds.register_prefix(DATASET_FILEPATH.absolute().as_uri())
     tasks.wait(timeout_secs=50)
 
