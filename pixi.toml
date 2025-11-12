@@ -239,7 +239,9 @@ format = { depends-on = ["cpp-fmt", "misc-fmt", "pb-fmt", "py-fmt", "rs-fmt", "t
 fmt = { depends-on = ["format"] }
 
 # Check links
-link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [{ arg = "ref" }] }
+link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
+  { arg = "ref" },
+] }
 link-check = 'lychee --verbose --cache --max-cache-age 1d . --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
 
 # Assorted linting tasks
