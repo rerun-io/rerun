@@ -1,6 +1,6 @@
 use std::mem::size_of;
 
-use byteorder::{ByteOrder, LittleEndian};
+use byteorder::{ByteOrder as _, LittleEndian};
 use thiserror::Error;
 
 const CONFIG_HEADER_SIZE: usize = size_of::<i32>() + size_of::<[f32; 2]>();
@@ -142,6 +142,7 @@ impl<'a> RvlDecoder<'a> {
         }
     }
 
+    #[expect(clippy::cast_possible_wrap)]
     fn decode_into(&mut self, output: &mut [u16]) -> Result<(), RvlDecodeError> {
         let mut remaining = output.len();
         let mut write_index = 0;

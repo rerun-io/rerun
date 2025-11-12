@@ -478,7 +478,7 @@ impl VisualizerSystem for DepthImageVisualizer {
     }
 
     fn data_based_visualizability_filter(&self) -> Option<Box<dyn DataBasedVisualizabilityFilter>> {
-        Some(Box::new(DepthImageVisualizabilityFilter::default()))
+        Some(Box::new(DepthImageVisualizabilityFilter))
     }
 }
 

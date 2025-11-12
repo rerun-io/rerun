@@ -95,7 +95,7 @@ impl MessageParser for CompressedImageMessageParser {
         let components = match mode {
             ParsedPayloadKind::DepthRvl => {
                 let media_types =
-                    std::iter::repeat(MediaType::from(RVL_MEDIA_TYPE)).take(blobs.len());
+                    std::iter::repeat_n(MediaType::from(RVL_MEDIA_TYPE),blobs.len());
                 EncodedDepthImage::update_fields()
                     .with_many_blob(blobs)
                     .with_many_format(image_formats)
