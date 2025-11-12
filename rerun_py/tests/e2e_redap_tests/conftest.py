@@ -14,12 +14,29 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
+from rerun.catalog import CatalogClient
 from rerun.server import Server
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import CatalogClient, DatasetEntry
+    from rerun.catalog import DatasetEntry
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add custom command-line options for configuring the test server."""
+    parser.addoption(
+        "--redap-url",
+        action="store",
+        default=None,
+        help="URL of an external redap server to connect to. If not provided, a local OSS server will be started.",
+    )
+    parser.addoption(
+        "--redap-token",
+        action="store",
+        default=None,
+        help="Authentication token for the redap server (optional).",
+    )
 
 
 DATASET_NAME = "dataset"
@@ -58,18 +75,30 @@ def table_filepath(tmp_path_factory: pytest.TempPathFactory) -> Generator[pathli
     yield temp_dir / "simple_datatypes"
 
 
-# TODO(ab): make this fixture configurable, such that the entire test suite can be run against different servers
 @pytest.fixture(scope="function")
-def catalog_client() -> Generator[CatalogClient, None, None]:
+def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, None, None]:
     """
     Return a `CatalogClient` instance connected to a test server.
 
     This is the core fixture that spins up a test server and returns the corresponding client. All other fixtures and
     tests should directly or indirectly depend on this.
+
+    By default, this fixture creates a local OSS server. If the `--redap-url` option is provided, it will connect to
+    the specified external server instead.
     """
-    server = Server()
-    yield server.client()
-    server.shutdown()
+    redap_url = request.config.getoption("--redap-url")
+    redap_token = request.config.getoption("--redap-token")
+
+    if redap_url:
+        # Connect to an external redap server
+        client = CatalogClient(address=redap_url, token=redap_token)
+        yield client
+        # No cleanup needed for external server
+    else:
+        # Create a local OSS server
+        server = Server()
+        yield server.client()
+        server.shutdown()
 
 
 @pytest.fixture(scope="function")
