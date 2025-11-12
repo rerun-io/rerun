@@ -767,7 +767,8 @@ fn quote_arrow_field_serializer(
                     InnerRepr::ScalarBuffer => {
                         // Special optimization for Blob (Vec<u8>): reuse ScalarBuffer for single-blob case.
                         // For other ScalarBuffer types, use standard concat approach.
-                        let is_blob = matches!(inner_datatype, DataType::Atomic(AtomicDataType::UInt8));
+                        let is_blob =
+                            matches!(inner_datatype, DataType::Atomic(AtomicDataType::UInt8));
 
                         if is_blob {
                             // Blob optimization: avoid allocation for single-buffer case

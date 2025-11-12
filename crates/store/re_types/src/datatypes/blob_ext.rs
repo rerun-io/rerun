@@ -64,8 +64,8 @@ impl std::ops::Deref for Blob {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arrow::array::Array;
-    use re_types_core::Loggable;
+    use arrow::array::Array as _;
+    use re_types_core::Loggable as _;
 
     #[test]
     fn test_single_blob_serialization() {
@@ -213,7 +213,9 @@ mod tests {
         let offsets = list_array.offsets();
         assert_eq!(offsets[0], 0);
         assert_eq!(offsets[1], 0);
-        assert_eq!(offsets[2], data.len() as i32);
+        #[expect(clippy::cast_possible_wrap)]
+        let expected_offset = data.len() as i32;
+        assert_eq!(offsets[2], expected_offset);
 
         let validity = list_array.nulls().expect("Null buffer is expected");
         assert!(!validity.is_valid(0));
