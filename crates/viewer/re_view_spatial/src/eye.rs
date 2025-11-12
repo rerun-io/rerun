@@ -719,12 +719,11 @@ impl EyeState {
         tracking_entity: Option<&re_types::components::EntityPath>,
     ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
-            // Don't do normal interpolation when tracking.
-            self.stop_interpolation();
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
 
             let new_tracking = self.last_tracked_entity.as_ref() != Some(&tracking_entity);
             if new_tracking {
+                self.start_interpolation();
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 

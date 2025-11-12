@@ -51,7 +51,10 @@ mod metrics_server;
 mod prometheus;
 mod shared_reader;
 mod telemetry;
+mod tracestate;
 mod utils;
+
+use std::collections::HashMap;
 
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 
@@ -140,6 +143,13 @@ impl TraceHeaders {
             traceparent: String::new(),
             tracestate: None,
         }
+    }
+
+    pub fn tracestate(&self) -> HashMap<String, String> {
+        self.tracestate
+            .as_ref()
+            .map(|s| crate::tracestate::parse_pairs(s))
+            .unwrap_or_default()
     }
 }
 

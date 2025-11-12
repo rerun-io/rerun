@@ -8,10 +8,8 @@ import rerun.blueprint as rrb
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .conftest import ServerInstance
 
-
-def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: Path) -> None:
+def test_configure_blueprint_dataset(catalog_client: rr.catalog.CatalogClient, tmp_path: Path) -> None:
     # Create a recording and save it to a temporary file
     rrd_path = tmp_path / "recording.rrd"
     rec = rr.RecordingStream("rerun_example_dataset_blueprint")
@@ -25,8 +23,7 @@ def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: 
     blueprint.save("rerun_example_dataset_blueprint", rbl_path)
 
     # Create a new dataset
-    client = server_instance.client
-    ds = client.create_dataset("my_new_dataset")
+    ds = catalog_client.create_dataset("my_new_dataset")
 
     # Register our recording to the dataset
     ds.register(rrd_path.absolute().as_uri())

@@ -138,6 +138,7 @@ impl Telemetry {
             trace_endpoint,
             trace_sampler,
             trace_sampler_args,
+            tracestate,
             metric_endpoint,
             metric_interval,
             metrics_listen_address: _, // TelemetryArgs only, used at the caller site
@@ -326,10 +327,21 @@ impl Telemetry {
                 .with_batch_exporter(exporter)
                 .build();
 
-            // This will be used by the `TracingInjectorInterceptor` to
-            // encode the trace information into the request headers.
-            opentelemetry::global::set_text_map_propagator(
+            // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
+            // Additional `tracestate` can be added through the relevant env var and the custom enricher below.
+            let mut propagators: Vec<
+                Box<dyn opentelemetry::propagation::TextMapPropagator + Send + Sync>,
+            > = vec![Box::new(
                 opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+            )];
+
+            if !tracestate.is_empty() {
+                let enricher = crate::tracestate::TraceStateEnricher::new(&tracestate);
+                propagators.push(Box::new(enricher));
+            }
+
+            opentelemetry::global::set_text_map_propagator(
+                opentelemetry::propagation::TextMapCompositePropagator::new(propagators),
             );
 
             // This is to make sure that if some third-party system is logging raw OpenTelemetry

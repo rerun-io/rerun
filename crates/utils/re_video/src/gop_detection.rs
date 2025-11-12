@@ -1,5 +1,6 @@
 use crate::{
-    VideoCodec, VideoEncodingDetails, h264::detect_h264_annexb_gop, h265::detect_h265_annexb_gop,
+    VideoCodec, VideoEncodingDetails, av1::detect_av1_keyframe_start, h264::detect_h264_annexb_gop,
+    h265::detect_h265_annexb_gop,
 };
 
 /// Failure reason for [`detect_gop_start`].
@@ -10,6 +11,9 @@ pub enum DetectGopStartError {
 
     #[error("NAL header error: {0:?}")]
     NalHeaderError(h264_reader::nal::NalHeaderError),
+
+    #[error("AV1 parser error: {0}")]
+    Av1ParserError(String),
 
     #[error("Detected group of picture but failed to extract encoding details: {0:?}")]
     FailedToExtractEncodingDetails(String),
@@ -62,7 +66,7 @@ pub fn detect_gop_start(
     match codec {
         VideoCodec::H264 => detect_h264_annexb_gop(sample_data),
         VideoCodec::H265 => detect_h265_annexb_gop(sample_data),
-        VideoCodec::AV1 => Err(DetectGopStartError::UnsupportedCodec(codec)),
+        VideoCodec::AV1 => detect_av1_keyframe_start(sample_data),
         VideoCodec::VP8 => Err(DetectGopStartError::UnsupportedCodec(codec)),
         VideoCodec::VP9 => Err(DetectGopStartError::UnsupportedCodec(codec)),
     }

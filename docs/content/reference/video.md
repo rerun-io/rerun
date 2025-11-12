@@ -46,14 +46,13 @@ Refer to the [video camera streaming](https://github.com/rerun-io/rerun/blob/lat
 Current limitations of `VideoStream`:
 * [#9815](https://github.com/rerun-io/rerun/issues/9815): Decoding on native is generally slower than decoding in the browser right now.
   This can cause increased latency and in some cases may even stop video playback.
-* [#10184](https://github.com/rerun-io/rerun/issues/10184), [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264 & H.265 at this point.
+* [#10186](https://github.com/rerun-io/rerun/issues/10186): [`VideoStream`](../reference/types/archetypes/video_stream.md) only supports H.264, H.265, AV1 at this point.
 * [#10090](https://github.com/rerun-io/rerun/issues/10090): B-frames are not yet supported for [`VideoStream`](../reference/types/archetypes/video_stream.md).
 * [#10422](https://github.com/rerun-io/rerun/issues/10422): [`VideoFrameReference`](../reference/types/archetypes/video_frame_reference.md) does not yet work with [`VideoStream`](../reference/types/archetypes/video_stream.md).
 
 <!--
 Discoverable for scripts/zombie_todos.py:
 TODO(#9815): fix above if ticket is outdated.
-TODO(#10184): fix above if ticket is outdated.
 TODO(#10186): fix above if ticket is outdated.
 TODO(#10090): fix above if ticket is outdated.
 TODO(#10422): fix above if ticket is outdated.
@@ -119,12 +118,10 @@ AV1 is supported out of the box using a software decoder paired with gpu based i
 
 Current limitations:
 * [#7755](https://github.com/rerun-io/rerun/issues/7755): AV1 is supported on all native builds exception on Linux ARM.
-* [#10184](https://github.com/rerun-io/rerun/issues/10184): AV1 is not yet supported for the `VideoStream` archetype.
 
 <!--
 Discoverable for scripts/zombie_todos.py:
 TODO(#7755): fix above if ticket is outdated.
-TODO(#10184): fix above if ticket is outdated.
 -->
 
 #### H.264/avc & H.265/hevc

@@ -176,7 +176,7 @@ impl ViewClass for SpatialView3D {
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
-                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                        "Fallback for `Position3D` queried on 3D view outside the context of a spatial view."
                     );
                     return Position3D::ZERO;
                 };
@@ -195,7 +195,7 @@ impl ViewClass for SpatialView3D {
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
-                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                        "Fallback for `Position3D` queried on 3D view outside the context of a spatial view."
                     );
                     return Position3D::ZERO;
                 };
@@ -247,7 +247,7 @@ impl ViewClass for SpatialView3D {
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
-                        "Fallback for `LinearSpeed` queried on 3D view outside the context of a spatial view."
+                        "Fallback for `Vector3D` queried on 3D view outside the context of a spatial view."
                     );
                     return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
                 };
