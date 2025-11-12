@@ -9,7 +9,7 @@ use url::Url;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
-        RegisterWithDatasetRequest, RegisterWithDatasetResponse,
+        RegisterWithDatasetRequest, RegisterWithDatasetResponse, ext::DatasetEntry,
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
@@ -26,7 +26,7 @@ use crate::{
 /// Extension trait for the most common test setup tasks.
 #[async_trait]
 pub trait RerunCloudServiceExt: RerunCloudService {
-    async fn create_dataset_entry_with_name(&self, dataset_name: &str);
+    async fn create_dataset_entry_with_name(&self, dataset_name: &str) -> DatasetEntry;
 
     async fn register_with_dataset_name(
         &self,
@@ -40,13 +40,18 @@ pub trait RerunCloudServiceExt: RerunCloudService {
 
 #[async_trait]
 impl<T: RerunCloudService> RerunCloudServiceExt for T {
-    async fn create_dataset_entry_with_name(&self, dataset_name: &str) {
+    async fn create_dataset_entry_with_name(&self, dataset_name: &str) -> DatasetEntry {
         self.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
             name: Some(dataset_name.to_owned()),
             id: None,
         }))
         .await
-        .expect("create_dataset_entry should succeed");
+        .expect("create_dataset_entry should succeed")
+        .into_inner()
+        .dataset
+        .expect("some dataset field expected")
+        .try_into()
+        .expect("conversion to ext::DatasetEntry should succeed")
     }
 
     async fn register_with_dataset_name(
