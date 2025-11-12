@@ -27,6 +27,7 @@ anyhow.workspace = true
 arrow.workspace = true
 byteorder.workspace = true
 cdr-encoding.workspace = true
+glam.workspace = true # TODO: for draft arrow visualization only
 mcap.workspace = true
 prost-reflect.workspace = true
 saturating_cast.workspace = true
