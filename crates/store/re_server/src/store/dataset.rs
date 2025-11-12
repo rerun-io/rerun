@@ -101,6 +101,10 @@ impl Dataset {
         }
     }
 
+    pub fn dataset_details(&self) -> &DatasetDetails {
+        &self.inner.details
+    }
+
     pub fn set_dataset_details(&mut self, details: DatasetDetails) {
         self.details = details;
         self.updated_at = jiff::Timestamp::now();
