@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, overload
 
 import numpy as np
 import pyarrow as pa
-import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
+import rerun_bindings as bindings
 
 if TYPE_CHECKING:
     from rerun.recording_stream import RecordingStream
@@ -175,7 +176,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
     There is no requirement of monotonicity. You can move the time backwards if you like.
 
-    This function marks the timeline as being of a _squential_ type.
+    This function marks the timeline as being of a _sequential_ type.
     You should not use the temporal functions ([`rerun.set_time_seconds`][], [`rerun.set_time_nanos`][])
     on the same timeline, as that will produce undefined behavior.
 

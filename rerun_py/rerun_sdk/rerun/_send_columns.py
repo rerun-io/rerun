@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Protocol, TypeVar, overload
 
 import numpy as np
 import pyarrow as pa
-import rerun_bindings as bindings
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
+
+import rerun_bindings as bindings
 
 from ._baseclasses import Archetype, ComponentColumn, ComponentDescriptor
 from .error_utils import catch_and_log_exceptions

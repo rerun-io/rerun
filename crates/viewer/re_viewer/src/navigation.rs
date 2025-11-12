@@ -54,6 +54,7 @@ impl Navigation {
         previous
     }
 
+    /// Current state
     pub fn peek(&self) -> &DisplayMode {
         self.history.last().unwrap_or(&self.start_mode)
     }

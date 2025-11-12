@@ -60,7 +60,10 @@ class TensorDimensionIndexSelection:
 
 
 TensorDimensionIndexSelectionLike = TensorDimensionIndexSelection
+"""A type alias for any TensorDimensionIndexSelection-like object."""
+
 TensorDimensionIndexSelectionArrayLike = TensorDimensionIndexSelection | Sequence[TensorDimensionIndexSelectionLike]
+"""A type alias for any TensorDimensionIndexSelection-like array object."""
 
 
 class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelectionArrayLike]):

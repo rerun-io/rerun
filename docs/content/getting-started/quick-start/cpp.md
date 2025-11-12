@@ -5,7 +5,7 @@ order: 1
 
 ## Setup
 
-Before adding Rerun to your application, start by [installing the viewer](../installing-viewer.md#installing-the-viewer).
+Before adding Rerun to your application, start by [installing the viewer](../../overview/installing-viewer.md#installing-the-viewer).
 
 ## Learning by example
 
@@ -34,7 +34,7 @@ FetchContent_MakeAvailable(rerun_sdk)
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
 all Rerun C++ sources and headers, as well as CMake build instructions for them.
 By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
-See [Install arrow-cpp](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2arrow__cpp__install.html) to learn more about this step and how to use an existing install.
+See [Install Arrow C++](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2arrow__cpp__install.html) to learn more about this step and how to use an existing install.
 
 Finally, make sure you link with `rerun_sdk`:
 
@@ -122,7 +122,7 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../navigating-the-viewer.md) or our
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../configure-the-viewer/navigating-the-viewer.md) or our
 more advanced guide for [Logging Data in C++](../data-in/cpp.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 

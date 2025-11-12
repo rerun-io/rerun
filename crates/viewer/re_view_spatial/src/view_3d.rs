@@ -1,4 +1,5 @@
 use ahash::HashSet;
+use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
@@ -7,17 +8,22 @@ use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
 use re_types::{
     Component as _, View as _, ViewClassIdentifier, archetypes,
-    blueprint::archetypes::{Background, EyeControls3D, LineGrid3D},
-    components::Plane3D,
+    blueprint::{
+        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
+        components::Eye3DKind,
+    },
+    components::{LinearSpeed, Plane3D, Position3D, Vector3D},
+    datatypes::Vec3D,
+    view_coordinates::SignedAxis3,
 };
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _, ViewClassRegistryError,
-    ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizableFilterContext,
+    QueryContext, RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -25,7 +31,7 @@ use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::{SpatialViewState, format_vector},
+    ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
@@ -114,6 +120,14 @@ impl ViewClass for SpatialView3D {
             },
         );
 
+        fn eye_property(ctx: &QueryContext<'_>) -> ViewProperty {
+            ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.view_ctx.blueprint_db(),
+                ctx.view_ctx.blueprint_query(),
+                ctx.view_ctx.view_id,
+            )
+        }
+
         system_registry.register_fallback_provider(
             re_types::blueprint::archetypes::EyeControls3D::descriptor_speed().component,
             |ctx| {
@@ -123,12 +137,131 @@ impl ViewClass for SpatialView3D {
                     );
                     return 1.0.into();
                 };
-                let Some(view_eye) = &view_state.state_3d.view_eye else {
-                    // There's no view eye yet. This may happen on startup
+
+                let eye = eye_property(ctx);
+
+
+                let Ok(kind) = eye.component_or_fallback::<Eye3DKind>(ctx.view_ctx, EyeControls3D::descriptor_kind().component) else {
                     return 1.0.into();
                 };
 
-                view_eye.fallback_speed(ctx)
+                let speed = match kind {
+                    Eye3DKind::FirstPerson => {
+                        let l = view_state.bounding_boxes.current.size().length() as f64;
+                        if l.is_finite() {
+                            0.1 * l
+                        } else {
+                            1.0
+                        }
+                    },
+                    Eye3DKind::Orbital => {
+                        let Ok(position) = eye.component_or_fallback::<Position3D>(ctx.view_ctx, EyeControls3D::descriptor_position().component) else {
+                            return 1.0.into();
+                        };
+                        let Ok(look_target) = eye.component_or_fallback::<Position3D>(ctx.view_ctx, EyeControls3D::descriptor_look_target().component) else {
+                            return 1.0.into();
+                        };
+
+                        // Use the orbit radius for speed.
+                        Vec3::from_array(position.0.0).as_dvec3().distance(Vec3::from_array(look_target.0.0).as_dvec3())
+                    },
+                };
+
+                LinearSpeed::from(speed)
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_types::blueprint::archetypes::EyeControls3D::descriptor_look_target().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `Position3D` queried on 3D view outside the context of a spatial view."
+                    );
+                    return Position3D::ZERO;
+                };
+                let center = view_state.bounding_boxes.current.center();
+
+                if !center.is_finite() {
+                    return Position3D::ZERO;
+                }
+
+                Position3D::from(center)
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_types::blueprint::archetypes::EyeControls3D::descriptor_position().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `Position3D` queried on 3D view outside the context of a spatial view."
+                    );
+                    return Position3D::ZERO;
+                };
+                let mut center = view_state.bounding_boxes.current.center();
+
+                if !center.is_finite() {
+                    center = Vec3::ZERO;
+                }
+
+                let mut radius = 1.5 * view_state.bounding_boxes.current.half_size().length();
+                if !radius.is_finite() || radius == 0.0 {
+                    radius = 1.0;
+                }
+
+
+                let scene_view_coordinates =
+                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
+
+                let scene_right = scene_view_coordinates
+                    .right()
+                    .unwrap_or(SignedAxis3::POSITIVE_X);
+                let scene_forward = scene_view_coordinates
+                    .forward()
+                    .unwrap_or(SignedAxis3::POSITIVE_Y);
+                let scene_up = scene_view_coordinates
+                    .up()
+                    .unwrap_or(SignedAxis3::POSITIVE_Z);
+
+                let eye_up: glam::Vec3 = scene_up.into();
+
+                let eye_dir = {
+                    // Make sure that the right of the scene is to the right for
+                    // the default camera view.
+                    let right = scene_right.into();
+                    let fwd = eye_up.cross(right);
+                    0.75 * fwd + 0.25 * right - 0.25 * eye_up
+                };
+
+                let eye_dir = eye_dir.try_normalize().unwrap_or(scene_forward.into());
+
+                let eye_pos = center - radius * eye_dir;
+
+                Position3D::from(eye_pos)
+            },
+        );
+
+        system_registry.register_fallback_provider(
+            re_types::blueprint::archetypes::EyeControls3D::descriptor_eye_up().component,
+            |ctx| {
+                let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
+                    re_log::error_once!(
+                        "Fallback for `Vector3D` queried on 3D view outside the context of a spatial view."
+                    );
+                    return Vector3D(Vec3D::new(0.0, 0.0, 1.0));
+                };
+
+                let scene_view_coordinates =
+                    view_state.state_3d.scene_view_coordinates.unwrap_or_default();
+
+                let scene_up = scene_view_coordinates
+                    .up()
+                    .unwrap_or(SignedAxis3::POSITIVE_Z);
+
+                let eye_up = glam::Vec3::from(scene_up).normalize_or(Vec3::Z);
+
+                Vector3D(Vec3D::new(eye_up.x, eye_up.y, eye_up.z))
             },
         );
 
@@ -443,7 +576,7 @@ impl ViewClass for SpatialView3D {
             ui.grid_left_hand_label("Camera")
                 .on_hover_text("The virtual camera which controls what is shown on screen");
             ui.vertical(|ui| {
-                state.view_eye_ui(ui, ctx, scene_view_coordinates, view_id);
+                state.view_eye_ui(ui, ctx, view_id);
             });
             ui.end_row();
 
@@ -459,29 +592,13 @@ impl ViewClass for SpatialView3D {
                 ui.label(up_description).on_hover_ui(|ui| {
                     ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
                 });
-
-                if let Some(eye) = &state.state_3d.view_eye
-                    && let Some(eye_up) = eye.eye_up()
-                {
-                    ui.label(format!(
-                        "Current camera-eye up-axis is {}",
-                        format_vector(eye_up)
-                    ));
-                }
-
-                ui.re_checkbox(&mut state.state_3d.show_axes, "Show origin axes")
-                    .on_hover_text("Show X-Y-Z axes");
-                ui.re_checkbox(&mut state.state_3d.show_bbox, "Show bounding box")
-                    .on_hover_text("Show the current scene bounding box");
-                ui.re_checkbox(
-                    &mut state.state_3d.show_smoothed_bbox,
-                    "Show smoothed bounding box",
-                )
-                .on_hover_text("Show a smoothed bounding box used for some heuristics");
             });
             ui.end_row();
 
             state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
+
+            #[cfg(debug_assertions)]
+            ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
@@ -489,6 +606,7 @@ impl ViewClass for SpatialView3D {
             view_property_ui::<EyeControls3D>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
             view_property_ui_grid3d(&view_ctx, ui);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
         });
 
         Ok(())

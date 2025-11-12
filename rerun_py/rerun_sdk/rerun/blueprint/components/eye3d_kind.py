@@ -68,9 +68,12 @@ class Eye3DKind(Enum):
 
 
 Eye3DKindLike = Eye3DKind | Literal["FirstPerson", "Orbital", "firstperson", "orbital"] | int
+"""A type alias for any Eye3DKind-like object."""
+
 Eye3DKindArrayLike = (
     Eye3DKind | Literal["FirstPerson", "Orbital", "firstperson", "orbital"] | int | Sequence[Eye3DKindLike]
 )
+"""A type alias for any Eye3DKind-like array object."""
 
 
 class Eye3DKindBatch(BaseBatch[Eye3DKindArrayLike], ComponentBatchMixin):

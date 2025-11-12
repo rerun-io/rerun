@@ -7,7 +7,7 @@ use re_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
 use re_viewer_context::{
-    BlueprintContext as _, ComponentFallbackError, QueryContext, ViewContext, ViewId,
+    BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
     ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
 };
 
@@ -176,7 +176,7 @@ impl ViewProperty {
     /// Save change to a blueprint component.
     pub fn save_blueprint_component(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &impl BlueprintContext,
         component_descr: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {

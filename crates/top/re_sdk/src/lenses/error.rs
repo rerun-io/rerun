@@ -3,7 +3,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Transform(#[from] re_arrow_util::transform::Error),
+    Transform(#[from] re_arrow_combinators::Error),
 
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),

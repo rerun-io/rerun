@@ -50,7 +50,10 @@ class MultiEnum:
 
 
 MultiEnumLike = MultiEnum
+"""A type alias for any MultiEnum-like object."""
+
 MultiEnumArrayLike = MultiEnum | Sequence[MultiEnumLike]
+"""A type alias for any MultiEnum-like array object."""
 
 
 class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):

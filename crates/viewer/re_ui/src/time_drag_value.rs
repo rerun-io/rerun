@@ -128,6 +128,7 @@ impl TimeDragValue {
         let mut value_i64 = value.as_i64();
         let response = ui.add(
             egui::DragValue::new(&mut value_i64)
+                .clamp_existing_to_range(false)
                 .range(time_range)
                 .speed(speed),
         );
@@ -193,6 +194,7 @@ impl TimeDragValue {
 
         let drag_value_response = ui.add(
             egui::DragValue::new(&mut time_unit)
+                .clamp_existing_to_range(false)
                 .range(time_range)
                 .speed(speed)
                 .suffix(self.unit_symbol),

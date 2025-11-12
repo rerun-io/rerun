@@ -71,6 +71,8 @@ MapProviderLike = (
     ]
     | int
 )
+"""A type alias for any MapProvider-like object."""
+
 MapProviderArrayLike = (
     MapProvider
     | Literal[
@@ -86,6 +88,7 @@ MapProviderArrayLike = (
     | int
     | Sequence[MapProviderLike]
 )
+"""A type alias for any MapProvider-like array object."""
 
 
 class MapProviderBatch(BaseBatch[MapProviderArrayLike], ComponentBatchMixin):

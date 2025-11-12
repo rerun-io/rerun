@@ -34,9 +34,11 @@ class TimePanelBlueprint(Archetype):
         *,
         state: blueprint_components.PanelStateLike | None = None,
         timeline: datatypes.Utf8Like | None = None,
-        time: datatypes.TimeIntLike | None = None,
         playback_speed: datatypes.Float64Like | None = None,
         fps: datatypes.Float64Like | None = None,
+        play_state: blueprint_components.PlayStateLike | None = None,
+        loop_mode: blueprint_components.LoopModeLike | None = None,
+        time_selection: datatypes.AbsoluteTimeRangeLike | None = None,
     ) -> None:
         """
         Create a new instance of the TimePanelBlueprint archetype.
@@ -47,18 +49,34 @@ class TimePanelBlueprint(Archetype):
             Current state of the panel.
         timeline:
             What timeline the panel is on.
-        time:
-            What time the time cursor should be on.
         playback_speed:
             A time playback speed multiplier.
         fps:
             Frames per second. Only applicable for sequence timelines.
+        play_state:
+            If the time is currently paused, playing, or following.
+
+            Defaults to either playing or following, depending on the data source.
+        loop_mode:
+            How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+
+            Defaults to off.
+        time_selection:
+            Selects a range of time on the time panel.
 
         """
 
         # You can define your own __init__ function as a member of TimePanelBlueprintExt in time_panel_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(state=state, timeline=timeline, time=time, playback_speed=playback_speed, fps=fps)
+            self.__attrs_init__(
+                state=state,
+                timeline=timeline,
+                playback_speed=playback_speed,
+                fps=fps,
+                play_state=play_state,
+                loop_mode=loop_mode,
+                time_selection=time_selection,
+            )
             return
         self.__attrs_clear__()
 
@@ -67,9 +85,11 @@ class TimePanelBlueprint(Archetype):
         self.__attrs_init__(
             state=None,
             timeline=None,
-            time=None,
             playback_speed=None,
             fps=None,
+            play_state=None,
+            loop_mode=None,
+            time_selection=None,
         )
 
     @classmethod
@@ -86,9 +106,11 @@ class TimePanelBlueprint(Archetype):
         clear_unset: bool = False,
         state: blueprint_components.PanelStateLike | None = None,
         timeline: datatypes.Utf8Like | None = None,
-        time: datatypes.TimeIntLike | None = None,
         playback_speed: datatypes.Float64Like | None = None,
         fps: datatypes.Float64Like | None = None,
+        play_state: blueprint_components.PlayStateLike | None = None,
+        loop_mode: blueprint_components.LoopModeLike | None = None,
+        time_selection: datatypes.AbsoluteTimeRangeLike | None = None,
     ) -> TimePanelBlueprint:
         """
         Update only some specific fields of a `TimePanelBlueprint`.
@@ -101,12 +123,20 @@ class TimePanelBlueprint(Archetype):
             Current state of the panel.
         timeline:
             What timeline the panel is on.
-        time:
-            What time the time cursor should be on.
         playback_speed:
             A time playback speed multiplier.
         fps:
             Frames per second. Only applicable for sequence timelines.
+        play_state:
+            If the time is currently paused, playing, or following.
+
+            Defaults to either playing or following, depending on the data source.
+        loop_mode:
+            How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+
+            Defaults to off.
+        time_selection:
+            Selects a range of time on the time panel.
 
         """
 
@@ -115,9 +145,11 @@ class TimePanelBlueprint(Archetype):
             kwargs = {
                 "state": state,
                 "timeline": timeline,
-                "time": time,
                 "playback_speed": playback_speed,
                 "fps": fps,
+                "play_state": play_state,
+                "loop_mode": loop_mode,
+                "time_selection": time_selection,
             }
 
             if clear_unset:
@@ -152,15 +184,6 @@ class TimePanelBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    time: blueprint_components.TimeIntBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=blueprint_components.TimeIntBatch._converter,  # type: ignore[misc]
-    )
-    # What time the time cursor should be on.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
     playback_speed: blueprint_components.PlaybackSpeedBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -176,6 +199,37 @@ class TimePanelBlueprint(Archetype):
         converter=blueprint_components.FpsBatch._converter,  # type: ignore[misc]
     )
     # Frames per second. Only applicable for sequence timelines.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    play_state: blueprint_components.PlayStateBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.PlayStateBatch._converter,  # type: ignore[misc]
+    )
+    # If the time is currently paused, playing, or following.
+    #
+    # Defaults to either playing or following, depending on the data source.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    loop_mode: blueprint_components.LoopModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.LoopModeBatch._converter,  # type: ignore[misc]
+    )
+    # How the time should loop. A selection loop only works if there is also a `time_selection` passed.
+    #
+    # Defaults to off.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    time_selection: blueprint_components.AbsoluteTimeRangeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.AbsoluteTimeRangeBatch._converter,  # type: ignore[misc]
+    )
+    # Selects a range of time on the time panel.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

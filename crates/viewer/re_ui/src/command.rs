@@ -515,10 +515,18 @@ impl UICommand {
 
         egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
-                if kb_shortcut.modifiers == Modifiers::NONE && anything_has_focus {
-                    // Don't trigger non-modifier shortcuts when something has focus.
-                    continue;
+                if anything_has_focus {
+                    // If a text edit has focus, is should usually get exclusive access to that input.
+                    // For instance: use alt-arrows to move the cursor a whole word (at least on mac).
+                    // The exception are shortcuts with ctrl/cmd in them:
+                    let is_command = kb_shortcut.modifiers.command
+                        || kb_shortcut.modifiers.mac_cmd
+                        || kb_shortcut.modifiers.ctrl;
+                    if !is_command {
+                        continue; // ignore
+                    }
                 }
+
                 if input.consume_shortcut(&kb_shortcut) {
                     // Clear the shortcut key from input to prevent it from propagating to other UI component.
                     input.keys_down.remove(&kb_shortcut.logical_key);
