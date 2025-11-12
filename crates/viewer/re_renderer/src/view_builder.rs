@@ -845,6 +845,36 @@ impl ViewBuilder {
         Ok(encoder.finish())
     }
 
+    /// Schedules the taking of a screenshot using the provided color format.
+    ///
+    /// Needs to be called before [`ViewBuilder::draw`].
+    /// Can only be called once per frame per [`ViewBuilder`].
+    pub fn schedule_screenshot_with_format<T: 'static + Send + Sync>(
+        &mut self,
+        ctx: &RenderContext,
+        identifier: GpuReadbackIdentifier,
+        color_format: wgpu::TextureFormat,
+        user_data: T,
+    ) -> Result<(), ViewBuilderError> {
+        if self.screenshot_processor.is_some() {
+            return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
+        }
+
+        self.screenshot_processor = Some(ScreenshotProcessor::new_with_format(
+            ctx,
+            &self.setup.name,
+            glam::uvec2(
+                self.setup.resolution_in_pixel[0],
+                self.setup.resolution_in_pixel[1],
+            ),
+            identifier,
+            user_data,
+            color_format,
+        ));
+
+        Ok(())
+    }
+
     /// Schedules the taking of a screenshot.
     ///
     /// Needs to be called before [`ViewBuilder::draw`].
@@ -873,19 +903,12 @@ impl ViewBuilder {
         identifier: GpuReadbackIdentifier,
         user_data: T,
     ) -> Result<(), ViewBuilderError> {
-        if self.screenshot_processor.is_some() {
-            return Err(ViewBuilderError::ScreenshotAlreadyScheduled);
-        }
-
-        self.screenshot_processor = Some(ScreenshotProcessor::new(
+        self.schedule_screenshot_with_format(
             ctx,
-            &self.setup.name,
-            self.setup.resolution_in_pixel.into(),
             identifier,
+            ScreenshotProcessor::SCREENSHOT_COLOR_FORMAT,
             user_data,
-        ));
-
-        Ok(())
+        )
     }
 
     /// Composites the final result of a `ViewBuilder` to a given output `RenderPass`.

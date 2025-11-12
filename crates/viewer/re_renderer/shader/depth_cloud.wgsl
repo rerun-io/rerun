@@ -53,6 +53,9 @@ struct DepthCloudInfo {
 
     /// Changes between the opaque and outline draw-phases.
     radius_boost_in_ui_points: f32,
+
+    /// LOD stride - sample every Nth pixel (1 = all pixels, 2 = every 2nd, etc.)
+    lod_stride: u32,
 };
 
 @group(1) @binding(0)
@@ -154,10 +157,39 @@ fn compute_point_data(quad_idx: u32) -> PointData {
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let quad_idx = sphere_quad_index(vertex_idx);
 
+    var out: VertexOut;
+
+    // LOD-based subsampling: skip points not on the stride grid
+    if depth_cloud_info.lod_stride > 1u {
+        // Determine texture dimensions based on the actual texture being used
+        var texture_dims: vec2u;
+        if depth_cloud_info.sample_type == SAMPLE_TYPE_FLOAT {
+            texture_dims = textureDimensions(texture_float);
+        } else if depth_cloud_info.sample_type == SAMPLE_TYPE_SINT {
+            texture_dims = textureDimensions(texture_sint);
+        } else {
+            texture_dims = textureDimensions(texture_uint);
+        }
+
+        let quad_x = quad_idx % texture_dims.x;
+        let quad_y = quad_idx / texture_dims.x;
+
+        // Skip points not aligned to the LOD stride
+        if (quad_x % depth_cloud_info.lod_stride) != 0u || (quad_y % depth_cloud_info.lod_stride) != 0u {
+            // Degenerate triangle - skip this point
+            out.pos_in_clip = vec4f(0.0);
+            out.pos_in_world = vec3f(0.0);
+            out.point_pos_in_world = vec3f(0.0);
+            out.point_color = vec4f(0.0);
+            out.point_radius = 0.0;
+            out.quad_idx = quad_idx;
+            return out;
+        }
+    }
+
     // Compute point data (valid for the entire quad).
     let point_data = compute_point_data(quad_idx);
 
-    var out: VertexOut;
     out.point_pos_in_world = point_data.pos_in_world;
     out.point_color = point_data.color;
     out.quad_idx = u32(quad_idx);
@@ -166,12 +198,32 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         // Span quad
         let camera_distance = distance(frame.camera_position, point_data.pos_in_world);
         let world_scale_factor = average_scale_from_transform(depth_cloud_info.world_from_rdf); // TODO(andreas): somewhat costly, should precompute this
-        let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
+
+        // Point size compensation for LOD: make points larger when subsampling to maintain coverage
+        // Only apply scaling when lod_stride > 1, otherwise keep original size (multiplier = 1.0)
+        let lod_size_multiplier = max(1.0, f32(depth_cloud_info.lod_stride) * 0.7);  // 0.7 to avoid excessive overlap
+
+        let base_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor);
+        let world_radius = (base_radius * lod_size_multiplier) +
                            world_size_from_point_size(depth_cloud_info.radius_boost_in_ui_points, camera_distance);
-        let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos_in_world, world_radius, false);
-        out.pos_in_clip = frame.projection_from_world * vec4f(quad.pos_in_world, 1.0);
-        out.pos_in_world = quad.pos_in_world;
-        out.point_radius = quad.point_resolved_radius;
+
+        // Screen-space culling: skip points that are too small to be visible
+        // Convert world radius to actual screen pixels using the pixel world size at this distance
+        let pixel_world_size = approx_pixel_world_size_at(camera_distance);
+        let screen_radius_pixels = world_radius / pixel_world_size;
+
+        if screen_radius_pixels < 0.5 {
+            // Point is too small to be visible - emit degenerate triangle by setting w=0
+            // This prevents fragment shader execution and avoids NaN from division by zero
+            out.pos_in_clip = vec4f(0.0, 0.0, 0.0, 0.0);
+            out.pos_in_world = vec3f(0.0);
+            out.point_radius = 0.0;
+        } else {
+            let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos_in_world, world_radius, false);
+            out.pos_in_clip = frame.projection_from_world * vec4f(quad.pos_in_world, 1.0);
+            out.pos_in_world = quad.pos_in_world;
+            out.point_radius = quad.point_resolved_radius;
+        }
     } else {
         // Degenerate case - early-out!
         out.pos_in_clip = vec4f(0.0);
@@ -184,6 +236,11 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
+    // Discard culled vertices (radius=0 would cause NaN in coverage calculation)
+    if in.point_radius <= 0.0 {
+        discard;
+    }
+
     var coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
 
     if frame.deterministic_rendering == 1 {
@@ -198,6 +255,11 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
+    // Discard culled vertices (radius=0 would cause NaN in coverage calculation)
+    if in.point_radius <= 0.0 {
+        discard;
+    }
+
     let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
     if coverage <= 0.5 {
         discard;
@@ -207,6 +269,11 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 
 @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
+    // Discard culled vertices (radius=0 would cause NaN in coverage calculation)
+    if in.point_radius <= 0.0 {
+        discard;
+    }
+
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
     let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);

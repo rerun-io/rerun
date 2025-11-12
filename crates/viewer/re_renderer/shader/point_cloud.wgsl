@@ -108,17 +108,35 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
     let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
                        world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
-    let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, world_radius,
-                                             has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES));
 
-    // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = apply_depth_offset(frame.projection_from_world * vec4f(quad.pos_in_world, 1.0), batch.depth_offset);
-    out.color = point_data.color;
-    out.radius = quad.point_resolved_radius;
-    out.world_position = quad.pos_in_world;
-    out.point_center = point_data.pos;
-    out.picking_instance_id = point_data.picking_instance_id;
+
+    // Screen-space culling: skip points that are too small to be visible
+    // Convert world radius to actual screen pixels using the pixel world size at this distance
+    let pixel_world_size = approx_pixel_world_size_at(camera_distance);
+    let screen_radius_pixels = world_radius / pixel_world_size;
+
+    if screen_radius_pixels < 0.5 {
+        // Point is too small to be visible - emit degenerate triangle by setting w=0
+        // This prevents fragment shader execution and avoids NaN from division by zero
+        out.position = vec4f(0.0, 0.0, 0.0, 0.0);
+        out.world_position = vec3f(0.0);
+        out.radius = 0.0;
+        out.point_center = vec3f(0.0);
+        out.color = vec4f(0.0);
+        out.picking_instance_id = vec2u(0u);
+    } else {
+        let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, world_radius,
+                                                 has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES));
+
+        // Output, transform to projection space and done.
+        out.position = apply_depth_offset(frame.projection_from_world * vec4f(quad.pos_in_world, 1.0), batch.depth_offset);
+        out.color = point_data.color;
+        out.radius = quad.point_resolved_radius;
+        out.world_position = quad.pos_in_world;
+        out.point_center = point_data.pos;
+        out.picking_instance_id = point_data.picking_instance_id;
+    }
 
     return out;
 }
@@ -147,6 +165,11 @@ fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
+    // Discard culled vertices (radius=0 would cause NaN in coverage calculation)
+    if in.radius <= 0.0 {
+        discard;
+    }
+
     var coverage = coverage(in.world_position, in.radius, in.point_center);
 
     if frame.deterministic_rendering == 1 {
@@ -169,6 +192,11 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
+    // Discard culled vertices (radius=0 would cause NaN in coverage calculation)
+    if in.radius <= 0.0 {
+        discard;
+    }
+
     let cov = coverage(in.world_position, in.radius, in.point_center);
     if cov <= 0.5 {
         discard;
@@ -178,6 +206,11 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 
 @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
+    // Discard culled vertices (radius=0 would cause NaN in coverage calculation)
+    if in.radius <= 0.0 {
+        discard;
+    }
+
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
     let cov = coverage(in.world_position, in.radius, in.point_center);

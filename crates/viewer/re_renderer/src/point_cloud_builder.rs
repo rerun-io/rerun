@@ -189,6 +189,7 @@ impl PointCloudBatchBuilder<'_, '_> {
         let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
 
         self.batch_mut().point_count += num_points as u32;
+        self.batch_mut().update_object_space_bounds(positions);
 
         {
             re_tracing::profile_scope!("positions & radii");

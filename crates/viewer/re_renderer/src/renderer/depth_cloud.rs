@@ -77,7 +77,8 @@ mod gpu_data {
         /// Changes over different draw-phases.
         pub radius_boost_in_ui_points: f32,
 
-        pub _row_padding: [f32; 1],
+        /// LOD stride - sample every Nth pixel (1 = all pixels, 2 = every 2nd, etc.)
+        pub lod_stride: u32,
 
         // ---
         pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1 - 1],
@@ -86,6 +87,7 @@ mod gpu_data {
     impl DepthCloudInfoUBO {
         pub fn from_depth_cloud(
             radius_boost_in_ui_points: f32,
+            lod_stride: u32,
             depth_cloud: &super::DepthCloud,
         ) -> Result<Self, DepthCloudDrawDataError> {
             let super::DepthCloud {
@@ -123,8 +125,8 @@ mod gpu_data {
                 colormap: *colormap as u32,
                 sample_type,
                 radius_boost_in_ui_points,
+                lod_stride,
                 picking_layer_object_id: *picking_object_id,
-                _row_padding: Default::default(),
                 _end_padding: Default::default(),
             })
         }
@@ -217,7 +219,18 @@ struct DepthCloudDrawInstance {
     render_outline_mask: bool,
 }
 
-#[derive(Clone)]
+/// Compute LOD stride for a depth cloud based on its properties.
+/// Returns the stride (1 = full res, 2 = half res, 4 = quarter res, etc.)
+///
+/// NOTE: Currently disabled (always returns 1) because LOD decisions made during draw data
+/// creation are view-independent and cause permanent detail loss. Users cannot zoom in to
+/// recover dropped samples, breaking inspection workflows. View-dependent LOD would require
+/// recreating draw data per frame with current camera information.
+fn compute_lod_stride(_depth_cloud: &DepthCloud) -> u32 {
+    // Always use full resolution until view-dependent LOD can be implemented
+    1
+}
+
 pub struct DepthCloudDrawData {
     instances: Vec<DepthCloudDrawInstance>,
 }
@@ -276,7 +289,10 @@ impl DepthCloudDrawData {
             let radius_boost = *radius_boost_in_ui_points_for_outlines;
             let ubos: Vec<gpu_data::DepthCloudInfoUBO> = depth_clouds
                 .iter()
-                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(radius_boost, dc))
+                .map(|dc| {
+                    let lod_stride = compute_lod_stride(dc);
+                    gpu_data::DepthCloudInfoUBO::from_depth_cloud(radius_boost, lod_stride, dc)
+                })
                 .try_collect()?;
             create_and_fill_uniform_buffer_batch(ctx, "depth_cloud_ubos".into(), ubos.into_iter())
         };
@@ -284,7 +300,10 @@ impl DepthCloudDrawData {
         let depth_cloud_ubo_binding_opaque = {
             let ubos: Vec<gpu_data::DepthCloudInfoUBO> = depth_clouds
                 .iter()
-                .map(|dc| gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, dc))
+                .map(|dc| {
+                    let lod_stride = compute_lod_stride(dc);
+                    gpu_data::DepthCloudInfoUBO::from_depth_cloud(0.0, lod_stride, dc)
+                })
                 .try_collect()?;
             create_and_fill_uniform_buffer_batch(ctx, "depth_cloud_ubos".into(), ubos.into_iter())
         };
