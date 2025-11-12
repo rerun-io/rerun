@@ -102,7 +102,7 @@ impl Dataset {
     }
 
     pub fn dataset_details(&self) -> &DatasetDetails {
-        &self.inner.details
+        &self.details
     }
 
     pub fn set_dataset_details(&mut self, details: DatasetDetails) {
