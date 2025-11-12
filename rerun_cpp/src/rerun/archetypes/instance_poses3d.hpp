@@ -6,11 +6,11 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/pose_rotation_axis_angle.hpp"
-#include "../components/pose_rotation_quat.hpp"
-#include "../components/pose_scale3d.hpp"
-#include "../components/pose_transform_mat3x3.hpp"
-#include "../components/pose_translation3d.hpp"
+#include "../components/rotation_axis_angle.hpp"
+#include "../components/rotation_quat.hpp"
+#include "../components/scale3d.hpp"
+#include "../components/transform_mat3x3.hpp"
+#include "../components/translation3d.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -98,27 +98,27 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `translations` field.
         static constexpr auto Descriptor_translations = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:translations",
-            Loggable<rerun::components::PoseTranslation3D>::ComponentType
+            Loggable<rerun::components::Translation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
+            Loggable<rerun::components::RotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::ComponentType
+            Loggable<rerun::components::RotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `scales` field.
         static constexpr auto Descriptor_scales = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:scales",
-            Loggable<rerun::components::PoseScale3D>::ComponentType
+            Loggable<rerun::components::Scale3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `mat3x3` field.
         static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:mat3x3",
-            Loggable<rerun::components::PoseTransformMat3x3>::ComponentType
+            Loggable<rerun::components::TransformMat3x3>::ComponentType
         );
 
       public:
@@ -138,7 +138,7 @@ namespace rerun::archetypes {
 
         /// Translation vectors.
         InstancePoses3D with_translations(
-            const Collection<rerun::components::PoseTranslation3D>& _translations
+            const Collection<rerun::components::Translation3D>& _translations
         ) && {
             translations = ComponentBatch::from_loggable(_translations, Descriptor_translations)
                                .value_or_throw();
@@ -147,7 +147,7 @@ namespace rerun::archetypes {
 
         /// Rotations via axis + angle.
         InstancePoses3D with_rotation_axis_angles(
-            const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
+            const Collection<rerun::components::RotationAxisAngle>& _rotation_axis_angles
         ) && {
             rotation_axis_angles = ComponentBatch::from_loggable(
                                        _rotation_axis_angles,
@@ -159,7 +159,7 @@ namespace rerun::archetypes {
 
         /// Rotations via quaternion.
         InstancePoses3D with_quaternions(
-            const Collection<rerun::components::PoseRotationQuat>& _quaternions
+            const Collection<rerun::components::RotationQuat>& _quaternions
         ) && {
             quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
                               .value_or_throw();
@@ -167,14 +167,13 @@ namespace rerun::archetypes {
         }
 
         /// Scaling factors.
-        InstancePoses3D with_scales(const Collection<rerun::components::PoseScale3D>& _scales) && {
+        InstancePoses3D with_scales(const Collection<rerun::components::Scale3D>& _scales) && {
             scales = ComponentBatch::from_loggable(_scales, Descriptor_scales).value_or_throw();
             return std::move(*this);
         }
 
         /// 3x3 transformation matrices.
-        InstancePoses3D with_mat3x3(
-            const Collection<rerun::components::PoseTransformMat3x3>& _mat3x3
+        InstancePoses3D with_mat3x3(const Collection<rerun::components::TransformMat3x3>& _mat3x3
         ) && {
             mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
             return std::move(*this);

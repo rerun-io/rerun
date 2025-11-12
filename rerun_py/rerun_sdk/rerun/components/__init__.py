@@ -65,11 +65,6 @@ from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
 from .plane3d import Plane3D, Plane3DBatch
-from .pose_rotation_axis_angle import PoseRotationAxisAngle, PoseRotationAxisAngleBatch
-from .pose_rotation_quat import PoseRotationQuat, PoseRotationQuatBatch
-from .pose_scale3d import PoseScale3D, PoseScale3DBatch
-from .pose_transform_mat3x3 import PoseTransformMat3x3, PoseTransformMat3x3Batch
-from .pose_translation3d import PoseTranslation3D, PoseTranslation3DBatch
 from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
@@ -221,16 +216,6 @@ __all__ = [
     "PinholeProjectionBatch",
     "Plane3D",
     "Plane3DBatch",
-    "PoseRotationAxisAngle",
-    "PoseRotationAxisAngleBatch",
-    "PoseRotationQuat",
-    "PoseRotationQuatBatch",
-    "PoseScale3D",
-    "PoseScale3DBatch",
-    "PoseTransformMat3x3",
-    "PoseTransformMat3x3Batch",
-    "PoseTranslation3D",
-    "PoseTranslation3DBatch",
     "Position2D",
     "Position2DBatch",
     "Position3D",

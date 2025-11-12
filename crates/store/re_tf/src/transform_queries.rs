@@ -235,19 +235,19 @@ pub fn query_and_resolve_instance_poses_at_entity(
     }
 
     let batch_translation = result
-        .component_batch::<components::PoseTranslation3D>(identifier_translations)
+        .component_batch::<components::Translation3D>(identifier_translations)
         .unwrap_or_default();
     let batch_rotation_axis_angle = result
-        .component_batch::<components::PoseRotationAxisAngle>(identifier_rotation_axis_angles)
+        .component_batch::<components::RotationAxisAngle>(identifier_rotation_axis_angles)
         .unwrap_or_default();
     let batch_rotation_quat = result
-        .component_batch::<components::PoseRotationQuat>(identifier_quaternions)
+        .component_batch::<components::RotationQuat>(identifier_quaternions)
         .unwrap_or_default();
     let batch_scale = result
-        .component_batch::<components::PoseScale3D>(identifier_scales)
+        .component_batch::<components::Scale3D>(identifier_scales)
         .unwrap_or_default();
     let batch_mat3x3 = result
-        .component_batch::<components::PoseTransformMat3x3>(identifier_mat3x3)
+        .component_batch::<components::TransformMat3x3>(identifier_mat3x3)
         .unwrap_or_default();
 
     if batch_translation.is_empty()
@@ -270,11 +270,11 @@ pub fn query_and_resolve_instance_poses_at_entity(
             // We apply these in a specific order.
             let mut transform = DAffine3::IDENTITY;
             if let Some(translation) = iter_translation.next() {
-                transform = convert::pose_translation_3d_to_daffine3(translation);
+                transform = convert::translation_3d_to_daffine3(translation);
             }
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
                 if let Ok(axis_angle) =
-                    convert::pose_rotation_axis_angle_to_daffine3(rotation_axis_angle)
+                    convert::rotation_axis_angle_to_daffine3(rotation_axis_angle)
                 {
                     transform *= axis_angle;
                 } else {
@@ -282,17 +282,17 @@ pub fn query_and_resolve_instance_poses_at_entity(
                 }
             }
             if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = convert::pose_rotation_quat_to_daffine3(rotation_quat) {
+                if let Ok(rotation_quat) = convert::rotation_quat_to_daffine3(rotation_quat) {
                     transform *= rotation_quat;
                 } else {
                     transform = DAffine3::ZERO;
                 }
             }
             if let Some(scale) = iter_scale.next() {
-                transform *= convert::pose_scale_3d_to_daffine3(scale);
+                transform *= convert::scale_3d_to_daffine3(scale);
             }
             if let Some(mat3x3) = iter_mat3x3.next() {
-                transform *= convert::pose_transform_mat3x3_to_daffine3(mat3x3);
+                transform *= convert::transform_mat3x3_to_daffine3(mat3x3);
             }
             transform
         })

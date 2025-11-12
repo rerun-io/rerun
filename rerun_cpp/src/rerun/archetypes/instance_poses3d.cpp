@@ -9,20 +9,20 @@ namespace rerun::archetypes {
     InstancePoses3D InstancePoses3D::clear_fields() {
         auto archetype = InstancePoses3D();
         archetype.translations =
-            ComponentBatch::empty<rerun::components::PoseTranslation3D>(Descriptor_translations)
+            ComponentBatch::empty<rerun::components::Translation3D>(Descriptor_translations)
                 .value_or_throw();
         archetype.rotation_axis_angles =
-            ComponentBatch::empty<rerun::components::PoseRotationAxisAngle>(
+            ComponentBatch::empty<rerun::components::RotationAxisAngle>(
                 Descriptor_rotation_axis_angles
             )
                 .value_or_throw();
         archetype.quaternions =
-            ComponentBatch::empty<rerun::components::PoseRotationQuat>(Descriptor_quaternions)
+            ComponentBatch::empty<rerun::components::RotationQuat>(Descriptor_quaternions)
                 .value_or_throw();
-        archetype.scales = ComponentBatch::empty<rerun::components::PoseScale3D>(Descriptor_scales)
-                               .value_or_throw();
+        archetype.scales =
+            ComponentBatch::empty<rerun::components::Scale3D>(Descriptor_scales).value_or_throw();
         archetype.mat3x3 =
-            ComponentBatch::empty<rerun::components::PoseTransformMat3x3>(Descriptor_mat3x3)
+            ComponentBatch::empty<rerun::components::TransformMat3x3>(Descriptor_mat3x3)
                 .value_or_throw();
         return archetype;
     }

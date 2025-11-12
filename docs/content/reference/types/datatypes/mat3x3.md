@@ -29,5 +29,4 @@ FixedSizeList<9, float32>
 ## Used by
 
 * [`PinholeProjection`](../components/pinhole_projection.md)
-* [`PoseTransformMat3x3`](../components/pose_transform_mat3x3.md)
 * [`TransformMat3x3`](../components/transform_mat3x3.md)

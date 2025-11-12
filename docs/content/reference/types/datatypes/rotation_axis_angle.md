@@ -38,5 +38,4 @@ Struct {
 
 ## Used by
 
-* [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
 * [`RotationAxisAngle`](../components/rotation_axis_angle.md)

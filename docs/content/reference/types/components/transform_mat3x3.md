@@ -34,4 +34,5 @@ FixedSizeList<9, float32>
 
 ## Used by
 
+* [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)

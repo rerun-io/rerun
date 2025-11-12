@@ -272,46 +272,46 @@ class InstancePoses3D(Archetype):
 
         return ComponentColumnList(columns)
 
-    translations: components.PoseTranslation3DBatch | None = field(
+    translations: components.Translation3DBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
+        converter=components.Translation3DBatch._converter,  # type: ignore[misc]
     )
     # Translation vectors.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
+    rotation_axis_angles: components.RotationAxisAngleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
+        converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    quaternions: components.PoseRotationQuatBatch | None = field(
+    quaternions: components.RotationQuatBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
+        converter=components.RotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    scales: components.PoseScale3DBatch | None = field(
+    scales: components.Scale3DBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseScale3DBatch._converter,  # type: ignore[misc]
+        converter=components.Scale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factors.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    mat3x3: components.PoseTransformMat3x3Batch | None = field(
+    mat3x3: components.TransformMat3x3Batch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseTransformMat3x3Batch._converter,  # type: ignore[misc]
+        converter=components.TransformMat3x3Batch._converter,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
     #

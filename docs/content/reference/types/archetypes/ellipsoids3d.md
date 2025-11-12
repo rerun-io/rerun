@@ -17,12 +17,12 @@ Orienting and placing ellipsoids/spheres forms a separate transform that is appl
 * `half_sizes`: [`HalfSize3D`](../components/half_size3d.md)
 
 ### Recommended
-* `centers`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `centers`: [`Translation3D`](../components/translation3d.md)
 * `colors`: [`Color`](../components/color.md)
 
 ### Optional
-* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
-* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `rotation_axis_angles`: [`RotationAxisAngle`](../components/rotation_axis_angle.md)
+* `quaternions`: [`RotationQuat`](../components/rotation_quat.md)
 * `line_radii`: [`Radius`](../components/radius.md)
 * `fill_mode`: [`FillMode`](../components/fill_mode.md)
 * `labels`: [`Text`](../components/text.md)
