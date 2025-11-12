@@ -3,38 +3,19 @@
 use std::sync::Arc;
 
 use re_arrow_combinators::{
-    Error, Transform as _,
+    Transform as _,
     cast::PrimitiveCast,
     map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull},
     reshape::{Flatten, GetField, StructToFixedList},
-    semantic::BinaryToListUInt8,
 };
 
 use arrow::{
-    array::{
-        Array, ArrayRef, Float32Array, Float64Array, Float64Builder, GenericByteBuilder, ListArray,
-        ListBuilder, RecordBatch, RecordBatchOptions, StructBuilder,
-    },
-    datatypes::{DataType, Field, Fields, GenericBinaryType, Schema},
+    array::{Float32Array, Float64Array, Float64Builder, ListArray, ListBuilder, StructBuilder},
+    datatypes::{DataType, Field, Fields},
 };
 
-/// Helper function to wrap an [`ArrayRef`] into a [`RecordBatch`] for easier printing.
-fn wrap_in_record_batch(array: ArrayRef) -> RecordBatch {
-    let schema = Arc::new(Schema::new_with_metadata(
-        vec![Field::new("col", array.data_type().clone(), true)],
-        Default::default(),
-    ));
-    RecordBatch::try_new_with_options(schema, vec![array], &RecordBatchOptions::default()).unwrap()
-}
-
-struct DisplayRB<T: Array + Clone + 'static>(T);
-
-impl<T: Array + Clone + 'static> std::fmt::Display for DisplayRB<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let rb = wrap_in_record_batch(Arc::new(self.0.clone()));
-        write!(f, "{}", re_arrow_util::format_record_batch(&rb))
-    }
-}
+mod testing_utils;
+use testing_utils::DisplayRB;
 
 fn create_nasty_component_column() -> ListArray {
     let inner_struct_fields = Fields::from(vec![
@@ -312,132 +293,4 @@ fn test_flatten_multiple_elements() {
         "flatten_multiple_elements",
         format!("{}", DisplayRB(result.clone()))
     );
-}
-
-// Generic test for binary arrays where the offset is the same.
-fn impl_binary_test<O1: arrow::array::OffsetSizeTrait, O2: arrow::array::OffsetSizeTrait>() {
-    println!(
-        "Testing '{}' -> '{}'",
-        std::any::type_name::<O1>(),
-        std::any::type_name::<O2>()
-    );
-
-    let mut builder = GenericByteBuilder::<GenericBinaryType<O1>>::new();
-    builder.append_value(b"hello");
-    builder.append_value(b"world");
-    builder.append_null();
-    builder.append_value(b"");
-    builder.append_value([0x00, 0xFF, 0x42]);
-    let binary_array = builder.finish();
-
-    println!("Input:");
-    println!("{}", DisplayRB(binary_array.clone()));
-
-    let result = BinaryToListUInt8::<O1, O2>::new()
-        .transform(&binary_array)
-        .unwrap();
-
-    println!("Output:");
-    println!("{}", DisplayRB(result.clone()));
-
-    // Verify structure
-    assert_eq!(result.len(), 5);
-    assert!(!result.is_null(0));
-    assert!(!result.is_null(1));
-    assert!(result.is_null(2));
-    assert!(!result.is_null(3));
-    assert!(!result.is_null(4));
-
-    {
-        let list = result.value(0);
-        let uint8 = list
-            .as_any()
-            .downcast_ref::<arrow::array::UInt8Array>()
-            .unwrap();
-        assert_eq!(uint8.len(), 5);
-        assert_eq!(uint8.value(0) as char, 'h');
-        assert_eq!(uint8.value(1) as char, 'e');
-        assert_eq!(uint8.value(2) as char, 'l');
-        assert_eq!(uint8.value(3) as char, 'l');
-        assert_eq!(uint8.value(4) as char, 'o');
-    }
-
-    {
-        let list = result.value(1);
-        let uint8 = list
-            .as_any()
-            .downcast_ref::<arrow::array::UInt8Array>()
-            .unwrap();
-        assert_eq!(list.len(), 5);
-        assert_eq!(uint8.value(0) as char, 'w');
-        assert_eq!(uint8.value(1) as char, 'o');
-        assert_eq!(uint8.value(2) as char, 'r');
-        assert_eq!(uint8.value(3) as char, 'l');
-        assert_eq!(uint8.value(4) as char, 'd');
-    }
-
-    assert!(result.is_null(2));
-
-    {
-        let list = result.value(3);
-        let uint8 = list
-            .as_any()
-            .downcast_ref::<arrow::array::UInt8Array>()
-            .unwrap();
-        assert_eq!(uint8.len(), 0);
-    }
-
-    {
-        let list = result.value(4);
-        let uint8 = list
-            .as_any()
-            .downcast_ref::<arrow::array::UInt8Array>()
-            .unwrap();
-        assert_eq!(uint8.len(), 3);
-        assert_eq!(uint8.value(0), 0x00);
-        assert_eq!(uint8.value(1), 0xFF);
-        assert_eq!(uint8.value(2), 0x42);
-    }
-}
-
-#[test]
-fn test_binary_to_list_uint8() {
-    // We test the different offset combinations.
-    impl_binary_test::<i32, i32>();
-    impl_binary_test::<i64, i32>();
-    impl_binary_test::<i32, i64>();
-    impl_binary_test::<i64, i64>();
-}
-
-#[test]
-fn test_binary_offset_overflow() {
-    use arrow::array::LargeBinaryArray;
-    use arrow::buffer::OffsetBuffer;
-
-    // Create a LargeBinaryArray with an offset that exceeds i32::MAX
-    let large_offset = i32::MAX as i64 + 1;
-
-    let offsets = vec![0i64, large_offset];
-    let offsets_buffer = OffsetBuffer::new(offsets.into());
-
-    let values = vec![0u8; large_offset as usize];
-
-    let large_binary = LargeBinaryArray::new(offsets_buffer, values.into(), None);
-
-    // Try to convert from LargeBinaryArray (i64 offsets) to ListArray (i32 offsets)
-    let transform = BinaryToListUInt8::<i64, i32>::new();
-    let result = transform.transform(&large_binary);
-
-    // Should fail with OffsetOverflow
-    assert!(result.is_err());
-    match result.unwrap_err() {
-        Error::OffsetOverflow {
-            actual,
-            expected_type,
-        } => {
-            assert_eq!(actual, large_offset as usize);
-            assert_eq!(expected_type, "i32");
-        }
-        other => panic!("Expected OffsetOverflow error, got: {other:?}"),
-    }
 }

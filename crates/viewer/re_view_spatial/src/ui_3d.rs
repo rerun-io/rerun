@@ -28,7 +28,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     SpatialView3D,
     eye::find_camera,
-    space_camera_3d::SpaceCamera3D,
+    pinhole_wrapper::PinholeWrapper,
     ui::{SpatialViewState, create_labels},
     view_kind::SpatialViewKind,
     visualizers::{CamerasVisualizer, collect_ui_labels},
@@ -137,7 +137,7 @@ impl SpatialView3D {
         let space_cameras = &system_output
             .view_systems
             .get::<CamerasVisualizer>()?
-            .space_cameras;
+            .pinhole_cameras;
         let scene_view_coordinates = query_view_coordinates_at_closest_ancestor(
             query.space_origin,
             ctx.recording(),
@@ -591,16 +591,14 @@ fn show_orbit_eye_center(
 
 fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
-    space_cameras: &[SpaceCamera3D],
+    cameras: &[PinholeWrapper],
     state: &SpatialViewState,
     item_context: &ItemContext,
     ray_color: egui::Color32,
 ) {
     match item_context {
         ItemContext::TwoD { space_2d, pos } => {
-            if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d)
-                && let Some(pinhole) = cam.pinhole.as_ref()
-            {
+            if let Some(cam) = cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 // Render a thick line to the actual z value if any and a weaker one as an extension
                 // If we don't have a z value, we only render the thick one.
                 let depth = if 0.0 < pos.z && pos.z.is_finite() {
@@ -608,7 +606,7 @@ fn show_projections_from_2d_space(
                 } else {
                     cam.picture_plane_distance
                 };
-                let stop_in_image_plane = pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
+                let stop_in_image_plane = cam.pinhole.unproject(glam::vec3(pos.x, pos.y, depth));
 
                 let world_from_image = glam::Affine3A::from(cam.world_from_camera)
                     * glam::Affine3A::from_mat3(
@@ -639,9 +637,8 @@ fn show_projections_from_2d_space(
             ..
         } => {
             if state.last_tracked_entity() != Some(tracked_entity)
-                && let Some(tracked_camera) = space_cameras
-                    .iter()
-                    .find(|cam| &cam.ent_path == tracked_entity)
+                && let Some(tracked_camera) =
+                    cameras.iter().find(|cam| &cam.ent_path == tracked_entity)
             {
                 let cam_to_pos = *pos - tracked_camera.position();
                 let distance = cam_to_pos.length();

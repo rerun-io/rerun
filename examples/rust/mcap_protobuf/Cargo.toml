@@ -1,6 +1,6 @@
 [package]
-name = "minimal_options"
-version = "0.28.0-alpha.1+dev"
+name = "mcap_protobuf"
+version = "0.27.0-alpha.8+dev"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
@@ -10,5 +10,7 @@ publish = false
 rerun = { path = "../../../crates/top/rerun", features = ["web_viewer", "clap"] }
 
 anyhow.workspace = true
+arrow.workspace = true
 clap = { workspace = true, features = ["derive"] }
-glam.workspace = true
+re_arrow_combinators = { workspace = true }
+re_log_types = { workspace = true }
