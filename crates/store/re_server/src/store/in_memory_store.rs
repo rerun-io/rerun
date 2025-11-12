@@ -287,6 +287,59 @@ impl InMemoryStore {
         self.update_entries_table()
     }
 
+    pub fn create_dataset(
+        &mut self,
+        name: &str,
+        id: Option<EntryId>,
+        store_kind: StoreKind,
+        details: Option<DatasetDetails>,
+    ) -> Result<&mut Dataset, Error> {
+        re_log::debug!(name, "create_dataset");
+        let name = name.to_owned();
+        if self.id_by_name.contains_key(&name) {
+            return Err(Error::DuplicateEntryNameError(name));
+        }
+
+        let entry_id = id.unwrap_or_else(EntryId::new);
+        if self.id_exists(&entry_id) {
+            return Err(Error::DuplicateEntryIdError(entry_id));
+        }
+
+        self.id_by_name.insert(name.clone(), entry_id);
+
+        self.datasets.insert(
+            entry_id,
+            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default()),
+        );
+
+        self.update_entries_table()?;
+        self.dataset_mut(entry_id)
+    }
+
+    /// Delete the provided entry.
+    ///
+    /// For dataset, the corresponding blueprint dataset will be deleted as well.
+    pub fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), Error> {
+        re_log::debug!(?entry_id, "delete_entry");
+
+        if let Some(table) = self.tables.remove(&entry_id) {
+            self.id_by_name.remove(table.name());
+            self.update_entries_table()?;
+            Ok(())
+        } else if let Some(dataset) = self.datasets.remove(&entry_id) {
+            self.id_by_name.remove(dataset.name());
+            self.update_entries_table()?;
+
+            if let Some(blueprint_entry_id) = dataset.dataset_details().blueprint_dataset {
+                self.delete_entry(blueprint_entry_id)
+            } else {
+                Ok(())
+            }
+        } else {
+            Err(Error::EntryIdNotFound(entry_id))
+        }
+    }
+
     /// Update the table of entries. This method must be called after
     /// any changes to either the registered datasets or tables. We
     /// can remove this restriction if we change the store to be an
@@ -318,41 +371,6 @@ impl InMemoryStore {
         );
 
         Ok(())
-    }
-
-    pub fn create_dataset(
-        &mut self,
-        name: &str,
-        id: Option<EntryId>,
-        store_kind: StoreKind,
-        details: Option<DatasetDetails>,
-    ) -> Result<&mut Dataset, Error> {
-        re_log::debug!(name, "create_dataset");
-        let name = name.to_owned();
-        if self.id_by_name.contains_key(&name) {
-            return Err(Error::DuplicateEntryNameError(name));
-        }
-
-        let entry_id = id.unwrap_or_else(EntryId::new);
-        if self.id_exists(&entry_id) {
-            return Err(Error::DuplicateEntryIdError(entry_id));
-        }
-
-        self.id_by_name.insert(name.clone(), entry_id);
-
-        Ok(self.datasets.entry(entry_id).or_insert_with(|| {
-            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default())
-        }))
-    }
-
-    pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
-        re_log::debug!(?entry_id, "delete_dataset");
-        if let Some(dataset) = self.datasets.remove(&entry_id) {
-            self.id_by_name.remove(dataset.name());
-            Ok(())
-        } else {
-            Err(Error::EntryIdNotFound(entry_id))
-        }
     }
 
     pub fn dataset(&self, entry_id: EntryId) -> Result<&Dataset, Error> {

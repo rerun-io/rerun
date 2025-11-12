@@ -1093,39 +1093,12 @@ impl App {
 
             SystemCommand::SetSelection(set) => {
                 if let Some(item) = set.selection.single_item() {
-                    match item {
-                        Item::RedapEntry(entry) => {
-                            self.state
-                                .navigation
-                                .replace(DisplayMode::RedapEntry(entry.clone()));
-                        }
-
-                        Item::RedapServer(origin) => {
-                            self.state
-                                .navigation
-                                .replace(DisplayMode::RedapServer(origin.clone()));
-                        }
-
-                        Item::TableId(table_id) => {
-                            self.state
-                                .navigation
-                                .replace(DisplayMode::LocalTable(table_id.clone()));
-                        }
-
-                        Item::StoreId(store_id) => {
-                            self.state
-                                .navigation
-                                .replace(DisplayMode::LocalRecordings(store_id.clone()));
+                    // If the selected item has its own page, switch to it.
+                    if let Some(display_mode) = DisplayMode::from_item(item) {
+                        if let DisplayMode::LocalRecordings(store_id) = &display_mode {
                             store_hub.set_active_recording_id(store_id.clone());
                         }
-
-                        Item::AppId(_)
-                        | Item::DataSource(_)
-                        | Item::InstancePath(_)
-                        | Item::ComponentPath(_)
-                        | Item::Container(_)
-                        | Item::View(_)
-                        | Item::DataResult(_, _) => {}
+                        self.state.navigation.replace(display_mode);
                     }
                 }
 
@@ -1500,6 +1473,17 @@ impl App {
             UICommand::CloseAllEntries => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllEntries);
+            }
+
+            UICommand::NextRecording => {
+                self.state
+                    .recording_panel
+                    .send_command(re_recording_panel::RecordingPanelCommand::SelectNextRecording);
+            }
+            UICommand::PreviousRecording => {
+                self.state.recording_panel.send_command(
+                    re_recording_panel::RecordingPanelCommand::SelectPreviousRecording,
+                );
             }
 
             UICommand::Undo => {

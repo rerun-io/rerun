@@ -1,11 +1,14 @@
-use egui::{Color32, CursorIcon, Id, NumExt as _, Rect};
+use egui::{Color32, CursorIcon, Id, NumExt as _, Rangef, Rect};
 
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
 };
 use re_types::blueprint::components::LoopMode;
-use re_ui::{HasDesignTokens as _, UiExt as _, list_item};
-use re_viewer_context::{TimeControl, TimeControlCommand, ViewerContext};
+use re_ui::{HasDesignTokens as _, UICommand, UICommandSender as _, UiExt as _, list_item};
+use re_viewer_context::{
+    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
+    open_url::ViewerOpenUrl,
+};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -61,8 +64,6 @@ pub fn loop_selection_ui(
     timeline_rect: &Rect,
     time_commands: &mut Vec<TimeControlCommand>,
 ) {
-    let tokens = ui.tokens();
-
     if time_ctrl.loop_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
@@ -74,15 +75,13 @@ pub fn loop_selection_ui(
         time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
     }
 
-    let is_active = time_ctrl.loop_mode() == LoopMode::Selection;
-
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
 
     let timeline_response = ui
         .interact(
             *timeline_rect,
             ui.id().with("timeline"),
-            egui::Sense::drag(),
+            egui::Sense::click_and_drag(),
         )
         .on_hover_cursor(crate::CREATE_TIME_LOOP_CURSOR_ICON);
 
@@ -110,34 +109,6 @@ pub fn loop_selection_ui(
                 );
             }
 
-            let full_y_range =
-                egui::Rangef::new(rect.top(), time_area_painter.clip_rect().bottom());
-
-            {
-                // Paint selection:
-                let corner_radius = tokens.normal_corner_radius();
-                let corner_radius = egui::CornerRadius {
-                    nw: corner_radius,
-                    ne: corner_radius,
-                    sw: 0,
-                    se: 0,
-                };
-
-                let full_color = tokens.loop_selection_color;
-                let inactive_color = tokens.loop_selection_color_inactive;
-
-                if is_active {
-                    let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                    time_area_painter.rect_filled(full_rect, corner_radius, full_color);
-                } else {
-                    time_area_painter.rect_filled(rect, corner_radius, full_color);
-
-                    let bottom_rect =
-                        Rect::from_x_y_ranges(rect.x_range(), rect.bottom()..=full_y_range.max);
-                    time_area_painter.rect_filled(bottom_rect, 0.0, inactive_color);
-                }
-            }
-
             // Check for interaction:
             {
                 let left_edge_rect =
@@ -162,6 +133,11 @@ pub fn loop_selection_ui(
                             ctx.app_options().timestamp_format,
                         );
                     });
+
+                middle_response.context_menu(|ui| {
+                    let is_on_selection = true;
+                    selection_context_menu(ui, ctx, time_commands, is_on_selection);
+                });
 
                 let left_response = ui
                     .interact(left_edge_rect, left_edge_id, egui::Sense::drag())
@@ -208,12 +184,16 @@ pub fn loop_selection_ui(
                 on_drag_loop_selection(ui, &middle_response, time_ranges_ui, &mut selected_range);
 
                 if middle_response.clicked() {
-                    let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
-                        LoopMode::Off
+                    if ui.ctx().input(|i| i.modifiers.alt) {
+                        time_commands.push(TimeControlCommand::RemoveLoopSelection);
                     } else {
-                        LoopMode::Selection
-                    };
-                    time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                        let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
+                            LoopMode::Off
+                        } else {
+                            LoopMode::Selection
+                        };
+                        time_commands.push(TimeControlCommand::SetLoopMode(new_loop_mode));
+                    }
                 }
             }
         }
@@ -230,20 +210,25 @@ pub fn loop_selection_ui(
         }
     }
 
+    timeline_response.context_menu(|ui| {
+        let is_on_selection = false;
+        selection_context_menu(ui, ctx, time_commands, is_on_selection);
+    });
+
     // Start new selection?
-    if let Some(pointer_pos) = pointer_pos
+    if !timeline_response.context_menu_opened()
         && timeline_response.hovered()
+        && let Some(pointer_pos) = pointer_pos
         && let Some(time) = time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
     {
         // Show preview:
-        let x = time_ranges_ui
-            .x_from_time_f32(time)
-            .unwrap_or(pointer_pos.x);
-        ui.painter().vline(
-            x,
-            timeline_rect.y_range(),
-            ui.visuals().widgets.noninteractive.fg_stroke,
-        );
+        if let Some(x) = time_ranges_ui.x_from_time_f32(time) {
+            ui.painter().vline(
+                x,
+                timeline_rect.y_range(),
+                ui.visuals().widgets.noninteractive.fg_stroke,
+            );
+        }
 
         if timeline_response.dragged() && ui.input(|i| i.pointer.is_decidedly_dragging()) {
             // Start new selection
@@ -253,6 +238,130 @@ pub fn loop_selection_ui(
             time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
             ui.ctx().set_dragged_id(right_edge_id);
         }
+    }
+
+    paint_loop_selection(
+        time_ctrl,
+        time_ranges_ui,
+        ui,
+        timeline_rect.y_range(),
+        Rangef::new(timeline_rect.top(), time_area_painter.clip_rect().bottom()),
+        time_commands,
+    );
+}
+
+fn paint_loop_selection(
+    time_ctrl: &TimeControl,
+    time_ranges_ui: &TimeRangesUi,
+    ui: &egui::Ui,
+    top_y_range: Rangef,
+    full_y_range: Rangef,
+    time_commands: &[TimeControlCommand],
+) -> Option<()> {
+    // Use latest range to avoid frame delay
+    let selected_range = time_commands
+        .iter()
+        .rev()
+        .find_map(|c| {
+            if let TimeControlCommand::SetLoopSelection(range) = c {
+                Some(AbsoluteTimeRangeF::from(*range))
+            } else {
+                None
+            }
+        })
+        .or(time_ctrl.loop_selection())?;
+
+    let min_x = time_ranges_ui.x_from_time_f32(selected_range.min)?;
+    let max_x = time_ranges_ui.x_from_time_f32(selected_range.max)?;
+
+    let mut x_range = Rangef::new(min_x, max_x);
+
+    if x_range.span() < 2.0 {
+        // Make sure it is visible:
+        x_range = Rangef::new(x_range.center() - 1.0, x_range.center() + 1.0);
+    }
+
+    let top_rect = Rect::from_x_y_ranges(x_range, top_y_range);
+    let bottom_rect = Rect::from_x_y_ranges(x_range, top_rect.bottom()..=full_y_range.max);
+    let full_rect = Rect::from_x_y_ranges(x_range, full_y_range);
+
+    // Paint selection:
+    let tokens = ui.tokens();
+    let corner_radius = tokens.normal_corner_radius();
+    let corner_radius = egui::CornerRadius {
+        nw: corner_radius,
+        ne: corner_radius,
+        sw: 0,
+        se: 0,
+    };
+
+    let full_color = tokens.loop_selection_color;
+    let inactive_color = tokens.loop_selection_color_inactive;
+
+    let is_active = time_ctrl.loop_mode() == LoopMode::Selection;
+    if is_active {
+        ui.painter()
+            .rect_filled(full_rect, corner_radius, full_color);
+    } else {
+        ui.painter()
+            .rect_filled(top_rect, corner_radius, full_color);
+
+        ui.painter().rect_filled(bottom_rect, 0.0, inactive_color);
+    }
+
+    None
+}
+
+fn selection_context_menu(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    time_commands: &mut Vec<TimeControlCommand>,
+    is_on_selection: bool,
+) {
+    let modifier = ui.ctx().format_modifiers(egui::Modifiers::ALT);
+    if ui
+        .add_enabled(
+            is_on_selection,
+            egui::Button::new("Remove time selection").shortcut_text(format!("{modifier}+Click")),
+        )
+        .on_disabled_hover_text("Open the context menu on selected time to remove it")
+        .clicked()
+    {
+        time_commands.push(TimeControlCommand::RemoveLoopSelection);
+    }
+
+    let mut button = egui::Button::new("Save current time selection…");
+    if let Some(shortcut) = UICommand::SaveRecordingSelection.formatted_kb_shortcut(ui.ctx()) {
+        button = button.shortcut_text(shortcut);
+    }
+    if ui
+        .add_enabled(is_on_selection, button)
+        .on_disabled_hover_text("Open the context menu on selected time to save it")
+        .clicked()
+    {
+        ctx.command_sender()
+            .send_ui(UICommand::SaveRecordingSelection);
+    }
+
+    let mut url = ViewerOpenUrl::from_context(ctx);
+    let has_time_range = url.as_mut().is_ok_and(|url| url.fragment_mut().is_some());
+    let copy_command = url.and_then(|url| url.copy_url_command());
+    if ui
+        .add_enabled(
+            is_on_selection && copy_command.is_ok() && has_time_range,
+            egui::Button::new("Copy link to trimmed time range"),
+        )
+        .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
+            format!("Can't share links to the current recording: {err}")
+        } else if !has_time_range {
+            "The current recording doesn't support time range links".to_owned()
+        } else {
+            "Open the context menu on selected time to copy link".to_owned()
+        })
+        .clicked()
+        && let Ok(copy_command) = copy_command
+    {
+        ctx.command_sender().send_system(copy_command);
     }
 }
 

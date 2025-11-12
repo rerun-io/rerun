@@ -445,6 +445,16 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         },
     );
 
+    // Pinhole
+    registry.register_component_fallback_provider(
+        archetypes::Pinhole::descriptor_color().component,
+        |ctx| components::Color::from(ctx.viewer_ctx().tokens().frustum_color),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Pinhole::descriptor_line_width().component,
+        |_| components::Radius::new_ui_points(1.),
+    );
+
     // SeriesLines
     registry.register_component_fallback_provider(
         archetypes::SeriesLines::descriptor_widths().component,

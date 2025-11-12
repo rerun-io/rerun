@@ -122,6 +122,10 @@ impl Dataset {
         }
     }
 
+    pub fn dataset_details(&self) -> &DatasetDetails {
+        &self.inner.details
+    }
+
     pub fn set_dataset_details(&mut self, details: DatasetDetails) {
         if details != self.inner.details {
             self.inner.modify().details = details;

@@ -19,7 +19,7 @@ use re_view::controls::{
 use re_viewer_context::{ViewContext, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
+use crate::{pinhole_wrapper::PinholeWrapper, scene_bounding_boxes::SceneBoundingBoxes};
 
 /// An eye in a 3D view.
 ///
@@ -37,14 +37,11 @@ pub struct Eye {
 impl Eye {
     pub const DEFAULT_FOV_Y: f32 = 55.0_f32 * std::f32::consts::TAU / 360.0;
 
-    pub fn from_camera(space_cameras: &SpaceCamera3D) -> Option<Self> {
-        let fov_y = space_cameras
-            .pinhole
-            .as_ref()
-            .map_or(Self::DEFAULT_FOV_Y, |pinhole| pinhole.fov_y());
+    pub fn from_camera(camera: &PinholeWrapper) -> Option<Self> {
+        let fov_y = camera.pinhole.fov_y();
 
         Some(Self {
-            world_from_rub_view: space_cameras.world_from_rub_view()?,
+            world_from_rub_view: camera.world_from_rub_view()?,
             fov_y: Some(fov_y),
         })
     }
@@ -229,8 +226,6 @@ struct ControlEye {
     fov_y: Option<f32>,
 
     did_interact: bool,
-
-    written_radius: bool,
 }
 
 impl ControlEye {
@@ -287,14 +282,6 @@ impl ControlEye {
                 .0,
         );
 
-        let has_look_target = eye_property
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_look_target().component)?
-            .is_some();
-
-        let has_position = eye_property
-            .component_or_empty::<Position3D>(EyeControls3D::descriptor_position().component)?
-            .is_some();
-
         Ok(Self {
             pos,
             look_target,
@@ -302,7 +289,6 @@ impl ControlEye {
             speed,
             eye_up,
             did_interact: false,
-            written_radius: has_position && has_look_target,
             fov_y,
         })
     }
@@ -544,10 +530,16 @@ impl ControlEye {
 
             let world_movement = rot * (self.speed as f32 * local_movement);
 
-            eye_state.velocity = egui::lerp(
-                eye_state.velocity..=world_movement,
-                egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
-            );
+            // If input is zero, don't continue moving with velocity. Since we're no longer interacting
+            // we don't want to continue writing to blueprint and creating undo points.
+            eye_state.velocity = if local_movement == Vec3::ZERO {
+                Vec3::ZERO
+            } else {
+                egui::lerp(
+                    eye_state.velocity..=world_movement,
+                    egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
+                )
+            };
             let delta = eye_state.velocity * dt;
 
             self.pos += delta;
@@ -602,10 +594,10 @@ impl ControlEye {
     }
 }
 
-fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<Eye> {
+pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Eye> {
     let mut found_camera = None;
 
-    for camera in space_cameras {
+    for camera in cameras {
         if &camera.ent_path == needle {
             if found_camera.is_some() {
                 return None; // More than one camera
@@ -616,52 +608,6 @@ fn find_camera(space_cameras: &[SpaceCamera3D], needle: &EntityPath) -> Option<E
     }
 
     found_camera.and_then(Eye::from_camera)
-}
-
-/// Returns the new center and orbit radius for the eye.
-fn entity_target_eye(
-    entity_path: &EntityPath,
-    bounding_boxes: &SceneBoundingBoxes,
-    eye: &mut ControlEye,
-) {
-    // Note that we may want to focus on an _instance_ instead in the future:
-    // The problem with that is that there may be **many** instances (think point cloud)
-    // and they may not be consistent over time.
-    // -> we don't know the bounding box of every instance (right now)
-    // -> tracking instances over time may not be desired
-    //    (this can happen with entities as well, but is less likely).
-    //
-    // For future reference, it's also worth pointing out that for interactions in the view we
-    // already have the 3D position:
-    // if let Some(SelectedSpaceContext::ThreeD {
-    //     pos: Some(clicked_point),
-    //     ..
-    // }) = ctx.selection_state().hovered_space_context()
-
-    if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
-        let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
-        let orbit_radius = if radius < 0.0001 {
-            // Handle zero-sized bounding boxes:
-            (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
-        } else if eye.written_radius {
-            eye.pos.distance(eye.look_target)
-        } else {
-            radius
-        };
-
-        let fwd = eye.fwd();
-
-        match eye.kind {
-            Eye3DKind::FirstPerson => {
-                eye.pos = entity_bbox.center();
-                eye.look_target = entity_bbox.center() + fwd;
-            }
-            Eye3DKind::Orbital => {
-                eye.look_target = entity_bbox.center();
-                eye.pos = entity_bbox.center() - fwd * orbit_radius;
-            }
-        }
-    }
 }
 
 fn ease_out(t: f32) -> f32 {
@@ -681,13 +627,17 @@ impl EyeState {
         }
     }
 
+    fn stop_interpolation(&mut self) {
+        self.interpolation = None;
+    }
+
     /// Gets and updates the current target eye from/to the blueprint.
     fn control_and_sync_with_blueprint(
         &mut self,
         ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
         response: &egui::Response,
-        space_cameras: &[SpaceCamera3D],
+        cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let mut eye = ControlEye::from_blueprint(ctx, eye_property, self.fov_y)?;
@@ -702,13 +652,21 @@ impl EyeState {
 
         let mut drag_threshold = 0.0;
 
-        let tracking_entity = eye_property.component_or_empty::<re_types::components::EntityPath>(
-            EyeControls3D::descriptor_tracking_entity().component,
-        )?;
+        let tracking_entity = eye_property
+            .component_or_empty::<re_types::components::EntityPath>(
+                EyeControls3D::descriptor_tracking_entity().component,
+            )?
+            .and_then(|tracking_entity| {
+                if tracking_entity.is_empty() {
+                    None
+                } else {
+                    Some(tracking_entity)
+                }
+            });
 
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
-            if find_camera(space_cameras, &tracking_entity).is_some() {
+            if find_camera(cameras, &tracking_entity).is_some() {
                 drag_threshold = 0.04;
             }
         }
@@ -716,19 +674,6 @@ impl EyeState {
         // We do input before tracking entity, because the input can cause the eye
         // to stop tracking.
         eye.handle_input(self, response, drag_threshold);
-
-        if let Some(tracked_eye) = self.handle_tracking_entity(
-            ctx,
-            eye_property,
-            space_cameras,
-            bounding_boxes,
-            &mut eye,
-            old_pos,
-            old_look_target,
-            tracking_entity.as_ref(),
-        ) {
-            return Ok(tracked_eye);
-        }
 
         eye.save_to_blueprint(
             ctx.viewer_ctx,
@@ -740,6 +685,19 @@ impl EyeState {
 
         // Handle spinning after saving to blueprint to not continuously write to the blueprint.
         self.handle_spinning(ctx, eye_property, &mut eye)?;
+
+        if let Some(tracked_eye) = self.handle_tracking_entity(
+            ctx,
+            eye_property,
+            cameras,
+            bounding_boxes,
+            &mut eye,
+            old_pos,
+            old_look_target,
+            tracking_entity.as_ref(),
+        ) {
+            return Ok(tracked_eye);
+        }
 
         self.last_look_target = Some(eye.look_target);
         self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
@@ -756,7 +714,7 @@ impl EyeState {
         &mut self,
         ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
-        space_cameras: &[SpaceCamera3D],
+        cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
         eye: &mut ControlEye,
         old_pos: Vec3,
@@ -765,9 +723,11 @@ impl EyeState {
     ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
-            if self.last_tracked_entity.as_ref() == Some(&tracking_entity) {
-                self.last_tracked_entity = Some(tracking_entity.clone());
+
+            let new_tracking = self.last_tracked_entity.as_ref() != Some(&tracking_entity);
+            if new_tracking {
                 self.start_interpolation();
+                self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
             let did_eye_change = match eye.kind {
@@ -775,7 +735,7 @@ impl EyeState {
                 Eye3DKind::Orbital => eye.look_target != old_look_target,
             };
 
-            if let Some(target_eye) = find_camera(space_cameras, &tracking_entity) {
+            if let Some(target_eye) = find_camera(cameras, &tracking_entity) {
                 if eye.did_interact && (eye.pos != old_pos || eye.look_target != old_look_target) {
                     eye_property.clear_blueprint_component(
                         ctx.viewer_ctx,
@@ -790,8 +750,69 @@ impl EyeState {
                     EyeControls3D::descriptor_tracking_entity(),
                 );
             } else {
-                self.start_interpolation();
-                entity_target_eye(&tracking_entity, bounding_boxes, eye);
+                // Note that we may want to focus on an _instance_ instead in the future:
+                // The problem with that is that there may be **many** instances (think point cloud)
+                // and they may not be consistent over time.
+                // -> we don't know the bounding box of every instance (right now)
+                // -> tracking instances over time may not be desired
+                //    (this can happen with entities as well, but is less likely).
+                //
+                // For future reference, it's also worth pointing out that for interactions in the view we
+                // already have the 3D position:
+                // if let Some(SelectedSpaceContext::ThreeD {
+                //     pos: Some(clicked_point),
+                //     ..
+                // }) = ctx.selection_state().hovered_space_context()
+
+                if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
+                    // If we're tracking something new, set the current position & look target to the correct view.
+                    if new_tracking {
+                        let fwd = eye.fwd();
+                        let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
+                        let radius = if radius < 0.0001 {
+                            // Handle zero-sized bounding boxes:
+                            (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5)
+                                .at_least(0.02)
+                        } else {
+                            radius
+                        };
+                        eye.pos = eye.look_target - fwd * radius;
+                        // Force write of pos and look target to not use fallbacks for that.
+                        eye_property.save_blueprint_component(
+                            ctx.viewer_ctx,
+                            &EyeControls3D::descriptor_position(),
+                            &Position3D::from(eye.pos),
+                        );
+
+                        eye_property.save_blueprint_component(
+                            ctx.viewer_ctx,
+                            &EyeControls3D::descriptor_look_target(),
+                            &Position3D::from(eye.look_target),
+                        );
+                    }
+
+                    let orbit_radius = eye.pos.distance(eye.look_target);
+
+                    let pos = entity_bbox.center();
+
+                    let fwd = eye.fwd();
+
+                    match eye.kind {
+                        Eye3DKind::FirstPerson => {
+                            eye.pos = pos;
+                            eye.look_target = pos + fwd;
+                        }
+                        Eye3DKind::Orbital => {
+                            eye.look_target = pos;
+                            eye.pos = pos - fwd * orbit_radius;
+                        }
+                    }
+                }
+
+                self.last_look_target = Some(eye.look_target);
+                self.last_eye_up = Some(eye.eye_up);
+                self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
+
                 return Some(eye.get_eye());
             }
         } else {
@@ -841,11 +862,62 @@ impl EyeState {
         Ok(())
     }
 
+    pub fn focus_entity(
+        &self,
+        ctx: &ViewContext<'_>,
+        cameras: &[PinholeWrapper],
+        bounding_boxes: &SceneBoundingBoxes,
+        eye_property: &ViewProperty,
+        focused_entity: &EntityPath,
+    ) -> Result<(), ViewPropertyQueryError> {
+        let mut eye = ControlEye::from_blueprint(ctx, eye_property, self.fov_y)?;
+        eye.did_interact = true;
+        let ControlEye {
+            pos: old_pos,
+            look_target: old_look_target,
+            eye_up: old_eye_up,
+            ..
+        } = eye;
+        // Focusing cameras is not something that happens now, since those are always tracked.
+        if let Some(target_eye) = find_camera(cameras, focused_entity) {
+            eye.pos = target_eye.pos_in_world();
+            eye.look_target = target_eye.pos_in_world() + target_eye.forward_in_world();
+            eye.eye_up = target_eye.world_from_rub_view.transform_vector3(Vec3::Y);
+        } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&focused_entity.hash()) {
+            let fwd = self
+                .last_eye
+                .map(|eye| eye.forward_in_world())
+                .unwrap_or_else(|| Vec3::splat(f32::sqrt(1.0 / 3.0)));
+            let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
+            let radius = if radius < 0.0001 {
+                // Handle zero-sized bounding boxes:
+                (bounding_boxes.current.centered_bounding_sphere_radius() * 1.5).at_least(0.02)
+            } else {
+                radius
+            };
+            eye.look_target = entity_bbox.center();
+            eye.pos = eye.look_target - fwd * radius;
+        }
+
+        eye.save_to_blueprint(
+            ctx.viewer_ctx,
+            eye_property,
+            old_pos,
+            old_look_target,
+            old_eye_up,
+        );
+
+        eye_property
+            .clear_blueprint_component(ctx.viewer_ctx, EyeControls3D::descriptor_tracking_entity());
+
+        Ok(())
+    }
+
     pub fn update(
         &mut self,
         ctx: &ViewContext<'_>,
         response: &egui::Response,
-        space_cameras: &[SpaceCamera3D],
+        pinhole_cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
         let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
@@ -858,7 +930,7 @@ impl EyeState {
             ctx,
             &eye_property,
             response,
-            space_cameras,
+            pinhole_cameras,
             bounding_boxes,
         )?;
 
@@ -893,12 +965,9 @@ impl EyeState {
 
             interpolation.start.lerp(&target_eye, t)
         } else {
+            self.stop_interpolation();
             target_eye
         };
-
-        if eye == target_eye {
-            self.interpolation = None;
-        }
 
         self.last_eye = Some(eye);
 

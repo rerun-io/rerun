@@ -22,6 +22,7 @@ async fn settings_screen() {
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::vec2(1024.0, 1080.0)), // Settings screen can be a bit tall
+        ..Default::default()
     });
     harness.get_by_label("Menu").click();
     harness.run_ok();

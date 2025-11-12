@@ -6,9 +6,9 @@ order: 983
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
 ## Dropped support for Intel Macs
-We've dropped official support for Intel (x86) maxOS in [PR #11719](https://github.com/rerun-io/rerun/pull/11719).
+We've dropped official support for Intel (x86) macOS in [PR #11719](https://github.com/rerun-io/rerun/pull/11719).
 
-This means our Python pheels on PyPi.org and our other pre-built artifact does no longer include Intel Mac binaries.
+This means our Python wheels on PyPi.org and our other pre-built artifact does no longer include Intel Mac binaries.
 
 You can still build Rerun from source.
 There are instructions for that in [`BUILD.md`](https://github.com/rerun-io/rerun/blob/main/BUILD.md).
