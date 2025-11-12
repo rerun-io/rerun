@@ -156,7 +156,10 @@ fn main() -> anyhow::Result<()> {
                 )
             })
             .output_static_columns(|out| {
-                out.component(dummy_point.descriptor, [Op::constant(dummy_point.list_array)])
+                out.component(
+                    dummy_point.descriptor,
+                    [Op::constant(dummy_point.list_array)],
+                )
             })
             .build();
 
@@ -174,7 +177,10 @@ fn main() -> anyhow::Result<()> {
                 // TODO(grtlr): We leave out the `format` column because the `png` contents are not a valid MIME type.
                 .component(
                     EncodedImage::descriptor_blob(),
-                    [Op::access_field("data"), Op::func(list_binary_to_list_uint8)],
+                    [
+                        Op::access_field("data"),
+                        Op::func(list_binary_to_list_uint8),
+                    ],
                 )
             })
             .build();
@@ -193,7 +199,10 @@ fn main() -> anyhow::Result<()> {
                 )
                 .component(
                     VideoStream::descriptor_sample(),
-                    [Op::access_field("data"), Op::func(list_binary_to_list_uint8)],
+                    [
+                        Op::access_field("data"),
+                        Op::func(list_binary_to_list_uint8),
+                    ],
                 )
             })
             .build();

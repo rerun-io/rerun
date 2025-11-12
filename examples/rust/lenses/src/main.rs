@@ -59,8 +59,14 @@ fn lens_flag() -> anyhow::Result<Lens> {
     let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
         .output_columns(|out| out.component(Scalars::descriptor_scalars(), [Op::func(step_fn)]))
         .output_static_columns_at("/flag", |out| {
-            out.component(series_points.descriptor, [Op::constant(series_points.list_array)])
-                .component(series_lines.descriptor, [Op::constant(series_lines.list_array)])
+            out.component(
+                series_points.descriptor,
+                [Op::constant(series_points.list_array)],
+            )
+            .component(
+                series_lines.descriptor,
+                [Op::constant(series_lines.list_array)],
+            )
         })
         .build();
 

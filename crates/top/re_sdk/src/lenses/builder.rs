@@ -33,7 +33,10 @@ impl LensBuilder {
     /// the input, plus any additional time columns specified via `.time()`.
     ///
     /// The output will use the same entity path as the input.
-    pub fn output_columns(mut self, builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder) -> Self {
+    pub fn output_columns(
+        mut self,
+        builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
+    ) -> Self {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::SameAsInput);
         let output = builder(output_builder).build();
         self.outputs.push(output);
@@ -49,8 +52,7 @@ impl LensBuilder {
         entity_path: impl Into<EntityPath>,
         builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
     ) -> Self {
-        let output_builder =
-            ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
+        let output_builder = ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
         let output = builder(output_builder).build();
         self.outputs.push(output);
         self
