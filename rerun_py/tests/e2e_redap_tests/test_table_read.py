@@ -8,8 +8,6 @@ from rerun.catalog import EntryKind
 from rerun.server import Server
 
 if TYPE_CHECKING:
-    import pathlib
-
     from .conftest import PrefilledCatalog
 
 
@@ -85,12 +83,14 @@ def test_datafusion_catalog_get_tables(prefilled_catalog: PrefilledCatalog) -> N
 
 
 # TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
-def test_datafusion_catalog_get_tables_patched(table_filepath: pathlib.Path) -> None:
+def test_datafusion_catalog_get_tables_patched() -> None:
+    from .conftest import TABLE_FILEPATH
+
     with Server(
         tables={
-            "simple_datatypes": table_filepath,
-            "second_schema.second_table": table_filepath,
-            "alternate_catalog.third_schema.third_table": table_filepath,
+            "simple_datatypes": TABLE_FILEPATH,
+            "second_schema.second_table": TABLE_FILEPATH,
+            "alternate_catalog.third_schema.third_table": TABLE_FILEPATH,
         },
     ) as server:
         ctx = server.client().ctx

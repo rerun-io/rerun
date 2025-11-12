@@ -10,7 +10,6 @@ import dataclasses
 import logging
 import pathlib
 import platform
-import shutil
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -38,14 +37,40 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=None,
         help="Authentication token for the redap server (optional).",
     )
+    parser.addoption(
+        "--resource-prefix",
+        action="store",
+        default=None,
+        help="URI prefix for test resources (e.g., 's3://bucket/path/' for remote resources). "
+        "If not provided, local file:// URIs to the resources directory will be used.",
+    )
 
 
 DATASET_NAME = "dataset"
 
 # Test resources are stored locally in the e2e_redap_tests/resources directory
 RESOURCES_DIR = pathlib.Path(__file__).parent / "resources"
-DATASET_FILEPATH = RESOURCES_DIR / "dataset"
 TABLE_FILEPATH = RESOURCES_DIR / "simple_datatypes"
+
+
+@pytest.fixture(scope="session")
+def resource_prefix(request: pytest.FixtureRequest) -> str:
+    """
+    Get the URI prefix for test resources.
+
+    By default, returns file:// URI to the local resources directory.
+    Can be overridden with --resource-prefix for remote resources (e.g., s3://).
+    """
+    prefix = request.config.getoption("--resource-prefix")
+
+    if prefix is None:
+        # Default to local resources directory
+        prefix = RESOURCES_DIR.absolute().as_uri() + "/"
+    elif not prefix.endswith("/"):
+        # Ensure prefix ends with trailing slash
+        prefix = prefix + "/"
+
+    return prefix
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -63,17 +88,14 @@ def setup_windows_tzdata() -> None:
 
 
 @pytest.fixture(scope="session")
-def table_filepath(tmp_path_factory: pytest.TempPathFactory) -> Generator[pathlib.Path, None, None]:
+def readonly_table_uri(resource_prefix: str) -> str:
     """
-    Copies test data to a temp directory.
+    Returns the URI to the read-only test table (simple_datatypes).
 
-    This is necessary because we have some unit tests that will modify the
-    lance dataset. We do not wish this to pollute our repository.
+    Uses the resource_prefix, so it can point to local or remote (e.g., S3) resources.
+    Tests should NOT write to this table.
     """
-
-    temp_dir = tmp_path_factory.mktemp("table_filepath")
-    shutil.copytree(TABLE_FILEPATH, temp_dir / "simple_datatypes")
-    yield temp_dir / "simple_datatypes"
+    return resource_prefix + "simple_datatypes"
 
 
 @pytest.fixture(scope="function")
@@ -185,16 +207,15 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
 
 
 @pytest.fixture(scope="function")
-def test_dataset(entry_factory: EntryFactory) -> Generator[DatasetEntry, None, None]:
+def test_dataset(entry_factory: EntryFactory, resource_prefix: str) -> Generator[DatasetEntry, None, None]:
     """
     Register a dataset and returns the corresponding `DatasetEntry`.
 
     Convenient for tests which focus on a single test dataset.
     """
-    assert DATASET_FILEPATH.is_dir()
 
     ds = entry_factory.create_dataset(DATASET_NAME)
-    ds.register_prefix(DATASET_FILEPATH.as_uri())
+    ds.register_prefix(resource_prefix + "dataset")
 
     yield ds
 
@@ -212,19 +233,15 @@ class PrefilledCatalog:
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
 @pytest.fixture(scope="function")
-def prefilled_catalog(
-    entry_factory: EntryFactory, table_filepath: pathlib.Path
-) -> Generator[PrefilledCatalog, None, None]:
+def prefilled_catalog(entry_factory: EntryFactory, readonly_table_uri: str) -> Generator[PrefilledCatalog, None, None]:
     """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
 
-    assert DATASET_FILEPATH.is_dir()
-    assert table_filepath.is_dir()
-
     dataset = entry_factory.create_dataset(DATASET_NAME)
-    dataset.register_prefix(DATASET_FILEPATH.as_uri())
+    dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
 
+    # Register the read-only table with different catalog/schema qualifications
     for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:
-        entry_factory.register_table(table_name, table_filepath.as_uri())
+        entry_factory.register_table(table_name, readonly_table_uri)
 
     resource = PrefilledCatalog(entry_factory, dataset)
     yield resource

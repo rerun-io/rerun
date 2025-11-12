@@ -8,8 +8,6 @@ from datafusion import col
 from rerun.server import Server
 
 if TYPE_CHECKING:
-    import pathlib
-
     from rerun.catalog import DatasetEntry
 
     from .conftest import PrefilledCatalog
@@ -99,12 +97,14 @@ def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:
 
 
 # TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
-def test_tables_to_arrow_reader_patched(table_filepath: pathlib.Path) -> None:
+def test_tables_to_arrow_reader_patched() -> None:
+    from .conftest import TABLE_FILEPATH
+
     with Server(
         tables={
-            "simple_datatypes": table_filepath,
-            "second_schema.second_table": table_filepath,
-            "alternate_catalog.third_schema.third_table": table_filepath,
+            "simple_datatypes": TABLE_FILEPATH,
+            "second_schema.second_table": TABLE_FILEPATH,
+            "alternate_catalog.third_schema.third_table": TABLE_FILEPATH,
         },
     ) as server:
         for table_entry in server.client().table_entries():
