@@ -1,3 +1,7 @@
+//! Tests dragging and dropping streams from the streams tree onto specific views,
+//! verifying that data streams can be properly assigned to target plots and that
+//! the UI correctly handles drag-and-drop interactions.
+
 use std::f64::consts::TAU;
 
 use egui::Modifiers;
