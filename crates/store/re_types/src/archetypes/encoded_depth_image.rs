@@ -26,6 +26,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+///
+/// ## Example
+///
+/// ### `encoded_depth_image`:
+/// ```ignore
+/// ```
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct EncodedDepthImage {
     /// The encoded depth payload (e.g. RVL, depth-PNG).

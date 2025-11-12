@@ -34,3 +34,9 @@ Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`]
  * 🐍 [Python API docs for `EncodedDepthImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.EncodedDepthImage)
  * 🦀 [Rust API docs for `EncodedDepthImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.EncodedDepthImage.html)
 
+## Example
+
+### encoded_depth_image
+
+snippet: archetypes/encoded_depth_image
+

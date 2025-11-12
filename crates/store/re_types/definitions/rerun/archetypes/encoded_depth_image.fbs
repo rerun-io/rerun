@@ -4,7 +4,7 @@ namespace rerun.archetypes;
 ///
 /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 ///
-/// \example archetypes/encoded_image
+/// \example archetypes/encoded_depth_image
 table EncodedDepthImage(
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Image & tensor",

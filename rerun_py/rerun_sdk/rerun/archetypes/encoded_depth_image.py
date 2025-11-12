@@ -29,6 +29,14 @@ class EncodedDepthImage(Archetype):
     Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
+    Example
+    -------
+    ### `encoded_depth_image`:
+    ```python
+    # TODO(yang): add compressed depth image asset and python example
+    ```
+
     """
 
     def __init__(
