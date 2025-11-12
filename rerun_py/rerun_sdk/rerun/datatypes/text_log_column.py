@@ -37,11 +37,11 @@ class TextLogColumn:
     * LogLevel (None):
         Column for log-level.
 
-    * Message (None):
-        The text body the log has.
+    * Body (None):
+        The text message the log has.
     """
 
-    kind: Literal["timeline", "entity_path", "log_level", "message"] = field(default="timeline")
+    kind: Literal["timeline", "entity_path", "log_level", "body"] = field(default="timeline")
     """
     Possible values:
 
@@ -54,8 +54,8 @@ class TextLogColumn:
     * "log_level":
         Column for log-level.
 
-    * "message":
-        The text body the log has.
+    * "body":
+        The text message the log has.
     """
 
 
@@ -78,7 +78,7 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
         pa.field("Timeline", pa.utf8(), nullable=False, metadata={}),
         pa.field("EntityPath", pa.null(), nullable=True, metadata={}),
         pa.field("LogLevel", pa.null(), nullable=True, metadata={}),
-        pa.field("Message", pa.null(), nullable=True, metadata={}),
+        pa.field("Body", pa.null(), nullable=True, metadata={}),
     ])
 
     @staticmethod
@@ -98,7 +98,7 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
         variant_timeline: list[datatypes.Utf8] = []
         variant_entity_path: int = 0
         variant_log_level: int = 0
-        variant_message: int = 0
+        variant_body: int = 0
 
         for value in data:
             if value is None:
@@ -120,9 +120,9 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
                     value_offsets.append(variant_log_level)
                     variant_log_level += 1
                     types.append(3)
-                elif value.kind == "message":
-                    value_offsets.append(variant_message)
-                    variant_message += 1
+                elif value.kind == "body":
+                    value_offsets.append(variant_body)
+                    variant_body += 1
                     types.append(4)
 
         buffers = [
@@ -135,7 +135,7 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
             Utf8Batch(variant_timeline).as_arrow_array(),
             pa.nulls(variant_entity_path),
             pa.nulls(variant_log_level),
-            pa.nulls(variant_message),
+            pa.nulls(variant_body),
         ]
 
         return pa.UnionArray.from_buffers(

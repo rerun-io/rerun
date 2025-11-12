@@ -13,6 +13,6 @@ union TextLogColumn (
   /// Column for log-level.
   LogLevel: rerun.builtins.UnitType,
 
-  /// The text body the log has.
-  Message: rerun.builtins.UnitType,
+  /// The text message the log has.
+  Body: rerun.builtins.UnitType,
 }

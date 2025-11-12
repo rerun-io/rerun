@@ -33,8 +33,8 @@ pub enum TextLogColumn {
     /// Column for log-level.
     LogLevel,
 
-    /// The text body the log has.
-    Message,
+    /// The text message the log has.
+    Body,
 }
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumn);
@@ -55,7 +55,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                     ),
                     Field::new("EntityPath", DataType::Null, true),
                     Field::new("LogLevel", DataType::Null, true),
-                    Field::new("Message", DataType::Null, true),
+                    Field::new("Body", DataType::Null, true),
                 ],
             ),
             UnionMode::Dense,
@@ -90,7 +90,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                 ),
                 Field::new("EntityPath", DataType::Null, true),
                 Field::new("LogLevel", DataType::Null, true),
-                Field::new("Message", DataType::Null, true),
+                Field::new("Body", DataType::Null, true),
             ];
             let type_ids: Vec<i8> = data
                 .iter()
@@ -99,14 +99,14 @@ impl ::re_types_core::Loggable for TextLogColumn {
                     Some(Self::Timeline(_)) => 1i8,
                     Some(Self::EntityPath) => 2i8,
                     Some(Self::LogLevel) => 3i8,
-                    Some(Self::Message) => 4i8,
+                    Some(Self::Body) => 4i8,
                 })
                 .collect();
             let offsets = {
                 let mut timeline_offset = 0;
                 let mut entity_path_offset = 0;
                 let mut log_level_offset = 0;
-                let mut message_offset = 0;
+                let mut body_offset = 0;
                 let mut nulls_offset = 0;
                 data.iter()
                     .map(|v| match v.as_deref() {
@@ -130,9 +130,9 @@ impl ::re_types_core::Loggable for TextLogColumn {
                             log_level_offset += 1;
                             offset
                         }
-                        Some(Self::Message) => {
-                            let offset = message_offset;
-                            message_offset += 1;
+                        Some(Self::Body) => {
+                            let offset = body_offset;
+                            body_offset += 1;
                             offset
                         }
                     })
@@ -180,7 +180,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                 )),
                 as_array_ref(NullArray::new(
                     data.iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Self::Message)))
+                        .filter(|datum| matches!(datum.as_deref(), Some(Self::Body)))
                         .count(),
                 )),
             ];
@@ -304,7 +304,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
                                 }),
                                 2i8 => Self::EntityPath,
                                 3i8 => Self::LogLevel,
-                                4i8 => Self::Message,
+                                4i8 => Self::Body,
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
                                         Self::arrow_datatype(),
@@ -330,7 +330,7 @@ impl ::re_byte_size::SizeBytes for TextLogColumn {
             Self::Timeline(v) => v.heap_size_bytes(),
             Self::EntityPath => 0,
             Self::LogLevel => 0,
-            Self::Message => 0,
+            Self::Body => 0,
         }
     }
 
