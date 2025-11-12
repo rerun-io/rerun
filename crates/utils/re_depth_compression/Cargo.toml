@@ -9,3 +9,6 @@ publish = false
 [dependencies]
 byteorder = { workspace = true }
 thiserror = { workspace = true }
+
+[lints]
+workspace = true

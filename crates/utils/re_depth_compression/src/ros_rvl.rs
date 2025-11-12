@@ -35,22 +35,31 @@ impl RvlMetadata {
 pub enum RvlDecodeError {
     #[error("compressed depth payload missing RVL header")]
     MissingHeader,
+
     #[error("RVL payload missing resolution header")]
     MissingResolution,
+
     #[error("RVL payload reports zero resolution")]
     ZeroResolution,
+
     #[error("RVL image resolution would overflow")]
     ResolutionOverflow,
+
     #[error("RVL payload shorter than expected for resolution {width}x{height}")]
     PayloadLengthMismatch { width: u32, height: u32 },
+
     #[error("RVL stream encodes more zero pixels than expected")]
     TooManyZeros,
+
     #[error("RVL stream encodes more non-zero pixels than expected")]
     TooManyNonZeros,
+
     #[error("RVL decoded value {value} does not fit into u16")]
     ValueOutOfRange { value: i32 },
+
     #[error("RVL stream ended unexpectedly")]
     UnexpectedEof,
+
     #[error("RVL VLE value overflowed")]
     ValueOverflow,
 }
