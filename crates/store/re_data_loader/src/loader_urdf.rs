@@ -259,6 +259,11 @@ impl UrdfTree {
     pub fn get_joint_child(&self, joint: &Joint) -> &Link {
         &self.links[&joint.child.link] // Safe because we checked that the joint's child link exists in `new()`
     }
+
+    /// Get a material by name, if it exists.
+    fn get_material(&self, name: &str) -> Option<&Material> {
+        self.materials.get(name)
+    }
 }
 
 fn log_robot(
@@ -490,22 +495,19 @@ fn log_link(
         let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let vis_entity = link_entity / EntityPathPart::new(name);
 
-        // We need to look up the material by name, because the `Visuals::Material`
-        // only has a name, no color or texture.
-        let material = material
-            .as_ref()
-            .and_then(|m| urdf_tree.materials.get(&m.name).cloned());
+        // Prefer inline defined material properties, if there's no properties fall back to global material.
+        let material = material.as_ref().and_then(|mat| {
+            if mat.color.is_some() || mat.texture.is_some() {
+                Some(mat)
+            } else {
+                urdf_tree.get_material(&mat.name)
+            }
+        });
 
         send_transform(tx, store_id, vis_entity.clone(), origin, timepoint)?;
 
         log_geometry(
-            urdf_tree,
-            tx,
-            store_id,
-            vis_entity,
-            geometry,
-            material.as_ref(),
-            timepoint,
+            urdf_tree, tx, store_id, vis_entity, geometry, material, timepoint,
         )?;
     }
 
