@@ -7,6 +7,17 @@ Rerun is a data platform for Physical AI that helps you understand and improve c
 
 It combines simple and flexible data logging with a powerful visualizer and query engine, designed specifically for domains like robotics, spatial computing, embodied AI, computer vision, simulation, and any system involving sensors and signals that evolve over time.
 
+## The problem
+
+Building intelligent physical systems requires rapid iteration on both data and models. But teams often get stuck because:
+
+- Data from sensors arrives at different rates and in different formats
+- Understanding what went wrong requires visualizing multimodal data (images, point clouds, sensor readings) together in time
+- Extracting, cleaning, and preparing data for training involves too many manual steps
+- Switching between different tools for each step slows everything down
+
+The best robotics teams minimize their time from new data to training. Rerun gives you the unified infrastructure to make that happen.
+
 ## The Rerun data platform
 
 Rerun provides an integrated solution for working with multimodal temporal data:
@@ -19,36 +30,25 @@ Rerun provides an integrated solution for working with multimodal temporal data:
 
 **Flexible ingestion:** Load data from your code via the [SDK](../getting-started/quick-start.md), from storage formats like [MCAP](../howto/mcap.md), or from proprietary log formats. [Extend Rerun](../howto/extend.md) when you need custom types or visualizations.
 
-## What is Rerun for?
+## Who is Rerun for?
 
-Rerun helps you debug, understand, and improve systems that generate rich multimodal data. Here's a concrete example:
+Rerun is built for teams developing intelligent physical systems:
 
-### Example: debugging a vacuum cleaning robot
+- **Robotics engineers** debugging perception, controls, and planning
+- **Perception teams** analyzing sensor data and model outputs
+- **ML engineers** preparing datasets and understanding model behavior
+- **Autonomy teams** developing and testing decision-making systems
 
-Say you're building a vacuum cleaning robot and it keeps running into walls. A traditional debugger won't help, and text logs aren't enough—the robot may log "Going through doorway" but that won't explain why it thinks a wall is a door.
+If you're working with robots, drones, autonomous vehicles, spatial AI, or any system with sensors that evolve over time, Rerun helps you move faster.
 
-What you need is to see the world from the robot's perspective in time:
+## What Rerun is not
 
-* RGB camera feed
-* Depth images
-* Lidar scans
-* Segmentation results (how the robot interprets what it sees)
-* The robot's 3D map of the apartment
-* Detected objects as 3D shapes in the map
-* Confidence scores
-* And more
+To set clear expectations:
 
-You want to see how all these data streams evolve over time so you can pinpoint exactly what went wrong, when, and why.
-
-Maybe a sun glare hit a sensor wrong, confusing the segmentation network and leading to bad object detection. Or a bug in the lidar code. Or broken odometry made the robot think it was somewhere else. Rerun helps you find out!
-
-But visual debugging is just the start. Seeing your data also:
-- Gives you ideas for algorithm improvements
-- Helps identify new test cases to set up
-- Suggests datasets to collect
-- Lets you explain your system to colleagues and stakeholders
-
-And the same data you use for visualization can be [queried](../getting-started/data-out.md) to create clean datasets for training and evaluating your models.
+- **Not a training platform**: Use Rerun with PyTorch, TensorFlow, JAX, etc. We prepare your data; you train your models.
+- **Not a deployment tool**: Rerun helps you develop and understand your systems, not deploy them to production.
+- **Not a robot operating system**: Rerun works with ROS, ROS2, or any other robotics stack.
+- **Not a general BI tool**: We're specialized for physical, multimodal, time-series data.
 
 ## How do you use it?
 
@@ -63,16 +63,20 @@ And the same data you use for visualization can be [queried](../getting-started/
 1. Use the [Rerun SDK](../getting-started/quick-start.md) to [log multimodal data](../getting-started/data-in.md) from your code or load it from storage
 2. View live or recorded data in the standalone viewer or [embedded in your app](../howto/embed-rerun-viewer.md)
 3. Build layouts and [customize visualizations](../getting-started/configure-the-viewer.md) interactively in the UI or through the SDK
-4. [Query recordings](../howto/dataframe-api.md) to get clean dataframes into tools like Pandas, Polars, or DuckDB
+4. [Query recordings](../getting-started/data-out.md) to get clean dataframes into tools like Pandas, Polars, or DuckDB
 5. [Extend Rerun](../howto/extend.md) when you need to
 
-## How does it work?
-That's a big question for a welcome page. The short answer is that
-Rerun goes to extreme lengths to make handling and visualizing
-multimodal data streams easy and performant. Learn more in our [concepts documentation](../concepts.md).
+We also offer a commercial data platform for teams that need collaborative dataset management, version control, and cloud storage. [Learn more](https://rerun.io/pricing).
+
+## Get started
+
+Ready to speed up your iteration cycle?
+
+- [Quick start guide](../getting-started/quick-start.md) - Get up and running in minutes
+- [Examples](https://rerun.io/examples) - See Rerun in action with real data
+- [Concepts](../concepts.md) - Learn how Rerun works under the hood
 
 ## Can't find what you're looking for?
 
 - Join us in the [Rerun Community Discord](https://discord.gg/xwcxHUjD35)
-- Or [submit an issue](https://github.com/rerun-io/rerun/issues) in the Rerun GitHub project
-
+- [Submit an issue](https://github.com/rerun-io/rerun/issues) in the Rerun GitHub project
