@@ -190,7 +190,13 @@ fn test_timespec_to_nanos() {
 #[test]
 fn test_string_to_codec_uint32() {
     // Note: mixed codecs normally don't make sense, but should be fine from a pure conversion perspective.
-    let input_array = StringArray::from(vec![Some("H264"), None, Some("h264"), Some("H265")]);
+    let input_array = StringArray::from(vec![
+        Some("H264"),
+        None,
+        Some("h264"),
+        Some("H265"),
+        Some("aV1"),
+    ]);
     assert_eq!(input_array.null_count(), 1);
     let output_array = StringToVideoCodecUInt32::default()
         .transform(&input_array)
@@ -201,6 +207,7 @@ fn test_string_to_codec_uint32() {
         None,
         Some(VideoCodec::H264 as u32),
         Some(VideoCodec::H265 as u32),
+        Some(VideoCodec::AV1 as u32),
     ]);
     assert_eq!(output_array, expected_array);
 }
@@ -208,7 +215,7 @@ fn test_string_to_codec_uint32() {
 /// Tests that we return the correct error when an unsupported codec is in the data.
 #[test]
 fn test_string_to_codec_uint32_unsupported() {
-    let unsupported_codecs = ["vp9", "av1"];
+    let unsupported_codecs = ["vp9"];
     for &bad_codec in &unsupported_codecs {
         let input_array = StringArray::from(vec![Some("h264"), Some(bad_codec)]);
         let result = StringToVideoCodecUInt32::default().transform(&input_array);

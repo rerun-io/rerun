@@ -117,9 +117,10 @@ impl Transform for StringToVideoCodecUInt32 {
                         let codec = match codec_str.to_lowercase().as_str() {
                             "h264" => VideoCodec::H264,
                             "h265" => VideoCodec::H265,
+                            "av1" => VideoCodec::AV1,
                             _ => {
                                 return Err(Error::UnexpectedValue {
-                                    expected: &["h264", "h265"],
+                                    expected: &["h264", "h265", "av1"],
                                     actual: codec_str.to_owned(),
                                 });
                             }
