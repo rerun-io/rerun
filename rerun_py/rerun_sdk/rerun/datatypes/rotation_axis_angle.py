@@ -51,7 +51,10 @@ class RotationAxisAngle(RotationAxisAngleExt):
 
 
 RotationAxisAngleLike = RotationAxisAngle
+"""A type alias for any RotationAxisAngle-like object."""
+
 RotationAxisAngleArrayLike = RotationAxisAngle | Sequence[RotationAxisAngleLike]
+"""A type alias for any RotationAxisAngle-like array object."""
 
 
 class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):

@@ -1,7 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{Archetype as _, ArrowString, archetypes::Asset3D, components::AlbedoFactor};
+use re_types::{ArrowString, archetypes::Asset3D, components::AlbedoFactor};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
@@ -80,10 +80,8 @@ impl Asset3DVisualizer {
 
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): This a rare form of hybrid joining.
-                for &world_from_pose in ent_context
-                    .transform_info
-                    .target_from_instances(Asset3D::name())
-                {
+                for &world_from_pose in ent_context.transform_info.target_from_instances() {
+                    let world_from_pose = world_from_pose.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_pose * pose_from_mesh;

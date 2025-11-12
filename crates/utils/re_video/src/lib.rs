@@ -1,5 +1,6 @@
 //! Video decoding library.
 
+mod av1;
 mod decode;
 mod demux;
 mod gop_detection;

@@ -5,8 +5,9 @@ mod in_memory_store;
 mod layer;
 mod partition;
 mod table;
+mod tracked;
 
 pub use self::{
     chunk_key::ChunkKey, dataset::Dataset, error::Error, in_memory_store::InMemoryStore,
-    layer::Layer, partition::Partition, table::Table,
+    layer::Layer, partition::Partition, table::Table, tracked::Tracked,
 };

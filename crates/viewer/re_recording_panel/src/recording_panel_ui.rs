@@ -2,53 +2,105 @@ use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
 
-use re_data_ui::DataUi as _;
-use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
+use re_data_ui::{
+    DataUi as _,
+    item_ui::{entity_db_button_ui, table_id_button_ui},
+};
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
 use re_smart_channel::SmartChannelSource;
-use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_ui::{
+    OnResponseExt as _, UiExt as _, UiLayout, icons, list_item,
+    list_item::{LabelContent, ListItemContentButtonsExt as _},
+};
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
+    open_url::ViewerOpenUrl,
 };
 
+use crate::RecordingPanelCommand;
 use crate::data::{
     AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
     RemoteTableData, ServerData, ServerEntriesData,
 };
 
-pub fn recordings_panel_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    servers: &RedapServers,
-    hide_examples: bool,
-) {
-    let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
+#[derive(Debug, Clone, Default)]
+pub struct RecordingPanel {
+    commands: Vec<RecordingPanelCommand>,
+}
 
-    ui.panel_content(|ui| {
-        ui.panel_title_bar_with_buttons(
-            "Recordings",
-            Some(
-                "These are the Recordings currently loaded in the Viewer, organized by application",
-            ),
-            |ui| {
-                add_button_ui(ctx, ui, &recording_panel_data);
-            },
-        );
-    });
+impl RecordingPanel {
+    pub fn send_command(&mut self, command: RecordingPanelCommand) {
+        self.commands.push(command);
+    }
 
-    egui::ScrollArea::both()
-        .id_salt("recordings_scroll_area")
-        .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
-        .show(ui, |ui| {
-            ui.panel_content(|ui| {
-                re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                    all_sections_ui(ctx, ui, servers, &recording_panel_data);
+    pub fn show_panel(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        servers: &RedapServers,
+        hide_examples: bool,
+    ) {
+        let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
+
+        for command in self.commands.drain(..) {
+            match command {
+                RecordingPanelCommand::SelectNextRecording => {
+                    shift_through_recordings(ctx, &recording_panel_data, 1);
+                }
+                RecordingPanelCommand::SelectPreviousRecording => {
+                    shift_through_recordings(ctx, &recording_panel_data, -1);
+                }
+            }
+        }
+
+        ui.panel_content(|ui| {
+            ui.panel_title_bar_with_buttons(
+                "Recordings",
+                Some(
+                    "These are the Recordings currently loaded in the Viewer, organized by application",
+                ),
+                |ui| {
+                    add_button_ui(ctx, ui, &recording_panel_data);
+                },
+            );
+        });
+
+        egui::ScrollArea::both()
+            .id_salt("recordings_scroll_area")
+            .auto_shrink([false, false]) // shrinking forces to limit maximum height of the recording panel
+            .show(ui, |ui| {
+                ui.panel_content(|ui| {
+                    re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
+                        all_sections_ui(ctx, ui, servers, &recording_panel_data);
+                    });
                 });
             });
-        });
+    }
+}
+
+fn shift_through_recordings(
+    ctx: &ViewerContext<'_>,
+    recording_panel_data: &RecordingPanelData<'_>,
+    direction: isize,
+) {
+    let current_store_id = ctx.store_context.recording.store_id();
+
+    #[expect(clippy::cast_possible_wrap)]
+    if let Some((idx, store_collection)) =
+        recording_panel_data.collection_from_recording(current_store_id)
+    {
+        let len = store_collection.len() as isize;
+        let new_idx = ((idx as isize + direction + len) % len) as usize;
+
+        // TODO(#11792): this whole feature would be massively more useful if we left the selection
+        // alone and tried to maintain viewer state when switching recording (including current
+        // timeline, time point, selection, etc.)
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(
+                Item::StoreId(store_collection[new_idx].store_id().clone()).into(),
+            ));
+    }
 }
 
 fn add_button_ui(

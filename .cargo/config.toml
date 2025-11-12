@@ -12,6 +12,17 @@ run-wasm = "run --release --package run_wasm --"
 # so that we don't run them on cargo publish or on users machines.
 IS_IN_RERUN_WORKSPACE = "yes"
 
+# Depending on the pixi environment, we get different `CONDA_PREFIX` values.
+# This means that changing the pixi environment (or not using it in the first place) will cause rebuilds.
+# To avoid unnecessary rebuilds, we set a fixed value here.
+# For details see:
+# https://pyo3.rs/main/building-and-distribution.html#configuring-the-python-version
+PYO3_PYTHON = "python"
+
+# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
+[target.osx-arm64.activation.env]
+AR = "llvm-ar"
+
 # `web_sys_unstable_apis` is required to enable the web_sys clipboard API which egui_web uses.
 # https://wasm-bindgen.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
 # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html

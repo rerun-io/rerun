@@ -6,10 +6,10 @@ Configuration file for pytest.
 
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 import platform
 import shutil
-import tempfile
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -19,8 +19,7 @@ from rerun.server import Server
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import CatalogClient
-    from rerun_bindings import DatasetEntry
+    from rerun.catalog import CatalogClient, DatasetEntry
 
 
 DATASET_NAME = "dataset"
@@ -29,25 +28,6 @@ DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" 
 TABLE_FILEPATH = (
     pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
 )
-
-
-@pytest.fixture(scope="module")
-def table_filepath() -> Generator[pathlib.Path, None, None]:
-    """
-    Copies test data to a temp directory.
-
-    This is necessary because we have some unit tests that will modify the
-    lance dataset. We do not wish this to pollute our repository.
-    """
-    # Create a temporary directory
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = pathlib.Path(temp_dir)
-
-        # Copy all test data to the temp directory
-        shutil.copytree(TABLE_FILEPATH, temp_path / "simple_datatypes")
-
-        # Yield the path to the copied data
-        yield temp_path / "simple_datatypes"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -64,34 +44,70 @@ def setup_windows_tzdata() -> None:
         pa.util.download_tzdata_on_windows()
 
 
-class ServerInstance:
-    def __init__(self, server: Server, client: CatalogClient, dataset: DatasetEntry) -> None:
-        self.server = server
-        self.client = client
-        self.dataset = dataset
+@pytest.fixture(scope="session")
+def table_filepath(tmp_path_factory: pytest.TempPathFactory) -> Generator[pathlib.Path, None, None]:
+    """
+    Copies test data to a temp directory.
+
+    This is necessary because we have some unit tests that will modify the
+    lance dataset. We do not wish this to pollute our repository.
+    """
+
+    temp_dir = tmp_path_factory.mktemp("table_filepath")
+    shutil.copytree(TABLE_FILEPATH, temp_dir / "simple_datatypes")
+    yield temp_dir / "simple_datatypes"
+
+
+# TODO(ab): make this fixture configurable, such that the entire test suite can be run against different servers
+@pytest.fixture(scope="function")
+def catalog_client() -> Generator[CatalogClient, None, None]:
+    """
+    Return a `CatalogClient` instance connected to a test server.
+
+    This is the core fixture that spins up a test server and returns the corresponding client. All other fixtures and
+    tests should directly or indirectly depend on this.
+    """
+    server = Server()
+    yield server.client()
+    server.shutdown()
 
 
 @pytest.fixture(scope="function")
-def server_instance(table_filepath: pathlib.Path) -> Generator[ServerInstance, None, None]:
+def test_dataset(catalog_client: CatalogClient) -> Generator[DatasetEntry, None, None]:
+    """
+    Register a dataset and returns the corresponding `DatasetEntry`.
+
+    Convenient for tests which focus on a single test dataset.
+    """
+    assert DATASET_FILEPATH.is_dir()
+
+    ds = catalog_client.create_dataset(DATASET_NAME)
+    ds.register_prefix(DATASET_FILEPATH.as_uri())
+
+    yield ds
+
+
+@dataclasses.dataclass
+class PrefilledCatalog:
+    client: CatalogClient
+    dataset: DatasetEntry
+
+
+# TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
+@pytest.fixture(scope="function")
+def prefilled_catalog(
+    catalog_client: CatalogClient, table_filepath: pathlib.Path
+) -> Generator[PrefilledCatalog, None, None]:
+    """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
+
     assert DATASET_FILEPATH.is_dir()
     assert table_filepath.is_dir()
 
-    # Create server with datasets and tables
-    server = Server(
-        datasets={DATASET_NAME: DATASET_FILEPATH},
-        tables={
-            "simple_datatypes": table_filepath,
-            "second_schema.second_table": table_filepath,
-            "alternate_catalog.third_schema.third_table": table_filepath,
-        },
-    )
+    dataset = catalog_client.create_dataset(DATASET_NAME)
+    dataset.register_prefix(DATASET_FILEPATH.as_uri())
 
-    # Get client and dataset from the server
-    client = server.client()
-    dataset = client.get_dataset(name=DATASET_NAME)
+    for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:
+        catalog_client.register_table(table_name, table_filepath.as_uri())
 
-    resource = ServerInstance(server, client, dataset)
+    resource = PrefilledCatalog(catalog_client, dataset)
     yield resource
-
-    # Shutdown the server
-    server.shutdown()

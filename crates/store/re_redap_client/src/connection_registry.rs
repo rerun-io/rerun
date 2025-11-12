@@ -1,7 +1,9 @@
 use std::collections::{HashMap, hash_map::Entry};
+use std::error::Error as _;
 use std::sync::Arc;
 
 use itertools::Itertools as _;
+use re_auth::credentials::CredentialsProviderError;
 use tokio::sync::RwLock;
 use tonic::Code;
 
@@ -32,49 +34,45 @@ pub struct ConnectionRegistry {
     /// If set, the fallback token is used when no specific token is registered for a given origin.
     fallback_token: Option<Jwt>,
 
-    /// Use stored Rerun Cloud credentials.
-    ///
-    /// If set, we always attempt to use these when no explicit token is provided,
-    /// unless the origin is localhost.
-    use_stored_credentials: bool,
-
     /// The cached clients.
     ///
     /// Clients are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
     clients: HashMap<re_uri::Origin, RedapClient>,
+
+    /// Whether to use credentials stored on the host machine by default.
+    use_stored_credentials: bool,
 }
 
 impl ConnectionRegistry {
     /// Create a new connection registry and return a handle to it.
     ///
-    /// This version explicitly disables using credentials stored on the local machine,
-    /// which makes sense to do in test contexts, or where you don't want the connection
-    /// registry "impersonating" the local user.
-    ///
-    /// Using stored credentials by default should be preferred in all other contexts,
-    /// see [`Self::new_with_stored_credentials`].
-    pub fn new_without_stored_credentials() -> ConnectionRegistryHandle {
+    /// This version uses stored credentials by default if they are available.
+    /// You should prefer to use this instead of [`Self::new_without_stored_credentials`]
+    /// if there is no reason not to.
+    pub fn new_with_stored_credentials() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
-                use_stored_credentials: false,
                 clients: HashMap::new(),
+                use_stored_credentials: true,
             })),
         }
     }
 
     /// Create a new connection registry and return a handle to it.
     ///
-    /// This version explicitly enables using credentials stored on the local machine.
-    pub fn new_with_stored_credentials() -> ConnectionRegistryHandle {
+    /// This version does not use stored credentials by default if they are available.
+    /// You should prefer to use [`Self::new_with_stored_credentials`] instead,
+    /// if there is no reason not to.
+    pub fn new_without_stored_credentials() -> ConnectionRegistryHandle {
         ConnectionRegistryHandle {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
-                use_stored_credentials: true,
                 clients: HashMap::new(),
+                use_stored_credentials: false,
             })),
         }
     }
@@ -83,6 +81,12 @@ impl ConnectionRegistry {
 /// Possible errors when creating a connection.
 #[derive(Debug, thiserror::Error)]
 pub enum ClientCredentialsError {
+    #[error("error when refreshing credentials\nDetails:{0}")]
+    RefreshError(TonicStatusError),
+
+    #[error("the credentials are expired")]
+    SessionExpired,
+
     #[error("the server requires an authentication token but none was provided\nDetails:{0}")]
     UnauthenticatedMissingToken(TonicStatusError),
 
@@ -120,27 +124,22 @@ pub enum Credentials {
 }
 
 impl ConnectionRegistryHandle {
-    pub fn set_token(&self, origin: &re_uri::Origin, token: Jwt) {
+    pub fn set_credentials(&self, origin: &re_uri::Origin, credentials: Credentials) {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
-            inner
-                .saved_credentials
-                .insert(origin.clone(), Credentials::Token(token));
+            inner.saved_credentials.insert(origin.clone(), credentials);
             inner.clients.remove(origin);
         });
     }
 
-    pub fn token(&self, origin: &re_uri::Origin) -> Option<Jwt> {
+    pub fn credentials(&self, origin: &re_uri::Origin) -> Option<Credentials> {
         wrap_blocking_lock(|| {
             let inner = self.inner.blocking_read();
-            match inner.saved_credentials.get(origin).cloned() {
-                Some(Credentials::Token(token)) => Some(token),
-                _ => None,
-            }
+            inner.saved_credentials.get(origin).cloned()
         })
     }
 
-    pub fn remove_token(&self, origin: &re_uri::Origin) {
+    pub fn remove_credentials(&self, origin: &re_uri::Origin) {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
             inner.saved_credentials.remove(origin);
@@ -153,6 +152,13 @@ impl ConnectionRegistryHandle {
             let mut inner = self.inner.blocking_write();
             inner.fallback_token = Some(token);
         });
+    }
+
+    pub fn should_use_stored_credentials(&self) -> bool {
+        wrap_blocking_lock(|| {
+            let inner = self.inner.blocking_read();
+            inner.use_stored_credentials
+        })
     }
 
     /// Get a client for the given origin, creating one if it doesn't exist yet.
@@ -179,17 +185,16 @@ impl ConnectionRegistryHandle {
 
         // Don't hold the lock while creating the client - this may take a while and we may
         // want to read the tokens in the meantime for other purposes.
-        let (saved_token, fallback_token, may_use_stored_credentials) = {
+        let (saved_credentials, fallback_token) = {
             let inner = self.inner.read().await;
             (
                 inner.saved_credentials.get(&origin).cloned(),
                 inner.fallback_token.clone(),
-                inner.use_stored_credentials,
             )
         };
 
-        let token_to_try = [
-            saved_token.clone(),
+        let credentials_to_try = [
+            saved_credentials.clone(),
             fallback_token.map(Credentials::Token),
             get_token_from_env().map(Credentials::Token),
         ]
@@ -197,45 +202,24 @@ impl ConnectionRegistryHandle {
         .flatten()
         .unique();
 
-        // It's not common that you'd need credentials on localhost.
-        let use_stored_credentials_on_localhost = std::env::var("USE_STORED_CREDENTIALS").is_ok();
-        let actually_use_stored_credentials = !use_stored_credentials_on_localhost
-            && !origin.is_localhost()
-            && may_use_stored_credentials;
+        let (raw_client, successful_token) =
+            match Self::try_create_raw_client(origin.clone(), credentials_to_try).await {
+                Ok(res) => res,
+                Err(err) => {
+                    // if we had a saved token, it doesn't work, so we forget about it
+                    if err.is_client_credentials_error() {
+                        let mut inner = self.inner.write().await;
 
-        if actually_use_stored_credentials != may_use_stored_credentials {
-            re_log::debug!(
-                "not using stored credentials because origin is localhost; set USE_STORED_CREDENTIALS=1 if this is desired"
-            );
-        }
-
-        let client_result = if actually_use_stored_credentials {
-            Self::try_create_raw_client(
-                origin.clone(),
-                token_to_try.chain(std::iter::once(Credentials::Stored)),
-            )
-            .await
-        } else {
-            Self::try_create_raw_client(origin.clone(), token_to_try).await
-        };
-
-        let (raw_client, successful_token) = match client_result {
-            Ok(res) => res,
-            Err(err) => {
-                // if we had a saved token, it doesn't work, so we forget about it
-                if err.is_client_credentials_error() {
-                    let mut inner = self.inner.write().await;
-
-                    // make sure that we're not deleting some token that another thread might
-                    // have just set
-                    if inner.saved_credentials.get(&origin) == saved_token.as_ref() {
-                        inner.saved_credentials.remove(&origin);
+                        // make sure that we're not deleting some token that another thread might
+                        // have just set
+                        if inner.saved_credentials.get(&origin) == saved_credentials.as_ref() {
+                            inner.saved_credentials.remove(&origin);
+                        }
                     }
-                }
 
-                return Err(err);
-            }
-        };
+                    return Err(err);
+                }
+            };
         let client = ConnectionClient::new(raw_client.clone());
 
         // We have a successful client, so we cache it and remember about the successful token.
@@ -248,7 +232,7 @@ impl ConnectionRegistryHandle {
             let mut inner = self.inner.write().await;
             inner.clients.insert(origin.clone(), raw_client.clone());
 
-            if successful_token != saved_token {
+            if successful_token != saved_credentials {
                 if let Some(successful_token) = successful_token {
                     inner
                         .saved_credentials
@@ -356,7 +340,24 @@ impl ConnectionRegistryHandle {
                 }
             }
 
-            Err(err) => Err(ApiError::tonic(err, "verifying credentials")),
+            Err(err) => {
+                if let Some(cred_error) = err.source().and_then(|s| {
+                    s.downcast_ref::<re_auth::credentials::CredentialsProviderError>()
+                }) {
+                    match cred_error {
+                        CredentialsProviderError::SessionExpired => Err(ApiError::credentials(
+                            ClientCredentialsError::SessionExpired,
+                            "session expired",
+                        )),
+                        CredentialsProviderError::Custom(_) => Err(ApiError::credentials(
+                            ClientCredentialsError::RefreshError(err.into()),
+                            "refreshing credentials",
+                        )),
+                    }
+                } else {
+                    Err(ApiError::tonic(err, "verifying credentials"))
+                }
+            }
 
             Ok(_) => Ok(raw_client),
         }

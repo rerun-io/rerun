@@ -39,10 +39,11 @@ anyhow.workspace = true
 arrow.workspace = true
 datafusion.workspace = true
 futures.workspace = true
-insta.workspace = true
+insta = { workspace = true, features = ["filters"] }
 itertools.workspace = true
 prost-types.workspace = true
 tempfile.workspace = true
+tokio.workspace = true
 tonic.workspace = true
 url.workspace = true
 

@@ -171,7 +171,8 @@ impl VideoFrameReferenceVisualizer {
             .single_transform_required_for_entity(
                 ctx.target_entity_path,
                 VideoFrameReference::name(),
-            );
+            )
+            .as_affine3a();
 
         // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)

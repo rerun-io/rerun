@@ -2,9 +2,10 @@ use egui::NumExt as _;
 
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
+use re_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::{UICommand, UiExt as _, list_item};
 
-use re_viewer_context::{Looping, PlayState, TimeControl, TimeControlCommand};
+use re_viewer_context::{TimeControl, TimeControlCommand};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct TimeControlUi;
@@ -227,34 +228,36 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
         ui.scope(|ui| {
             // Loop-button cycles between states:
-            match time_ctrl.looping() {
-                Looping::Off => {
+            match time_ctrl.loop_mode() {
+                LoopMode::Off => {
                     if ui
                         .large_button_selected(icon, false)
                         .on_hover_text("Looping is off")
                         .clicked()
                     {
-                        time_commands.push(TimeControlCommand::SetLooping(Looping::All));
+                        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::All));
                     }
                 }
-                Looping::All => {
+                LoopMode::All => {
                     ui.visuals_mut().selection.bg_fill = ui.tokens().loop_everything_color;
                     if ui
                         .large_button_selected(icon, true)
                         .on_hover_text("Looping entire recording")
                         .clicked()
                     {
-                        time_commands.push(TimeControlCommand::SetLooping(Looping::Selection));
+                        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
                     }
                 }
-                Looping::Selection => {
-                    // ui.visuals_mut().selection.bg_fill = re_ui::ReUi::loop_selection_color(); // we have one color for the button, and a slightly different shade of it for the actual selection :/
+                LoopMode::Selection => {
+                    // No need for this - the selection color is already same as the loop color.
+                    // ui.visuals_mut().selection.bg_fill = ui.tokens().loop_selection_color.to_opaque();
+
                     if ui
                         .large_button_selected(icon, true)
                         .on_hover_text("Looping selection")
                         .clicked()
                     {
-                        time_commands.push(TimeControlCommand::SetLooping(Looping::Off));
+                        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
                     }
                 }
             }

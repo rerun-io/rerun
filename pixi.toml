@@ -50,24 +50,9 @@ libc = "2.28"
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 
-# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
-# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
-# See https://github.com/rerun-io/rerun/issues/10934 for more.
-#
-# TODO(prefix-dev/pixi#4431): Environment variable resolving doesn't work with this on Windows,
-# which is why we have to use the `%` syntax for Windows instead of `$`.
-CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
-
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
-
-# See `target.unix.activation.env`.
-CARGO_TARGET_DIR = "%PIXI_PROJECT_ROOT%/target_pixi"
-
-# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
-[target.osx-arm64.activation.env]
-AR = "llvm-ar"
 
 # python-dev
 
@@ -307,18 +292,20 @@ misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
 # Until we resolve nbqa config issue keep aligned with nbqa dirs above
-nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/python/ docs/snippets/ --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+nb-strip = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --verify --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # I couldn't get the config to work correctly so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-nb-rerun = { cmd = "nbqa mypy examples/notebook scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml --cache-dir .mypy_cache_rerun_nb ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
-py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
+py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
@@ -420,7 +407,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
@@ -576,6 +563,7 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
+lychee = "0.20.1.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 nbqa = "*"
@@ -602,9 +590,11 @@ gh = ">=2.79.0,<3"
 cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0" # For `rerun_notebook`
+inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"
 Pillow = ">=10.0.0" # For `thumbnails.py`
+polars = "==1.35.2" # For api_sandbox
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 types-decorator = "*" # Type hint stubs
@@ -801,6 +791,7 @@ raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }
 rrt_star = { path = "examples/python/rrt_star", editable = true }
 segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
+server_tables = { path = "examples/python/server_tables", editable = true }
 shared_recording = { path = "examples/python/shared_recording", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }

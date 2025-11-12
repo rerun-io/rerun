@@ -69,7 +69,10 @@ class TimeRange:
 
 
 TimeRangeLike = TimeRange
+"""A type alias for any TimeRange-like object."""
+
 TimeRangeArrayLike = TimeRange | Sequence[TimeRangeLike]
+"""A type alias for any TimeRange-like array object."""
 
 
 class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):

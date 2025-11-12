@@ -57,6 +57,7 @@ opentelemetry = { workspace = true, features = ["metrics"] }
 opentelemetry-appender-tracing = { workspace = true, features = [
   "experimental_use_tracing_span_context",
 ] }
+opentelemetry-http.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
 opentelemetry_sdk = { workspace = true, features = [
   "rt-tokio",

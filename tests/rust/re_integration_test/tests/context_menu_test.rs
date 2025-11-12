@@ -104,3 +104,28 @@ pub async fn test_container_selection_context_menu() {
     harness.selection_panel().right_click_label("View 2");
     harness.snapshot_app("container_selection_context_menu_2");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_collapse_stream_entity() {
+    let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
+
+    harness.streams_tree().right_click_label("txt/");
+    harness.snapshot_app("collapse_stream_entity_1");
+
+    harness.click_label("Collapse all");
+    harness.snapshot_app("collapse_stream_entity_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_collapse_stream_root() {
+    let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
+    harness.snapshot_app("collapse_stream_root_1");
+
+    harness.streams_tree().right_click_label("/");
+    harness.snapshot_app("collapse_stream_root_2");
+
+    harness.click_label("Collapse all");
+    harness.snapshot_app("collapse_stream_root_3");
+}

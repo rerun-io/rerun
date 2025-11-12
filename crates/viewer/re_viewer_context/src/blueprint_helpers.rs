@@ -161,6 +161,22 @@ pub trait BlueprintContext {
         );
     }
 
+    fn save_static_blueprint_array(
+        &self,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+        array: ArrayRef,
+    ) {
+        let blueprint = self.current_blueprint();
+        self.append_array_to_store(
+            blueprint.store_id().clone(),
+            TimePoint::STATIC,
+            entity_path,
+            component_descr,
+            array,
+        );
+    }
+
     /// Append an array to the given store.
     fn append_array_to_store(
         &self,
@@ -209,6 +225,21 @@ pub trait BlueprintContext {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
             self.clear_blueprint_component(entity_path, component_descr);
+        }
+    }
+
+    /// Resets a static blueprint component to the value it had in the default blueprint.
+    fn reset_static_blueprint_component(
+        &self,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+    ) {
+        if let Some(default_value) =
+            self.raw_latest_at_in_default_blueprint(&entity_path, component_descr.component)
+        {
+            self.save_static_blueprint_array(entity_path, component_descr, default_value);
+        } else {
+            self.clear_static_blueprint_component(entity_path, component_descr);
         }
     }
 

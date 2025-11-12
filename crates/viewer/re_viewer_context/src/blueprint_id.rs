@@ -32,6 +32,13 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
         }
     }
 
+    pub const fn from_bytes(bytes: uuid::Bytes) -> Self {
+        Self {
+            id: uuid::Uuid::from_bytes(bytes),
+            _registry: std::marker::PhantomData,
+        }
+    }
+
     pub fn from_entity_path(path: &EntityPath) -> Self {
         if !path.is_child_of(T::registry_path()) {
             return Self::invalid();
@@ -176,6 +183,17 @@ macro_rules! define_blueprint_id_type {
 // Definitions for the different [`BlueprintId`] types.
 define_blueprint_id_type!(ViewId, ViewIdRegistry, "view");
 define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
+
+// ----------------------------------------------------------------------------
+// Builtin `ViewId`s.
+
+/// A dummy view for shared blueprint data between views.
+///
+/// This is currently not exposed for any api to interact with, but there is technically nothing
+/// stopping us from manually adding it.
+pub const GLOBAL_VIEW_ID: ViewId = ViewId::from_bytes([
+    0x5C, 0x0D, 0xCA, 0x6A, 0xE6, 0x3F, 0x9C, 0xF7, 0xF6, 0x57, 0x26, 0x02, 0x59, 0x04, 0x74, 0xCC,
+]);
 
 // ----------------------------------------------------------------------------
 // Tests

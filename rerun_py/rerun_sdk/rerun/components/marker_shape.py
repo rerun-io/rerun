@@ -101,6 +101,8 @@ MarkerShapeLike = (
     ]
     | int
 )
+"""A type alias for any MarkerShape-like object."""
+
 MarkerShapeArrayLike = (
     MarkerShape
     | Literal[
@@ -128,6 +130,7 @@ MarkerShapeArrayLike = (
     | int
     | Sequence[MarkerShapeLike]
 )
+"""A type alias for any MarkerShape-like array object."""
 
 
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):

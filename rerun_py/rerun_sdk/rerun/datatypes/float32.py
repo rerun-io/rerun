@@ -46,12 +46,14 @@ class Float32:
 
 if TYPE_CHECKING:
     Float32Like = Float32 | float
+    """A type alias for any Float32-like object."""
 else:
     Float32Like = Any
 
 Float32ArrayLike = (
     Float32 | Sequence[Float32Like] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
 )
+"""A type alias for any Float32-like array object."""
 
 
 class Float32Batch(BaseBatch[Float32ArrayLike]):
