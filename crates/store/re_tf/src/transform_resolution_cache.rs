@@ -600,28 +600,17 @@ impl TransformsForChildFrame {
             CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => {
-                let transforms = query_and_resolve_tree_transform_at_entity(
+                let transform = query_and_resolve_tree_transform_at_entity(
                     &frame_transform.entity_path,
+                    self.child_frame,
                     entity_db,
                     // Do NOT use the original query time since that may give us information about a different child frame!
                     &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
                 );
 
                 // First, we update the cache value.
-                frame_transform.value = match &transforms {
-                    Ok(transform) => {
-                        if let Some(found) = transform.iter().find_map(|(child, transform)| {
-                            (child == &self.child_frame).then_some(transform)
-                        }) {
-                            CachedTransformValue::Resident(found.clone())
-                        } else {
-                            assert!(
-                                !cfg!(debug_assertions),
-                                "[DEBUG ASSERT] not finding a child here means our book keeping failed"
-                            );
-                            CachedTransformValue::Cleared
-                        }
-                    }
+                frame_transform.value = match &transform {
+                    Ok(transform) => CachedTransformValue::Resident(transform.clone()),
                     Err(err) => {
                         re_log::error_once!("Failed to query transformations: {err}");
                         CachedTransformValue::Cleared

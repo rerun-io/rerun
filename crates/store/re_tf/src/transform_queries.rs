@@ -1,18 +1,20 @@
 //! Utilities for querying out transform types.
 
 use glam::DAffine3;
-use itertools::Either;
+use itertools::{Either, Itertools as _};
 
 use crate::convert;
 use crate::{ResolvedPinholeProjection, transform_resolution_cache::ParentFromChildTransform};
-use re_chunk_store::LatestAtQuery;
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk_store::{Chunk, LatestAtQuery, UnitChunkShared};
 use re_entity_db::EntityDb;
-use re_log_types::EntityPath;
-use re_types::archetypes::InstancePoses3D;
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     ComponentIdentifier, TransformFrameIdHash,
+    archetypes::InstancePoses3D,
     archetypes::{self},
     components,
+    external::arrow::{self, array::Array as _},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -27,16 +29,127 @@ pub enum TransformError {
     MissingTransform { entity_path: EntityPath },
 }
 
-/// Queries all components that are part of pose transforms, returning the transform from child to parent.
+/// Returns true if any of the given components is non-null on the given row.
+fn has_row_any_component(
+    chunk: &Chunk,
+    row_index: usize,
+    components: &[ComponentIdentifier],
+) -> bool {
+    components.iter().any(|component| {
+        chunk
+            .components()
+            .get_array(*component)
+            .is_some_and(|array| !array.is_null(row_index))
+    })
+}
+
+/// Finds a unit chunk/row that has the latest changes for the given set of components and has
+/// the given `frame_id` at the `frame_id_component`
+///
+/// We have to find the last row-id for the given `child_frame_id` and time.
+/// Since everything has the same row-id, everything has to be on the same chunk.
+fn atomic_latest_at_query_for_frame(
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+    entity_path: &EntityPath,
+    frame_id_component: ComponentIdentifier,
+    requested_frame_id: TransformFrameIdHash,
+    component_set: &[ComponentIdentifier],
+) -> Option<UnitChunkShared> {
+    let include_static = true;
+    let chunks = entity_db
+        .storage_engine()
+        .store()
+        .latest_at_relevant_chunks_for_all_components(query, entity_path, include_static);
+
+    let entity_path_derived_frame_id = TransformFrameIdHash::from_entity_path(entity_path);
+
+    let mut unit_chunk: Option<UnitChunkShared> = None;
+
+    let query_time = query.at().as_i64();
+
+    for chunk in chunks {
+        let mut row_indices_with_queried_time_from_new_to_old = if let Some(time_column) =
+            chunk.timelines().get(&query.timeline())
+            && query_time != TimeInt::STATIC.as_i64()
+        {
+            // TODO: optimize for already sorted.
+            Either::Right(
+                time_column
+                    .times_raw()
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, time)| (*time <= query_time).then_some(index))
+                    .sorted()
+                    .rev(),
+            )
+        } else {
+            Either::Left((0..chunk.num_rows()).rev())
+        };
+
+        // Finds the last row index with time <= the query time and a matching frame id.
+        let higest_row_index_with_expected_frame_id =
+            if let Some(frame_ids) = chunk.components().get_array(frame_id_component) {
+                row_indices_with_queried_time_from_new_to_old.find(|index| {
+                    let frame_id_row_untyped = frame_ids.value(*index);
+                    let Some(frame_id_row) =
+                        frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
+                    else {
+                        // TODO: report error
+                        return false;
+                    };
+                    // Right now everything is singular on a single row, so check only the first element of this string array.
+                    let frame_id = if frame_id_row.is_empty() || frame_id_row.is_null(0) {
+                        // *something* on this row has to be non-empty & non-null!
+                        if !has_row_any_component(&chunk, *index, component_set) {
+                            return false;
+                        }
+                        entity_path_derived_frame_id
+                    } else {
+                        TransformFrameIdHash::from_str(frame_id_row.value(0))
+                    };
+
+                    frame_id == requested_frame_id
+                })
+            } else if entity_path_derived_frame_id == requested_frame_id {
+                // Pick the last where any relevant component is non-null & non-empty.
+                row_indices_with_queried_time_from_new_to_old
+                    .find(|index| has_row_any_component(&chunk, *index, component_set))
+            } else {
+                // There's no child_frame id and we're also not looking for the entity-path derived frame,
+                // so this chunk doesn't have any information about the the transform we're looking for.
+                continue;
+            };
+
+        if let Some(row_index) = higest_row_index_with_expected_frame_id {
+            let new_unit_chunk = chunk.row_sliced(row_index, 1).into_unit()
+                .expect("Chunk was just sliced to single row, therefore it must be convertible to a unit chunk");
+
+            if let Some(previous_chunk) = &unit_chunk {
+                // This should be rare: there's another chunk that also fits the exact same child id and the exact same time.
+                // Have to use row id as the tie breaker.
+                if previous_chunk.row_id() < new_unit_chunk.row_id() {
+                    continue;
+                }
+            }
+
+            unit_chunk = chunk.row_sliced(row_index, 1).into_unit();
+        }
+    }
+
+    unit_chunk
+}
+
+/// Queries & processes all components that are part of a transform, returning the transform from child to parent.
 ///
 /// If any of the components yields an invalid transform, returns `None`.
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
-// TODO(grtlr): Consider returning a `SmallVec1`.
 pub fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
+    child_frame_id: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Result<Vec<(TransformFrameIdHash, ParentFromChildTransform)>, TransformError> {
+) -> Result<ParentFromChildTransform, TransformError> {
     // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
 
     // Topology
@@ -52,28 +165,48 @@ pub fn query_and_resolve_tree_transform_at_entity(
     let identifier_scales = archetypes::Transform3D::descriptor_scale().component;
     let identifier_mat3x3 = archetypes::Transform3D::descriptor_mat3x3().component;
 
-    let results = entity_db.latest_at(
+    let all_components_of_transaction = [
+        identifier_parent_frame,
+        identifier_child_frame,
+        identifier_relation,
+        // Geometry
+        identifier_translations,
+        identifier_rotation_axis_angles,
+        identifier_quaternions,
+        identifier_scales,
+        identifier_mat3x3,
+    ];
+
+    // We're querying for transactional/atomic transform state:
+    // If any of the topology or geometry components change, we reset the entire transform.
+    //
+    // This means we don't have to do latest-at for individual components.
+    // Instead, we're looking for the last change and then get everything with that row id.
+    //
+    // We bipass the query cache here:
+    // * we're already doing special caching anyways
+    // * we don't want to merge over row-ids *at all* since our query handling here is a little bit different. The query cache is geared towards "regular Rerun semantics"
+    // * we already handled `Clear`/`ClearRecursive` upon pre-population of our cache entries (we know when a clear occurs on this entity!)
+    let unit_chunk: Option<UnitChunkShared> = atomic_latest_at_query_for_frame(
+        entity_db,
         query,
         entity_path,
-        [
-            identifier_parent_frame,
-            identifier_child_frame,
-            identifier_relation,
-            identifier_translations,
-            identifier_rotation_axis_angles,
-            identifier_quaternions,
-            identifier_scales,
-            identifier_mat3x3,
-        ],
+        identifier_child_frame,
+        child_frame_id,
+        &all_components_of_transaction,
     );
-    if results.components.is_empty() {
+    let Some(unit_chunk) = unit_chunk else {
+        // TODO: Is this REALLY an error?
         return Err(TransformError::MissingTransform {
             entity_path: entity_path.clone(),
         });
-    }
+    };
 
-    let parent = results
-        .component_mono_quiet::<components::TransformFrameId>(identifier_parent_frame)
+    // TODO(andreas): silently ignores deserialization error right now.
+
+    let parent = unit_chunk
+        .component_mono::<components::TransformFrameId>(identifier_parent_frame)
+        .and_then(|v| v.ok())
         .map_or_else(
             || {
                 TransformFrameIdHash::from_entity_path(
@@ -83,30 +216,18 @@ pub fn query_and_resolve_tree_transform_at_entity(
             |frame_id| TransformFrameIdHash::new(&frame_id),
         );
 
-    let child = results
-        .component_mono_quiet::<components::TransformFrameId>(identifier_child_frame)
-        .map_or_else(
-            || TransformFrameIdHash::from_entity_path(entity_path),
-            |frame_id| TransformFrameIdHash::new(&frame_id),
-        );
-
     let mut transform = DAffine3::IDENTITY;
 
-    // It's an error if there's more than one component. Warn in that case.
-    let mono_log_level = re_log::Level::Warn;
-
     // The order of the components here is important.
-    if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
-        identifier_translations,
-        mono_log_level,
-    ) {
+    if let Some(translation) = unit_chunk
+        .component_mono::<components::Translation3D>(identifier_translations)
+        .and_then(|v| v.ok())
+    {
         transform = convert::translation_3d_to_daffine3(translation);
     }
-    if let Some(axis_angle) = results
-        .component_mono_with_log_level::<components::RotationAxisAngle>(
-            identifier_rotation_axis_angles,
-            mono_log_level,
-        )
+    if let Some(axis_angle) = unit_chunk
+        .component_mono::<components::RotationAxisAngle>(identifier_rotation_axis_angles)
+        .and_then(|v| v.ok())
     {
         let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_err| {
             TransformError::InvalidTransform {
@@ -116,10 +237,10 @@ pub fn query_and_resolve_tree_transform_at_entity(
         })?;
         transform *= axis_angle;
     }
-    if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
-        identifier_quaternions,
-        mono_log_level,
-    ) {
+    if let Some(quaternion) = unit_chunk
+        .component_mono::<components::RotationQuat>(identifier_quaternions)
+        .and_then(|v| v.ok())
+    {
         let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_err| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
@@ -128,8 +249,9 @@ pub fn query_and_resolve_tree_transform_at_entity(
         })?;
         transform *= quaternion;
     }
-    if let Some(scale) = results
-        .component_mono_with_log_level::<components::Scale3D>(identifier_scales, mono_log_level)
+    if let Some(scale) = unit_chunk
+        .component_mono::<components::Scale3D>(identifier_scales)
+        .and_then(|v| v.ok())
     {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
             return Err(TransformError::InvalidTransform {
@@ -139,10 +261,10 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
         transform *= convert::scale_3d_to_daffine3(scale);
     }
-    if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
-        identifier_mat3x3,
-        mono_log_level,
-    ) {
+    if let Some(mat3x3) = unit_chunk
+        .component_mono::<components::TransformMat3x3>(identifier_mat3x3)
+        .and_then(|v| v.ok())
+    {
         let affine_transform = convert::transform_mat3x3_to_daffine3(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
             return Err(TransformError::InvalidTransform {
@@ -153,10 +275,10 @@ pub fn query_and_resolve_tree_transform_at_entity(
         transform *= affine_transform;
     }
 
-    if results.component_mono_with_log_level::<components::TransformRelation>(
-        identifier_relation,
-        mono_log_level,
-    ) == Some(components::TransformRelation::ChildFromParent)
+    if unit_chunk
+        .component_mono::<components::TransformRelation>(identifier_relation)
+        .and_then(|v| v.ok())
+        == Some(components::TransformRelation::ChildFromParent)
     {
         let determinant = transform.matrix3.determinant();
         if determinant != 0.0 && determinant.is_finite() {
@@ -171,10 +293,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
     }
 
-    Ok(vec![(
-        child,
-        ParentFromChildTransform { transform, parent },
-    )])
+    Ok(ParentFromChildTransform { transform, parent })
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
@@ -187,7 +306,7 @@ pub fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<DAffine3> {
-    let identifier_translations = archetypes::InstancePoses3D::descriptor_translations().component;
+    let identifier_translations = InstancePoses3D::descriptor_translations().component;
     let identifier_rotation_axis_angles =
         InstancePoses3D::descriptor_rotation_axis_angles().component;
     let identifier_quaternions = InstancePoses3D::descriptor_quaternions().component;
