@@ -1510,7 +1510,7 @@ https://github.com/user-attachments/assets/553b6d88-143d-4cf9-a4bc-6b620534ab95
 * 🎬 Native viewer now supports H.264 video if ffmpeg is installed.
 * 📽️ Videos now load a lot faster use less RAM.
 * 📂 Improvements to the existing `Open` (Viewer) & `log_file` (SDK) workflows, and addition of a new `Import` workflow.
-  * Blueprints can now easily be [re-used across different applications, recordings and SDKs](https://rerun.io/docs/howto/visualization/reuse-blueprints)
+  * Blueprints can now easily be [re-used across different applications, recordings and SDKs](https://rerun.io/docs/concepts/blueprints)
   * The new `Import` feature allows you to drag-and-drop any data into an existing recording, directly in the viewer.
 * ☰ Dataframe queries are now streamed, reducing memory usage.
 * 💊 Add [capsule archetype](https://rerun.io/docs/reference/types/archetypes/capsules3d).
