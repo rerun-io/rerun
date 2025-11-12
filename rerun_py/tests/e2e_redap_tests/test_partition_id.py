@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .conftest import DATASET_FILEPATH, ServerInstance
+from .conftest import DATASET_FILEPATH
 
 if TYPE_CHECKING:
+    from rerun.catalog import CatalogClient
     from syrupy import SnapshotAssertion
 
 
-def test_partition_ids(server_instance: ServerInstance, snapshot: SnapshotAssertion) -> None:
+def test_partition_ids(catalog_client: CatalogClient, snapshot: SnapshotAssertion) -> None:
     """Test that we can successfully collect information about partitions."""
-    client = server_instance.client
 
-    ds = client.create_dataset("test_dataset")
-    tasks = ds.register_prefix(f"file://{DATASET_FILEPATH.absolute()}")
+    ds = catalog_client.create_dataset("test_dataset")
+    tasks = ds.register_prefix(DATASET_FILEPATH.absolute().as_uri())
     tasks.wait(timeout_secs=50)
 
     assert (

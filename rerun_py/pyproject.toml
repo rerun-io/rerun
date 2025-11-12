@@ -36,7 +36,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==8.4.2", "syrupy==5.0.0"]
-notebook = ["rerun-notebook==0.27.0-alpha.8+dev"]
+notebook = ["rerun-notebook==0.28.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
 
@@ -302,5 +302,16 @@ module = [
   "torchvision.*",
   "torchaudio.*",
   "cv2.*",
+  "rerun.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# rerun_draft is a sandbox for testing new APIs - we don't care about strict type checking
+module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
+ignore_errors = true
+ignore_missing_imports = true
+
+
+[tool.inline-snapshot]
+format-command = "ruff check --config rerun_py/pyproject.toml --fix-only --stdin-filename {filename} | ruff format --config rerun_py/pyproject.toml --stdin-filename {filename}"

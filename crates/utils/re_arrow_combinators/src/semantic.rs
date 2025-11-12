@@ -3,10 +3,16 @@
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use arrow::array::{Array as _, GenericBinaryArray, GenericListArray, OffsetSizeTrait};
-use arrow::datatypes::{DataType, Field};
+use arrow::array::{
+    Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int64Array,
+    OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
+};
+use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
+use arrow::error::ArrowError;
 
-use crate::{Error, Transform};
+use re_types::components::VideoCodec;
+
+use crate::{Error, Transform, cast::DowncastRef, reshape::GetField};
 
 /// Converts binary arrays to list arrays where each binary element becomes a list of `u8`.
 ///
@@ -60,5 +66,72 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
         );
 
         Ok(list)
+    }
+}
+
+/// Converts `StructArray` of timestamps with `seconds` (i64) and `nanos` (i32) fields
+/// to `Int64Array` containing the corresponding total nanoseconds timestamps.
+#[derive(Default)]
+pub struct TimeSpecToNanos {}
+
+impl Transform for TimeSpecToNanos {
+    type Source = StructArray;
+    type Target = Int64Array;
+
+    fn transform(&self, source: &StructArray) -> Result<Self::Target, Error> {
+        let seconds_array = GetField::new("seconds")
+            .then(DowncastRef::<Int64Type>::new())
+            .transform(source)?;
+        let nanos_array = GetField::new("nanos")
+            .then(DowncastRef::<Int32Type>::new())
+            .transform(source)?;
+
+        Ok(arrow::compute::try_binary(
+            &seconds_array,
+            &nanos_array,
+            |seconds: i64, nanos: i32| -> Result<i64, ArrowError> {
+                seconds
+                    .mul_checked(1_000_000_000)?
+                    .add_checked(nanos as i64)
+            },
+        )?)
+    }
+}
+
+/// Transforms a `StringArray` of video codec names to a `UInt32Array`,
+/// where each u32 corresponds to a Rerun `VideoCodec` enum value.
+#[derive(Default)]
+pub struct StringToVideoCodecUInt32 {}
+
+impl Transform for StringToVideoCodecUInt32 {
+    type Source = StringArray;
+    type Target = UInt32Array;
+
+    fn transform(&self, source: &StringArray) -> Result<Self::Target, Error> {
+        Ok(source
+            .iter()
+            .try_fold(
+                UInt32Builder::with_capacity(source.len()),
+                |mut builder, maybe_str| {
+                    if let Some(codec_str) = maybe_str {
+                        let codec = match codec_str.to_lowercase().as_str() {
+                            "h264" => VideoCodec::H264,
+                            "h265" => VideoCodec::H265,
+                            "av1" => VideoCodec::AV1,
+                            _ => {
+                                return Err(Error::UnexpectedValue {
+                                    expected: &["h264", "h265", "av1"],
+                                    actual: codec_str.to_owned(),
+                                });
+                            }
+                        };
+                        builder.append_value(codec as u32);
+                    } else {
+                        builder.append_null();
+                    }
+                    Ok(builder)
+                },
+            )?
+            .finish())
     }
 }

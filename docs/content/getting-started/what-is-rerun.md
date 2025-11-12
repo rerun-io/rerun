@@ -1,5 +1,5 @@
 ---
 title: What is Rerun?
-order: 0
+hidden: true
 redirect: overview/what-is-rerun
 ---
