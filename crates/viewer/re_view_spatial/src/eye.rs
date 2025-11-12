@@ -533,6 +533,8 @@ impl ControlEye {
 
             let world_movement = rot * (self.speed as f32 * local_movement);
 
+            // If input is zero, don't continue moving with velocity. Since we're no longer interacting
+            // we don't want to continue writing to blueprint and creating undo points.
             eye_state.velocity = if local_movement == Vec3::ZERO {
                 Vec3::ZERO
             } else {
