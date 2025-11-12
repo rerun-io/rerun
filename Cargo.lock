@@ -8871,7 +8871,7 @@ dependencies = [
 
 [[package]]
 name = "re_depth_compression"
-version = "0.27.0-alpha.8"
+version = "0.28.0-alpha.1+dev"
 dependencies = [
  "byteorder",
  "thiserror 2.0.17",
