@@ -24,12 +24,12 @@ utf8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `TransformFrameId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TransformFrameId.html?speculative-link)
- * 🐍 [Python API docs for `TransformFrameId`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.TransformFrameId)
- * 🦀 [Rust API docs for `TransformFrameId`](https://docs.rs/rerun/latest/rerun/components/struct.TransformFrameId.html?speculative-link)
+ * 🌊 [C++ API docs for `TransformFrameId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TransformFrameId.html)
+ * 🐍 [Python API docs for `TransformFrameId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TransformFrameId)
+ * 🦀 [Rust API docs for `TransformFrameId`](https://docs.rs/rerun/latest/rerun/components/struct.TransformFrameId.html)
 
 
 ## Used by
 
-* [`CoordinateFrame`](../archetypes/coordinate_frame.md?speculative-link)
+* [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`Transform3D`](../archetypes/transform3d.md)
