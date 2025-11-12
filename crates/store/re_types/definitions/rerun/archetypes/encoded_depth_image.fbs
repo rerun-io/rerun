@@ -3,6 +3,8 @@ namespace rerun.archetypes;
 /// A depth image encoded with a codec (e.g. RVL or PNG).
 ///
 /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
+///
+/// \example archetypes/encoded_image
 table EncodedDepthImage(
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Image & tensor",
