@@ -267,7 +267,7 @@ libc = "0.2.176"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.28"
 log-once = "0.4.1"
-lz4_flex = "0.11.5"
+lz4_flex = "0.12"
 macaw = "0.30.0"
 mcap = "0.23.3"
 memmap2 = "0.9.8"

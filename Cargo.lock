@@ -543,7 +543,7 @@ dependencies = [
  "arrow-schema",
  "arrow-select",
  "flatbuffers",
- "lz4_flex",
+ "lz4_flex 0.11.5",
  "zstd",
 ]
 
@@ -6043,6 +6043,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lz4_flex"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab6473172471198271ff72e9379150e9dfd70d8e533e0752a27e515b48dd375e"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "lzma-sys"
 version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7345,7 +7354,7 @@ dependencies = [
  "futures",
  "half",
  "hashbrown 0.15.5",
- "lz4_flex",
+ "lz4_flex 0.11.5",
  "num",
  "num-bigint",
  "object_store",
@@ -7973,7 +7982,7 @@ dependencies = [
  "byteorder",
  "cfg-if",
  "itertools 0.10.5",
- "lz4_flex",
+ "lz4_flex 0.11.5",
  "once_cell",
  "parking_lot",
  "serde",
@@ -9036,7 +9045,7 @@ dependencies = [
  "criterion",
  "ehttp",
  "js-sys",
- "lz4_flex",
+ "lz4_flex 0.12.0",
  "mimalloc",
  "parking_lot",
  "re_build_info",
@@ -11806,7 +11815,7 @@ dependencies = [
  "levenshtein_automata",
  "log",
  "lru 0.12.5",
- "lz4_flex",
+ "lz4_flex 0.11.5",
  "measure_time",
  "memmap2 0.9.8",
  "once_cell",
