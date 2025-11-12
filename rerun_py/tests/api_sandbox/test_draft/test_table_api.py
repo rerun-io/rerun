@@ -1,27 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import datafusion
 import pyarrow as pa
 import rerun_draft as rr
 from inline_snapshot import snapshot as inline_snapshot
 
-if TYPE_CHECKING:
-    from pathlib import Path
 
-
-def test_table_api(tmp_path: Path) -> None:
+def test_table_api() -> None:
     with rr.server.Server() as server:
         client = server.client()
 
-        table = client.create_table_entry(
+        table = client.create_table(
             "my_table",
             pa.schema([
                 ("rerun_segment_id", pa.string()),
                 ("operator", pa.string()),
             ]),
-            tmp_path.as_uri(),
         )
 
         assert isinstance(table, datafusion.DataFrame)

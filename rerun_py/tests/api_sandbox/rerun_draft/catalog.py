@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import datafusion
@@ -16,6 +18,7 @@ class CatalogClient:
 
     def __init__(self, address: str, token: str | None = None) -> None:
         self._inner = _catalog.CatalogClient(address, token)
+        self.tmpdirs = []
 
     def __repr__(self) -> str:
         return repr(self._inner)
@@ -80,8 +83,12 @@ class CatalogClient:
         """Registers a foreign Lance table as a new table entry."""
         return TableEntry(self._inner.register_table(name, url))
 
-    def create_table_entry(self, name: str, schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema, url: str | None = None) -> TableEntry:
         """Create and register a new table."""
+        if url is None:
+            tmpdir = tempfile.TemporaryDirectory()
+            self.tmpdirs.append(tmpdir)
+            url = Path(tmpdir.name).as_uri()
         return TableEntry(self._inner.create_table_entry(name, schema, url))
 
     def write_table(self, name: str, batches, insert_mode) -> None:
@@ -100,6 +107,14 @@ class CatalogClient:
     def ctx(self) -> datafusion.SessionContext:
         """Returns a DataFusion session context for querying the catalog."""
         return self._inner.ctx
+
+    def __del__(self) -> None:
+        # Safety net: avoid warning if GC happens late
+        try:
+            for tmpdir in self.tmpdirs:
+                tmpdir.cleanup()
+        except Exception:
+            pass
 
 
 class Entry:
