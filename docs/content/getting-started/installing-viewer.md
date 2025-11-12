@@ -1,5 +1,5 @@
 ---
 title: Installing the Viewer
-order: 1
+hidden: true
 redirect: overview/installing-viewer#installing-the-viewer
 ---

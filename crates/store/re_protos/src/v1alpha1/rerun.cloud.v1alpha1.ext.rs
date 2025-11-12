@@ -572,7 +572,7 @@ impl From<EntryDetails> for crate::cloud::v1alpha1::EntryDetails {
 
 // --- DatasetDetails ---
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DatasetDetails {
     pub blueprint_dataset: Option<EntryId>,
     pub default_blueprint: Option<PartitionId>,

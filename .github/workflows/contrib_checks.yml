@@ -59,6 +59,9 @@ jobs:
       - name: Lint Python
         run: pixi run py-lint
 
+      - name: Notebook strip check
+        run: pixi run nb-strip-check
+
   py-test-docs:
     name: Test Python Docs
     timeout-minutes: 60
