@@ -263,6 +263,12 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
+      - name: Set up pixi for PR Link Checker
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
       # For PRs: Check only links in added lines
       - name: PR Link Checker (added lines only)
         if: ${{ inputs.CHANNEL == 'pr' }}
