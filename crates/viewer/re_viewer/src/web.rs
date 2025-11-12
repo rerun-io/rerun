@@ -594,6 +594,30 @@ impl WebHandle {
         });
         egui_ctx.request_repaint();
     }
+
+    #[wasm_bindgen]
+    pub fn foo(&self) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            command_sender,
+            egui_ctx,
+            ..
+        } = &mut *app;
+
+        // command_sender.send_system(SystemCommand::TimeControlCommands {
+        //     store_id: store_id.clone(),
+        //     time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
+        // });
+        command_sender.send_system(SystemCommand::ShowNotification(
+            re_ui::notifications::Notification::new(
+                re_ui::notifications::NotificationLevel::Info,
+                "hello",
+            ),
+        ));
+        egui_ctx.request_repaint();
+    }
 }
 
 /// Best effort attempt at finding a store id based on the recording id.

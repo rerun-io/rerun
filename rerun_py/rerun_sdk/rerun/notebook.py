@@ -274,6 +274,11 @@ class Viewer:
         table_as_bytes = sink.getvalue().to_pybytes()
         self._viewer.send_table(table_as_bytes)
 
+    def foo(
+        self,
+    ) -> None:
+        self._viewer.foo()
+
     def display(self, block_until_ready: bool = False) -> None:
         """
         Display the viewer in the notebook cell immediately.

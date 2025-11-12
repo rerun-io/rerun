@@ -233,6 +233,9 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def send_table(self, data: bytes) -> None:
         self.send({"type": "table"}, buffers=[data])
 
+    def foo(self) -> None:
+        self.send({"type": "foo"})
+
     def block_until_ready(self, timeout: float = 10.0) -> None:
         """Block until the viewer is ready."""
 

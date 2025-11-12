@@ -336,6 +336,10 @@ export class WebViewer {
     setupGlobalEventListeners();
   }
 
+  foo() {
+    this.#handle?.foo();
+  }
+
   /**
    * Start the viewer.
    *
