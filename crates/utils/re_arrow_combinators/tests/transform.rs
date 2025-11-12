@@ -7,16 +7,19 @@ use re_arrow_combinators::{
     cast::PrimitiveCast,
     map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull},
     reshape::{Flatten, GetField, StructToFixedList},
-    semantic::BinaryToListUInt8,
+    semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
 };
 
 use arrow::{
     array::{
-        Array, ArrayRef, Float32Array, Float64Array, Float64Builder, GenericByteBuilder, ListArray,
-        ListBuilder, RecordBatch, RecordBatchOptions, StructBuilder,
+        Array, ArrayRef, Float32Array, Float64Array, Float64Builder, GenericByteBuilder,
+        Int32Array, Int64Array, ListArray, ListBuilder, RecordBatch, RecordBatchOptions,
+        StringArray, StructArray, StructBuilder, UInt32Array,
     },
     datatypes::{DataType, Field, Fields, GenericBinaryType, Schema},
 };
+
+use re_types::components::VideoCodec;
 
 /// Helper function to wrap an [`ArrayRef`] into a [`RecordBatch`] for easier printing.
 fn wrap_in_record_batch(array: ArrayRef) -> RecordBatch {
@@ -439,5 +442,78 @@ fn test_binary_offset_overflow() {
             assert_eq!(expected_type, "i32");
         }
         other => panic!("Expected OffsetOverflow error, got: {other:?}"),
+    }
+}
+
+/// Tests that timespec structs are correctly converted to nanoseconds, including (mixed) null handling.
+#[test]
+fn test_timespec_to_nanos() {
+    let seconds_field = Arc::new(Field::new("seconds", DataType::Int64, true));
+    let nanos_field = Arc::new(Field::new("nanos", DataType::Int32, true));
+
+    let seconds_array = Arc::new(Int64Array::from(vec![
+        Some(1),
+        Some(2),
+        None,
+        Some(3),
+        None,
+    ]));
+    let nanos_array = Arc::new(Int32Array::from(vec![
+        Some(500_000_000),
+        None,
+        Some(0),
+        Some(250_000_000),
+        None,
+    ]));
+
+    let struct_array = StructArray::new(
+        vec![seconds_field, nanos_field].into(),
+        vec![seconds_array, nanos_array],
+        None,
+    );
+    let output_array = TimeSpecToNanos::default()
+        .transform(&struct_array)
+        .expect("transformation failed");
+    let expected_array = Int64Array::from(vec![
+        Some(1_500_000_000),
+        None,
+        None,
+        Some(3_250_000_000),
+        None,
+    ]);
+    assert_eq!(output_array, expected_array);
+}
+
+/// Tests that supported codecs are correctly converted, and checks case-insensitivity and null handling.
+#[test]
+fn test_string_to_codec_uint32() {
+    // Note: mixed codecs normally don't make sense, but should be fine from a pure conversion perspective.
+    let input_array = StringArray::from(vec![Some("H264"), None, Some("h264"), Some("H265")]);
+    assert_eq!(input_array.null_count(), 1);
+    let output_array = StringToVideoCodecUInt32::default()
+        .transform(&input_array)
+        .expect("transformation failed");
+    assert_eq!(output_array.null_count(), 1);
+    let expected_array = UInt32Array::from(vec![
+        Some(VideoCodec::H264 as u32),
+        None,
+        Some(VideoCodec::H264 as u32),
+        Some(VideoCodec::H265 as u32),
+    ]);
+    assert_eq!(output_array, expected_array);
+}
+
+/// Tests that we return the correct error when an unsupported codec is in the data.
+#[test]
+fn test_string_to_codec_uint32_unsupported() {
+    let unsupported_codecs = ["vp9", "av1"];
+    for &bad_codec in &unsupported_codecs {
+        let input_array = StringArray::from(vec![Some("h264"), Some(bad_codec)]);
+        let result = StringToVideoCodecUInt32::default().transform(&input_array);
+        assert!(result.is_err());
+        let Err(Error::UnexpectedValue { actual, .. }) = result else {
+            panic!("wrong error type");
+        };
+        assert_eq!(actual, bad_codec);
     }
 }
