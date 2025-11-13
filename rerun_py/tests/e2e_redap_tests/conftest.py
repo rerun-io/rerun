@@ -235,7 +235,8 @@ def test_dataset(entry_factory: EntryFactory, resource_prefix: str) -> Generator
     """
 
     ds = entry_factory.create_dataset(DATASET_NAME)
-    ds.register_prefix(resource_prefix + "dataset")
+    tasks = ds.register_prefix(resource_prefix + "dataset")
+    tasks.wait(timeout_secs=50)
 
     yield ds
 
@@ -257,7 +258,8 @@ def prefilled_catalog(entry_factory: EntryFactory, readonly_table_uri: str) -> G
     """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
 
     dataset = entry_factory.create_dataset(DATASET_NAME)
-    dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
+    tasks = dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
+    tasks.wait(timeout_secs=50)
 
     # Register the read-only table with different catalog/schema qualifications
     for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:

@@ -16,7 +16,7 @@ def test_partition_ids(entry_factory: EntryFactory, resource_prefix: str, snapsh
     tasks.wait(timeout_secs=50)
 
     assert (
-        ds.partition_table().df().drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_partition_id")
+        ds.partition_table().df().drop("rerun_storage_urls", "rerun_last_updated_at", "rerun_size_bytes").sort("rerun_partition_id")
         == snapshot
     )
     assert sorted(ds.partition_ids()) == snapshot
