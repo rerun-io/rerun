@@ -46,15 +46,17 @@ fn has_row_any_component(
 /// Finds a unit chunk/row that has the latest changes for the given set of components and has
 /// the given `frame_id` at the `frame_id_component`
 ///
-/// We have to find the last row-id for the given `child_frame_id` and time.
-/// Since everything has the same row-id, everything has to be on the same chunk.
+/// We have to find the last row-id for the given `condition_frame_id_component` and time.
+/// Today, `condition_frame_id_component` is either `child_frame_id` for `Transform3D`/`Pinhole` or `frame_id` for `InstancePoses3D`.
+///
+/// Since everything has the same row-id, everything has to be on the same chunk -> we return a unit chunk!
 fn atomic_latest_at_query_for_frame(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
     entity_path: &EntityPath,
-    frame_id_component: ComponentIdentifier,
+    condition_frame_id_component: ComponentIdentifier,
     requested_frame_id: TransformFrameIdHash,
-    component_set: &[ComponentIdentifier],
+    atomic_component_set: &[ComponentIdentifier],
 ) -> Option<UnitChunkShared> {
     let include_static = true;
     let chunks = entity_db
@@ -69,6 +71,15 @@ fn atomic_latest_at_query_for_frame(
     let query_time = query.at().as_i64();
 
     for chunk in chunks {
+        // Make sure the chunk is sorted (they usually are) in order to ensure we're getting the last relevant row.
+        let chunk = if chunk.is_sorted() {
+            chunk
+        } else {
+            let mut sorted_chunk = (*chunk).clone();
+            sorted_chunk.sort_if_unsorted();
+            std::sync::Arc::new(sorted_chunk)
+        };
+
         let mut row_indices_with_queried_time_from_new_to_old = if let Some(time_column) =
             chunk.timelines().get(&query.timeline())
             && query_time != TimeInt::STATIC.as_i64()
@@ -79,61 +90,76 @@ fn atomic_latest_at_query_for_frame(
                     .times_raw()
                     .iter()
                     .enumerate()
-                    .filter_map(|(index, time)| (*time <= query_time).then_some(index))
-                    .sorted()
-                    .rev(),
+                    .filter(|(_row_index, time)| **time <= query_time)
+                    .sorted_by_key(|(_row_index, time)| -(*time)) // Make sure the highest time comes first.
+                    .map(|(row_index, _time)| row_index),
             )
         } else {
             Either::Left((0..chunk.num_rows()).rev())
         };
 
         // Finds the last row index with time <= the query time and a matching frame id.
-        let higest_row_index_with_expected_frame_id =
-            if let Some(frame_ids) = chunk.components().get_array(frame_id_component) {
-                row_indices_with_queried_time_from_new_to_old.find(|index| {
-                    let frame_id_row_untyped = frame_ids.value(*index);
-                    let Some(frame_id_row) =
-                        frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
-                    else {
-                        // TODO: report error
+        let highest_row_index_with_expected_frame_id = if let Some(frame_id_column) =
+            chunk.components().get_array(condition_frame_id_component)
+        {
+            row_indices_with_queried_time_from_new_to_old.find(|index| {
+                let frame_id_row_untyped = frame_id_column.value(*index);
+                let Some(frame_id_row) =
+                    frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
+                else {
+                    // TODO: report error
+                    return false;
+                };
+                // Right now everything is singular on a single row, so check only the first element of this string array.
+                let frame_id = if frame_id_row.is_empty() || frame_id_row.is_null(0) {
+                    // *Something* on this row has to be non-empty & non-null!
+                    // Example where this is not the case:
+                    //
+                    // ____________________________________________
+                    // | child_frame_id | translation | color      |
+                    //  -------------------------------------------
+                    // | ["myframe"]     | [[1,2,3]]  | null       |
+                    // | null            | null       | 0xFF00FFFF |
+                    // | null            | []         | null       |
+                    //
+                    // The second row doesn't have any of the components of our atomic set.
+                    // It is therefore not relevant for what we're looking for!
+                    // The last row *is* relevant, because it clears out the translation for the
+                    // entity derived child_frame_id, thus setting it to an identity transform.
+                    // TODO: I want exactly the above in a unit test! note that `rr.log("my_entity", Transform3D())` TODAY does pretty much that. so it's NOT far fetched.
+                    if !has_row_any_component(&chunk, *index, atomic_component_set) {
                         return false;
-                    };
-                    // Right now everything is singular on a single row, so check only the first element of this string array.
-                    let frame_id = if frame_id_row.is_empty() || frame_id_row.is_null(0) {
-                        // *something* on this row has to be non-empty & non-null!
-                        if !has_row_any_component(&chunk, *index, component_set) {
-                            return false;
-                        }
-                        entity_path_derived_frame_id
-                    } else {
-                        TransformFrameIdHash::from_str(frame_id_row.value(0))
-                    };
+                    }
+                    entity_path_derived_frame_id
+                } else {
+                    TransformFrameIdHash::from_str(frame_id_row.value(0))
+                };
 
-                    frame_id == requested_frame_id
-                })
-            } else if entity_path_derived_frame_id == requested_frame_id {
-                // Pick the last where any relevant component is non-null & non-empty.
-                row_indices_with_queried_time_from_new_to_old
-                    .find(|index| has_row_any_component(&chunk, *index, component_set))
-            } else {
-                // There's no child_frame id and we're also not looking for the entity-path derived frame,
-                // so this chunk doesn't have any information about the the transform we're looking for.
-                continue;
-            };
+                frame_id == requested_frame_id
+            })
+        } else if entity_path_derived_frame_id == requested_frame_id {
+            // Pick the last where any relevant component is non-null & non-empty.
+            row_indices_with_queried_time_from_new_to_old
+                .find(|index| has_row_any_component(&chunk, *index, atomic_component_set))
+        } else {
+            // There's no child_frame id and we're also not looking for the entity-path derived frame,
+            // so this chunk doesn't have any information about the the transform we're looking for.
+            continue;
+        };
 
-        if let Some(row_index) = higest_row_index_with_expected_frame_id {
+        if let Some(row_index) = highest_row_index_with_expected_frame_id {
+            debug_assert!(!chunk.is_empty());
             let new_unit_chunk = chunk.row_sliced(row_index, 1).into_unit()
                 .expect("Chunk was just sliced to single row, therefore it must be convertible to a unit chunk");
 
-            if let Some(previous_chunk) = &unit_chunk {
+            if let Some(previous_chunk) = &unit_chunk
+                && previous_chunk.row_id() > new_unit_chunk.row_id()
+            {
                 // This should be rare: there's another chunk that also fits the exact same child id and the exact same time.
-                // Have to use row id as the tie breaker.
-                if previous_chunk.row_id() < new_unit_chunk.row_id() {
-                    continue;
-                }
+                // Have to use row id as the tie breaker - if we failed that we're in here.
+            } else {
+                unit_chunk = chunk.row_sliced(row_index, 1).into_unit();
             }
-
-            unit_chunk = chunk.row_sliced(row_index, 1).into_unit();
         }
     }
 

@@ -49,6 +49,7 @@ table Transform3D (
 
   /// The child frame this transform transforms from.
   ///
+  /// TODO: think about this again either get rid of the static exception or get rid of the entire condition, whatever is easier in the moment!
   /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
   /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
   /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
@@ -78,6 +79,20 @@ table Transform3D (
 
   // --- visual representation
 
+  /// Visual length of the 3 axes.
+  ///
+  /// The length is interpreted in the local coordinate system of the transform.
+  /// If the transform is scaled, the axes will be scaled accordingly.
+  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 3000);
+}
+
+
+table Transform3DArrows (
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq"
+) {
   /// Visual length of the 3 axes.
   ///
   /// The length is interpreted in the local coordinate system of the transform.
