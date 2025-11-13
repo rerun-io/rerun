@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 def test_dataset_view_filter_segments(populated_client: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client.get_dataset_entry(name="basic_dataset")
+    orig_ds = populated_client.get_dataset(name="basic_dataset")
     meta = populated_client.get_table(name="basic_dataset_metadata")
 
     simple_filt = orig_ds.filter_dataset(segment_ids=["simple_recording_0"])
@@ -88,7 +88,7 @@ def sorted_schema_str(schema: pa.Schema, with_metadata: bool = False) -> str:
 
 
 def test_dataset_view_filter_entities(populated_client_complex: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client_complex.get_dataset_entry(name="complex_dataset")
+    orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
 
     assert sorted_schema_str(orig_ds.arrow_schema()) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
@@ -110,7 +110,7 @@ timeline: timestamp[ns]\
 
 
 def test_dataset_view_dataframe(populated_client_complex: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client_complex.get_dataset_entry(name="complex_dataset")
+    orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
 
     entity_filt = orig_ds.filter_dataset(
         entity_paths=["/text"], segment_ids=["complex_recording_0", "complex_recording_2"]
