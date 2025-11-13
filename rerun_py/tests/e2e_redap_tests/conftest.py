@@ -118,7 +118,7 @@ def readonly_table_uri(resource_prefix: str) -> str:
     return resource_prefix + "simple_datatypes"
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, None, None]:
     """
     Return a `CatalogClient` instance connected to a test server.
@@ -128,6 +128,10 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
 
     By default, this fixture creates a local OSS server. If the `--redap-url` option is provided, it will connect to
     the specified external server instead.
+
+    This fixture has session scope, meaning a single server/connection is shared across all tests for better
+    performance. Test isolation is maintained via the `entry_factory` fixture which uses test-specific prefixes and
+    automatic cleanup.
     """
     redap_url = request.config.getoption("--redap-url")
     redap_token = request.config.getoption("--redap-token")
