@@ -4,29 +4,26 @@ import datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
-import rerun_draft as rr
 from datafusion import col, lit
 from datafusion.functions import in_list
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    import rerun_draft as rr
 
 
-def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
-        client = server.client()
-        ds = client.get_dataset_entry(name="ds")
+def test_dataframe_api_filter_partition_id(populated_client: rr.catalog.CatalogClient) -> None:
+    ds = populated_client.get_dataset_entry(name="basic_dataset")
 
-        # Create a view with all partitions
-        view = ds.query(index="timeline", contents="/**").filter(
-            in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
-        )
+    # Create a view with 2 partitions
+    view = ds.query(index="timeline", contents="/**").filter(
+        in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
+    )
 
-        # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
-        df = view.sort("rerun_segment_id")
+    # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
+    df = view.sort("rerun_segment_id")
 
-        assert str(df) == inline_snapshot("""\
+    assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                       │
 │ * version: 0.1.1                                                                                                                                │
@@ -48,9 +45,9 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
-        table = df.to_arrow_table()
+    table = df.to_arrow_table()
 
-        assert str(table) == inline_snapshot("""\
+    assert str(table) == inline_snapshot("""\
 pyarrow.Table
 rerun_segment_id: string not null
 timeline: timestamp[ns]
@@ -67,27 +64,25 @@ timeline: [[2000-01-01 00:00:00.000000000,2000-01-01 00:00:02.000000000]]
 """)
 
 
-def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
-        client = server.client()
-        ds = client.get_dataset_entry(name="ds")
+def test_dataframe_api_using_index_values(populated_client: rr.catalog.CatalogClient) -> None:
+    ds = populated_client.get_dataset_entry(name="basic_dataset")
 
-        # Create a view with all partitions
-        df = ds.query(
-            index="timeline",
-            contents="/**",
-            using_index_values=np.array(
-                [
-                    datetime.datetime(1999, 12, 31, 23, 59, 59),
-                    datetime.datetime(2000, 1, 1, 0, 0, 1, microsecond=500),
-                    datetime.datetime(2000, 1, 1, 0, 0, 6),
-                ],
-                dtype=np.datetime64,
-            ),
-            fill_latest_at=True,
-        ).sort("rerun_segment_id", "timeline")
+    # Create a view with all partitions
+    df = ds.query(
+        index="timeline",
+        contents="/**",
+        using_index_values=np.array(
+            [
+                datetime.datetime(1999, 12, 31, 23, 59, 59),
+                datetime.datetime(2000, 1, 1, 0, 0, 1, microsecond=500),
+                datetime.datetime(2000, 1, 1, 0, 0, 6),
+            ],
+            dtype=np.datetime64,
+        ),
+        fill_latest_at=True,
+    ).sort("rerun_segment_id", "timeline")
 
-        assert str(df) == inline_snapshot("""\
+    assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                       │
 │ * version: 0.1.1                                                                                                                                │
@@ -123,9 +118,9 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
-        table = df.to_arrow_table()
+    table = df.to_arrow_table()
 
-        assert str(table) == inline_snapshot("""\
+    assert str(table) == inline_snapshot("""\
 pyarrow.Table
 rerun_segment_id: string not null
 timeline: timestamp[ns]

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pyarrow as pa
 import rerun_draft as rr
+from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
@@ -51,4 +53,101 @@ sorbet:version: '0.1.1'\
 │ │ simple_recording_2 ┆ [base]            ┆ 2                ┆ 1392             │ │
 │ └────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+
+def test_dataset_metadata(simple_dataset_prefix: Path) -> None:
+    with rr.server.Server() as server:
+        client = server.client()
+
+        ds = client.create_dataset("basic_dataset")
+        ds.register_prefix(simple_dataset_prefix.as_uri())
+
+        # TODO(jleibs): Consider attaching this metadata table directly to the dataset
+        # and automatically joining it by default
+        meta = client.create_table(
+            "basic_dataset_metadata",
+            pa.schema([
+                ("rerun_segment_id", pa.string()),
+                ("success", pa.bool_()),
+            ]),
+        )
+
+        meta.append(
+            rerun_segment_id=["simple_recording_0", "simple_recording_2"],
+            success=[True, False],
+        )
+
+        joined = ds.segment_table(join_meta=meta)
+
+        assert str(
+            joined.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
+        ) == inline_snapshot("""\
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                              │
+│ * version: 0.1.1                                                                                       │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
+│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
+│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
+│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
+│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
+│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             ┆ null                │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ simple_recording_2 ┆ [base]            ┆ 2                ┆ 1392             ┆ false               │ │
+│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+
+def test_dataframe_api_filter_segments(populated_client: rr.catalog.CatalogClient) -> None:
+    orig_ds = populated_client.get_dataset_entry(name="basic_dataset")
+    meta = populated_client.get_table(name="basic_dataset_metadata")
+
+    simple_filt = orig_ds.filter_dataset(segment_ids=["simple_recording_0"])
+
+    assert str(
+        simple_filt.segment_table(join_meta=meta)
+        .drop("rerun_storage_urls", "rerun_last_updated_at")
+        .sort("rerun_segment_id")
+    ) == inline_snapshot("""\
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                              │
+│ * version: 0.1.1                                                                                       │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
+│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
+│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
+│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
+│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
+│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
+│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+    good_segments = orig_ds.segment_table(join_meta=meta).fill_null(True, ["success"]).filter(col("success"))
+
+    good_ds = orig_ds.filter_dataset(segment_ids=good_segments)
+
+    assert str(
+        good_ds.segment_table(join_meta=meta)
+        .drop("rerun_storage_urls", "rerun_last_updated_at")
+        .sort("rerun_segment_id")
+    ) == inline_snapshot("""\
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                              │
+│ * version: 0.1.1                                                                                       │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
+│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
+│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
+│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
+│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
+│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             ┆ null                │ │
+│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)

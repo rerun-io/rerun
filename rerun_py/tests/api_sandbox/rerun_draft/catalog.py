@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import atexit
+import copy
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import datafusion
+import pyarrow as pa
 from rerun import catalog as _catalog
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from datetime import datetime
-
-    import datafusion
-    import pyarrow as pa
 
 
 class CatalogClient:
@@ -151,11 +153,20 @@ class Entry:
         return self._inner.update(name=name)
 
 
+@dataclass
+class LazyDatasetState:
+    filtered_segments: set[str] | None = None
+
+    def clone(self) -> LazyDatasetState:
+        return copy.deepcopy(self)
+
+
 class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
 
-    def __init__(self, inner: _catalog.DatasetEntry) -> None:
+    def __init__(self, inner: _catalog.DatasetEntry, lazy_state: LazyDatasetState | None = None) -> None:
         self._inner = inner
+        self.lazy_state = lazy_state or LazyDatasetState()
 
     @property
     def manifest_url(self) -> str:
@@ -183,9 +194,44 @@ class DatasetEntry(Entry):
     def segment_ids(self) -> list[str]:
         return self._inner.partition_ids()
 
-    def segment_table(self) -> datafusion.DataFrame:
+    def segment_table(
+        self, join_meta: datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+    ) -> datafusion.DataFrame:
         # Get the partition table from the inner object
-        return self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+        partitions = self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+        if self.lazy_state.filtered_segments is not None:
+            ctx = datafusion.SessionContext()
+
+            segment_df = ctx.from_arrow(
+                pa.Table.from_arrays(
+                    [pa.array(list(self.lazy_state.filtered_segments))], names=["filtered_segment_id"]
+                ),
+            )
+
+            partitions = partitions.join(segment_df, left_on="rerun_segment_id", right_on="filtered_segment_id").drop(
+                "filtered_segment_id"
+            )
+
+        if join_meta is not None:
+            if join_key not in partitions.schema().names:
+                raise ValueError(f"Dataset partition table must contain join_key column '{join_key}'.")
+            if join_key not in join_meta.schema().names:
+                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
+
+            meta_join_key = join_key + "_meta"
+
+            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
+
+            return partitions.join(
+                join_meta,
+                left_on=join_key,
+                right_on=meta_join_key,
+                how="left",
+            ).drop(meta_join_key)
+        else:
+            return partitions
 
     def manifest(self) -> Any:
         return self._inner.manifest()
@@ -301,6 +347,26 @@ class DatasetEntry(Entry):
             cleanup_before=cleanup_before,
             unsafe_allow_recent_cleanup=unsafe_allow_recent_cleanup,
         )
+
+    def filter_dataset(self, *, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetEntry:
+        """Returns a new DatasetEntry filtered to the given segment IDs."""
+        new_lazy_state = self.lazy_state.clone()
+
+        if isinstance(segment_ids, datafusion.DataFrame):
+            if "rerun_segment_id" not in segment_ids.schema().names:
+                raise ValueError("DataFrame segment_ids must have a column named 'rerun_segment_id'.")
+            filt_segment_ids = {
+                segment_id.as_py() for batch in segment_ids.collect() for segment_id in batch.column("rerun_segment_id")
+            }
+        else:
+            filt_segment_ids = set(segment_ids)
+
+        if new_lazy_state.filtered_segments is None:
+            new_lazy_state.filtered_segments = filt_segment_ids
+        else:
+            new_lazy_state.filtered_segments |= filt_segment_ids
+
+        return DatasetEntry(self._inner, lazy_state=new_lazy_state)
 
 
 class TableEntry(Entry):

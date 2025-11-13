@@ -1,0 +1,46 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import pyarrow as pa
+import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+RERUN_DRAFT_PATH = str(Path(__file__).parent)
+
+if RERUN_DRAFT_PATH not in sys.path:
+    sys.path.insert(0, RERUN_DRAFT_PATH)
+
+import rerun_draft as rr  # noqa: E402
+
+
+@pytest.fixture(scope="session")
+def populated_client(simple_dataset_prefix) -> Iterator[rr.catalog.CatalogClient]:
+    """Create a temporary dataset prefix with a few simple recordings."""
+
+    with rr.server.Server() as server:
+        client = server.client()
+
+        ds = client.create_dataset("basic_dataset")
+        ds.register_prefix(simple_dataset_prefix.as_uri())
+
+        # TODO(jleibs): Consider attaching this metadata table directly to the dataset
+        # and automatically joining it by default
+        meta = client.create_table(
+            "basic_dataset_metadata",
+            pa.schema([
+                ("rerun_segment_id", pa.string()),
+                ("success", pa.bool_()),
+            ]),
+        )
+
+        meta.append(
+            rerun_segment_id=["simple_recording_0", "simple_recording_2"],
+            success=[True, False],
+        )
+
+        yield client
