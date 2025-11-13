@@ -62,11 +62,11 @@ fn atomic_latest_at_query_for_frame(
     requested_frame_id: TransformFrameIdHash,
     atomic_component_set: &[ComponentIdentifier],
 ) -> Option<UnitChunkShared> {
+    let storage_engine = entity_db.storage_engine();
+    let store = storage_engine.store();
     let include_static = true;
-    let chunks = entity_db
-        .storage_engine()
-        .store()
-        .latest_at_relevant_chunks_for_all_components(query, entity_path, include_static);
+    let chunks =
+        store.latest_at_relevant_chunks_for_all_components(query, entity_path, include_static);
 
     let entity_path_derived_frame_id = TransformFrameIdHash::from_entity_path(entity_path);
 
@@ -529,4 +529,141 @@ pub fn query_view_coordinates_at_closest_ancestor(
             )
         })
         .map(|(_path, _index, view_coordinates)| view_coordinates)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use re_chunk_store::{Chunk, LatestAtQuery};
+    use re_entity_db::{EntityDb, EntityPath};
+    use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+    use re_log_types::{TimePoint, Timeline};
+    use re_types::RowId;
+
+    fn timeline() -> Timeline {
+        Timeline::new("test_timeline", re_log_types::TimeType::Sequence)
+    }
+
+    fn tp(tick: i64) -> TimePoint {
+        TimePoint::from([(timeline(), tick)])
+    }
+
+    fn atomic_component_set() -> [ComponentIdentifier; 3] {
+        [
+            MyPoints::descriptor_points().component,
+            MyPoints::descriptor_colors().component,
+            MyPoints::descriptor_labels().component,
+        ]
+    }
+
+    fn frame_condition_component() -> ComponentIdentifier {
+        // We stick witih `MyPoints` all the way and its labels happen to be compatible with frame ids (it's just utf8!)
+        MyPoints::descriptor_labels().component
+    }
+
+    fn test_atomic_latest_at_no_static_no_transform_frame(
+        out_of_order: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        // Populate store.
+        let entity_path = EntityPath::from("my_entity");
+        let row_id_temporal0 = RowId::new();
+        let row_id_temporal1 = RowId::new();
+        let row_id_irrelevant = RowId::new();
+        let row_id_temporal2 = RowId::new();
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype(
+                row_id_temporal0,
+                if out_of_order { tp(30) } else { tp(10) },
+                &MyPoints::new([MyPoint::new(1.0, 1.0)]).with_colors([MyColor(1)]),
+            )
+            .with_archetype(
+                row_id_temporal1,
+                tp(20),
+                &MyPoints::update_fields().with_colors([MyColor(2)]),
+            )
+            .with_component(
+                row_id_irrelevant,
+                tp(25),
+                // Some random components that aren't of interest to us!
+                MyIndex::partial_descriptor(),
+                &MyIndex(123),
+            )?
+            .with_archetype(
+                row_id_temporal2,
+                if out_of_order { tp(10) } else { tp(30) },
+                &MyPoints::new([MyPoint::new(2.0, 2.0)]),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let requested_frame = TransformFrameIdHash::from_entity_path(&entity_path);
+
+        let query_row_at_time = |t| {
+            atomic_latest_at_query_for_frame(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), t),
+                &entity_path,
+                frame_condition_component(),
+                requested_frame,
+                &atomic_component_set(),
+            )?
+            .row_id()
+        };
+
+        assert_eq!(query_row_at_time(0), None);
+        if out_of_order {
+            assert_eq!(query_row_at_time(10), Some(row_id_temporal2));
+            assert_eq!(query_row_at_time(15), Some(row_id_temporal2));
+            assert_eq!(query_row_at_time(20), Some(row_id_temporal1));
+            assert_eq!(query_row_at_time(25), Some(row_id_temporal1));
+            assert_eq!(query_row_at_time(30), Some(row_id_temporal0));
+            assert_eq!(query_row_at_time(35), Some(row_id_temporal0));
+        } else {
+            assert_eq!(query_row_at_time(10), Some(row_id_temporal0));
+            assert_eq!(query_row_at_time(15), Some(row_id_temporal0));
+            assert_eq!(query_row_at_time(20), Some(row_id_temporal1));
+            assert_eq!(query_row_at_time(25), Some(row_id_temporal1));
+            assert_eq!(query_row_at_time(30), Some(row_id_temporal2));
+            assert_eq!(query_row_at_time(35), Some(row_id_temporal2));
+        }
+
+        // Any query with another frame should fail
+        for t in [0, 15, 30, 40] {
+            assert!(
+                atomic_latest_at_query_for_frame(
+                    &entity_db,
+                    &LatestAtQuery::new(*timeline().name(), t),
+                    &entity_path,
+                    frame_condition_component(),
+                    TransformFrameIdHash::from_str("nope"),
+                    &atomic_component_set(),
+                )
+                .is_none()
+            );
+        }
+
+        Ok(())
+    }
+    #[test]
+    fn test_atomic_latest_at_no_static_no_transform_frame_in_order()
+    -> Result<(), Box<dyn std::error::Error>> {
+        test_atomic_latest_at_no_static_no_transform_frame(false)
+    }
+
+    #[test]
+    fn test_atomic_latest_at_no_static_no_transform_frame_out_of_order()
+    -> Result<(), Box<dyn std::error::Error>> {
+        test_atomic_latest_at_no_static_no_transform_frame(true)
+    }
+
+    // TODO: also test
+    // * static chunks
+    // * static and temporal mix
+    // * something sane with frames
+    // * many frames on the same time
+    // * the thing we brought up earlier
 }
