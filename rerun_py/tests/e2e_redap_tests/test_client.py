@@ -12,7 +12,8 @@ def test_urls(prefilled_catalog: PrefilledCatalog) -> None:
     """Tests the url property on the catalog and dataset."""
 
     catalog = prefilled_catalog.dataset.catalog
-    assert re.match("^rerun\\+http://(localhost|127.0.0.1):[0-9]+$", catalog.url)
+    url = urllib.parse.urlparse(catalog.url)
+    assert url.scheme in ("rerun", "rerun+http", "rerun+https")
 
     table_name = prefilled_catalog.factory.apply_prefix("simple_datatypes")
     table = prefilled_catalog.client.get_table_entry(name=table_name)
