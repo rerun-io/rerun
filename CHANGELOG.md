@@ -12,7 +12,7 @@
 #### 🚀 Performance improvements
 - When closing recordings (and blueprints), drop them on separate threads for UI responsiveness [#11834](https://github.com/rerun-io/rerun/pull/11834) (thanks [@kpreid](https://github.com/kpreid)!)
 - Remove frame lag when creating loop region [#11862](https://github.com/rerun-io/rerun/pull/11862)
-- Reverted [#11766](https://github.com/rerun-io/rerun/pull/11766) because of perfrmance issues with the time panel.
+- Reverted [#11766](https://github.com/rerun-io/rerun/pull/11766) because of performance issues with the time panel.
 
 
 ## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - 
