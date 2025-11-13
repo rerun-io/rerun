@@ -48,7 +48,7 @@ To set clear expectations:
 - **Not a training platform**: Use Rerun with PyTorch, TensorFlow, JAX, etc. We prepare your data; you train your models.
 - **Not a deployment tool**: Rerun helps you develop and understand your systems, not deploy them to production.
 - **Not a robot operating system**: Rerun works with ROS, ROS2, or any other robotics stack.
-- **Not a general BI tool**: We're specialized for physical, multimodal, time-series data.
+- **Not a general visualization tool**: We're specialized for physical, multimodal, time-series data.
 
 ## How do you use it?
 
