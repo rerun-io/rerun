@@ -9029,6 +9029,7 @@ dependencies = [
  "re_view_bar_chart",
  "re_view_text_document",
  "re_view_text_log",
+ "re_view_time_series",
  "re_viewer",
  "re_viewport_blueprint",
  "tempfile",
