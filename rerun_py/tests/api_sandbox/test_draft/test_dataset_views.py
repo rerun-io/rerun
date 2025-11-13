@@ -14,7 +14,7 @@ def test_dataset_view_filter_segments(populated_client: rr.catalog.CatalogClient
     orig_ds = populated_client.get_dataset(name="basic_dataset")
     meta = populated_client.get_table(name="basic_dataset_metadata")
 
-    simple_filt = orig_ds.filter_dataset(segment_ids=["simple_recording_0"])
+    simple_filt = orig_ds.filter_segments(["simple_recording_0"])
 
     assert sorted(simple_filt.segment_ids()) == inline_snapshot(["simple_recording_0"])
 
@@ -39,7 +39,7 @@ def test_dataset_view_filter_segments(populated_client: rr.catalog.CatalogClient
 
     good_segments = orig_ds.segment_table(join_meta=meta).fill_null(True, ["success"]).filter(col("success"))
 
-    good_ds = orig_ds.filter_dataset(segment_ids=good_segments)
+    good_ds = orig_ds.filter_segments(segment_ids=good_segments)
 
     assert sorted(good_ds.segment_ids()) == inline_snapshot(["simple_recording_0", "simple_recording_1"])
 
@@ -99,7 +99,7 @@ rerun.controls.RowId: fixed_size_binary[16]
 timeline: timestamp[ns]\
 """)
 
-    entity_filt = orig_ds.filter_dataset(entity_paths=["/points"])
+    entity_filt = orig_ds.filter_contents(["/points/**"])
 
     assert sorted_schema_str(entity_filt.arrow_schema()) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
@@ -112,11 +112,16 @@ timeline: timestamp[ns]\
 def test_dataset_view_dataframe(populated_client_complex: rr.catalog.CatalogClient) -> None:
     orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
 
-    entity_filt = orig_ds.filter_dataset(
-        entity_paths=["/text"], segment_ids=["complex_recording_0", "complex_recording_2"]
-    )
+    filtered = orig_ds.filter_contents(["/text/**"]).filter_segments(["complex_recording_0", "complex_recording_2"])
 
-    df = entity_filt.query(index="timeline").sort("rerun_segment_id")
+    schema = filtered.arrow_schema()
+    assert sorted_schema_str(schema) == inline_snapshot("""\
+/text:TextLog:text: list<item: string>
+rerun.controls.RowId: fixed_size_binary[16]
+timeline: timestamp[ns]\
+""")
+
+    df = filtered.query(index="timeline").sort("rerun_segment_id")
 
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐

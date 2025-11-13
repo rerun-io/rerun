@@ -4,8 +4,8 @@ import atexit
 import copy
 import tempfile
 from collections import defaultdict
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import datafusion
@@ -222,7 +222,6 @@ class DatasetEntry(Entry):
         self,
         *,
         index: str | None,
-        contents: Any,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         using_index_values: Any = None,
@@ -231,7 +230,6 @@ class DatasetEntry(Entry):
         view = DatasetView(self._inner, LazyDatasetState())
         return view.query(
             index=index,
-            contents=contents,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
             using_index_values=using_index_values,
@@ -300,53 +298,118 @@ class DatasetEntry(Entry):
             unsafe_allow_recent_cleanup=unsafe_allow_recent_cleanup,
         )
 
-    def filter_dataset(
-        self,
-        *,
-        segment_ids: datafusion.DataFrame | Sequence[str] | None = None,
-        entity_paths: Sequence[str] | None = None,
-    ) -> DatasetView:
-        """Returns a new DatasetEntry filtered to the given segment IDs."""
-        new_lazy_state = LazyDatasetState().with_filters(segment_ids=segment_ids, entity_paths=entity_paths)
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+        """
+        Returns a new DatasetEntry filtered to the given segment IDs.
+
+        Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
+        or a sequence of segment ID strings.
+        """
+        new_lazy_state = LazyDatasetState().with_segment_filters(segment_ids)
+
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """Returns a new DatasetEntry filtered to the given entity paths."""
+        new_lazy_state = LazyDatasetState().with_content_filters(exprs)
 
         return DatasetView(self._inner, lazy_state=new_lazy_state)
 
 
+class ContentMatcher:
+    """
+    Helper class to match contents expressions against entity paths.
+
+    This is a poor version of the actual Rerun logic, but good enough for testing.
+    """
+
+    def normalize_path(self, path: str) -> str:
+        prefix = "+"
+        if path.startswith(("+", "-")):
+            prefix = path[0]
+            path = path[1:]
+            path = path.lstrip("+-")
+
+        normalized_path = str(PurePosixPath("/" + path.lstrip("/")))
+
+        return prefix + normalized_path
+
+    def __init__(self, exprs: str) -> None:
+        # path -> included?
+        self.exact: dict[str, bool] = {}
+        self.prefix: list[tuple[str, bool]] = []
+
+        # Split by whitespace, normalize each path
+        # Add to exact or prefix lists based on /** suffix
+        for raw_expr in exprs.split():
+            expr = self.normalize_path(raw_expr)
+            if expr.endswith("/**"):
+                if expr.startswith("-"):
+                    self.prefix.append((expr[1:-3], False))
+                else:
+                    self.prefix.append((expr[1:-3], True))
+            else:
+                if expr.startswith("-"):
+                    self.exact[expr[1:]] = False
+                else:
+                    self.exact[expr[1:]] = True
+
+        # Unless `/__properties__/**` was explicitly included, always exlude it
+        if not any(prefix == "/__properties" for prefix, _ in self.prefix):
+            self.prefix.append(("/__properties", False))
+
+        # Sort prefix expressions by length (longest first)
+        self.prefix.sort(key=lambda p: len(p[0]), reverse=True)
+
+    def matches(self, path: str) -> bool:
+        path = str(PurePosixPath("/" + path.lstrip("/")))
+
+        # First check for exact match
+        if path in self.exact:
+            return self.exact[path]
+
+        # Otherwise find the first matching prefix
+        for prefix, included in self.prefix:
+            if path.startswith(prefix):
+                return included
+        return False
+
+
 @dataclass
 class LazyDatasetState:
+    # None means no filtering
+    # Otherwise we accumulate a set via intersection
     filtered_segments: set[str] | None = None
-    filtered_entity_paths: set[str] | None = None
+    content_path_filters: list[ContentMatcher] = field(default_factory=list)
 
-    def with_filters(
+    def with_segment_filters(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> LazyDatasetState:
+        new_lazy_state = copy.deepcopy(self)
+
+        if isinstance(segment_ids, datafusion.DataFrame):
+            if "rerun_segment_id" not in segment_ids.schema().names:
+                raise ValueError("DataFrame segment_ids must have a column named 'rerun_segment_id'.")
+            filt_segment_ids = {
+                segment_id.as_py() for batch in segment_ids.collect() for segment_id in batch.column("rerun_segment_id")
+            }
+        else:
+            filt_segment_ids = set(segment_ids)
+
+        if new_lazy_state.filtered_segments is not None:
+            new_lazy_state.filtered_segments &= filt_segment_ids
+        else:
+            new_lazy_state.filtered_segments = filt_segment_ids
+
+        return new_lazy_state
+
+    def with_content_filters(
         self,
-        segment_ids: datafusion.DataFrame | Sequence[str] | None = None,
-        entity_paths: Sequence[str] | None = None,
+        exprs: Sequence[str],
     ) -> LazyDatasetState:
         new_lazy_state = copy.deepcopy(self)
 
-        if segment_ids is not None:
-            if isinstance(segment_ids, datafusion.DataFrame):
-                if "rerun_segment_id" not in segment_ids.schema().names:
-                    raise ValueError("DataFrame segment_ids must have a column named 'rerun_segment_id'.")
-                filt_segment_ids = {
-                    segment_id.as_py()
-                    for batch in segment_ids.collect()
-                    for segment_id in batch.column("rerun_segment_id")
-                }
-            else:
-                filt_segment_ids = set(segment_ids)
+        exprs = " ".join(exprs)
 
-            if new_lazy_state.filtered_segments is None:
-                new_lazy_state.filtered_segments = filt_segment_ids
-            else:
-                new_lazy_state.filtered_segments &= filt_segment_ids
-
-        if entity_paths is not None:
-            filt_entity_paths = set(entity_paths)
-            if new_lazy_state.filtered_entity_paths is None:
-                new_lazy_state.filtered_entity_paths = filt_entity_paths
-            else:
-                new_lazy_state.filtered_entity_paths &= filt_entity_paths
+        new_lazy_state.content_path_filters.append(ContentMatcher(exprs))
 
         return new_lazy_state
 
@@ -359,19 +422,17 @@ class DatasetView:
         self._lazy_state: LazyDatasetState = lazy_state
 
     def arrow_schema(self) -> pa.Schema:
-        # Exclude any filtered entity paths from the schema
         filtered_schema = self._inner.arrow_schema()
 
-        if self._lazy_state.filtered_entity_paths is not None:
-            return pa.schema([
+        for filter in self._lazy_state.content_path_filters or [ContentMatcher("/**")]:
+            filtered_schema = pa.schema([
                 field
                 for field in filtered_schema
                 if field.metadata.get(b"rerun:kind", None) != b"data"
-                or field.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
-                in self._lazy_state.filtered_entity_paths
+                or filter.matches(field.metadata.get(b"rerun:entity_path", b"").decode("utf-8"))
             ])
-        else:
-            return filtered_schema
+
+        return filtered_schema
 
     def segment_ids(self) -> list[str]:
         if self._lazy_state.filtered_segments is not None:
@@ -427,36 +488,19 @@ class DatasetView:
         self,
         *,
         index: str | None,
-        contents: Any | None = "/**",
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         using_index_values: Any = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
-        if isinstance(contents, str):
-            incl, excl = parse_contents_expr(contents)
+        full_contents = defaultdict(list)
 
-            full_contents = defaultdict(list)
-
-            # Note: arrow_schema() here already excludes filtered entity paths
-            for field in self.arrow_schema():
-                if field.metadata.get(b"rerun:kind", None) == b"data":
-                    entity_path = field.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
-                    if contents_matches(incl, excl, entity_path):
-                        component = field.metadata.get(b"rerun:component", b"").decode("utf-8")
-                        full_contents[entity_path].append(component)
-
-        elif isinstance(contents, dict):
-            full_contents = defaultdict(list, contents)
-
-            if self._lazy_state.filtered_entity_paths is not None:
-                # Remove any entity paths that are not in the filtered set
-                for entity_path in list(full_contents.keys()):
-                    if entity_path not in self._lazy_state.filtered_entity_paths:
-                        del full_contents[entity_path]
-
-        else:
-            raise ValueError("contents must be either a string or a dict.")
+        # Note: arrow_schema() here already describes the intended schema
+        for fld in self.arrow_schema():
+            if fld.metadata.get(b"rerun:kind", None) == b"data":
+                entity_path = fld.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
+                component = fld.metadata.get(b"rerun:component", b"").decode("utf-8")
+                full_contents[entity_path].append(component)
 
         view = self._inner.dataframe_query_view(
             index=index,
@@ -478,56 +522,22 @@ class DatasetView:
 
         return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
-    def filter_dataset(
-        self,
-        *,
-        segment_ids: datafusion.DataFrame | Sequence[str] | None = None,
-        entity_paths: Sequence[str] | None = None,
-    ) -> DatasetView:
-        """Returns a new DatasetEntry filtered to the given segment IDs."""
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+        """
+        Returns a new DatasetEntry filtered to the given segment IDs.
 
-        new_lazy_state = self._lazy_state.with_filters(segment_ids=segment_ids, entity_paths=entity_paths)
+        Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
+        or a sequence of segment ID strings.
+        """
+        new_lazy_state = self._lazy_state.with_segment_filters(segment_ids)
 
         return DatasetView(self._inner, lazy_state=new_lazy_state)
 
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """Returns a new DatasetEntry filtered to the given entity paths."""
+        new_lazy_state = self._lazy_state.with_content_filters(exprs)
 
-def parse_contents_expr(expr: str) -> tuple[list[str], list[str]]:
-    """Parses a contents expression into include and exclude lists."""
-    # Approximate rerun logic
-    incl: list[str] = []
-    excl: list[str] = []
-    for part in expr.split():
-        part = part.strip()
-        if part.startswith("-"):
-            excl.append(part[1:])
-        elif part.startswith("+"):
-            incl.append(part[1:])
-        else:
-            incl.append(part)
-
-    # If /__properties is not explicitly included, exclude it.
-    if not any(p.startswith("/__properties") for p in incl):
-        excl.append("/__properties/**")
-
-    return incl, excl
-
-
-def contents_matches(incl: list[str], excl: list[str], path: str) -> bool:
-    """Returns True if the contents expression matches the given entity path."""
-    for expr in excl:
-        if expr.endswith("/**"):
-            prefix = expr[:-3]
-            if path.startswith(prefix):
-                return False
-        elif expr == path:
-            return False
-    for expr in incl:
-        if expr.endswith("/**"):
-            prefix = expr[:-3]
-            return path.startswith(prefix)
-        elif expr == path:
-            return True
-    return False
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
 
 
 class TableEntry(Entry):

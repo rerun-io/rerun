@@ -16,7 +16,7 @@ def test_dataframe_api_filter_partition_id(populated_client: rr.catalog.CatalogC
     ds = populated_client.get_dataset_entry(name="basic_dataset")
 
     # Create a view with 2 partitions
-    view = ds.query(index="timeline", contents="/**").filter(
+    view = ds.query(index="timeline").filter(
         in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
     )
 
@@ -70,7 +70,6 @@ def test_dataframe_api_using_index_values(populated_client: rr.catalog.CatalogCl
     # Create a view with all partitions
     df = ds.query(
         index="timeline",
-        contents="/**",
         using_index_values=np.array(
             [
                 datetime.datetime(1999, 12, 31, 23, 59, 59),
