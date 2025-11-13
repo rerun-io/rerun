@@ -1282,6 +1282,7 @@ class Entry:
     def name(self) -> str:
         """The entry's name."""
 
+    # TODO(RR-2938): this should return `CatalogClient`
     @property
     def catalog(self) -> CatalogClientInternal:
         """The catalog client that this entry belongs to."""
