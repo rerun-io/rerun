@@ -65,17 +65,13 @@ class CatalogClient:
         """Returns a dataset entry by its ID or name."""
         return DatasetEntry(self._inner.get_dataset_entry(id=id, name=name))
 
-    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
+    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table entry by its ID or name."""
         return TableEntry(self._inner.get_table_entry(id=id, name=name))
 
     def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
         return DatasetEntry(self._inner.get_dataset(id=id, name=name))
-
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
-        """Returns a table by its ID or name as a DataFrame."""
-        return self._inner.get_table(id=id, name=name)
 
     def create_dataset(self, name: str) -> DatasetEntry:
         """Creates a new dataset with the given name."""
@@ -312,6 +308,7 @@ class TableEntry(Entry):
 
     def __init__(self, inner: _catalog.TableEntry) -> None:
         super().__init__(inner)
+        self._inner = inner
 
     def client(self) -> CatalogClient:
         """Returns the CatalogClient associated with this table."""
@@ -338,7 +335,7 @@ class TableEntry(Entry):
         This operation is lazy. The data will not be read from the source table until consumed
         from the DataFrame.
         """
-        return self.client().get_table(name=self._inner.name)
+        return self._inner.df()
 
     def schema(self) -> pa.Schema:
         """Returns the schema of the table."""
