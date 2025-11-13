@@ -19,7 +19,7 @@ import rerun_draft as rr  # noqa: E402
 
 
 @pytest.fixture(scope="session")
-def populated_client(simple_dataset_prefix) -> Iterator[rr.catalog.CatalogClient]:
+def populated_client(simple_dataset_prefix: Path) -> Iterator[rr.catalog.CatalogClient]:
     """Create a temporary dataset prefix with a few simple recordings."""
 
     with rr.server.Server() as server:
@@ -47,7 +47,7 @@ def populated_client(simple_dataset_prefix) -> Iterator[rr.catalog.CatalogClient
 
 
 @pytest.fixture(scope="session")
-def populated_client_complex(complex_dataset_prefix) -> Iterator[rr.catalog.CatalogClient]:
+def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalog.CatalogClient]:
     """Create a temporary dataset prefix with a few simple recordings."""
 
     with rr.server.Server() as server:
