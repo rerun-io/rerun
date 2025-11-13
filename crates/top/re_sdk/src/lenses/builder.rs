@@ -42,7 +42,7 @@ impl LensBuilder {
         builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
     ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build()?;
+        let output = builder(output_builder).build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -57,7 +57,7 @@ impl LensBuilder {
         builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
     ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build()?;
+        let output = builder(output_builder).build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -72,7 +72,7 @@ impl LensBuilder {
         builder: impl FnOnce(StaticColumnsBuilder) -> StaticColumnsBuilder,
     ) -> Result<Self, LensError> {
         let output_builder = StaticColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build()?;
+        let output = builder(output_builder).build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -87,7 +87,7 @@ impl LensBuilder {
     ) -> Result<Self, LensError> {
         let output_builder =
             StaticColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build()?;
+        let output = builder(output_builder).build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -104,7 +104,7 @@ impl LensBuilder {
         builder: impl FnOnce(ScatterColumnsBuilder) -> ScatterColumnsBuilder,
     ) -> Result<Self, LensError> {
         let output_builder = ScatterColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build()?;
+        let output = builder(output_builder).build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -121,7 +121,7 @@ impl LensBuilder {
     ) -> Result<Self, LensError> {
         let output_builder =
             ScatterColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build()?;
+        let output = builder(output_builder).build(&self.input)?;
         self.outputs.push(output);
         Ok(self)
     }
@@ -195,13 +195,17 @@ impl ColumnsBuilder {
         self
     }
 
-    fn build(self) -> Result<ast::LensKind, LensError> {
+    /// Builds a [`LensKind`], the `input` is passed for providing contextualized errors.
+    fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
         Ok(ast::LensKind::Columns(OneToOne {
             target_entity: self.target_entity,
-            components: self
-                .components
-                .try_into()
-                .map_err(|_err| LensError::MissingComponentColumns)?,
+            components: self.components.try_into().map_err(|_err| {
+                LensError::MissingOutputComponent {
+                    // TODO(grtlr): This should not use debug formatting.
+                    input_filter: format!("{:?}", input.entity_path_filter),
+                    input_component: input.component,
+                }
+            })?,
             times: self.time_outputs,
         }))
     }
@@ -240,13 +244,17 @@ impl StaticColumnsBuilder {
         self
     }
 
-    fn build(self) -> Result<ast::LensKind, LensError> {
+    /// Builds a [`LensKind`], the `input` is passed for providing contextualized errors.
+    fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
         Ok(ast::LensKind::StaticColumns(Static {
             target_entity: self.target_entity,
-            components: self
-                .components
-                .try_into()
-                .map_err(|_err| LensError::MissingComponentColumns)?,
+            components: self.components.try_into().map_err(|_err| {
+                LensError::MissingOutputComponent {
+                    // TODO(grtlr): This should not use debug formatting.
+                    input_filter: format!("{:?}", input.entity_path_filter),
+                    input_component: input.component,
+                }
+            })?,
         }))
     }
 }
@@ -310,13 +318,17 @@ impl ScatterColumnsBuilder {
         self
     }
 
-    fn build(self) -> Result<ast::LensKind, LensError> {
+    /// Builds a [`LensKind`], the `input` is passed for providing contextualized errors.
+    fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
         Ok(ast::LensKind::ScatterColumns(OneToMany {
             target_entity: self.target_entity,
-            components: self
-                .components
-                .try_into()
-                .map_err(|_err| LensError::MissingComponentColumns)?,
+            components: self.components.try_into().map_err(|_err| {
+                LensError::MissingOutputComponent {
+                    // TODO(grtlr): This should not use debug formatting.
+                    input_filter: format!("{:?}", input.entity_path_filter),
+                    input_component: input.component,
+                }
+            })?,
             times: self.time_outputs,
         }))
     }
