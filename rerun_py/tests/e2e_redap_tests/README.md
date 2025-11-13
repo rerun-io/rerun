@@ -14,6 +14,8 @@ By default, the fixture creates a local OSS server for each test. However, it ca
 
 ## Running Tests
 
+Note: prefix everything by `pixi run -e py` to run in a the pixi environment.
+
 Run against a local OSS server (default):
 ```bash
 pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests
