@@ -9,6 +9,7 @@ use re_viewport_blueprint::ViewBlueprint;
 fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::vec2(1024.0, 1024.0)),
+        ..Default::default()
     });
     harness.init_recording();
     harness.set_selection_panel_opened(false);
