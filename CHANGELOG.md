@@ -1,5 +1,18 @@
 # Rerun changelog
 
+## [0.27.1](https://github.com/rerun-io/rerun/compare/0.27.0...0.27.1) - 2025-11-13 - Bug fixes and performance improvements
+
+#### 🪳 Bug fixes
+- Respect timepoint in URDF loader [#11866](https://github.com/rerun-io/rerun/pull/11866)
+- Fix pinhole color fallback showing the wrong color [#11861](https://github.com/rerun-io/rerun/pull/11861)
+- Fix broken `delete_entries` and entries table not updated [#11872](https://github.com/rerun-io/rerun/pull/11872)
+- Don't smooth velocity after WASD input [#11858](https://github.com/rerun-io/rerun/pull/11858)
+- URDF loader: Use global material if inline material is absent [#11869](https://github.com/rerun-io/rerun/pull/11869)
+
+#### 🚀 Performance improvements
+- When closing recordings (and blueprints), drop them on separate threads for UI responsiveness [#11834](https://github.com/rerun-io/rerun/pull/11834) (thanks [@kpreid](https://github.com/kpreid)!)
+- Remove frame lag when creating loop region [#11862](https://github.com/rerun-io/rerun/pull/11862)
+
 
 ## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - 
 ### ✨ Overview & highlights
