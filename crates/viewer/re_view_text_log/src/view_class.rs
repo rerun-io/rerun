@@ -163,6 +163,7 @@ Filter message types and toggle column visibility in a selection panel.",
         ui.list_item_scope("text_log_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
             view_property_ui_columns(&ctx, ui);
+            view_property_ui_rows(&ctx, ui);
         });
 
         Ok(())
@@ -620,6 +621,111 @@ fn column_definition_ui(
                 }
             });
     }
+}
+
+fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
+    let property = ViewProperty::from_archetype::<TextLogRows>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query(),
+        ctx.view_id,
+    );
+
+    let reflection = ctx.viewer_ctx.reflection();
+    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
+        ui.error_label(format!(
+            "Missing reflection data for archetype {:?}.",
+            property.archetype_name
+        ));
+        return;
+    };
+
+    let query_ctx = property.query_context(ctx);
+
+    let sub_prop_ui = |ui: &mut egui::Ui| {
+        for field in &reflection.fields {
+            if field
+                .component_descriptor(property.archetype_name)
+                .component
+                == TextLogRows::descriptor_log_levels().component
+            {
+                re_view::view_property_component_ui_custom(
+                    &query_ctx,
+                    ui,
+                    &property,
+                    field.display_name,
+                    field,
+                    &|_| {},
+                    Some(&|ui| {
+                        let Ok(state) = ctx.view_state.downcast_ref::<TextViewState>() else {
+                            ui.error_label("Failed to get text log view state");
+                            return;
+                        };
+
+                        let Ok(levels) = property.component_array_or_fallback::<TextLogLevel>(
+                            ctx,
+                            TextLogRows::descriptor_log_levels().component,
+                        ) else {
+                            ui.error_label("Failed to query text log levels component");
+                            return;
+                        };
+
+                        let mut new_levels = state
+                            .seen_levels
+                            .iter()
+                            .map(|s| {
+                                let text_log_level = TextLogLevel::from(s.as_str());
+                                let level_active = levels.contains(&text_log_level);
+                                (text_log_level, level_active)
+                            })
+                            .chain(
+                                levels
+                                    .iter()
+                                    .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
+                                    .map(|lvl| (lvl.clone(), true)),
+                            )
+                            .collect::<Vec<_>>();
+
+                        let mut any_change = false;
+                        for (lvl, active) in &mut new_levels {
+                            any_change |= ui
+                                .re_checkbox(active, level_to_rich_text(ui, lvl.as_str()))
+                                .changed();
+                        }
+
+                        if any_change {
+                            property.save_blueprint_component(
+                                ctx.viewer_ctx,
+                                &TextLogRows::descriptor_log_levels(),
+                                &new_levels
+                                    .into_iter()
+                                    .filter(|(_, active)| *active)
+                                    .map(|(lvl, _)| lvl)
+                                    .collect::<Vec<_>>(),
+                            );
+                        }
+                    }),
+                );
+            } else {
+                re_view::view_property_component_ui(
+                    &query_ctx,
+                    ui,
+                    &property,
+                    field.display_name,
+                    field,
+                );
+            }
+        }
+    };
+
+    ui.list_item()
+        .interactive(false)
+        .show_hierarchical_with_children(
+            ui,
+            ui.make_persistent_id(property.archetype_name.full_name()),
+            true,
+            LabelContent::new(reflection.display_name),
+            sub_prop_ui,
+        );
 }
 
 fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry: &Entry) -> f32 {
