@@ -2139,12 +2139,6 @@ mod tests {
         Ok(())
     }
 
-    // TODO: are we handling...
-    // * insert transform
-    // * process cache
-    // * insert clear
-    // * process cache
-
     #[test]
     fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
         for clear_in_separate_chunk in [false, true] {
