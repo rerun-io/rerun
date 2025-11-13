@@ -1,4 +1,4 @@
-# E2E REDAP Tests
+# End-to-end redap tests
 
 End-to-end test suite for redap (Rerun Data Protocol).
 
@@ -12,7 +12,7 @@ The `catalog_client` fixture is the foundation of this test suite. It yields a c
 
 By default, the fixture creates a local OSS server for each test. However, it can be configured to connect to an external redap server using the `--redap-url` option, allowing the test suite to run against different redap implementations (e.g., Cloud deployments).
 
-## Running Tests
+## Running tests
 
 Note: prefix everything by `pixi run -e py` to run in a the pixi environment.
 
