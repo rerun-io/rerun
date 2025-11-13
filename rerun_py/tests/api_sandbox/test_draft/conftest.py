@@ -44,3 +44,31 @@ def populated_client(simple_dataset_prefix) -> Iterator[rr.catalog.CatalogClient
         )
 
         yield client
+
+
+@pytest.fixture(scope="session")
+def populated_client_complex(complex_dataset_prefix) -> Iterator[rr.catalog.CatalogClient]:
+    """Create a temporary dataset prefix with a few simple recordings."""
+
+    with rr.server.Server() as server:
+        client = server.client()
+
+        ds = client.create_dataset("complex_dataset")
+        ds.register_prefix(complex_dataset_prefix.as_uri())
+
+        # TODO(jleibs): Consider attaching this metadata table directly to the dataset
+        # and automatically joining it by default
+        meta = client.create_table(
+            "complex_dataset_metadata",
+            pa.schema([
+                ("rerun_segment_id", pa.string()),
+                ("success", pa.bool_()),
+            ]),
+        )
+
+        meta.append(
+            rerun_segment_id=["simple_recording_0", "simple_recording_2"],
+            success=[True, False],
+        )
+
+        yield client

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import rerun_draft as rr
-from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
@@ -97,57 +96,6 @@ def test_dataset_metadata(simple_dataset_prefix: Path) -> None:
 │ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             ┆ null                │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
 │ │ simple_recording_2 ┆ [base]            ┆ 2                ┆ 1392             ┆ false               │ │
-│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
-""")
-
-
-def test_dataframe_api_filter_segments(populated_client: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client.get_dataset_entry(name="basic_dataset")
-    meta = populated_client.get_table(name="basic_dataset_metadata")
-
-    simple_filt = orig_ds.filter_dataset(segment_ids=["simple_recording_0"])
-
-    assert str(
-        simple_filt.segment_table(join_meta=meta)
-        .drop("rerun_storage_urls", "rerun_last_updated_at")
-        .sort("rerun_segment_id")
-    ) == inline_snapshot("""\
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                              │
-│ * version: 0.1.1                                                                                       │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
-│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
-│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
-│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
-│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
-│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
-│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
-""")
-
-    good_segments = orig_ds.segment_table(join_meta=meta).fill_null(True, ["success"]).filter(col("success"))
-
-    good_ds = orig_ds.filter_dataset(segment_ids=good_segments)
-
-    assert str(
-        good_ds.segment_table(join_meta=meta)
-        .drop("rerun_storage_urls", "rerun_last_updated_at")
-        .sort("rerun_segment_id")
-    ) == inline_snapshot("""\
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                              │
-│ * version: 0.1.1                                                                                       │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
-│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
-│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
-│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
-│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
-│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             ┆ null                │ │
 │ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)

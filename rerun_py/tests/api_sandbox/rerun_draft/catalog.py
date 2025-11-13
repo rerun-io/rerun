@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import copy
 import tempfile
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -153,20 +154,11 @@ class Entry:
         return self._inner.update(name=name)
 
 
-@dataclass
-class LazyDatasetState:
-    filtered_segments: set[str] | None = None
-
-    def clone(self) -> LazyDatasetState:
-        return copy.deepcopy(self)
-
-
 class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
 
-    def __init__(self, inner: _catalog.DatasetEntry, lazy_state: LazyDatasetState | None = None) -> None:
+    def __init__(self, inner: _catalog.DatasetEntry) -> None:
         self._inner = inner
-        self.lazy_state = lazy_state or LazyDatasetState()
 
     @property
     def manifest_url(self) -> str:
@@ -200,19 +192,6 @@ class DatasetEntry(Entry):
         # Get the partition table from the inner object
 
         partitions = self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
-
-        if self.lazy_state.filtered_segments is not None:
-            ctx = datafusion.SessionContext()
-
-            segment_df = ctx.from_arrow(
-                pa.Table.from_arrays(
-                    [pa.array(list(self.lazy_state.filtered_segments))], names=["filtered_segment_id"]
-                ),
-            )
-
-            partitions = partitions.join(segment_df, left_on="rerun_segment_id", right_on="filtered_segment_id").drop(
-                "filtered_segment_id"
-            )
 
         if join_meta is not None:
             if join_key not in partitions.schema().names:
@@ -348,25 +327,200 @@ class DatasetEntry(Entry):
             unsafe_allow_recent_cleanup=unsafe_allow_recent_cleanup,
         )
 
-    def filter_dataset(self, *, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetEntry:
+    def filter_dataset(
+        self,
+        *,
+        segment_ids: datafusion.DataFrame | Sequence[str] | None = None,
+        entity_paths: Sequence[str] | None = None,
+    ) -> DatasetView:
         """Returns a new DatasetEntry filtered to the given segment IDs."""
-        new_lazy_state = self.lazy_state.clone()
+        new_lazy_state = LazyDatasetState().with_filters(segment_ids=segment_ids, entity_paths=entity_paths)
 
-        if isinstance(segment_ids, datafusion.DataFrame):
-            if "rerun_segment_id" not in segment_ids.schema().names:
-                raise ValueError("DataFrame segment_ids must have a column named 'rerun_segment_id'.")
-            filt_segment_ids = {
-                segment_id.as_py() for batch in segment_ids.collect() for segment_id in batch.column("rerun_segment_id")
-            }
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
+
+
+@dataclass
+class LazyDatasetState:
+    filtered_segments: set[str] | None = None
+    filtered_entity_paths: set[str] | None = None
+
+    def with_filters(
+        self,
+        segment_ids: datafusion.DataFrame | Sequence[str] | None = None,
+        entity_paths: Sequence[str] | None = None,
+    ) -> LazyDatasetState:
+        new_lazy_state = copy.deepcopy(self)
+
+        if segment_ids is not None:
+            if isinstance(segment_ids, datafusion.DataFrame):
+                if "rerun_segment_id" not in segment_ids.schema().names:
+                    raise ValueError("DataFrame segment_ids must have a column named 'rerun_segment_id'.")
+                filt_segment_ids = {
+                    segment_id.as_py()
+                    for batch in segment_ids.collect()
+                    for segment_id in batch.column("rerun_segment_id")
+                }
+            else:
+                filt_segment_ids = set(segment_ids)
+
+            if new_lazy_state.filtered_segments is None:
+                new_lazy_state.filtered_segments = filt_segment_ids
+            else:
+                new_lazy_state.filtered_segments &= filt_segment_ids
+
+        if entity_paths is not None:
+            filt_entity_paths = set(entity_paths)
+            if new_lazy_state.filtered_entity_paths is None:
+                new_lazy_state.filtered_entity_paths = filt_entity_paths
+            else:
+                new_lazy_state.filtered_entity_paths &= filt_entity_paths
+
+        return new_lazy_state
+
+
+class DatasetView:
+    """A view over a dataset in the catalog."""
+
+    def __init__(self, inner: _catalog.DatasetEntry, lazy_state: LazyDatasetState) -> None:
+        self._inner: _catalog.DatasetEntry = inner
+        self._lazy_state: LazyDatasetState = lazy_state
+
+    def arrow_schema(self) -> pa.Schema:
+        # Exclude any filtered entity paths from the schema
+        filtered_schema = self._inner.arrow_schema()
+
+        if self._lazy_state.filtered_entity_paths is not None:
+            return pa.schema([
+                field
+                for field in filtered_schema
+                if field.metadata.get(b"rerun:kind", None) != b"data"
+                or field.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
+                in self._lazy_state.filtered_entity_paths
+            ])
         else:
-            filt_segment_ids = set(segment_ids)
+            return filtered_schema
 
-        if new_lazy_state.filtered_segments is None:
-            new_lazy_state.filtered_segments = filt_segment_ids
+    def segment_ids(self) -> list[str]:
+        if self._lazy_state.filtered_segments is not None:
+            return [pid for pid in self._inner.partition_ids() if pid in self._lazy_state.filtered_segments]
         else:
-            new_lazy_state.filtered_segments |= filt_segment_ids
+            return self._inner.partition_ids()
 
-        return DatasetEntry(self._inner, lazy_state=new_lazy_state)
+    def download_segment(self, segment_id: str) -> Any:
+        return self._inner.download_partition(segment_id)
+
+    def segment_table(
+        self, join_meta: datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+    ) -> datafusion.DataFrame:
+        # Get the partition table from the inner object
+
+        partitions = self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+        if self._lazy_state.filtered_segments is not None:
+            ctx = datafusion.SessionContext()
+
+            segment_df = ctx.from_arrow(
+                pa.Table.from_arrays(
+                    [pa.array(list(self._lazy_state.filtered_segments))], names=["filtered_segment_id"]
+                ),
+            )
+
+            partitions = partitions.join(segment_df, left_on="rerun_segment_id", right_on="filtered_segment_id").drop(
+                "filtered_segment_id"
+            )
+
+        if join_meta is not None:
+            if join_key not in partitions.schema().names:
+                raise ValueError(f"Dataset partition table must contain join_key column '{join_key}'.")
+            if join_key not in join_meta.schema().names:
+                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
+
+            meta_join_key = join_key + "_meta"
+
+            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
+
+            return partitions.join(
+                join_meta,
+                left_on=join_key,
+                right_on=meta_join_key,
+                how="left",
+            ).drop(meta_join_key)
+        else:
+            return partitions
+
+    def query(
+        self,
+        *,
+        index: str | None,
+        contents: Any | None = "/**",
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        using_index_values: Any = None,
+        fill_latest_at: bool = False,
+    ) -> datafusion.DataFrame:
+        if isinstance(contents, str):
+            match_expr = contents
+            full_contents = defaultdict(list)
+
+            # Note: arrow_schema() here already excludes filtered entity paths
+            for field in self.arrow_schema():
+                if field.metadata.get(b"rerun:kind", None) == b"data":
+                    entity_path = field.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
+                    if contents_matches(match_expr, entity_path):
+                        component = field.metadata.get(b"rerun:component", b"").decode("utf-8")
+                        full_contents[entity_path].append(component)
+
+        elif isinstance(contents, dict):
+            full_contents = defaultdict(list, contents)
+
+            if self._lazy_state.filtered_entity_paths is not None:
+                # Remove any entity paths that are not in the filtered set
+                for entity_path in list(full_contents.keys()):
+                    if entity_path not in self._lazy_state.filtered_entity_paths:
+                        del full_contents[entity_path]
+
+        else:
+            raise ValueError("contents must be either a string or a dict.")
+
+        view = self._inner.dataframe_query_view(
+            index=index,
+            contents=full_contents,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+        )
+
+        if self._lazy_state.filtered_segments is not None:
+            view = view.filter_partition_id(*self._lazy_state.filtered_segments)
+
+        # Apply using_index_values if provided
+        if using_index_values is not None:
+            view = view.using_index_values(using_index_values)
+
+        # Apply fill_latest_at if requested
+        if fill_latest_at:
+            view = view.fill_latest_at()
+
+        return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+    def filter_dataset(
+        self,
+        *,
+        segment_ids: datafusion.DataFrame | Sequence[str] | None = None,
+        entity_paths: Sequence[str] | None = None,
+    ) -> DatasetView:
+        """Returns a new DatasetEntry filtered to the given segment IDs."""
+
+        new_lazy_state = self._lazy_state.with_filters(segment_ids=segment_ids, entity_paths=entity_paths)
+
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
+
+
+def contents_matches(expr: str, path: str) -> bool:
+    """Returns True if the contents expression matches the given entity path."""
+    if expr.endswith("/**"):
+        prefix = expr[:-3]
+        return path.startswith(prefix)
+    return expr == path
 
 
 class TableEntry(Entry):
