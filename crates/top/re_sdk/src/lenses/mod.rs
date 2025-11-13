@@ -15,6 +15,6 @@ pub use self::{
     // We should be careful not to expose to much implementation details here.
     ast::{Lens, Op},
     builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
-    error::Error,
+    error::LensError,
     sink::LensesSink,
 };

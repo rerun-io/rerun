@@ -4,6 +4,7 @@ use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_types::ComponentDescriptor;
 
+use super::LensError;
 use super::Op;
 use super::ast;
 use super::ast::OneToMany;
@@ -39,11 +40,11 @@ impl LensBuilder {
     pub fn output_columns(
         mut self,
         builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
-    ) -> Self {
+    ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build();
+        let output = builder(output_builder).build()?;
         self.outputs.push(output);
-        self
+        Ok(self)
     }
 
     /// Adds a temporal output with 1:1 row mapping at a specific entity path.
@@ -54,11 +55,11 @@ impl LensBuilder {
         mut self,
         entity_path: impl Into<EntityPath>,
         builder: impl FnOnce(ColumnsBuilder) -> ColumnsBuilder,
-    ) -> Self {
+    ) -> Result<Self, LensError> {
         let output_builder = ColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build();
+        let output = builder(output_builder).build()?;
         self.outputs.push(output);
-        self
+        Ok(self)
     }
 
     /// Adds a static output (timeless data).
@@ -69,11 +70,11 @@ impl LensBuilder {
     pub fn output_static_columns(
         mut self,
         builder: impl FnOnce(StaticColumnsBuilder) -> StaticColumnsBuilder,
-    ) -> Self {
+    ) -> Result<Self, LensError> {
         let output_builder = StaticColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build();
+        let output = builder(output_builder).build()?;
         self.outputs.push(output);
-        self
+        Ok(self)
     }
 
     /// Adds a static output (timeless data) at a specific entity path.
@@ -83,12 +84,12 @@ impl LensBuilder {
         mut self,
         entity_path: impl Into<EntityPath>,
         builder: impl FnOnce(StaticColumnsBuilder) -> StaticColumnsBuilder,
-    ) -> Self {
+    ) -> Result<Self, LensError> {
         let output_builder =
             StaticColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build();
+        let output = builder(output_builder).build()?;
         self.outputs.push(output);
-        self
+        Ok(self)
     }
 
     /// Adds a temporal output with 1:N row mapping (scatter).
@@ -101,11 +102,11 @@ impl LensBuilder {
     pub fn output_scatter_columns(
         mut self,
         builder: impl FnOnce(ScatterColumnsBuilder) -> ScatterColumnsBuilder,
-    ) -> Self {
+    ) -> Result<Self, LensError> {
         let output_builder = ScatterColumnsBuilder::new(ast::TargetEntity::SameAsInput);
-        let output = builder(output_builder).build();
+        let output = builder(output_builder).build()?;
         self.outputs.push(output);
-        self
+        Ok(self)
     }
 
     /// Adds a temporal output with 1:N row mapping (scatter) at a specific entity path.
@@ -117,12 +118,12 @@ impl LensBuilder {
         mut self,
         entity_path: impl Into<EntityPath>,
         builder: impl FnOnce(ScatterColumnsBuilder) -> ScatterColumnsBuilder,
-    ) -> Self {
+    ) -> Result<Self, LensError> {
         let output_builder =
             ScatterColumnsBuilder::new(ast::TargetEntity::Explicit(entity_path.into()));
-        let output = builder(output_builder).build();
+        let output = builder(output_builder).build()?;
         self.outputs.push(output);
-        self
+        Ok(self)
     }
 
     /// Finalizes this builder and returns the corresponding lens.
@@ -194,18 +195,15 @@ impl ColumnsBuilder {
         self
     }
 
-    fn build(self) -> ast::LensKind {
-        if self.components.is_empty() {
-            re_log::warn_once!(
-                "Lens output created without any components. At least one component is required."
-            );
-        }
-
-        ast::LensKind::Columns(OneToOne {
+    fn build(self) -> Result<ast::LensKind, LensError> {
+        Ok(ast::LensKind::Columns(OneToOne {
             target_entity: self.target_entity,
-            components: self.components,
+            components: self
+                .components
+                .try_into()
+                .map_err(|_err| LensError::MissingComponentColumns)?,
             times: self.time_outputs,
-        })
+        }))
     }
 }
 
@@ -242,17 +240,14 @@ impl StaticColumnsBuilder {
         self
     }
 
-    fn build(self) -> ast::LensKind {
-        if self.components.is_empty() {
-            re_log::warn_once!(
-                "Lens output created without any components. At least one component is required."
-            );
-        }
-
-        ast::LensKind::StaticColumns(Static {
+    fn build(self) -> Result<ast::LensKind, LensError> {
+        Ok(ast::LensKind::StaticColumns(Static {
             target_entity: self.target_entity,
-            components: self.components,
-        })
+            components: self
+                .components
+                .try_into()
+                .map_err(|_err| LensError::MissingComponentColumns)?,
+        }))
     }
 }
 
@@ -315,17 +310,14 @@ impl ScatterColumnsBuilder {
         self
     }
 
-    fn build(self) -> ast::LensKind {
-        if self.components.is_empty() {
-            re_log::warn_once!(
-                "Lens scatter output created without any components. At least one component is required."
-            );
-        }
-
-        ast::LensKind::ScatterColumns(OneToMany {
+    fn build(self) -> Result<ast::LensKind, LensError> {
+        Ok(ast::LensKind::ScatterColumns(OneToMany {
             target_entity: self.target_entity,
-            components: self.components,
+            components: self
+                .components
+                .try_into()
+                .map_err(|_err| LensError::MissingComponentColumns)?,
             times: self.time_outputs,
-        })
+        }))
     }
 }

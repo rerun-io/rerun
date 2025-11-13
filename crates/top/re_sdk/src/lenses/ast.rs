@@ -23,8 +23,9 @@ use re_chunk::{
 };
 use re_log_types::{EntityPathFilter, TimeType};
 use re_types::{ComponentDescriptor, SerializedComponentColumn};
+use vec1::Vec1;
 
-use super::{Error, builder::LensBuilder, op};
+use super::{LensError, builder::LensBuilder, op};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
@@ -67,7 +68,7 @@ pub struct TimeOutput {
 pub struct OneToOne {
     pub target_entity: TargetEntity,
     /// Component columns that will be created.
-    pub components: Vec<ComponentOutput>,
+    pub components: Vec1<ComponentOutput>,
     /// Time columns that will be created.
     pub times: Vec<TimeOutput>,
 }
@@ -79,7 +80,7 @@ pub struct OneToOne {
 pub struct OneToMany {
     pub target_entity: TargetEntity,
     /// Component columns that will be created.
-    pub components: Vec<ComponentOutput>,
+    pub components: Vec1<ComponentOutput>,
     /// Time columns that will be created.
     pub times: Vec<TimeOutput>,
 }
@@ -91,20 +92,18 @@ pub struct OneToMany {
 pub struct Static {
     pub target_entity: TargetEntity,
     /// Component columns that will be created.
-    pub components: Vec<ComponentOutput>,
+    pub components: Vec1<ComponentOutput>,
 }
 
 /// Determines how a lens transforms input rows to output rows.
 #[derive(Debug)]
 pub enum LensKind {
     Columns(OneToOne),
-
     ScatterColumns(OneToMany),
-
     StaticColumns(Static),
 }
 
-type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, Error> + Sync + Send>;
+type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, LensError> + Sync + Send>;
 
 /// Provides commonly used transformations of component columns.
 ///
@@ -177,14 +176,14 @@ impl Op {
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
-        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, Error> + Send + Sync + 'static,
+        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, LensError> + Send + Sync + 'static,
     {
         Self::Func(Box::new(func))
     }
 }
 
 impl Op {
-    fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, LensError> {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
@@ -242,7 +241,7 @@ impl Lens {
     }
 }
 
-fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<ListArray, Error> {
+fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<ListArray, LensError> {
     ops.iter().try_fold(initial, |array, op| op.call(&array))
 }
 
@@ -697,6 +696,7 @@ mod test {
                         [Op::access_field("a"), Op::cast(DataType::Float64)],
                     )
                 })
+                .unwrap()
                 .build();
 
         let pipeline = LensRegistry {
@@ -720,6 +720,7 @@ mod test {
                 .output_columns_at("nullability/b", |out| {
                     out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
                 })
+                .unwrap()
                 .build();
 
         let pipeline = LensRegistry {
@@ -762,6 +763,7 @@ mod test {
                     out.component(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
                         .component(ComponentDescriptor::partial("original"), [])
                 })
+                .unwrap()
                 .build();
 
         let pipeline = LensRegistry {
@@ -803,6 +805,7 @@ mod test {
                         [Op::constant(metadata_builder_b.finish())],
                     )
                 })
+                .unwrap()
                 .build();
 
         let pipeline = LensRegistry {
@@ -865,6 +868,7 @@ mod test {
             out.time("my_timeline", TimeType::Sequence, [])
                 .component(ComponentDescriptor::partial("extracted_time"), [])
         })
+        .unwrap()
         .build();
 
         let pipeline = LensRegistry {
@@ -1008,13 +1012,13 @@ mod test {
         println!("{original_chunk}");
 
         // Helper to extract value field from structs: List<Struct> -> List<String>
-        let extract_value = |list_array: &ListArray| -> Result<ListArray, Error> {
+        let extract_value = |list_array: &ListArray| -> Result<ListArray, LensError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("value")).transform(list_array)?)
         };
 
         // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
-        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, Error> {
+        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, LensError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
         };
@@ -1032,6 +1036,7 @@ mod test {
                     [Op::func(extract_timestamp)],
                 )
             })
+            .unwrap()
             .build();
 
         let pipeline = LensRegistry {
@@ -1102,13 +1107,13 @@ mod test {
         println!("{original_chunk}");
 
         // Helper to extract value field from structs: List<Struct> -> List<String>
-        let extract_value = |list_array: &ListArray| -> Result<ListArray, Error> {
+        let extract_value = |list_array: &ListArray| -> Result<ListArray, LensError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("value")).transform(list_array)?)
         };
 
         // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
-        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, Error> {
+        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, LensError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
         };
@@ -1126,6 +1131,7 @@ mod test {
                     [Op::func(extract_timestamp)],
                 )
             })
+            .unwrap()
             .build();
 
         let pipeline = LensRegistry {

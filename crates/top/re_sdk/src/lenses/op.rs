@@ -13,7 +13,7 @@ use re_chunk::external::arrow::{
     datatypes::{DataType, Field},
 };
 
-use super::Error;
+use super::LensError;
 
 /// Extracts a specific field from a struct component within a `ListArray`.
 #[derive(Debug)]
@@ -22,7 +22,7 @@ pub struct AccessField {
 }
 
 impl AccessField {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, LensError> {
         MapList::new(GetField::new(self.field_name.clone()))
             .transform(list_array)
             .map_err(Into::into)
@@ -36,7 +36,7 @@ pub struct Cast {
 }
 
 impl Cast {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, LensError> {
         let (_field, offsets, ref array, nulls) = list_array.clone().into_parts();
         let res = compute::cast(array, &self.to_inner_type)?;
         Ok(ListArray::new(

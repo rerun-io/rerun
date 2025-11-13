@@ -57,7 +57,7 @@ fn lens_flag() -> anyhow::Result<Lens> {
         .unwrap();
 
     let lens = Lens::for_input_column("/flag".parse()?, "example:Flag:flag")
-        .output_columns(|out| out.component(Scalars::descriptor_scalars(), [Op::func(step_fn)]))
+        .output_columns(|out| out.component(Scalars::descriptor_scalars(), [Op::func(step_fn)]))?
         .output_static_columns_at("/flag", |out| {
             out.component(
                 series_points.descriptor,
@@ -67,7 +67,7 @@ fn lens_flag() -> anyhow::Result<Lens> {
                 series_lines.descriptor,
                 [Op::constant(series_lines.list_array)],
             )
-        })
+        })?
         .build();
 
     Ok(lens)
@@ -77,7 +77,7 @@ fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 
     let instruction = Lens::for_input_column("/instructions".parse()?, "example:Instruction:text")
-        .output_columns(|out| out.component(TextDocument::descriptor_text(), []))
+        .output_columns(|out| out.component(TextDocument::descriptor_text(), []))?
         .build();
 
     let destructure = Lens::for_input_column("/nested".parse()?, "example:Nested:payload")
@@ -86,17 +86,17 @@ fn main() -> anyhow::Result<()> {
                 Scalars::descriptor_scalars(),
                 [Op::access_field("a"), Op::cast(DataType::Float64)],
             )
-        })
+        })?
         .output_columns_at("nested/b", |out| {
             out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
-        })
+        })?
         .build();
 
     let time = Lens::for_input_column("/timestamped".parse()?, "my_timestamp")
         .output_columns(|out| {
             out.time("my_timeline", rerun::time::TimeType::Sequence, [])
                 .component(ComponentDescriptor::partial("value"), [])
-        })
+        })?
         .build();
 
     let lenses_sink = LensesSink::new(GrpcSink::default())
