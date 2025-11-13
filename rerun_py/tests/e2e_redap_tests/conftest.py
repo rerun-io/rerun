@@ -90,7 +90,7 @@ def resource_prefix(request: pytest.FixtureRequest) -> str:
         # Ensure prefix ends with trailing slash
         prefix = prefix + "/"
 
-    return prefix
+    return str(prefix)
 
 
 @pytest.fixture(scope="session", autouse=True)
