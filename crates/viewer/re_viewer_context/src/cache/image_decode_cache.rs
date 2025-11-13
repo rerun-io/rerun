@@ -173,9 +173,62 @@ fn decode_encoded_depth(
     format: &ImageFormatComponent,
 ) -> Result<ImageInfo, ImageLoadError> {
     match media_type {
+        MediaType::PNG => decode_png_depth(blob_row_id, blob_component, image_bytes, format),
         "application/rvl" => decode_rvl_depth(blob_row_id, blob_component, image_bytes, format),
         other => Err(ImageLoadError::UnsupportedMimeType(other.to_owned())),
     }
+}
+
+fn decode_png_depth(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    format: &ImageFormatComponent,
+) -> Result<ImageInfo, ImageLoadError> {
+    re_tracing::profile_function!();
+
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
+    reader.set_format(image::ImageFormat::Png);
+
+    let dynamic_image = reader.decode()?;
+
+    if dynamic_image.width() != format.width || dynamic_image.height() != format.height {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG resolution mismatch: blob is {}x{}, expected {}x{}",
+            dynamic_image.width(),
+            dynamic_image.height(),
+            format.width,
+            format.height
+        )));
+    }
+
+    let (buffer, decoded_format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
+
+    if decoded_format.datatype() != format.datatype() {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG datatype mismatch: blob is {:?}, expected {:?}",
+            decoded_format.datatype(),
+            format.datatype()
+        )));
+    }
+
+    let expected_num_bytes = format.num_bytes();
+    let ImageBuffer(blob) = buffer;
+    let actual_num_bytes = blob.len();
+    if actual_num_bytes != expected_num_bytes {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG payload is {actual_num_bytes} B, but {} requires {expected_num_bytes} B",
+            format.0
+        )));
+    }
+
+    Ok(ImageInfo::from_stored_blob(
+        blob_row_id,
+        blob_component,
+        blob,
+        format.0,
+        ImageKind::Depth,
+    ))
 }
 
 fn decode_rvl_depth(
@@ -301,5 +354,53 @@ impl Cache for ImageDecodeCache {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use image::{ColorType, ImageEncoder, codecs::png::PngEncoder};
+    use re_types::datatypes::ImageFormat as ImageFormatDatatype;
+
+    #[test]
+    fn decoding_png_depth_works() {
+        let width = 2;
+        let height = 2;
+        let depth_values: [u16; 4] = [0, 1, 2, 3];
+
+        let mut encoded_png = Vec::new();
+        {
+            let encoder = PngEncoder::new(&mut encoded_png);
+            encoder
+                .write_image(
+                    bytemuck::cast_slice(&depth_values),
+                    width,
+                    height,
+                    ColorType::L16.into(),
+                )
+                .expect("encoding png failed");
+        }
+
+        let format = ImageFormatComponent::from(ImageFormatDatatype::depth(
+            [width, height],
+            ChannelDatatype::U16,
+        ));
+
+        let image_info = decode_png_depth(
+            RowId::ZERO,
+            ComponentIdentifier::from("test"),
+            &encoded_png,
+            &format,
+        )
+        .expect("decoding png depth failed");
+
+        assert_eq!(image_info.kind, ImageKind::Depth);
+        assert_eq!(image_info.format, format.0);
+        assert_eq!(
+            image_info.buffer.len(),
+            depth_values.len() * std::mem::size_of::<u16>()
+        );
     }
 }
