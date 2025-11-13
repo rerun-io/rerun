@@ -6,6 +6,9 @@ use re_types::ComponentDescriptor;
 
 use super::Op;
 use super::ast;
+use super::ast::OneToMany;
+use super::ast::OneToOne;
+use super::ast::Static;
 
 /// Builder for lenses with support for multiple output modes.
 pub struct LensBuilder {
@@ -198,11 +201,11 @@ impl ColumnsBuilder {
             );
         }
 
-        ast::LensKind::OneToOne {
+        ast::LensKind::Columns(OneToOne {
             target_entity: self.target_entity,
             components: self.components,
-            timelines: self.time_outputs,
-        }
+            times: self.time_outputs,
+        })
     }
 }
 
@@ -246,10 +249,10 @@ impl StaticColumnsBuilder {
             );
         }
 
-        ast::LensKind::Static {
+        ast::LensKind::StaticColumns(Static {
             target_entity: self.target_entity,
             components: self.components,
-        }
+        })
     }
 }
 
@@ -319,10 +322,10 @@ impl ScatterColumnsBuilder {
             );
         }
 
-        ast::LensKind::ToMany {
+        ast::LensKind::ScatterColumns(OneToMany {
             target_entity: self.target_entity,
             components: self.components,
-            timelines: self.time_outputs,
-        }
+            times: self.time_outputs,
+        })
     }
 }

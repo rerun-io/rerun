@@ -60,34 +60,48 @@ pub struct TimeOutput {
     pub ops: Vec<Op>,
 }
 
+#[derive(Debug)]
+/// Each input row produces exactly one output row (1:1 mapping).
+///
+/// Outputs inherit times from the input chunk.
+pub struct OneToOne {
+    pub target_entity: TargetEntity,
+    /// Component columns that will be created.
+    pub components: Vec<ComponentOutput>,
+    /// Time columns that will be created.
+    pub times: Vec<TimeOutput>,
+}
+
+#[derive(Debug)]
+/// Each input row produces multiple output rows (1:N flat-map).
+///
+/// Outputs inherit times from the input chunk.
+pub struct OneToMany {
+    pub target_entity: TargetEntity,
+    /// Component columns that will be created.
+    pub components: Vec<ComponentOutput>,
+    /// Time columns that will be created.
+    pub times: Vec<TimeOutput>,
+}
+
+#[derive(Debug)]
+/// Static lens: outputs have no timelines (timeless data).
+///
+/// In many cases, static lenses will omit the input column entirely.
+pub struct Static {
+    pub target_entity: TargetEntity,
+    /// Component columns that will be created.
+    pub components: Vec<ComponentOutput>,
+}
+
 /// Determines how a lens transforms input rows to output rows.
 #[derive(Debug)]
 pub enum LensKind {
-    /// Each input row produces exactly one output row (1:1 mapping).
-    ///
-    /// Outputs inherit timelines from the input chunk.
-    OneToOne {
-        target_entity: TargetEntity,
-        components: Vec<ComponentOutput>,
-        timelines: Vec<TimeOutput>,
-    },
+    Columns(OneToOne),
 
-    /// Each input row produces multiple output rows (1:N flat-map).
-    ///
-    /// Outputs are always temporal.
-    ToMany {
-        target_entity: TargetEntity,
-        components: Vec<ComponentOutput>,
-        timelines: Vec<TimeOutput>,
-    },
+    ScatterColumns(OneToMany),
 
-    /// Static lens: outputs have no timelines (timeless data).
-    ///
-    /// In many cases, static lenses will omit the input column entirely.
-    Static {
-        target_entity: TargetEntity,
-        components: Vec<ComponentOutput>,
-    },
+    StaticColumns(Static),
 }
 
 type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, Error> + Sync + Send>;
@@ -220,20 +234,9 @@ impl Lens {
         self.outputs
             .iter()
             .filter_map(|output| match output {
-                LensKind::OneToOne {
-                    target_entity,
-                    components,
-                    timelines,
-                } => apply_one_to_one(chunk, column, target_entity, components, timelines),
-                LensKind::Static {
-                    target_entity,
-                    components,
-                } => apply_static(chunk, column, target_entity, components),
-                LensKind::ToMany {
-                    target_entity,
-                    components,
-                    timelines,
-                } => apply_to_many(chunk, column, target_entity, components, timelines),
+                LensKind::Columns(one_to_one) => one_to_one.apply(chunk, column),
+                LensKind::StaticColumns(static_columns) => static_columns.apply(chunk, column),
+                LensKind::ScatterColumns(one_to_many) => one_to_many.apply(chunk, column),
             })
             .collect()
     }
@@ -306,181 +309,182 @@ fn resolve_entity_path<'a>(chunk: &'a Chunk, target_entity: &'a TargetEntity) ->
     }
 }
 
-/// Applies a one-to-one lens transformation where each input row produces exactly one output row.
-///
-/// The output chunk inherits all timelines from the input chunk, with additional timelines
-/// extracted from the component data if specified. Component columns are transformed according
-/// to the provided operations.
-fn apply_one_to_one(
-    chunk: &Chunk,
-    input: &SerializedComponentColumn,
-    target_entity: &TargetEntity,
-    components: &[ComponentOutput],
-    timelines: &[TimeOutput],
-) -> Option<Chunk> {
-    let entity_path = resolve_entity_path(chunk, target_entity);
+impl OneToOne {
+    /// Applies a one-to-one lens transformation where each input row produces exactly one output row.
+    ///
+    /// The output chunk inherits all timelines from the input chunk, with additional timelines
+    /// extracted from the component data if specified. Component columns are transformed according
+    /// to the provided operations.
+    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Option<Chunk> {
+        let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
-    let output_component_columns = collect_output_components_iter(input, components);
-    let output_time_columns =
-        collect_output_times_iter(input, timelines).filter_map(convert_to_time_column);
+        let output_component_columns = collect_output_components_iter(input, &self.components);
+        let output_time_columns =
+            collect_output_times_iter(input, &self.times).filter_map(convert_to_time_column);
 
-    // Inherit all existing timelines as-is (since row count doesn't change),
-    // then add any additional timelines extracted from component data.
-    let mut final_timelines = chunk.timelines().clone();
-    final_timelines.extend(output_time_columns);
+        // Inherit all existing time columns as-is (since row count doesn't change),
+        // then add any additional time columns extracted from component data.
+        let mut chunk_times = chunk.timelines().clone();
+        chunk_times.extend(output_time_columns);
 
-    Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        entity_path.clone(),
-        final_timelines,
-        output_component_columns.collect(),
-    )
-    .inspect_err(|err| {
-        re_log::error_once!("Failed to build lens output at entity path '{entity_path}': {err}");
-    })
-    .ok()
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            chunk_times,
+            output_component_columns.collect(),
+        )
+        .inspect_err(|err| {
+            re_log::error_once!(
+                "Failed to build lens output at entity path '{entity_path}': {err}"
+            );
+        })
+        .ok()
+    }
 }
 
-/// Applies a static lens transformation that produces timeless output data.
-///
-/// The output chunk contains no timelines, only the transformed component columns.
-/// This is useful for metadata or other data that should not be associated with any timeline.
-fn apply_static(
-    chunk: &Chunk,
-    input: &SerializedComponentColumn,
-    target_entity: &TargetEntity,
-    components: &[ComponentOutput],
-) -> Option<Chunk> {
-    let entity_path = resolve_entity_path(chunk, target_entity);
+impl Static {
+    /// Applies a static lens transformation that produces timeless output data.
+    ///
+    /// The output chunk contains no time columns, only the transformed component columns.
+    /// This is useful for metadata or other data that should not be associated with any timeline.
+    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Option<Chunk> {
+        let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
-    // TODO(grtlr): In case of static, should we enforce single rows (i.e. unit chunks)?
-    Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        entity_path.clone(),
-        Default::default(),
-        collect_output_components_iter(input, components).collect(),
-    )
-    .inspect_err(|err| {
-        re_log::error_once!("Failed to build lens output at entity path '{entity_path}': {err}");
-    })
-    .ok()
+        // TODO(grtlr): In case of static, should we enforce single rows (i.e. unit chunks)?
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            Default::default(),
+            collect_output_components_iter(input, &self.components).collect(),
+        )
+        .inspect_err(|err| {
+            re_log::error_once!(
+                "Failed to build lens output at entity path '{entity_path}': {err}"
+            );
+        })
+        .ok()
+    }
 }
 
-fn apply_to_many(
-    chunk: &Chunk,
-    input: &SerializedComponentColumn,
-    target_entity: &TargetEntity,
-    components: &[ComponentOutput],
-    timelines: &[TimeOutput],
-) -> Option<Chunk> {
-    use arrow::array::UInt32Array;
+impl OneToMany {
+    /// Applies a one-to-many lens transformation where each input row potentially produces multiple output rows.
+    ///
+    /// The output chunk inherits all time columns from the input chunk, with additional time columns
+    /// extracted from the component data if specified. Component columns are transformed according
+    /// to the provided operations.
+    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Option<Chunk> {
+        use arrow::array::UInt32Array;
 
-    let entity_path = resolve_entity_path(chunk, target_entity);
+        let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
-    let mut output_components = collect_output_components_iter(input, components).peekable();
+        let mut output_components =
+            collect_output_components_iter(input, &self.components).peekable();
 
-    // Peek at the first component to establish the scatter pattern (how many output rows
-    // each input row produces). All components must have the same outer list structure.
-    // We use .peek() instead of consuming the iterator so we can still process all
-    // components (including this first one) later.
-    let Some((_descr, reference_array)) = output_components.peek() else {
-        re_log::error_once!(
-            "scatter lens requires at least one component output for entity '{entity_path}'"
-        );
-        return None;
-    };
+        // Peek at the first component to establish the scatter pattern (how many output rows
+        // each input row produces). All components must have the same outer list structure.
+        // We use .peek() instead of consuming the iterator so we can still process all
+        // components (including this first one) later.
+        let Some((_descr, reference_array)) = output_components.peek() else {
+            re_log::error_once!(
+                "scatter lens requires at least one component output for entity '{entity_path}'"
+            );
+            return None;
+        };
 
-    // Build scatter indices: tracks which input row each output row came from
-    // Example: [0, 0, 0, 1, 2] means rows 0-2 from input 0, row 3 from input 1, row 4 from input 2
-    let mut scatter_indices = Vec::new();
-    let offsets = reference_array.value_offsets();
+        // Build scatter indices: tracks which input row each output row came from
+        // Example: [0, 0, 0, 1, 2] means rows 0-2 from input 0, row 3 from input 1, row 4 from input 2
+        let mut scatter_indices = Vec::new();
+        let offsets = reference_array.value_offsets();
 
-    for (row_idx, window) in offsets.windows(2).enumerate() {
-        let start = window[0] as usize;
-        let end = window[1] as usize;
-        let count = end - start;
+        for (row_idx, window) in offsets.windows(2).enumerate() {
+            let start = window[0];
+            let end = window[1];
+            let count = end - start;
 
-        if reference_array.is_null(row_idx) || count == 0 {
-            // Null or empty list produces one output row
-            scatter_indices.push(row_idx as u32);
-        } else {
-            // Each element produces one output row
-            for _ in 0..count {
+            if reference_array.is_null(row_idx) || count == 0 {
+                // Null or empty list produces one output row
                 scatter_indices.push(row_idx as u32);
+            } else {
+                // Each element produces one output row
+                for _ in 0..count {
+                    scatter_indices.push(row_idx as u32);
+                }
             }
         }
+
+        let scatter_indices_array = UInt32Array::from(scatter_indices);
+
+        // Replicate all existing time values using scatter indices.
+        let mut chunk_times: IntMap<TimelineName, TimeColumn> = Default::default();
+        for (timeline_name, time_column) in chunk.timelines() {
+            let time_values = time_column.times_raw();
+            let time_values_array = Int64Array::from(time_values.to_vec());
+
+            // `arrow::compute::take` is fine to use in this context, because we want to allow nullability.
+            #[expect(clippy::disallowed_methods)]
+            match take(&time_values_array, &scatter_indices_array, None) {
+                Ok(scattered) => {
+                    let scattered_i64 = scattered.as_primitive::<arrow::datatypes::Int64Type>();
+                    let new_time_column = re_chunk::TimeColumn::new(
+                        None,
+                        *time_column.timeline(),
+                        scattered_i64.values().clone(),
+                    );
+                    chunk_times.insert(*timeline_name, new_time_column);
+                }
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to replicate timeline '{}' for entity '{entity_path}': {err}",
+                        timeline_name
+                    );
+                    return None;
+                }
+            }
+        }
+
+        // Explode all output time columns.
+        let exploded_time_columns = collect_output_times_iter(input, &self.times).filter_map(
+            |(timeline_name, timeline_type, list_array)| match Explode.transform(&list_array) {
+                Ok(exploded) => convert_to_time_column((timeline_name, timeline_type, exploded)),
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to scatter timeline '{}' for entity '{entity_path}': {err}",
+                        timeline_name
+                    );
+                    None
+                }
+            },
+        );
+        chunk_times.extend(exploded_time_columns);
+
+        // Explode all component outputs
+        let chunk_components = output_components.filter_map(|(component_descr, list_array)| {
+            match Explode.transform(&list_array) {
+                Ok(exploded) => Some(SerializedComponentColumn::new(exploded, component_descr)),
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to scatter component '{}' for entity '{entity_path}': {err}",
+                        component_descr.component
+                    );
+                    None
+                }
+            }
+        });
+
+        // Verify that all columns have the same length happens during chunk creation.
+        Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.clone(),
+            chunk_times,
+            chunk_components.collect(),
+        )
+        .inspect_err(|err| {
+            re_log::error_once!(
+                "Failed to build lens output at entity path '{entity_path}': {err}"
+            );
+        })
+        .ok()
     }
-
-    let scatter_indices_array = UInt32Array::from(scatter_indices);
-
-    // Replicate all existing timeline values using scatter indices
-    let mut final_timelines: IntMap<TimelineName, TimeColumn> = Default::default();
-    for (timeline_name, time_column) in chunk.timelines() {
-        let time_values = time_column.times_raw();
-        let time_values_array = Int64Array::from(time_values.to_vec());
-
-        // `arrow::compute::take` is fine to use in this context, because we want to allow nullability.
-        #[expect(clippy::disallowed_methods)]
-        match take(&time_values_array, &scatter_indices_array, None) {
-            Ok(scattered) => {
-                let scattered_i64 = scattered.as_primitive::<arrow::datatypes::Int64Type>();
-                let new_time_column = re_chunk::TimeColumn::new(
-                    None,
-                    *time_column.timeline(),
-                    scattered_i64.values().clone(),
-                );
-                final_timelines.insert(*timeline_name, new_time_column);
-            }
-            Err(err) => {
-                re_log::error_once!(
-                    "Failed to replicate timeline '{}' for entity '{entity_path}': {err}",
-                    timeline_name
-                );
-                return None;
-            }
-        }
-    }
-
-    // Explode all timeline outputs
-    let exploded_time_columns = collect_output_times_iter(input, timelines).filter_map(
-        |(timeline_name, timeline_type, list_array)| match Explode.transform(&list_array) {
-            Ok(exploded) => convert_to_time_column((timeline_name, timeline_type, exploded)),
-            Err(err) => {
-                re_log::error_once!(
-                    "Failed to scatter timeline '{}' for entity '{entity_path}': {err}",
-                    timeline_name
-                );
-                None
-            }
-        },
-    );
-    final_timelines.extend(exploded_time_columns);
-
-    // Explode all component outputs
-    let chunk_components = output_components.filter_map(|(component_descr, list_array)| {
-        match Explode.transform(&list_array) {
-            Ok(exploded) => Some(SerializedComponentColumn::new(exploded, component_descr)),
-            Err(err) => {
-                re_log::error_once!(
-                    "Failed to scatter component '{}' for entity '{entity_path}': {err}",
-                    component_descr.component
-                );
-                None
-            }
-        }
-    });
-
-    // Verify that all columns have the same length happens during chunk creation.
-    Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        entity_path.clone(),
-        final_timelines,
-        chunk_components.collect(),
-    )
-    .inspect_err(|err| {
-        re_log::error_once!("Failed to build lens output at entity path '{entity_path}': {err}");
-    })
-    .ok()
 }
 
 #[derive(Default)]
