@@ -174,8 +174,8 @@ class EntryFactory:
         """
         Apply prefix to a name, handling qualified names (A.B.C format).
 
-        For qualified names like "catalog.schema.table" or "schema.table",
-        the prefix is applied only to the last component (the table name).
+        For qualified names like "catalog.schema.table" or "schema.table",the prefix is applied only to the last
+        component (the table name).
         """
         if not self._prefix:
             return name
@@ -220,8 +220,8 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     """
     Factory for creating catalog entries with automatic cleanup.
 
-    Creates entries with test-specific prefixes to avoid collisions in external servers,
-    and automatically deletes them after the test completes.
+    Creates entries with test-specific prefixes to avoid collisions in external servers and automatically deletes them
+    after the test completes.
     """
 
     prefix = f"{request.node.name}_"
@@ -230,19 +230,35 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     factory.cleanup()
 
 
-@pytest.fixture(scope="function")
-def test_dataset(entry_factory: EntryFactory, resource_prefix: str) -> Generator[DatasetEntry, None, None]:
+@pytest.fixture(scope="session")
+def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -> Generator[DatasetEntry, None, None]:
     """
-    Register a dataset and returns the corresponding `DatasetEntry`.
+    Register a read-only dataset shared across the entire test session.
 
-    Convenient for tests which focus on a single test dataset.
+    This fixture creates a single dataset that is shared by all tests for better performance, particularly when testing
+    against remote servers where dataset registration is expensive. Tests should NOT write to this dataset (use
+    `entry_factory` to create test-specific datasets if you need to write).
+
+    The dataset is automatically cleaned up at the end of the test session.
     """
+    import uuid
 
-    ds = entry_factory.create_dataset(DATASET_NAME)
+    # Generate a session-specific prefix to avoid collisions across test runs
+    session_id = uuid.uuid4().hex
+    dataset_name = f"session_{session_id}_{DATASET_NAME}"
+
+    # Create the dataset directly (not using entry_factory since it's function-scoped)
+    ds = catalog_client.create_dataset(dataset_name)
     tasks = ds.register_prefix(resource_prefix + "dataset")
     tasks.wait(timeout_secs=50)
 
     yield ds
+
+    # Cleanup at session end
+    try:
+        ds.delete()
+    except Exception as e:
+        logging.warning("Could not delete readonly dataset %s: %s", dataset_name, e)
 
 
 @dataclasses.dataclass
