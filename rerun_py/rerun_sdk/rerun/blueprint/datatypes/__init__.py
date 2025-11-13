@@ -17,6 +17,18 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderLike,
 )
+from .text_log_column_list import (
+    TextLogColumnList,
+    TextLogColumnListArrayLike,
+    TextLogColumnListBatch,
+    TextLogColumnListLike,
+)
+from .text_log_level_list import (
+    TextLogLevelList,
+    TextLogLevelListArrayLike,
+    TextLogLevelListBatch,
+    TextLogLevelListLike,
+)
 
 __all__ = [
     "ComponentColumnSelector",
@@ -39,4 +51,12 @@ __all__ = [
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderLike",
+    "TextLogColumnList",
+    "TextLogColumnListArrayLike",
+    "TextLogColumnListBatch",
+    "TextLogColumnListLike",
+    "TextLogLevelList",
+    "TextLogLevelListArrayLike",
+    "TextLogLevelListBatch",
+    "TextLogLevelListLike",
 ]

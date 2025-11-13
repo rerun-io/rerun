@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "../../blueprint/components/text_log_level_list.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
-#include "../../components/text_log_level.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -30,7 +30,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `log_levels` field.
         static constexpr auto Descriptor_log_levels = ComponentDescriptor(
             ArchetypeName, "TextLogRows:log_levels",
-            Loggable<rerun::components::TextLogLevel>::ComponentType
+            Loggable<rerun::blueprint::components::TextLogLevelList>::ComponentType
         );
 
       public:
@@ -40,7 +40,7 @@ namespace rerun::blueprint::archetypes {
         TextLogRows& operator=(const TextLogRows& other) = default;
         TextLogRows& operator=(TextLogRows&& other) = default;
 
-        explicit TextLogRows(Collection<rerun::components::TextLogLevel> _log_levels)
+        explicit TextLogRows(rerun::blueprint::components::TextLogLevelList _log_levels)
             : log_levels(
                   ComponentBatch::from_loggable(std::move(_log_levels), Descriptor_log_levels)
                       .value_or_throw()
@@ -55,7 +55,8 @@ namespace rerun::blueprint::archetypes {
         static TextLogRows clear_fields();
 
         /// Log levels to display.
-        TextLogRows with_log_levels(const Collection<rerun::components::TextLogLevel>& _log_levels
+        TextLogRows with_log_levels(
+            const rerun::blueprint::components::TextLogLevelList& _log_levels
         ) && {
             log_levels =
                 ComponentBatch::from_loggable(_log_levels, Descriptor_log_levels).value_or_throw();

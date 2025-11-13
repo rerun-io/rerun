@@ -9,10 +9,10 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
+from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["TextLogRows"]
@@ -26,7 +26,7 @@ class TextLogRows(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, log_levels: datatypes.Utf8ArrayLike) -> None:
+    def __init__(self: Any, log_levels: blueprint_datatypes.TextLogLevelListLike) -> None:
         """
         Create a new instance of the TextLogRows archetype.
 
@@ -61,7 +61,7 @@ class TextLogRows(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        log_levels: datatypes.Utf8ArrayLike | None = None,
+        log_levels: blueprint_datatypes.TextLogLevelListLike | None = None,
     ) -> TextLogRows:
         """
         Update only some specific fields of a `TextLogRows`.
@@ -95,10 +95,10 @@ class TextLogRows(Archetype):
         """Clear all the fields of a `TextLogRows`."""
         return cls.from_fields(clear_unset=True)
 
-    log_levels: components.TextLogLevelBatch | None = field(
+    log_levels: blueprint_components.TextLogLevelListBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.TextLogLevelBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TextLogLevelListBatch._converter,  # type: ignore[misc]
     )
     # Log levels to display.
     #

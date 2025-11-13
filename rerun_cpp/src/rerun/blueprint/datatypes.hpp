@@ -7,3 +7,5 @@
 #include "blueprint/datatypes/filter_is_not_null.hpp"
 #include "blueprint/datatypes/selected_columns.hpp"
 #include "blueprint/datatypes/tensor_dimension_index_slider.hpp"
+#include "blueprint/datatypes/text_log_column_list.hpp"
+#include "blueprint/datatypes/text_log_level_list.hpp"

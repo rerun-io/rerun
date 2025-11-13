@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../blueprint/components/text_log_column.hpp"
+#include "../../blueprint/components/text_log_column_list.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -30,7 +30,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `columns` field.
         static constexpr auto Descriptor_columns = ComponentDescriptor(
             ArchetypeName, "TextLogColumns:columns",
-            Loggable<rerun::blueprint::components::TextLogColumn>::ComponentType
+            Loggable<rerun::blueprint::components::TextLogColumnList>::ComponentType
         );
 
       public:
@@ -40,7 +40,7 @@ namespace rerun::blueprint::archetypes {
         TextLogColumns& operator=(const TextLogColumns& other) = default;
         TextLogColumns& operator=(TextLogColumns&& other) = default;
 
-        explicit TextLogColumns(Collection<rerun::blueprint::components::TextLogColumn> _columns)
+        explicit TextLogColumns(rerun::blueprint::components::TextLogColumnList _columns)
             : columns(ComponentBatch::from_loggable(std::move(_columns), Descriptor_columns)
                           .value_or_throw()) {}
 
@@ -53,8 +53,7 @@ namespace rerun::blueprint::archetypes {
         static TextLogColumns clear_fields();
 
         /// All columns to be displayed.
-        TextLogColumns with_columns(
-            const Collection<rerun::blueprint::components::TextLogColumn>& _columns
+        TextLogColumns with_columns(const rerun::blueprint::components::TextLogColumnList& _columns
         ) && {
             columns = ComponentBatch::from_loggable(_columns, Descriptor_columns).value_or_throw();
             return std::move(*this);

@@ -8,9 +8,10 @@
 namespace rerun::blueprint::archetypes {
     TextLogColumns TextLogColumns::clear_fields() {
         auto archetype = TextLogColumns();
-        archetype.columns =
-            ComponentBatch::empty<rerun::blueprint::components::TextLogColumn>(Descriptor_columns)
-                .value_or_throw();
+        archetype.columns = ComponentBatch::empty<rerun::blueprint::components::TextLogColumnList>(
+                                Descriptor_columns
+        )
+                                .value_or_throw();
         return archetype;
     }
 

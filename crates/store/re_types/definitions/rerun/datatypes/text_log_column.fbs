@@ -2,7 +2,8 @@ namespace rerun.datatypes;
 
 /// A text log column kind.
 union TextLogColumn (
-  "attr.rust.derive": "PartialEq, Eq, Hash"
+  "attr.rust.derive": "PartialEq, Eq, Hash",
+  "attr.docs.unreleased"
 ) {
   /// A specific timeline's column.
   Timeline: rerun.datatypes.Utf8,
