@@ -9800,6 +9800,7 @@ dependencies = [
  "glam",
  "half",
  "image",
+ "indexmap 2.11.4",
  "infer",
  "itertools 0.14.0",
  "linked-hash-map",
