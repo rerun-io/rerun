@@ -121,7 +121,7 @@ rerun.controls.RowId: fixed_size_binary[16]
 timeline: timestamp[ns]\
 """)
 
-    df = filtered.query(index="timeline").sort("rerun_segment_id")
+    df = filtered.reader(index="timeline").sort("rerun_segment_id")
 
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐

@@ -228,7 +228,7 @@ class DatasetEntry(Entry):
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         view = DatasetView(self._inner, LazyDatasetState())
-        return view.query(
+        return view.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
@@ -354,7 +354,7 @@ class ContentMatcher:
                 else:
                     self.exact[expr[1:]] = True
 
-        # Unless `/__properties__/**` was explicitly included, always exlude it
+        # Unless `/__properties__/**` was explicitly included, always exclude it
         if not any(prefix == "/__properties" for prefix, _ in self.prefix):
             self.prefix.append(("/__properties", False))
 
@@ -484,7 +484,7 @@ class DatasetView:
         else:
             return partitions
 
-    def query(
+    def reader(
         self,
         *,
         index: str | None,
@@ -493,6 +493,15 @@ class DatasetView:
         using_index_values: Any = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
+        """
+        Create a reader over this DatasetView as a datafusion DataFrame.
+
+        The reader will return rows for all data that exists on the specified index.
+        It will either return 1 row per index value, or if using_index_values is provided,
+        it will instead generate rows for each of the provided values.
+
+        The operation is lazy. The data will not be read from the source dataset until consumed.
+        """
         full_contents = defaultdict(list)
 
         # Note: arrow_schema() here already describes the intended schema
