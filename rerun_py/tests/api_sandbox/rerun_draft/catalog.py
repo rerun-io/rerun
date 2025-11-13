@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import atexit
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import datafusion
 from rerun import catalog as _catalog
 
 if TYPE_CHECKING:
     from datetime import datetime
 
+    import datafusion
     import pyarrow as pa
 
 
@@ -19,6 +20,7 @@ class CatalogClient:
     def __init__(self, address: str, token: str | None = None) -> None:
         self._inner = _catalog.CatalogClient(address, token)
         self.tmpdirs = []
+        atexit.register(self._cleanup)
 
     def __repr__(self) -> str:
         return repr(self._inner)
@@ -108,7 +110,7 @@ class CatalogClient:
         """Returns a DataFusion session context for querying the catalog."""
         return self._inner.ctx
 
-    def __del__(self) -> None:
+    def _cleanup(self) -> None:
         # Safety net: avoid warning if GC happens late
         try:
             for tmpdir in self.tmpdirs:
@@ -305,17 +307,11 @@ class DatasetEntry(Entry):
         )
 
 
-class TableEntry(Entry, datafusion.DataFrame):
+class TableEntry(Entry):
     """A table entry in the catalog."""
 
     def __init__(self, inner: _catalog.TableEntry) -> None:
-        Entry.__init__(self, inner)
-        self._df: datafusion.DataFrame = inner.df()
-        datafusion.DataFrame.__init__(self, self._df.df)
-        self._inner = inner
-
-    def __datafusion_table_provider__(self) -> Any:
-        return self._inner.__datafusion_table_provider__()
+        super().__init__(inner)
 
     def client(self) -> CatalogClient:
         """Returns the CatalogClient associated with this table."""
@@ -332,6 +328,25 @@ class TableEntry(Entry, datafusion.DataFrame):
 
     def update(self, *, name: str | None = None) -> None:
         return self._inner.update(name=name)
+
+    def reader(self) -> datafusion.DataFrame:
+        """
+        Exposes the contents of the table via a datafusion DataFrame.
+
+        Note: this is equivalent to `catalog.ctx.table(<tablename>)`.
+
+        This operation is lazy. The data will not be read from the source table until consumed
+        from the DataFrame.
+        """
+        return self.client().get_table(name=self._inner.name)
+
+    def schema(self) -> pa.Schema:
+        """Returns the schema of the table."""
+        return self.reader().schema()
+
+    def to_polars(self) -> Any:
+        """Returns the table as a Polars DataFrame."""
+        return self.reader().to_polars()
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError

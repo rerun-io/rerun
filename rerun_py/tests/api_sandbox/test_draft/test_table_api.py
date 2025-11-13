@@ -18,7 +18,7 @@ def test_table_api() -> None:
             ]),
         )
 
-        assert isinstance(table, datafusion.DataFrame)
+        assert isinstance(table.reader(), datafusion.DataFrame)
 
         assert str(table.schema()) == inline_snapshot("""\
 rerun_segment_id: string
@@ -27,14 +27,14 @@ operator: string
 sorbet:version: '0.1.1'\
 """)
 
-        assert str(table.collect()) == inline_snapshot("[]")
+        assert str(table.reader().collect()) == inline_snapshot("[]")
 
         table.append(
             rerun_segment_id=["segment_001", "segment_002", "segment_003"],
             operator=["alice", "bob", "carol"],
         )
 
-        assert str(table.select("rerun_segment_id", "operator")) == inline_snapshot("""\
+        assert str(table.reader().select("rerun_segment_id", "operator")) == inline_snapshot("""\
 ┌─────────────────────┬─────────────────────┐
 │ rerun_segment_id    ┆ operator            │
 │ ---                 ┆ ---                 │
