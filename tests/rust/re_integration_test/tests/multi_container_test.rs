@@ -11,6 +11,8 @@ use re_viewport_blueprint::ViewBlueprint;
 fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
+        max_steps: Some(100), // Allow animations to finish
+        ..Default::default()
     });
     harness.init_recording();
 
