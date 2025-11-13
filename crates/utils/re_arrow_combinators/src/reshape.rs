@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, AsArray as _, FixedSizeListArray, ListArray, StructArray};
+use arrow::array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray};
 use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::Field;
 
@@ -296,63 +296,62 @@ impl Transform for Explode {
     type Target = ListArray;
 
     fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
-        let (outer_field, offsets, values, nulls) = source.clone().into_parts();
+        let values_array = source.values();
+        let offsets = source.offsets();
 
-        // Check if the inner type is also a List - if so, unwrap one level
-        let (field, new_values, inner_list_opt) =
-            if let Some(inner_list) = values.as_list_opt::<i32>() {
-                // Nested case: List<List<T>> → extract inner field
-                let (inner_field, _offsets, inner_values, _nulls) = inner_list.clone().into_parts();
-                (inner_field, inner_values, Some(inner_list))
-            } else {
-                // Simple case: List<T> → use outer field
-                (outer_field, values, None)
-            };
+        // Compute exact output size: each element produces one row, plus one row per null/empty list
+        let num_elements = (offsets[source.len()] - offsets[0]) as usize;
+        let empty_or_null_count = (0..source.len())
+            .filter(|&i| source.is_null(i) || offsets[i] == offsets[i + 1])
+            .count();
+        let capacity = num_elements + empty_or_null_count;
 
-        let mut new_offsets = vec![0i32];
-        let mut new_validity = Vec::new();
+        let mut new_offsets = Vec::with_capacity(capacity + 1);
+        new_offsets.push(0i32);
+
+        let mut new_validity = Vec::with_capacity(capacity);
         let mut current_offset = 0i32;
 
-        for i in 0..source.len() {
-            if nulls.as_ref().is_some_and(|n| n.is_null(i)) {
-                // Preserve null as a single null row
+        for (i, offset) in offsets.windows(2).enumerate() {
+            let start = offset[0];
+            let end = offset[1];
+
+            if source.is_null(i) {
                 new_validity.push(false);
                 new_offsets.push(current_offset);
+            } else if start == end {
+                new_validity.push(true);
+                new_offsets.push(current_offset);
             } else {
-                let start = offsets[i] as usize;
-                let end = offsets[i + 1] as usize;
-                let len = end - start;
-
-                if len == 0 {
-                    // Preserve empty list as a single empty row
-                    new_validity.push(true);
+                for j in start..end {
+                    new_validity.push(values_array.is_valid(j as usize));
+                    current_offset += 1;
                     new_offsets.push(current_offset);
-                } else if let Some(inner_list) = inner_list_opt {
-                    // Nested case: scatter inner lists
-                    let inner_offsets = inner_list.value_offsets();
-
-                    for j in start..end {
-                        new_validity.push(!inner_list.is_null(j));
-                        let inner_start = inner_offsets[j];
-                        let inner_end = inner_offsets[j + 1];
-                        current_offset += inner_end - inner_start;
-                        new_offsets.push(current_offset);
-                    }
-                } else {
-                    // Simple case: each element becomes a single-element list
-                    for _j in start..end {
-                        new_validity.push(true);
-                        current_offset += 1;
-                        new_offsets.push(current_offset);
-                    }
                 }
             }
         }
 
+        // Slice the values array to align with our new 0-based offsets.
+        // If source is a slice (e.g., offsets [100, 102, 105]), we need elements at indices 100-104.
+        // Our new_offsets always start from 0, so we slice values_array to get just the needed range.
+        let slice_start = offsets[0] as usize;
+        let slice_end = offsets[source.len()] as usize;
+        let values = if slice_end > slice_start {
+            values_array.slice(slice_start, slice_end - slice_start)
+        } else {
+            values_array.slice(0, 0)
+        };
+
+        // We know that `source` is a `ListArray` by it's type. But Arrow won't expose its field directly.
+        let field = match source.data_type() {
+            arrow::datatypes::DataType::List(f) => f.clone(),
+            _ => unreachable!(),
+        };
+
         Ok(ListArray::new(
             field,
             OffsetBuffer::new(new_offsets.into()),
-            new_values.clone(),
+            values,
             Some(NullBuffer::from(new_validity)),
         ))
     }
