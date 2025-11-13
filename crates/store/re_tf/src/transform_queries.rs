@@ -50,6 +50,10 @@ fn has_row_any_component(
 /// Today, `condition_frame_id_component` is either `child_frame_id` for `Transform3D`/`Pinhole` or `frame_id` for `InstancePoses3D`.
 ///
 /// Since everything has the same row-id, everything has to be on the same chunk -> we return a unit chunk!
+///
+/// Does **not** handle clears. Our transform cache already handles clear events separately,
+/// since we eagerly create events whenever a change occurs.
+/// (Unlike transform components, we immediately read out clears and add those clear events to our event book-keeping)
 fn atomic_latest_at_query_for_frame(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
