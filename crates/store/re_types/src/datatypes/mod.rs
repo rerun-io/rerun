@@ -51,6 +51,7 @@ mod tensor_dimension_index_selection;
 mod tensor_dimension_selection;
 mod tensor_dimension_selection_ext;
 mod text_log_column;
+mod text_log_column_ext;
 mod utf8pair;
 mod utf8pair_ext;
 mod uuid;

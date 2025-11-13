@@ -33,13 +33,13 @@ pub struct TextLogRows {
 impl TextLogRows {
     /// Returns the [`ComponentDescriptor`] for [`Self::log_levels`].
     ///
-    /// The corresponding component is [`crate::components::TextLogLevel`].
+    /// The corresponding component is [`crate::blueprint::components::TextLogLevelList`].
     #[inline]
     pub fn descriptor_log_levels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
             component: "TextLogRows:log_levels".into(),
-            component_type: Some("rerun.components.TextLogLevel".into()),
+            component_type: Some("rerun.blueprint.components.TextLogLevelList".into()),
         }
     }
 }
@@ -121,11 +121,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogRows {}
 impl TextLogRows {
     /// Create a new `TextLogRows`.
     #[inline]
-    pub fn new(
-        log_levels: impl IntoIterator<Item = impl Into<crate::components::TextLogLevel>>,
-    ) -> Self {
+    pub fn new(log_levels: impl Into<crate::blueprint::components::TextLogLevelList>) -> Self {
         Self {
-            log_levels: try_serialize_field(Self::descriptor_log_levels(), log_levels),
+            log_levels: try_serialize_field(Self::descriptor_log_levels(), [log_levels]),
         }
     }
 
@@ -141,7 +139,7 @@ impl TextLogRows {
         use ::re_types_core::Loggable as _;
         Self {
             log_levels: Some(SerializedComponentBatch::new(
-                crate::components::TextLogLevel::arrow_empty(),
+                crate::blueprint::components::TextLogLevelList::arrow_empty(),
                 Self::descriptor_log_levels(),
             )),
         }
@@ -151,9 +149,9 @@ impl TextLogRows {
     #[inline]
     pub fn with_log_levels(
         mut self,
-        log_levels: impl IntoIterator<Item = impl Into<crate::components::TextLogLevel>>,
+        log_levels: impl Into<crate::blueprint::components::TextLogLevelList>,
     ) -> Self {
-        self.log_levels = try_serialize_field(Self::descriptor_log_levels(), log_levels);
+        self.log_levels = try_serialize_field(Self::descriptor_log_levels(), [log_levels]);
         self
     }
 }

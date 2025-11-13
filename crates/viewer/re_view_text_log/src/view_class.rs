@@ -2,10 +2,11 @@ use std::collections::BTreeSet;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimelineName};
+use re_types::ViewClassIdentifier;
 use re_types::blueprint::archetypes::{TextLogColumns, TextLogRows};
-use re_types::blueprint::components::TextLogColumn;
+use re_types::blueprint::components::{TextLogColumnList, TextLogLevelList};
+use re_types::blueprint::datatypes as bp_datatypes;
 use re_types::{View as _, datatypes};
-use re_types::{ViewClassIdentifier, components::TextLogLevel};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
 use re_viewer_context::{
@@ -30,7 +31,7 @@ pub struct TextViewState {
 
     seen_levels: BTreeSet<String>,
 
-    last_columns: Vec<TextLogColumn>,
+    last_columns: Vec<datatypes::TextLogColumn>,
 }
 
 impl ViewState for TextViewState {
@@ -75,7 +76,7 @@ Filter message types and toggle column visibility in a selection panel.",
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_array_fallback_provider(
+        system_registry.register_fallback_provider(
             TextLogColumns::descriptor_columns().component,
             |ctx| {
                 let mut columns: Vec<_> = ctx
@@ -83,21 +84,19 @@ Filter message types and toggle column visibility in a selection panel.",
                     .times_per_timeline()
                     .timelines()
                     .map(|timeline| {
-                        TextLogColumn(datatypes::TextLogColumn::Timeline(
-                            timeline.name().as_str().into(),
-                        ))
+                        datatypes::TextLogColumn::Timeline(timeline.name().as_str().into())
                     })
                     .collect();
 
-                columns.push(datatypes::TextLogColumn::EntityPath.into());
-                columns.push(datatypes::TextLogColumn::LogLevel.into());
-                columns.push(datatypes::TextLogColumn::Body.into());
+                columns.push(datatypes::TextLogColumn::EntityPath);
+                columns.push(datatypes::TextLogColumn::LogLevel);
+                columns.push(datatypes::TextLogColumn::Body);
 
-                columns
+                TextLogColumnList(bp_datatypes::TextLogColumnList { columns })
             },
         );
 
-        system_registry.register_array_fallback_provider(
+        system_registry.register_fallback_provider(
             TextLogRows::descriptor_log_levels().component,
             |ctx| {
                 let Ok(state) = ctx.view_state().downcast_ref::<TextViewState>() else {
@@ -105,13 +104,15 @@ Filter message types and toggle column visibility in a selection panel.",
                         "Failed to get `TextViewState` in text log view fallback, this is a bug."
                     );
 
-                    return Vec::new();
+                    return TextLogLevelList::default();
                 };
-                state
+                let log_levels = state
                     .seen_levels
                     .iter()
-                    .map(|lvl| TextLogLevel::from(lvl.as_str()))
-                    .collect::<Vec<_>>()
+                    .map(|lvl| datatypes::Utf8::from(lvl.as_str()))
+                    .collect::<Vec<_>>();
+
+                TextLogLevelList(bp_datatypes::TextLogLevelList { log_levels })
             },
         );
         system_registry.register_visualizer::<TextLogSystem>()
@@ -196,16 +197,19 @@ Filter message types and toggle column visibility in a selection panel.",
         );
 
         let view_ctx = self.view_context(ctx, query.view_id, state);
-        let columns = columns_property.component_array_or_fallback::<TextLogColumn>(
+        let columns_list = columns_property.component_or_fallback::<TextLogColumnList>(
             &view_ctx,
             TextLogColumns::descriptor_columns().component,
         )?;
-        let levels = rows_property.component_array_or_fallback::<TextLogLevel>(
+        let columns = &columns_list.0.columns;
+
+        let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
             &view_ctx,
             TextLogRows::descriptor_log_levels().component,
         )?;
+        let levels = &levels_list.0.log_levels;
 
-        let reset_column_widths = if columns != state.last_columns {
+        let reset_column_widths = if columns.as_slice() != state.last_columns.as_slice() {
             state.last_columns = columns.clone();
             true
         } else {
@@ -226,7 +230,7 @@ Filter message types and toggle column visibility in a selection panel.",
             .filter(|te| {
                 te.level
                     .as_ref()
-                    .is_none_or(|lvl| levels.iter().any(|l| l == lvl))
+                    .is_none_or(|lvl| levels.iter().any(|l| l.as_str() == lvl.as_str()))
             })
             .collect::<Vec<_>>();
 
@@ -252,7 +256,7 @@ Filter message types and toggle column visibility in a selection panel.",
                         ctx,
                         ui,
                         state,
-                        &columns,
+                        columns,
                         reset_column_widths,
                         &entries,
                         scroll_to_row,
@@ -275,7 +279,7 @@ fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &TextViewState,
-    columns: &[TextLogColumn],
+    columns: &[datatypes::TextLogColumn],
     reset_column_widths: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
@@ -306,7 +310,7 @@ fn table_ui(
     let mut current_time_y = None; // where to draw the current time indicator cursor
 
     for col in columns {
-        match **col {
+        match col {
             datatypes::TextLogColumn::Timeline(_) | datatypes::TextLogColumn::EntityPath => {
                 table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
             }
@@ -341,7 +345,7 @@ fn table_ui(
 
                 for col in columns {
                     row.col(|ui| {
-                        match &col.0 {
+                        match col {
                             datatypes::TextLogColumn::Timeline(name) => {
                                 let timeline = TimelineName::new(name);
                                 let row_time = entry
@@ -414,8 +418,8 @@ fn table_ui(
     }
 }
 
-fn column_kind_name(column: &TextLogColumn) -> &'static str {
-    match &column.0 {
+fn column_kind_name(column: &datatypes::TextLogColumn) -> &'static str {
+    match column {
         datatypes::TextLogColumn::Timeline(_) => "Timeline",
         datatypes::TextLogColumn::EntityPath => "Entity Path",
         datatypes::TextLogColumn::LogLevel => "Level",
@@ -423,8 +427,8 @@ fn column_kind_name(column: &TextLogColumn) -> &'static str {
     }
 }
 
-fn column_name_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, column: &TextLogColumn) {
-    match &column.0 {
+fn column_name_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, column: &datatypes::TextLogColumn) {
+    match column {
         datatypes::TextLogColumn::Timeline(name) => {
             item_ui::timeline_button(ctx, ui, &TimelineName::new(name));
         }
@@ -467,15 +471,14 @@ fn view_property_ui_columns(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                     field,
                     &|_| {},
                     Some(&|ui| {
-                        let Ok(mut columns) = property
-                            .component_array_or_fallback::<TextLogColumn>(
-                                ctx,
-                                TextLogColumns::descriptor_columns().component,
-                            )
-                        else {
+                        let Ok(columns_list) = property.component_or_fallback::<TextLogColumnList>(
+                            ctx,
+                            TextLogColumns::descriptor_columns().component,
+                        ) else {
                             ui.error_label("Failed to query columns component");
                             return;
                         };
+                        let mut columns = columns_list.0.columns.clone();
                         let mut any_change = false;
                         let mut remove = Vec::new();
                         let res = egui_dnd::dnd(ui, "text_log_columns_dnd").show(
@@ -528,19 +531,20 @@ fn view_property_ui_columns(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             .on_hover_text("Add column")
                             .clicked()
                         {
-                            let fallback_columns =
-                                re_viewer_context::typed_array_fallback_for::<TextLogColumn>(
+                            let fallback_columns_list =
+                                re_viewer_context::typed_fallback_for::<TextLogColumnList>(
                                     &query_ctx,
                                     TextLogColumns::descriptor_columns().component,
                                 );
 
+                            let fallback_columns = &fallback_columns_list.0.columns;
+
                             let new_column = fallback_columns
-                                .into_iter()
+                                .iter()
                                 .find(|c| !columns.contains(c))
-                                .or_else(|| columns.last().cloned())
-                                .unwrap_or(TextLogColumn(
-                                    re_types::datatypes::TextLogColumn::EntityPath,
-                                ));
+                                .or_else(|| columns.last())
+                                .cloned()
+                                .unwrap_or(re_types::datatypes::TextLogColumn::EntityPath);
 
                             columns.push(new_column);
                             any_change = true;
@@ -550,7 +554,7 @@ fn view_property_ui_columns(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             property.save_blueprint_component(
                                 ctx.viewer_ctx,
                                 &TextLogColumns::descriptor_columns(),
-                                &columns,
+                                &TextLogColumnList(bp_datatypes::TextLogColumnList { columns }),
                             );
                         }
                     }),
@@ -581,20 +585,20 @@ fn view_property_ui_columns(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
 fn column_definition_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    column: &mut TextLogColumn,
+    column: &mut datatypes::TextLogColumn,
     any_change: &mut bool,
 ) {
     egui::ComboBox::from_id_salt("column_types")
         .selected_text(column_kind_name(column))
         .show_ui(ui, |ui| {
-            let timeline = if let datatypes::TextLogColumn::Timeline(name) = &column.0 {
+            let timeline = if let datatypes::TextLogColumn::Timeline(name) = column {
                 name.as_str().to_owned()
             } else {
                 ctx.viewer_ctx.time_ctrl.timeline().name().to_string()
             };
             let mut selectable_value = |value: datatypes::TextLogColumn| {
-                let text = column_kind_name(&TextLogColumn(value.clone()));
-                *any_change |= ui.selectable_value(&mut column.0, value, text).changed();
+                let text = column_kind_name(&value);
+                *any_change |= ui.selectable_value(column, value, text).changed();
             };
             selectable_value(datatypes::TextLogColumn::Timeline(datatypes::Utf8::from(
                 timeline,
@@ -606,7 +610,7 @@ fn column_definition_ui(
             selectable_value(datatypes::TextLogColumn::Body);
         });
 
-    if let datatypes::TextLogColumn::Timeline(name) = &mut column.0 {
+    if let datatypes::TextLogColumn::Timeline(name) = column {
         egui::ComboBox::from_id_salt("column_timeline_name")
             .selected_text(name.as_str())
             .show_ui(ui, |ui| {
@@ -661,7 +665,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             return;
                         };
 
-                        let Ok(levels) = property.component_array_or_fallback::<TextLogLevel>(
+                        let Ok(levels_list) = property.component_or_fallback::<TextLogLevelList>(
                             ctx,
                             TextLogRows::descriptor_log_levels().component,
                         ) else {
@@ -669,38 +673,41 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             return;
                         };
 
+                        let levels = &levels_list.0.log_levels;
+
                         let mut new_levels = state
                             .seen_levels
                             .iter()
                             .map(|s| {
-                                let text_log_level = TextLogLevel::from(s.as_str());
-                                let level_active = levels.contains(&text_log_level);
-                                (text_log_level, level_active)
+                                let level_active = levels.iter().any(|l| l.as_str() == s);
+                                (s.clone(), level_active)
                             })
                             .chain(
                                 levels
                                     .iter()
                                     .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
-                                    .map(|lvl| (lvl.clone(), true)),
+                                    .map(|lvl| (lvl.as_str().to_owned(), true)),
                             )
                             .collect::<Vec<_>>();
 
                         let mut any_change = false;
                         for (lvl, active) in &mut new_levels {
                             any_change |= ui
-                                .re_checkbox(active, level_to_rich_text(ui, lvl.as_str()))
+                                .re_checkbox(active, level_to_rich_text(ui, lvl))
                                 .changed();
                         }
 
                         if any_change {
+                            let log_levels: Vec<_> = new_levels
+                                .into_iter()
+                                .filter(|(_, active)| *active)
+                                .map(|(lvl, _)| datatypes::Utf8::from(lvl))
+                                .collect();
+
                             property.save_blueprint_component(
                                 ctx.viewer_ctx,
                                 &TextLogRows::descriptor_log_levels(),
-                                &new_levels
-                                    .into_iter()
-                                    .filter(|(_, active)| *active)
-                                    .map(|(lvl, _)| lvl)
-                                    .collect::<Vec<_>>(),
+                                &TextLogLevelList(bp_datatypes::TextLogLevelList { log_levels }),
                             );
                         }
                     }),

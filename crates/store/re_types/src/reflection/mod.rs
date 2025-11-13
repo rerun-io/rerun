@@ -388,13 +388,23 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TextLogColumn as Component>::name(),
+            <TextLogColumnList as Component>::name(),
             ComponentReflection {
-                docstring_md: "A column in a text log view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "A list of columns in a text log view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
-                datatype: TextLogColumn::arrow_datatype(),
-                verify_arrow_array: TextLogColumn::verify_arrow_array,
+                datatype: TextLogColumnList::arrow_datatype(),
+                verify_arrow_array: TextLogColumnList::verify_arrow_array,
+            },
+        ),
+        (
+            <TextLogLevelList as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A list of text log levels to display.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TextLogLevelList::arrow_datatype(),
+                verify_arrow_array: TextLogLevelList::verify_arrow_array,
             },
         ),
         (
@@ -4000,7 +4010,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![ArchetypeFieldReflection {
                     name: "columns",
                     display_name: "Columns",
-                    component_type: "rerun.blueprint.components.TextLogColumn".into(),
+                    component_type: "rerun.blueprint.components.TextLogColumnList".into(),
                     docstring_md: "All columns to be displayed.",
                     is_required: false,
                 }],
@@ -4016,7 +4026,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![ArchetypeFieldReflection {
                     name: "log_levels",
                     display_name: "Log levels",
-                    component_type: "rerun.components.TextLogLevel".into(),
+                    component_type: "rerun.blueprint.components.TextLogLevelList".into(),
                     docstring_md: "Log levels to display.",
                     is_required: false,
                 }],

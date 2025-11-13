@@ -39,8 +39,8 @@ DenseUnion {
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `TextLogColumn`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TextLogColumn.html)
- * 🐍 [Python API docs for `TextLogColumn`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.TextLogColumn)
- * 🦀 [Rust API docs for `TextLogColumn`](https://docs.rs/rerun/latest/rerun/datatypes/enum.TextLogColumn.html)
+ * 🌊 [C++ API docs for `TextLogColumn`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TextLogColumn.html?speculative-link)
+ * 🐍 [Python API docs for `TextLogColumn`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.TextLogColumn)
+ * 🦀 [Rust API docs for `TextLogColumn`](https://docs.rs/rerun/latest/rerun/datatypes/enum.TextLogColumn.html?speculative-link)
 
 

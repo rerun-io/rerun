@@ -35,29 +35,6 @@ pub fn typed_fallback_for<C: Component>(
     v
 }
 
-/// Tries to get a fallback for the type `C`.
-///
-/// This function is not as performant as could be, fallbacks are dynamically retrieved
-/// from the [`FallbackProviderRegistry`], which returns an [`ArrayRef`] that has to be
-/// deserialized.
-///
-/// Therefore, if it can be avoided, this should not be called in hot code paths.
-pub fn typed_array_fallback_for<C: Component>(
-    query_context: &QueryContext<'_>,
-    component: ComponentIdentifier,
-) -> Vec<C> {
-    let array = query_context
-        .viewer_ctx()
-        .component_fallback_registry
-        .fallback_for(component, Some(C::name()), query_context);
-
-    let Some(v) = C::from_arrow(&array).ok() else {
-        panic!("Invalid fallback provider for `{component}`, failed deserializing result.",);
-    };
-
-    v
-}
-
 /// Error type for a fallback request.
 #[derive(thiserror::Error, Debug)]
 pub enum ComponentFallbackError {
@@ -199,26 +176,6 @@ impl FallbackProviderRegistry {
                 let value = provider(query_context);
 
                 C::to_arrow([Cow::Owned(value)])
-            }),
-        );
-    }
-
-    pub fn register_view_array_fallback_provider<
-        C: re_types::Component,
-        I: IntoIterator<Item = C>,
-    >(
-        &mut self,
-        view: ViewClassIdentifier,
-        component: ComponentIdentifier,
-        provider: impl Fn(&QueryContext<'_>) -> I + Send + Sync + 'static,
-    ) {
-        self.register_dyn_view_fallback_provider(
-            view,
-            component,
-            Box::new(move |query_context| {
-                let values = provider(query_context);
-
-                C::to_arrow(values.into_iter().map(Cow::Owned))
             }),
         );
     }

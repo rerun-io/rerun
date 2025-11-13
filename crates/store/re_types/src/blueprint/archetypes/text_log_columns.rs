@@ -33,13 +33,13 @@ pub struct TextLogColumns {
 impl TextLogColumns {
     /// Returns the [`ComponentDescriptor`] for [`Self::columns`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::TextLogColumn`].
+    /// The corresponding component is [`crate::blueprint::components::TextLogColumnList`].
     #[inline]
     pub fn descriptor_columns() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
             component: "TextLogColumns:columns".into(),
-            component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
+            component_type: Some("rerun.blueprint.components.TextLogColumnList".into()),
         }
     }
 }
@@ -119,11 +119,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogColumns {}
 impl TextLogColumns {
     /// Create a new `TextLogColumns`.
     #[inline]
-    pub fn new(
-        columns: impl IntoIterator<Item = impl Into<crate::blueprint::components::TextLogColumn>>,
-    ) -> Self {
+    pub fn new(columns: impl Into<crate::blueprint::components::TextLogColumnList>) -> Self {
         Self {
-            columns: try_serialize_field(Self::descriptor_columns(), columns),
+            columns: try_serialize_field(Self::descriptor_columns(), [columns]),
         }
     }
 
@@ -139,7 +137,7 @@ impl TextLogColumns {
         use ::re_types_core::Loggable as _;
         Self {
             columns: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::TextLogColumn::arrow_empty(),
+                crate::blueprint::components::TextLogColumnList::arrow_empty(),
                 Self::descriptor_columns(),
             )),
         }
@@ -149,9 +147,9 @@ impl TextLogColumns {
     #[inline]
     pub fn with_columns(
         mut self,
-        columns: impl IntoIterator<Item = impl Into<crate::blueprint::components::TextLogColumn>>,
+        columns: impl Into<crate::blueprint::components::TextLogColumnList>,
     ) -> Self {
-        self.columns = try_serialize_field(Self::descriptor_columns(), columns);
+        self.columns = try_serialize_field(Self::descriptor_columns(), [columns]);
         self
     }
 }

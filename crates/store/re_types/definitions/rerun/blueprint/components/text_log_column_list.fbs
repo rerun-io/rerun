@@ -1,0 +1,14 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A list of columns in a text log view.
+table TextLogColumnList (
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// The list of columns.
+  columns: rerun.blueprint.datatypes.TextLogColumnList (order: 100);
+}

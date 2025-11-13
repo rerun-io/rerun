@@ -5,18 +5,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
 )
-from ...blueprint import components as blueprint_components
+from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
-
-if TYPE_CHECKING:
-    from ... import datatypes
 
 __all__ = ["TextLogColumns"]
 
@@ -29,7 +26,7 @@ class TextLogColumns(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, columns: datatypes.TextLogColumnArrayLike) -> None:
+    def __init__(self: Any, columns: blueprint_datatypes.TextLogColumnListLike) -> None:
         """
         Create a new instance of the TextLogColumns archetype.
 
@@ -64,7 +61,7 @@ class TextLogColumns(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        columns: datatypes.TextLogColumnArrayLike | None = None,
+        columns: blueprint_datatypes.TextLogColumnListLike | None = None,
     ) -> TextLogColumns:
         """
         Update only some specific fields of a `TextLogColumns`.
@@ -98,10 +95,10 @@ class TextLogColumns(Archetype):
         """Clear all the fields of a `TextLogColumns`."""
         return cls.from_fields(clear_unset=True)
 
-    columns: blueprint_components.TextLogColumnBatch | None = field(
+    columns: blueprint_components.TextLogColumnListBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.TextLogColumnBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TextLogColumnListBatch._converter,  # type: ignore[misc]
     )
     # All columns to be displayed.
     #

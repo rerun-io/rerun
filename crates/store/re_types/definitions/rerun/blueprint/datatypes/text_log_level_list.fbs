@@ -1,0 +1,12 @@
+namespace rerun.blueprint.datatypes;
+
+
+/// A list of text log levels.
+table TextLogLevelList (
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rerun.scope": "blueprint",
+  "attr.docs.unreleased"
+) {
+  /// Log levels to display.
+  log_levels: [rerun.datatypes.Utf8] (order: 100);
+}

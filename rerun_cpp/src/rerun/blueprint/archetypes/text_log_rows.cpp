@@ -9,7 +9,9 @@ namespace rerun::blueprint::archetypes {
     TextLogRows TextLogRows::clear_fields() {
         auto archetype = TextLogRows();
         archetype.log_levels =
-            ComponentBatch::empty<rerun::components::TextLogLevel>(Descriptor_log_levels)
+            ComponentBatch::empty<rerun::blueprint::components::TextLogLevelList>(
+                Descriptor_log_levels
+            )
                 .value_or_throw();
         return archetype;
     }
