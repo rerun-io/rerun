@@ -149,12 +149,32 @@ impl CachedTransformsForTimeline {
         }
     }
 
+    fn add_clear(&mut self, cleared_path: &EntityPath, cleared_time: TimeInt) {
+        let Some(affected_child_frame_per_start_time) =
+            self.per_entity_affected_child_frames.get_mut(cleared_path)
+        else {
+            // This clear doesn't affect any known frames.
+            return;
+        };
+
+        Self::add_clear_internal(
+            affected_child_frame_per_start_time,
+            &mut self.per_child_frame_transforms,
+            cleared_path,
+            cleared_time,
+        );
+    }
+
     fn add_recursive_clears(
         &mut self,
         recursively_cleared_entity_path: &EntityPath,
-        mut times: BTreeSet<TimeInt>,
+        mut recursively_cleared_times: BTreeSet<TimeInt>,
     ) {
         re_tracing::profile_function!();
+
+        if recursively_cleared_times.is_empty() {
+            return;
+        }
 
         // Add clears to all existing entities that it affects.
         for (cleared_path, affected_child_frame_per_start_time) in
@@ -164,34 +184,13 @@ impl CachedTransformsForTimeline {
                 continue;
             }
 
-            for time in &times {
-                // Which child frames are affected by this clear?
-                let Some((_, child_frames)) = affected_child_frame_per_start_time
-                    .range_starts
-                    .range(..=time)
-                    .next_back()
-                else {
-                    debug_assert!(
-                        false,
-                        "For any given time, there should always be a time in affected_child_frame_per_start_time that is <= time."
-                    );
-                    continue;
-                };
-
-                // Insert clears into the per-child datastructures.
-                for frame in child_frames {
-                    if let Some(frame_transforms) = self.per_child_frame_transforms.get_mut(frame) {
-                        frame_transforms
-                            .events
-                            .get_mut()
-                            .insert_clear(*time, cleared_path);
-                    } else {
-                        debug_panic_missing_child_frame_transforms_for_update_on_entity(
-                            cleared_path,
-                            *frame,
-                        );
-                    }
-                }
+            for time in &recursively_cleared_times {
+                Self::add_clear_internal(
+                    affected_child_frame_per_start_time,
+                    &mut self.per_child_frame_transforms,
+                    cleared_path,
+                    *time,
+                );
             }
         }
 
@@ -199,7 +198,41 @@ impl CachedTransformsForTimeline {
         self.recursive_clears
             .entry(recursively_cleared_entity_path.clone())
             .or_default()
-            .append(&mut times);
+            .append(&mut recursively_cleared_times);
+    }
+
+    fn add_clear_internal(
+        affected_child_frame_per_start_time: &EntityToFrameOverTime,
+        per_child_frame_transforms: &mut IntMap<TransformFrameIdHash, TransformsForChildFrame>,
+        cleared_path: &EntityPath,
+        cleared_time: TimeInt,
+    ) {
+        let Some((_, child_frames)) = affected_child_frame_per_start_time
+            .range_starts
+            .range(..=cleared_time)
+            .next_back()
+        else {
+            debug_assert!(
+                false,
+                "For any given time, there should always be a time in affected_child_frame_per_start_time that is <= time."
+            );
+            return;
+        };
+
+        // Insert clears into the per-child datastructures.
+        for frame in child_frames {
+            if let Some(frame_transforms) = per_child_frame_transforms.get_mut(frame) {
+                frame_transforms
+                    .events
+                    .get_mut()
+                    .insert_clear(cleared_time, cleared_path);
+            } else {
+                debug_panic_missing_child_frame_transforms_for_update_on_entity(
+                    cleared_path,
+                    *frame,
+                );
+            }
+        }
     }
 
     fn remove_recursive_clears(
@@ -451,13 +484,12 @@ impl PartialEq for TransformsForChildFrame {
 }
 
 impl TransformsForChildFrame {
-    /// Invalidates all transforms for the given aspects starting at the given time `min_time` (inclusive) and adds new invalidated times.
+    /// Invalidates all transforms for the given aspects for the given times.
     ///
     /// [`TransformAspect::Clear`] causes all types of transforms to be invalidated and being added to.
     pub fn insert_invalidated_transform_events<I: Iterator<Item = TimeInt>>(
         &mut self,
         aspects: TransformAspect,
-        min_time: TimeInt,
         get_new_invalidated_times: impl Fn() -> I,
         entity_path: &EntityPath,
     ) {
@@ -467,23 +499,10 @@ impl TransformsForChildFrame {
             pinhole_projections,
         } = self.events.get_mut();
 
-        // This invalidates any time _after_ the first event in this chunk.
-        // (e.g. if a rotation is added prior to translations later on,
-        // then the resulting transforms at those translations change as well for latest-at queries)
-
-        // Min time is conservative - technically we want to check this for each component individually,
-        // but using the same for all is fine as it rarely matters.
-        // (it may produce some false positive transform updates)
-
         // TODO(andreas): this is clearly _too_ conservative for long recordings.
         // We'd like to know all points in time when a transform is fully "shadowed", so we don't have to invalidate as aggressively.
 
         if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
-            // Invalidate existing transforms after min_time (rationale see above).
-            for (_, transform) in frame_transforms.range_mut(min_time..) {
-                *transform = TransformEntry::new(transform.entity_path.clone());
-            }
-
             // Add new invalidated transforms.
             frame_transforms.extend(
                 get_new_invalidated_times()
@@ -494,11 +513,6 @@ impl TransformsForChildFrame {
         if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
             let pose_transforms = pose_transforms.get_or_insert_with(Box::default);
 
-            // Invalidate existing transforms after min_time (rationale see above).
-            for (_, transform) in pose_transforms.range_mut(min_time..) {
-                *transform = TransformEntry::new(transform.entity_path.clone());
-            }
-
             // Add new invalidated transforms.
             pose_transforms.extend(
                 get_new_invalidated_times()
@@ -508,11 +522,6 @@ impl TransformsForChildFrame {
 
         if aspects.intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear) {
             let pinhole_projections = pinhole_projections.get_or_insert_with(Box::default);
-
-            // Invalidate existing transforms after min_time (rationale see above).
-            for (_, transform) in pinhole_projections.range_mut(min_time..) {
-                *transform = TransformEntry::new(transform.entity_path.clone());
-            }
 
             // Add new invalidated transforms.
             pinhole_projections.extend(
@@ -907,7 +916,6 @@ impl TransformResolutionCache {
 
                     frame_transforms.insert_invalidated_transform_events(
                         aspects,
-                        time_range.start,
                         || {
                             times_with_potential_update
                                 .iter()
@@ -943,26 +951,26 @@ impl TransformResolutionCache {
                 }
             }
 
-            // Keep track of recursive clears.
+            // Keep track of clears.
             if aspects.contains(TransformAspect::Clear) {
                 re_tracing::profile_scope!("check for recursive clears");
 
                 let component = archetypes::Clear::descriptor_is_recursive().component;
 
-                let recursively_cleared_times = chunk
+                let mut recursively_cleared_times = BTreeSet::new();
+                for ((time, _row_id), is_recursive_slice) in chunk
                     .iter_component_indices(*timeline, component)
                     .zip(chunk.iter_slices::<bool>(component))
-                    .filter_map(|((time, _row_id), bool_slice)| {
-                        bool_slice
-                            .values()
-                            .first()
-                            .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
-                    })
-                    .collect::<BTreeSet<_>>();
-
-                if !recursively_cleared_times.is_empty() {
-                    per_timeline.add_recursive_clears(entity_path, recursively_cleared_times);
+                {
+                    if let Some(is_recursive) = is_recursive_slice.values().first() {
+                        if *is_recursive != 0 {
+                            recursively_cleared_times.insert(time);
+                        } else {
+                            per_timeline.add_clear(entity_path, time);
+                        }
+                    }
                 }
+                per_timeline.add_recursive_clears(entity_path, recursively_cleared_times);
             }
         }
     }
@@ -1028,7 +1036,6 @@ impl TransformResolutionCache {
                 .or_insert_with(|| TransformsForChildFrame::new_empty(child_frame))
                 .insert_invalidated_transform_events(
                     aspects,
-                    TimeInt::STATIC,
                     || std::iter::once(TimeInt::STATIC),
                     entity_path,
                 );
@@ -1049,7 +1056,6 @@ impl TransformResolutionCache {
 
                 entity_transforms.insert_invalidated_transform_events(
                     aspects,
-                    TimeInt::STATIC,
                     || std::iter::once(TimeInt::STATIC),
                     entity_path,
                 );
@@ -2148,6 +2154,12 @@ mod tests {
 
         Ok(())
     }
+
+    // TODO: are we handling...
+    // * insert transform
+    // * process cache
+    // * insert clear
+    // * process cache
 
     #[test]
     fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
