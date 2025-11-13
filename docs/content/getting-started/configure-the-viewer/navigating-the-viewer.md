@@ -211,5 +211,5 @@ This is particularly valuable for:
 ## Next steps
 
 - **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
-- **Learn about overrides**: See [Visualizers and Overrides](../concepts/visualizers-and-overrides.md) for per-entity customization
+- **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for per-entity customization
 - **API Reference**: Browse the complete [Blueprint API](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control
