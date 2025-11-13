@@ -2066,7 +2066,7 @@ mod tests {
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                // Note that this doesn't clear anything that could be inserted at time 2.
+                // Note that this clears anything that could be inserted at time 2 due to atomic-query semantics.
                 &archetypes::Transform3D::update_fields().with_translation([2.0, 3.0, 4.0]),
             )
             .build()?;
@@ -2101,7 +2101,7 @@ mod tests {
             );
         }
 
-        // Add a transform between the two that invalidates the one at time stamp 3.
+        // Add a transform between the two.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
@@ -2133,22 +2133,14 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(-1.0, -2.0, -3.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(1.0, 2.0, 3.0),
-                ),
+                transform: DAffine3::from_scale(glam::dvec3(-1.0, -2.0, -3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(-1.0, -2.0, -3.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(2.0, 3.0, 4.0),
-                ),
+                transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0),),
             })
         );
 
