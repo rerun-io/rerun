@@ -18,7 +18,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness.log_entity("boxes3d", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(0.0, 0.0, 0.0)],
                 [(1.0, 0.4, 0.2)],
@@ -50,7 +50,7 @@ pub async fn test_deselect_on_escape() {
     // Select view, click on dropdown, then press escape, view remains selected
     harness.blueprint_tree().click_label("3D view");
     harness.set_selection_panel_opened(true);
-    harness.selection_panel().click_nth_label("Kind", 1);
+    harness.click_label("GradientDark");
     harness.snapshot_app("deselect_on_escape_2");
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("deselect_on_escape_3");
