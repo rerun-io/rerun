@@ -11,6 +11,7 @@ use arrow::{
     compute::take,
     datatypes::{DataType, Field},
 };
+use itertools::Either;
 use nohash_hasher::IntMap;
 
 use re_arrow_combinators::{
@@ -222,22 +223,19 @@ impl Lens {
     }
 
     /// Applies this lens and creates one or more chunks.
-    fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
+    fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, LensError>> {
         let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
         let Some(column) = found else {
-            return Default::default();
+            return Either::Left(std::iter::empty());
         };
 
-        self.outputs
-            .iter()
-            .filter_map(|output| match output {
-                LensKind::Columns(one_to_one) => one_to_one.apply(chunk, column),
-                LensKind::StaticColumns(static_columns) => static_columns.apply(chunk, column),
-                LensKind::ScatterColumns(one_to_many) => one_to_many.apply(chunk, column),
-            })
-            .collect()
+        Either::Right(self.outputs.iter().map(|output| match output {
+            LensKind::Columns(one_to_one) => one_to_one.apply(chunk, column),
+            LensKind::StaticColumns(static_columns) => static_columns.apply(chunk, column),
+            LensKind::ScatterColumns(one_to_many) => one_to_many.apply(chunk, column),
+        }))
     }
 }
 
@@ -314,7 +312,7 @@ impl OneToOne {
     /// The output chunk inherits all timelines from the input chunk, with additional timelines
     /// extracted from the component data if specified. Component columns are transformed according
     /// to the provided operations.
-    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Option<Chunk> {
+    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Result<Chunk, LensError> {
         let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
         let output_component_columns = collect_output_components_iter(input, &self.components);
@@ -326,18 +324,12 @@ impl OneToOne {
         let mut chunk_times = chunk.timelines().clone();
         chunk_times.extend(output_time_columns);
 
-        Chunk::from_auto_row_ids(
+        Ok(Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             chunk_times,
             output_component_columns.collect(),
-        )
-        .inspect_err(|err| {
-            re_log::error_once!(
-                "Failed to build lens output at entity path '{entity_path}': {err}"
-            );
-        })
-        .ok()
+        )?)
     }
 }
 
@@ -346,22 +338,16 @@ impl Static {
     ///
     /// The output chunk contains no time columns, only the transformed component columns.
     /// This is useful for metadata or other data that should not be associated with any timeline.
-    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Option<Chunk> {
+    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Result<Chunk, LensError> {
         let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
         // TODO(grtlr): In case of static, should we enforce single rows (i.e. unit chunks)?
-        Chunk::from_auto_row_ids(
+        Ok(Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             Default::default(),
             collect_output_components_iter(input, &self.components).collect(),
-        )
-        .inspect_err(|err| {
-            re_log::error_once!(
-                "Failed to build lens output at entity path '{entity_path}': {err}"
-            );
-        })
-        .ok()
+        )?)
     }
 }
 
@@ -371,7 +357,7 @@ impl OneToMany {
     /// The output chunk inherits all time columns from the input chunk, with additional time columns
     /// extracted from the component data if specified. Component columns are transformed according
     /// to the provided operations.
-    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Option<Chunk> {
+    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Result<Chunk, LensError> {
         use arrow::array::UInt32Array;
 
         let entity_path = resolve_entity_path(chunk, &self.target_entity);
@@ -384,10 +370,11 @@ impl OneToMany {
         // We use .peek() instead of consuming the iterator so we can still process all
         // components (including this first one) later.
         let Some((_descr, reference_array)) = output_components.peek() else {
-            re_log::error_once!(
-                "scatter lens requires at least one component output for entity '{entity_path}'"
-            );
-            return None;
+            return Err(LensError::NoOutputColumnsProduced {
+                input_entity: chunk.entity_path().clone(),
+                input_component: input.descriptor.component,
+                target_entity: entity_path.clone(),
+            });
         };
 
         // Build scatter indices: tracks which input row each output row came from
@@ -433,10 +420,9 @@ impl OneToMany {
                 }
                 Err(err) => {
                     re_log::error_once!(
-                        "Failed to replicate timeline '{}' for entity '{entity_path}': {err}",
+                        "Failed to scatter existing time column '{}' for entity '{entity_path}': {err}",
                         timeline_name
                     );
-                    return None;
                 }
             }
         }
@@ -447,7 +433,7 @@ impl OneToMany {
                 Ok(exploded) => convert_to_time_column((timeline_name, timeline_type, exploded)),
                 Err(err) => {
                     re_log::error_once!(
-                        "Failed to scatter timeline '{}' for entity '{entity_path}': {err}",
+                        "Failed to scatter output time column '{}' for entity '{entity_path}': {err}",
                         timeline_name
                     );
                     None
@@ -471,18 +457,12 @@ impl OneToMany {
         });
 
         // Verify that all columns have the same length happens during chunk creation.
-        Chunk::from_auto_row_ids(
+        Ok(Chunk::from_auto_row_ids(
             ChunkId::new(),
             entity_path.clone(),
             chunk_times,
             chunk_components.collect(),
-        )
-        .inspect_err(|err| {
-            re_log::error_once!(
-                "Failed to build lens output at entity path '{entity_path}': {err}"
-            );
-        })
-        .ok()
+        )?)
     }
 }
 
@@ -511,10 +491,9 @@ impl LensRegistry {
     /// This will only transform component columns that match registered lenses.
     /// Other component columns are dropped. To retain original data, use identity
     /// lenses or multi-sink configurations.
-    pub fn apply(&self, chunk: &Chunk) -> Vec<Chunk> {
+    pub fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, LensError>> {
         self.relevant(chunk)
             .flat_map(|transform| transform.apply(chunk))
-            .collect()
     }
 }
 
@@ -703,7 +682,11 @@ mod test {
             lenses: vec![destructure],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
+
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];
@@ -727,7 +710,10 @@ mod test {
             lenses: vec![destructure],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];
@@ -770,7 +756,10 @@ mod test {
             lenses: vec![count],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];
@@ -812,7 +801,10 @@ mod test {
             lenses: vec![static_lens],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];
@@ -875,7 +867,10 @@ mod test {
             lenses: vec![time_lens],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];
@@ -1043,7 +1038,10 @@ mod test {
             lenses: vec![scatter_lens],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];
@@ -1138,7 +1136,10 @@ mod test {
             lenses: vec![scatter_lens],
         };
 
-        let res = pipeline.apply(&original_chunk);
+        let res: Vec<Chunk> = pipeline
+            .apply(&original_chunk)
+            .collect::<Result<_, _>>()
+            .unwrap();
         assert_eq!(res.len(), 1);
 
         let chunk = &res[0];

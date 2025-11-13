@@ -40,16 +40,21 @@ impl<S: LogSink> LogSink for LensesSink<S> {
             LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
                 Ok(chunk) => {
                     let new_chunks = self.registry.apply(&chunk);
-                    for new_chunk in new_chunks {
-                        match new_chunk.to_arrow_msg() {
-                            Ok(arrow_msg) => {
-                                self.sink
-                                    .send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg));
-                            }
+                    for maybe_chunk in new_chunks {
+                        match maybe_chunk {
+                            Ok(new_chunk) => match new_chunk.to_arrow_msg() {
+                                Ok(arrow_msg) => {
+                                    self.sink
+                                        .send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg));
+                                }
+                                Err(err) => {
+                                    re_log::error_once!(
+                                        "failed to create log message from chunk: {err}"
+                                    );
+                                }
+                            },
                             Err(err) => {
-                                re_log::error_once!(
-                                    "failed to create log message from chunk: {err}"
-                                );
+                                re_log::error_once!("Lens failed to produce a chunk: {err}");
                             }
                         }
                     }
