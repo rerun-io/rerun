@@ -1482,11 +1482,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_scale_rotation_translation(
-                        glam::dvec3(123.0, 234.0, 345.0),
-                        glam::DQuat::IDENTITY,
-                        glam::dvec3(1.0, 2.0, 3.0),
-                    ),
+                    transform: DAffine3::from_scale(glam::dvec3(123.0, 234.0, 345.0)),
                 })
             );
 
@@ -1846,11 +1842,7 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(1.0, 2.0, 3.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(1.0, 2.0, 3.0),
-                ),
+                transform: DAffine3::from_scale(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
@@ -2359,12 +2351,13 @@ mod tests {
                 [(timeline, 2)],
                 &archetypes::Transform3D::update_fields()
                     .with_translation([2.0, 0.0, 0.0])
-                    .with_child_frame("frame0"),
+                    .with_child_frame("frame0"), // Uses implicit entity-path derived parent frame.
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
                 &archetypes::Transform3D::update_fields()
                     .with_translation([3.0, 0.0, 0.0])
+                    .with_child_frame("frame0")
                     .with_parent_frame("frame1"),
             )
             .with_archetype_auto_row(
@@ -2592,12 +2585,15 @@ mod tests {
             );
         }
 
-        // Now we change the static chunk to also talk about frame1 (but don't change anything else on it)
+        // Now we change the static chunk to also talk about frame1.
+        // Before, there was translation there but due to atomic latest-at we won't see that.
         entity_db.add_chunk(&Arc::new(
             Chunk::builder(static_entity_path)
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields().with_child_frame("frame1"),
+                    &archetypes::Transform3D::update_fields()
+                        .with_child_frame("frame1")
+                        .with_scale(2.0),
                 )
                 .build()?,
         ))?;
@@ -2621,7 +2617,7 @@ mod tests {
                 None
             );
 
-            // Check frame1 has now both the static and the temporal transform visible.
+            // Check frame1 has now both the static and the temporal transforms visible.
             let transforms_frame1 = timeline_transforms
                 .frame_transforms(TransformFrameIdHash::from_str("frame1"))
                 .unwrap();
@@ -2630,7 +2626,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+                    transform: DAffine3::from_scale(glam::DVec3::splat(2.0)),
                 })
             );
             assert_eq!(
@@ -2638,6 +2634,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    // Unaffected by the static transform due to atomic latest-at.
                     transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
                 })
             );
