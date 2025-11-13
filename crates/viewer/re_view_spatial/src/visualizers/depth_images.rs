@@ -6,14 +6,14 @@ use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
     Archetype as _,
-    archetypes::{DepthImage, EncodedDepthImage},
-    components::{Colormap, DepthMeter, FillRatio, ImageFormat, MediaType},
+    archetypes::DepthImage,
+    components::{Colormap, DepthMeter, FillRatio, ImageFormat},
     image::ImageKind,
 };
 use re_viewer_context::{
-    ColormapWithRange, DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
-    ImageInfo, ImageStatsCache, MaybeVisualizableEntities, QueryContext, ViewClass as _,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    ColormapWithRange, DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageInfo,
+    ImageStatsCache, MaybeVisualizableEntities, QueryContext, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
@@ -26,11 +26,14 @@ use crate::{
 
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
 
+pub(super) type DepthCloudEntities =
+    IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>;
+
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,
 
     /// Expose image infos for depth clouds - we need this for picking interaction.
-    pub depth_cloud_entities: IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>,
+    pub depth_cloud_entities: DepthCloudEntities,
 }
 
 impl Default for DepthImageVisualizer {
@@ -42,171 +45,171 @@ impl Default for DepthImageVisualizer {
     }
 }
 
-struct DepthImageComponentData {
-    image: ImageInfo,
-    depth_meter: Option<DepthMeter>,
-    fill_ratio: Option<FillRatio>,
-    colormap: Option<Colormap>,
-    value_range: Option<[f64; 2]>,
+pub(super) struct DepthImageComponentData {
+    pub(super) image: ImageInfo,
+    pub(super) depth_meter: Option<DepthMeter>,
+    pub(super) fill_ratio: Option<FillRatio>,
+    pub(super) colormap: Option<Colormap>,
+    pub(super) value_range: Option<[f64; 2]>,
 }
 
-impl DepthImageVisualizer {
-    fn process_depth_image_data(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        depth_clouds: &mut Vec<DepthCloud>,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        transforms: &TransformTreeContext,
-        images: impl Iterator<Item = DepthImageComponentData>,
-    ) {
-        let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
+#[expect(clippy::too_many_arguments)]
+pub(super) fn process_depth_image_data(
+    data_store: &mut SpatialViewVisualizerData,
+    depth_cloud_entities: &mut DepthCloudEntities,
+    ctx: &QueryContext<'_>,
+    depth_clouds: &mut Vec<DepthCloud>,
+    ent_context: &SpatialSceneEntityContext<'_>,
+    transforms: &TransformTreeContext,
+    images: impl Iterator<Item = DepthImageComponentData>,
+    archetype_name: re_types::ArchetypeName,
+) {
+    let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
 
-        let entity_path = ctx.target_entity_path;
+    let entity_path = ctx.target_entity_path;
 
-        for data in images {
-            let DepthImageComponentData {
-                image,
+    for data in images {
+        let DepthImageComponentData {
+            image,
+            depth_meter,
+            fill_ratio,
+            colormap,
+            value_range,
+        } = data;
+
+        let depth_meter = depth_meter
+            .unwrap_or_else(|| typed_fallback_for(ctx, DepthImage::descriptor_meter().component));
+
+        // All depth images must have a colormap:
+        let colormap = colormap.unwrap_or_else(|| {
+            typed_fallback_for(ctx, DepthImage::descriptor_colormap().component)
+        });
+        let value_range = value_range
+            .map(|r| [r[0] as f32, r[1] as f32])
+            .unwrap_or_else(|| {
+                // Don't use fallback provider since it has to query information we already have.
+                let image_stats = ctx
+                    .store_ctx()
+                    .caches
+                    .entry(|c: &mut ImageStatsCache| c.entry(&image));
+                ColormapWithRange::default_range_for_depth_images(&image_stats)
+            });
+        let colormap_with_range = ColormapWithRange {
+            colormap,
+            value_range,
+        };
+
+        // First try to create a textured rect for this image.
+        // Even if we end up only showing a depth cloud,
+        // we still need most of this for ui interaction which still shows the image!
+        let Some(textured_rect) = textured_rect_from_image(
+            ctx.viewer_ctx(),
+            entity_path,
+            ent_context,
+            &image,
+            Some(&colormap_with_range),
+            re_renderer::Rgba::WHITE,
+            archetype_name,
+        ) else {
+            // If we can't create a textured rect from this, we don't have to bother with clouds either.
+            return;
+        };
+
+        if is_3d_view
+            && let Some(pinhole_tree_root_info) =
+                transforms.pinhole_tree_root_info(ent_context.transform_info.tree_root())
+        {
+            let fill_ratio = fill_ratio.unwrap_or_default();
+
+            // NOTE: we don't pass in `world_from_obj` because this corresponds to the
+            // transform of the projection plane, which is of no use to us here.
+            // What we want are the extrinsics of the depth camera!
+            let cloud = process_entity_view_as_depth_cloud(
+                ent_context,
+                entity_path,
+                pinhole_tree_root_info,
                 depth_meter,
                 fill_ratio,
-                colormap,
-                value_range,
-            } = data;
-
-            let depth_meter = depth_meter.unwrap_or_else(|| {
-                typed_fallback_for(ctx, DepthImage::descriptor_meter().component)
-            });
-
-            // All depth images must have a colormap:
-            let colormap = colormap.unwrap_or_else(|| {
-                typed_fallback_for(ctx, DepthImage::descriptor_colormap().component)
-            });
-            let value_range = value_range
-                .map(|r| [r[0] as f32, r[1] as f32])
-                .unwrap_or_else(|| {
-                    // Don't use fallback provider since it has to query information we already have.
-                    let image_stats = ctx
-                        .store_ctx()
-                        .caches
-                        .entry(|c: &mut ImageStatsCache| c.entry(&image));
-                    ColormapWithRange::default_range_for_depth_images(&image_stats)
-                });
-            let colormap_with_range = ColormapWithRange {
-                colormap,
-                value_range,
-            };
-
-            // First try to create a textured rect for this image.
-            // Even if we end up only showing a depth cloud,
-            // we still need most of this for ui interaction which still shows the image!
-            let Some(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx(),
-                entity_path,
-                ent_context,
-                &image,
-                Some(&colormap_with_range),
-                re_renderer::Rgba::WHITE,
-                DepthImage::name(),
-            ) else {
-                // If we can't create a textured rect from this, we don't have to bother with clouds either.
-                return;
-            };
-
-            if is_3d_view
-                && let Some(pinhole_tree_root_info) =
-                    transforms.pinhole_tree_root_info(ent_context.transform_info.tree_root())
-            {
-                let fill_ratio = fill_ratio.unwrap_or_default();
-
-                // NOTE: we don't pass in `world_from_obj` because this corresponds to the
-                // transform of the projection plane, which is of no use to us here.
-                // What we want are the extrinsics of the depth camera!
-                let cloud = Self::process_entity_view_as_depth_cloud(
-                    ent_context,
-                    entity_path,
-                    pinhole_tree_root_info,
-                    depth_meter,
-                    fill_ratio,
-                    &textured_rect.colormapped_texture,
-                );
-                self.data.add_bounding_box(
-                    entity_path.hash(),
-                    cloud.world_space_bbox(),
-                    glam::Affine3A::IDENTITY,
-                );
-                self.depth_cloud_entities.insert(
-                    entity_path.hash(),
-                    (image, depth_meter, textured_rect.colormapped_texture),
-                );
-                depth_clouds.push(cloud);
-
-                // Skip creating a textured rect.
-                return;
-            }
-
-            self.data.add_pickable_rect(
-                PickableTexturedRect {
-                    ent_path: entity_path.clone(),
-                    textured_rect,
-                    source_data: PickableRectSourceData::Image {
-                        image,
-                        depth_meter: Some(depth_meter),
-                    },
-                },
-                ent_context.view_class_identifier,
+                &textured_rect.colormapped_texture,
             );
+            data_store.add_bounding_box(
+                entity_path.hash(),
+                cloud.world_space_bbox(),
+                glam::Affine3A::IDENTITY,
+            );
+            depth_cloud_entities.insert(
+                entity_path.hash(),
+                (image, depth_meter, textured_rect.colormapped_texture),
+            );
+            depth_clouds.push(cloud);
+
+            // Skip creating a textured rect.
+            return;
         }
-    }
 
-    fn process_entity_view_as_depth_cloud(
-        ent_context: &SpatialSceneEntityContext<'_>,
-        ent_path: &EntityPath,
-        pinhole_tree_root_info: &re_tf::PinholeTreeRoot,
-        depth_meter: DepthMeter,
-        radius_scale: FillRatio,
-        depth_texture: &ColormappedTexture,
-    ) -> DepthCloud {
-        re_tracing::profile_function!();
-
-        // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might on the way.
-        let pinhole = &pinhole_tree_root_info.pinhole_projection;
-        let world_from_view = pinhole_tree_root_info
-            .parent_root_from_pinhole_root
-            .as_affine3a();
-        let world_from_rdf =
-            world_from_view * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
-
-        let dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
-
-        let world_depth_from_texture_depth = 1.0 / *depth_meter.0;
-
-        // We want point radius to be defined in a scale where the radius of a point
-        // is a factor of the diameter of a pixel projected at that distance.
-        let fov_y = pinhole
-            .image_from_camera
-            .fov_y(pinhole.resolution.unwrap_or([1.0, 1.0].into()));
-        let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
-        let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
-
-        let min_max_depth_in_world = [
-            world_depth_from_texture_depth * depth_texture.range[0],
-            world_depth_from_texture_depth * depth_texture.range[1],
-        ];
-
-        DepthCloud {
-            world_from_rdf,
-            depth_camera_intrinsics: pinhole.image_from_camera.0.into(),
-            world_depth_from_texture_depth,
-            point_radius_from_world_depth,
-            min_max_depth_in_world,
-            depth_dimensions: dimensions,
-            depth_texture: depth_texture.texture.clone(),
-            colormap: match depth_texture.color_mapper {
-                re_renderer::renderer::ColorMapper::Function(colormap) => colormap,
-                _ => re_renderer::Colormap::Grayscale,
+        data_store.add_pickable_rect(
+            PickableTexturedRect {
+                ent_path: entity_path.clone(),
+                textured_rect,
+                source_data: PickableRectSourceData::Image {
+                    image,
+                    depth_meter: Some(depth_meter),
+                },
             },
-            outline_mask_id: ent_context.highlight.overall,
-            picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
-        }
+            ent_context.view_class_identifier,
+        );
+    }
+}
+
+fn process_entity_view_as_depth_cloud(
+    ent_context: &SpatialSceneEntityContext<'_>,
+    ent_path: &EntityPath,
+    pinhole_tree_root_info: &re_tf::PinholeTreeRoot,
+    depth_meter: DepthMeter,
+    radius_scale: FillRatio,
+    depth_texture: &ColormappedTexture,
+) -> DepthCloud {
+    re_tracing::profile_function!();
+
+    // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might on the way.
+    let pinhole = &pinhole_tree_root_info.pinhole_projection;
+    let world_from_view = pinhole_tree_root_info
+        .parent_root_from_pinhole_root
+        .as_affine3a();
+    let world_from_rdf =
+        world_from_view * glam::Affine3A::from_mat3(pinhole.view_coordinates.from_rdf());
+
+    let dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
+
+    let world_depth_from_texture_depth = 1.0 / *depth_meter.0;
+
+    // We want point radius to be defined in a scale where the radius of a point
+    // is a factor of the diameter of a pixel projected at that distance.
+    let fov_y = pinhole
+        .image_from_camera
+        .fov_y(pinhole.resolution.unwrap_or([1.0, 1.0].into()));
+    let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
+    let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
+
+    let min_max_depth_in_world = [
+        world_depth_from_texture_depth * depth_texture.range[0],
+        world_depth_from_texture_depth * depth_texture.range[1],
+    ];
+
+    DepthCloud {
+        world_from_rdf,
+        depth_camera_intrinsics: pinhole.image_from_camera.0.into(),
+        world_depth_from_texture_depth,
+        point_radius_from_world_depth,
+        min_max_depth_in_world,
+        depth_dimensions: dimensions,
+        depth_texture: depth_texture.texture.clone(),
+        colormap: match depth_texture.color_mapper {
+            re_renderer::renderer::ColorMapper::Function(colormap) => colormap,
+            _ => re_renderer::Colormap::Grayscale,
+        },
+        outline_mask_id: ent_context.highlight.overall,
+        picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
     }
 }
 
@@ -218,17 +221,7 @@ impl IdentifiedViewSystem for DepthImageVisualizer {
 
 impl VisualizerSystem for DepthImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::empty();
-        query_info.relevant_archetypes = [DepthImage::name(), EncodedDepthImage::name()]
-            .into_iter()
-            .collect();
-        query_info
-            .queried
-            .extend(DepthImage::all_components().iter().cloned());
-        query_info
-            .queried
-            .extend(EncodedDepthImage::all_components().iter().cloned());
-        query_info
+        VisualizerQueryInfo::from_archetype::<DepthImage>()
     }
 
     fn filter_visualizable_entities(
@@ -284,7 +277,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     DepthImage::descriptor_point_fill_ratio().component,
                 );
 
-                let mut data = re_query::range_zip_1x5(
+                let data = re_query::range_zip_1x5(
                     all_buffers_indexed,
                     all_formats_indexed,
                     all_colormaps.slice::<u8>(),
@@ -320,121 +313,15 @@ impl VisualizerSystem for DepthImageVisualizer {
                     },
                 );
 
-                self.process_depth_image_data(
+                process_depth_image_data(
+                    &mut self.data,
+                    &mut self.depth_cloud_entities,
                     ctx,
                     &mut depth_clouds,
                     spatial_ctx,
                     transforms,
-                    &mut data,
-                );
-
-                Ok(())
-            },
-        )?;
-
-        process_archetype::<Self, EncodedDepthImage, _>(
-            ctx,
-            view_query,
-            context_systems,
-            |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_blob_chunks) =
-                    results.get_required_chunks(EncodedDepthImage::descriptor_blob().component)
-                else {
-                    return Ok(());
-                };
-                let Some(all_format_chunks) =
-                    results.get_required_chunks(EncodedDepthImage::descriptor_format().component)
-                else {
-                    return Ok(());
-                };
-
-                let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_formats_indexed =
-                    iter_component::<ImageFormat>(&all_format_chunks, timeline);
-                let all_media_types = results.iter_as(
-                    timeline,
-                    EncodedDepthImage::descriptor_media_type().component,
-                );
-                let all_colormaps =
-                    results.iter_as(timeline, EncodedDepthImage::descriptor_colormap().component);
-                let all_value_ranges = results.iter_as(
-                    timeline,
-                    EncodedDepthImage::descriptor_depth_range().component,
-                );
-                let all_depth_meters =
-                    results.iter_as(timeline, EncodedDepthImage::descriptor_meter().component);
-                let all_fill_ratios = results.iter_as(
-                    timeline,
-                    EncodedDepthImage::descriptor_point_fill_ratio().component,
-                );
-
-                let entity_path = ctx.target_entity_path;
-
-                let mut data = re_query::range_zip_1x6(
-                    all_blobs_indexed,
-                    all_formats_indexed,
-                    all_media_types.slice::<String>(),
-                    all_colormaps.slice::<u8>(),
-                    all_value_ranges.slice::<[f64; 2]>(),
-                    all_depth_meters.slice::<f32>(),
-                    all_fill_ratios.slice::<f32>(),
-                )
-                .filter_map(
-                    |(
-                        (_time, row_id),
-                        blobs,
-                        format,
-                        media_type,
-                        colormap,
-                        value_range,
-                        depth_meter,
-                        fill_ratio,
-                    )| {
-                        let blob = blobs.first()?;
-                        let format = first_copied(format.as_deref())?;
-                        let media_type = media_type
-                            .and_then(|types| types.first().cloned())
-                            .map(|mt| MediaType(mt.into()));
-
-                        let image = match ctx.store_ctx().caches.entry(
-                            |c: &mut ImageDecodeCache| {
-                                c.entry_encoded_depth(
-                                    row_id,
-                                    EncodedDepthImage::descriptor_blob().component,
-                                    blob,
-                                    media_type.as_ref(),
-                                    &format,
-                                )
-                            },
-                        ) {
-                            Ok(image) => image,
-                            Err(err) => {
-                                re_log::warn_once!(
-                                    "Failed to decode EncodedDepthImage at path {entity_path}: {err}"
-                                );
-                                return None;
-                            }
-                        };
-
-                        Some(DepthImageComponentData {
-                            image,
-                            depth_meter: first_copied(depth_meter).map(Into::into),
-                            fill_ratio: first_copied(fill_ratio).map(Into::into),
-                            colormap: first_copied(colormap).and_then(Colormap::from_u8),
-                            value_range: first_copied(value_range),
-                        })
-                    },
-                );
-
-                self.process_depth_image_data(
-                    ctx,
-                    &mut depth_clouds,
-                    spatial_ctx,
-                    transforms,
-                    &mut data,
+                    data,
+                    DepthImage::name(),
                 );
 
                 Ok(())
@@ -482,7 +369,7 @@ impl VisualizerSystem for DepthImageVisualizer {
     }
 }
 
-fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
+pub(super) fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
     slice.and_then(|element| element.first()).copied()
 }
 
@@ -500,8 +387,6 @@ impl DataBasedVisualizabilityFilter for DepthImageVisualizabilityFilter {
                 let component = component_descr.component;
                 component == DepthImage::descriptor_buffer().component
                     || component == DepthImage::descriptor_format().component
-                    || component == EncodedDepthImage::descriptor_blob().component
-                    || component == EncodedDepthImage::descriptor_format().component
             })
     }
 }

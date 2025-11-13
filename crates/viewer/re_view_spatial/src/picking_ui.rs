@@ -19,7 +19,10 @@ use crate::{
     picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
+    visualizers::{
+        CamerasVisualizer, DepthImageVisualizer, EncodedDepthImageVisualizer,
+        SpatialViewVisualizerData,
+    },
 };
 
 #[expect(clippy::too_many_arguments)]
@@ -244,6 +247,10 @@ fn get_pixel_picking_info(
         .view_systems
         .get::<DepthImageVisualizer>()
         .ok();
+    let encoded_depth_visualizer_output = system_output
+        .view_systems
+        .get::<EncodedDepthImageVisualizer>()
+        .ok();
 
     if hit.hit_type == PickingHitType::TexturedRect {
         iter_pickable_rects(&system_output.view_systems)
@@ -264,8 +271,14 @@ fn get_pixel_picking_info(
                     pixel_coordinates,
                 })
             })
-    } else if let Some((depth_image, depth_meter, texture)) =
-        depth_visualizer_output.and_then(|depth_images| {
+    } else if let Some((depth_image, depth_meter, texture)) = depth_visualizer_output
+        .and_then(|depth_images| {
+            depth_images
+                .depth_cloud_entities
+                .get(&hit.instance_path_hash.entity_path_hash)
+        })
+        .or_else(|| {
+            let depth_images = encoded_depth_visualizer_output?;
             depth_images
                 .depth_cloud_entities
                 .get(&hit.instance_path_hash.entity_path_hash)
