@@ -187,30 +187,10 @@ class DatasetEntry(Entry):
         return self._inner.partition_ids()
 
     def segment_table(
-        self, join_meta: datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+        self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
     ) -> datafusion.DataFrame:
-        # Get the partition table from the inner object
-
-        partitions = self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
-
-        if join_meta is not None:
-            if join_key not in partitions.schema().names:
-                raise ValueError(f"Dataset partition table must contain join_key column '{join_key}'.")
-            if join_key not in join_meta.schema().names:
-                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
-
-            meta_join_key = join_key + "_meta"
-
-            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
-
-            return partitions.join(
-                join_meta,
-                left_on=join_key,
-                right_on=meta_join_key,
-                how="left",
-            ).drop(meta_join_key)
-        else:
-            return partitions
+        view = DatasetView(self._inner, LazyDatasetState())
+        return view.segment_table(join_meta=join_meta, join_key=join_key)
 
     def manifest(self) -> Any:
         return self._inner.manifest()
@@ -248,22 +228,15 @@ class DatasetEntry(Entry):
         using_index_values: Any = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
-        view = self._inner.dataframe_query_view(
+        view = DatasetView(self._inner, LazyDatasetState())
+        return view.query(
             index=index,
             contents=contents,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
+            using_index_values=using_index_values,
+            fill_latest_at=fill_latest_at,
         )
-
-        # Apply using_index_values if provided
-        if using_index_values is not None:
-            view = view.using_index_values(using_index_values)
-
-        # Apply fill_latest_at if requested
-        if fill_latest_at:
-            view = view.fill_latest_at()
-
-        return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def create_fts_index(
         self,
@@ -410,7 +383,7 @@ class DatasetView:
         return self._inner.download_partition(segment_id)
 
     def segment_table(
-        self, join_meta: datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+        self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
     ) -> datafusion.DataFrame:
         # Get the partition table from the inner object
 
@@ -430,6 +403,8 @@ class DatasetView:
             )
 
         if join_meta is not None:
+            if isinstance(join_meta, TableEntry):
+                join_meta = join_meta.reader()
             if join_key not in partitions.schema().names:
                 raise ValueError(f"Dataset partition table must contain join_key column '{join_key}'.")
             if join_key not in join_meta.schema().names:
@@ -459,14 +434,15 @@ class DatasetView:
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         if isinstance(contents, str):
-            match_expr = contents
+            incl, excl = parse_contents_expr(contents)
+
             full_contents = defaultdict(list)
 
             # Note: arrow_schema() here already excludes filtered entity paths
             for field in self.arrow_schema():
                 if field.metadata.get(b"rerun:kind", None) == b"data":
                     entity_path = field.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
-                    if contents_matches(match_expr, entity_path):
+                    if contents_matches(incl, excl, entity_path):
                         component = field.metadata.get(b"rerun:component", b"").decode("utf-8")
                         full_contents[entity_path].append(component)
 
@@ -515,12 +491,43 @@ class DatasetView:
         return DatasetView(self._inner, lazy_state=new_lazy_state)
 
 
-def contents_matches(expr: str, path: str) -> bool:
+def parse_contents_expr(expr: str) -> tuple[list[str], list[str]]:
+    """Parses a contents expression into include and exclude lists."""
+    # Approximate rerun logic
+    incl: list[str] = []
+    excl: list[str] = []
+    for part in expr.split():
+        part = part.strip()
+        if part.startswith("-"):
+            excl.append(part[1:])
+        elif part.startswith("+"):
+            incl.append(part[1:])
+        else:
+            incl.append(part)
+
+    # If /__properties is not explicitly included, exclude it.
+    if not any(p.startswith("/__properties") for p in incl):
+        excl.append("/__properties/**")
+
+    return incl, excl
+
+
+def contents_matches(incl: list[str], excl: list[str], path: str) -> bool:
     """Returns True if the contents expression matches the given entity path."""
-    if expr.endswith("/**"):
-        prefix = expr[:-3]
-        return path.startswith(prefix)
-    return expr == path
+    for expr in excl:
+        if expr.endswith("/**"):
+            prefix = expr[:-3]
+            if path.startswith(prefix):
+                return False
+        elif expr == path:
+            return False
+    for expr in incl:
+        if expr.endswith("/**"):
+            prefix = expr[:-3]
+            return path.startswith(prefix)
+        elif expr == path:
+            return True
+    return False
 
 
 class TableEntry(Entry):
