@@ -47,3 +47,5 @@ sorbet:version: '0.1.1'\
 │ segment_003         ┆ carol               │
 └─────────────────────┴─────────────────────┘\
 """)
+
+        assert str(table.reader()) == str(client.ctx.table("my_table"))
