@@ -779,7 +779,6 @@ mod tests {
 
     use super::*;
 
-    use crate::TransformFromToError::NoPathBetweenFrames;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
@@ -1214,20 +1213,15 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("top"),
-                    Err(NoPathBetweenFrames {
-                        target: TransformFrameIdHash::from_str("child2"),
-                        src: TransformFrameIdHash::from_str("top"),
-                        target_root: TransformFrameIdHash::from_str("new_top"),
-                        source_root: TransformFrameIdHash::from_str("root"),
-                    }) // TODO(RR-2897): this is broken right now. This is what the result should be:
-                       // Ok(TransformInfo {
-                       //     root: TransformFrameIdHash::from_str("top"),
-                       //     target_from_source: glam::DAffine3::from_translation(glam::dvec3(
-                       //         4.0, 0.0, 0.0
-                       //     )),
-                       //     target_from_instances: Default::default(),
-                       //     target_from_archetype: Default::default(),
-                       // })
+                    Ok(TransformInfo {
+                        root: TransformFrameIdHash::from_str("root"),
+                        target_from_source: glam::DAffine3::from_translation(glam::dvec3(
+                            -4.0, 0.0, 0.0
+                        )),
+                        target_from_instances: SmallVec1::new(glam::DAffine3::from_translation(
+                            glam::dvec3(-4.0, 0.0, 0.0)
+                        )),
+                    })
                 )]
             );
             assert_eq!(
@@ -1240,22 +1234,10 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("new_top"),
-                    Ok(TransformInfo {
-                        root: TransformFrameIdHash::from_str("new_top"),
-                        target_from_source: glam::DAffine3::from_translation(glam::dvec3(
-                            -5.0, 0.0, 0.0
-                        )),
-                        target_from_instances: SmallVec1::new(glam::DAffine3::from_translation(
-                            glam::dvec3(-5.0, 0.0, 0.0)
-                        )),
-                    })
-                )] // TODO(RR-2897): this is broken right now. This is what the result should be:
-                   // vec![(
-                   //     TransformFrameIdHash::from_str("child2"),
-                   //     Err(TransformFromToError::UnknownTargetFrame(
-                   //         TransformFrameIdHash::from_str("new_top")
-                   //     ))
-                   // )]
+                    Err(TransformFromToError::UnknownSourceFrame(
+                        TransformFrameIdHash::from_str("new_top")
+                    ))
+                )]
             );
         }
 
