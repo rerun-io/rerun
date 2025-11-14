@@ -720,7 +720,7 @@ impl EyeState {
         eye_property: &ViewProperty,
         cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
-        eye: &mut EyeController,
+        eye_controller: &mut EyeController,
         old_pos: Vec3,
         old_look_target: Vec3,
         tracking_entity: Option<&re_types::components::EntityPath>,
@@ -734,13 +734,16 @@ impl EyeState {
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
-            let did_eye_change = match eye.kind {
-                Eye3DKind::FirstPerson => eye.pos != old_pos,
-                Eye3DKind::Orbital => eye.look_target != old_look_target,
+            let did_eye_change = match eye_controller.kind {
+                Eye3DKind::FirstPerson => eye_controller.pos != old_pos,
+                Eye3DKind::Orbital => eye_controller.look_target != old_look_target,
             };
 
             if let Some(target_eye) = find_camera(cameras, &tracking_entity) {
-                if eye.did_interact && (eye.pos != old_pos || eye.look_target != old_look_target) {
+                if eye_controller.did_interact
+                    && (eye_controller.pos != old_pos
+                        || eye_controller.look_target != old_look_target)
+                {
                     eye_property.clear_blueprint_component(
                         ctx.viewer_ctx,
                         EyeControls3D::descriptor_tracking_entity(),
@@ -748,7 +751,7 @@ impl EyeState {
                 } else {
                     return Some(target_eye);
                 }
-            } else if eye.did_interact && did_eye_change {
+            } else if eye_controller.did_interact && did_eye_change {
                 eye_property.clear_blueprint_component(
                     ctx.viewer_ctx,
                     EyeControls3D::descriptor_tracking_entity(),
@@ -771,7 +774,7 @@ impl EyeState {
                 if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
                     // If we're tracking something new, set the current position & look target to the correct view.
                     if new_tracking {
-                        let fwd = eye.fwd();
+                        let fwd = eye_controller.fwd();
                         let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
                         let radius = if radius < 0.0001 {
                             // Handle zero-sized bounding boxes:
@@ -780,44 +783,45 @@ impl EyeState {
                         } else {
                             radius
                         };
-                        eye.pos = eye.look_target - fwd * radius;
+                        eye_controller.pos = eye_controller.look_target - fwd * radius;
                         // Force write of pos and look target to not use fallbacks for that.
                         eye_property.save_blueprint_component(
                             ctx.viewer_ctx,
                             &EyeControls3D::descriptor_position(),
-                            &Position3D::from(eye.pos),
+                            &Position3D::from(eye_controller.pos),
                         );
 
                         eye_property.save_blueprint_component(
                             ctx.viewer_ctx,
                             &EyeControls3D::descriptor_look_target(),
-                            &Position3D::from(eye.look_target),
+                            &Position3D::from(eye_controller.look_target),
                         );
                     }
 
-                    let orbit_radius = eye.pos.distance(eye.look_target);
+                    let orbit_radius = eye_controller.pos.distance(eye_controller.look_target);
 
                     let pos = entity_bbox.center();
 
-                    let fwd = eye.fwd();
+                    let fwd = eye_controller.fwd();
 
-                    match eye.kind {
+                    match eye_controller.kind {
                         Eye3DKind::FirstPerson => {
-                            eye.pos = pos;
-                            eye.look_target = pos + fwd;
+                            eye_controller.pos = pos;
+                            eye_controller.look_target = pos + fwd;
                         }
                         Eye3DKind::Orbital => {
-                            eye.look_target = pos;
-                            eye.pos = pos - fwd * orbit_radius;
+                            eye_controller.look_target = pos;
+                            eye_controller.pos = pos - fwd * orbit_radius;
                         }
                     }
                 }
 
-                self.last_look_target = Some(eye.look_target);
-                self.last_eye_up = Some(eye.eye_up);
-                self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
+                self.last_look_target = Some(eye_controller.look_target);
+                self.last_eye_up = Some(eye_controller.eye_up);
+                self.last_orbit_radius =
+                    Some(eye_controller.pos.distance(eye_controller.look_target));
 
-                return Some(eye.get_eye());
+                return Some(eye_controller.get_eye());
             }
         } else {
             self.last_tracked_entity = None;
@@ -831,7 +835,7 @@ impl EyeState {
         &mut self,
         ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
-        eye: &mut EyeController,
+        eye_controller: &mut EyeController,
     ) -> Result<(), ViewPropertyQueryError> {
         let spin_speed = **eye_property.component_or_fallback::<AngularSpeed>(
             ctx,
@@ -843,17 +847,17 @@ impl EyeState {
             *spin += spin_speed * ctx.egui_ctx().input(|i| i.stable_dt as f64).at_most(0.1);
             *spin %= std::f64::consts::TAU;
 
-            let quat = Quat::from_axis_angle(eye.up(), *spin as f32);
+            let quat = Quat::from_axis_angle(eye_controller.up(), *spin as f32);
 
-            let fwd = quat * eye.fwd();
+            let fwd = quat * eye_controller.fwd();
 
-            match eye.kind {
+            match eye_controller.kind {
                 Eye3DKind::FirstPerson => {
-                    eye.look_target = eye.pos + fwd;
+                    eye_controller.look_target = eye_controller.pos + fwd;
                 }
                 Eye3DKind::Orbital => {
-                    let d = eye.pos.distance(eye.look_target);
-                    eye.pos = eye.look_target - fwd * d;
+                    let d = eye_controller.pos.distance(eye_controller.look_target);
+                    eye_controller.pos = eye_controller.look_target - fwd * d;
                 }
             }
 
