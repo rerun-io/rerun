@@ -1,229 +1,215 @@
 ---
-title: Navigating the viewer
-order: 600
+title: Navigating the Viewer
+order: 400
 ---
 
-This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should be comfortable with the following topics:
+This page will walk you through the basics of navigating the Rerun Viewer.
 
-- [Prerequisites](#prerequisites)
-- [Launching an example](#launching-an-example)
-- [The Viewer panels](#the-viewer-panels)
-- [Exploring data](#exploring-data)
-  - [Hover and selection](#hover-and-selection)
-  - [Rotate, zoom, and pan](#rotate-zoom-and-pan)
-- [Navigating the timeline](#navigating-the-timeline)
-  - [Selecting different timelines](#selecting-different-timelines)
-- [Conclusion](#conclusion)
-  - [Up next](#up-next)
+By default, the Rerun Viewer uses heuristics to automatically determine an appropriate layout for your data. However, you'll often want precise control over how your data is displayed. Blueprints give you complete control over the Viewer's layout and configuration. For a conceptual understanding of blueprints, see [Blueprints](../../concepts/blueprints.md).
 
-Here is a preview of the dataset that we will be working with:
+This guide covers three complementary ways to work with the viewer:
+- **[Interactive configuration](#interactive-configuration)**: Modify layouts directly in the Viewer UI
+- **[Save and load blueprint files](#save-and-load-blueprint-files)**: Share layouts using `.rbl` files
+- **[Programmatic blueprints](#programmatic-blueprints)**: Control layouts from code
 
-<picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/1200w.png">
-</picture>
+## Interactive configuration
 
-The demo uses the output of the [COLMAP](https://colmap.github.io/) structure-from-motion pipeline on a small dataset.
-Familiarity with structure-from-motion algorithms is not a prerequisite for following the guide. All you need to know is
-that at a very high level, COLMAP processes a series of images, and by tracking identifiable "keypoints" from frame to
-frame, it is able to reconstruct both a sparse representation of the scene as well as the positions of the camera used
-to take the images.
+The Rerun Viewer is fully configurable through its UI, making it easy to experiment with different layouts.
 
-## Prerequisites
-
-Although the Rerun SDK is available in both Python and Rust, this walkthrough makes use the Python installation. Even if
-you plan to use Rerun with Rust, we still recommend having a Rerun Python environment available for quick
-experimentation and working with examples. You can either follow the [Python Quickstart](../quick-start/python.md) or simply run:
-
-```bash
-pip install rerun-sdk
-```
-
-You can also find `rerun-sdk` on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock).
-
-## Launching an example
-
-If you have already followed the Python Quickstart you may have already check the "Helix" integrated example. This time, we will use the "Structure from Motion" example.
-
-Start by running the viewer:
-
-```bash
-$ rerun
-```
-
-_Note: If this is your first time launching Rerun you will see a notification about the Rerun anonymous data usage
-policy. Rerun collects anonymous usage data to help improve the SDK, though you may choose to opt out if you would
-like._
-
-This will bring you the Rerun viewer's Welcome screen:
+### Viewer overview
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/1200w.png">
+  <img src="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/1200w.png">
 </picture>
 
-From there you can chose the "Structure from Motion" example. A window that looks like this will appear:
+The Viewer consists of:
+- **Viewport** (center): Contains your views, arranged in containers
+- **Blueprint Panel** (left): Shows the visual tree of your blueprint structure
+- **Selection Panel** (right): Displays properties of the selected element
+- **Time Panel** (bottom): Controls timeline playback and navigation
+
+The blueprint defines what appears in the viewport. All changes you make to the viewport are actually changes to the blueprint.
+
+### Configuring the view hierarchy
+
+The viewport contains views arranged hierarchically using containers. Containers come in four types:
+- **Horizontal**: Arranges views side-by-side
+- **Vertical**: Stacks views top-to-bottom
+- **Grid**: Organizes views in a grid layout
+- **Tabs**: Shows views in tabs (only one visible at a time)
+
+#### Add new containers or views
+
+Click the "+" button at the top of the blueprint panel to add containers or views.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/add_view/3933d7096846594304ddec2d51dda9c434d763bf/full.png" alt="">
+</picture>
+
+If a container (or the viewport) is selected, a "+" button also appears in the selection panel.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/add_view_selection_panel/2daf01c80dcd2496b554e4376af702c7713a47dc/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_view_selection_panel/2daf01c80dcd2496b554e4376af702c7713a47dc/480w.png">
+</picture>
+
+#### Rearrange views and containers
+
+Drag and drop items in the blueprint panel to reorganize the hierarchy. You can also drag views directly in the viewport using their title tabs.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/480w.png">
+</picture>
+
+#### Show, hide, or remove elements
+
+Use the eye icon to show or hide any container, view, or entity:
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/show_hide_btn/bbca385d4898ec220bfb91c430ea52d59553913e/full.png" alt="">
+</picture>
+
+Use the "-" button to permanently remove an element:
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/remove/6b9d97e4297738b8aad89158e4d15420be362b4a/full.png" alt="">
+</picture>
+
+#### Rename views and containers
+
+Select a view or container and edit its name at the top of the selection panel.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/rename/9dcb63d36f1676568fb106ee55ab110438b63fa9/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rename/9dcb63d36f1676568fb106ee55ab110438b63fa9/480w.png">
+</picture>
+
+#### Change container type
+
+Select a container and change its type using the dropdown in the selection panel.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/container_kind/f123f2220d9e82d520af367b7af020179a4de675/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/container_kind/f123f2220d9e82d520af367b7af020179a4de675/480w.png">
+</picture>
+
+#### Using context menus
+
+Right-click on any element in the blueprint panel for quick access to common operations:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/1200w.png">
+  <img src="https://static.rerun.io/context_menu_container/e90e4688f306187d902467b452fb7146eec1bf4b/full.png" alt="">
 </picture>
 
-Depending on your display size, the panels may have a different arrangements. Further in this guide you will learn how you can change that.
+Context menus support multi-selection (Ctrl+click or Cmd+click), enabling bulk operations like removing multiple views at once.
 
-## The Viewer panels
+### Configuring view content
 
-This window has five main sections:
+Each view displays data based on its entity query. You can modify what appears in a view interactively.
 
--   [Viewport](../../reference/viewer/viewport.md) (center): Displays the rendered views for your session.
--   [Recordings panel](../../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
--   [Blueprint panel](../../reference/viewer/blueprints.md) (below Recordings): Controls the different views.
--   [Selection panel](../../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
--   [Timeline panel](../../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
+#### Show or hide entities
 
-Each of the three sides has a button in the upper-right corner. Click these to show or hide the corresponding panels.
+Use the eye icon next to any entity to control its visibility.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/show_hide_entity/587a5d8fd763c0bade461bc54a66a4acdd087821/full.png" alt="">
+</picture>
+
+#### Remove entities from views
+
+Click the "-" button next to an entity to remove it from the view.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/remove_entity/ec0447ca7e420bc9d19a7bf015cc39f88b42598a/full.png" alt="">
+</picture>
+
+#### Using the query editor
+
+With a view selected, click "Edit" next to the entity query in the selection panel to visually add or remove entities.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/add_remove_entity/4c5e536d4ca145058a8bc59a0b32267821663f06/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_remove_entity/4c5e536d4ca145058a8bc59a0b32267821663f06/480w.png">
+</picture>
+
+#### Creating views from entities
+
+Select one or more entities (in existing views or in the time panel's streams), right-click, and choose "Add to new view" from the context menu.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/1024w.png">
+</picture>
+
+The view's origin will automatically be set based on the selected data.
+
+### Overriding visualizers and components
+
+Select an entity within a view to control which visualizers are used and override component values.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/768w.png">
+</picture>
+
+When selecting a view, you can also set default component values that apply when no value has been logged.
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/768w.png">
+</picture>
+
+See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for detailed information.
+
+---
+
+## Save and load blueprint files
+
+Once you've configured your layout, you can save it as a blueprint file (`.rbl`) to reuse across sessions or share with your team.
+
+### Saving a blueprint
+
+To save your current blueprint, go to the file menu and choose "Save blueprint…":
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/1200w.png">
+  <img src="https://static.rerun.io/save_blueprint/85644e086ba9cf7fb81cb7ece55b38bef863c755/full.png" alt="">
 </picture>
 
-There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](../configure-the-viewer.md#interactive-configuration),
-via the [Blueprint API](../configure-the-viewer.md#programmatic-blueprints), or by [loading an .rbl file](../configure-the-viewer.md#save-and-load-blueprint-files).
+Blueprint files are small, portable, and can be version-controlled alongside your code.
 
-## Exploring data
+### Loading a blueprint
 
-In Rerun, data is modeled using [entities](../../concepts/entity-component.md) (essentially objects) that contain batches of [components](../../reference/types/components.md)
-that change over time. Each entity is identified by an entity path, which uses a hierarchical syntax to represent relationships between entities.
-Let's explore an example of this hierarchy in our scene:
+Load a blueprint file using "Open…" from the file menu, or simply drag and drop the `.rbl` file into the Viewer.
 
--   `/camera/image/keypoints` is an entity stream that contains 2 component streams (`Color`, `Position2D`)
-    of the [Points2D archetype](../../reference/types/archetypes/points2d.md),
-    representing point clouds that were detected and tracked in images.
--   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../../reference/types/archetypes/image.md),
-    while the remaining 2 correspond to a [pinhole projection](../../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
--   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../../reference/types/archetypes/transform3d.md).
+**Important:** The blueprint's Application ID must match the Application ID of your recording. Blueprints are bound to specific Application IDs to ensure they work with compatible data structures. See [Application IDs](../../concepts/blueprints.md#application-ids-binding-blueprints-to-data) for more details.
 
-The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
+### Sharing blueprints
 
-Visualizations can also be customized per each view using [Overrides](../../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
+Blueprint files make it easy to ensure everyone on your team views data consistently:
 
-<picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/1200w.png">
-</picture>
+1. Configure your ideal layout interactively
+2. Save the blueprint to a `.rbl` file
+3. Commit the file to your repository
+4. Team members load the blueprint when viewing recordings with the same Application ID
 
-### Hover and selection
+This is particularly valuable for:
+- **Debugging sessions**: Share the exact layout needed to diagnose specific issues
+- **Presentations**: Ensure consistent visualization across demos
+- **Data analysis**: Standardize views for comparing results
 
-You can easily identify which entity mentions and visual representations refer to the same entities across different panels by seeing them simultaneously highlighted in the UI. Hovering over an entity will
-display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](../../reference/viewer/selection.md).
+---
 
-<picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/1200w.png">
-</picture>
+## Next steps
 
-Try each of the following:
-
--   Hover over the image to see a zoomed-in preview
--   Click on the point cloud to select the whole cloud
--   With the point cloud selected, hover and click individual points
-
-### Rotate, zoom, and pan
-
-Clicking and dragging the contents of any view will move it. You can rotate 3D views, or pan 2D views and plots. You can
-also zoom using ctrl+scrollwheel or pinch gestures on a trackpad. Most views can be restored to their default state by
-double-clicking somewhere in the view. Every view has a "?" icon in the upper right hand corner. You can always mouse
-over this icon to find out more information about the specific view.
-
-Try each of the following:
-
--   Drag the camera image and zoom in on one of the stickers
--   Rotate the 3D point cloud
--   Right-click and drag a rectangle to see a zoomed-in region of the plot
--   Double-click in each of the views to return them to default
-
-## Navigating the timeline
-
-If you look at the Timeline panel at the bottom of the window, you will see a series of white dots. Each of those dots
-represents a piece of data that was logged at a different point in time. In fact, if you hover over the dot, the context popup will give you more information about
-the specific thing that was logged.
-
-There are several ways to navigate through the timeline:
-
--   Move the time indicator by dragging it to a different point on the timeline.
-    You can also click on the frame number and manually type the desired frame.
--   Adjust the playback speed, and for index-based timelines, you can also modify the number of frames per second to specify how indices relate to time.
--   Use the play, pause, step, and loop controls to playback Rerun data, similar to how you would with a video file.
-
-Try out the following:
-
--   Use the arrow buttons (or Arrow keys on your keyboard) to step forward and backwards by a single frame
--   Click play to watch the data update on its own
--   Hit space bar to stop and start the playback
--   Hold shift and drag in the timeline to select a region
--   Toggle the loop button to playback on a loop of either the whole recording or just the selection
-
-### Selecting different timelines
-
-The current view of timeline is showing the data organized by the _frame number_ at which it was logged. Using frame
-numbers can be a helpful way to synchronize things that may not have been logged at precisely the same time. However,
-it's possible to also view the data in the specific order that it was logged. Click on the drop-down that says "frame"
-and switch it to "log_time." If you zoom in on the timeline (using ctrl+scrollwheel), you can see that these events were
-all logged at slightly different times.
-
-<picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/1200w.png">
-</picture>
-
-Feel free to spend a bit of time looking at the data across the different timelines. When you are done, switch back
-to the "frame" timeline and double-click the timeline panel to reset it to the default range.
-
-One thing to notice is there is a gap in the timeline in the "frame" view. This dataset is actually missing a few
-frames, and the timeline view of frames makes this easy to spot. This highlights the importance of applying meaningful
-timestamps to your data as you log it. You also aren't limited to frame and log_time. Rerun lets you define your own
-timelines however you would like. You can read more about timelines [here](../../concepts/timelines.md).
-
-## Conclusion
-
-That brings us to the end of this walkthrough. To recap, you have learned how to:
-
--   Install the `rerun-sdk` pypi package.
--   Run the Rerun Viewer using the `rerun` command.
--   Open the examples integrated in the viewer.
--   Work with the [Blueprint](../../reference/viewer/blueprints.md), [Selection](../../reference/viewer/selection.md) and [Timeline](../../reference/viewer/timeline.md) panels.
--   Rearrange view layouts.
--   Explore data through hover and selection.
--   Change the time selection.
--   Switch between different timelines.
-
-Again, if you ran into any issues following this guide, please don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
-
-### Up next
-
--   [Get started](../quick-start) by writing a program to log data with the Rerun SDK.
--   Learn how to further [configure the viewer](../configure-the-viewer.md) to suit your data.
--   Explore other [examples of using Rerun](/examples).
--   Consult the [concept overview](../../concepts.md) for more context on the ideas covered here.
+- **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
+- **Learn about overrides**: See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for per-entity customization
+- **API Reference**: Browse the complete [Blueprint API](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control
