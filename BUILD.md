@@ -147,6 +147,9 @@ and build all C++ artifacts with:
 pixi run -e cpp cpp-build-all
 ```
 
+The Pixi build commands export a `compile_commands.json` compilation database to the build directory.
+This can be useful for developer tools, e.g. for [setting up IntelliSense in VSCode](https://code.visualstudio.com/docs/cpp/configure-intellisense#_compilecommandsjson-file).
+
 ## Building the docs
 
 High-level documentation for Rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
