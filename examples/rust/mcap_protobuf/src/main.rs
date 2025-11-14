@@ -2,7 +2,7 @@ use arrow::array::{Float32Array, Float64Array, ListArray};
 
 use re_log_types::TimeType;
 use rerun::{
-    EncodedImage, InstancePoses3D, Points3D, VideoStream,
+    EncodedImage, InstancePoses3D, Points3D, Transform3D, VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
     lenses::{Lens, LensError, LensesSink, Op, OpError},
@@ -207,11 +207,54 @@ fn main() -> anyhow::Result<()> {
             })?
             .build();
 
+    // TODO(grtlr): This is still work in progress and missing rotation, for example.
+    let transforms_lens =
+        Lens::for_input_column(EntityPathFilter::all(), "foxglove.FrameTransforms:message")
+            .output_scatter_columns_at("transforms", |out| {
+                out.time(
+                    TIME_NAME,
+                    args.epoch.time_type(),
+                    [
+                        Op::access_field("transforms"),
+                        Op::flatten(),
+                        Op::access_field("timestamp"),
+                        Op::func(list_timespec_to_list_nanos),
+                    ],
+                )
+                .component(
+                    Transform3D::descriptor_parent_frame(),
+                    [
+                        Op::access_field("transforms"),
+                        Op::flatten(),
+                        Op::access_field("parent_frame_id"),
+                    ],
+                )
+                .component(
+                    Transform3D::descriptor_child_frame(),
+                    [
+                        Op::access_field("transforms"),
+                        Op::flatten(),
+                        Op::access_field("child_frame_id"),
+                    ],
+                )
+                .component(
+                    Transform3D::descriptor_translation(),
+                    [
+                        Op::access_field("transforms"),
+                        Op::flatten(),
+                        Op::access_field("translation"),
+                        Op::func(list_xyz_struct_to_list_fixed),
+                    ],
+                )
+            })?
+            .build();
+
     let lenses_sink = LensesSink::new(GrpcSink::default())
         .with_lens(image_lens)
         .with_lens(instance_pose_lens)
         .with_lens(instance_poses_lens)
-        .with_lens(video_lens);
+        .with_lens(video_lens)
+        .with_lens(transforms_lens);
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_mcap_protobuf")?;
     rec.set_sink(Box::new(lenses_sink));
