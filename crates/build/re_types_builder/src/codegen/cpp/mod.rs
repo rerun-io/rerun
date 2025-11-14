@@ -1050,6 +1050,7 @@ impl QuotedObject {
 
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_system("cstring"); // std::memcpy
+        hpp_includes.insert_system("cassert"); // assert
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         let mut hpp_declarations = ForwardDecls::default();
