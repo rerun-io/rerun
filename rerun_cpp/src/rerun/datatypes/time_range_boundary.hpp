@@ -6,6 +6,7 @@
 #include "../result.hpp"
 #include "time_int.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <memory>
