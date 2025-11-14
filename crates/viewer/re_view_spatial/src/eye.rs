@@ -605,8 +605,19 @@ impl EyeController {
 
             // X=right, Y=up, Z=back
             let mut local_movement = Vec3::ZERO;
-            local_movement.z -= input.key_down(egui::Key::W) as i32 as f32;
-            local_movement.z += input.key_down(egui::Key::S) as i32 as f32;
+            if self.projection == Eye3DProjection::Orthographic
+                && let Some(vertical_world_size) = &mut self.vertical_world_size
+            {
+                // In orthographic mode, local movement along the optical axis doesn't make sense.
+                // Scale the vertical size instead (zoom) to achieve a similar effect.
+                let direction = input.key_down(egui::Key::S) as i32 as f32
+                    - input.key_down(egui::Key::W) as i32 as f32;
+                *vertical_world_size += direction * self.speed as f32 * dt;
+                self.did_interact |= direction != 0.0;
+            } else {
+                local_movement.z -= input.key_down(egui::Key::W) as i32 as f32;
+                local_movement.z += input.key_down(egui::Key::S) as i32 as f32;
+            }
             local_movement.x -= input.key_down(egui::Key::A) as i32 as f32;
             local_movement.x += input.key_down(egui::Key::D) as i32 as f32;
             local_movement.y -= input.key_down(egui::Key::Q) as i32 as f32;
@@ -629,19 +640,6 @@ impl EyeController {
             };
             let delta = eye_state.velocity * dt;
 
-            if self.projection == Eye3DProjection::Orthographic {
-                // Changing the eye distance in orthographic projection has no effect.
-                // In order to avoid surprising effects when switching projections, we instead
-                // change the vertical size with W/S in orthographic mode and only move laterally with A/D/Q/E.
-                // if delta.z != 0.0 {
-                //     self.vertical_world_size = Some(
-                //         self.vertical_world_size
-                //             .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
-                //             + delta.z,
-                //     );
-                // }
-                // delta.z = 0.0;
-            }
             self.pos += delta;
             self.look_target += delta;
 
