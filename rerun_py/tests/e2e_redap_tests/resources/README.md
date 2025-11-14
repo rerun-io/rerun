@@ -19,12 +19,12 @@ Lance table containing sample data with basic datatypes (int, bool, float).
 - Used for testing DataFusion operations and table registration
 
 
-## Remote Resources
+## Remote resources
 
 When running tests against remote deployments, use `--resource-prefix` to point to S3/GCS copies of these resources:
 
 ```bash
-pytest ... --resource-prefix=s3://bucket/path/to/resources/
+pytest … --resource-prefix=s3://bucket/path/to/resources/
 ```
 
 The prefix should point to a directory containing `dataset/` and `simple_datatypes/` subdirectories.
