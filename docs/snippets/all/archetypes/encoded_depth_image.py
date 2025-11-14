@@ -12,7 +12,6 @@ depth_png = depth_path.read_bytes()
 depth_format = rr.components.ImageFormat(
     width=64,
     height=48,
-    color_model=rr.datatypes.ColorModel.L,
     channel_datatype=rr.datatypes.ChannelDatatype.U16,
 )
 
