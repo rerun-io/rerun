@@ -234,7 +234,6 @@ pub fn query_and_resolve_tree_transform_at_entity(
         &all_components_of_transaction,
     );
     let Some(unit_chunk) = unit_chunk else {
-        // TODO: Is this REALLY an error?
         return Err(TransformError::MissingTransform {
             entity_path: entity_path.clone(),
         });
