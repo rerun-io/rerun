@@ -79,18 +79,14 @@ Filter message types and toggle column visibility in a selection panel.",
         system_registry.register_fallback_provider(
             TextLogColumns::descriptor_columns().component,
             |ctx| {
-                let mut columns: Vec<_> = ctx
-                    .recording()
-                    .times_per_timeline()
-                    .timelines()
-                    .map(|timeline| {
-                        datatypes::TextLogColumn::Timeline(timeline.name().as_str().into())
-                    })
-                    .collect();
-
-                columns.push(datatypes::TextLogColumn::EntityPath);
-                columns.push(datatypes::TextLogColumn::LogLevel);
-                columns.push(datatypes::TextLogColumn::Body);
+                let columns = vec![
+                    datatypes::TextLogColumn::Timeline(
+                        ctx.viewer_ctx().time_ctrl.timeline().name().as_str().into(),
+                    ),
+                    datatypes::TextLogColumn::EntityPath,
+                    datatypes::TextLogColumn::LogLevel,
+                    datatypes::TextLogColumn::Body,
+                ];
 
                 TextLogColumnList(bp_datatypes::TextLogColumnList { columns })
             },
@@ -160,7 +156,6 @@ Filter message types and toggle column visibility in a selection panel.",
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TextViewState>()?;
 
-        // We need a custom UI here because we use arrays, whih component UI doesn't support.
         ui.list_item_scope("text_log_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
             re_view::view_property_ui::<TextLogColumns>(&ctx, ui);
@@ -429,6 +424,7 @@ fn column_name_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, column: &datatypes
     }
 }
 
+// We need this to be a custom ui to bew able to use the view state to get seen text log levels.
 fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let property = ViewProperty::from_archetype::<TextLogRows>(
         ctx.blueprint_db(),
