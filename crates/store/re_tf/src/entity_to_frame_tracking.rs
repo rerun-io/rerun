@@ -80,10 +80,8 @@ impl EntityToFrameOverTime {
             std::collections::btree_map::Entry::Occupied(mut entry) => {
                 // Special case: there was already a range exactly at that start time.
                 // We have to merge the incoming list with the existing one.
-                // TODO: cover this by unit test.
-                let new_unique_list = entry
-                    .get_mut()
-                    .iter()
+                let old_entries = entry.get_mut().iter();
+                let new_unique_list = old_entries
                     .chain(new_frames.iter())
                     .unique()
                     .copied()
