@@ -70,8 +70,10 @@ pub struct TimeOutput {
 /// Outputs inherit times from the input chunk.
 pub struct OneToOne {
     pub target_entity: TargetEntity,
+
     /// Component columns that will be created.
     pub components: Vec1<ComponentOutput>,
+
     /// Time columns that will be created.
     pub times: Vec<TimeOutput>,
 }
@@ -82,8 +84,10 @@ pub struct OneToOne {
 /// Outputs inherit times from the input chunk.
 pub struct OneToMany {
     pub target_entity: TargetEntity,
+
     /// Component columns that will be created.
     pub components: Vec1<ComponentOutput>,
+
     /// Time columns that will be created.
     pub times: Vec<TimeOutput>,
 }
@@ -94,6 +98,7 @@ pub struct OneToMany {
 /// In many cases, static lenses will omit the input column entirely.
 pub struct Static {
     pub target_entity: TargetEntity,
+
     /// Component columns that will be created.
     pub components: Vec1<ComponentOutput>,
 }
