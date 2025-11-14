@@ -71,4 +71,8 @@ pub async fn test_deselect_on_escape() {
     harness.snapshot_app("deselect_on_escape_6");
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("deselect_on_escape_7");
+    // Whatever was selected should become deselected after pressing escape again
+    harness.key_press(egui::Key::Escape);
+    harness.set_selection_panel_opened(false);
+    harness.snapshot_app("deselect_on_escape_8");
 }
