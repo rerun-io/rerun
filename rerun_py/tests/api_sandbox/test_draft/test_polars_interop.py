@@ -111,7 +111,7 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
         df = (
-            ds.query(index="timeline", contents="/**")
+            ds.reader(index="timeline")
             # All former view-level filtering happens now in datafusion and is (hopefully) pushed back
             .filter(in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")]))
             .to_polars()
