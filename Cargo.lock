@@ -9523,6 +9523,8 @@ dependencies = [
  "re_types",
  "re_uri",
  "re_web_viewer_server",
+ "serde",
+ "serde_json",
  "similar-asserts",
  "thiserror 2.0.17",
  "tokio",

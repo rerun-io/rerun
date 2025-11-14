@@ -506,16 +506,33 @@ mod test {
     use re_chunk::{
         TimeColumn, TimelineName,
         external::arrow::{
-            array::{
-                Float32Builder, Float64Builder, Int32Builder, ListBuilder, StringBuilder,
-                StructBuilder,
-            },
+            array::{Int32Builder, ListBuilder, StringBuilder},
             datatypes::{DataType, Field},
         },
     };
     use re_types::{ComponentDescriptor, archetypes::Scalars};
 
     use super::*;
+
+    /// Helper to convert serializable data to a `ListArray` using Arrow's JSON decoder
+    fn to_list_array<T: serde::Serialize>(data: &[T], inner_field: Arc<Field>) -> ListArray {
+        use arrow::json::ReaderBuilder;
+
+        let list_field = Arc::new(Field::new_list_field(DataType::List(inner_field), true));
+        let schema = Arc::new(arrow::datatypes::Schema::new(vec![list_field]));
+
+        // Wrap each row in an object with "item" field
+        let rows: Vec<_> = data
+            .iter()
+            .map(|row| serde_json::json!({ "item": row }))
+            .collect();
+
+        let mut decoder = ReaderBuilder::new(schema).build_decoder().unwrap();
+        decoder.serialize(&rows).unwrap();
+
+        let batch = decoder.flush().unwrap().unwrap();
+        batch.column(0).as_list::<i32>().clone()
+    }
 
     /// Creates a chunk that contains all sorts of validity, nullability, and empty lists.
     // ┌──────────────┬───────────┐
@@ -534,116 +551,60 @@ mod test {
     // │ [{a:6,b:6}]  │  [null]   │
     // └──────────────┴───────────┘
     fn nullability_chunk() -> Chunk {
-        let mut struct_column_builder = ListBuilder::new(StructBuilder::new(
-            [
-                Arc::new(Field::new("a", DataType::Float32, true)),
-                Arc::new(Field::new("b", DataType::Float64, true)),
-            ],
-            vec![
-                Box::new(Float32Builder::new()),
-                Box::new(Float64Builder::new()),
-            ],
+        #[derive(serde::Serialize)]
+        struct MyStruct {
+            a: Option<f32>,
+            b: Option<f64>,
+        }
+
+        let struct_field = Arc::new(Field::new(
+            "item",
+            DataType::Struct(
+                vec![
+                    Arc::new(Field::new("a", DataType::Float32, true)),
+                    Arc::new(Field::new("b", DataType::Float64, true)),
+                ]
+                .into(),
+            ),
+            true,
         ));
-        let mut string_column_builder = ListBuilder::new(StringBuilder::new());
 
-        // row 0
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(0.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_value(0.0);
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
+        let string_field = Arc::new(Field::new("item", DataType::Utf8, true));
 
-        string_column_builder.values().append_value("zero");
-        string_column_builder.append(true);
+        let struct_data = vec![
+            Some(vec![Some(MyStruct {
+                a: Some(0.0),
+                b: Some(0.0),
+            })]),
+            Some(vec![Some(MyStruct {
+                a: Some(1.0),
+                b: None,
+            })]),
+            Some(vec![]),
+            None,
+            Some(vec![Some(MyStruct {
+                a: Some(4.0),
+                b: Some(4.0),
+            })]),
+            Some(vec![None]),
+            Some(vec![Some(MyStruct {
+                a: Some(6.0),
+                b: Some(6.0),
+            })]),
+        ];
 
-        // row 1
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(1.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_null();
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
+        let string_data = vec![
+            Some(vec![Some("zero")]),
+            Some(vec![Some("one"), Some("1")]),
+            Some(vec![]),
+            Some(vec![Some("three")]),
+            None,
+            Some(vec![Some("five")]),
+            Some(vec![None]),
+        ];
 
-        string_column_builder.values().append_value("one");
-        string_column_builder.values().append_value("1");
-        string_column_builder.append(true);
-
-        // row 2
-        struct_column_builder.append(true); // empty list
-
-        string_column_builder.append(true); // empty list
-
-        // row 3
-        struct_column_builder.append(false); // null
-
-        string_column_builder.values().append_value("three");
-        string_column_builder.append(true);
-
-        // row 4
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(4.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_value(4.0);
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
-
-        string_column_builder.append(false); // null
-
-        // row 5
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_null(); // placeholder for null struct
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_null(); // placeholder for null struct
-        struct_column_builder.values().append(false); // null struct element
-        struct_column_builder.append(true);
-
-        string_column_builder.values().append_value("five");
-        string_column_builder.append(true);
-
-        // row 6
-        struct_column_builder
-            .values()
-            .field_builder::<Float32Builder>(0)
-            .unwrap()
-            .append_value(6.0);
-        struct_column_builder
-            .values()
-            .field_builder::<Float64Builder>(1)
-            .unwrap()
-            .append_value(6.0);
-        struct_column_builder.values().append(true);
-        struct_column_builder.append(true);
-
-        string_column_builder.values().append_null();
-        string_column_builder.append(true);
-
-        let struct_column = struct_column_builder.finish();
-        let string_column = string_column_builder.finish();
+        let struct_column = to_list_array(&struct_data, struct_field);
+        let string_column = to_list_array(&string_data, string_field);
 
         let components = [
             (ComponentDescriptor::partial("structs"), struct_column),
@@ -899,89 +860,50 @@ mod test {
 
     // Helper function to create test data: list of structs with {timestamp: i64, value: String}
     fn create_test_struct_list() -> ListArray {
-        use arrow::array::Int64Builder;
+        #[derive(serde::Serialize)]
+        struct TimestampedValue {
+            timestamp: i64,
+            value: Option<String>,
+        }
 
-        let mut struct_list_builder = ListBuilder::new(StructBuilder::new(
-            [
-                Arc::new(Field::new("timestamp", DataType::Int64, true)),
-                Arc::new(Field::new("value", DataType::Utf8, true)),
-            ],
-            vec![
-                Box::new(Int64Builder::new()),
-                Box::new(StringBuilder::new()),
-            ],
+        let struct_field = Arc::new(Field::new(
+            "item",
+            DataType::Struct(
+                vec![
+                    Arc::new(Field::new("timestamp", DataType::Int64, true)),
+                    Arc::new(Field::new("value", DataType::Utf8, true)),
+                ]
+                .into(),
+            ),
+            true,
         ));
 
-        let mut timestamp_counter = 1i64..;
+        let data = vec![
+            vec![
+                TimestampedValue {
+                    timestamp: 1,
+                    value: Some("one".to_owned()),
+                },
+                TimestampedValue {
+                    timestamp: 2,
+                    value: Some("two".to_owned()),
+                },
+                TimestampedValue {
+                    timestamp: 3,
+                    value: Some("three".to_owned()),
+                },
+            ],
+            vec![TimestampedValue {
+                timestamp: 4,
+                value: Some("four".to_owned()),
+            }],
+            vec![TimestampedValue {
+                timestamp: 5,
+                value: None,
+            }],
+        ];
 
-        // Row 0: [{1, "one"}, {2, "two"}, {3, "three"}]
-        struct_list_builder
-            .values()
-            .field_builder::<Int64Builder>(0)
-            .unwrap()
-            .append_value(timestamp_counter.next().unwrap());
-        struct_list_builder
-            .values()
-            .field_builder::<StringBuilder>(1)
-            .unwrap()
-            .append_value("one");
-        struct_list_builder.values().append(true);
-
-        struct_list_builder
-            .values()
-            .field_builder::<Int64Builder>(0)
-            .unwrap()
-            .append_value(timestamp_counter.next().unwrap());
-        struct_list_builder
-            .values()
-            .field_builder::<StringBuilder>(1)
-            .unwrap()
-            .append_value("two");
-        struct_list_builder.values().append(true);
-
-        struct_list_builder
-            .values()
-            .field_builder::<Int64Builder>(0)
-            .unwrap()
-            .append_value(timestamp_counter.next().unwrap());
-        struct_list_builder
-            .values()
-            .field_builder::<StringBuilder>(1)
-            .unwrap()
-            .append_value("three");
-        struct_list_builder.values().append(true);
-
-        struct_list_builder.append(true);
-
-        // Row 1: [{4, "four"}]
-        struct_list_builder
-            .values()
-            .field_builder::<Int64Builder>(0)
-            .unwrap()
-            .append_value(timestamp_counter.next().unwrap());
-        struct_list_builder
-            .values()
-            .field_builder::<StringBuilder>(1)
-            .unwrap()
-            .append_value("four");
-        struct_list_builder.values().append(true);
-        struct_list_builder.append(true);
-
-        // Row 2: [{5, null}]
-        struct_list_builder
-            .values()
-            .field_builder::<Int64Builder>(0)
-            .unwrap()
-            .append_value(timestamp_counter.next().unwrap());
-        struct_list_builder
-            .values()
-            .field_builder::<StringBuilder>(1)
-            .unwrap()
-            .append_null();
-        struct_list_builder.values().append(true);
-        struct_list_builder.append(true);
-
-        struct_list_builder.finish()
+        to_list_array(&data, struct_field)
     }
 
     #[test]
