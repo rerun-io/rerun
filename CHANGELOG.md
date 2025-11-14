@@ -1,5 +1,9 @@
 # Rerun changelog
 
+## [0.27.1](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatability with dependency
+
+- Fix non semver compliant breaking changes in `ply-rs` breaking Rust builds [#11890](https://github.com/rerun-io/rerun/pull/11890)
+
 ## [0.27.1](https://github.com/rerun-io/rerun/compare/0.27.0...0.27.1) - 2025-11-13 - Bug fixes and performance improvements
 
 #### 🪳 Bug fixes
