@@ -538,7 +538,7 @@ mod tests {
     use super::*;
     use re_chunk_store::{Chunk, LatestAtQuery};
     use re_entity_db::{EntityDb, EntityPath};
-    use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+    use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoints};
     use re_log_types::{TimePoint, Timeline};
     use re_types::RowId;
 
@@ -563,25 +563,25 @@ mod tests {
         MyPoints::descriptor_labels().component
     }
 
-    fn test_atomic_latest_at_no_static_no_transform_frame(
+    fn atomic_latest_at_temporal_only_no_frame_cond(
         out_of_order: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
 
         // Populate store.
         let entity_path = EntityPath::from("my_entity");
-        let row_id_temporal0 = RowId::new();
-        let row_id_temporal1 = RowId::new();
+        let row_id_temp0 = RowId::new();
+        let row_id_temp1 = RowId::new();
         let row_id_irrelevant = RowId::new();
-        let row_id_temporal2 = RowId::new();
+        let row_id_temp2 = RowId::new();
         let chunk = Chunk::builder(entity_path.clone())
             .with_archetype(
-                row_id_temporal0,
+                row_id_temp0,
                 if out_of_order { tp(30) } else { tp(10) },
                 &MyPoints::new([MyPoint::new(1.0, 1.0)]).with_colors([MyColor(1)]),
             )
             .with_archetype(
-                row_id_temporal1,
+                row_id_temp1,
                 tp(20),
                 &MyPoints::update_fields().with_colors([MyColor(2)]),
             )
@@ -593,7 +593,7 @@ mod tests {
                 &MyIndex(123),
             )?
             .with_archetype(
-                row_id_temporal2,
+                row_id_temp2,
                 if out_of_order { tp(10) } else { tp(30) },
                 &MyPoints::new([MyPoint::new(2.0, 2.0)]),
             )
@@ -616,19 +616,19 @@ mod tests {
 
         assert_eq!(query_row_at_time(0), None);
         if out_of_order {
-            assert_eq!(query_row_at_time(10), Some(row_id_temporal2));
-            assert_eq!(query_row_at_time(15), Some(row_id_temporal2));
-            assert_eq!(query_row_at_time(20), Some(row_id_temporal1));
-            assert_eq!(query_row_at_time(25), Some(row_id_temporal1));
-            assert_eq!(query_row_at_time(30), Some(row_id_temporal0));
-            assert_eq!(query_row_at_time(35), Some(row_id_temporal0));
+            assert_eq!(query_row_at_time(10), Some(row_id_temp2));
+            assert_eq!(query_row_at_time(15), Some(row_id_temp2));
+            assert_eq!(query_row_at_time(20), Some(row_id_temp1));
+            assert_eq!(query_row_at_time(25), Some(row_id_temp1));
+            assert_eq!(query_row_at_time(30), Some(row_id_temp0));
+            assert_eq!(query_row_at_time(35), Some(row_id_temp0));
         } else {
-            assert_eq!(query_row_at_time(10), Some(row_id_temporal0));
-            assert_eq!(query_row_at_time(15), Some(row_id_temporal0));
-            assert_eq!(query_row_at_time(20), Some(row_id_temporal1));
-            assert_eq!(query_row_at_time(25), Some(row_id_temporal1));
-            assert_eq!(query_row_at_time(30), Some(row_id_temporal2));
-            assert_eq!(query_row_at_time(35), Some(row_id_temporal2));
+            assert_eq!(query_row_at_time(10), Some(row_id_temp0));
+            assert_eq!(query_row_at_time(15), Some(row_id_temp0));
+            assert_eq!(query_row_at_time(20), Some(row_id_temp1));
+            assert_eq!(query_row_at_time(25), Some(row_id_temp1));
+            assert_eq!(query_row_at_time(30), Some(row_id_temp2));
+            assert_eq!(query_row_at_time(35), Some(row_id_temp2));
         }
 
         // Any query with another frame should fail
@@ -649,21 +649,313 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_atomic_latest_at_no_static_no_transform_frame_in_order()
+    fn atomic_latest_at_temporal_only_no_frame_cond_in_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_atomic_latest_at_no_static_no_transform_frame(false)
+        atomic_latest_at_temporal_only_no_frame_cond(false)
     }
 
     #[test]
-    fn test_atomic_latest_at_no_static_no_transform_frame_out_of_order()
+    fn atomic_latest_at_temporal_only_no_frame_cond_out_of_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        test_atomic_latest_at_no_static_no_transform_frame(true)
+        atomic_latest_at_temporal_only_no_frame_cond(true)
     }
 
-    // TODO: also test
-    // * static chunks
-    // * static and temporal mix
-    // * something sane with frames
-    // * many frames on the same time
-    // * the thing we brought up earlier
+    #[test]
+    fn atomic_latest_at_static_and_temporal_no_frame_cond() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        // Populate store.
+        let entity_path = EntityPath::from("my_entity");
+        let row_id_static0 = RowId::new();
+        let row_id_static1 = RowId::new();
+        let row_id_irrelevant = RowId::new();
+        let row_id_temp = RowId::new();
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype(
+                row_id_static0,
+                TimePoint::STATIC,
+                &MyPoints::new([MyPoint::new(1.0, 1.0)]),
+            )
+            .with_archetype(
+                row_id_static1,
+                TimePoint::STATIC,
+                &MyPoints::new([MyPoint::new(2.0, 2.0)]),
+            )
+            .with_component(
+                row_id_irrelevant,
+                TimePoint::STATIC,
+                // Some random components that aren't of interest to us!
+                MyIndex::partial_descriptor(),
+                &MyIndex(123),
+            )?
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype(
+                row_id_temp,
+                tp(10),
+                // Not allowed to write position & index, but color is fine since it wasn't written statically.
+                &MyPoints::update_fields().with_colors([MyColor(1)]),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let requested_frame = TransformFrameIdHash::from_entity_path(&entity_path);
+
+        let query_row_at_time = |t| {
+            atomic_latest_at_query_for_frame(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), t),
+                &entity_path,
+                frame_condition_component(),
+                requested_frame,
+                &atomic_component_set(),
+            )?
+            .row_id()
+        };
+
+        assert_eq!(query_row_at_time(0), Some(row_id_static1));
+        assert_eq!(query_row_at_time(10), Some(row_id_temp));
+        assert_eq!(query_row_at_time(123), Some(row_id_temp));
+
+        // Any query with another frame should fail
+        assert!(
+            atomic_latest_at_query_for_frame(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), 0),
+                &entity_path,
+                frame_condition_component(),
+                TransformFrameIdHash::from_str("nope"),
+                &atomic_component_set(),
+            )
+            .is_none()
+        );
+
+        Ok(())
+    }
+
+    fn atomic_latest_at_temporal_only_with_frame_cond(
+        out_of_order: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        // Populate store.
+        let entity_path = EntityPath::from("my_entity");
+        let row_id_temp0 = RowId::new();
+        let row_id_temp1 = RowId::new();
+        let row_id_irrelevant = RowId::new();
+        let row_id_temp2 = RowId::new();
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype(
+                row_id_temp0,
+                if out_of_order { tp(30) } else { tp(10) },
+                &MyPoints::new([MyPoint::new(1.0, 1.0)])
+                    .with_colors([MyColor(1)])
+                    .with_labels([MyLabel("first".to_owned())]),
+            )
+            .with_archetype(
+                row_id_temp1,
+                tp(20),
+                &MyPoints::update_fields()
+                    .with_colors([MyColor(2)])
+                    .with_labels([MyLabel("second!".to_owned())]),
+            )
+            .with_component(
+                row_id_irrelevant,
+                tp(25),
+                // Some random components that aren't of interest to us!
+                MyIndex::partial_descriptor(),
+                &MyIndex(123),
+            )?
+            .with_archetype(
+                row_id_temp2,
+                if out_of_order { tp(10) } else { tp(30) },
+                &MyPoints::new([MyPoint::new(2.0, 2.0)]),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let query_row = |t, label: &str| {
+            atomic_latest_at_query_for_frame(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), t),
+                &entity_path,
+                frame_condition_component(),
+                TransformFrameIdHash::from_str(label),
+                &atomic_component_set(),
+            )?
+            .row_id()
+        };
+
+        assert_eq!(query_row(0, "first"), None);
+        assert_eq!(query_row(0, "second!"), None);
+        assert_eq!(query_row(0, "tf#/my_entity"), None);
+        if out_of_order {
+            assert_eq!(query_row(10, "first"), None);
+            assert_eq!(query_row(20, "first"), None);
+            assert_eq!(query_row(25, "first"), None);
+            assert_eq!(query_row(35, "first"), Some(row_id_temp0));
+
+            assert_eq!(query_row(10, "second!"), None);
+            assert_eq!(query_row(20, "second!"), Some(row_id_temp1));
+            assert_eq!(query_row(25, "second!"), Some(row_id_temp1));
+            assert_eq!(query_row(35, "second!"), Some(row_id_temp1));
+
+            assert_eq!(query_row(10, "tf#/my_entity"), Some(row_id_temp2));
+            assert_eq!(query_row(20, "tf#/my_entity"), Some(row_id_temp2));
+            assert_eq!(query_row(25, "tf#/my_entity"), Some(row_id_temp2));
+            assert_eq!(query_row(35, "tf#/my_entity"), Some(row_id_temp2));
+        } else {
+            assert_eq!(query_row(10, "first"), Some(row_id_temp0));
+            assert_eq!(query_row(20, "first"), Some(row_id_temp0));
+            assert_eq!(query_row(25, "first"), Some(row_id_temp0));
+            assert_eq!(query_row(35, "first"), Some(row_id_temp0));
+
+            assert_eq!(query_row(10, "second!"), None);
+            assert_eq!(query_row(20, "second!"), Some(row_id_temp1));
+            assert_eq!(query_row(25, "second!"), Some(row_id_temp1));
+            assert_eq!(query_row(35, "second!"), Some(row_id_temp1));
+
+            assert_eq!(query_row(10, "tf#/my_entity"), None);
+            assert_eq!(query_row(20, "tf#/my_entity"), None);
+            assert_eq!(query_row(25, "tf#/my_entity"), None);
+            assert_eq!(query_row(35, "tf#/my_entity"), Some(row_id_temp2));
+        }
+
+        Ok(())
+    }
+    #[test]
+    fn atomic_latest_at_temporal_only_with_frame_cond_in_order()
+    -> Result<(), Box<dyn std::error::Error>> {
+        atomic_latest_at_temporal_only_with_frame_cond(false)
+    }
+
+    #[test]
+    fn atomic_latest_at_temporal_only_with_frame_cond_out_of_order()
+    -> Result<(), Box<dyn std::error::Error>> {
+        atomic_latest_at_temporal_only_with_frame_cond(true)
+    }
+
+    #[test]
+    fn atomic_latest_at_handle_simulataneous_events() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        // Populate store.
+        let entity_path = EntityPath::from("my_entity");
+        let row_id_temp0 = RowId::new();
+        let row_id_temp1 = RowId::new();
+        let row_id_irrelevant = RowId::new();
+        let row_id_temp2 = RowId::new();
+
+        let time = tp(10);
+
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype(
+                row_id_temp0,
+                time.clone(),
+                &MyPoints::new([MyPoint::new(1.0, 1.0)])
+                    .with_colors([MyColor(1)])
+                    .with_labels([MyLabel("first".to_owned())]),
+            )
+            .with_archetype(
+                row_id_temp1,
+                time.clone(),
+                &MyPoints::update_fields()
+                    .with_colors([MyColor(2)])
+                    .with_labels([MyLabel("second!".to_owned())]),
+            )
+            .with_component(
+                row_id_irrelevant,
+                time.clone(),
+                // Some random components that aren't of interest to us!
+                MyIndex::partial_descriptor(),
+                &MyIndex(123),
+            )?
+            .with_archetype(
+                row_id_temp2,
+                time.clone(),
+                &MyPoints::new([MyPoint::new(2.0, 2.0)]),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let query_row = |t, label: &str| {
+            atomic_latest_at_query_for_frame(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), t),
+                &entity_path,
+                frame_condition_component(),
+                TransformFrameIdHash::from_str(label),
+                &atomic_component_set(),
+            )?
+            .row_id()
+        };
+
+        assert_eq!(query_row(0, "first"), None);
+        assert_eq!(query_row(0, "second!"), None);
+        assert_eq!(query_row(0, "tf#/my_entity"), None);
+        assert_eq!(query_row(10, "first"), Some(row_id_temp0));
+        assert_eq!(query_row(10, "second!"), Some(row_id_temp1));
+        assert_eq!(query_row(10, "tf#/my_entity"), Some(row_id_temp2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn atomic_latest_at_handle_empty_arrays() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+
+        // Populate store.
+        let entity_path = EntityPath::from("my_entity");
+        let row_id_temp0 = RowId::new();
+        let row_id_irrelevant = RowId::new();
+        let row_id_temp1 = RowId::new();
+
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_archetype(
+                row_id_temp0,
+                tp(10),
+                &MyPoints::new([MyPoint::new(1.0, 1.0)])
+                    .with_labels([MyLabel("myframe".to_owned())]),
+            )
+            .with_component(
+                row_id_irrelevant,
+                tp(20),
+                // Some random components that aren't of interest to us!
+                MyIndex::partial_descriptor(),
+                &MyIndex(123),
+            )?
+            .with_archetype(
+                row_id_temp1,
+                tp(30),
+                &MyPoints::update_fields().with_colors(std::iter::empty::<MyColor>()), // Empty array on a relevant component, still clears out things|
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        let query_row = |t, label: &str| {
+            atomic_latest_at_query_for_frame(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), t),
+                &entity_path,
+                frame_condition_component(),
+                TransformFrameIdHash::from_str(label),
+                &atomic_component_set(),
+            )?
+            .row_id()
+        };
+
+        assert_eq!(query_row(0, "myframe"), None);
+        assert_eq!(query_row(0, "tf#/my_entity"), None);
+        assert_eq!(query_row(10, "myframe"), Some(row_id_temp0));
+        assert_eq!(query_row(10, "tf#/my_entity"), None);
+        assert_eq!(query_row(20, "myframe"), Some(row_id_temp0));
+        assert_eq!(query_row(20, "tf#/my_entity"), None);
+        assert_eq!(query_row(30, "myframe"), Some(row_id_temp0));
+        assert_eq!(query_row(30, "tf#/my_entity"), Some(row_id_temp1));
+
+        Ok(())
+    }
 }
