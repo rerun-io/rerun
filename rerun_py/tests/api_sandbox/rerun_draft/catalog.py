@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import atexit
 import copy
+import itertools
 import tempfile
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -11,10 +12,13 @@ from typing import TYPE_CHECKING, Any
 import datafusion
 import pyarrow as pa
 from rerun import catalog as _catalog
+from rerun.dataframe import ComponentColumnDescriptor, IndexColumnDescriptor
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from datetime import datetime
+
+    from rerun_bindings import Schema as _Schema  # noqa: TID251
 
 
 class CatalogClient:
@@ -154,6 +158,50 @@ class Entry:
         return self._inner.update(name=name)
 
 
+class Schema:
+    """A schema view over a dataset in the catalog."""
+
+    def __init__(self, inner: _Schema, lazy_state: LazyDatasetState) -> None:
+        self._inner: _Schema = inner
+        self._component_columns: list[ComponentColumnDescriptor] = []
+        self._index_columns: list[IndexColumnDescriptor] = []
+
+        # Use lazy_state to filter component columns
+        for col in self._inner:
+            if isinstance(col, ComponentColumnDescriptor):
+                if all(filter.matches(col.entity_path) for filter in lazy_state.content_path_filters):
+                    self._component_columns.append(col)
+            elif isinstance(col, IndexColumnDescriptor):
+                self._index_columns.append(col)
+
+    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
+        return itertools.chain(self._index_columns, self._component_columns)
+
+    def index_columns(self) -> list[IndexColumnDescriptor]:
+        return self._index_columns
+
+    def component_columns(self) -> list[ComponentColumnDescriptor]:
+        return self._component_columns
+
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
+        for col in self._component_columns:
+            if col.entity_path == entity_path and col.component == component:
+                return col
+        return None
+
+    def column_names(self) -> list[str]:
+        names = []
+        for col in self:
+            names.append(col.name)
+        return names
+
+    def __repr__(self) -> str:
+        lines = []
+        for col in self:
+            lines.append(repr(col))
+        return "\n".join(lines)
+
+
 class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
 
@@ -180,8 +228,8 @@ class DatasetEntry(Entry):
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
         return self._inner.set_default_blueprint_partition_id(segment_id)
 
-    def schema(self) -> Any:
-        return self._inner.schema()
+    def schema(self) -> Schema:
+        return Schema(self._inner.schema(), LazyDatasetState())
 
     def segment_ids(self) -> list[str]:
         return self._inner.partition_ids()
@@ -420,6 +468,9 @@ class DatasetView:
     def __init__(self, inner: _catalog.DatasetEntry, lazy_state: LazyDatasetState) -> None:
         self._inner: _catalog.DatasetEntry = inner
         self._lazy_state: LazyDatasetState = lazy_state
+
+    def schema(self) -> Schema:
+        return Schema(self._inner.schema(), self._lazy_state)
 
     def arrow_schema(self) -> pa.Schema:
         filtered_schema = self._inner.arrow_schema()

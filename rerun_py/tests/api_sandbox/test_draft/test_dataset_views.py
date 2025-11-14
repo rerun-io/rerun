@@ -107,6 +107,32 @@ timeline: timestamp[ns]\
 """)
 
 
+def test_dataset_view_schema(populated_client_complex: rr.catalog.CatalogClient) -> None:
+    ds = populated_client_complex.get_dataset(name="complex_dataset")
+
+    entity_filt = ds.filter_contents(["/points/**"])
+
+    assert str(entity_filt.schema()) == inline_snapshot("""\
+Index(timeline:timeline)
+Column name: /points:Points2D:colors
+	Entity path: /points
+	Archetype: rerun.archetypes.Points2D
+	Component type: rerun.components.Color
+	Component: Points2D:colors
+Column name: /points:Points2D:positions
+	Entity path: /points
+	Archetype: rerun.archetypes.Points2D
+	Component type: rerun.components.Position2D
+	Component: Points2D:positions\
+""")
+
+    assert entity_filt.schema().column_names() == inline_snapshot([
+        "timeline",
+        "/points:Points2D:colors",
+        "/points:Points2D:positions",
+    ])
+
+
 def test_dataset_view_dataframe(populated_client_complex: rr.catalog.CatalogClient) -> None:
     orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
 
