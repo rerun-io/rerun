@@ -8604,6 +8604,7 @@ version = "0.27.0-alpha.8+dev"
 dependencies = [
  "arrow",
  "egui",
+ "egui_dnd",
  "egui_extras",
  "egui_kittest",
  "egui_plot",
@@ -10166,7 +10167,6 @@ name = "re_view_text_log"
 version = "0.27.0-alpha.8+dev"
 dependencies = [
  "egui",
- "egui_dnd",
  "egui_extras",
  "itertools 0.14.0",
  "re_chunk_store",

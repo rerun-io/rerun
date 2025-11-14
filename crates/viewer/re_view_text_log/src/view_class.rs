@@ -163,7 +163,7 @@ Filter message types and toggle column visibility in a selection panel.",
         // We need a custom UI here because we use arrays, whih component UI doesn't support.
         ui.list_item_scope("text_log_selection_ui", |ui| {
             let ctx = self.view_context(ctx, view_id, state);
-            view_property_ui_columns(&ctx, ui);
+            re_view::view_property_ui::<TextLogColumns>(&ctx, ui);
             view_property_ui_rows(&ctx, ui);
         });
 
@@ -418,212 +418,14 @@ fn table_ui(
     }
 }
 
-fn column_kind_name(column: &datatypes::TextLogColumn) -> &'static str {
-    match column {
-        datatypes::TextLogColumn::Timeline(_) => "Timeline",
-        datatypes::TextLogColumn::EntityPath => "Entity Path",
-        datatypes::TextLogColumn::LogLevel => "Level",
-        datatypes::TextLogColumn::Body => "Body",
-    }
-}
-
 fn column_name_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, column: &datatypes::TextLogColumn) {
     match column {
         datatypes::TextLogColumn::Timeline(name) => {
             item_ui::timeline_button(ctx, ui, &TimelineName::new(name));
         }
         _ => {
-            ui.strong(column_kind_name(column));
+            ui.strong(column.kind_name());
         }
-    }
-}
-
-fn view_property_ui_columns(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
-    let property = ViewProperty::from_archetype::<TextLogColumns>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        ctx.view_id,
-    );
-
-    let reflection = ctx.viewer_ctx.reflection();
-    let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
-        ui.error_label(format!(
-            "Missing reflection data for archetype {:?}.",
-            property.archetype_name
-        ));
-        return;
-    };
-
-    let query_ctx = property.query_context(ctx);
-
-    let sub_prop_ui = |ui: &mut egui::Ui| {
-        for field in &reflection.fields {
-            if field
-                .component_descriptor(property.archetype_name)
-                .component
-                == TextLogColumns::descriptor_columns().component
-            {
-                re_view::view_property_component_ui_custom(
-                    &query_ctx,
-                    ui,
-                    &property,
-                    field.display_name,
-                    field,
-                    &|_| {},
-                    Some(&|ui| {
-                        let Ok(columns_list) = property.component_or_fallback::<TextLogColumnList>(
-                            ctx,
-                            TextLogColumns::descriptor_columns().component,
-                        ) else {
-                            ui.error_label("Failed to query columns component");
-                            return;
-                        };
-                        let mut columns = columns_list.0.columns.clone();
-                        let mut any_change = false;
-                        let mut remove = Vec::new();
-                        let res = egui_dnd::dnd(ui, "text_log_columns_dnd").show(
-                            columns.iter_mut().enumerate(),
-                            |ui, (idx, column), handle, _state| {
-                                ui.horizontal(|ui| {
-                                    handle.ui(ui, |ui| {
-                                        ui.small_icon(
-                                            &re_ui::icons::DND_HANDLE,
-                                            Some(ui.visuals().text_color()),
-                                        );
-                                    });
-
-                                    egui::containers::Sides::new().shrink_left().show(
-                                        ui,
-                                        |ui| {
-                                            column_definition_ui(ctx, ui, column, &mut any_change);
-                                        },
-                                        |ui| {
-                                            if ui
-                                                .small_icon_button(
-                                                    &re_ui::icons::REMOVE,
-                                                    "remove column",
-                                                )
-                                                .on_hover_text("Remove column")
-                                                .clicked()
-                                            {
-                                                remove.push(idx);
-                                            }
-                                        },
-                                    )
-                                });
-                            },
-                        );
-
-                        if res.is_drag_finished() {
-                            res.update_vec(&mut columns);
-                            any_change = true;
-                        }
-                        // Skip removing if we dragged.
-                        else if !remove.is_empty() {
-                            any_change = true;
-                            for i in remove.into_iter().rev() {
-                                columns.remove(i);
-                            }
-                        }
-
-                        if ui
-                            .small_icon_button(&re_ui::icons::ADD, "add column")
-                            .on_hover_text("Add column")
-                            .clicked()
-                        {
-                            let fallback_columns_list =
-                                re_viewer_context::typed_fallback_for::<TextLogColumnList>(
-                                    &query_ctx,
-                                    TextLogColumns::descriptor_columns().component,
-                                );
-
-                            let fallback_columns = &fallback_columns_list.0.columns;
-
-                            let new_column = fallback_columns
-                                .iter()
-                                .find(|c| !columns.contains(c))
-                                .or_else(|| columns.last())
-                                .cloned()
-                                .unwrap_or(re_types::datatypes::TextLogColumn::EntityPath);
-
-                            columns.push(new_column);
-                            any_change = true;
-                        }
-
-                        if any_change {
-                            property.save_blueprint_component(
-                                ctx.viewer_ctx,
-                                &TextLogColumns::descriptor_columns(),
-                                &TextLogColumnList(bp_datatypes::TextLogColumnList { columns }),
-                            );
-                        }
-                    }),
-                );
-            } else {
-                re_view::view_property_component_ui(
-                    &query_ctx,
-                    ui,
-                    &property,
-                    field.display_name,
-                    field,
-                );
-            }
-        }
-    };
-
-    ui.list_item()
-        .interactive(false)
-        .show_hierarchical_with_children(
-            ui,
-            ui.make_persistent_id(property.archetype_name.full_name()),
-            true,
-            LabelContent::new(reflection.display_name),
-            sub_prop_ui,
-        );
-}
-
-fn column_definition_ui(
-    ctx: &ViewContext<'_>,
-    ui: &mut egui::Ui,
-    column: &mut datatypes::TextLogColumn,
-    any_change: &mut bool,
-) {
-    egui::ComboBox::from_id_salt("column_types")
-        .selected_text(column_kind_name(column))
-        .show_ui(ui, |ui| {
-            let timeline = if let datatypes::TextLogColumn::Timeline(name) = column {
-                name.as_str().to_owned()
-            } else {
-                ctx.viewer_ctx.time_ctrl.timeline().name().to_string()
-            };
-            let mut selectable_value = |value: datatypes::TextLogColumn| {
-                let text = column_kind_name(&value);
-                *any_change |= ui.selectable_value(column, value, text).changed();
-            };
-            selectable_value(datatypes::TextLogColumn::Timeline(datatypes::Utf8::from(
-                timeline,
-            )));
-
-            selectable_value(datatypes::TextLogColumn::EntityPath);
-
-            selectable_value(datatypes::TextLogColumn::LogLevel);
-            selectable_value(datatypes::TextLogColumn::Body);
-        });
-
-    if let datatypes::TextLogColumn::Timeline(name) = column {
-        egui::ComboBox::from_id_salt("column_timeline_name")
-            .selected_text(name.as_str())
-            .show_ui(ui, |ui| {
-                for timeline in ctx.recording().times_per_timeline().timelines() {
-                    *any_change |= ui
-                        .selectable_value(
-                            name,
-                            datatypes::Utf8::from(timeline.name().as_str()),
-                            timeline.name().as_str(),
-                        )
-                        .changed();
-                }
-            });
     }
 }
 
