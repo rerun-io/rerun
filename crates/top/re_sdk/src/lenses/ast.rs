@@ -4,12 +4,10 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use std::sync::Arc;
-
 use arrow::{
     array::{AsArray as _, Int64Array, ListArray},
     compute::take,
-    datatypes::{DataType, Field},
+    datatypes::DataType,
 };
 use itertools::Either;
 use nohash_hasher::IntMap;
@@ -26,7 +24,11 @@ use re_log_types::{EntityPathFilter, TimeType};
 use re_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
-use super::{LensError, builder::LensBuilder, op};
+use super::{
+    LensError,
+    builder::LensBuilder,
+    op::{self, OpError},
+};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,
@@ -104,7 +106,7 @@ pub enum LensKind {
     StaticColumns(Static),
 }
 
-type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, LensError> + Sync + Send>;
+type CustomFn = Box<dyn Fn(&ListArray) -> Result<ListArray, OpError> + Sync + Send>;
 
 /// Provides commonly used transformations of component columns.
 ///
@@ -177,14 +179,14 @@ impl Op {
     /// A user-defined arbitrary function to convert a component column.
     pub fn func<F>(func: F) -> Self
     where
-        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, LensError> + Send + Sync + 'static,
+        F: for<'a> Fn(&'a ListArray) -> Result<ListArray, OpError> + Send + Sync + 'static,
     {
         Self::Func(Box::new(func))
     }
 }
 
 impl Op {
-    fn call(&self, list_array: &ListArray) -> Result<ListArray, LensError> {
+    fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         match self {
             Self::Cast(op) => op.call(list_array),
             Self::AccessField(op) => op.call(list_array),
@@ -223,7 +225,7 @@ impl Lens {
     }
 
     /// Applies this lens and creates one or more chunks.
-    fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, LensError>> {
+    fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, PartialChunk>> {
         let found = chunk.components().get(self.input.component);
 
         // This means we drop chunks that belong to the same entity but don't have the component.
@@ -239,63 +241,83 @@ impl Lens {
     }
 }
 
-fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<ListArray, LensError> {
+/// An optional [`Chunk`] that only contains the component and time columns that we were able to compute.
+///
+/// Also contains a list of contextualized errors that describe which columns failed.
+#[derive(Debug)]
+pub struct PartialChunk {
+    /// In some cases we might not be able to produce a chunk at all.
+    chunk: Option<Chunk>,
+
+    /// Collection of errors encountered while executing the Lens.
+    errors: Vec<LensError>,
+}
+
+impl PartialChunk {
+    /// Returns the partial chunk if any and consumes `self`.
+    pub fn take(self) -> Option<Chunk> {
+        self.chunk
+    }
+
+    pub fn errors(&self) -> impl Iterator<Item = &LensError> {
+        self.errors.iter()
+    }
+}
+
+fn apply_ops(initial: ListArray, ops: &[Op]) -> Result<ListArray, OpError> {
     ops.iter().try_fold(initial, |array, op| op.call(&array))
 }
 
-fn collect_output_components_iter(
-    input: &SerializedComponentColumn,
-    components: &[ComponentOutput],
-) -> impl Iterator<Item = (ComponentDescriptor, ListArray)> {
-    components.iter().filter_map(
+fn collect_output_components_iter<'a>(
+    input: &'a SerializedComponentColumn,
+    components: &'a [ComponentOutput],
+) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensError>> + 'a {
+    components.iter().map(
         |output| match apply_ops(input.list_array.clone(), &output.ops) {
-            Ok(list_array) => Some((output.component_descr.clone(), list_array)),
-            Err(err) => {
-                re_log::error!(
-                    "Lens operations failed for component columns '{}': {err}",
-                    output.component_descr
-                );
-                None
-            }
+            Ok(list_array) => Ok((output.component_descr.clone(), list_array)),
+            Err(source) => Err(LensError::ComponentOperationFailed {
+                component: output.component_descr.component,
+                source,
+            }),
         },
     )
 }
 
-fn collect_output_times_iter(
-    input: &SerializedComponentColumn,
-    timelines: &[TimeOutput],
-) -> impl Iterator<Item = (TimelineName, TimeType, ListArray)> {
-    timelines.iter().filter_map(
+fn collect_output_times_iter<'a>(
+    input: &'a SerializedComponentColumn,
+    timelines: &'a [TimeOutput],
+) -> impl Iterator<Item = Result<(TimelineName, TimeType, ListArray), LensError>> + 'a {
+    timelines.iter().map(
         |time| match apply_ops(input.list_array.clone(), &time.ops) {
-            Ok(list_array) => Some((time.timeline_name, time.timeline_type, list_array)),
-            Err(err) => {
-                re_log::error!(
-                    "Lens operations failed for time column '{}': {err}",
-                    time.timeline_name,
-                );
-                None
-            }
+            Ok(list_array) => Ok((time.timeline_name, time.timeline_type, list_array)),
+            Err(source) => Err(LensError::TimeOperationFailed {
+                timeline_name: time.timeline_name,
+                source,
+            }),
         },
     )
 }
 
-/// Check if the `list_array` is a [`arrow::array::Int64Array`] and if so, creates a [`re_chunk::TimeColumn`].
-fn convert_to_time_column(
-    (timeline_name, timeline_type, list_array): (TimelineName, TimeType, ListArray),
-) -> Option<(TimelineName, re_chunk::TimeColumn)> {
+/// Converts a time array to a time column.
+///
+/// Checks if the `list_array` values are [`arrow::array::Int64Array`] and if so, creates a [`re_chunk::TimeColumn`].
+fn try_convert_time_column(
+    timeline_name: TimelineName,
+    timeline_type: TimeType,
+    list_array: ListArray,
+) -> Result<(TimelineName, TimeColumn), LensError> {
     if let Some(time_vals) = list_array.values().as_any().downcast_ref::<Int64Array>() {
         let time_column = re_chunk::TimeColumn::new(
             None,
             Timeline::new(timeline_name, timeline_type),
             time_vals.values().clone(),
         );
-        Some((timeline_name, time_column))
+        Ok((timeline_name, time_column))
     } else {
-        re_log::error_once!(
-            "Output for timeline '{timeline_name}' must produce data type {}",
-            DataType::List(Arc::new(Field::new_list_field(DataType::Int64, false))),
-        );
-        None
+        Err(LensError::InvalidTimeColumn {
+            timeline_name,
+            actual_type: format!("{}", list_array.values().data_type()),
+        })
     }
 }
 
@@ -306,30 +328,87 @@ fn resolve_entity_path<'a>(chunk: &'a Chunk, target_entity: &'a TargetEntity) ->
     }
 }
 
+/// Creates a chunk from the given components and timelines, handling errors appropriately.
+///
+/// Returns `Ok(chunk)` if successful with no errors, or `Err(PartialChunk)` if there were
+/// errors during processing (with an optional chunk if creation succeeded despite errors).
+fn finalize_chunk(
+    entity_path: EntityPath,
+    chunk_times: IntMap<TimelineName, TimeColumn>,
+    component_results: re_chunk::ChunkComponents,
+    mut errors: Vec<LensError>,
+) -> Result<Chunk, PartialChunk> {
+    match Chunk::from_auto_row_ids(ChunkId::new(), entity_path, chunk_times, component_results) {
+        Ok(chunk) => {
+            if errors.is_empty() {
+                Ok(chunk)
+            } else {
+                Err(PartialChunk {
+                    chunk: Some(chunk),
+                    errors,
+                })
+            }
+        }
+        Err(err) => {
+            errors.push(err.into());
+            Err(PartialChunk {
+                chunk: None,
+                errors,
+            })
+        }
+    }
+}
+
 impl OneToOne {
     /// Applies a one-to-one lens transformation where each input row produces exactly one output row.
     ///
     /// The output chunk inherits all timelines from the input chunk, with additional timelines
     /// extracted from the component data if specified. Component columns are transformed according
     /// to the provided operations.
-    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Result<Chunk, LensError> {
+    fn apply(
+        &self,
+        chunk: &Chunk,
+        input: &SerializedComponentColumn,
+    ) -> Result<Chunk, PartialChunk> {
         let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
-        let output_component_columns = collect_output_components_iter(input, &self.components);
-        let output_time_columns =
-            collect_output_times_iter(input, &self.times).filter_map(convert_to_time_column);
+        let mut errors = Vec::new();
 
-        // Inherit all existing time columns as-is (since row count doesn't change),
-        // then add any additional time columns extracted from component data.
+        // Collect successful components directly into ChunkComponents, accumulate errors
+        let component_results: re_chunk::ChunkComponents =
+            collect_output_components_iter(input, &self.components)
+                .filter_map(|result| match result {
+                    Ok(component) => Some(component),
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
+                })
+                .collect();
+
+        // Inherit all existing time columns as-is (since row count doesn't change)
         let mut chunk_times = chunk.timelines().clone();
-        chunk_times.extend(output_time_columns);
 
-        Ok(Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            entity_path.clone(),
-            chunk_times,
-            output_component_columns.collect(),
-        )?)
+        // Collect successful time columns, accumulate errors
+        chunk_times.extend(
+            collect_output_times_iter(input, &self.times).filter_map(|result| match result {
+                Ok((timeline_name, timeline_type, list_array)) => {
+                    match try_convert_time_column(timeline_name, timeline_type, list_array) {
+                        Ok(time_col) => Some(time_col),
+                        Err(err) => {
+                            errors.push(err);
+                            None
+                        }
+                    }
+                }
+                Err(err) => {
+                    errors.push(err);
+                    None
+                }
+            }),
+        );
+
+        finalize_chunk(entity_path.clone(), chunk_times, component_results, errors)
     }
 }
 
@@ -338,16 +417,34 @@ impl Static {
     ///
     /// The output chunk contains no time columns, only the transformed component columns.
     /// This is useful for metadata or other data that should not be associated with any timeline.
-    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Result<Chunk, LensError> {
+    fn apply(
+        &self,
+        chunk: &Chunk,
+        input: &SerializedComponentColumn,
+    ) -> Result<Chunk, PartialChunk> {
         let entity_path = resolve_entity_path(chunk, &self.target_entity);
 
+        let mut errors = Vec::new();
+
+        // Collect successful components directly into ChunkComponents, accumulate errors
+        let component_results: re_chunk::ChunkComponents =
+            collect_output_components_iter(input, &self.components)
+                .filter_map(|result| match result {
+                    Ok(component) => Some(component),
+                    Err(err) => {
+                        errors.push(err);
+                        None
+                    }
+                })
+                .collect();
+
         // TODO(grtlr): In case of static, should we enforce single rows (i.e. unit chunks)?
-        Ok(Chunk::from_auto_row_ids(
-            ChunkId::new(),
+        finalize_chunk(
             entity_path.clone(),
             Default::default(),
-            collect_output_components_iter(input, &self.components).collect(),
-        )?)
+            component_results,
+            errors,
+        )
     }
 }
 
@@ -357,10 +454,16 @@ impl OneToMany {
     /// The output chunk inherits all time columns from the input chunk, with additional time columns
     /// extracted from the component data if specified. Component columns are transformed according
     /// to the provided operations.
-    fn apply(&self, chunk: &Chunk, input: &SerializedComponentColumn) -> Result<Chunk, LensError> {
+    fn apply(
+        &self,
+        chunk: &Chunk,
+        input: &SerializedComponentColumn,
+    ) -> Result<Chunk, PartialChunk> {
         use arrow::array::UInt32Array;
 
         let entity_path = resolve_entity_path(chunk, &self.target_entity);
+
+        let mut errors = Vec::new();
 
         let mut output_components =
             collect_output_components_iter(input, &self.components).peekable();
@@ -369,12 +472,26 @@ impl OneToMany {
         // each input row produces). All components must have the same outer list structure.
         // We use .peek() instead of consuming the iterator so we can still process all
         // components (including this first one) later.
-        let Some((_descr, reference_array)) = output_components.peek() else {
-            return Err(LensError::NoOutputColumnsProduced {
-                input_entity: chunk.entity_path().clone(),
-                input_component: input.descriptor.component,
-                target_entity: entity_path.clone(),
-            });
+        let reference_array = match output_components.peek() {
+            Some(Ok((_descr, reference_array))) => reference_array,
+            Some(Err(_)) => {
+                // If the first component failed, collect all errors and return
+                errors.extend(output_components.filter_map(|r| r.err()));
+                return Err(PartialChunk {
+                    chunk: None,
+                    errors,
+                });
+            }
+            None => {
+                return Err(PartialChunk {
+                    chunk: None,
+                    errors: vec![LensError::NoOutputColumnsProduced {
+                        input_entity: chunk.entity_path().clone(),
+                        input_component: input.descriptor.component,
+                        target_entity: entity_path.clone(),
+                    }],
+                });
+            }
         };
 
         // Build scatter indices: tracks which input row each output row came from
@@ -418,51 +535,67 @@ impl OneToMany {
                     );
                     chunk_times.insert(*timeline_name, new_time_column);
                 }
-                Err(err) => {
-                    re_log::error_once!(
-                        "Failed to scatter existing time column '{}' for entity '{entity_path}': {err}",
-                        timeline_name
-                    );
+                Err(source) => {
+                    errors.push(LensError::ScatterExistingTimeFailed {
+                        timeline_name: *timeline_name,
+                        source,
+                    });
                 }
             }
         }
 
-        // Explode all output time columns.
-        let exploded_time_columns = collect_output_times_iter(input, &self.times).filter_map(
-            |(timeline_name, timeline_type, list_array)| match Explode.transform(&list_array) {
-                Ok(exploded) => convert_to_time_column((timeline_name, timeline_type, exploded)),
+        // Explode all output time columns and collect errors
+        chunk_times.extend(
+            collect_output_times_iter(input, &self.times).filter_map(|result| match result {
+                Ok((timeline_name, timeline_type, list_array)) => {
+                    match Explode.transform(&list_array) {
+                        Ok(exploded) => {
+                            match try_convert_time_column(timeline_name, timeline_type, exploded) {
+                                Ok(time_col) => Some(time_col),
+                                Err(err) => {
+                                    errors.push(err);
+                                    None
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            errors.push(LensError::TimeOperationFailed {
+                                timeline_name,
+                                source: err.into(),
+                            });
+                            None
+                        }
+                    }
+                }
                 Err(err) => {
-                    re_log::error_once!(
-                        "Failed to scatter output time column '{}' for entity '{entity_path}': {err}",
-                        timeline_name
-                    );
+                    errors.push(err);
                     None
                 }
-            },
+            }),
         );
-        chunk_times.extend(exploded_time_columns);
 
-        // Explode all component outputs
-        let chunk_components = output_components.filter_map(|(component_descr, list_array)| {
-            match Explode.transform(&list_array) {
-                Ok(exploded) => Some(SerializedComponentColumn::new(exploded, component_descr)),
+        // Explode all component outputs and collect errors
+        let chunk_components: re_chunk::ChunkComponents = output_components
+            .filter_map(|result| match result {
+                Ok((component_descr, list_array)) => match Explode.transform(&list_array) {
+                    Ok(exploded) => Some(SerializedComponentColumn::new(exploded, component_descr)),
+                    Err(err) => {
+                        errors.push(LensError::ComponentOperationFailed {
+                            component: component_descr.component,
+                            source: err.into(),
+                        });
+                        None
+                    }
+                },
                 Err(err) => {
-                    re_log::error_once!(
-                        "Failed to scatter component '{}' for entity '{entity_path}': {err}",
-                        component_descr.component
-                    );
+                    errors.push(err);
                     None
                 }
-            }
-        });
+            })
+            .collect();
 
         // Verify that all columns have the same length happens during chunk creation.
-        Ok(Chunk::from_auto_row_ids(
-            ChunkId::new(),
-            entity_path.clone(),
-            chunk_times,
-            chunk_components.collect(),
-        )?)
+        finalize_chunk(entity_path.clone(), chunk_times, chunk_components, errors)
     }
 }
 
@@ -491,7 +624,7 @@ impl LensRegistry {
     /// This will only transform component columns that match registered lenses.
     /// Other component columns are dropped. To retain original data, use identity
     /// lenses or multi-sink configurations.
-    pub fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, LensError>> {
+    pub fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, PartialChunk>> {
         self.relevant(chunk)
             .flat_map(|transform| transform.apply(chunk))
     }
@@ -929,13 +1062,13 @@ mod test {
         println!("{original_chunk}");
 
         // Helper to extract value field from structs: List<Struct> -> List<String>
-        let extract_value = |list_array: &ListArray| -> Result<ListArray, LensError> {
+        let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("value")).transform(list_array)?)
         };
 
         // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
-        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, LensError> {
+        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
         };
@@ -1027,13 +1160,13 @@ mod test {
         println!("{original_chunk}");
 
         // Helper to extract value field from structs: List<Struct> -> List<String>
-        let extract_value = |list_array: &ListArray| -> Result<ListArray, LensError> {
+        let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("value")).transform(list_array)?)
         };
 
         // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
-        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, LensError> {
+        let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
             use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
             Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
         };

@@ -6,14 +6,25 @@
 
 use std::sync::Arc;
 
-use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
-use re_chunk::external::arrow::{
+use arrow::{
     array::{Array as _, ListArray},
     compute,
     datatypes::{DataType, Field},
 };
+use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
 
-use super::LensError;
+/// Errors that occur during low-level operation execution on columns.
+#[derive(Debug, thiserror::Error)]
+pub enum OpError {
+    #[error(transparent)]
+    Transform(#[from] re_arrow_combinators::Error),
+
+    #[error(transparent)]
+    Arrow(#[from] arrow::error::ArrowError),
+
+    #[error(transparent)]
+    Other(Box<dyn std::error::Error + Send + Sync>),
+}
 
 /// Extracts a specific field from a struct component within a `ListArray`.
 #[derive(Debug)]
@@ -22,7 +33,7 @@ pub struct AccessField {
 }
 
 impl AccessField {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, LensError> {
+    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         MapList::new(GetField::new(self.field_name.clone()))
             .transform(list_array)
             .map_err(Into::into)
@@ -36,7 +47,7 @@ pub struct Cast {
 }
 
 impl Cast {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, LensError> {
+    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         let (_field, offsets, ref array, nulls) = list_array.clone().into_parts();
         let res = compute::cast(array, &self.to_inner_type)?;
         Ok(ListArray::new(

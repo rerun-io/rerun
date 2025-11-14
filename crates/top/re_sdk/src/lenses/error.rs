@@ -1,4 +1,6 @@
-use re_chunk::{ComponentIdentifier, EntityPath};
+use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
+
+use super::op::OpError;
 
 /// Different variants of errors that can happen when executing lenses.
 #[expect(missing_docs)]
@@ -21,15 +23,33 @@ pub enum LensError {
         target_entity: EntityPath,
     },
 
-    #[error(transparent)]
-    ChunkError(#[from] re_chunk::ChunkError),
+    #[error("Chunk validation failed: {0}")]
+    ChunkValidationFailed(#[from] re_chunk::ChunkError),
 
-    #[error(transparent)]
-    Transform(#[from] re_arrow_combinators::Error),
+    #[error("Failed to apply operations to component '{component}'")]
+    ComponentOperationFailed {
+        component: ComponentIdentifier,
+        #[source]
+        source: OpError,
+    },
 
-    #[error(transparent)]
-    Arrow(#[from] arrow::error::ArrowError),
+    #[error("Failed to apply operations to timeline '{timeline_name}'")]
+    TimeOperationFailed {
+        timeline_name: TimelineName,
+        #[source]
+        source: OpError,
+    },
 
-    #[error(transparent)]
-    Other(Box<dyn std::error::Error + Send + Sync>),
+    #[error("Invalid time column type for timeline '{timeline_name}': expected List<Int64>, got {actual_type}")]
+    InvalidTimeColumn {
+        timeline_name: TimelineName,
+        actual_type: String,
+    },
+
+    #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]
+    ScatterExistingTimeFailed {
+        timeline_name: TimelineName,
+        #[source]
+        source: arrow::error::ArrowError,
+    },
 }

@@ -16,5 +16,6 @@ pub use self::{
     ast::{Lens, Op},
     builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
     error::LensError,
+    op::OpError,
     sink::LensesSink,
 };
