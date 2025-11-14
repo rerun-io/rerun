@@ -7,27 +7,94 @@ Configuration file for pytest.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import pathlib
 import platform
-import shutil
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
+from rerun.catalog import CatalogClient
 from rerun.server import Server
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import CatalogClient, DatasetEntry
+    from rerun.catalog import DatasetEntry, Entry, TableEntry
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add custom command-line options for configuring the test server."""
+    parser.addoption(
+        "--redap-url",
+        action="store",
+        default=None,
+        help="URL of an external redap server to connect to. If not provided, a local OSS server will be started.",
+    )
+    parser.addoption(
+        "--redap-token",
+        action="store",
+        default=None,
+        help="Authentication token for the redap server (optional).",
+    )
+    parser.addoption(
+        "--resource-prefix",
+        action="store",
+        default=None,
+        help="URI prefix for test resources (e.g., 's3://bucket/path/' for remote resources). "
+        "If not provided, local file:// URIs to the resources directory will be used.",
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom pytest markers."""
+    config.addinivalue_line(
+        "markers",
+        "local_only: mark test as requiring local resources (e.g., uses RecordingStream to generate .rrd files on-the-fly)",
+    )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip local-only tests when using remote resource prefix."""
+    resource_prefix = config.getoption("--resource-prefix")
+
+    # Automatically skip local-only tests when resource prefix is remote (not local file://)
+    #
+    # Note: you can force skip `local_only` test using `-m "not local_only"`.
+    is_local = resource_prefix is None or resource_prefix.startswith("file://")
+
+    if not is_local:
+        skip_marker = pytest.mark.skip(reason="Local-only test skipped when using remote resource prefix")
+        for item in items:
+            if "local_only" in item.keywords:
+                item.add_marker(skip_marker)
 
 
 DATASET_NAME = "dataset"
 
-DATASET_FILEPATH = pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "rrd" / "dataset"
-TABLE_FILEPATH = (
-    pathlib.Path(__file__).parent.parent.parent.parent / "tests" / "assets" / "table" / "lance" / "simple_datatypes"
-)
+# Test resources are stored locally in the e2e_redap_tests/resources directory
+RESOURCES_DIR = pathlib.Path(__file__).parent / "resources"
+TABLE_FILEPATH = RESOURCES_DIR / "simple_datatypes"
+
+
+@pytest.fixture(scope="session")
+def resource_prefix(request: pytest.FixtureRequest) -> str:
+    """
+    Get the URI prefix for test resources.
+
+    By default, returns file:// URI to the local resources directory.
+    Can be overridden with --resource-prefix for remote resources (e.g., s3://).
+    """
+    prefix = request.config.getoption("--resource-prefix")
+
+    if prefix is None:
+        # Default to local resources directory
+        prefix = RESOURCES_DIR.absolute().as_uri() + "/"
+    elif not prefix.endswith("/"):
+        # Ensure prefix ends with trailing slash
+        prefix = prefix + "/"
+
+    return str(prefix)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -45,69 +112,188 @@ def setup_windows_tzdata() -> None:
 
 
 @pytest.fixture(scope="session")
-def table_filepath(tmp_path_factory: pytest.TempPathFactory) -> Generator[pathlib.Path, None, None]:
+def readonly_table_uri(resource_prefix: str) -> str:
     """
-    Copies test data to a temp directory.
+    Returns the URI to the read-only test table (simple_datatypes).
 
-    This is necessary because we have some unit tests that will modify the
-    lance dataset. We do not wish this to pollute our repository.
+    Uses the resource_prefix, so it can point to local or remote (e.g., S3) resources.
+    Tests should NOT write to this table.
     """
-
-    temp_dir = tmp_path_factory.mktemp("table_filepath")
-    shutil.copytree(TABLE_FILEPATH, temp_dir / "simple_datatypes")
-    yield temp_dir / "simple_datatypes"
+    return resource_prefix + "simple_datatypes"
 
 
-# TODO(ab): make this fixture configurable, such that the entire test suite can be run against different servers
-@pytest.fixture(scope="function")
-def catalog_client() -> Generator[CatalogClient, None, None]:
+@pytest.fixture(scope="session")
+def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, None, None]:
     """
     Return a `CatalogClient` instance connected to a test server.
 
     This is the core fixture that spins up a test server and returns the corresponding client. All other fixtures and
     tests should directly or indirectly depend on this.
+
+    By default, this fixture creates a local OSS server. If the `--redap-url` option is provided, it will connect to
+    the specified external server instead.
+
+    This fixture has session scope, meaning a single server/connection is shared across all tests for better
+    performance. Test isolation is maintained via the `entry_factory` fixture which uses test-specific prefixes and
+    automatic cleanup.
     """
-    server = Server()
-    yield server.client()
-    server.shutdown()
+    redap_url = request.config.getoption("--redap-url")
+    redap_token = request.config.getoption("--redap-token")
+
+    if redap_url:
+        # Connect to an external redap server
+        client = CatalogClient(address=redap_url, token=redap_token)
+        yield client
+        # No cleanup needed for external server
+    else:
+        # Create a local OSS server
+        server = Server()
+        yield server.client()
+        server.shutdown()
+
+
+class EntryFactory:
+    """
+    Factory for creating catalog entries with automatic cleanup.
+
+    Mirrors the CatalogClient API for entry creation methods but adds automatic resource naming and cleanup.
+    """
+
+    def __init__(self, client: CatalogClient, prefix: str) -> None:
+        self._client = client
+        self._prefix = prefix
+        self._created_entries: list[Entry] = []
+
+    @property
+    def client(self) -> CatalogClient:
+        """Underlying `CatalogClient` instance."""
+        return self._client
+
+    @property
+    def prefix(self) -> str:
+        """Prefix used for entries created by this factory."""
+        return self._prefix
+
+    def apply_prefix(self, name: str) -> str:
+        """
+        Apply prefix to a name, handling qualified names (A.B.C format).
+
+        For qualified names like "catalog.schema.table" or "schema.table",the prefix is applied only to the last
+        component (the table name).
+        """
+        if not self._prefix:
+            return name
+
+        parts = name.split(".")
+        parts[-1] = f"{self._prefix}{parts[-1]}"
+        return ".".join(parts)
+
+    def create_dataset(self, name: str) -> DatasetEntry:
+        """Create a dataset with automatic cleanup. Mirrors CatalogClient.create_dataset()."""
+        prefixed_name = self.apply_prefix(name)
+        entry = self._client.create_dataset(prefixed_name)
+        self._created_entries.append(entry)
+        return entry
+
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """Create a table entry with automatic cleanup. Mirrors CatalogClient.create_table_entry()."""
+        prefixed_name = self.apply_prefix(name)
+        entry = self._client.create_table_entry(prefixed_name, schema, url)
+        self._created_entries.append(entry)
+        return entry
+
+    def register_table(self, name: str, url: str) -> TableEntry:
+        """Register a table with automatic cleanup. Mirrors CatalogClient.register_table()."""
+        prefixed_name = self.apply_prefix(name)
+        entry = self._client.register_table(prefixed_name, url)
+        self._created_entries.append(entry)
+        return entry
+
+    def cleanup(self) -> None:
+        """Delete all created entries in reverse order."""
+        for entry in reversed(self._created_entries):
+            entry_id = entry.id
+            try:
+                entry.delete()
+            except Exception as e:
+                logging.warning("Could not delete entry %s: %s", entry_id, e)
 
 
 @pytest.fixture(scope="function")
-def test_dataset(catalog_client: CatalogClient) -> Generator[DatasetEntry, None, None]:
+def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest) -> Generator[EntryFactory, None, None]:
     """
-    Register a dataset and returns the corresponding `DatasetEntry`.
+    Factory for creating catalog entries with automatic cleanup.
 
-    Convenient for tests which focus on a single test dataset.
+    Creates entries with test-specific prefixes to avoid collisions in external servers and automatically deletes them
+    after the test completes.
     """
-    assert DATASET_FILEPATH.is_dir()
 
-    ds = catalog_client.create_dataset(DATASET_NAME)
-    ds.register_prefix(DATASET_FILEPATH.as_uri())
+    prefix = f"{request.node.name}_"
+    factory = EntryFactory(catalog_client, prefix)
+    yield factory
+    factory.cleanup()
+
+
+@pytest.fixture(scope="session")
+def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -> Generator[DatasetEntry, None, None]:
+    """
+    Register a read-only dataset shared across the entire test session.
+
+    This fixture creates a single dataset that is shared by all tests for better performance, particularly when testing
+    against remote servers where dataset registration is expensive. Tests should NOT write to this dataset (use
+    `entry_factory` to create test-specific datasets if you need to write).
+
+    The dataset is automatically cleaned up at the end of the test session.
+    """
+    import uuid
+
+    # Generate a session-specific prefix to avoid collisions across test runs
+    session_id = uuid.uuid4().hex
+    dataset_name = f"session_{session_id}_{DATASET_NAME}"
+
+    # Create the dataset directly (not using entry_factory since it's function-scoped)
+    ds = catalog_client.create_dataset(dataset_name)
+    tasks = ds.register_prefix(resource_prefix + "dataset")
+
+    try:
+        tasks.wait(timeout_secs=50)
+    except Exception as exc:
+        # Attempt a cleanup just in case
+        ds.delete()
+        raise exc
 
     yield ds
+
+    # Cleanup at session end
+    try:
+        ds.delete()
+    except Exception as e:
+        logging.warning("Could not delete readonly dataset %s: %s", dataset_name, e)
 
 
 @dataclasses.dataclass
 class PrefilledCatalog:
-    client: CatalogClient
+    factory: EntryFactory
     dataset: DatasetEntry
+
+    @property
+    def client(self) -> CatalogClient:
+        """Convenience property to access the underlying CatalogClient."""
+        return self.factory.client
 
 
 # TODO(ab): this feels somewhat ad hoc and should probably be replaced by dedicated local fixtures
 @pytest.fixture(scope="function")
-def prefilled_catalog(
-    catalog_client: CatalogClient, table_filepath: pathlib.Path
-) -> Generator[PrefilledCatalog, None, None]:
+def prefilled_catalog(entry_factory: EntryFactory, readonly_table_uri: str) -> Generator[PrefilledCatalog, None, None]:
     """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
 
-    assert DATASET_FILEPATH.is_dir()
-    assert table_filepath.is_dir()
+    dataset = entry_factory.create_dataset(DATASET_NAME)
+    tasks = dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
+    tasks.wait(timeout_secs=50)
 
-    dataset = catalog_client.create_dataset(DATASET_NAME)
-    dataset.register_prefix(DATASET_FILEPATH.as_uri())
-
+    # Register the read-only table with different catalog/schema qualifications
     for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:
-        catalog_client.register_table(table_name, table_filepath.as_uri())
+        entry_factory.register_table(table_name, readonly_table_uri)
 
-    resource = PrefilledCatalog(catalog_client, dataset)
+    resource = PrefilledCatalog(entry_factory, dataset)
     yield resource
