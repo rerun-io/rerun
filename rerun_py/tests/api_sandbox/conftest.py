@@ -108,7 +108,7 @@ def complex_dataset_prefix(tmp_path_factory: pytest.TempPathFactory) -> Iterator
 
     prefix_path = tmp_path_factory.mktemp("complex_dataset_prefix")
 
-    for i in range(3):
+    for i in range(5):
         create_complex_rrd(prefix_path / f"complex_recording_{i}.rrd", f"complex_recording_{i}", i)
 
     yield prefix_path

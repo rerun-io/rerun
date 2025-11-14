@@ -9,14 +9,21 @@ from inline_snapshot import snapshot as inline_snapshot
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import datafusion
 
-def test_dataset_basics(simple_dataset_prefix: Path) -> None:
+
+def segment_stable_snapshot(df: datafusion.DataFrame) -> str:
+    """Create a stable snapshot of a segment DataFrame by sorting and dropping unstable columns."""
+    return str(df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id"))
+
+
+def test_dataset_basics(complex_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
 
-        ds.register_prefix(simple_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri())
 
         segment_df = ds.segment_table()
 
@@ -36,31 +43,66 @@ sorbet:version: '0.1.1'\
         assert str(
             segment_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
         ) == inline_snapshot("""\
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                        │
-│ * version: 0.1.1                                                                 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
-│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
-│ │ ---                ┆ ---               ┆ ---              ┆ ---              │ │
-│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │ │
-│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╡ │
-│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ simple_recording_2 ┆ [base]            ┆ 2                ┆ 1392             │ │
-│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────────┘\
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                         │
+│ * version: 0.1.1                                                                  │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
+│ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
+│ │ ---                 ┆ ---               ┆ ---              ┆ ---              │ │
+│ │ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │ │
+│ ╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╡ │
+│ │ complex_recording_0 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_1 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_2 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_3 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_4 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
 
-def test_dataset_metadata(simple_dataset_prefix: Path) -> None:
+def test_dataset_schema(complex_dataset_prefix: Path) -> None:
+    with rr.server.Server() as server:
+        client = server.client()
+        ds = client.create_dataset("complex_dataset")
+        ds.register_prefix(complex_dataset_prefix.as_uri())
+
+        assert str(ds.schema()) == inline_snapshot("""\
+Column name: /points:Points2D:colors
+	Entity path: /points
+	Archetype: rerun.archetypes.Points2D
+	Component type: rerun.components.Color
+	Component: Points2D:colors
+Column name: /points:Points2D:positions
+	Entity path: /points
+	Archetype: rerun.archetypes.Points2D
+	Component type: rerun.components.Position2D
+	Component: Points2D:positions
+Column name: /text:TextLog:text
+	Entity path: /text
+	Archetype: rerun.archetypes.TextLog
+	Component type: rerun.components.Text
+	Component: TextLog:text
+Column name: property:RecordingInfo:start_time
+	Entity path: /__properties
+	Archetype: rerun.archetypes.RecordingInfo
+	Component type: rerun.components.Timestamp
+	Component: RecordingInfo:start_time
+	Static: true\
+""")
+
+
+def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
-        ds.register_prefix(simple_dataset_prefix.as_uri())
+        ds.register_prefix(complex_dataset_prefix.as_uri())
 
         # TODO(jleibs): Consider attaching this metadata table directly to the dataset
         # and automatically joining it by default
@@ -73,29 +115,20 @@ def test_dataset_metadata(simple_dataset_prefix: Path) -> None:
         )
 
         meta.append(
-            rerun_segment_id=["simple_recording_0", "simple_recording_2"],
-            success=[True, False],
+            rerun_segment_id=["complex_recording_0", "complex_recording_1", "complex_recording_4"],
+            success=[True, False, True],
         )
 
-        joined = ds.segment_table(join_meta=meta)
-
-        assert str(
-            joined.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
-        ) == inline_snapshot("""\
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                              │
-│ * version: 0.1.1                                                                                       │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
-│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
-│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
-│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
-│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
-│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             ┆ null                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ simple_recording_2 ┆ [base]            ┆ 2                ┆ 1392             ┆ false               │ │
-│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+        assert (str(meta.reader())) == inline_snapshot("""\
+┌─────────────────────┬─────────────────────┐
+│ rerun_segment_id    ┆ success             │
+│ ---                 ┆ ---                 │
+│ type: nullable Utf8 ┆ type: nullable bool │
+╞═════════════════════╪═════════════════════╡
+│ complex_recording_0 ┆ true                │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ complex_recording_1 ┆ false               │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ complex_recording_4 ┆ true                │
+└─────────────────────┴─────────────────────┘\
 """)

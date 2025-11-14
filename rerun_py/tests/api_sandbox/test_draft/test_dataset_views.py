@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import datafusion
 from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
 
@@ -10,59 +11,9 @@ if TYPE_CHECKING:
     import rerun_draft as rr
 
 
-def test_dataset_view_filter_segments(populated_client: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client.get_dataset(name="basic_dataset")
-    meta = populated_client.get_table(name="basic_dataset_metadata")
-
-    simple_filt = orig_ds.filter_segments(["simple_recording_0"])
-
-    assert sorted(simple_filt.segment_ids()) == inline_snapshot(["simple_recording_0"])
-
-    assert str(
-        simple_filt.segment_table(join_meta=meta)
-        .drop("rerun_storage_urls", "rerun_last_updated_at")
-        .sort("rerun_segment_id")
-    ) == inline_snapshot("""\
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                              │
-│ * version: 0.1.1                                                                                       │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
-│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
-│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
-│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
-│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
-│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
-│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
-""")
-
-    good_segments = orig_ds.segment_table(join_meta=meta).fill_null(True, ["success"]).filter(col("success"))
-
-    good_ds = orig_ds.filter_segments(segment_ids=good_segments)
-
-    assert sorted(good_ds.segment_ids()) == inline_snapshot(["simple_recording_0", "simple_recording_1"])
-
-    assert str(
-        good_ds.segment_table(join_meta=meta)
-        .drop("rerun_storage_urls", "rerun_last_updated_at")
-        .sort("rerun_segment_id")
-    ) == inline_snapshot("""\
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                              │
-│ * version: 0.1.1                                                                                       │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
-│ │ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
-│ │ ---                ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
-│ │ type: Utf8         ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
-│ ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
-│ │ simple_recording_0 ┆ [base]            ┆ 2                ┆ 1392             ┆ true                │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ simple_recording_1 ┆ [base]            ┆ 2                ┆ 1392             ┆ null                │ │
-│ └────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
-""")
+def segment_stable_snapshot(df: datafusion.DataFrame) -> str:
+    """Create a stable snapshot of a segment DataFrame by sorting and dropping unstable columns."""
+    return str(df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id"))
 
 
 def sorted_schema_str(schema: pa.Schema, with_metadata: bool = False) -> str:
@@ -85,6 +36,53 @@ def sorted_schema_str(schema: pa.Schema, with_metadata: bool = False) -> str:
             lines.append(f"{key.decode('utf-8')}: '{value.decode('utf-8')}'")
 
     return "\n".join(lines)
+
+
+def test_dataset_view_filter_segments(populated_client_complex: rr.catalog.CatalogClient) -> None:
+    orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
+    meta = populated_client_complex.get_table(name="complex_dataset_metadata")
+
+    simple_filt = orig_ds.filter_segments(["complex_recording_2"])
+
+    assert sorted(simple_filt.segment_ids()) == inline_snapshot(["complex_recording_2"])
+
+    assert segment_stable_snapshot(simple_filt.segment_table()) == inline_snapshot("""\
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                         │
+│ * version: 0.1.1                                                                  │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
+│ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
+│ │ ---                 ┆ ---               ┆ ---              ┆ ---              │ │
+│ │ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │ │
+│ ╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╡ │
+│ │ complex_recording_2 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+    good_segments = orig_ds.segment_table(join_meta=meta).filter(col("success"))
+
+    good_ds = orig_ds.filter_segments(segment_ids=good_segments)
+
+    assert sorted(good_ds.segment_ids()) == inline_snapshot(["complex_recording_1", "complex_recording_3"])
+
+    assert segment_stable_snapshot(good_ds.segment_table()) == inline_snapshot("""\
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                         │
+│ * version: 0.1.1                                                                  │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
+│ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
+│ │ ---                 ┆ ---               ┆ ---              ┆ ---              │ │
+│ │ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │ │
+│ ╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╡ │
+│ │ complex_recording_1 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_3 ┆ [base]            ┆ 3                ┆ 2010             │ │
+│ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
+└───────────────────────────────────────────────────────────────────────────────────┘\
+""")
 
 
 def test_dataset_view_filter_entities(populated_client_complex: rr.catalog.CatalogClient) -> None:
@@ -115,6 +113,7 @@ def test_dataset_view_dataframe(populated_client_complex: rr.catalog.CatalogClie
     filtered = orig_ds.filter_contents(["/text/**"]).filter_segments(["complex_recording_0", "complex_recording_2"])
 
     schema = filtered.arrow_schema()
+
     assert sorted_schema_str(schema) == inline_snapshot("""\
 /text:TextLog:text: list<item: string>
 rerun.controls.RowId: fixed_size_binary[16]

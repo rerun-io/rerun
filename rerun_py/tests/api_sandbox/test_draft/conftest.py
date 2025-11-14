@@ -67,8 +67,8 @@ def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalo
         )
 
         meta.append(
-            rerun_segment_id=["simple_recording_0", "simple_recording_2"],
-            success=[True, False],
+            rerun_segment_id=["complex_recording_1", "complex_recording_2", "complex_recording_3"],
+            success=[True, False, True],
         )
 
         yield client
