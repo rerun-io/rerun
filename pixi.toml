@@ -495,8 +495,10 @@ py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build"
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
-cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
+# We export a compilation database (compile_commands.json) in the CMake configure step (-DCMAKE_EXPORT_COMPILE_COMMANDS=ON),
+# which is handy for various dev tools like clang-tidy, clangd, vscode etc (https://clang.llvm.org/docs/JSONCompilationDatabase.html).
+cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Release"
+cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug"
 cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends-on = [
   "cpp-prepare",
 ] }
