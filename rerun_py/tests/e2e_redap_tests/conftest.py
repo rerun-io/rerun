@@ -58,7 +58,11 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     """Skip local-only tests when using remote resource prefix."""
     resource_prefix = config.getoption("--resource-prefix")
 
+    # Automatically skip local-only tests when resource prefix is remote (not local file://)
+    #
+    # Note: you can force skip `local_only` test using `-m "not local_only"`.
     is_local = resource_prefix is None or resource_prefix.startswith("file://")
+
     if not is_local:
         skip_marker = pytest.mark.skip(reason="Local-only test skipped when using remote resource prefix")
         for item in items:

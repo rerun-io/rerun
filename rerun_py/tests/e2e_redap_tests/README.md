@@ -31,3 +31,10 @@ With authentication:
 pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests --redap-url=rerun+https://example.com --redap-token=your_token
 ```
 
+Skip local-only tests (useful for Docker/containerized environments):
+```bash
+pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests -m "not local_only"
+```
+
+Note: When using `--resource-prefix` with remote storage (s3://, gs://, etc.), local-only tests are automatically skipped.
+
