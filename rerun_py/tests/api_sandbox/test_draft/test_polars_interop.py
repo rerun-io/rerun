@@ -19,7 +19,7 @@ def test_entries_to_polars(tmp_path: Path) -> None:
         client = server.client()
 
         client.create_dataset("my_dataset")
-        client.create_table_entry("my_table", pa.schema([]), tmp_path.as_uri())
+        client.create_table("my_table", pa.schema([]), tmp_path.as_uri())
 
         df = client.entries().to_polars()
 
@@ -51,14 +51,14 @@ shape: (3, 2)
 def test_table_to_polars(tmp_path: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
-        client.create_table_entry(
+        client.create_table(
             "my_table",
             pa.schema([pa.field("int16", pa.int16()), pa.field("string_list", pa.list_(pa.string()))]),
             tmp_path.as_uri(),
         )
         client.append_to_table("my_table", int16=[12], string_list=[["a", "b", "c"]])
 
-        df = client.get_table_entry(name="my_table").to_polars()
+        df = client.get_table(name="my_table").to_polars()
 
         assert str(df) == inline_snapshot("""\
 shape: (1, 2)

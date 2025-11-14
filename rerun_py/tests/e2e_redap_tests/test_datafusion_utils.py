@@ -8,13 +8,13 @@ if TYPE_CHECKING:
     from rerun.catalog import DatasetEntry
 
 
-def test_url_generation(test_dataset: DatasetEntry) -> None:
+def test_url_generation(readonly_test_dataset: DatasetEntry) -> None:
     from rerun.utilities.datafusion.functions import url_generation
 
-    udf = url_generation.partition_url_with_timeref_udf(test_dataset, "time_1")
+    udf = url_generation.partition_url_with_timeref_udf(readonly_test_dataset, "time_1")
 
     results = (
-        test_dataset.dataframe_query_view(index="time_1", contents="/**")
+        readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
         .with_column("url", udf(col("rerun_partition_id"), col("time_1")))
         .sort(col("rerun_partition_id"), col("time_1"))

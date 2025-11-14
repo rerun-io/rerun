@@ -16,7 +16,7 @@ def test_catalog_basics(tmp_path: Path) -> None:
         client = server.client()
 
         client.create_dataset("my_dataset")
-        client.create_table_entry("my_table", pa.schema([]), tmp_path.as_uri())
+        client.create_table("my_table", pa.schema([]), tmp_path.as_uri())
 
         df = client.entries()
 

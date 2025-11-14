@@ -9,21 +9,21 @@ if TYPE_CHECKING:
     from rerun.catalog import DatasetEntry
 
 
-def test_df_count(test_dataset: DatasetEntry) -> None:
+def test_df_count(readonly_test_dataset: DatasetEntry) -> None:
     """
     Tests count() on a dataframe which ensures we collect empty batches properly.
 
     See issue https://github.com/rerun-io/rerun/issues/10894 for additional context.
     """
 
-    count = test_dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
+    count = readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
 
     assert count > 0
 
 
-def test_df_aggregation(test_dataset: DatasetEntry) -> None:
+def test_df_aggregation(readonly_test_dataset: DatasetEntry) -> None:
     results = (
-        test_dataset.dataframe_query_view(index="time_1", contents="/**")
+        readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
         .unnest_columns("/obj1:Points3D:positions")
         .aggregate(
