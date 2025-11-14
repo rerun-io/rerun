@@ -7,7 +7,7 @@ use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
-use crate::{LogFormat, TelemetryArgs, shared_reader::SharedManualReader};
+use crate::{LogFormat, TelemetryArgs, TraceIdLayer, shared_reader::SharedManualReader};
 
 // ---
 
@@ -414,6 +414,7 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
+                    .with(TraceIdLayer::default())
                     .with(self::tracy::tracy_layer())
                     .try_init()?;
             }
@@ -427,6 +428,7 @@ impl Telemetry {
                 .with(layer_logs_otlp)
                 .with(layer_logs_and_traces_stdio)
                 .with(layer_traces_otlp)
+                .with(TraceIdLayer::default())
                 .try_init()?;
         }
 
