@@ -13,7 +13,7 @@ mod sink;
 
 pub use self::{
     // We should be careful not to expose to much implementation details here.
-    ast::{Lens, Op},
+    ast::{Lens, Lenses, Op},
     builder::{ColumnsBuilder, LensBuilder, ScatterColumnsBuilder, StaticColumnsBuilder},
     error::LensError,
     op::OpError,

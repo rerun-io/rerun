@@ -16,12 +16,15 @@ use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
 /// Errors that occur during low-level operation execution on columns.
 #[derive(Debug, thiserror::Error)]
 pub enum OpError {
+    /// Error from Arrow combinator transformations.
     #[error(transparent)]
     Transform(#[from] re_arrow_combinators::Error),
 
+    /// Error from Arrow operations.
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),
 
+    /// Other custom errors.
     #[error(transparent)]
     Other(Box<dyn std::error::Error + Send + Sync>),
 }

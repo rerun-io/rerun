@@ -3,14 +3,14 @@ use re_log_types::{LogMsg, StoreId};
 
 use crate::sink::LogSink;
 
-use super::{Lens, ast::LensRegistry};
+use super::{Lens, ast::Lenses};
 
 /// A sink which can transform a [`LogMsg`] and forward the result to an underlying backing [`LogSink`].
 ///
 /// The sink will only forward components that are matched by a lens specified via [`Self::with_lens`].
 pub struct LensesSink<S: LogSink> {
     sink: S,
-    registry: LensRegistry,
+    lenses: Lenses,
     strict: bool,
 }
 
@@ -24,14 +24,14 @@ impl<S: LogSink> LensesSink<S> {
     pub fn new(sink: S) -> Self {
         Self {
             sink,
-            registry: Default::default(),
+            lenses: Default::default(),
             strict: false,
         }
     }
 
     /// Adds a [`Lens`] to this sink.
     pub fn with_lens(mut self, lens: Lens) -> Self {
-        self.registry.add_lens(lens);
+        self.lenses.add_lens(lens);
         self
     }
 
@@ -62,7 +62,7 @@ impl<S: LogSink> LogSink for LensesSink<S> {
             }
             LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
                 Ok(original_chunk) => {
-                    let new_chunks = self.registry.apply(&original_chunk);
+                    let new_chunks = self.lenses.apply(&original_chunk);
                     for maybe_chunk in new_chunks {
                         match maybe_chunk {
                             Ok(new_chunk) => self.send_or_log_error(store_id.clone(), new_chunk),
