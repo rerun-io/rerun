@@ -4,8 +4,6 @@ import datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
-from datafusion import col, lit
-from datafusion.functions import in_list
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
@@ -16,9 +14,7 @@ def test_dataframe_api_filter_partition_id(populated_client: rr.catalog.CatalogC
     ds = populated_client.get_dataset_entry(name="basic_dataset")
 
     # Create a view with 2 partitions
-    view = ds.query(index="timeline").filter(
-        in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")])
-    )
+    view = ds.filter_segments(segment_ids=["simple_recording_0", "simple_recording_2"]).reader(index="timeline")
 
     # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
     df = view.sort("rerun_segment_id")
@@ -68,7 +64,7 @@ def test_dataframe_api_using_index_values(populated_client: rr.catalog.CatalogCl
     ds = populated_client.get_dataset_entry(name="basic_dataset")
 
     # Create a view with all partitions
-    df = ds.query(
+    df = ds.reader(
         index="timeline",
         using_index_values=np.array(
             [

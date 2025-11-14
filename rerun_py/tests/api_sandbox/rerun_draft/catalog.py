@@ -218,7 +218,7 @@ class DatasetEntry(Entry):
     def download_segment(self, segment_id: str) -> Any:
         return self._inner.download_partition(segment_id)
 
-    def query(
+    def reader(
         self,
         *,
         index: str | None,
