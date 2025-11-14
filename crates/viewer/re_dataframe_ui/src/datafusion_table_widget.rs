@@ -485,6 +485,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .inner_margin(Margin::symmetric(12, 0));
         TopBottomPanel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
+            .show_separator_line(false)
             .show_inside(ui, |ui| {
                 let height = 24.0;
                 ui.set_height(height);
