@@ -4,7 +4,7 @@ use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, RichText, TopBottomPanel, Ui, Widget as _};
+use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_format::format_uint;
@@ -25,6 +25,7 @@ use crate::re_table_utils::{ColumnConfig, TableConfig};
 use crate::table_blueprint::{
     ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
+use crate::table_selection::TableSelectionState;
 use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
@@ -430,6 +431,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
         let mut table_delegate = DataFusionTableDelegate {
+            session_id,
             ctx: viewer_ctx,
             table_style,
             query_result,
@@ -461,7 +463,14 @@ impl<'a> DataFusionTableWidget<'a> {
             }
             None => {}
         }
-        ReTable::new(session_id, &mut table_delegate, &table_config, num_rows).show(ui);
+        ReTable::new(
+            ui.ctx(),
+            session_id,
+            &mut table_delegate,
+            &table_config,
+            num_rows,
+        )
+        .show(ui);
 
         table_config.store(ui.ctx());
         filter_state.store(ui.ctx(), session_id);
@@ -588,6 +597,7 @@ enum BottomBarAction {
 }
 
 struct DataFusionTableDelegate<'a> {
+    session_id: Id,
     ctx: &'a ViewerContext<'a>,
     table_style: re_ui::TableStyle,
     query_result: &'a DataFusionQueryResult,
@@ -598,6 +608,24 @@ struct DataFusionTableDelegate<'a> {
     new_blueprint: &'a mut TableBlueprint,
     filter_state: &'a mut FilterState,
     row_height: f32,
+}
+
+impl<'a> DataFusionTableDelegate<'a> {
+    /// Find the record batch and local row index for a global row index.
+    pub fn with_row_batch(
+        batches: &[DisplayRecordBatch],
+        mut row_index: usize,
+    ) -> Option<(&DisplayRecordBatch, usize)> {
+        for batch in batches {
+            let row_count = batch.num_rows();
+            if row_index < row_count {
+                return Some((batch, row_index));
+            } else {
+                row_index -= row_count;
+            }
+        }
+        None
+    }
 }
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
@@ -695,34 +723,71 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        // find record batch
-        let mut row_index = cell.row_nr as usize;
         let col_index = cell.col_nr;
 
-        //TODO(ab): make an utility for that
-        for display_record_batch in self.display_record_batches {
-            let row_count = display_record_batch.num_rows();
-            if row_index < row_count {
-                // this is the one
-                let column = &display_record_batch.columns()[col_index];
+        if let Some((display_record_batch, batch_index)) =
+            Self::with_row_batch(self.display_record_batches, cell.row_nr as usize)
+        {
+            let column = &display_record_batch.columns()[col_index];
 
-                // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
-                // avoiding doing so needs significant refactoring work.
-                column.data_ui(
-                    self.ctx,
-                    ui,
-                    &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                        TimelineName::new("unknown"),
-                    ),
-                    row_index,
-                    None,
-                );
-
-                break;
-            } else {
-                row_index -= row_count;
-            }
+            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
+            // avoiding doing so needs significant refactoring work.
+            column.data_ui(
+                self.ctx,
+                ui,
+                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
+                    TimelineName::new("unknown"),
+                ),
+                batch_index,
+                None,
+            );
         }
+    }
+
+    fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
+        let has_context_menu =
+            self.blueprint.partition_links.is_some() || self.blueprint.entry_links.is_some();
+        ui.response().context_menu(|ui| {
+            let selection = TableSelectionState::load(ui.ctx(), self.session_id);
+
+            let mut selected_items = selection.selected_rows.clone();
+            if selected_items.is_empty() {
+                selected_items.insert(row_nr);
+            }
+
+            if let Some(partition_links_spec) = &self.blueprint.partition_links {
+                let label = format!("Open {} partitions", selected_items.len());
+                if ui.button(label).clicked() {
+                    for row in &selected_items {
+                        if let Some((display_record_batch, batch_index)) =
+                            Self::with_row_batch(&mut self.display_record_batches, *row as usize)
+                        {
+                            let column_index = self.columns.iter().position(|col| {
+                                col.blueprint.display_name.as_ref()
+                                    == Some(&partition_links_spec.column_name)
+                            });
+
+                            if let Some(column) =
+                                column_index.and_then(|col| display_record_batch.columns().get(col))
+                            {
+                                match column {
+                                    DisplayColumn::RowId { .. } => {}
+                                    DisplayColumn::Timeline { .. } => {}
+                                    DisplayColumn::Component(col) => {
+                                        let string = col.string_value_at(batch_index);
+                                        if let Some(url) = string {
+                                            ui.ctx().open_url(OpenUrl::same_tab(url));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            if let Some(entry_links_spec) = &self.blueprint.entry_links {}
+        });
     }
 
     fn default_row_height(&self) -> f32 {

@@ -1,5 +1,10 @@
 use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
-use egui::{Context, FontSelection, Id, Rangef, RichText, TextWrapMode, Ui, WidgetText};
+use crate::table_selection::TableSelectionState;
+use egui::text_selection::LabelSelectionState;
+use egui::{
+    Checkbox, Context, FontSelection, Id, Modifiers, NumExt, Rangef, RichText, Sense, TextWrapMode,
+    Ui, WidgetText,
+};
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
 use re_ui::{TableStyle, UiExt as _};
@@ -11,6 +16,8 @@ pub struct ReTable<'a> {
     session_id: Id,
     inner: &'a mut dyn egui_table::TableDelegate,
     config: &'a TableConfig,
+    selection: TableSelectionState,
+    previous_selection: TableSelectionState,
     num_rows: u64,
     table_style: TableStyle,
     original_style: Arc<egui::Style>,
@@ -18,15 +25,22 @@ pub struct ReTable<'a> {
 
 impl<'a> ReTable<'a> {
     pub fn new(
+        ctx: &Context,
         session_id: Id,
         inner: &'a mut dyn egui_table::TableDelegate,
         config: &'a TableConfig,
         num_rows: u64,
     ) -> Self {
+        let mut selection = TableSelectionState::load(ctx, session_id);
+        let previous_selection = selection.clone();
+        selection.all_hovered = false;
+        selection.hovered_row = None;
         Self {
             session_id,
             inner,
             config,
+            selection,
+            previous_selection,
             num_rows,
             table_style: TableStyle::Spacious,
             original_style: Arc::new(egui::Style::default()), // Will be set in show().
@@ -40,7 +54,7 @@ impl<'a> ReTable<'a> {
     pub fn show(&mut self, ui: &mut Ui) {
         // Calculate the maximum width of the row number column. Since we use monospace text,
         // calculating the width of the highest row number is sufficient.
-        let max_row_number_width = (Self::row_number_text(self.num_rows)
+        let max_row_number_width = Self::row_number_text(self.num_rows)
             .into_galley(
                 ui,
                 Some(TextWrapMode::Extend),
@@ -48,7 +62,16 @@ impl<'a> ReTable<'a> {
                 FontSelection::Default,
             )
             .rect
-            .width()
+            .width();
+
+        // Ensure the checkbox fits.
+        let checkbox_width = ui
+            .spacing()
+            .interact_size
+            .y
+            .at_least(ui.spacing().icon_width);
+
+        let row_number_cell_width = (max_row_number_width.at_least(checkbox_width)
             + ui.tokens().table_cell_margin(self.table_style).sum().x)
             .ceil();
 
@@ -60,9 +83,9 @@ impl<'a> ReTable<'a> {
             .num_sticky_cols(1) // Row number column is sticky.
             .columns(
                 iter::once(
-                    egui_table::Column::new(max_row_number_width)
+                    egui_table::Column::new(row_number_cell_width)
                         .resizable(false)
-                        .range(Rangef::new(max_row_number_width, max_row_number_width))
+                        .range(Rangef::new(row_number_cell_width, row_number_cell_width))
                         .id(Id::new("row_number")),
                 )
                 .chain(
@@ -79,6 +102,7 @@ impl<'a> ReTable<'a> {
             .show(ui, self);
 
         ui.set_style(self.original_style.clone());
+        self.selection.clone().store(ui.ctx(), self.session_id);
     }
 }
 
@@ -95,7 +119,21 @@ impl egui_table::TableDelegate for ReTable<'_> {
             ui.set_style(self.original_style.clone());
 
             if cell.group_index == 0 {
-                ui.weak("#");
+                let hovered = ui.rect_contains_pointer(ui.max_rect());
+                if hovered {
+                    self.selection.all_hovered = true;
+                    let mut checked = self.selection.selected_rows.len() as u64 == self.num_rows;
+                    let intermediate = !checked && !self.selection.selected_rows.is_empty();
+                    let response =
+                        ui.add(Checkbox::new(&mut checked, ()).indeterminate(intermediate));
+                    if response.changed() {
+                        if checked {
+                            self.selection.selected_rows.extend(0..self.num_rows);
+                        } else {
+                            self.selection.selected_rows.clear();
+                        }
+                    }
+                }
             } else {
                 // Offset by one for the row number column.
                 let column_index = cell.group_index - 1;
@@ -112,11 +150,25 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
     fn cell_ui(&mut self, ui: &mut Ui, cell: &CellInfo) {
         cell_ui(ui, self.table_style, false, |ui| {
-            ui.set_style(self.original_style.clone());
             ui.set_truncate_style();
             if cell.col_nr == 0 {
-                // This is the row number column.
-                ui.label(Self::row_number_text(cell.row_nr));
+                let show_checkbox = self.previous_selection.all_hovered
+                    || self.previous_selection.hovered_row == Some(cell.row_nr);
+                if show_checkbox {
+                    let mut checked = self.selection.selected_rows.contains(&cell.row_nr);
+                    let response = ui.add(Checkbox::new(&mut checked, ()));
+                    if response.changed() {
+                        let mut modifiers = ui.input(|i| i.modifiers);
+                        if !modifiers.shift {
+                            // By default, the checkbox is like command clicking.
+                            modifiers = Modifiers::COMMAND;
+                        }
+                        self.selection.handle_row_click(cell.row_nr, modifiers)
+                    }
+                } else {
+                    // This is the row number column.
+                    ui.label(Self::row_number_text(cell.row_nr));
+                }
             } else {
                 // Offset by one for the row number column.
                 let col_index = cell.col_nr - 1;
@@ -127,6 +179,38 @@ impl egui_table::TableDelegate for ReTable<'_> {
                 }
             }
         });
+    }
+
+    fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
+        ui.set_style(self.original_style.clone());
+        let response = ui.response();
+        if ui.rect_contains_pointer(response.rect) {
+            self.selection.hovered_row = Some(row_nr);
+        }
+
+        ui.style_mut().interaction.selectable_labels = false;
+        if self.selection.selected_rows.contains(&row_nr) {
+            ui.painter()
+                .rect_filled(response.rect, 0.0, ui.tokens().list_item_hovered_bg);
+            let modifiers_pressed = ui.input(|i| i.modifiers.shift || i.modifiers.command);
+            let any_selection = ui
+                .ctx()
+                .with_plugin::<LabelSelectionState, bool>(|p| p.has_selection())
+                .unwrap_or(false);
+            // Only enable selection if no modifiers are pressed or there is a current selection
+            // (to allow cmd c).
+            if !modifiers_pressed || any_selection {
+                ui.style_mut().interaction.selectable_labels = true;
+            }
+        }
+
+        let response = ui.interact(response.rect, response.id, Sense::click());
+        let response = response.interact(Sense::click());
+        if response.clicked() {
+            let modifiers = ui.input(|i| i.modifiers);
+            self.selection.handle_row_click(row_nr, modifiers);
+        };
+        self.inner.row_ui(ui, row_nr);
     }
 
     fn row_top_offset(&self, ctx: &Context, table_id: Id, row_nr: u64) -> f32 {

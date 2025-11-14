@@ -3458,8 +3458,6 @@ dependencies = [
 [[package]]
 name = "egui_table"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cc6e7eef49daf597eab65ed37c1b0058e34a1b7b10b4a0239a6e244c66917a9"
 dependencies = [
  "egui",
  "serde",
