@@ -69,13 +69,23 @@ impl ::re_types_core::Loggable for Blob {
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
-                let data0_inner_data: ScalarBuffer<_> = data0
-                    .iter()
-                    .flatten()
-                    .map(|b| b as &[_])
-                    .collect::<Vec<_>>()
-                    .concat()
-                    .into();
+                let data0_inner_data: ScalarBuffer<_> = {
+                    let mut iter = data0.iter().flatten();
+                    let first = iter.next();
+                    let second = iter.next();
+                    match (first, second) {
+                        (Some(single), None) => single.clone(),
+                        (Some(first_buf), Some(second_buf)) => {
+                            std::iter::once(first_buf.as_ref() as &[_])
+                                .chain(std::iter::once(second_buf.as_ref() as &[_]))
+                                .chain(iter.map(|b| b.as_ref() as &[_]))
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into()
+                        }
+                        _ => Vec::new().into(),
+                    }
+                };
                 let data0_inner_validity: Option<arrow::buffer::NullBuffer> = None;
                 as_array_ref(ListArray::try_new(
                     std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),

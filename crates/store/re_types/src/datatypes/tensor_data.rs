@@ -150,7 +150,7 @@ impl ::re_types_core::Loggable for TensorData {
                             let shape_inner_data: ScalarBuffer<_> = shape
                                 .iter()
                                 .flatten()
-                                .map(|b| b as &[_])
+                                .map(|b| b.as_ref() as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
