@@ -47,6 +47,7 @@ mod tensor_dimension_index_slider;
 mod tensor_dimension_index_slider_ext;
 mod text_log_column_list;
 mod text_log_level_list;
+mod text_log_level_list_ext;
 mod time_int;
 mod time_range;
 mod timeline_name;

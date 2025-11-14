@@ -21,15 +21,15 @@ namespace rerun::blueprint::archetypes {
     ///
     struct TextLogColumns {
         /// All columns to be displayed.
-        std::optional<ComponentBatch> columns;
+        std::optional<ComponentBatch> text_log_columns;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TextLogColumns";
 
-        /// `ComponentDescriptor` for the `columns` field.
-        static constexpr auto Descriptor_columns = ComponentDescriptor(
-            ArchetypeName, "TextLogColumns:columns",
+        /// `ComponentDescriptor` for the `text_log_columns` field.
+        static constexpr auto Descriptor_text_log_columns = ComponentDescriptor(
+            ArchetypeName, "TextLogColumns:text_log_columns",
             Loggable<rerun::blueprint::components::TextLogColumnList>::ComponentType
         );
 
@@ -40,9 +40,11 @@ namespace rerun::blueprint::archetypes {
         TextLogColumns& operator=(const TextLogColumns& other) = default;
         TextLogColumns& operator=(TextLogColumns&& other) = default;
 
-        explicit TextLogColumns(rerun::blueprint::components::TextLogColumnList _columns)
-            : columns(ComponentBatch::from_loggable(std::move(_columns), Descriptor_columns)
-                          .value_or_throw()) {}
+        explicit TextLogColumns(rerun::blueprint::components::TextLogColumnList _text_log_columns)
+            : text_log_columns(ComponentBatch::from_loggable(
+                                   std::move(_text_log_columns), Descriptor_text_log_columns
+              )
+                                   .value_or_throw()) {}
 
         /// Update only some specific fields of a `TextLogColumns`.
         static TextLogColumns update_fields() {
@@ -53,9 +55,12 @@ namespace rerun::blueprint::archetypes {
         static TextLogColumns clear_fields();
 
         /// All columns to be displayed.
-        TextLogColumns with_columns(const rerun::blueprint::components::TextLogColumnList& _columns
+        TextLogColumns with_text_log_columns(
+            const rerun::blueprint::components::TextLogColumnList& _text_log_columns
         ) && {
-            columns = ComponentBatch::from_loggable(_columns, Descriptor_columns).value_or_throw();
+            text_log_columns =
+                ComponentBatch::from_loggable(_text_log_columns, Descriptor_text_log_columns)
+                    .value_or_throw();
             return std::move(*this);
         }
 

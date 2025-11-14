@@ -10,5 +10,5 @@ table TextLogColumnList (
   "attr.rust.tuple_struct"
 ) {
   /// The list of columns.
-  columns: rerun.blueprint.datatypes.TextLogColumnList (order: 100);
+  text_log_columns: rerun.blueprint.datatypes.TextLogColumnList (order: 100);
 }

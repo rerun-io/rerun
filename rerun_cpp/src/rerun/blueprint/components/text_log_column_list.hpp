@@ -19,30 +19,34 @@ namespace rerun::blueprint::components {
     ///
     struct TextLogColumnList {
         /// The list of columns.
-        rerun::blueprint::datatypes::TextLogColumnList columns;
+        rerun::blueprint::datatypes::TextLogColumnList text_log_columns;
 
       public:
         TextLogColumnList() = default;
 
-        TextLogColumnList(rerun::blueprint::datatypes::TextLogColumnList columns_)
-            : columns(std::move(columns_)) {}
+        TextLogColumnList(rerun::blueprint::datatypes::TextLogColumnList text_log_columns_)
+            : text_log_columns(std::move(text_log_columns_)) {}
 
-        TextLogColumnList& operator=(rerun::blueprint::datatypes::TextLogColumnList columns_) {
-            columns = std::move(columns_);
+        TextLogColumnList& operator=(
+            rerun::blueprint::datatypes::TextLogColumnList text_log_columns_
+        ) {
+            text_log_columns = std::move(text_log_columns_);
             return *this;
         }
 
-        TextLogColumnList(rerun::Collection<rerun::datatypes::TextLogColumn> columns_)
-            : columns(std::move(columns_)) {}
+        TextLogColumnList(rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns_)
+            : text_log_columns(std::move(text_log_columns_)) {}
 
-        TextLogColumnList& operator=(rerun::Collection<rerun::datatypes::TextLogColumn> columns_) {
-            columns = std::move(columns_);
+        TextLogColumnList& operator=(
+            rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns_
+        ) {
+            text_log_columns = std::move(text_log_columns_);
             return *this;
         }
 
         /// Cast to the underlying TextLogColumnList datatype
         operator rerun::blueprint::datatypes::TextLogColumnList() const {
-            return columns;
+            return text_log_columns;
         }
     };
 } // namespace rerun::blueprint::components
@@ -80,7 +84,7 @@ namespace rerun {
                 );
             } else {
                 return Loggable<rerun::blueprint::datatypes::TextLogColumnList>::to_arrow(
-                    &instances->columns,
+                    &instances->text_log_columns,
                     num_instances
                 );
             }

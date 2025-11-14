@@ -77,9 +77,9 @@ Filter message types and toggle column visibility in a selection panel.",
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_fallback_provider(
-            TextLogColumns::descriptor_columns().component,
+            TextLogColumns::descriptor_text_log_columns().component,
             |ctx| {
-                let columns = vec![
+                let text_log_columns = vec![
                     datatypes::TextLogColumn::Timeline(
                         ctx.viewer_ctx().time_ctrl.timeline().name().as_str().into(),
                     ),
@@ -88,7 +88,7 @@ Filter message types and toggle column visibility in a selection panel.",
                     datatypes::TextLogColumn::Body,
                 ];
 
-                TextLogColumnList(bp_datatypes::TextLogColumnList { columns })
+                TextLogColumnList(bp_datatypes::TextLogColumnList { text_log_columns })
             },
         );
 
@@ -194,9 +194,9 @@ Filter message types and toggle column visibility in a selection panel.",
         let view_ctx = self.view_context(ctx, query.view_id, state);
         let columns_list = columns_property.component_or_fallback::<TextLogColumnList>(
             &view_ctx,
-            TextLogColumns::descriptor_columns().component,
+            TextLogColumns::descriptor_text_log_columns().component,
         )?;
-        let columns = &columns_list.0.columns;
+        let columns = &columns_list.0.text_log_columns;
 
         let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
             &view_ctx,

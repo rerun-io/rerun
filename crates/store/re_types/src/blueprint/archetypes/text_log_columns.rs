@@ -27,18 +27,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct TextLogColumns {
     /// All columns to be displayed.
-    pub columns: Option<SerializedComponentBatch>,
+    pub text_log_columns: Option<SerializedComponentBatch>,
 }
 
 impl TextLogColumns {
-    /// Returns the [`ComponentDescriptor`] for [`Self::columns`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::text_log_columns`].
     ///
     /// The corresponding component is [`crate::blueprint::components::TextLogColumnList`].
     #[inline]
-    pub fn descriptor_columns() -> ComponentDescriptor {
+    pub fn descriptor_text_log_columns() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
-            component: "TextLogColumns:columns".into(),
+            component: "TextLogColumns:text_log_columns".into(),
             component_type: Some("rerun.blueprint.components.TextLogColumnList".into()),
         }
     }
@@ -51,10 +51,10 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]
     std::sync::LazyLock::new(|| []);
 
 static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TextLogColumns::descriptor_columns()]);
+    std::sync::LazyLock::new(|| [TextLogColumns::descriptor_text_log_columns()]);
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TextLogColumns::descriptor_columns()]);
+    std::sync::LazyLock::new(|| [TextLogColumns::descriptor_text_log_columns()]);
 
 impl TextLogColumns {
     /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
@@ -99,10 +99,12 @@ impl ::re_types_core::Archetype for TextLogColumns {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let columns = arrays_by_descr
-            .get(&Self::descriptor_columns())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_columns()));
-        Ok(Self { columns })
+        let text_log_columns = arrays_by_descr
+            .get(&Self::descriptor_text_log_columns())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_text_log_columns())
+            });
+        Ok(Self { text_log_columns })
     }
 }
 
@@ -110,7 +112,9 @@ impl ::re_types_core::AsComponents for TextLogColumns {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.columns.clone()).flatten().collect()
+        std::iter::once(self.text_log_columns.clone())
+            .flatten()
+            .collect()
     }
 }
 
@@ -119,9 +123,14 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogColumns {}
 impl TextLogColumns {
     /// Create a new `TextLogColumns`.
     #[inline]
-    pub fn new(columns: impl Into<crate::blueprint::components::TextLogColumnList>) -> Self {
+    pub fn new(
+        text_log_columns: impl Into<crate::blueprint::components::TextLogColumnList>,
+    ) -> Self {
         Self {
-            columns: try_serialize_field(Self::descriptor_columns(), [columns]),
+            text_log_columns: try_serialize_field(
+                Self::descriptor_text_log_columns(),
+                [text_log_columns],
+            ),
         }
     }
 
@@ -136,20 +145,21 @@ impl TextLogColumns {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            columns: Some(SerializedComponentBatch::new(
+            text_log_columns: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::TextLogColumnList::arrow_empty(),
-                Self::descriptor_columns(),
+                Self::descriptor_text_log_columns(),
             )),
         }
     }
 
     /// All columns to be displayed.
     #[inline]
-    pub fn with_columns(
+    pub fn with_text_log_columns(
         mut self,
-        columns: impl Into<crate::blueprint::components::TextLogColumnList>,
+        text_log_columns: impl Into<crate::blueprint::components::TextLogColumnList>,
     ) -> Self {
-        self.columns = try_serialize_field(Self::descriptor_columns(), [columns]);
+        self.text_log_columns =
+            try_serialize_field(Self::descriptor_text_log_columns(), [text_log_columns]);
         self
     }
 }
@@ -157,6 +167,6 @@ impl TextLogColumns {
 impl ::re_byte_size::SizeBytes for TextLogColumns {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.columns.heap_size_bytes()
+        self.text_log_columns.heap_size_bytes()
     }
 }
