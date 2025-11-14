@@ -659,6 +659,22 @@ impl ::re_types_core::AsComponents for Transform3D {
 impl ::re_types_core::ArchetypeReflectionMarker for Transform3D {}
 
 impl Transform3D {
+    /// Create a new `Transform3D`.
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            translation: None,
+            rotation_axis_angle: None,
+            quaternion: None,
+            scale: None,
+            mat3x3: None,
+            relation: None,
+            child_frame: None,
+            parent_frame: None,
+            axis_length: None,
+        }
+    }
+
     /// Update only some specific fields of a `Transform3D`.
     #[inline]
     pub fn update_fields() -> Self {

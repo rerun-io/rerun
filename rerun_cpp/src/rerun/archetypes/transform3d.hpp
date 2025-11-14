@@ -438,7 +438,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_,
             const components::TransformMat3x3& mat3x3_, bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields().with_translation(translation_).with_mat3x3(mat3x3_);
+            *this = Transform3D().with_translation(translation_).with_mat3x3(mat3x3_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -476,7 +476,7 @@ namespace rerun::archetypes {
         /// \param translation_ \çopydoc Transform3D::translation
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::Translation3D& translation_, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_translation(translation_);
+            *this = Transform3D().with_translation(translation_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -497,7 +497,7 @@ namespace rerun::archetypes {
         /// \param mat3x3_ \copydoc Transform3D::mat3x3
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_mat3x3(mat3x3_);
+            *this = Transform3D().with_mat3x3(mat3x3_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -539,7 +539,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const Rotation3D& rotation,
             const components::Scale3D& scale_, bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields()
+            *this = Transform3D()
                         .with_translation(translation_)
                         .with_scale(scale_)
                         .with_rotation(rotation);
@@ -602,8 +602,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const Rotation3D& rotation,
             bool from_parent = false
         ) {
-            *this =
-                Transform3D::clear_fields().with_translation(translation_).with_rotation(rotation);
+            *this = Transform3D().with_translation(translation_).with_rotation(rotation);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -631,7 +630,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const components::Scale3D& scale_,
             bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields().with_translation(translation_).with_scale(scale_);
+            *this = Transform3D().with_translation(translation_).with_scale(scale_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -673,7 +672,7 @@ namespace rerun::archetypes {
         Transform3D(
             const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields().with_scale(scale_).with_rotation(rotation);
+            *this = Transform3D().with_scale(scale_).with_rotation(rotation);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -718,7 +717,7 @@ namespace rerun::archetypes {
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const Rotation3D& rotation, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_rotation(rotation);
+            *this = Transform3D().with_rotation(rotation);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -739,7 +738,7 @@ namespace rerun::archetypes {
         /// \param scale_ If true, the transform relation to `TransformRelation::ChildFromParent`.
         /// \param from_parent \copydoc Transform3D::scale
         Transform3D(const components::Scale3D& scale_, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_scale(scale_);
+            *this = Transform3D().with_scale(scale_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
