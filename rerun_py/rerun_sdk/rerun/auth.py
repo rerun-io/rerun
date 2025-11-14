@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 """
-WorkOS Authentication Module for Jupyter Notebooks
+WorkOS Authentication Module for Jupyter Notebooks.
 
 This module provides OAuth/SSO authentication using WorkOS with browser cookie storage.
 """
@@ -19,20 +21,13 @@ from flask import Flask, redirect, request, make_response, jsonify
 from IPython.display import display, HTML
 
 
-class WorkOSAuth:
-    """Handle WorkOS OAuth authentication flow in Jupyter environments."""
+class Auth:
+    """Handle WorkOS OAuth authentication flow."""
 
     def __init__(
         self,
-    ):
-        """
-        Initialize WorkOS authentication handler.
-
-        Args:
-            client_id: WorkOS Client ID (or set RERUN_OAUTH_CLIENT_ID env var)
-            redirect_uri: OAuth redirect URI (default: http://localhost:{port}/callback)
-            port: Port for Flask callback server (default: 5000)
-        """
+    ) -> None:
+        """Initialize WorkOS authentication handler."""
 
         self.oauth_server_url = os.getenv("RERUN_OAUTH_SERVER_URL") or "https://api.workos.com/user_management"
         self.client_id = os.getenv("RERUN_OAUTH_CLIENT_ID") or "client_01JZ3JVR1PEVQMS73V86MC4CE2"
@@ -59,7 +54,7 @@ class WorkOSAuth:
             f"?client_id={self.client_id}"
             f"&redirect_uri={redirect_url_safe}"
             f"&response_type=code"
-            f"&state={str(uuid.uuid4())}"
+            f"&state={uuid.uuid4()}"
             f"&provider=authkit"
             # f"&organization_id={self.organization_id}"
             f"&code_challenge={self.code_challenge}"
@@ -99,7 +94,7 @@ class WorkOSAuth:
                 </html>
                 """
             else:
-                return f"""
+                return """
                 <html>
                 <head><title>WorkOS Authentication</title></head>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
@@ -212,7 +207,7 @@ class WorkOSAuth:
                 <html>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
                     <h1>Authentication Error</h1>
-                    <p style="color: red;">Error during authentication: {str(e)}</p>
+                    <p style="color: red;">Error during authentication: {e!r}</p>
                     <p><a href="/">Go back</a></p>
                 </body>
                 </html>
@@ -223,7 +218,7 @@ class WorkOSAuth:
         @self.app.route("/logout")
         def logout():
             """Clear authentication cookies and logout."""
-            response = make_response(f"""
+            response = make_response("""
             <html>
             <head>
                 <title>Logged Out</title>
@@ -255,13 +250,14 @@ class WorkOSAuth:
                 "profile": profile_cookie if profile_cookie else None,
             })
 
-    def start_server(self, background: bool = True, open_browser: bool = False):
+    def start_server(self, background: bool = True, open_browser: bool = False) -> None:
         """
         Start the Flask authentication server.
 
         Args:
             background: Run server in background thread (default: True)
             open_browser: Automatically open browser to login page (default: False)
+
         """
         if self.server_thread and self.server_thread.is_alive():
             print(f"⚠️  Server already running on http://localhost:{self.port}")
@@ -295,7 +291,7 @@ class WorkOSAuth:
         if open_browser:
             webbrowser.open(f"http://localhost:{self.port}/login")
 
-    def display_login_link(self):
+    def display_login_link(self) -> None:
         """Display a clickable login link in Jupyter notebook."""
         login_url = f"http://localhost:{self.port}/login"
         html = f"""
@@ -312,23 +308,25 @@ class WorkOSAuth:
         """
         display(HTML(html))
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get current authentication status.
 
         Returns:
             Dictionary with authentication status and user profile if available
+
         """
+
         return {
             "authenticated": self.user_profile is not None,
             "profile": self.user_profile,
             "token": self.auth_token is not None,
         }
 
-    def do_refresh_token(self):
+    def do_refresh_token(self) -> None:
         """Refresh the authentication token."""
         auth_raw_response = requests.post(
-            "https://api.workos.com/user_management/authenticate",
+            f"{self.oauth_server_url}/authenticate",
             json={
                 "refresh_token": self.refresh_token,
                 "grant_type": "refresh_token",
@@ -341,8 +339,6 @@ class WorkOSAuth:
         self.access_token = auth_response["access_token"]
         self.refresh_token = auth_response["refresh_token"]
 
-        return auth_response
-
-    def stop_server(self):
+    def stop_server(self) -> None:
         """Stop the Flask server (note: may require kernel restart for full cleanup)."""
         print("⚠️  Note: Flask server is running in a daemon thread. To fully stop it, restart the Jupyter kernel.")

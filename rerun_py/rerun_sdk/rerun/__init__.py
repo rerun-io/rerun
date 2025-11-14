@@ -119,7 +119,7 @@ from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
 )
 from .auth import (
-    WorkOSAuth as WorkOSAuth,
+    Auth as Auth,
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
@@ -366,7 +366,7 @@ def init(
 def auth() -> None:
     global _auth
     if _auth is None:
-        _auth = WorkOSAuth()
+        _auth = Auth()
     return _auth
 
 
