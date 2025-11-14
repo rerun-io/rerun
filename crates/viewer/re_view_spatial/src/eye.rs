@@ -294,7 +294,7 @@ impl EyeController {
         })
     }
 
-    /// Saves the eye controls that have changed their values to the blueprint.
+    /// Saves the subset of eye controls that can change through user input to the blueprint.
     /// Does nothing if no interaction happened.
     fn save_to_blueprint(
         &self,
