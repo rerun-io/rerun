@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use arrow::array::{
-    ArrayRef, BooleanArray, FixedSizeBinaryArray, Int64Array, StringArray, UInt64Array,
+    ArrayRef, BooleanArray, FixedSizeBinaryArray, Int64Array, RecordBatch, StringArray, UInt64Array,
 };
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use itertools::izip;
@@ -57,22 +57,35 @@ pub struct RrdManifest {
     pub manifest: arrow::array::RecordBatch,
 }
 
+// TODO: maybe we need some schema checks all over the place like we do for ext types?
+// TODO: maybe the ToApplication impl could check that things aren't completely outta whack or something
+impl RrdManifest {
+    pub const CHUNK_PARTITION_ID_FIELD_NAME: &str = "chunk_partition_id";
+    pub const CHUNK_ID_FIELD_NAME: &str = "chunk_id";
+    pub const CHUNK_IS_STATIC_FIELD_NAME: &str = "chunk_is_static";
+    pub const CHUNK_ENTITY_PATH_FIELD_NAME: &str = "chunk_entity_path";
+    pub const CHUNK_BYTE_OFFSET_FIELD_NAME: &str = "chunk_byte_offset";
+    pub const CHUNK_BYTE_LEN_FIELD_NAME: &str = "chunk_byte_len";
+}
+
+// Accessors for statically known columns.
 impl RrdManifest {
     /// Returns the raw Arrow data for the partition ID column.
     pub fn col_chunk_partition_id_raw(&self) -> crate::CodecResult<&StringArray> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::CHUNK_PARTITION_ID_FIELD_NAME;
         self.manifest
-            .column_by_name(CHUNK_PARTITION_ID_FIELD_NAME)
+            .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot read column: '{CHUNK_PARTITION_ID_FIELD_NAME}' is missing from batch",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
             })?
             .downcast_array_ref::<StringArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{CHUNK_PARTITION_ID_FIELD_NAME}' is not a StringArray",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a StringArray",),
+                ))
             })
     }
 
@@ -86,18 +99,19 @@ impl RrdManifest {
     /// Returns the raw Arrow data for the entity path column.
     pub fn col_chunk_entity_path_raw(&self) -> crate::CodecResult<&StringArray> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::CHUNK_ENTITY_PATH_FIELD_NAME;
         self.manifest
-            .column_by_name(CHUNK_ENTITY_PATH_FIELD_NAME)
+            .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot read column: '{CHUNK_ENTITY_PATH_FIELD_NAME}' is missing from batch",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
             })?
             .downcast_array_ref::<StringArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{CHUNK_ENTITY_PATH_FIELD_NAME}' is not a StringArray",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a StringArray",),
+                ))
             })
     }
 
@@ -113,18 +127,19 @@ impl RrdManifest {
     /// Returns the raw Arrow data for the chunk ID column.
     pub fn col_chunk_id_raw(&self) -> crate::CodecResult<&FixedSizeBinaryArray> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::CHUNK_ID_FIELD_NAME;
         self.manifest
-            .column_by_name(CHUNK_ID_FIELD_NAME)
+            .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot read column: '{CHUNK_ID_FIELD_NAME}' is missing from batch",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
             })?
             .downcast_array_ref::<FixedSizeBinaryArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{CHUNK_ID_FIELD_NAME}' is not a FixedSizeBinaryArray",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a FixedSizeBinaryArray",),
+                ))
             })
     }
 
@@ -154,18 +169,19 @@ impl RrdManifest {
     /// Returns the raw Arrow data for the is-static column.
     pub fn col_chunk_is_static_raw(&self) -> crate::CodecResult<&BooleanArray> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::CHUNK_IS_STATIC_FIELD_NAME;
         self.manifest
-            .column_by_name(CHUNK_IS_STATIC_FIELD_NAME)
+            .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot read column: '{CHUNK_IS_STATIC_FIELD_NAME}' is missing from batch",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
             })?
             .downcast_array_ref::<BooleanArray>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{CHUNK_IS_STATIC_FIELD_NAME}' is not a BooleanArray",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a BooleanArray",),
+                ))
             })
     }
 
@@ -179,18 +195,19 @@ impl RrdManifest {
     /// Returns the raw Arrow data for the byte-offset column.
     pub fn col_chunk_byte_offset_raw(&self) -> crate::CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::CHUNK_BYTE_OFFSET_FIELD_NAME;
         self.manifest
-            .column_by_name(CHUNK_BYTE_OFFSET_FIELD_NAME)
+            .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot read column: '{CHUNK_BYTE_OFFSET_FIELD_NAME}' is missing from batch",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
             })?
             .downcast_array_ref::<UInt64Array>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{CHUNK_BYTE_OFFSET_FIELD_NAME}' is not a UInt64Array",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
+                ))
             })
     }
 
@@ -204,18 +221,19 @@ impl RrdManifest {
     /// Returns the raw Arrow data for the byte-length column.
     pub fn col_chunk_byte_len_raw(&self) -> crate::CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::CHUNK_BYTE_LEN_FIELD_NAME;
         self.manifest
-            .column_by_name(CHUNK_BYTE_LEN_FIELD_NAME)
+            .column_by_name(name)
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot read column: '{CHUNK_BYTE_LEN_FIELD_NAME}' is missing from batch",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
             })?
             .downcast_array_ref::<UInt64Array>()
             .ok_or_else(|| {
-                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(format!(
-                    "cannot downcast column: '{CHUNK_BYTE_LEN_FIELD_NAME}' is not a UInt64Array",
-                )))
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
+                ))
             })
     }
 
@@ -490,7 +508,8 @@ impl RrdManifestBuilder {
             [
                 create_index_bound_array(col.timeline.typ(), &col.index.starts),
                 create_index_bound_array(col.timeline.typ(), &col.index.ends),
-                create_index_len_array(&col.index.starts, &col.index.ends),
+                // TODO: but we have to port it
+                // create_index_len_array(&col.index.starts, &col.index.ends),
             ]
         });
 
@@ -515,6 +534,18 @@ impl RrdManifestBuilder {
         .chain(columns)
         .collect()
     }
+
+    pub fn into_record_batch(self) -> crate::CodecResult<RecordBatch> {
+        let schema = self.schema();
+        let num_rows = self.column_chunk_ids.len();
+        let columns = self.into_columns();
+        RecordBatch::try_new_with_options(
+            schema,
+            columns,
+            &arrow::record_batch::RecordBatchOptions::new().with_row_count(Some(num_rows)),
+        )
+        .map_err(crate::CodecError::ArrowSerialization)
+    }
 }
 
 impl RrdManifestBuilder {
@@ -532,7 +563,8 @@ impl RrdManifestBuilder {
                 [
                     Self::start_index_field(&col.timeline, None),
                     Self::end_index_field(&col.timeline, None),
-                    Self::length_index_field(&col.timeline, None),
+                    // TODO: okay but we need to port it
+                    // Self::length_index_field(&col.timeline, None),
                 ]
             })
             .collect()
@@ -569,20 +601,6 @@ impl RrdManifestBuilder {
 
 fn create_index_bound_array(timeline_type: TimeType, times: &[TimeInt]) -> ArrayRef {
     timeline_type.make_arrow_array_from_time_ints(times.iter().copied())
-}
-
-fn create_index_len_array(starts: &[TimeInt], ends: &[TimeInt]) -> ArrayRef {
-    Arc::new(
-        izip!(starts, ends)
-            .map(|(start, end)| {
-                if start.is_static() || end.is_static() {
-                    None
-                } else {
-                    Some(end.as_i64().saturating_sub(start.as_i64()))
-                }
-            })
-            .collect::<Int64Array>(),
-    ) as ArrayRef
 }
 
 fn create_index_has_data_array(has_data: Vec<bool>) -> ArrayRef {
@@ -637,16 +655,6 @@ impl RrdManifestIndexColumn {
 
 // ---
 
-// TODO: should we put those in the RrdManifest scope maybe?
-// TODO: maybe we need some schema checks all over the place like we do for ext types?
-// TODO: maybe the ToApplication impl could check that things aren't completely outta whack or something
-pub const CHUNK_PARTITION_ID_FIELD_NAME: &str = "chunk_partition_id";
-pub const CHUNK_ID_FIELD_NAME: &str = "chunk_id";
-pub const CHUNK_IS_STATIC_FIELD_NAME: &str = "chunk_is_static";
-pub const CHUNK_ENTITY_PATH_FIELD_NAME: &str = "chunk_entity_path";
-pub const CHUNK_BYTE_OFFSET_FIELD_NAME: &str = "chunk_byte_offset";
-pub const CHUNK_BYTE_LEN_FIELD_NAME: &str = "chunk_byte_len";
-
 // Schema helpers
 
 impl RrdManifestBuilder {
@@ -658,19 +666,23 @@ impl RrdManifestBuilder {
     }
 
     pub fn chunk_byte_offset_field() -> Field {
-        Self::byte_field(CHUNK_BYTE_OFFSET_FIELD_NAME)
+        Self::byte_field(RrdManifest::CHUNK_BYTE_OFFSET_FIELD_NAME)
     }
 
     pub fn chunk_byte_len_field() -> Field {
-        Self::byte_field(CHUNK_BYTE_LEN_FIELD_NAME)
+        Self::byte_field(RrdManifest::CHUNK_BYTE_LEN_FIELD_NAME)
     }
 
-    #[inline]
     pub fn chunk_id_field() -> Field {
         use re_log_types::external::re_types_core::Loggable as _;
         let nullable = false; // every chunk has an ID
         #[expect(clippy::iter_on_single_items)] // futureproof
-        Field::new(CHUNK_ID_FIELD_NAME, ChunkId::arrow_datatype(), nullable).with_metadata(
+        Field::new(
+            RrdManifest::CHUNK_ID_FIELD_NAME,
+            ChunkId::arrow_datatype(),
+            nullable,
+        )
+        .with_metadata(
             [
                 ("rerun:kind".to_owned(), "control".to_owned()), //
             ]
@@ -679,12 +691,11 @@ impl RrdManifestBuilder {
         )
     }
 
-    #[inline]
     pub fn chunk_is_static_field() -> Field {
         let nullable = false; // every chunk is either static or temporal
         #[expect(clippy::iter_on_single_items)] // futureproof
         Field::new(
-            CHUNK_IS_STATIC_FIELD_NAME,
+            RrdManifest::CHUNK_IS_STATIC_FIELD_NAME,
             arrow::datatypes::DataType::Boolean,
             nullable,
         )
@@ -697,12 +708,11 @@ impl RrdManifestBuilder {
         )
     }
 
-    #[inline]
     pub fn partition_id_field() -> Field {
         let nullable = false; // every chunk has an associated partition ID
         #[expect(clippy::iter_on_single_items)] // futureproof
         Field::new(
-            CHUNK_PARTITION_ID_FIELD_NAME,
+            RrdManifest::CHUNK_PARTITION_ID_FIELD_NAME,
             arrow::datatypes::DataType::Utf8,
             nullable,
         )
@@ -715,12 +725,11 @@ impl RrdManifestBuilder {
         )
     }
 
-    #[inline]
     pub fn entity_path_field() -> Field {
         let nullable = false; // every chunk has an entity path
         #[expect(clippy::iter_on_single_items)] // futureproof
         Field::new(
-            CHUNK_ENTITY_PATH_FIELD_NAME,
+            RrdManifest::CHUNK_ENTITY_PATH_FIELD_NAME,
             arrow::datatypes::DataType::Utf8,
             nullable,
         )
@@ -733,14 +742,12 @@ impl RrdManifestBuilder {
         )
     }
 
-    #[inline]
     pub fn byte_field(name: &str) -> Field {
         let nullable = false; // every chunk has an offset and length
         Field::new(name, arrow::datatypes::DataType::UInt64, nullable)
     }
 
     // TODO(emilk, zehiko, cmc): `Timeline` should not be a thing anymore, this should be an `Index`.
-    #[inline]
     pub fn index_field(
         timeline: &Timeline,
         datatype: arrow::datatypes::DataType,
@@ -793,26 +800,14 @@ impl RrdManifestBuilder {
         Field::new(field_name, datatype, nullable).with_metadata(metadata)
     }
 
-    #[inline]
     pub fn start_index_field(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
         Self::index_field(timeline, timeline.datatype(), desc, "start")
     }
 
-    #[inline]
     pub fn end_index_field(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
         Self::index_field(timeline, timeline.datatype(), desc, "end")
     }
 
-    // TODO: that's interesting. clearly this shit doesn't belong here, ye?
-    //
-    // NOTE: We have to fully materialize this (i.e. as opposed to just do a subtraction at query time),
-    // because we're gonna need a scalar index for it.
-    #[inline]
-    pub fn length_index_field(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
-        Self::index_field(timeline, arrow::datatypes::DataType::Int64, desc, "len")
-    }
-
-    #[inline]
     pub fn has_data_index_field(timeline: &Timeline, desc: &ComponentDescriptor) -> Field {
         Self::index_field(
             timeline,
@@ -822,7 +817,6 @@ impl RrdManifestBuilder {
         )
     }
 
-    #[inline]
     pub fn has_static_data_index_field(desc: &ComponentDescriptor) -> Field {
         let index_name = "static";
         let field_name =

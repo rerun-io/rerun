@@ -308,7 +308,6 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                         if !bytes.is_empty() {
                             let rrd_manifest =
                                 re_protos::log_msg::v1alpha1::RrdManifest::from_rrd_bytes(&bytes)?;
-                            dbg!(rrd_manifest.manifest.is_some());
                             self.rrd_manifests.push(rrd_manifest);
 
                             // A non-empty ::End message means there must be a footer ahead, no exception.

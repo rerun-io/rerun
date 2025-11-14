@@ -208,6 +208,9 @@ impl FooterState {
             )?
         };
 
+        // TODO: yeah i mean the fact that the manifest builder doesn't actually build the full
+        // manifest (hash, schema, and manifest) is just fucked
+
         let sorbet_schema = arrow::datatypes::Schema::new_with_metadata(
             sorbet_schema_builder.build(),
             Default::default(),
