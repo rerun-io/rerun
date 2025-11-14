@@ -594,7 +594,19 @@ class DatasetView:
         return DatasetView(self._inner, lazy_state=new_lazy_state)
 
     def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
-        """Returns a new DatasetEntry filtered to the given entity paths."""
+        """
+        Returns a new DatasetEntry filtered to the given entity paths.
+
+        NOTE: The choice of `contents` and `filter` are both intentional here.
+
+        Contents as a string gives us more flexibility in specifying what to include/exclude in ways that
+        include components. For example: `+/**:Points3D` or maybe `+/** -:Image`. This follows how we
+        specify this in blueprints.
+
+        We choose `filter` rather than `select` to make it clear that this is an operation that not only
+        reduces the number of columns but ALSO reduces the number of rows. I.e. we remove every row for
+        which there are no remaining non-index columns after filtering.
+        """
         new_lazy_state = self._lazy_state.with_content_filters(exprs)
 
         return DatasetView(self._inner, lazy_state=new_lazy_state)
