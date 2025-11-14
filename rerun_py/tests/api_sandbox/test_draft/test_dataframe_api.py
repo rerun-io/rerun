@@ -7,14 +7,14 @@ import numpy as np
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
-    import rerun_draft as rr
+    from rerun_draft.catalog import DatasetEntry
 
 
-def test_dataframe_api_filter_partition_id(populated_client: rr.catalog.CatalogClient) -> None:
-    ds = populated_client.get_dataset_entry(name="basic_dataset")
-
+def test_dataframe_api_filter_partition_id(basic_dataset: DatasetEntry) -> None:
     # Create a view with 2 partitions
-    view = ds.filter_segments(segment_ids=["simple_recording_0", "simple_recording_2"]).reader(index="timeline")
+    view = basic_dataset.filter_segments(segment_ids=["simple_recording_0", "simple_recording_2"]).reader(
+        index="timeline"
+    )
 
     # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
     df = view.sort("rerun_segment_id")
@@ -60,11 +60,9 @@ timeline: [[2000-01-01 00:00:00.000000000,2000-01-01 00:00:02.000000000]]
 """)
 
 
-def test_dataframe_api_using_index_values(populated_client: rr.catalog.CatalogClient) -> None:
-    ds = populated_client.get_dataset_entry(name="basic_dataset")
-
+def test_dataframe_api_using_index_values(basic_dataset: DatasetEntry) -> None:
     # Create a view with all partitions
-    df = ds.reader(
+    df = basic_dataset.reader(
         index="timeline",
         using_index_values=np.array(
             [

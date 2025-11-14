@@ -72,3 +72,23 @@ def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalo
         )
 
         yield client
+
+
+@pytest.fixture(scope="session")
+def basic_dataset(populated_client: rr.catalog.CatalogClient) -> Iterator[rr.catalog.DatasetEntry]:
+    yield populated_client.get_dataset(name="basic_dataset")
+
+
+@pytest.fixture(scope="session")
+def basic_metadata(populated_client: rr.catalog.CatalogClient) -> Iterator[rr.catalog.TableEntry]:
+    yield populated_client.get_table(name="basic_dataset_metadata")
+
+
+@pytest.fixture(scope="session")
+def complex_dataset(populated_client_complex: rr.catalog.CatalogClient) -> Iterator[rr.catalog.DatasetEntry]:
+    yield populated_client_complex.get_dataset(name="complex_dataset")
+
+
+@pytest.fixture(scope="session")
+def complex_metadata(populated_client_complex: rr.catalog.CatalogClient) -> Iterator[rr.catalog.TableEntry]:
+    yield populated_client_complex.get_table(name="complex_dataset_metadata")

@@ -8,7 +8,7 @@ from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
     import pyarrow as pa
-    import rerun_draft as rr
+    from rerun_draft.catalog import DatasetEntry, TableEntry
 
 
 def segment_stable_snapshot(df: datafusion.DataFrame) -> str:
@@ -38,11 +38,8 @@ def sorted_schema_str(schema: pa.Schema, with_metadata: bool = False) -> str:
     return "\n".join(lines)
 
 
-def test_dataset_view_filter_segments(populated_client_complex: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
-    meta = populated_client_complex.get_table(name="complex_dataset_metadata")
-
-    simple_filt = orig_ds.filter_segments(["complex_recording_2"])
+def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_metadata: TableEntry) -> None:
+    simple_filt = complex_dataset.filter_segments(["complex_recording_2"])
 
     assert sorted(simple_filt.segment_ids()) == inline_snapshot(["complex_recording_2"])
 
@@ -61,9 +58,9 @@ def test_dataset_view_filter_segments(populated_client_complex: rr.catalog.Catal
 └───────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
-    good_segments = orig_ds.segment_table(join_meta=meta).filter(col("success"))
+    good_segments = complex_dataset.segment_table(join_meta=complex_metadata).filter(col("success"))
 
-    good_ds = orig_ds.filter_segments(segment_ids=good_segments)
+    good_ds = complex_dataset.filter_segments(segment_ids=good_segments)
 
     assert sorted(good_ds.segment_ids()) == inline_snapshot(["complex_recording_1", "complex_recording_3"])
 
@@ -85,10 +82,8 @@ def test_dataset_view_filter_segments(populated_client_complex: rr.catalog.Catal
 """)
 
 
-def test_dataset_view_filter_entities(populated_client_complex: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
-
-    assert sorted_schema_str(orig_ds.arrow_schema()) == inline_snapshot("""\
+def test_dataset_view_filter_entities(complex_dataset: DatasetEntry) -> None:
+    assert sorted_schema_str(complex_dataset.arrow_schema()) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
 /points:Points2D:positions: list<item: fixed_size_list<item: float not null>[2]>
 /text:TextLog:text: list<item: string>
@@ -97,7 +92,7 @@ rerun.controls.RowId: fixed_size_binary[16]
 timeline: timestamp[ns]\
 """)
 
-    entity_filt = orig_ds.filter_contents(["/points/**"])
+    entity_filt = complex_dataset.filter_contents(["/points/**"])
 
     assert sorted_schema_str(entity_filt.arrow_schema()) == inline_snapshot("""\
 /points:Points2D:colors: list<item: uint32>
@@ -107,10 +102,8 @@ timeline: timestamp[ns]\
 """)
 
 
-def test_dataset_view_schema(populated_client_complex: rr.catalog.CatalogClient) -> None:
-    ds = populated_client_complex.get_dataset(name="complex_dataset")
-
-    entity_filt = ds.filter_contents(["/points/**"])
+def test_dataset_view_schema(complex_dataset: DatasetEntry) -> None:
+    entity_filt = complex_dataset.filter_contents(["/points/**"])
 
     assert str(entity_filt.schema()) == inline_snapshot("""\
 Index(timeline:timeline)
@@ -133,10 +126,11 @@ Column name: /points:Points2D:positions
     ])
 
 
-def test_dataset_view_dataframe(populated_client_complex: rr.catalog.CatalogClient) -> None:
-    orig_ds = populated_client_complex.get_dataset(name="complex_dataset")
-
-    filtered = orig_ds.filter_contents(["/text/**"]).filter_segments(["complex_recording_0", "complex_recording_2"])
+def test_dataset_view_dataframe(complex_dataset: DatasetEntry) -> None:
+    filtered = complex_dataset.filter_contents(["/text/**"]).filter_segments([
+        "complex_recording_0",
+        "complex_recording_2",
+    ])
 
     schema = filtered.arrow_schema()
 
