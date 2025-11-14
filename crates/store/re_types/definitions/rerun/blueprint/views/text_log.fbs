@@ -6,4 +6,9 @@ namespace rerun.blueprint.views;
 table TextLogView (
   "attr.rerun.view_identifier": "TextLog"
 ) {
+  /// The columns to display in the view.
+  columns: rerun.blueprint.archetypes.TextLogColumns (order: 1000);
+
+  /// Filter for rows to display in the view.
+  rows: rerun.blueprint.archetypes.TextLogRows (order: 2000);
 }

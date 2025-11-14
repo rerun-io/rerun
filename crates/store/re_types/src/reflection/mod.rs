@@ -388,6 +388,26 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TextLogColumnList as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A list of columns in a text log view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TextLogColumnList::arrow_datatype(),
+                verify_arrow_array: TextLogColumnList::verify_arrow_array,
+            },
+        ),
+        (
+            <TextLogLevelList as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A list of text log levels to display.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TextLogLevelList::default().to_arrow()?),
+                datatype: TextLogLevelList::arrow_datatype(),
+                verify_arrow_array: TextLogLevelList::verify_arrow_array,
+            },
+        ),
+        (
             <TimeInt as Component>::name(),
             ComponentReflection {
                 docstring_md: "A reference to a time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -3976,6 +3996,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Scaling",
                     component_type: "rerun.blueprint.components.ViewFit".into(),
                     docstring_md: "How the image is scaled to fit the view.",
+                    is_required: false,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextLogColumns"),
+            ArchetypeReflection {
+                display_name: "Text log columns",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "text_log_columns",
+                    display_name: "Text log columns",
+                    component_type: "rerun.blueprint.components.TextLogColumnList".into(),
+                    docstring_md: "All columns to be displayed.",
+                    is_required: false,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextLogRows"),
+            ArchetypeReflection {
+                display_name: "Text log rows",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "log_levels",
+                    display_name: "Log levels",
+                    component_type: "rerun.blueprint.components.TextLogLevelList".into(),
+                    docstring_md: "Log levels to display.",
                     is_required: false,
                 }],
             },
