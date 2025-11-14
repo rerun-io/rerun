@@ -2,7 +2,7 @@ use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, heade
 use egui::{Context, FontSelection, Id, Rangef, RichText, TextWrapMode, Ui, WidgetText};
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
-use re_ui::{TableStyle, UiExt};
+use re_ui::{TableStyle, UiExt as _};
 use std::iter;
 use std::sync::Arc;
 
@@ -82,9 +82,9 @@ impl<'a> ReTable<'a> {
     }
 }
 
-impl<'a> egui_table::TableDelegate for ReTable<'a> {
+impl egui_table::TableDelegate for ReTable<'_> {
     fn prepare(&mut self, info: &PrefetchInfo) {
-        self.inner.prepare(info)
+        self.inner.prepare(info);
     }
 
     fn header_cell_ui(&mut self, ui: &mut Ui, cell: &HeaderCellInfo) {
@@ -123,7 +123,7 @@ impl<'a> egui_table::TableDelegate for ReTable<'a> {
                 if let Some(col_index) = self.config.visible_column_indexes().nth(col_index) {
                     let mut cell_info = cell.clone();
                     cell_info.col_nr = col_index;
-                    self.inner.cell_ui(ui, &cell_info)
+                    self.inner.cell_ui(ui, &cell_info);
                 }
             }
         });

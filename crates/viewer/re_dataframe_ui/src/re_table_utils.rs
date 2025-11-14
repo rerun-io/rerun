@@ -187,16 +187,19 @@ impl TableConfig {
             let mut has_cols = HashSet::default();
             let mut new_cols = Vec::new();
 
-            for (index, mut col) in columns.enumerate() {
-                col.original_index = index;
-                has_cols.insert(col.id);
-                if let Some(col) = config.columns.iter_mut().find(|c| c.name == col.name) {
+            for (index, mut new_config) in columns.enumerate() {
+                new_config.original_index = index;
+                has_cols.insert(new_config.id);
+                if let Some(existing_config) = config
+                    .columns
+                    .iter_mut()
+                    .find(|existing| existing.name == new_config.name)
+                {
                     // Update existing column name and original index in case they changed.
-                    col.id = col.id;
-                    col.original_index = index;
-                    continue;
+                    existing_config.id = new_config.id;
+                    existing_config.original_index = index;
                 } else {
-                    new_cols.push(col);
+                    new_cols.push(new_config);
                 }
             }
 
