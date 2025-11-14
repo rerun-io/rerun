@@ -84,17 +84,3 @@ table Transform3D (
   /// If the transform is scaled, the axes will be scaled accordingly.
   axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 3000);
 }
-
-
-table Transform3DArrows (
-  "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
-  "attr.rerun.state": "stable",
-  "attr.rust.derive": "PartialEq"
-) {
-  /// Visual length of the 3 axes.
-  ///
-  /// The length is interpreted in the local coordinate system of the transform.
-  /// If the transform is scaled, the axes will be scaled accordingly.
-  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 3000);
-}
