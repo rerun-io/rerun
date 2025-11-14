@@ -100,6 +100,7 @@ re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.28.0-alpha.1"
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.28.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.28.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.28.0-alpha.1", default-features = false }
+re_depth_compression = { path = "crates/utils/re_depth_compression", version = "=0.28.0-alpha.1", default-features = false }
 re_error = { path = "crates/utils/re_error", version = "=0.28.0-alpha.1", default-features = false }
 re_format = { path = "crates/utils/re_format", version = "=0.28.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.28.0-alpha.1", default-features = false }

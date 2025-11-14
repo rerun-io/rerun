@@ -98,6 +98,10 @@ pub enum ImageLoadError {
     /// Failed to read the MIME type from inspecting the image data blob.
     #[error("Could not detect MIME type from the image contents")]
     UnrecognizedMimeType,
+
+    /// Generic failure while decoding encoded image payloads.
+    #[error("Failed to decode image data: {0}")]
+    DecodeError(String),
 }
 
 #[cfg(feature = "image")]

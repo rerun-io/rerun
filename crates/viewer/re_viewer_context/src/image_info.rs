@@ -30,6 +30,9 @@ pub fn resolution_of_image_at(
         .or_else(|| all_components.get(&archetypes::DepthImage::descriptor_format().component))
         .or_else(|| {
             all_components.get(&archetypes::SegmentationImage::descriptor_format().component)
+        })
+        .or_else(|| {
+            all_components.get(&archetypes::EncodedDepthImage::descriptor_format().component)
         });
 
     if let Some((_, image_format)) = image_format_descr.and_then(|component| {
