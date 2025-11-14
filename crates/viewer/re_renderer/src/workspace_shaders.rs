@@ -14,6 +14,12 @@ pub fn init() {
     let fs = crate::MemFileSystem::get();
 
     {
+        let virtpath = Path::new("shader/box_cloud.wgsl");
+        let content = include_str!("../shader/box_cloud.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/colormap.wgsl");
         let content = include_str!("../shader/colormap.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -148,6 +154,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/types.wgsl");
         let content = include_str!("../shader/types.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/utils/box_quad.wgsl");
+        let content = include_str!("../shader/utils/box_quad.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

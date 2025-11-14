@@ -1,3 +1,4 @@
+mod box_cloud;
 mod compositor;
 mod debug_overlay;
 mod depth_cloud;
@@ -9,6 +10,9 @@ mod rectangles;
 mod test_triangle;
 mod world_grid;
 
+pub use box_cloud::{
+    BoxCloudBatchFlags, BoxCloudBatchInfo, BoxCloudDrawData, BoxCloudDrawDataError,
+};
 pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};

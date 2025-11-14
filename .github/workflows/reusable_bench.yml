@@ -97,6 +97,7 @@ jobs:
             -p re_query \
             -p re_tuid \
             -p re_video \
+            -p re_view_spatial \
             -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
 
       - name: "Set up Cloud SDK"

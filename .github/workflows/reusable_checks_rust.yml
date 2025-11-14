@@ -132,6 +132,9 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
+      - name: Boxes3D fast path snapshot test
+        run: pixi run cargo test -p re_view_spatial --test boxes3d_fast_path
+
       - name: Rust tests
         run: pixi run rs-check --only tests
 
