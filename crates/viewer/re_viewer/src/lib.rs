@@ -16,6 +16,7 @@ pub mod env_vars;
 pub mod event;
 mod navigation;
 mod open_url_description;
+mod rrd_loading_metrics;
 mod saving;
 mod screenshotter;
 mod startup_options;
