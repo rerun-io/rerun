@@ -52,10 +52,10 @@ namespace rerun::archetypes {
     ///         return 1;
     ///     }
     ///
-    ///     std::vector<uint8_t> png_bytes(
+    ///     std::vector<uint8_t> png_bytes{
     ///         std::istreambuf_iterator<char>(file),
     ///         std::istreambuf_iterator<char>()
-    ///     );
+    ///     };
     ///
     ///     const rerun::WidthHeight resolution(64, 48);
     ///     const auto format =
