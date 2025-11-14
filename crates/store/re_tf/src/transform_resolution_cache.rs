@@ -662,6 +662,7 @@ impl TransformsForChildFrame {
             pose_transform.value =
                 CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
                     &pose_transform.entity_path,
+                    self.child_frame, // TODO(RR-2627): We're not handling this correctly yet.
                     entity_db,
                     query,
                 ));
@@ -1577,18 +1578,7 @@ mod tests {
             assert_eq!(
                 transforms
                     .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
-                vec![
-                    DAffine3::from_scale_rotation_translation(
-                        glam::dvec3(10.0, 20.0, 30.0),
-                        glam::DQuat::IDENTITY,
-                        glam::dvec3(1.0, 2.0, 3.0),
-                    ),
-                    DAffine3::from_scale_rotation_translation(
-                        glam::dvec3(10.0, 20.0, 30.0),
-                        glam::DQuat::IDENTITY,
-                        glam::dvec3(4.0, 5.0, 6.0),
-                    ),
-                ]
+                vec![DAffine3::from_scale(glam::dvec3(10.0, 20.0, 30.0)),]
             );
 
             // Timelines that the cache has never seen should still have the static poses.

@@ -341,6 +341,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 pub fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
+    frame_id: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<DAffine3> {
@@ -351,24 +352,48 @@ pub fn query_and_resolve_instance_poses_at_entity(
     let identifier_scales = InstancePoses3D::descriptor_scales().component;
     let identifier_mat3x3 = InstancePoses3D::descriptor_mat3x3().component;
 
-    let result = entity_db.latest_at(
+    // TODO(RR-2627): We're not handling this correctly yet.
+    let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
+
+    let all_components_of_transaction = [
+        identifier_translations,
+        identifier_rotation_axis_angles,
+        identifier_quaternions,
+        identifier_scales,
+        identifier_mat3x3,
+    ];
+
+    // We're querying for transactional/atomic pose state:
+    // If any of the topology or geometry components change, we reset all poses.
+    //
+    // This means we don't have to do latest-at for individual components.
+    // Instead, we're looking for the last change and then get everything with that row id.
+    //
+    // We bipass the query cache here:
+    // * we're already doing special caching anyways
+    // * we don't want to merge over row-ids *at all* since our query handling here is a little bit different. The query cache is geared towards "regular Rerun semantics"
+    // * we already handled `Clear`/`ClearRecursive` upon pre-population of our cache entries (we know when a clear occurs on this entity!)
+    let unit_chunk: Option<UnitChunkShared> = atomic_latest_at_query_for_frame(
+        entity_db,
         query,
         entity_path,
-        [
-            identifier_translations,
-            identifier_rotation_axis_angles,
-            identifier_quaternions,
-            identifier_scales,
-            identifier_mat3x3,
-        ],
+        identifier_child_frame,
+        frame_id,
+        &all_components_of_transaction,
     );
+    let Some(unit_chunk) = unit_chunk else {
+        return Vec::new();
+    };
 
-    let max_num_instances = result
-        .components
+    let max_num_instances = all_components_of_transaction
         .iter()
-        .map(|(component, row)| row.num_instances(*component))
+        .map(|component| {
+            unit_chunk
+                .component_batch_raw(*component)
+                .map_or(0, |batch| batch.len())
+        })
         .max()
-        .unwrap_or(0) as usize;
+        .unwrap_or(0);
 
     if max_num_instances == 0 {
         return Vec::new();
@@ -391,20 +416,25 @@ pub fn query_and_resolve_instance_poses_at_entity(
         )
     }
 
-    let batch_translation = result
+    let batch_translation = unit_chunk
         .component_batch::<components::PoseTranslation3D>(identifier_translations)
+        .and_then(|v| v.ok())
         .unwrap_or_default();
-    let batch_rotation_axis_angle = result
+    let batch_rotation_axis_angle = unit_chunk
         .component_batch::<components::PoseRotationAxisAngle>(identifier_rotation_axis_angles)
+        .and_then(|v| v.ok())
         .unwrap_or_default();
-    let batch_rotation_quat = result
+    let batch_rotation_quat = unit_chunk
         .component_batch::<components::PoseRotationQuat>(identifier_quaternions)
+        .and_then(|v| v.ok())
         .unwrap_or_default();
-    let batch_scale = result
+    let batch_scale = unit_chunk
         .component_batch::<components::PoseScale3D>(identifier_scales)
+        .and_then(|v| v.ok())
         .unwrap_or_default();
-    let batch_mat3x3 = result
+    let batch_mat3x3 = unit_chunk
         .component_batch::<components::PoseTransformMat3x3>(identifier_mat3x3)
+        .and_then(|v| v.ok())
         .unwrap_or_default();
 
     if batch_translation.is_empty()
