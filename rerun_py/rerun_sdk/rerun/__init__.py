@@ -230,7 +230,9 @@ When an external `DataLoader` is asked to load some data that it doesn't know ho
 should exit with this exit code.
 """
 
-_auth = None
+# Global auth handler
+# TODO:
+auth = Auth()
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
@@ -363,11 +365,11 @@ def init(
         _spawn(default_blueprint=default_blueprint)
 
 
-def auth() -> None:
-    global _auth
-    if _auth is None:
-        _auth = Auth()
-    return _auth
+# def auth() -> None:
+#     global _auth
+#     if _auth is None:
+#         _auth = Auth()
+#     return _auth
 
 
 def version() -> str:

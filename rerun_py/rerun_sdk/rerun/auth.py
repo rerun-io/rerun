@@ -29,6 +29,25 @@ class Auth:
     ) -> None:
         """Initialize WorkOS authentication handler."""
 
+        self._reset()
+
+    def _reset(self) -> None:
+        self.oauth_server_url = None
+        self.client_id = None
+        self.code_verifier = None
+        self.code_challenge = None
+        self.port = None
+        self.redirect_uri = None
+        self.app = None
+        self.server_thread = None
+        self.user_profile = None
+        self.access_token = None
+        self.refresh_token = None
+        self.authorization_url = None
+
+    def login(self) -> None:
+        """Initiate OAuth flow by redirecting to WorkOS authorization URL."""
+
         self.oauth_server_url = os.getenv("RERUN_OAUTH_SERVER_URL") or "https://api.workos.com/user_management"
         self.client_id = os.getenv("RERUN_OAUTH_CLIENT_ID") or "client_01JZ3JVR1PEVQMS73V86MC4CE2"
         self.code_verifier, self.code_challenge = self.generate_pkce_pair()
@@ -60,12 +79,14 @@ class Auth:
             f"&code_challenge={self.code_challenge}"
             f"&code_challenge_method=S256"
         )
-        print(f"Authorization URL: {self.authorization_url}")
+        # print(f"Authorization URL: {self.authorization_url}")
 
         # Setup Flask routes
         self._setup_routes()
+        self.start_server(True, True)
+        # self.display_login_link()
 
-    def generate_pkce_pair(self) -> Tuple[str, str]:
+    def generate_pkce_pair(self) -> tuple[str, str]:
         code_verifier = secrets.token_urlsafe(96)[:128]
         hashed = hashlib.sha256(code_verifier.encode("ascii")).digest()
         encoded = base64.urlsafe_b64encode(hashed)
@@ -116,7 +137,7 @@ class Auth:
                 <html>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px;">
                     <h1>Authentication Error</h1>
-                    <p style="color: red;">Error initiating authentication: {str(e)}</p>
+                    <p style="color: red;">Error initiating authentication: {e!r}</p>
                     <p><a href="/">Go back</a></p>
                 </body>
                 </html>
@@ -134,7 +155,7 @@ class Auth:
                 if not code:
                     return "Error: No authorization code received", 400
 
-                print(f"Code: {code}")
+                # print(f"Code: {code}")
                 auth_raw_response = requests.post(
                     f"{self.oauth_server_url}/authenticate",
                     json={
@@ -144,10 +165,10 @@ class Auth:
                         "client_id": self.client_id,
                     },
                 )
-                print(f"Auth response: {auth_raw_response}")
+                # print(f"Auth response: {auth_raw_response}")
 
                 auth_response = auth_raw_response.json()
-                print(f"Auth response JSON: {auth_response}")
+                # print(f"Auth response JSON: {auth_response}")
 
                 profile = auth_response["user"]
                 self.access_token = auth_response["access_token"]
@@ -236,6 +257,7 @@ class Auth:
             # Clear cookies
             response.set_cookie("workos_auth_token", "", expires=0)
             response.set_cookie("workos_user_profile", "", expires=0)
+            self._reset()
 
             return response
 
@@ -269,21 +291,22 @@ class Auth:
         if background:
             self.server_thread = threading.Thread(target=run_server, daemon=True)
             self.server_thread.start()
-            time.sleep(1)  # Give server time to start
-            print(f"✓ Authentication server started on http://localhost:{self.port}")
+            # time.sleep(1)  # Give server time to start
 
+            print(f"Starting auth callback server on http://localhost:{self.port}")
             # wait for the server to respond to the status endpoint
             attempts = 50
             while attempts > 0:
-                print(f"Waiting for server to start... {attempts} attempts left")
+                # print(f"Waiting for server to start... {attempts} attempts left")
                 response = requests.get(f"http://localhost:{self.port}/status")
-                print(f"Status response: {response.status_code}")
                 if response.status_code == 200:
                     break
-                time.sleep(0.1)
+                print(f"Status response: {response.status_code}")
+                time.sleep(0.2)
                 attempts -= 1
             if attempts <= 0:
                 raise Exception("Failed to start server")
+            print("✓ Auth callback server started.")
 
         else:
             run_server()
@@ -291,24 +314,24 @@ class Auth:
         if open_browser:
             webbrowser.open(f"http://localhost:{self.port}/login")
 
-    def display_login_link(self) -> None:
-        """Display a clickable login link in Jupyter notebook."""
-        login_url = f"http://localhost:{self.port}/login"
-        html = f"""
-        <div style="padding: 20px; background: #f5f5f5; border-radius: 5px; margin: 10px 0;">
-            <h3 style="margin-top: 0;">WorkOS Authentication</h3>
-            <p>Click the button below to authenticate:</p>
-            <a href="{login_url}" target="_blank" style="display: inline-block; background: #6C5CE7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                Login with WorkOS
-            </a>
-            <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
-                Or visit: <a href="{login_url}" target="_blank">{login_url}</a>
-            </p>
-        </div>
-        """
-        display(HTML(html))
+    # def display_login_link(self) -> None:
+    #     """Display a clickable login link in Jupyter notebook."""
+    #     login_url = f"http://localhost:{self.port}/login"
+    #     html = f"""
+    #     <div style="padding: 20px; background: #f5f5f5; border-radius: 5px; margin: 10px 0;">
+    #         <h3 style="margin-top: 0;">WorkOS Authentication</h3>
+    #         <p>Click the button below to authenticate:</p>
+    #         <a href="{login_url}" target="_blank" style="display: inline-block; background: #6C5CE7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+    #             Login with WorkOS
+    #         </a>
+    #         <p style="margin-top: 15px; font-size: 0.9em; color: #666;">
+    #             Or visit: <a href="{login_url}" target="_blank">{login_url}</a>
+    #         </p>
+    #     </div>
+    #     """
+    #     display(HTML(html))
 
-    def get_status(self) -> dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         """
         Get current authentication status.
 
@@ -317,10 +340,15 @@ class Auth:
 
         """
 
+        if self.user_profile is None:
+            return {
+                "authenticated": False,
+            }
+
         return {
             "authenticated": self.user_profile is not None,
             "profile": self.user_profile,
-            "token": self.auth_token is not None,
+            "has_token": self.access_token is not None,
         }
 
     def do_refresh_token(self) -> None:

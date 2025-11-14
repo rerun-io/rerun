@@ -29,6 +29,8 @@ from .event import (
 )
 from .recording_stream import RecordingStream, get_data_recording
 
+from rerun import auth
+
 HAS_NOTEBOOK = True
 try:
     from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
@@ -159,6 +161,11 @@ class Viewer:
                 raise ValueError(
                     "Can only set a blueprint if there's either an active recording or a recording passed in"
                 )
+
+        # Auth
+        # print("AUTH:", auth.status())
+        if auth.access_token is not None:
+            self.set_access_token(auth.access_token, auth.refresh_token, auth.user_profile["email"])
 
     def add_recording(
         self,
