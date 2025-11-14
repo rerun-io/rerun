@@ -138,7 +138,6 @@ impl ViewSystemRegistrator<'_> {
             provider,
         );
     }
-
 }
 
 /// View class entry in [`ViewClassRegistry`].
