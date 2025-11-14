@@ -88,16 +88,25 @@ fn atomic_latest_at_query_for_frame(
             chunk.timelines().get(&query.timeline())
             && query_time != TimeInt::STATIC.as_i64()
         {
-            // TODO: optimize for already sorted.
-            Either::Right(
-                time_column
+            if time_column.is_sorted() {
+                let partition_point = time_column
                     .times_raw()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_row_index, time)| **time <= query_time)
-                    .sorted_by_key(|(_row_index, time)| -(*time)) // Make sure the highest time comes first.
-                    .map(|(row_index, _time)| row_index),
-            )
+                    .partition_point(|time| *time <= query_time);
+                Either::Left((0..partition_point).rev())
+            } else {
+                Either::Right(
+                    time_column
+                        .times_raw()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_row_index, time)| **time <= query_time)
+                        .sorted_by_key(|(_row_index, time)| *time)
+                        // Do *not* sort by negative time instead.
+                        // This gives a subtly different outcome since sorting is stable it would mean that runs of equal times wouldn't be reversed then.
+                        .rev()
+                        .map(|(row_index, _time)| row_index),
+                )
+            }
         } else {
             Either::Left((0..chunk.num_rows()).rev())
         };
@@ -111,7 +120,7 @@ fn atomic_latest_at_query_for_frame(
                 let Some(frame_id_row) =
                     frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
                 else {
-                    // TODO: report error
+                    re_log::error_once!("Expected at {condition_frame_id_component:?} @ {entity_path:?} to be a string array, but its type is instead {:?}", frame_id_row_untyped.data_type());
                     return false;
                 };
                 // Right now everything is singular on a single row, so check only the first element of this string array.
@@ -130,7 +139,6 @@ fn atomic_latest_at_query_for_frame(
                     // It is therefore not relevant for what we're looking for!
                     // The last row *is* relevant, because it clears out the translation for the
                     // entity derived child_frame_id, thus setting it to an identity transform.
-                    // TODO: I want exactly the above in a unit test! note that `rr.log("my_entity", Transform3D())` TODAY does pretty much that. so it's NOT far fetched.
                     if !has_row_any_component(&chunk, *index, atomic_component_set) {
                         return false;
                     }
@@ -147,7 +155,7 @@ fn atomic_latest_at_query_for_frame(
                 .find(|index| has_row_any_component(&chunk, *index, atomic_component_set))
         } else {
             // There's no child_frame id and we're also not looking for the entity-path derived frame,
-            // so this chunk doesn't have any information about the the transform we're looking for.
+            // so this chunk doesn't have any information about the transform we're looking for.
             continue;
         };
 
@@ -839,7 +847,7 @@ mod tests {
     }
 
     #[test]
-    fn atomic_latest_at_handle_simulataneous_events() -> Result<(), Box<dyn std::error::Error>> {
+    fn atomic_latest_at_handle_simultaneous_events() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
 
         // Populate store.
