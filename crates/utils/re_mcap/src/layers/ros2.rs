@@ -5,6 +5,7 @@ use crate::parsers::{
     MessageParser,
     ros2msg::{
         Ros2MessageParser,
+        geometry_msgs::PoseStampedMessageParser,
         rcl_interfaces::LogMessageParser,
         sensor_msgs::{
             BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
@@ -36,6 +37,8 @@ impl McapRos2Layer {
     /// Creates a new [`McapRos2Layer`] with all supported message types pre-registered
     pub fn new() -> Self {
         Self::empty()
+            // geometry_msgs
+            .register_parser::<PoseStampedMessageParser>("geometry_msgs/msg/PoseStamped")
             // rcl_interfaces
             .register_parser::<LogMessageParser>("rcl_interfaces/msg/Log")
             // sensor_msgs
