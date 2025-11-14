@@ -5,8 +5,8 @@ namespace rerun.blueprint.datatypes;
 table TextLogColumnList (
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint",
-  "attr.docs.unreleased"  
+  "attr.docs.unreleased"
 ) {
   /// All columns to be displayed.
-  columns: [rerun.datatypes.TextLogColumn] (order: 100);
+  text_log_columns: [rerun.datatypes.TextLogColumn] (order: 100);
 }

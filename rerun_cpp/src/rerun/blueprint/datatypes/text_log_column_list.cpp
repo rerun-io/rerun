@@ -15,7 +15,7 @@ namespace rerun {
         Loggable<blueprint::datatypes::TextLogColumnList>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
             arrow::field(
-                "columns",
+                "text_log_columns",
                 arrow::list(arrow::field(
                     "item",
                     Loggable<rerun::datatypes::TextLogColumn>::arrow_datatype(),
@@ -74,12 +74,12 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                if (element.columns.data()) {
+                if (element.text_log_columns.data()) {
                     RR_RETURN_NOT_OK(
                         Loggable<rerun::datatypes::TextLogColumn>::fill_arrow_array_builder(
                             value_builder,
-                            element.columns.data(),
-                            element.columns.size()
+                            element.text_log_columns.data(),
+                            element.text_log_columns.size()
                         )
                     );
                 }

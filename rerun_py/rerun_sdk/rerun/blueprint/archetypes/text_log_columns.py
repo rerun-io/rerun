@@ -26,27 +26,27 @@ class TextLogColumns(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, columns: blueprint_datatypes.TextLogColumnListLike) -> None:
+    def __init__(self: Any, text_log_columns: blueprint_datatypes.TextLogColumnListLike) -> None:
         """
         Create a new instance of the TextLogColumns archetype.
 
         Parameters
         ----------
-        columns:
+        text_log_columns:
             All columns to be displayed.
 
         """
 
         # You can define your own __init__ function as a member of TextLogColumnsExt in text_log_columns_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(columns=columns)
+            self.__attrs_init__(text_log_columns=text_log_columns)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            columns=None,
+            text_log_columns=None,
         )
 
     @classmethod
@@ -61,7 +61,7 @@ class TextLogColumns(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        columns: blueprint_datatypes.TextLogColumnListLike | None = None,
+        text_log_columns: blueprint_datatypes.TextLogColumnListLike | None = None,
     ) -> TextLogColumns:
         """
         Update only some specific fields of a `TextLogColumns`.
@@ -70,7 +70,7 @@ class TextLogColumns(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        columns:
+        text_log_columns:
             All columns to be displayed.
 
         """
@@ -78,7 +78,7 @@ class TextLogColumns(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "columns": columns,
+                "text_log_columns": text_log_columns,
             }
 
             if clear_unset:
@@ -95,7 +95,7 @@ class TextLogColumns(Archetype):
         """Clear all the fields of a `TextLogColumns`."""
         return cls.from_fields(clear_unset=True)
 
-    columns: blueprint_components.TextLogColumnListBatch | None = field(
+    text_log_columns: blueprint_components.TextLogColumnListBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=blueprint_components.TextLogColumnListBatch._converter,  # type: ignore[misc]

@@ -8,25 +8,26 @@
 namespace rerun::blueprint::archetypes {
     TextLogColumns TextLogColumns::clear_fields() {
         auto archetype = TextLogColumns();
-        archetype.columns = ComponentBatch::empty<rerun::blueprint::components::TextLogColumnList>(
-                                Descriptor_columns
-        )
-                                .value_or_throw();
+        archetype.text_log_columns =
+            ComponentBatch::empty<rerun::blueprint::components::TextLogColumnList>(
+                Descriptor_text_log_columns
+            )
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TextLogColumns::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(1);
-        if (columns.has_value()) {
-            columns.push_back(columns.value().partitioned(lengths_).value_or_throw());
+        if (text_log_columns.has_value()) {
+            columns.push_back(text_log_columns.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
 
     Collection<ComponentColumn> TextLogColumns::columns() {
-        if (columns.has_value()) {
-            return columns(std::vector<uint32_t>(columns.value().length(), 1));
+        if (text_log_columns.has_value()) {
+            return columns(std::vector<uint32_t>(text_log_columns.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -42,8 +43,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(1);
 
-        if (archetype.columns.has_value()) {
-            cells.push_back(archetype.columns.value());
+        if (archetype.text_log_columns.has_value()) {
+            cells.push_back(archetype.text_log_columns.value());
         }
 
         return rerun::take_ownership(std::move(cells));

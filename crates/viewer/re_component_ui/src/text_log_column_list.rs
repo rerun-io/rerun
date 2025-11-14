@@ -8,7 +8,7 @@ pub fn edit_or_view_columns_singleline(
     ui: &mut egui::Ui,
     column_list: &mut MaybeMutRef<'_, TextLogColumnList>,
 ) -> egui::Response {
-    ui.weak(match column_list.columns.len() {
+    ui.weak(match column_list.text_log_columns.len() {
         1 => "1 column".to_owned(),
         l => format!("{l} columns"),
     })
@@ -21,7 +21,7 @@ pub fn edit_or_view_columns_multiline(
 ) -> egui::Response {
     match column_list {
         MaybeMutRef::Ref(column_list) => column_list
-            .columns
+            .text_log_columns
             .iter()
             .map(|column| match column {
                 datatypes::TextLogColumn::Timeline(name) => {
@@ -32,7 +32,7 @@ pub fn edit_or_view_columns_multiline(
             .reduce(|a, b| a.union(b))
             .unwrap_or_else(|| ui.weak("Empty")),
         MaybeMutRef::MutRef(column_list) => {
-            let columns = &mut column_list.columns;
+            let columns = &mut column_list.text_log_columns;
             let mut any_edit = false;
 
             let mut remove = Vec::new();

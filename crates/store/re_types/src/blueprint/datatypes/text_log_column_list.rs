@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TextLogColumnList {
     /// All columns to be displayed.
-    pub columns: Vec<crate::datatypes::TextLogColumn>,
+    pub text_log_columns: Vec<crate::datatypes::TextLogColumn>,
 }
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumnList);
@@ -37,7 +37,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![Field::new(
-            "columns",
+            "text_log_columns",
             DataType::List(std::sync::Arc::new(Field::new(
                 "item",
                 <crate::datatypes::TextLogColumn>::arrow_datatype(),
@@ -58,7 +58,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![Field::new(
-                "columns",
+                "text_log_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
                     <crate::datatypes::TextLogColumn>::arrow_datatype(),
@@ -80,26 +80,27 @@ impl ::re_types_core::Loggable for TextLogColumnList {
             as_array_ref(StructArray::new(
                 fields,
                 vec![{
-                    let (somes, columns): (Vec<_>, Vec<_>) = data
+                    let (somes, text_log_columns): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| datum.columns.clone());
+                            let datum = datum.as_ref().map(|datum| datum.text_log_columns.clone());
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let columns_validity: Option<arrow::buffer::NullBuffer> = {
+                    let text_log_columns_validity: Option<arrow::buffer::NullBuffer> = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            columns
+                            text_log_columns
                                 .iter()
                                 .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                         );
-                        let columns_inner_data: Vec<_> =
-                            columns.into_iter().flatten().flatten().collect();
-                        let columns_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        let text_log_columns_inner_data: Vec<_> =
+                            text_log_columns.into_iter().flatten().flatten().collect();
+                        let text_log_columns_inner_validity: Option<arrow::buffer::NullBuffer> =
+                            None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new(
                                 "item",
@@ -108,12 +109,12 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                             )),
                             offsets,
                             {
-                                _ = columns_inner_validity;
+                                _ = text_log_columns_inner_validity;
                                 crate::datatypes::TextLogColumn::to_arrow_opt(
-                                    columns_inner_data.into_iter().map(Some),
+                                    text_log_columns_inner_data.into_iter().map(Some),
                                 )?
                             },
-                            columns_validity,
+                            text_log_columns_validity,
                         )?)
                     }
                 }],
@@ -150,15 +151,15 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                     .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let columns = {
-                    if !arrays_by_name.contains_key("columns") {
+                let text_log_columns = {
+                    if !arrays_by_name.contains_key("text_log_columns") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "columns",
+                            "text_log_columns",
                         ))
                         .with_context("rerun.blueprint.datatypes.TextLogColumnList");
                     }
-                    let arrow_data = &**arrays_by_name["columns"];
+                    let arrow_data = &**arrays_by_name["text_log_columns"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -172,64 +173,78 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
-                            .with_context("rerun.blueprint.datatypes.TextLogColumnList#columns")?;
+                            .with_context(
+                                "rerun.blueprint.datatypes.TextLogColumnList#text_log_columns",
+                            )?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::TextLogColumn::from_arrow_opt(arrow_data_inner)
+                                crate::datatypes::TextLogColumn::from_arrow_opt(
+                                        arrow_data_inner,
+                                    )
                                     .with_context(
-                                        "rerun.blueprint.datatypes.TextLogColumnList#columns",
+                                        "rerun.blueprint.datatypes.TextLogColumnList#text_log_columns",
                                     )?
                                     .into_iter()
                                     .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
+                            ZipValidity::new_with_validity(
+                                    offsets.windows(2),
+                                    arrow_data.nulls(),
+                                )
                                 .map(|elem| {
-                                    elem.map(|window| {
-                                        let start = window[0] as usize;
-                                        let end = window[1] as usize;
-                                        if arrow_data_inner.len() < end {
-                                            return Err(DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ));
-                                        }
+                                    elem
+                                        .map(|window| {
+                                            let start = window[0] as usize;
+                                            let end = window[1] as usize;
+                                            if arrow_data_inner.len() < end {
+                                                return Err(
+                                                    DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
 
-                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data =
-                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
-                                        let data = data
-                                            .iter()
-                                            .cloned()
-                                            .map(Option::unwrap_or_default)
-                                            .collect();
-                                        Ok(data)
-                                    })
-                                    .transpose()
+                                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start..end)
+                                            };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default)
+                                                .collect();
+                                            Ok(data)
+                                        })
+                                        .transpose()
                                 })
                                 .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
-                        .into_iter()
+                            .into_iter()
                     }
                 };
-                ZipValidity::new_with_validity(::itertools::izip!(columns), arrow_data.nulls())
-                    .map(|opt| {
-                        opt.map(|(columns)| {
-                            Ok(Self {
-                                columns: columns
-                                    .ok_or_else(DeserializationError::missing_data)
-                                    .with_context(
-                                        "rerun.blueprint.datatypes.TextLogColumnList#columns",
-                                    )?,
-                            })
+                ZipValidity::new_with_validity(
+                    ::itertools::izip!(text_log_columns),
+                    arrow_data.nulls(),
+                )
+                .map(|opt| {
+                    opt.map(|(text_log_columns)| {
+                        Ok(Self {
+                            text_log_columns: text_log_columns
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context(
+                                    "rerun.blueprint.datatypes.TextLogColumnList#text_log_columns",
+                                )?,
                         })
-                        .transpose()
                     })
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.datatypes.TextLogColumnList")?
+                    .transpose()
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.blueprint.datatypes.TextLogColumnList")?
             }
         })
     }
@@ -240,7 +255,7 @@ impl<I: Into<crate::datatypes::TextLogColumn>, T: IntoIterator<Item = I>> From<T
 {
     fn from(v: T) -> Self {
         Self {
-            columns: v.into_iter().map(|v| v.into()).collect(),
+            text_log_columns: v.into_iter().map(|v| v.into()).collect(),
         }
     }
 }
@@ -248,7 +263,7 @@ impl<I: Into<crate::datatypes::TextLogColumn>, T: IntoIterator<Item = I>> From<T
 impl ::re_byte_size::SizeBytes for TextLogColumnList {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.columns.heap_size_bytes()
+        self.text_log_columns.heap_size_bytes()
     }
 
     #[inline]

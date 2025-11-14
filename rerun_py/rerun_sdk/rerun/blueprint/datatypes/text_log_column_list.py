@@ -29,28 +29,28 @@ class TextLogColumnList:
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, columns: TextLogColumnListLike) -> None:
+    def __init__(self: Any, text_log_columns: TextLogColumnListLike) -> None:
         """
         Create a new instance of the TextLogColumnList datatype.
 
         Parameters
         ----------
-        columns:
+        text_log_columns:
             All columns to be displayed.
 
         """
 
         # You can define your own __init__ function as a member of TextLogColumnListExt in text_log_column_list_ext.py
-        self.__attrs_init__(columns=columns)
+        self.__attrs_init__(text_log_columns=text_log_columns)
 
-    columns: list[datatypes.TextLogColumn] = field()
+    text_log_columns: list[datatypes.TextLogColumn] = field()
     # All columns to be displayed.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of TextLogColumnListExt in text_log_column_list_ext.py
-        return len(self.columns)
+        return len(self.text_log_columns)
 
 
 TextLogColumnListLike = TextLogColumnList
@@ -63,7 +63,7 @@ TextLogColumnListArrayLike = TextLogColumnList | Sequence[TextLogColumnListLike]
 class TextLogColumnListBatch(BaseBatch[TextLogColumnListArrayLike]):
     _ARROW_DATATYPE = pa.struct([
         pa.field(
-            "columns",
+            "text_log_columns",
             pa.list_(
                 pa.field(
                     "item",

@@ -87,6 +87,3 @@ impl ::re_byte_size::SizeBytes for TextLogLevelList {
         <crate::blueprint::datatypes::TextLogLevelList>::is_pod()
     }
 }
-
-#[path = "text_log_level_list_ext.rs"]
-mod ext;
