@@ -499,9 +499,6 @@ impl TransformsForChildFrame {
             pinhole_projections,
         } = self.events.get_mut();
 
-        // TODO(andreas): this is clearly _too_ conservative for long recordings.
-        // We'd like to know all points in time when a transform is fully "shadowed", so we don't have to invalidate as aggressively.
-
         if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
             // Add new invalidated transforms.
             frame_transforms.extend(
@@ -620,6 +617,12 @@ impl TransformsForChildFrame {
                 // First, we update the cache value.
                 frame_transform.value = match &transform {
                     Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+
+                    Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
+                        // This can happen if we conservatively added a timepoint before any transform event happened.
+                        CachedTransformValue::Cleared
+                    }
+
                     Err(err) => {
                         re_log::error_once!("Failed to query transformations: {err}");
                         CachedTransformValue::Cleared
@@ -733,8 +736,8 @@ impl TransformResolutionCache {
     ///
     /// This will internally…
     /// * keep track of which child frames are influenced by which entity
-    /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
+    ///     * this may invalidate previous entries at the same position
     /// * remove cached entries if chunks were GC'ed
     ///
     /// See also [`Self::add_chunks`].
@@ -773,8 +776,8 @@ impl TransformResolutionCache {
     ///
     /// This will internally…
     /// * keep track of which child frames are influenced by which entity
-    /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
+    ///     * this may invalidate previous entries at the same position
     ///
     /// See also [`Self::process_store_events`].
     pub fn add_chunks<'a>(&mut self, chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>) {
@@ -1025,9 +1028,7 @@ impl TransformResolutionCache {
             "There should be only information about the static child frame"
         );
 
-        // Adding a static transform invalidates affected child frames on ALL timelines, since the resulting transforms at all times may be different now.
-        // TODO(andreas): This is too conservative for long recordings - we should know when a static transform is fully "shadowed", so we don't have to invalidate as aggressively.
-        // Furthermore, since we want to incorporate the static transforms into all timelines, we have to add this event to all timelines.
+        // Add a static transform invalidation to affected child frames on ALL timelines.
         for child_frame in child_frames {
             // Note down the events/invalidations on the static timeline itself.
             self.static_timeline
@@ -1054,6 +1055,8 @@ impl TransformResolutionCache {
                         )
                     });
 
+                // Due to atomic latest-at, we only have to add a static transform timepoint and do **not** need to invalidate all times going forward
+                // as they would fully shadow the static transform!
                 entity_transforms.insert_invalidated_transform_events(
                     aspects,
                     || std::iter::once(TimeInt::STATIC),
