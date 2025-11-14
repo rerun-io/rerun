@@ -36,6 +36,7 @@ re_viewer_context.workspace = true
 
 arrow.workspace = true
 egui_extras.workspace = true
+egui_dnd.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
 
