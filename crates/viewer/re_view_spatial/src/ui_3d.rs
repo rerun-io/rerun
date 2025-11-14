@@ -1,7 +1,7 @@
 use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::Vec3;
 
-use macaw::BoundingBox;
+use macaw::{BoundingBox, IsoTransform};
 use re_renderer::{
     LineDrawableBuilder, Size,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
@@ -274,6 +274,13 @@ impl SpatialView3D {
 
             resolution_in_pixel,
 
+            // TODO: hack state:
+            // view_from_world: if eye.is_perspective() {
+            //     eye.world_from_rub_view.inverse()
+            // } else {
+            //     IsoTransform::from_translation(-Vec3::Z * 0.5 * eye.far())
+            //         * eye.world_from_rub_view.inverse()
+            // },
             view_from_world: eye.world_from_rub_view.inverse(),
             projection_from_view,
             viewport_transformation: re_renderer::RectTransform::IDENTITY,
