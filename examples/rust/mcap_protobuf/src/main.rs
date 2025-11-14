@@ -5,7 +5,7 @@ use rerun::{
     EncodedImage, InstancePoses3D, Points3D, Transform3D, VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
-    lenses::{Lens, LensError, LensesSink, Op, OpError},
+    lenses::{Lens, LensesSink, Op, OpError},
     sink::GrpcSink,
 };
 
