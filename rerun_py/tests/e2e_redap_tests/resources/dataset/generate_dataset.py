@@ -9,13 +9,17 @@ This script generates 20 .rrd files with test data containing:
 The generated files are used for testing gRPC calls and query operations.
 """
 
+import typing
 from datetime import datetime, timedelta
 import numpy as np
 import random
 import rerun as rr
 
 
-def maybe_val(val):
+_T = typing.TypeVar("_T")
+
+
+def maybe_val(val: _T) -> _T | None:
     """Return value with 80% probability, None otherwise."""
     if random.random() > 0.2:
         return val
@@ -23,14 +27,14 @@ def maybe_val(val):
         return None
 
 
-def generate_nanosecond_time(base_time, minute_delta: int):
+def generate_nanosecond_time(base_time: np.datetime64, minute_delta: int) -> np.datetime64:
     """Generate a timestamp with nanosecond precision."""
     base_ns = base_time.astype(np.int64)
     new_time_ns = base_ns + minute_delta * 60 * 1_000_000_000
     return np.datetime64(0, "ns") + np.timedelta64(new_time_ns, "ns")
 
 
-def generate_data(filename, n_rows):
+def generate_data(filename: str, n_rows: int) -> None:
     """Generate a single .rrd file with test data."""
     # Intentionally create a timestamp that has values all the way down to nanosecond
     base_time = np.datetime64("2024-01-15T10:30:45.123456789")
