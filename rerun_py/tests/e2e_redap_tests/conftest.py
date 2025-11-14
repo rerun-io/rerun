@@ -254,7 +254,13 @@ def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -
     # Create the dataset directly (not using entry_factory since it's function-scoped)
     ds = catalog_client.create_dataset(dataset_name)
     tasks = ds.register_prefix(resource_prefix + "dataset")
-    tasks.wait(timeout_secs=50)
+
+    try:
+        tasks.wait(timeout_secs=50)
+    except Exception as exc:
+        # Attempt a cleanup just in case
+        ds.delete()
+        raise exc
 
     yield ds
 
