@@ -1388,7 +1388,7 @@ impl TimeColumn {
                         } else {
                             valid_times_inv.max_by_key(|(_i, time)| *time)
                         }
-                        .map_or(TimeInt::MAX, |(_i, time)| TimeInt::new_temporal(*time))
+                        .map_or(TimeInt::MIN, |(_i, time)| TimeInt::new_temporal(*time))
                     };
 
                     Some((*component, AbsoluteTimeRange::new(time_min, time_max)))
