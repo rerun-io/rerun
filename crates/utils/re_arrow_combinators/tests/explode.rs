@@ -88,3 +88,28 @@ fn test_explode_empty_input() {
 
     insta::assert_snapshot!("empty_input", format!("{}", DisplayRB(result)));
 }
+
+#[test]
+fn test_explode_with_skips_in_offset_buffer() {
+    // Test exploding with "skips" in the offset buffer
+    // Input: [[0, 1], null, [7, 8, 9]]
+    // values array = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] (has elements at indices 2-6 that are not referenced)
+    // offsets = [0, 2, 7, 10] (skips from index 2 to index 7)
+    // validity = [true, false, true]
+    // Output: [[0], [1], null, [7], [8], [9]]
+
+    let values = Int32Array::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let offsets = OffsetBuffer::new(vec![0, 2, 7, 10].into());
+    let validity = arrow::buffer::NullBuffer::from(vec![true, false, true]);
+    let field = Arc::new(Field::new("item", DataType::Int32, true));
+
+    let input = ListArray::new(field, offsets, Arc::new(values), Some(validity));
+    println!("Input:\n{}", DisplayRB(input.clone()));
+
+    let explode = Explode;
+    let result = explode.transform(&input).unwrap();
+
+    assert_eq!(result.len(), 6);
+
+    insta::assert_snapshot!("skips_in_offset_buffer", format!("{}", DisplayRB(result)));
+}
