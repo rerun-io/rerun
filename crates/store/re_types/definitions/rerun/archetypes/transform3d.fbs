@@ -49,7 +49,6 @@ table Transform3D (
 
   /// The child frame this transform transforms from.
   ///
-  /// TODO: think about this again either get rid of the static exception or get rid of the entire condition, whatever is easier in the moment!
   /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
   /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
   /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
