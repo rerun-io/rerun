@@ -12,7 +12,7 @@ impl TextLogColumn {
     pub fn kind_name(&self) -> &'static str {
         match self {
             Self::Timeline(_) => "Timeline",
-            Self::EntityPath => "Entity Path",
+            Self::EntityPath => "Entity path",
             Self::LogLevel => "Level",
             Self::Body => "Body",
         }
