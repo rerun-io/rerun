@@ -226,6 +226,11 @@ backwards_check = [
   "rust",
   "py",
 ]
+"migration/transactional_transforms" = [ # Not a complete example -- just a couple of log lines
+  "cpp",
+  "rust",
+  "py",
+]
 "reference/dataframe_query" = [ # No output
   "cpp",
   "rust",
