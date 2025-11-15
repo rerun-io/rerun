@@ -1,8 +1,8 @@
 use re_log_encoding::Decoder;
+use re_log_types::ApplicationId;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
-use re_log_types::ApplicationId;
 
 use crate::{DataLoader as _, LoadedData};
 
@@ -185,58 +185,67 @@ fn decode_and_stream(
             }
         };
 
-        let msg = if forced_application_id.is_some() || forced_recording_id.is_some() {
-            match msg {
-                re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
-                    let mut store_id = set_store_info.info.store_id.clone();
-                    if let Some(forced_application_id) = forced_application_id {
-                        store_id = store_id.with_application_id(forced_application_id.clone());
-                    }
-                    if let Some(forced_recording_id) = forced_recording_id {
-                        store_id = store_id.with_recording_id(forced_recording_id.clone());
-                    }
+        // Transform message if needed (for .rbl files with forced IDs)
+        let msg = transform_message(msg, forced_application_id, forced_recording_id);
 
-                    re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
-                        info: re_log_types::StoreInfo {
-                            store_id,
-                            ..set_store_info.info
-                        },
-                        ..set_store_info
-                    })
-                }
-
-                re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
-                    if let Some(forced_application_id) = forced_application_id {
-                        store_id = store_id.with_application_id(forced_application_id.clone());
-                    }
-                    if let Some(forced_recording_id) = forced_recording_id {
-                        store_id = store_id.with_recording_id(forced_recording_id.clone());
-                    }
-
-                    re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
-                }
-
-                re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
-                    let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
-                    if let Some(forced_application_id) = forced_application_id {
-                        blueprint_id =
-                            blueprint_id.with_application_id(forced_application_id.clone());
-                    }
-                    re_log_types::LogMsg::BlueprintActivationCommand(
-                        re_log_types::BlueprintActivationCommand {
-                            blueprint_id,
-                            ..blueprint_activation_command
-                        },
-                    )
-                }
-            }
-        } else {
-            msg
-        };
-
+        // Send message to the viewer
         let data = LoadedData::LogMsg(RrdLoader::name(&RrdLoader), msg);
         if tx.send(data).is_err() {
-            break; // The other end has decided to hang up, not our problem.
+            return; // The other end has decided to hang up
+        }
+    }
+}
+
+fn transform_message(
+    msg: re_log_types::LogMsg,
+    forced_application_id: Option<&ApplicationId>,
+    forced_recording_id: Option<&String>,
+) -> re_log_types::LogMsg {
+    if forced_application_id.is_none() && forced_recording_id.is_none() {
+        return msg;
+    }
+
+    match msg {
+        re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+            let mut store_id = set_store_info.info.store_id.clone();
+            if let Some(forced_application_id) = forced_application_id {
+                store_id = store_id.with_application_id(forced_application_id.clone());
+            }
+            if let Some(forced_recording_id) = forced_recording_id {
+                store_id = store_id.with_recording_id(forced_recording_id.clone());
+            }
+
+            re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+                info: re_log_types::StoreInfo {
+                    store_id,
+                    ..set_store_info.info
+                },
+                ..set_store_info
+            })
+        }
+
+        re_log_types::LogMsg::ArrowMsg(mut store_id, arrow_msg) => {
+            if let Some(forced_application_id) = forced_application_id {
+                store_id = store_id.with_application_id(forced_application_id.clone());
+            }
+            if let Some(forced_recording_id) = forced_recording_id {
+                store_id = store_id.with_recording_id(forced_recording_id.clone());
+            }
+
+            re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg)
+        }
+
+        re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+            let mut blueprint_id = blueprint_activation_command.blueprint_id.clone();
+            if let Some(forced_application_id) = forced_application_id {
+                blueprint_id = blueprint_id.with_application_id(forced_application_id.clone());
+            }
+            re_log_types::LogMsg::BlueprintActivationCommand(
+                re_log_types::BlueprintActivationCommand {
+                    blueprint_id,
+                    ..blueprint_activation_command
+                },
+            )
         }
     }
 }
@@ -451,6 +460,273 @@ mod tests {
         assert_eq!(more_messages, remaining_messages);
 
         // Drop explicitly to make sure that rustc doesn't drop it earlier.
+        drop(rrd_file_delete_guard);
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn test_message_order_preserved() {
+        use re_chunk::{Chunk, RowId};
+        use re_log_encoding::Encoder;
+        use re_log_types::{
+            LogMsg, NonMinI64, StoreId, StoreKind, TimeInt, TimePoint, Timeline, entity_path,
+        };
+        use re_types::archetypes::Points2D;
+        use std::sync::mpsc;
+
+        // Create a temporary file for the test
+        let rrd_file_path = std::path::PathBuf::from("test_ordering.rrd");
+        let rrd_file_delete_guard = DeleteOnDrop {
+            path: rrd_file_path.clone(),
+        };
+        std::fs::remove_file(&rrd_file_path).ok();
+
+        let store_id = StoreId::random(StoreKind::Recording, "order_test");
+        let mut encoder = Encoder::new_eager(
+            re_build_info::CrateVersion::LOCAL,
+            re_log_encoding::rrd::EncodingOptions::PROTOBUF_UNCOMPRESSED,
+            std::fs::File::create(&rrd_file_path).unwrap(),
+        )
+        .unwrap();
+
+        // Create messages with sequential identifiers embedded in metadata
+        // Use RowId ordering and check that messages arrive in the same order
+        const NUM_MESSAGES: usize = 500;
+        let mut original_messages = Vec::with_capacity(NUM_MESSAGES);
+
+        for i in 0..NUM_MESSAGES {
+            let chunk = Chunk::builder(entity_path!("test", "points", i.to_string()))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default().with(
+                        Timeline::new_sequence("seq"),
+                        TimeInt::from_millis(NonMinI64::new(i64::try_from(i).unwrap()).unwrap()),
+                    ),
+                    &Points2D::new([(i as f32, i as f32)]),
+                )
+                .build()
+                .unwrap();
+
+            let mut arrow_msg = chunk.to_arrow_msg().unwrap();
+            // Embed sequence number in metadata to verify ordering
+            arrow_msg
+                .batch
+                .schema_metadata_mut()
+                .insert("sequence".into(), i.to_string());
+
+            let msg = LogMsg::ArrowMsg(store_id.clone(), arrow_msg);
+            original_messages.push(msg.clone());
+            encoder.append(&msg).unwrap();
+        }
+
+        encoder.flush_blocking().unwrap();
+        encoder.finish().unwrap();
+        drop(encoder);
+
+        // Load the file and verify message ordering is preserved
+        let (tx, rx) = mpsc::channel();
+        let loader = RrdLoader;
+        let settings = crate::DataLoaderSettings::recommended(re_log_types::RecordingId::random());
+        let file_contents = std::fs::read(&rrd_file_path).unwrap();
+
+        loader
+            .load_from_file_contents(
+                &settings,
+                rrd_file_path.clone(),
+                std::borrow::Cow::Borrowed(&file_contents),
+                tx.clone(),
+            )
+            .unwrap();
+
+        drop(tx); // Close sender to signal end of stream
+
+        let mut received_messages = Vec::new();
+        for loaded_data in rx {
+            if let crate::LoadedData::LogMsg(_, msg) = loaded_data {
+                received_messages.push(msg);
+            }
+        }
+
+        // Verify we got all messages
+        assert_eq!(
+            received_messages.len(),
+            NUM_MESSAGES,
+            "Should receive all {NUM_MESSAGES} messages"
+        );
+
+        // Verify ordering by checking sequence numbers in metadata
+        for (i, msg) in received_messages.iter().enumerate() {
+            if let LogMsg::ArrowMsg(_, arrow_msg) = msg {
+                let schema = arrow_msg.batch.schema();
+                let sequence_str = schema
+                    .metadata()
+                    .get("sequence")
+                    .expect("Message should have sequence metadata");
+                let sequence: usize = sequence_str
+                    .parse()
+                    .expect("Sequence should be a valid number");
+
+                assert_eq!(
+                    sequence, i,
+                    "Message at position {i} should have sequence {i}, but got {sequence}"
+                );
+            } else {
+                panic!("Expected ArrowMsg, got {msg:?}");
+            }
+        }
+
+        assert_eq!(
+            original_messages.len(),
+            received_messages.len(),
+            "Message counts should match"
+        );
+
+        for (original, received) in original_messages.iter().zip(received_messages.iter()) {
+            assert_eq!(
+                original.store_id(),
+                received.store_id(),
+                "Store IDs should match"
+            );
+        }
+
+        drop(rrd_file_delete_guard);
+    }
+
+    #[test]
+    #[cfg(not(target_arch = "wasm32"))]
+    fn test_message_order_preserved_with_transformation() {
+        use re_chunk::{Chunk, RowId};
+        use re_log_encoding::Encoder;
+        use re_log_types::{
+            ApplicationId, LogMsg, NonMinI64, RecordingId, StoreId, StoreKind, TimeInt, TimePoint,
+            Timeline, entity_path,
+        };
+        use re_types::archetypes::Points2D;
+        use std::sync::mpsc;
+
+        // Test that message ordering is preserved even when transform_message is applied
+        // Note: Only .rbl files use forced IDs, .rrd files don't transform store IDs
+        let rrd_file_path = std::path::PathBuf::from("test_ordering_transform.rbl");
+        let rrd_file_delete_guard = DeleteOnDrop {
+            path: rrd_file_path.clone(),
+        };
+        std::fs::remove_file(&rrd_file_path).ok();
+
+        // For .rbl files, the opened_store_id's application_id is used to transform messages
+        let opened_app_id = ApplicationId::random();
+        let opened_recording_id = RecordingId::random();
+        let opened_store_id = StoreId::new(
+            re_log_types::StoreKind::Blueprint,
+            opened_app_id.clone(),
+            opened_recording_id.clone(),
+        );
+
+        // Original messages will have a different store_id that gets transformed
+        let original_store_id = StoreId::random(StoreKind::Recording, "original");
+
+        let mut encoder = Encoder::new_eager(
+            re_build_info::CrateVersion::LOCAL,
+            re_log_encoding::rrd::EncodingOptions::PROTOBUF_UNCOMPRESSED,
+            std::fs::File::create(&rrd_file_path).unwrap(),
+        )
+        .unwrap();
+
+        // Create messages that will be transformed
+        const NUM_MESSAGES: usize = 250;
+        let mut original_messages = Vec::with_capacity(NUM_MESSAGES);
+
+        for i in 0..NUM_MESSAGES {
+            let chunk = Chunk::builder(entity_path!("test", "points", i.to_string()))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::default().with(
+                        Timeline::new_sequence("seq"),
+                        TimeInt::from_millis(NonMinI64::new(i64::try_from(i).unwrap()).unwrap()),
+                    ),
+                    &Points2D::new([(i as f32, i as f32)]),
+                )
+                .build()
+                .unwrap();
+
+            let mut arrow_msg = chunk.to_arrow_msg().unwrap();
+            arrow_msg
+                .batch
+                .schema_metadata_mut()
+                .insert("sequence".into(), i.to_string());
+
+            let msg = LogMsg::ArrowMsg(original_store_id.clone(), arrow_msg);
+            original_messages.push(msg.clone());
+            encoder.append(&msg).unwrap();
+        }
+
+        encoder.flush_blocking().unwrap();
+        encoder.finish().unwrap();
+        drop(encoder);
+
+        // Load with opened_store_id to trigger transform_message for .rbl files
+        let (tx, rx) = mpsc::channel();
+        let loader = RrdLoader;
+        let mut settings = crate::DataLoaderSettings::recommended(opened_recording_id.clone());
+        settings.opened_store_id = Some(opened_store_id.clone());
+
+        let file_contents = std::fs::read(&rrd_file_path).unwrap();
+
+        loader
+            .load_from_file_contents(
+                &settings,
+                rrd_file_path.clone(),
+                std::borrow::Cow::Borrowed(&file_contents),
+                tx.clone(),
+            )
+            .unwrap();
+
+        drop(tx);
+
+        let mut received_messages = Vec::new();
+        for loaded_data in rx {
+            if let crate::LoadedData::LogMsg(_, msg) = loaded_data {
+                received_messages.push(msg);
+            }
+        }
+
+        // Verify we got all messages
+        assert_eq!(
+            received_messages.len(),
+            NUM_MESSAGES,
+            "Should receive all {NUM_MESSAGES} messages"
+        );
+
+        // Verify ordering is preserved even after transformation
+        for (i, msg) in received_messages.iter().enumerate() {
+            if let LogMsg::ArrowMsg(store_id, arrow_msg) = msg {
+                // Verify store ID was transformed correctly (only application_id is transformed for .rbl)
+                assert_eq!(
+                    store_id.application_id(),
+                    &opened_app_id,
+                    "Store ID should have opened_store_id's application ID"
+                );
+                // Recording ID is NOT transformed (forced_recording_id is always None)
+                // So it should match the original message's recording_id
+
+                // Verify ordering
+                let schema = arrow_msg.batch.schema();
+                let sequence_str = schema
+                    .metadata()
+                    .get("sequence")
+                    .expect("Message should have sequence metadata");
+                let sequence: usize = sequence_str
+                    .parse()
+                    .expect("Sequence should be a valid number");
+
+                assert_eq!(
+                    sequence, i,
+                    "Message at position {i} should have sequence {i}, but got {sequence} (ordering broken!)"
+                );
+            } else {
+                panic!("Expected ArrowMsg, got {msg:?}");
+            }
+        }
+
         drop(rrd_file_delete_guard);
     }
 }

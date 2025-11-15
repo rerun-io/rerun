@@ -4,6 +4,17 @@ use re_log_types::{StoreId, StoreKind};
 
 use crate::EntityDb;
 
+/// Result type for ingestion worker output processing.
+#[cfg(not(target_arch = "wasm32"))]
+pub type IngestionWorkerResults = indexmap::IndexMap<
+    StoreId,
+    Vec<(
+        crate::ingestion_worker::ProcessedChunk,
+        bool,
+        Result<Vec<re_chunk_store::ChunkStoreEvent>, crate::Error>,
+    )>,
+>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum StoreLoadError {
     #[error(transparent)]
@@ -144,5 +155,30 @@ impl StoreBundle {
         entity_dbs.sort_by_key(|db| db.last_modified_at());
 
         entity_dbs.first().map(|db| db.store_id().clone())
+    }
+
+    /// Process pending work from background ingestion workers for all stores (native only).
+    ///
+    /// This should be called once per frame to process chunks from all `EntityDb` workers.
+    /// Each `EntityDb` polls its worker and adds processed chunks to its store.
+    ///
+    /// Returns a map of [`StoreId`] to a vector of processing results for that store.
+    ///
+    /// On native: Processes worker output for all `EntityDb`s
+    /// On Wasm: This method doesn't exist (compile error if called)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn on_frame_start(&mut self) -> IngestionWorkerResults {
+        re_tracing::profile_function!();
+
+        let mut all_results = indexmap::IndexMap::new();
+
+        for (store_id, entity_db) in &mut self.recording_store {
+            let results = entity_db.on_frame_start();
+            if !results.is_empty() {
+                all_results.insert(store_id.clone(), results);
+            }
+        }
+
+        all_results
     }
 }
