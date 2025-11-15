@@ -17,6 +17,7 @@ re_sdk.workspace = true
 re_server.workspace = true
 re_uri.workspace = true
 re_view_bar_chart.workspace = true
+re_view_tensor.workspace = true
 re_view_text_log.workspace = true
 re_view_time_series.workspace = true
 re_viewer = { workspace = true, features = ["testing", "map_view"] }
