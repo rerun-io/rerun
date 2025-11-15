@@ -1,3 +1,5 @@
+#![cfg(feature = "lance")]
+
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 
 #[expect(clippy::unused_async)] // needed by the macro

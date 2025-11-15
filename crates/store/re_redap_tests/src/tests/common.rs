@@ -34,7 +34,6 @@ pub trait RerunCloudServiceExt: RerunCloudService {
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
     );
 
-    #[cfg(feature = "lance")]
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
 }
 
@@ -69,7 +68,6 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         register_with_dataset(self, request).await;
     }
 
-    #[cfg(feature = "lance")]
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");

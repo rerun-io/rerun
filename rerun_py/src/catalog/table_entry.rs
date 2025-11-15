@@ -146,6 +146,9 @@ pub enum PyTableInsertMode {
 
     #[pyo3(name = "OVERWRITE")]
     Overwrite = 2,
+
+    #[pyo3(name = "REPLACE")]
+    Replace = 3,
 }
 
 impl From<PyTableInsertMode> for TableInsertMode {
@@ -153,6 +156,7 @@ impl From<PyTableInsertMode> for TableInsertMode {
         match value {
             PyTableInsertMode::Append => Self::Append,
             PyTableInsertMode::Overwrite => Self::Overwrite,
+            PyTableInsertMode::Replace => Self::Replace,
         }
     }
 }

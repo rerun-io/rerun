@@ -779,6 +779,7 @@ impl RerunCloudService for RerunCloudHandler {
             {
                 TableInsertMode::Append => InsertOp::Append,
                 TableInsertMode::Overwrite => InsertOp::Overwrite,
+                TableInsertMode::Replace => InsertOp::Replace,
             };
 
             table.write_table(rb, insert_op).await.map_err(|err| {
