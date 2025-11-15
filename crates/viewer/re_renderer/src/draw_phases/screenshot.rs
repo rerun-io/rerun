@@ -23,11 +23,13 @@ use crate::{
 struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
     extent: wgpu::Extent3d,
     user_data: T,
+    format: wgpu::TextureFormat,
 }
 
 pub struct ScreenshotProcessor {
     screenshot_texture: GpuTexture,
     screenshot_readback_buffer: Mutex<GpuReadbackBuffer>,
+    color_format: wgpu::TextureFormat,
 }
 
 impl ScreenshotProcessor {
@@ -41,12 +43,30 @@ impl ScreenshotProcessor {
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,
     ) -> Self {
+        Self::new_with_format(
+            ctx,
+            view_name,
+            resolution,
+            readback_identifier,
+            readback_user_data,
+            Self::SCREENSHOT_COLOR_FORMAT,
+        )
+    }
+
+    pub fn new_with_format<T: 'static + Send + Sync>(
+        ctx: &RenderContext,
+        view_name: &DebugLabel,
+        resolution: glam::UVec2,
+        readback_identifier: GpuReadbackIdentifier,
+        readback_user_data: T,
+        color_format: wgpu::TextureFormat,
+    ) -> Self {
         let size = wgpu::Extent3d {
             width: resolution.x,
             height: resolution.y,
             depth_or_array_layers: 1,
         };
-        let buffer_info = Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, size);
+        let buffer_info = Texture2DBufferInfo::new(color_format, size);
         let screenshot_readback_buffer = Mutex::new(ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
@@ -55,6 +75,7 @@ impl ScreenshotProcessor {
             Box::new(ReadbackBeltMetadata {
                 extent: size,
                 user_data: readback_user_data,
+                format: color_format,
             }),
         ));
 
@@ -66,7 +87,7 @@ impl ScreenshotProcessor {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: Self::SCREENSHOT_COLOR_FORMAT,
+                format: color_format,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
             },
         );
@@ -74,6 +95,7 @@ impl ScreenshotProcessor {
         Self {
             screenshot_texture,
             screenshot_readback_buffer,
+            color_format,
         }
     }
 
@@ -133,8 +155,7 @@ impl ScreenshotProcessor {
         ctx.gpu_readback_belt.lock().readback_next_available(
             identifier,
             |data: &[u8], metadata: Box<ReadbackBeltMetadata<T>>| {
-                let buffer_info =
-                    Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, metadata.extent);
+                let buffer_info = Texture2DBufferInfo::new(metadata.format, metadata.extent);
                 let texture_data = buffer_info.remove_padding(data);
                 on_screenshot(
                     &texture_data,
