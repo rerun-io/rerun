@@ -542,8 +542,10 @@ impl App {
                 // If there's no active recording, we should not trigger any callbacks, but since there's an active recording here,
                 // we want to diff state changes.
                 let should_diff_state = true;
+                let timelines = recording.timelines();
                 let response = time_ctrl.update(
-                    recording.times_per_timeline(),
+                    recording.time_histogram_per_timeline(),
+                    &timelines,
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -567,13 +569,17 @@ impl App {
                     playing_change: _,
                     timeline_change: _,
                     time_change: _,
-                } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.times_per_timeline(),
-                    dt,
-                    more_data_is_coming,
-                    should_diff_state,
-                    None::<&AppBlueprintCtx<'_>>,
-                );
+                } = {
+                    let timelines = bp_ctx.current_blueprint.timelines();
+                    self.state.blueprint_time_control.update(
+                        bp_ctx.current_blueprint.time_histogram_per_timeline(),
+                        &timelines,
+                        dt,
+                        more_data_is_coming,
+                        should_diff_state,
+                        None::<&AppBlueprintCtx<'_>>,
+                    )
+                };
 
                 if needs_repaint == NeedsRepaint::Yes {
                     self.egui_ctx.request_repaint();
@@ -771,9 +777,11 @@ impl App {
                         return;
                     };
 
+                    let timelines = target_store.timelines();
                     let response = time_ctrl.handle_time_commands(
                         blueprint_ctx.as_ref(),
-                        target_store.times_per_timeline(),
+                        target_store.time_histogram_per_timeline(),
+                        &timelines,
                         &time_commands,
                     );
 

@@ -1,8 +1,8 @@
 use egui::NumExt as _;
 
-use re_entity_db::TimesPerTimeline;
-use re_log_types::TimeType;
-use re_types::blueprint::components::{LoopMode, PlayState};
+use re_chunk_store::external::re_chunk;
+use re_entity_db::TimeHistogramPerTimeline;
+use re_log_types::{TimeType, Timeline};
 use re_ui::{UICommand, UiExt as _, list_item};
 
 use re_viewer_context::{TimeControl, TimeControlCommand};
@@ -15,7 +15,8 @@ impl TimeControlUi {
     pub fn timeline_selector_ui(
         &self,
         time_ctrl: &TimeControl,
-        times_per_timeline: &TimesPerTimeline,
+        time_histogram_per_timeline: &TimeHistogramPerTimeline,
+        timelines: &std::collections::BTreeMap<re_chunk::TimelineName, Timeline>,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -28,26 +29,27 @@ impl TimeControlUi {
             let response = egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_ctrl.timeline().name().as_str())
                 .show_ui(ui, |ui| {
-                    for timeline_stats in times_per_timeline.timelines_with_stats() {
-                        let timeline = &timeline_stats.timeline;
-                        if ui
-                            .selectable_label(
-                                timeline == time_ctrl.timeline(),
-                                (
-                                    timeline.name().as_str(),
-                                    egui::Atom::grow(),
-                                    egui::RichText::new(format!(
-                                        "{} events",
-                                        re_format::format_uint(timeline_stats.num_events())
-                                    ))
-                                    .size(10.0)
-                                    .color(ui.tokens().text_subdued),
-                                ),
-                            )
-                            .clicked()
-                        {
-                            time_commands
-                                .push(TimeControlCommand::SetActiveTimeline(*timeline.name()));
+                    for (timeline_name, hist) in time_histogram_per_timeline.iter() {
+                        if let Some(timeline) = timelines.get(timeline_name) {
+                            if ui
+                                .selectable_label(
+                                    timeline == time_ctrl.timeline(),
+                                    (
+                                        timeline.name().as_str(),
+                                        egui::Atom::grow(),
+                                        egui::RichText::new(format!(
+                                            "{} events",
+                                            re_format::format_uint(hist.total_count())
+                                        ))
+                                        .size(10.0)
+                                        .color(ui.tokens().text_subdued),
+                                    ),
+                                )
+                                .clicked()
+                            {
+                                time_commands
+                                    .push(TimeControlCommand::SetActiveTimeline(*timeline.name()));
+                            }
                         }
                     }
                 })
