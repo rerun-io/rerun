@@ -6,17 +6,28 @@
 
 use std::sync::Arc;
 
-use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
-use re_chunk::{
-    ArrowArray as _,
-    external::arrow::{
-        array::ListArray,
-        compute,
-        datatypes::{DataType, Field},
-    },
+use arrow::{
+    array::{Array as _, ListArray},
+    compute,
+    datatypes::{DataType, Field},
 };
+use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
 
-use super::Error;
+/// Errors that occur during low-level operation execution on columns.
+#[derive(Debug, thiserror::Error)]
+pub enum OpError {
+    /// Error from Arrow combinator transformations.
+    #[error(transparent)]
+    Transform(#[from] re_arrow_combinators::Error),
+
+    /// Error from Arrow operations.
+    #[error(transparent)]
+    Arrow(#[from] arrow::error::ArrowError),
+
+    /// Other custom errors.
+    #[error(transparent)]
+    Other(Box<dyn std::error::Error + Send + Sync>),
+}
 
 /// Extracts a specific field from a struct component within a `ListArray`.
 #[derive(Debug)]
@@ -25,7 +36,7 @@ pub struct AccessField {
 }
 
 impl AccessField {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         MapList::new(GetField::new(self.field_name.clone()))
             .transform(list_array)
             .map_err(Into::into)
@@ -39,7 +50,7 @@ pub struct Cast {
 }
 
 impl Cast {
-    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, Error> {
+    pub fn call(&self, list_array: &ListArray) -> Result<ListArray, OpError> {
         let (_field, offsets, ref array, nulls) = list_array.clone().into_parts();
         let res = compute::cast(array, &self.to_inner_type)?;
         Ok(ListArray::new(

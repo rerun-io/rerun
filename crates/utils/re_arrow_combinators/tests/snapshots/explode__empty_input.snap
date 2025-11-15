@@ -1,0 +1,10 @@
+---
+source: crates/utils/re_arrow_combinators/tests/explode.rs
+expression: "format!(\"{}\", DisplayRB(result))"
+---
+┌───────────────────────────────────┐
+│ col                               │
+│ ---                               │
+│ type: nullable List[nullable i32] │
+╞═══════════════════════════════════╡
+└───────────────────────────────────┘

@@ -1,5 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
+mod util;
+
 use std::sync::Arc;
 
 use re_arrow_combinators::{
@@ -14,8 +16,7 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
 };
 
-mod testing_utils;
-use testing_utils::DisplayRB;
+use util::DisplayRB;
 
 fn create_nasty_component_column() -> ListArray {
     let inner_struct_fields = Fields::from(vec![
