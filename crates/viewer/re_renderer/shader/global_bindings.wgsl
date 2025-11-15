@@ -6,9 +6,16 @@ struct FrameUniformBuffer {
     /// Camera position in world space.
     camera_position: vec3f,
 
-    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
+    /// Padding to ensure proper alignment (vec2 needs 8-byte alignment).
+    _padding0: f32,
+
+    /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units (x and y separately for anamorphic cameras).
     /// For orthographic: This is the world size value, independent of distance.
-    pixel_world_size_from_camera_distance: f32,
+    /// Note: This appears as vec2f in WGSL but occupies 16 bytes (vec4f space) due to struct layout rules.
+    pixel_world_size_from_camera_distance: vec2f,
+
+    /// Explicit padding after vec2f (WGSL vec2f in struct uses 8 bytes but next field aligns to 16).
+    _padding_after_pixel_size: vec2f,
 
     /// Camera direction in world space.
     /// Same as -vec3f(view_from_world[0].z, view_from_world[1].z, view_from_world[2].z)
