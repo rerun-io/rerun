@@ -1,45 +1,62 @@
-//! This example demonstrates how to use the Rerun Rust SDK to log raw 3D meshes (so-called
-//! "triangle soups") and their transform hierarchy.
+//! This example demonstrates how to use the Rerun Rust SDK to construct and log raw 3D meshes
+//! (so-called "triangle soups") programmatically from scratch, including their transform hierarchy.
 //!
-//! Note that while this example loads GLTF meshes to illustrate
-//! [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites,
-//! you can also send various kinds of mesh assets
-//! directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
+//! This example shows how to create geometric primitives by manually defining vertices, normals,
+//! colors, texture coordinates, and materials.
+//!
+//! If you want to log existing mesh files (like GLTF, OBJ, STL, etc.), use the
+//! [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) archetype instead.
 //!
 //! Usage:
 //! ```
-//! cargo run -p raw_mesh <path_to_gltf_scene>
+//! cargo run -p raw_mesh
 //! ```
 
-use std::path::PathBuf;
+use std::f32::consts::PI;
 
-use bytes::Bytes;
-use rerun::{Color, Mesh3D, RecordingStream, Rgba32, external::re_log};
+use anyhow::ensure;
+use rerun::{
+    Color, Mesh3D, RecordingStream, Rgba32, RotationAxisAngle, Transform3D, external::re_log,
+};
 
-// TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
+// --- Mesh primitive structures ---
 
-// --- Rerun logging ---
+#[derive(Clone)]
+struct MeshPrimitive {
+    albedo_factor: Option<[f32; 4]>,
+    albedo_texture: Option<Vec<u8>>,
+    texture_width: Option<u32>,
+    texture_height: Option<u32>,
+    vertex_positions: Vec<[f32; 3]>,
+    vertex_colors: Option<Vec<Color>>,
+    vertex_normals: Option<Vec<[f32; 3]>>,
+    vertex_texcoords: Option<Vec<[f32; 2]>>,
+    triangle_indices: Vec<u32>,
+}
 
-// Declare how to turn a glTF primitive into a Rerun component (`Mesh3D`).
-#[expect(clippy::fallible_impl_from)]
-impl From<GltfPrimitive> for Mesh3D {
-    fn from(primitive: GltfPrimitive) -> Self {
-        let GltfPrimitive {
+impl From<MeshPrimitive> for Mesh3D {
+    fn from(primitive: MeshPrimitive) -> Self {
+        let MeshPrimitive {
             albedo_factor,
-            indices,
+            albedo_texture,
+            texture_width,
+            texture_height,
             vertex_positions,
             vertex_colors,
             vertex_normals,
             vertex_texcoords,
+            triangle_indices,
         } = primitive;
 
         let mut mesh = Mesh3D::new(vertex_positions);
 
-        if let Some(indices) = indices {
-            assert!(indices.len() % 3 == 0);
-            let triangle_indices = indices.chunks_exact(3).map(|tri| (tri[0], tri[1], tri[2]));
-            mesh = mesh.with_triangle_indices(triangle_indices);
-        }
+        // Convert flat indices to triangle tuples
+        assert!(triangle_indices.len() % 3 == 0);
+        let triangle_indices = triangle_indices
+            .chunks_exact(3)
+            .map(|tri| (tri[0], tri[1], tri[2]));
+        mesh = mesh.with_triangle_indices(triangle_indices);
+
         if let Some(vertex_normals) = vertex_normals {
             mesh = mesh.with_vertex_normals(vertex_normals);
         }
@@ -52,6 +69,13 @@ impl From<GltfPrimitive> for Mesh3D {
         if let Some([r, g, b, a]) = albedo_factor {
             mesh = mesh.with_albedo_factor(Rgba32::from_linear_unmultiplied_rgba_f32(r, g, b, a));
         }
+        if let Some(texture_data) = albedo_texture {
+            if let (Some(width), Some(height)) = (texture_width, texture_height) {
+                // Create ImageFormat for RGB8 texture
+                let image_format = rerun::components::ImageFormat::rgb8([width, height]);
+                mesh = mesh.with_albedo_texture(image_format, texture_data);
+            }
+        }
 
         mesh.sanity_check().unwrap();
 
@@ -59,50 +83,106 @@ impl From<GltfPrimitive> for Mesh3D {
     }
 }
 
-// Declare how to turn a glTF transform into a Rerun component (`Transform`).
-impl From<GltfTransform> for rerun::Transform3D {
-    fn from(transform: GltfTransform) -> Self {
-        rerun::Transform3D::from_translation_rotation_scale(
-            transform.t,
-            rerun::datatypes::Quaternion::from_xyzw(transform.r),
-            transform.s,
-        )
+// --- Geometric primitive generators ---
+
+/// Generate a simple checkerboard texture.
+fn generate_checkerboard_texture(size: u32, checker_size: u32) -> Vec<u8> {
+    let mut texture_data = Vec::with_capacity((size * size * 3) as usize);
+
+    for i in 0..size {
+        for j in 0..size {
+            let checker = ((i / checker_size) + (j / checker_size)) % 2 == 0;
+            let color = if checker {
+                [200_u8, 200, 200] // Light gray
+            } else {
+                [50_u8, 50, 50] // Dark gray
+            };
+            texture_data.extend_from_slice(&color);
+        }
     }
+
+    texture_data
 }
 
-/// Log a glTF node with Rerun.
-fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
-    rec.set_time_sequence("keyframe", 0);
+/// Generate a UV sphere.
+///
+/// Creates a sphere using latitude/longitude parameterization.
+/// Returns base geometry with positions, normals, UV coordinates, and per-vertex colors.
+fn generate_sphere(subdivisions: u32) -> MeshPrimitive {
+    debug_assert!(subdivisions >= 3, "Sphere subdivisions must be at least 3");
 
-    if let Some(transform) = node.transform.map(rerun::Transform3D::from) {
-        rec.log(node.name.as_str(), &transform)?;
+    let lat_divs = subdivisions as usize;
+    let lon_divs = (subdivisions * 2) as usize;
+
+    let mut vertex_positions = Vec::new();
+    let mut vertex_normals = Vec::new();
+    let mut vertex_texcoords = Vec::new();
+    let mut vertex_colors = Vec::new();
+
+    // Generate vertices, normals, UVs, and colors
+    for lat in 0..=lat_divs {
+        let theta = PI * lat as f32 / lat_divs as f32; // 0 to pi
+        let sin_theta = theta.sin();
+        let cos_theta = theta.cos();
+        let v = lat as f32 / lat_divs as f32; // V coordinate
+
+        for lon in 0..lon_divs {
+            let phi = 2.0 * PI * lon as f32 / lon_divs as f32; // 0 to 2pi
+            let sin_phi = phi.sin();
+            let cos_phi = phi.cos();
+            let u = lon as f32 / lon_divs as f32; // U coordinate
+
+            // Position on unit sphere
+            let x = sin_theta * cos_phi;
+            let y = cos_theta;
+            let z = sin_theta * sin_phi;
+
+            vertex_positions.push([x * 0.5, y * 0.5, z * 0.5]); // Scale to radius 0.5
+            vertex_normals.push([x, y, z]); // Normal is same as position for unit sphere
+            vertex_texcoords.push([u, v]);
+
+            // Generate per-vertex colors based on position (creates a nice gradient)
+            let r = (128.0 + 127.0 * x) as u8;
+            let g = (128.0 + 127.0 * y) as u8;
+            let b = (128.0 + 127.0 * z) as u8;
+            vertex_colors.push(Color::from_unmultiplied_rgba(r, g, b, 255));
+        }
     }
 
-    // Convert glTF objects into Rerun components.
-    for (i, primitive) in node.primitives.into_iter().enumerate() {
-        let mesh: Mesh3D = primitive.into();
-        rec.log(format!("{}/{}", node.name, i), &mesh)?;
+    // Generate triangle indices
+    let mut triangle_indices = Vec::new();
+    for lat in 0..lat_divs {
+        let curr_row_start = lat * lon_divs;
+        let next_row_start = (lat + 1) * lon_divs;
+
+        for lon in 0..lon_divs {
+            let next_lon = (lon + 1) % lon_divs;
+
+            let first = (curr_row_start + lon) as u32;
+            let first_next = (curr_row_start + next_lon) as u32;
+            let second = (next_row_start + lon) as u32;
+            let second_next = (next_row_start + next_lon) as u32;
+
+            // Two triangles per quad (counter-clockwise winding)
+            triangle_indices.extend_from_slice(&[first, second, first_next]);
+            triangle_indices.extend_from_slice(&[first_next, second, second_next]);
+        }
     }
 
-    // Recurse through all of the node's children!
-    for mut child in node.children {
-        child.name = [node.name.as_str(), child.name.as_str()].join("/");
-        log_node(rec, child)?;
+    MeshPrimitive {
+        albedo_factor: None,
+        albedo_texture: None,
+        texture_width: None,
+        texture_height: None,
+        vertex_positions,
+        vertex_colors: Some(vertex_colors),
+        vertex_normals: Some(vertex_normals),
+        vertex_texcoords: Some(vertex_texcoords),
+        triangle_indices,
     }
-
-    Ok(())
 }
 
 // --- Init ---
-
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
-enum Scene {
-    Buggy,
-    #[value(name("brain_stem"))]
-    BrainStem,
-    Lantern,
-    Avocado,
-}
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -110,58 +190,113 @@ struct Args {
     #[command(flatten)]
     rerun: rerun::clap::RerunArgs,
 
-    /// Specifies the glTF scene to load.
-    #[clap(long, value_enum, default_value = "buggy")]
-    scene: Scene,
-
-    /// Specifies the path of an arbitrary glTF scene to load.
-    #[clap(long)]
-    scene_path: Option<PathBuf>,
-}
-
-// TODO(cmc): move all rerun args handling to helpers
-impl Args {
-    fn scene_path(&self) -> anyhow::Result<PathBuf> {
-        if let Some(scene_path) = self.scene_path.clone() {
-            return Ok(scene_path);
-        }
-
-        const DATASET_DIR: &str =
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../python/raw_mesh/dataset");
-
-        use clap::ValueEnum as _;
-        let scene = self.scene.to_possible_value().unwrap();
-        let scene_name = scene.get_name();
-
-        let scene_path = PathBuf::from(DATASET_DIR)
-            .join(scene_name)
-            .join(format!("{scene_name}.glb"));
-        if !scene_path.exists() {
-            anyhow::bail!(
-                "Could not load the scene, have you downloaded the dataset? \
-                Try running the python version first to download it automatically \
-                (`python -m raw_mesh --scene {scene_name}`).",
-            )
-        }
-
-        Ok(scene_path)
-    }
+    /// Number of subdivisions for the sphere (default: 32)
+    #[clap(long, default_value = "32")]
+    sphere_subdivisions: u32,
 }
 
 fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
-    // Read glTF scene
-    let (doc, buffers, _) = gltf::import_slice(Bytes::from(std::fs::read(args.scene_path()?)?))?;
-    let nodes = load_gltf(&doc, &buffers);
+    ensure!(
+        args.sphere_subdivisions >= 3,
+        "--sphere-subdivisions must be at least 3"
+    );
 
-    // Log raw glTF nodes and their transforms with Rerun
-    for root in nodes {
-        re_log::info!(scene = root.name, "logging glTF scene");
-        rec.log_static(
-            root.name.as_str(),
-            &rerun::ViewCoordinates::RIGHT_HAND_Y_UP(),
-        )?;
-        log_node(rec, root)?;
-    }
+    // Set coordinate system (right-handed, Y-up)
+    rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_UP())?;
+
+    // Generate base sphere geometry once
+    re_log::info!(
+        subdivisions = args.sphere_subdivisions,
+        "Generating sphere..."
+    );
+    let sphere = generate_sphere(args.sphere_subdivisions);
+
+    // Instance 1: Vertex colors only (center)
+    re_log::info!("Logging sphere with vertex colors...");
+    rec.log(
+        "world/sphere/vertex_colors",
+        &Transform3D::from_translation([0.0, 0.0, 0.0]),
+    )?;
+    rec.log(
+        "world/sphere/vertex_colors",
+        &Mesh3D::from(MeshPrimitive {
+            vertex_colors: sphere.vertex_colors.clone(),
+            vertex_positions: sphere.vertex_positions.clone(),
+            triangle_indices: sphere.triangle_indices.clone(),
+            albedo_factor: None,
+            albedo_texture: None,
+            texture_width: None,
+            texture_height: None,
+            vertex_normals: None,
+            vertex_texcoords: None,
+        }),
+    )?;
+
+    // Instance 2: Albedo factor (solid color, left)
+    re_log::info!("Logging sphere with albedo factor...");
+    rec.log(
+        "world/sphere/albedo_factor",
+        &Transform3D::from_translation([-1.5, 0.0, 0.0]),
+    )?;
+    rec.log(
+        "world/sphere/albedo_factor",
+        &Mesh3D::from(MeshPrimitive {
+            albedo_factor: Some([1.0, 100.0 / 255.0, 150.0 / 255.0, 1.0]), // Pink
+            vertex_positions: sphere.vertex_positions.clone(),
+            triangle_indices: sphere.triangle_indices.clone(),
+            albedo_texture: None,
+            texture_width: None,
+            texture_height: None,
+            vertex_colors: None,
+            vertex_normals: None,
+            vertex_texcoords: None,
+        }),
+    )?;
+
+    // Instance 3: Albedo texture with UV coordinates (right)
+    re_log::info!("Logging sphere with albedo texture...");
+    let texture_data = generate_checkerboard_texture(32, 4);
+    rec.log(
+        "world/sphere/albedo_texture",
+        &Transform3D::from_translation([1.5, 0.0, 0.0]),
+    )?;
+    rec.log(
+        "world/sphere/albedo_texture",
+        &Mesh3D::from(MeshPrimitive {
+            albedo_texture: Some(texture_data),
+            texture_width: Some(32),
+            texture_height: Some(32),
+            vertex_texcoords: sphere.vertex_texcoords.clone(),
+            vertex_positions: sphere.vertex_positions.clone(),
+            triangle_indices: sphere.triangle_indices.clone(),
+            albedo_factor: None,
+            vertex_colors: None,
+            vertex_normals: None,
+        }),
+    )?;
+
+    // Instance 4: Vertex normals for smooth shading (above)
+    re_log::info!("Logging sphere with vertex normals...");
+    rec.log(
+        "world/sphere/vertex_normals",
+        &Transform3D::from_translation([0.0, 1.5, 0.0]),
+    )?;
+    rec.log(
+        "world/sphere/vertex_normals",
+        &Mesh3D::from(MeshPrimitive {
+            vertex_normals: sphere.vertex_normals.clone(),
+            albedo_factor: Some([100.0 / 255.0, 150.0 / 255.0, 1.0, 1.0]), // Light blue
+            vertex_positions: sphere.vertex_positions.clone(),
+            triangle_indices: sphere.triangle_indices.clone(),
+            albedo_texture: None,
+            texture_width: None,
+            texture_height: None,
+            vertex_colors: None,
+            vertex_texcoords: None,
+        }),
+    )?;
+
+    re_log::info!("Done! All mesh variations logged to Rerun.");
 
     Ok(())
 }
@@ -174,130 +309,4 @@ fn main() -> anyhow::Result<()> {
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_raw_mesh")?;
     run(&rec, &args)
-}
-
-// --- glTF parsing ---
-
-struct GltfNode {
-    name: String,
-    transform: Option<GltfTransform>,
-    primitives: Vec<GltfPrimitive>,
-    children: Vec<GltfNode>,
-}
-
-struct GltfPrimitive {
-    albedo_factor: Option<[f32; 4]>,
-    indices: Option<Vec<u32>>,
-    vertex_positions: Vec<[f32; 3]>,
-    vertex_colors: Option<Vec<Color>>,
-    vertex_normals: Option<Vec<[f32; 3]>>,
-    vertex_texcoords: Option<Vec<[f32; 2]>>,
-}
-
-struct GltfTransform {
-    t: [f32; 3],
-    r: [f32; 4],
-    s: [f32; 3],
-}
-
-impl GltfNode {
-    fn from_gltf(buffers: &[gltf::buffer::Data], node: &gltf::Node<'_>) -> Self {
-        let name = node_name(node);
-
-        let transform = {
-            let (t, r, s) = node.transform().decomposed();
-            GltfTransform { t, r, s }
-        };
-        let primitives = node_primitives(buffers, node).collect();
-
-        let children = node
-            .children()
-            .map(|child| GltfNode::from_gltf(buffers, &child))
-            .collect();
-
-        Self {
-            name,
-            transform: Some(transform),
-            primitives,
-            children,
-        }
-    }
-}
-
-fn node_name(node: &gltf::Node<'_>) -> String {
-    node.name()
-        .map_or_else(|| format!("node_{}", node.index()), ToOwned::to_owned)
-}
-
-fn node_primitives<'data>(
-    buffers: &'data [gltf::buffer::Data],
-    node: &'data gltf::Node<'_>,
-) -> impl Iterator<Item = GltfPrimitive> + 'data {
-    node.mesh().into_iter().flat_map(|mesh| {
-        mesh.primitives().map(|primitive| {
-            assert!(primitive.mode() == gltf::mesh::Mode::Triangles);
-
-            let albedo_factor = primitive
-                .material()
-                .pbr_metallic_roughness()
-                .base_color_factor()
-                .into();
-
-            let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
-
-            let indices = reader.read_indices();
-            let indices = indices.map(|indices| indices.into_u32().collect());
-
-            let vertex_positions = reader.read_positions().unwrap();
-            let vertex_positions = vertex_positions.collect();
-
-            let vertex_normals = reader.read_normals();
-            let vertex_normals = vertex_normals.map(|normals| normals.collect());
-
-            let vertex_colors = reader.read_colors(0); // TODO(cmc): pick correct set
-            let vertex_colors = vertex_colors.map(|colors| {
-                colors
-                    .into_rgba_u8()
-                    .map(|[r, g, b, a]| Color::from_unmultiplied_rgba(r, g, b, a))
-                    .collect()
-            });
-
-            let vertex_texcoords = reader.read_tex_coords(0); // TODO(cmc): pick correct set
-            let vertex_texcoords = vertex_texcoords.map(|texcoords| texcoords.into_f32().collect());
-
-            // TODO(cmc): support for albedo textures
-
-            GltfPrimitive {
-                albedo_factor,
-                vertex_positions,
-                indices,
-                vertex_normals,
-                vertex_colors,
-                vertex_texcoords,
-            }
-        })
-    })
-}
-
-fn load_gltf<'data>(
-    doc: &'data gltf::Document,
-    buffers: &'data [gltf::buffer::Data],
-) -> impl Iterator<Item = GltfNode> + 'data {
-    doc.scenes().map(move |scene| {
-        let name = scene
-            .name()
-            .map_or_else(|| format!("scene_{}", scene.index()), ToOwned::to_owned);
-
-        re_log::info!(scene = name, "parsing glTF scene");
-
-        GltfNode {
-            name,
-            transform: None,
-            primitives: Default::default(),
-            children: scene
-                .nodes()
-                .map(|node| GltfNode::from_gltf(buffers, &node))
-                .collect(),
-        }
-    })
 }
