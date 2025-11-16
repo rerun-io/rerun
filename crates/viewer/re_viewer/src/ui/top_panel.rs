@@ -105,13 +105,14 @@ fn top_bar_ui(
                 ui.spacing_mut().item_spacing.x = 12.0;
 
                 // Varying widths:
-            memory_use_label_ui(ui, gpu_resource_stats);
+                memory_use_label_ui(ui, gpu_resource_stats);
                 frame_time_label_ui(ui, app);
+                fps_ui(ui, app);
 
-            if let Some(latency_snapshot) = latency_snapshot {
-                // Always show latency when metrics are enabled:
-                latency_snapshot_button_ui(ui, latency_snapshot);
-            }
+                if let Some(latency_snapshot) = latency_snapshot {
+                    // Always show latency when metrics are enabled:
+                    latency_snapshot_button_ui(ui, latency_snapshot);
+                }
             });
         } else {
             // Show latency metrics only if high enough to be "interesting":
@@ -189,19 +190,19 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
 
     if cfg!(debug_assertions) {
         show_warning(ui, &mut has_shown_warning, |ui| {
-        // Warn if in debug build
-        ui.label(
-            egui::RichText::new("⚠ Debug build")
-                .small()
-                .color(ui.visuals().warn_fg_color),
-        )
-        .on_hover_text("Rerun was compiled with debug assertions enabled.");
+            // Warn if in debug build
+            ui.label(
+                egui::RichText::new("⚠ Debug build")
+                    .small()
+                    .color(ui.visuals().warn_fg_color),
+            )
+            .on_hover_text("Rerun was compiled with debug assertions enabled.");
         });
     }
 
     if !app_env.is_test() {
         show_warning(ui, &mut has_shown_warning, |ui| {
-        show_software_rasterizer_warning(frame, ui);
+            show_software_rasterizer_warning(frame, ui);
         });
     }
 
@@ -212,9 +213,9 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
                 .color(ui.visuals().warn_fg_color);
             let url = "https://github.com/rerun-io/rerun/issues/6835";
             ui.hyperlink_to(text,url).on_hover_ui(|ui| {
-            ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
-            ui.label("Click for more info.");
-        });
+                ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
+                ui.label("Click for more info.");
+            });
         });
     }
 }
@@ -494,6 +495,40 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+}
+
+fn fps_ui(ui: &mut egui::Ui, app: &App) {
+    if let Some(fps) = app.frame_time_history.rate() {
+        let visuals = ui.visuals();
+
+        // We only warn if we _suspect_ that we're in "continuous repaint mode".
+        let low_fps_right_now = fps < 20.0 && ui.ctx().has_requested_repaint();
+
+        let now = ui.ctx().input(|i| i.time);
+        let warn_start_id = ui.id().with("fps_warning");
+        let warn_start_time = ui.data_mut(|d| {
+            if low_fps_right_now {
+                *d.get_persisted_mut_or::<f64>(warn_start_id, now)
+            } else {
+                d.remove::<f64>(warn_start_id);
+                now
+            }
+        });
+
+        // Avoid blinking warning
+        let low_fps_for_some_time = 0.5 < (now - warn_start_time);
+
+        let color = if low_fps_for_some_time {
+            visuals.warn_fg_color
+        } else {
+            visuals.weak_text_color()
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{fps:.0} FPS");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("Frames per second. Higher is better.");
     }
 }
 
