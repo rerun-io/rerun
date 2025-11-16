@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="Python" name="Python facet">
+      <configuration sdkName="Python 3.11" />
+    </facet>
+  </component>
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/crates/build/re_build_info/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/build/re_build_tools/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/build/re_dev_tools/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/build/re_protos_builder/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/build/re_types_builder/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_chunk/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_chunk/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_chunk/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_chunk_store/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_chunk_store/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_data_loader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_data_loader/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_data_source/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_dataframe/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_dataframe/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_datafusion/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_entity_db/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_entity_db/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_entity_db/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_format_arrow/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_grpc_client/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_grpc_server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_log_encoding/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_log_encoding/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_log_encoding/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_log_types/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_log_types/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_protos/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_query/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_query/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_query/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_query/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_redap_client/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_redap_tests/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_server/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_sorbet/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_tf/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_tf/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_types/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_types/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_types_core/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/store/re_types_core/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/top/re_sdk/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/top/re_sdk/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/top/rerun-cli/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/top/rerun/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/top/rerun/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/top/rerun_c/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_analytics/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_analytics/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_arrow_util/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_auth/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_auth/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_byte_size/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_capabilities/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_case/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_crash_handler/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_error/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_format/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_int_histogram/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_int_histogram/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_int_histogram/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_log/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_mcap/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_memory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_perf_telemetry/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_ros_msg/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_smart_channel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_span/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_string_interner/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_tracing/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_tuid/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_tuid/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_uri/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_video/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_video/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_video/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_arrow_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_arrow_ui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_blueprint_tree/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_blueprint_tree/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_chunk_store_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_component_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_component_ui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_context_menu/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_data_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_dataframe_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_dataframe_ui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_recording_panel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_recording_panel/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_redap_browser/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_renderer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_selection_panel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_selection_panel/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_test_context/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_test_viewport/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_time_panel/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_time_panel/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_time_panel/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_ui/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_ui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_bar_chart/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_bar_chart/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_dataframe/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_dataframe/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_graph/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_graph/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_map/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_map/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_spatial/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_spatial/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_tensor/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_tensor/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_text_document/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_text_document/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_text_log/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_text_log/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_time_series/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_view_time_series/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_viewer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_viewer/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_viewer_context/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_viewport/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_viewport_blueprint/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_web_viewer_server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/docs/snippets/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/animated_urdf/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/clock/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/custom_callback/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/custom_data_loader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/custom_store_subscriber/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/custom_view/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/dataframe_query/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/dna/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/extend_viewer_ui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/external_data_loader/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/graph_lattice/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/incremental_logging/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/lenses/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/log_file/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/minimal/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/minimal_options/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/minimal_serve/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/objectron/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/raw_mesh/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/shared_recording/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/spawn_viewer/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/stdio/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/template/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/viewer_callbacks/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rerun_py/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rerun_py/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/run_wasm/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/log_benchmark/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/plot_dashboard_stress/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/re_integration_test/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/re_integration_test/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/test_data_density_graph/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/test_image_memory/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/test_out_of_order_transforms/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/rust/test_ui_wakeup/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_component_fallbacks/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_component_fallbacks/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/viewer/re_viewport_blueprint/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/rerun_py" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_arrow_combinators/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/utils/re_arrow_combinators/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/examples/rust/mcap_protobuf/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.mypy_cache_rerun_other" />
+      <excludeFolder url="file://$MODULE_DIR$/.pixi" />
+      <excludeFolder url="file://$MODULE_DIR$/CMakeFiles" />
+      <excludeFolder url="file://$MODULE_DIR$/_deps" />
+      <excludeFolder url="file://$MODULE_DIR$/build" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+      <excludeFolder url="file://$MODULE_DIR$/target_pixi" />
+      <excludeFolder url="file://$MODULE_DIR$/target_pixi_wasm" />
+      <excludeFolder url="file://$MODULE_DIR$/target_ra" />
+      <excludeFolder url="file://$MODULE_DIR$/target_wasm" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Python 3.11 interpreter library" level="application" />
+  </component>
+</module>
