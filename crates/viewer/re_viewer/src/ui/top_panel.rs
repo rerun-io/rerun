@@ -93,6 +93,8 @@ fn top_bar_ui(
     website_link_ui(ui);
 
     if !app.is_screenshotting() {
+        show_warnings(frame, ui, app.app_env()); // Fixed width: put first
+
         let latency_snapshot = store_context
             .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
 
@@ -133,8 +135,6 @@ fn top_bar_ui(
         if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
-
-        show_warnings(frame, ui, app.app_env());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -165,7 +165,24 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
     // * it will be captured in screenshots in bug reports etc
     // * it let's us customize the message a bit more, with links etc.
 
+    // We want to add a separator if there is any warning. This works.
+    let mut has_shown_warning = false;
+
+    fn show_warning(
+        ui: &mut egui::Ui,
+        has_shown_warning: &mut bool,
+        callback: impl FnOnce(&mut egui::Ui),
+    ) {
+        if !*has_shown_warning {
+            ui.separator();
+            *has_shown_warning = true;
+        }
+
+        callback(ui);
+    }
+
     if cfg!(debug_assertions) {
+        show_warning(ui, &mut has_shown_warning, |ui| {
         // Warn if in debug build
         ui.label(
             egui::RichText::new("⚠ Debug build")
@@ -173,22 +190,25 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
                 .color(ui.visuals().warn_fg_color),
         )
         .on_hover_text("Rerun was compiled with debug assertions enabled.");
+        });
     }
 
     if !app_env.is_test() {
+        show_warning(ui, &mut has_shown_warning, |ui| {
         show_software_rasterizer_warning(frame, ui);
+        });
     }
 
     if crate::docker_detection::is_docker() {
-        ui.hyperlink_to(
-            egui::RichText::new("⚠ Docker")
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            let text = egui::RichText::new("⚠ Docker")
                 .small()
-                .color(ui.visuals().warn_fg_color),
-            "https://github.com/rerun-io/rerun/issues/6835",
-        )
-        .on_hover_ui(|ui| {
+                .color(ui.visuals().warn_fg_color);
+            let url = "https://github.com/rerun-io/rerun/issues/6835";
+            ui.hyperlink_to(text,url).on_hover_ui(|ui| {
             ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
             ui.label("Click for more info.");
+        });
         });
     }
 }
