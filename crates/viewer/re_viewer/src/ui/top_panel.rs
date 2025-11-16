@@ -100,13 +100,19 @@ fn top_bar_ui(
 
         if app.app_options().show_metrics {
             ui.separator();
-            frame_time_label_ui(ui, app);
+
+            ui.scope(|ui| {
+                ui.spacing_mut().item_spacing.x = 12.0;
+
+                // Varying widths:
             memory_use_label_ui(ui, gpu_resource_stats);
+                frame_time_label_ui(ui, app);
 
             if let Some(latency_snapshot) = latency_snapshot {
                 // Always show latency when metrics are enabled:
                 latency_snapshot_button_ui(ui, latency_snapshot);
             }
+            });
         } else {
             // Show latency metrics only if high enough to be "interesting":
             if let Some(latency_snapshot) = latency_snapshot {
