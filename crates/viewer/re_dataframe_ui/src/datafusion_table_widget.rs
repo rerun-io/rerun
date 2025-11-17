@@ -745,7 +745,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         }
     }
 
-    fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
+    fn row_ui(&mut self, ui: &mut Ui, _row_nr: u64) {
         let has_context_menu = self.blueprint.partition_links.is_some();
         if has_context_menu {
             ui.response().container_context_menu(|ui| {
