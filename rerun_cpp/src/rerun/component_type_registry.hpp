@@ -22,7 +22,7 @@ namespace rerun {
       public:
         ComponentTypeRegistry() = default;
 
-        /// Returns the handle to the registered component type for the given descriptor/arrow-type pair.
+        /// Returns the handle to the registered component type for the given descriptor.
         ///
         /// Registers the component type when first encountered.
         Result<ComponentTypeHandle> get_or_register(
