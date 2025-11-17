@@ -77,6 +77,7 @@ snippet: views/spatial3d
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
+* [`TransformArrows3D`](../archetypes/transform_arrows3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)
 * [`Arrows2D`](../archetypes/arrows2d.md) (if logged under a projection)
 * [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)

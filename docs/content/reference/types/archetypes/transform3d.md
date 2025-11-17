@@ -27,7 +27,6 @@ For transforms that affect only a single entity and do not propagate along the e
 * `relation`: [`TransformRelation`](../components/transform_relation.md)
 * `child_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
 * `parent_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
-* `axis_length`: [`AxisLength`](../components/axis_length.md)
 
 
 ## Can be shown in

@@ -37,7 +37,7 @@ use crate::{
 };
 use crate::{
     shared_fallbacks,
-    visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer},
+    visualizers::{CamerasVisualizer, TransformArrows3DVisualizer},
 };
 
 #[derive(Default)]
@@ -389,26 +389,10 @@ impl ViewClass for SpatialView3D {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        let arrows_viz = Transform3DArrowsVisualizer::identifier();
-        let axis_detector = AxisLengthDetector::identifier();
-        let camera_viz = CamerasVisualizer::identifier();
-
-        let maybe_visualizable: HashSet<&ViewSystemIdentifier> =
-            maybe_visualizable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
         let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
             .iter()
             .filter_map(|(visualizer, ents)| {
@@ -423,16 +407,8 @@ impl ViewClass for SpatialView3D {
         // We never want to consider `Transform3DArrows` as directly indicated since it uses the
         // the Transform3D archetype. This is often used to transform other 3D primitives, where
         // it might be annoying to always have the arrows show up.
-        let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
-            .iter()
-            .filter_map(|(visualizer, ents)| {
-                if visualizer != &arrows_viz && ents.contains(entity_path) {
-                    Some(visualizer)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let indicated: HashSet<&ViewSystemIdentifier> =
+            indicated_entities_per_visualizer.keys().collect();
 
         // Start with all the entities which are both indicated and visualizable.
         let mut enabled_visualizers: SmallVisualizerSet = indicated
@@ -441,16 +417,13 @@ impl ViewClass for SpatialView3D {
             .copied()
             .collect();
 
+        let arrows_viz = TransformArrows3DVisualizer::identifier();
+        let camera_viz = CamerasVisualizer::identifier();
+
         // Arrow visualizer is not enabled yet but we could…
-        if !enabled_visualizers.contains(&arrows_viz) && visualizable.contains(&arrows_viz) {
-            // … then we enable it if either:
-            // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
-            // - If we already have the [`CamerasVisualizer`] active.
-            if maybe_visualizable.contains(&axis_detector)
-                || enabled_visualizers.contains(&camera_viz)
-            {
-                enabled_visualizers.push(arrows_viz);
-            }
+        // …if we already have the [`CamerasVisualizer`] active.
+        if !enabled_visualizers.contains(&arrows_viz) && enabled_visualizers.contains(&camera_viz) {
+            enabled_visualizers.push(arrows_viz);
         }
 
         enabled_visualizers

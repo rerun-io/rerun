@@ -385,12 +385,6 @@ pub struct Transform3D {
     ///
     /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub parent_frame: Option<SerializedComponentBatch>,
-
-    /// Visual length of the 3 axes.
-    ///
-    /// The length is interpreted in the local coordinate system of the transform.
-    /// If the transform is scaled, the axes will be scaled accordingly.
-    pub axis_length: Option<SerializedComponentBatch>,
 }
 
 impl Transform3D {
@@ -489,18 +483,6 @@ impl Transform3D {
             component_type: Some("rerun.components.TransformFrameId".into()),
         }
     }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::axis_length`].
-    ///
-    /// The corresponding component is [`crate::components::AxisLength`].
-    #[inline]
-    pub fn descriptor_axis_length() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Transform3D".into()),
-            component: "Transform3D:axis_length".into(),
-            component_type: Some("rerun.components.AxisLength".into()),
-        }
-    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
@@ -509,7 +491,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             Transform3D::descriptor_translation(),
@@ -520,11 +502,10 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
             Transform3D::descriptor_relation(),
             Transform3D::descriptor_child_frame(),
             Transform3D::descriptor_parent_frame(),
-            Transform3D::descriptor_axis_length(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             Transform3D::descriptor_translation(),
@@ -535,13 +516,12 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
             Transform3D::descriptor_relation(),
             Transform3D::descriptor_child_frame(),
             Transform3D::descriptor_parent_frame(),
-            Transform3D::descriptor_axis_length(),
         ]
     });
 
 impl Transform3D {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 9 optional
-    pub const NUM_COMPONENTS: usize = 9usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 8 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for Transform3D {
@@ -616,11 +596,6 @@ impl ::re_types_core::Archetype for Transform3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_parent_frame())
             });
-        let axis_length = arrays_by_descr
-            .get(&Self::descriptor_axis_length())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_axis_length())
-            });
         Ok(Self {
             translation,
             rotation_axis_angle,
@@ -630,7 +605,6 @@ impl ::re_types_core::Archetype for Transform3D {
             relation,
             child_frame,
             parent_frame,
-            axis_length,
         })
     }
 }
@@ -648,7 +622,6 @@ impl ::re_types_core::AsComponents for Transform3D {
             self.relation.clone(),
             self.child_frame.clone(),
             self.parent_frame.clone(),
-            self.axis_length.clone(),
         ]
         .into_iter()
         .flatten()
@@ -702,10 +675,6 @@ impl Transform3D {
                 crate::components::TransformFrameId::arrow_empty(),
                 Self::descriptor_parent_frame(),
             )),
-            axis_length: Some(SerializedComponentBatch::new(
-                crate::components::AxisLength::arrow_empty(),
-                Self::descriptor_axis_length(),
-            )),
         }
     }
 
@@ -752,9 +721,6 @@ impl Transform3D {
             self.parent_frame
                 .map(|parent_frame| parent_frame.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.axis_length
-                .map(|axis_length| axis_length.partitioned(_lengths.clone()))
-                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -775,7 +741,6 @@ impl Transform3D {
         let len_relation = self.relation.as_ref().map(|b| b.array.len());
         let len_child_frame = self.child_frame.as_ref().map(|b| b.array.len());
         let len_parent_frame = self.parent_frame.as_ref().map(|b| b.array.len());
-        let len_axis_length = self.axis_length.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_translation)
             .or(len_rotation_axis_angle)
@@ -785,7 +750,6 @@ impl Transform3D {
             .or(len_relation)
             .or(len_child_frame)
             .or(len_parent_frame)
-            .or(len_axis_length)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -996,32 +960,6 @@ impl Transform3D {
         self.parent_frame = try_serialize_field(Self::descriptor_parent_frame(), parent_frame);
         self
     }
-
-    /// Visual length of the 3 axes.
-    ///
-    /// The length is interpreted in the local coordinate system of the transform.
-    /// If the transform is scaled, the axes will be scaled accordingly.
-    #[inline]
-    pub fn with_axis_length(
-        mut self,
-        axis_length: impl Into<crate::components::AxisLength>,
-    ) -> Self {
-        self.axis_length = try_serialize_field(Self::descriptor_axis_length(), [axis_length]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::AxisLength`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_axis_length`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_axis_length(
-        mut self,
-        axis_length: impl IntoIterator<Item = impl Into<crate::components::AxisLength>>,
-    ) -> Self {
-        self.axis_length = try_serialize_field(Self::descriptor_axis_length(), axis_length);
-        self
-    }
 }
 
 impl ::re_byte_size::SizeBytes for Transform3D {
@@ -1035,6 +973,5 @@ impl ::re_byte_size::SizeBytes for Transform3D {
             + self.relation.heap_size_bytes()
             + self.child_frame.heap_size_bytes()
             + self.parent_frame.heap_size_bytes()
-            + self.axis_length.heap_size_bytes()
     }
 }
