@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import atexit
+import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from rerun import catalog as _catalog
@@ -16,6 +19,8 @@ class CatalogClient:
 
     def __init__(self, address: str, token: str | None = None) -> None:
         self._inner = _catalog.CatalogClient(address, token)
+        self.tmpdirs = []
+        atexit.register(self._cleanup)
 
     def __repr__(self) -> str:
         return repr(self._inner)
@@ -60,17 +65,13 @@ class CatalogClient:
         """Returns a dataset entry by its ID or name."""
         return DatasetEntry(self._inner.get_dataset_entry(id=id, name=name))
 
-    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
+    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table entry by its ID or name."""
         return TableEntry(self._inner.get_table_entry(id=id, name=name))
 
     def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
         return DatasetEntry(self._inner.get_dataset(id=id, name=name))
-
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
-        """Returns a table by its ID or name as a DataFrame."""
-        return self._inner.get_table(id=id, name=name)
 
     def create_dataset(self, name: str) -> DatasetEntry:
         """Creates a new dataset with the given name."""
@@ -80,8 +81,12 @@ class CatalogClient:
         """Registers a foreign Lance table as a new table entry."""
         return TableEntry(self._inner.register_table(name, url))
 
-    def create_table_entry(self, name: str, schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema, url: str | None = None) -> TableEntry:
         """Create and register a new table."""
+        if url is None:
+            tmpdir = tempfile.TemporaryDirectory()
+            self.tmpdirs.append(tmpdir)
+            url = Path(tmpdir.name).as_uri()
         return TableEntry(self._inner.create_table_entry(name, schema, url))
 
     def write_table(self, name: str, batches, insert_mode) -> None:
@@ -100,6 +105,14 @@ class CatalogClient:
     def ctx(self) -> datafusion.SessionContext:
         """Returns a DataFusion session context for querying the catalog."""
         return self._inner.ctx
+
+    def _cleanup(self) -> None:
+        # Safety net: avoid warning if GC happens late
+        try:
+            for tmpdir in self.tmpdirs:
+                tmpdir.cleanup()
+        except Exception:
+            pass
 
 
 class Entry:
@@ -295,23 +308,42 @@ class TableEntry(Entry):
 
     def __init__(self, inner: _catalog.TableEntry) -> None:
         super().__init__(inner)
-        # Cache the dataframe for forwarding
-        self._df = inner.df()
+        self._inner = inner
 
-    def __datafusion_table_provider__(self) -> Any:
-        return self._inner.__datafusion_table_provider__()
+    def client(self) -> CatalogClient:
+        """Returns the CatalogClient associated with this table."""
+        inner_catalog = _catalog.CatalogClient.__new__(_catalog.CatalogClient)  # bypass __init__
+        inner_catalog._raw_client = self._inner.catalog
+        outer_catalog = CatalogClient.__new__(CatalogClient)  # bypass __init__
+        outer_catalog._inner = inner_catalog
 
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        return self._inner.to_arrow_reader()
+        return outer_catalog
 
-    def __getattr__(self, name: str) -> Any:
-        """Forward DataFrame methods to the underlying dataframe."""
-        # First try to get from Entry base class
-        try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            # Then forward to the dataframe
-            return getattr(self._df, name)
+    def append(self, **named_params: Any) -> None:
+        """Convert Python objects into columns of data and append them to a table."""
+        self.client().append_to_table(self._inner.name, **named_params)
+
+    def update(self, *, name: str | None = None) -> None:
+        return self._inner.update(name=name)
+
+    def reader(self) -> datafusion.DataFrame:
+        """
+        Exposes the contents of the table via a datafusion DataFrame.
+
+        Note: this is equivalent to `catalog.ctx.table(<tablename>)`.
+
+        This operation is lazy. The data will not be read from the source table until consumed
+        from the DataFrame.
+        """
+        return self._inner.df()
+
+    def schema(self) -> pa.Schema:
+        """Returns the schema of the table."""
+        return self.reader().schema()
+
+    def to_polars(self) -> Any:
+        """Returns the table as a Polars DataFrame."""
+        return self.reader().to_polars()
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError

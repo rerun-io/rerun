@@ -8,26 +8,29 @@ from rerun.catalog import EntryKind
 from rerun.server import Server
 
 if TYPE_CHECKING:
-    import pathlib
-
     from .conftest import PrefilledCatalog
 
 
 def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
-    expected_table_name = "simple_datatypes"
+    table_name = "simple_datatypes"
+    expected_table_name = prefilled_catalog.factory.apply_prefix(table_name)
     entries_table_name = "__entries"
 
     client = prefilled_catalog.client
     assert expected_table_name in client.table_names()
     assert entries_table_name in client.table_names()
 
+    # Check that we have at least the expected tables (may have more on external servers)
     entries = client.table_entries()
-    assert len(entries) == 4
+    assert len(entries) >= 4
+    entry_names = [e.name for e in entries]
+    assert expected_table_name in entry_names
+    assert prefilled_catalog.factory.apply_prefix("second_schema.second_table") in entry_names
+    assert prefilled_catalog.factory.apply_prefix("alternate_catalog.third_schema.third_table") in entry_names
 
-    tables = client.tables()
-    assert pa.Table.from_batches(tables.collect()).num_rows == 4
-
+    # Verify we can get and query the table
     client.get_table(name=expected_table_name)
+    tables = client.tables()
     assert pa.Table.from_batches(tables.collect()).num_rows > 0
 
     entry = client.get_table_entry(name=expected_table_name)
@@ -80,12 +83,14 @@ def test_datafusion_catalog_get_tables(prefilled_catalog: PrefilledCatalog) -> N
 
 
 # TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
-def test_datafusion_catalog_get_tables_patched(table_filepath: pathlib.Path) -> None:
+def test_datafusion_catalog_get_tables_patched() -> None:
+    from .conftest import TABLE_FILEPATH
+
     with Server(
         tables={
-            "simple_datatypes": table_filepath,
-            "second_schema.second_table": table_filepath,
-            "alternate_catalog.third_schema.third_table": table_filepath,
+            "simple_datatypes": TABLE_FILEPATH,
+            "second_schema.second_table": TABLE_FILEPATH,
+            "alternate_catalog.third_schema.third_table": TABLE_FILEPATH,
         },
     ) as server:
         ctx = server.client().ctx

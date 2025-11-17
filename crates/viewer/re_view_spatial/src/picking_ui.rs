@@ -206,12 +206,12 @@ pub fn picking(
                     pos: hovered_point,
                     tracked_entity: state.last_tracked_entity().cloned(),
                     point_in_space_cameras: cameras_visualizer_output
-                        .space_cameras
+                        .pinhole_cameras
                         .iter()
                         .map(|cam| {
                             (
                                 cam.ent_path.clone(),
-                                hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
+                                hovered_point.map(|pos| cam.project_onto_2d(pos)),
                             )
                         })
                         .collect(),

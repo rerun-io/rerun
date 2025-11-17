@@ -1,5 +1,5 @@
 ---
-title: Quickstart
-hidden: true
+title: Getting Started
+order: 1
 redirect: getting-started/quick-start
 ---

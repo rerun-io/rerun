@@ -52,7 +52,6 @@ fn from_ply(ply: ply_rs_bw::ply::Ply<ply_rs_bw::ply::DefaultElement>) -> Points3
 
     use std::borrow::Cow;
 
-    use linked_hash_map::LinkedHashMap;
     use ply_rs_bw::ply::Property;
 
     use crate::components::{Color, Position3D, Radius, Text};
@@ -130,7 +129,7 @@ fn from_ply(ply: ply_rs_bw::ply::Ply<ply_rs_bw::ply::DefaultElement>) -> Points3
     // TODO(cmc): This could be optimized by using custom property accessors.
     impl Vertex {
         fn from_props(
-            mut props: LinkedHashMap<String, Property>,
+            mut props: indexmap::IndexMap<String, Property>,
             ignored_props: &mut BTreeSet<String>,
         ) -> Option<Self> {
             // NOTE: Empirical evidence points to these being de-facto standard…
@@ -157,9 +156,9 @@ fn from_ply(ply: ply_rs_bw::ply::Ply<ply_rs_bw::ply::DefaultElement>) -> Points3
             };
 
             // We remove properties as they are read so we can warn about the ones we don't recognize.
-            props.remove(PROP_X);
-            props.remove(PROP_Y);
-            props.remove(PROP_Z);
+            props.swap_remove(PROP_X);
+            props.swap_remove(PROP_Y);
+            props.swap_remove(PROP_Z);
 
             let mut this = Self {
                 position: Position3D::new(x, y, z),
@@ -175,22 +174,22 @@ fn from_ply(ply: ply_rs_bw::ply::Ply<ply_rs_bw::ply::DefaultElement>) -> Points3
             ) {
                 let a = props.get(PROP_ALPHA).and_then(u8).unwrap_or(255);
 
-                props.remove(PROP_RED);
-                props.remove(PROP_GREEN);
-                props.remove(PROP_BLUE);
-                props.remove(PROP_ALPHA);
+                props.swap_remove(PROP_RED);
+                props.swap_remove(PROP_GREEN);
+                props.swap_remove(PROP_BLUE);
+                props.swap_remove(PROP_ALPHA);
 
                 this.color = Some(Color::new((r, g, b, a)));
             }
 
             if let Some(radius) = props.get(PROP_RADIUS).and_then(f32) {
-                props.remove(PROP_RADIUS);
+                props.swap_remove(PROP_RADIUS);
                 this.radius = Some(Radius::from(radius));
             }
 
             if let Some(label) = props.get(PROP_LABEL).and_then(string) {
                 this.label = Some(Text(label.to_string().into()));
-                props.remove(PROP_LABEL);
+                props.swap_remove(PROP_LABEL);
             }
 
             for (key, _value) in props {

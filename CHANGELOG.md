@@ -1,5 +1,22 @@
 # Rerun changelog
 
+## [0.27.2](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatibility with dependency
+
+- Fix non semver compliant breaking changes in `ply-rs` breaking Rust builds [#11890](https://github.com/rerun-io/rerun/pull/11890)
+
+## [0.27.1](https://github.com/rerun-io/rerun/compare/0.27.0...0.27.1) - 2025-11-13 - Bug fixes and performance improvements
+
+#### 🪳 Bug fixes
+- Respect timepoint in URDF loader [#11866](https://github.com/rerun-io/rerun/pull/11866)
+- Fix pinhole color fallback showing the wrong color [#11861](https://github.com/rerun-io/rerun/pull/11861)
+- Fix broken `delete_entries` and entries table not updated [#11872](https://github.com/rerun-io/rerun/pull/11872)
+- Don't smooth velocity after WASD input [#11858](https://github.com/rerun-io/rerun/pull/11858)
+- URDF loader: Use global material if inline material is absent [#11869](https://github.com/rerun-io/rerun/pull/11869)
+
+#### 🚀 Performance improvements
+- When closing recordings (and blueprints), drop them on separate threads for UI responsiveness [#11834](https://github.com/rerun-io/rerun/pull/11834) (thanks [@kpreid](https://github.com/kpreid)!)
+- Remove frame lag when creating loop region [#11862](https://github.com/rerun-io/rerun/pull/11862)
+- Reverted [#11766](https://github.com/rerun-io/rerun/pull/11766) because of performance issues with the time panel.
 
 ## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - Viewer improvements and more blueprint configuration
 ### ✨ Overview & highlights
@@ -1493,7 +1510,7 @@ https://github.com/user-attachments/assets/553b6d88-143d-4cf9-a4bc-6b620534ab95
 * 🎬 Native viewer now supports H.264 video if ffmpeg is installed.
 * 📽️ Videos now load a lot faster use less RAM.
 * 📂 Improvements to the existing `Open` (Viewer) & `log_file` (SDK) workflows, and addition of a new `Import` workflow.
-  * Blueprints can now easily be [re-used across different applications, recordings and SDKs](https://rerun.io/docs/howto/visualization/reuse-blueprints)
+  * Blueprints can now easily be [re-used across different applications, recordings and SDKs](https://rerun.io/docs/concepts/blueprints)
   * The new `Import` feature allows you to drag-and-drop any data into an existing recording, directly in the viewer.
 * ☰ Dataframe queries are now streamed, reducing memory usage.
 * 💊 Add [capsule archetype](https://rerun.io/docs/reference/types/archetypes/capsules3d).

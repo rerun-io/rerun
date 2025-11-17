@@ -15,12 +15,12 @@ use re_viewer_context::{
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
-    contexts::TransformTreeContext, space_camera_3d::SpaceCamera3D, visualizers::process_radius,
+    contexts::TransformTreeContext, pinhole_wrapper::PinholeWrapper, visualizers::process_radius,
 };
 
 pub struct CamerasVisualizer {
     pub data: SpatialViewVisualizerData,
-    pub space_cameras: Vec<SpaceCamera3D>,
+    pub pinhole_cameras: Vec<PinholeWrapper>,
 }
 
 impl Default for CamerasVisualizer {
@@ -29,7 +29,7 @@ impl Default for CamerasVisualizer {
             // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
             // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
             data: (SpatialViewVisualizerData::new(None)),
-            space_cameras: Vec::new(),
+            pinhole_cameras: Vec::new(),
         }
     }
 }
@@ -80,11 +80,11 @@ impl CamerasVisualizer {
 
         // If the camera is the target frame, there is nothing for us to display.
         if transforms.target_frame() == frame_id {
-            self.space_cameras.push(SpaceCamera3D {
+            self.pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
-                pinhole: Some(pinhole),
+                pinhole,
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
             return;
@@ -111,11 +111,11 @@ impl CamerasVisualizer {
 
         debug_assert!(world_from_camera_iso.is_finite());
 
-        self.space_cameras.push(SpaceCamera3D {
+        self.pinhole_cameras.push(PinholeWrapper {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,
-            pinhole: Some(pinhole),
+            pinhole,
             picture_plane_distance: pinhole_properties.image_plane_distance,
         });
 

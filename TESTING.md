@@ -99,6 +99,6 @@ cargo nextest run -p re_integration_test --all-features
 
 ### `e2e_redap_tests`
 
-This is a python-based end-to-end test suite that uses our Python SDK and connects to the OSS server. It is executed by `pytest`.
+This is a python-based end-to-end test suite that uses our Python SDK and connects, by default, to the OSS server. It is executed by `pytest`. More in formation in the [`e2e_redap_tests` README](rerun_py/tests/e2e_redap_tests/README.md).
 
 
