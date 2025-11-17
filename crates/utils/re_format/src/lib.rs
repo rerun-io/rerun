@@ -804,6 +804,7 @@ fn test_remove_number_formatting() {
 }
 
 /// Returns "s" if `count` is not one, otherwise returns an empty string.
+#[expect(clippy::needless_pass_by_value)]
 pub fn format_plural_s(count: impl num_traits::Num) -> &'static str {
     if count.is_one() { "" } else { "s" }
 }

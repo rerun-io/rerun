@@ -2,12 +2,12 @@ use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, heade
 use crate::table_selection::TableSelectionState;
 use egui::text_selection::LabelSelectionState;
 use egui::{
-    Align, Checkbox, Context, Direction, FontSelection, Id, Layout, Modifiers, NumExt, Rangef,
-    RichText, TextWrapMode, Ui, UiBuilder, WidgetText,
+    Align, Context, Direction, FontSelection, Id, Layout, Modifiers, NumExt as _, Rangef, RichText,
+    TextWrapMode, Ui, UiBuilder, WidgetText,
 };
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
-use re_ui::egui_ext::response_ext::ResponseExt;
+use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::{TableStyle, UiExt as _};
 use std::iter;
 use std::sync::Arc;
@@ -50,6 +50,17 @@ impl<'a> ReTable<'a> {
 
     fn row_number_text(rows: u64) -> WidgetText {
         WidgetText::from(RichText::new(format_uint(rows)).weak().monospace())
+    }
+
+    fn row_selection_checkbox(
+        ui: &mut Ui,
+        checked: &mut bool,
+        intermediate: bool,
+    ) -> egui::Response {
+        ui.new_child(UiBuilder::new().max_rect(ui.max_rect()).layout(
+            Layout::centered_and_justified(Direction::TopDown).with_cross_align(Align::Min),
+        ))
+        .checkbox_indeterminate(checked, (), intermediate)
     }
 
     pub fn show(&mut self, ui: &mut Ui) {
@@ -120,13 +131,17 @@ impl egui_table::TableDelegate for ReTable<'_> {
             ui.set_style(self.original_style.clone());
 
             if cell.group_index == 0 {
-                let hovered = ui.rect_contains_pointer(ui.max_rect());
+                let hovered = ui.rect_contains_pointer(
+                    ui.max_rect().expand(ui.style().interaction.interact_radius),
+                );
                 if hovered {
                     self.selection.all_hovered = true;
+                }
+                let show_checkbox = hovered || !self.selection.selected_rows.is_empty();
+                if show_checkbox {
                     let mut checked = self.selection.selected_rows.len() as u64 == self.num_rows;
                     let intermediate = !checked && !self.selection.selected_rows.is_empty();
-                    let response =
-                        ui.add(Checkbox::new(&mut checked, ()).indeterminate(intermediate));
+                    let response = Self::row_selection_checkbox(ui, &mut checked, intermediate);
                     if response.changed() {
                         if checked {
                             self.selection.selected_rows.extend(0..self.num_rows);
@@ -134,6 +149,8 @@ impl egui_table::TableDelegate for ReTable<'_> {
                             self.selection.selected_rows.clear();
                         }
                     }
+                } else {
+                    ui.label("#");
                 }
             } else {
                 // Offset by one for the row number column.
@@ -157,14 +174,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
                     || self.previous_selection.hovered_row == Some(cell.row_nr);
                 if show_checkbox {
                     let mut checked = self.previous_selection.selected_rows.contains(&cell.row_nr);
-                    let response = ui
-                        .new_child(
-                            UiBuilder::new().max_rect(ui.max_rect()).layout(
-                                Layout::centered_and_justified(Direction::TopDown)
-                                    .with_cross_align(Align::Min),
-                            ),
-                        )
-                        .add(Checkbox::new(&mut checked, ()));
+                    let response = Self::row_selection_checkbox(ui, &mut checked, false);
                     if response.changed() {
                         // HACK: If the checkbox is clicked, the row will also detect the click.
                         // Since we want the checkbox to have a different click behavior,
@@ -176,7 +186,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
                             // By default, the checkbox is like command clicking.
                             modifiers = Modifiers::COMMAND;
                         }
-                        self.selection.handle_row_click(cell.row_nr, modifiers)
+                        self.selection.handle_row_click(cell.row_nr, modifiers);
                     }
                 } else {
                     // This is the row number column.
@@ -220,7 +230,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
         if response.container_clicked() {
             let modifiers = ui.input(|i| i.modifiers);
             self.selection.handle_row_click(row_nr, modifiers);
-        };
+        }
         self.inner.row_ui(ui, row_nr);
     }
 
