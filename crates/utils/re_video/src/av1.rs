@@ -14,7 +14,7 @@ use std::io;
 /// decoder state.
 pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
     let mut keyframe_found = false;
-    let mut chroma: Option<ChromaSubsamplingModes> = None;
+    let mut chroma_subsampling: Option<ChromaSubsamplingModes> = None;
     let mut dimensions: Option<[u16; 2]> = None;
     let mut bit_depth: Option<u8> = None;
 
@@ -28,7 +28,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
 
                 bit_depth = Some(seq.color_config.bit_depth as u8);
                 dimensions.get_or_insert([seq.max_frame_width as u16, seq.max_frame_height as u16]);
-                chroma.get_or_insert(chroma_mode_from_color_config(&seq.color_config));
+                chroma_subsampling.get_or_insert(chroma_mode_from_color_config(&seq.color_config));
             }
             ObuType::Frame | ObuType::FrameHeader => {
                 if is_keyframe(header.obu_type, &mut cursor)
@@ -55,7 +55,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
         codec_string: "av01".to_owned(),
         coded_dimensions,
         bit_depth,
-        chroma_subsampling: None,
+        chroma_subsampling,
         stsd: None,
     }))
 }
