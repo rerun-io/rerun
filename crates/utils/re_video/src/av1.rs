@@ -7,29 +7,6 @@ use crate::{ChromaSubsamplingModes, DetectGopStartError, GopStartDetection, Vide
 use scuffle_bytes_util::BitReader;
 use std::io;
 
-pub fn is_keyframe<R: io::Read>(obu_type: ObuType, reader: &mut R) -> io::Result<bool> {
-    let mut reader = BitReader::new(reader);
-
-    // only present for OBU_FRAME_HEADER
-    let show_existing_frame = if obu_type == ObuType::FrameHeader {
-        reader.read_bit()?
-    } else {
-        false
-    };
-
-    if show_existing_frame {
-        return Ok(false);
-    }
-
-    // frame_type (2 bits)
-    // 0 = KEY_FRAME
-    // 1 = INTER_FRAME
-    // 2 = INTRA_ONLY_FRAME
-    // 3 = SWITCH_FRAME
-    let frame_type_bits = reader.read_bits(2)? as u8;
-    Ok(frame_type_bits == 0)
-}
-
 /// Try to determine whether an AV1 frame chunk is the start of a GOP.
 ///
 /// This is a simplified approach that only looks for keyframes, we don't
@@ -50,10 +27,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                     .map_err(DetectGopStartError::Av1ParserError)?;
 
                 bit_depth = Some(seq.color_config.bit_depth as u8);
-                dimensions.get_or_insert([
-                    seq.max_frame_width as u16 - 1,
-                    seq.max_frame_height as u16 - 1,
-                ]);
+                dimensions.get_or_insert([seq.max_frame_width as u16, seq.max_frame_height as u16]);
                 chroma.get_or_insert(chroma_mode_from_color_config(&seq.color_config));
             }
             ObuType::Frame | ObuType::FrameHeader => {
@@ -69,7 +43,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
         }
     }
 
-    if !keyframe_found {
+    if !keyframe_found || dimensions.is_none() {
         return Ok(GopStartDetection::NotStartOfGop);
     }
 
@@ -84,6 +58,31 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
         chroma_subsampling: None,
         stsd: None,
     }))
+}
+
+/// Determine if the frame is a keyframe based on the OBU type and its content.
+#[inline]
+fn is_keyframe<R: io::Read>(obu_type: ObuType, reader: &mut R) -> io::Result<bool> {
+    let mut reader = BitReader::new(reader);
+
+    // only present for frame header OBUs, skip for frame OBUs
+    let show_existing_frame = if obu_type == ObuType::FrameHeader {
+        reader.read_bit()?
+    } else {
+        false
+    };
+
+    if show_existing_frame {
+        return Ok(false);
+    }
+
+    // frame_type (2 bits)
+    // 0 = KEY_FRAME
+    // 1 = INTER_FRAME
+    // 2 = INTRA_ONLY_FRAME
+    // 3 = SWITCH_FRAME
+    let frame_type = reader.read_bits(2)?;
+    Ok(frame_type == 0)
 }
 
 #[inline]
@@ -128,8 +127,7 @@ mod test {
                 assert_eq!(details.codec_string, "av01");
                 assert_eq!(details.coded_dimensions, [64, 64]);
 
-                // Bit depth should be present, but its zero in this test data
-                assert_eq!(details.bit_depth, Some(0));
+                assert_eq!(details.bit_depth, Some(8));
             }
             Err(err) => panic!("Failed to parse valid AV1 data: {err}"),
             Ok(GopStartDetection::NotStartOfGop) => {
@@ -149,11 +147,9 @@ mod test {
         // Random invalid data, the parser will panic on invalid OBU structure.
         // Make sure we handle that gracefully and don't forward to the parser.
         let invalid_data = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+        let result = detect_av1_keyframe_start(invalid_data);
 
-        assert!(matches!(
-            detect_av1_keyframe_start(invalid_data),
-            Err(crate::DetectGopStartError::Av1ParserError(..))
-        ));
+        assert!(matches!(result, Ok(GopStartDetection::NotStartOfGop)));
     }
 
     #[test]
