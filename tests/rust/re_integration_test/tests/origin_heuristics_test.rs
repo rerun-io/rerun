@@ -1,3 +1,8 @@
+//! Tests for the origin heuristics feature in the viewer.
+//!
+//! The origin heuristics feature is used to automatically set the view origin
+//! for views based on the data in the log.
+
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
