@@ -175,10 +175,8 @@ impl PyCatalogClientInternal {
                     details,
                 };
 
-                let dataset = PyDatasetEntry {
-                    dataset_details: dataset_entry.dataset_details,
-                    dataset_handle: dataset_entry.handle,
-                };
+                let dataset =
+                    PyDatasetEntry::new(dataset_entry.dataset_details, dataset_entry.handle);
 
                 Py::new(py, (dataset, entry))
             })
@@ -268,10 +266,7 @@ impl PyCatalogClientInternal {
             details: dataset_entry.details,
         };
 
-        let dataset = PyDatasetEntry {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
+        let dataset = PyDatasetEntry::new(dataset_entry.dataset_details, dataset_entry.handle);
 
         Py::new(py, (dataset, entry))
     }
@@ -316,10 +311,7 @@ impl PyCatalogClientInternal {
             details: dataset_entry.details,
         };
 
-        let dataset = PyDatasetEntry {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
+        let dataset = PyDatasetEntry::new(dataset_entry.dataset_details, dataset_entry.handle);
 
         Py::new(py, (dataset, entry))
     }

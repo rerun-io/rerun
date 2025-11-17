@@ -1,3 +1,4 @@
+use parking_lot::Mutex;
 use std::sync::Arc;
 
 use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
@@ -9,7 +10,7 @@ use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
 };
-use re_protos::cloud::v1alpha1::{DeleteIndexesRequest, ListIndexesRequest};
+use re_protos::cloud::v1alpha1::{DeleteIndexesRequest, EntryFilter, ListIndexesRequest};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
@@ -38,11 +39,20 @@ use super::{
     to_py_err,
 };
 
+/// Cache entry for Arrow schema with timestamp
+#[derive(Clone)]
+struct SchemaCache {
+    schema: ArrowSchema,
+    cached_at_updated_time: jiff::Timestamp,
+}
+
 /// A dataset entry in the catalog.
 #[pyclass(name = "DatasetEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDatasetEntry {
     pub dataset_details: DatasetDetails,
     pub dataset_handle: DatasetHandle,
+    // Cache for the Arrow schema with associated timestamp
+    schema_cache: Mutex<Option<SchemaCache>>,
 }
 
 #[pymethods]
@@ -91,10 +101,7 @@ impl PyDatasetEntry {
             details: dataset_entry.details,
         };
 
-        let dataset = Self {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
+        let dataset = Self::new(dataset_entry.dataset_details, dataset_entry.handle);
 
         Some(Py::new(py, (dataset, entry))).transpose()
     }
@@ -134,6 +141,11 @@ impl PyDatasetEntry {
     /// Return the schema of the data contained in the dataset.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchema> {
         Self::fetch_schema(&self_)
+    }
+
+    /// Cache the schema of the data contained in the dataset.
+    fn cache_schema(mut self_: PyRefMut<'_, Self>) -> PyResult<()> {
+        Self::ensure_schema_cache(&mut self_)
     }
 
     /// Returns a list of partitions IDs for the dataset.
@@ -974,10 +986,88 @@ impl PyDatasetEntry {
 }
 
 impl PyDatasetEntry {
+    /// Create a new `PyDatasetEntry` with empty schema cache
+    pub fn new(dataset_details: DatasetDetails, dataset_handle: DatasetHandle) -> Self {
+        Self {
+            dataset_details,
+            dataset_handle,
+            schema_cache: Mutex::new(None),
+        }
+    }
+
+    /// Ensure the schema cache is up to date by fetching fresh data if needed
+    /// This method combines cache checking and updating in a single efficient operation
+    pub fn ensure_schema_cache(self_: &mut PyRefMut<'_, Self>) -> PyResult<()> {
+        let py = self_.py();
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(py).connection().clone();
+        let dataset_id = super_.details.id;
+
+        // Get the current updated_at timestamp from server
+        let filter = EntryFilter {
+            id: Some(dataset_id.into()),
+            name: None,
+            entry_kind: None,
+        };
+
+        let entries = connection.find_entries(py, filter)?;
+        if let Some(entry) = entries.first() {
+            let server_updated_at = entry.updated_at;
+
+            let mut cache = self_.schema_cache.lock();
+
+            // Check if we should update: either no cache exists, or server timestamp is newer
+            let should_update = match cache.as_ref() {
+                None => true, // No cache exists, always update
+                Some(cached) => server_updated_at > cached.cached_at_updated_time, // Update if server is newer
+            };
+
+            if should_update {
+                // Fetch fresh schema from server
+                let schema = connection.get_dataset_schema(py, dataset_id)?;
+
+                *cache = Some(SchemaCache {
+                    schema,
+                    cached_at_updated_time: server_updated_at,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow_mut(self_.py()).connection().clone();
+        // let dataset_id = super_.details.id;
 
+        // Try to get cached schema first
+        {
+            let cache = self_.schema_cache.lock();
+
+            if let Some(cached) = cache.as_ref() {
+                // // Check if cache is still valid by fetching current dataset entry details
+                // let filter = EntryFilter {
+                //     id: Some(dataset_id.into()),
+                //     name: None,
+                //     entry_kind: None,
+                // };
+
+                // let entries = connection.find_entries(self_.py(), filter)?;
+                // if let Some(current_entry) = entries.first() {
+                //     let current_updated_at = current_entry.updated_at;
+
+                //     // If cache timestamp matches current updated_at, return cached schema
+                //     if cached.cached_at_updated_time == current_updated_at {
+                //         return Ok(cached.schema.clone());
+                //     }
+                // }
+                return Ok(cached.schema.clone());
+            }
+        }
+
+        // Cache miss or stale - fetch fresh schema without updating cache
+        // (since we have immutable reference)
         let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
 
         Ok(schema)

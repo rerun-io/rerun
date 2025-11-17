@@ -62,6 +62,7 @@ impl DataframeQueryTableProvider {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         partition_ids: &[impl AsRef<str> + Sync],
+        schema: Option<Schema>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 
@@ -70,18 +71,22 @@ impl DataframeQueryTableProvider {
             .await
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
-        let schema = client
-            .inner()
-            .get_dataset_schema(
-                tonic::Request::new(GetDatasetSchemaRequest {})
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| exec_datafusion_err!("{err}"))?,
-            )
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner()
-            .schema()
-            .map_err(|err| exec_datafusion_err!("{err}"))?;
+        let schema = if let Some(schema) = schema {
+            schema
+        } else {
+            client
+                .inner()
+                .get_dataset_schema(
+                    tonic::Request::new(GetDatasetSchemaRequest {})
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| exec_datafusion_err!("{err}"))?,
+                )
+                .await
+                .map_err(|err| exec_datafusion_err!("{err}"))?
+                .into_inner()
+                .schema()
+                .map_err(|err| exec_datafusion_err!("{err}"))?
+        };
 
         let schema = compute_schema_for_query(&schema, query_expression)?;
 

@@ -448,6 +448,8 @@ impl PyDataframeQueryView {
         let dataset_id = entry.details.id;
         let connection = entry.client.borrow(py).connection().clone();
 
+        let arrow_schema = PyDatasetEntry::fetch_arrow_schema(&self.dataset.borrow(py))?;
+
         wait_for_future(py, async {
             DataframeQueryTableProvider::new(
                 connection.origin().clone(),
@@ -455,6 +457,7 @@ impl PyDataframeQueryView {
                 dataset_id,
                 &self.query_expression,
                 &self.partition_ids,
+                Some(arrow_schema),
             )
             .await
         })
