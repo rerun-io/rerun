@@ -90,8 +90,5 @@ justfile
 # heaptrack files
 *.zst
 
-# IDE stuff
-/.idea
-
 # Lychee link checker cache
 .lycheecache
