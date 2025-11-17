@@ -1,5 +1,4 @@
-use re_data_ui::item_ui;
-use re_types::{blueprint::components::TextLogColumnList, datatypes};
+use re_types::blueprint::{components::TextLogColumnList, datatypes::TextLogColumnKind};
 use re_ui::{HasDesignTokens as _, UiExt as _};
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
@@ -15,7 +14,7 @@ pub fn edit_or_view_columns_singleline(
 }
 
 pub fn edit_or_view_columns_multiline(
-    ctx: &ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     column_list: &mut MaybeMutRef<'_, TextLogColumnList>,
 ) -> egui::Response {
@@ -24,12 +23,7 @@ pub fn edit_or_view_columns_multiline(
             .text_log_columns
             .iter()
             .filter(|column| column.visible.into())
-            .map(|column| match &column.kind {
-                datatypes::TextLogColumnKind::Timeline(name) => {
-                    item_ui::timeline_button(ctx, ui, &re_log_types::TimelineName::new(name))
-                }
-                _ => ui.strong(column.kind.kind_name()),
-            })
+            .map(|column| ui.strong(column.kind.kind_name()))
             .reduce(|a, b| a.union(b))
             .unwrap_or_else(|| ui.weak("Empty")),
         MaybeMutRef::MutRef(column_list) => {
@@ -68,25 +62,23 @@ pub fn edit_or_view_columns_multiline(
 
                                 let visible = col.visible.0;
 
-                                let (_, changed) =
-                                    egui::containers::Sides::new().shrink_left().show(
-                                        ui,
-                                        |ui| {
-                                            column_definition_ui(
-                                                ctx,
-                                                ui,
-                                                &mut col.kind,
-                                                visible,
-                                                &mut any_edit,
-                                            );
-                                        },
-                                        |ui| {
-                                            ui.visibility_toggle_button(&mut col.visible.0)
-                                                .changed()
-                                        },
-                                    );
-
-                                any_edit |= changed;
+                                egui::containers::Sides::new().shrink_left().show(
+                                    ui,
+                                    |ui| {
+                                        let column: &mut TextLogColumnKind = &mut col.kind;
+                                        let name = column.kind_name();
+                                        if visible {
+                                            ui.strong(name);
+                                        } else {
+                                            ui.weak(name);
+                                        }
+                                    },
+                                    |ui| {
+                                        any_edit |= ui
+                                            .visibility_toggle_button(&mut col.visible.0)
+                                            .changed();
+                                    },
+                                );
                             });
                         },
                     );
@@ -103,39 +95,5 @@ pub fn edit_or_view_columns_multiline(
 
             response
         }
-    }
-}
-
-fn column_definition_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    column: &mut datatypes::TextLogColumnKind,
-    visible: bool,
-    any_edit: &mut bool,
-) {
-    let name = match column {
-        datatypes::TextLogColumnKind::Timeline(_) => "Timeline:",
-        _ => column.kind_name(),
-    };
-    if visible {
-        ui.strong(name);
-    } else {
-        ui.weak(name);
-    }
-
-    if let datatypes::TextLogColumnKind::Timeline(name) = column {
-        egui::ComboBox::from_id_salt("column_timeline_name")
-            .selected_text(name.as_str())
-            .show_ui(ui, |ui| {
-                for timeline in ctx.recording().times_per_timeline().timelines() {
-                    *any_edit |= ui
-                        .selectable_value(
-                            name,
-                            datatypes::Utf8::from(timeline.name().as_str()),
-                            timeline.name().as_str(),
-                        )
-                        .changed();
-                }
-            });
     }
 }

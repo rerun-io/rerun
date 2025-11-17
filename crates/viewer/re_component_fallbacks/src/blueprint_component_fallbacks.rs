@@ -4,6 +4,12 @@ use re_viewer_context::FallbackProviderRegistry;
 pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_type_fallback_provider(|_| blueprint::components::ForceDistance::from(60.));
     registry.register_type_fallback_provider(|_| blueprint::components::ForceStrength::from(1.));
+
+    registry.register_type_fallback_provider(|ctx| {
+        blueprint::components::TimelineName::from(
+            ctx.viewer_ctx().time_ctrl.timeline().name().as_str(),
+        )
+    });
 }
 
 pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {

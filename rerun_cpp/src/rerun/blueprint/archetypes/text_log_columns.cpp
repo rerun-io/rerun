@@ -13,14 +13,20 @@ namespace rerun::blueprint::archetypes {
                 Descriptor_text_log_columns
             )
                 .value_or_throw();
+        archetype.timeline =
+            ComponentBatch::empty<rerun::blueprint::components::TimelineName>(Descriptor_timeline)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TextLogColumns::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(1);
+        columns.reserve(2);
         if (text_log_columns.has_value()) {
             columns.push_back(text_log_columns.value().partitioned(lengths_).value_or_throw());
+        }
+        if (timeline.has_value()) {
+            columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -28,6 +34,9 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> TextLogColumns::columns() {
         if (text_log_columns.has_value()) {
             return columns(std::vector<uint32_t>(text_log_columns.value().length(), 1));
+        }
+        if (timeline.has_value()) {
+            return columns(std::vector<uint32_t>(timeline.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -41,10 +50,13 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(1);
+        cells.reserve(2);
 
         if (archetype.text_log_columns.has_value()) {
             cells.push_back(archetype.text_log_columns.value());
+        }
+        if (archetype.timeline.has_value()) {
+            cells.push_back(archetype.timeline.value());
         }
 
         return rerun::take_ownership(std::move(cells));

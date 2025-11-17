@@ -3,7 +3,7 @@
 
 #include "text_log_column_list.hpp"
 
-#include "../../datatypes/text_log_column.hpp"
+#include "text_log_column.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -18,7 +18,7 @@ namespace rerun {
                 "text_log_columns",
                 arrow::list(arrow::field(
                     "item",
-                    Loggable<rerun::datatypes::TextLogColumn>::arrow_datatype(),
+                    Loggable<rerun::blueprint::datatypes::TextLogColumn>::arrow_datatype(),
                     false
                 )),
                 false
@@ -74,13 +74,12 @@ namespace rerun {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
                 if (element.text_log_columns.data()) {
-                    RR_RETURN_NOT_OK(
-                        Loggable<rerun::datatypes::TextLogColumn>::fill_arrow_array_builder(
-                            value_builder,
-                            element.text_log_columns.data(),
-                            element.text_log_columns.size()
-                        )
-                    );
+                    RR_RETURN_NOT_OK(Loggable<rerun::blueprint::datatypes::TextLogColumn>::
+                                         fill_arrow_array_builder(
+                                             value_builder,
+                                             element.text_log_columns.data(),
+                                             element.text_log_columns.size()
+                                         ));
                 }
             }
         }

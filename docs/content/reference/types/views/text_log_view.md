@@ -10,6 +10,9 @@ A view of a text log, for use with [`archetypes.TextLog`](https://rerun.io/docs/
 
 ### `columns`
 The columns to display in the view.
+
+* `text_log_columns`: All columns to be displayed.
+* `timeline`: What timeline the timeline column should show.
 ### `rows`
 Filter for rows to display in the view.
 

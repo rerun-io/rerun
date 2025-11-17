@@ -1,0 +1,7 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+assertion_line: 55
+expression: arch_display
+---
+text_log_columns: [{text_log_columns: [{visible: false, kind: 0}]}]
+timeline: [log_time]

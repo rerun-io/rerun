@@ -16,7 +16,7 @@ from ..._baseclasses import (
 )
 
 if TYPE_CHECKING:
-    from ... import datatypes
+    from ...blueprint import datatypes as blueprint_datatypes
 
 __all__ = ["TextLogColumnList", "TextLogColumnListArrayLike", "TextLogColumnListBatch", "TextLogColumnListLike"]
 
@@ -43,7 +43,7 @@ class TextLogColumnList:
         # You can define your own __init__ function as a member of TextLogColumnListExt in text_log_column_list_ext.py
         self.__attrs_init__(text_log_columns=text_log_columns)
 
-    text_log_columns: list[datatypes.TextLogColumn] = field()
+    text_log_columns: list[blueprint_datatypes.TextLogColumn] = field()
     # All columns to be displayed.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -68,19 +68,8 @@ class TextLogColumnListBatch(BaseBatch[TextLogColumnListArrayLike]):
                 pa.field(
                     "item",
                     pa.struct([
-                        pa.field(
-                            "kind",
-                            pa.dense_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("Timeline", pa.utf8(), nullable=False, metadata={}),
-                                pa.field("EntityPath", pa.null(), nullable=True, metadata={}),
-                                pa.field("LogLevel", pa.null(), nullable=True, metadata={}),
-                                pa.field("Body", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=True,
-                            metadata={},
-                        ),
                         pa.field("visible", pa.bool_(), nullable=False, metadata={}),
+                        pa.field("kind", pa.uint8(), nullable=False, metadata={}),
                     ]),
                     nullable=False,
                     metadata={},

@@ -6,6 +6,10 @@ mod filter_by_range;
 mod filter_is_not_null;
 mod selected_columns;
 mod tensor_dimension_index_slider;
+mod text_log_column;
+mod text_log_column_ext;
+mod text_log_column_kind;
+mod text_log_column_kind_ext;
 mod text_log_column_list;
 mod text_log_level_list;
 
@@ -14,5 +18,7 @@ pub use self::filter_by_range::FilterByRange;
 pub use self::filter_is_not_null::FilterIsNotNull;
 pub use self::selected_columns::SelectedColumns;
 pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;
+pub use self::text_log_column::TextLogColumn;
+pub use self::text_log_column_kind::TextLogColumnKind;
 pub use self::text_log_column_list::TextLogColumnList;
 pub use self::text_log_level_list::TextLogLevelList;

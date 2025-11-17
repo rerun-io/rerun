@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../../collection.hpp"
-#include "../../datatypes/text_log_column.hpp"
 #include "../../result.hpp"
+#include "text_log_column.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -24,16 +24,18 @@ namespace rerun::blueprint::datatypes {
     ///
     struct TextLogColumnList {
         /// All columns to be displayed.
-        rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns;
+        rerun::Collection<rerun::blueprint::datatypes::TextLogColumn> text_log_columns;
 
       public:
         TextLogColumnList() = default;
 
-        TextLogColumnList(rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns_)
+        TextLogColumnList(
+            rerun::Collection<rerun::blueprint::datatypes::TextLogColumn> text_log_columns_
+        )
             : text_log_columns(std::move(text_log_columns_)) {}
 
         TextLogColumnList& operator=(
-            rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns_
+            rerun::Collection<rerun::blueprint::datatypes::TextLogColumn> text_log_columns_
         ) {
             text_log_columns = std::move(text_log_columns_);
             return *this;

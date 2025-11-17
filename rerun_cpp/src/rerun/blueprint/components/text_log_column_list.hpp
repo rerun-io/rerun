@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "../../blueprint/datatypes/text_log_column.hpp"
 #include "../../blueprint/datatypes/text_log_column_list.hpp"
 #include "../../collection.hpp"
-#include "../../datatypes/text_log_column.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -34,11 +34,13 @@ namespace rerun::blueprint::components {
             return *this;
         }
 
-        TextLogColumnList(rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns_)
+        TextLogColumnList(
+            rerun::Collection<rerun::blueprint::datatypes::TextLogColumn> text_log_columns_
+        )
             : text_log_columns(std::move(text_log_columns_)) {}
 
         TextLogColumnList& operator=(
-            rerun::Collection<rerun::datatypes::TextLogColumn> text_log_columns_
+            rerun::Collection<rerun::blueprint::datatypes::TextLogColumn> text_log_columns_
         ) {
             text_log_columns = std::move(text_log_columns_);
             return *this;

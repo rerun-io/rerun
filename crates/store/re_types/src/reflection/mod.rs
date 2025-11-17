@@ -4007,13 +4007,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "text_log_columns",
-                    display_name: "Text log columns",
-                    component_type: "rerun.blueprint.components.TextLogColumnList".into(),
-                    docstring_md: "All columns to be displayed.",
-                    is_required: false,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "text_log_columns",
+                        display_name: "Text log columns",
+                        component_type: "rerun.blueprint.components.TextLogColumnList".into(),
+                        docstring_md: "All columns to be displayed.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "timeline",
+                        display_name: "Timeline",
+                        component_type: "rerun.blueprint.components.TimelineName".into(),
+                        docstring_md: "What timeline the timeline column should show.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

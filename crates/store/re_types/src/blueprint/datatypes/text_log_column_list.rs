@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TextLogColumnList {
     /// All columns to be displayed.
-    pub text_log_columns: Vec<crate::datatypes::TextLogColumn>,
+    pub text_log_columns: Vec<crate::blueprint::datatypes::TextLogColumn>,
 }
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumnList);
@@ -40,7 +40,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
             "text_log_columns",
             DataType::List(std::sync::Arc::new(Field::new(
                 "item",
-                <crate::datatypes::TextLogColumn>::arrow_datatype(),
+                <crate::blueprint::datatypes::TextLogColumn>::arrow_datatype(),
                 false,
             ))),
             false,
@@ -61,7 +61,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                 "text_log_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::TextLogColumn>::arrow_datatype(),
+                    <crate::blueprint::datatypes::TextLogColumn>::arrow_datatype(),
                     false,
                 ))),
                 false,
@@ -104,13 +104,13 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new(
                                 "item",
-                                <crate::datatypes::TextLogColumn>::arrow_datatype(),
+                                <crate::blueprint::datatypes::TextLogColumn>::arrow_datatype(),
                                 false,
                             )),
                             offsets,
                             {
                                 _ = text_log_columns_inner_validity;
-                                crate::datatypes::TextLogColumn::to_arrow_opt(
+                                crate::blueprint::datatypes::TextLogColumn::to_arrow_opt(
                                     text_log_columns_inner_data.into_iter().map(Some),
                                 )?
                             },
@@ -167,7 +167,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::TextLogColumn>::arrow_datatype(),
+                                    <crate::blueprint::datatypes::TextLogColumn>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -181,50 +181,43 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::TextLogColumn::from_arrow_opt(
-                                        arrow_data_inner,
-                                    )
-                                    .with_context(
-                                        "rerun.blueprint.datatypes.TextLogColumnList#text_log_columns",
-                                    )?
-                                    .into_iter()
-                                    .collect::<Vec<_>>()
+                                crate::blueprint::datatypes::TextLogColumn::from_arrow_opt(
+                                    arrow_data_inner,
+                                )
+                                .with_context(
+                                    "rerun.blueprint.datatypes.TextLogColumnList#text_log_columns",
+                                )?
+                                .into_iter()
+                                .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                    offsets.windows(2),
-                                    arrow_data.nulls(),
-                                )
+                            ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
                                 .map(|elem| {
-                                    elem
-                                        .map(|window| {
-                                            let start = window[0] as usize;
-                                            let end = window[1] as usize;
-                                            if arrow_data_inner.len() < end {
-                                                return Err(
-                                                    DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                    elem.map(|window| {
+                                        let start = window[0] as usize;
+                                        let end = window[1] as usize;
+                                        if arrow_data_inner.len() < end {
+                                            return Err(DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ));
+                                        }
 
-                                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start..end)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default)
-                                                .collect();
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data =
+                                            unsafe { arrow_data_inner.get_unchecked(start..end) };
+                                        let data = data
+                                            .iter()
+                                            .cloned()
+                                            .map(Option::unwrap_or_default)
+                                            .collect();
+                                        Ok(data)
+                                    })
+                                    .transpose()
                                 })
                                 .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 ZipValidity::new_with_validity(
@@ -250,7 +243,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
     }
 }
 
-impl<I: Into<crate::datatypes::TextLogColumn>, T: IntoIterator<Item = I>> From<T>
+impl<I: Into<crate::blueprint::datatypes::TextLogColumn>, T: IntoIterator<Item = I>> From<T>
     for TextLogColumnList
 {
     fn from(v: T) -> Self {
@@ -268,6 +261,6 @@ impl ::re_byte_size::SizeBytes for TextLogColumnList {
 
     #[inline]
     fn is_pod() -> bool {
-        <Vec<crate::datatypes::TextLogColumn>>::is_pod()
+        <Vec<crate::blueprint::datatypes::TextLogColumn>>::is_pod()
     }
 }

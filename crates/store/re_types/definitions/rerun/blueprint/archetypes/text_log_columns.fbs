@@ -8,6 +8,9 @@ table TextLogColumns (
   // --- Optional ---
 
   /// All columns to be displayed.
-  text_log_columns: rerun.blueprint.components.TextLogColumnList ("attr.rerun.component_optional", order: 100);
+  text_log_columns: rerun.blueprint.components.TextLogColumnList ("attr.rerun.component_optional", order: 1000);
+
+  /// What timeline the timeline column should show.
+  timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", order: 2000);
 }
 

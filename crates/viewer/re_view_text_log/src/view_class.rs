@@ -31,7 +31,7 @@ pub struct TextViewState {
 
     seen_levels: BTreeSet<String>,
 
-    last_columns: Vec<datatypes::TextLogColumnKind>,
+    last_columns: Vec<bp_datatypes::TextLogColumnKind>,
 }
 
 impl ViewState for TextViewState {
@@ -78,17 +78,15 @@ Filter message types and toggle column visibility in a selection panel.",
     ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_fallback_provider(
             TextLogColumns::descriptor_text_log_columns().component,
-            |ctx| {
+            |_ctx| {
                 let text_log_columns = [
-                    datatypes::TextLogColumnKind::Timeline(
-                        ctx.viewer_ctx().time_ctrl.timeline().name().as_str().into(),
-                    ),
-                    datatypes::TextLogColumnKind::EntityPath,
-                    datatypes::TextLogColumnKind::LogLevel,
-                    datatypes::TextLogColumnKind::Body,
+                    bp_datatypes::TextLogColumnKind::Timeline,
+                    bp_datatypes::TextLogColumnKind::EntityPath,
+                    bp_datatypes::TextLogColumnKind::LogLevel,
+                    bp_datatypes::TextLogColumnKind::Body,
                 ]
                 .into_iter()
-                .map(|kind| datatypes::TextLogColumn {
+                .map(|kind| bp_datatypes::TextLogColumn {
                     kind,
                     visible: true.into(),
                 })
@@ -202,12 +200,19 @@ Filter message types and toggle column visibility in a selection panel.",
             &view_ctx,
             TextLogColumns::descriptor_text_log_columns().component,
         )?;
+
+        let column_timeline = columns_property
+            .component_or_fallback::<re_types::blueprint::components::TimelineName>(
+                &view_ctx,
+                TextLogColumns::descriptor_timeline().component,
+            )?
+            .into();
         let columns: Vec<_> = columns_list
             .0
             .text_log_columns
             .iter()
             .filter(|col| col.visible.into())
-            .map(|col| col.kind.clone())
+            .map(|col| col.kind)
             .collect();
 
         let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
@@ -267,6 +272,7 @@ Filter message types and toggle column visibility in a selection panel.",
                         reset_column_widths,
                         &entries,
                         scroll_to_row,
+                        column_timeline,
                     );
                 })
             })
@@ -282,14 +288,16 @@ Filter message types and toggle column visibility in a selection panel.",
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
 /// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
 /// scroll in terms of actual points.
+#[expect(clippy::too_many_arguments)]
 fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &TextViewState,
-    columns: &[datatypes::TextLogColumnKind],
+    columns: &[bp_datatypes::TextLogColumnKind],
     reset_column_widths: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
+    timeline: TimelineName,
 ) {
     let tokens = ui.tokens();
     let table_style = re_ui::TableStyle::Dense;
@@ -318,14 +326,14 @@ fn table_ui(
 
     for col in columns {
         match col {
-            datatypes::TextLogColumnKind::Timeline(_)
-            | datatypes::TextLogColumnKind::EntityPath => {
+            bp_datatypes::TextLogColumnKind::Timeline
+            | bp_datatypes::TextLogColumnKind::EntityPath => {
                 table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
             }
-            datatypes::TextLogColumnKind::LogLevel => {
+            bp_datatypes::TextLogColumnKind::LogLevel => {
                 table_builder = table_builder.column(Column::auto().at_least(30.0));
             }
-            datatypes::TextLogColumnKind::Body => {
+            bp_datatypes::TextLogColumnKind::Body => {
                 table_builder = table_builder.column(Column::remainder().at_least(100.0));
             }
         }
@@ -335,7 +343,7 @@ fn table_ui(
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             for c in columns {
-                header.col(|ui| column_name_ui(ctx, ui, c));
+                header.col(|ui| column_name_ui(ui, c));
             }
         })
         .body(|mut body| {
@@ -354,8 +362,7 @@ fn table_ui(
                 for col in columns {
                     row.col(|ui| {
                         match col {
-                            datatypes::TextLogColumnKind::Timeline(name) => {
-                                let timeline = TimelineName::new(name);
+                            bp_datatypes::TextLogColumnKind::Timeline => {
                                 let row_time = entry
                                     .timepoint
                                     .get(&timeline)
@@ -380,7 +387,7 @@ fn table_ui(
                                     }
                                 }
                             }
-                            datatypes::TextLogColumnKind::EntityPath => {
+                            bp_datatypes::TextLogColumnKind::EntityPath => {
                                 item_ui::entity_path_button(
                                     ctx,
                                     &query,
@@ -390,14 +397,14 @@ fn table_ui(
                                     &entry.entity_path,
                                 );
                             }
-                            datatypes::TextLogColumnKind::LogLevel => {
+                            bp_datatypes::TextLogColumnKind::LogLevel => {
                                 if let Some(lvl) = &entry.level {
                                     ui.label(level_to_rich_text(ui, lvl));
                                 } else {
                                     ui.label("-");
                                 }
                             }
-                            datatypes::TextLogColumnKind::Body => {
+                            bp_datatypes::TextLogColumnKind::Body => {
                                 let mut text = egui::RichText::new(entry.body.as_str());
 
                                 if state.monospace {
@@ -426,19 +433,8 @@ fn table_ui(
     }
 }
 
-fn column_name_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    column: &datatypes::TextLogColumnKind,
-) {
-    match &column {
-        datatypes::TextLogColumnKind::Timeline(name) => {
-            item_ui::timeline_button(ctx, ui, &TimelineName::new(name));
-        }
-        _ => {
-            ui.strong(column.kind_name());
-        }
-    }
+fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) {
+    ui.strong(column.kind_name());
 }
 
 // We need this to be a custom ui to bew able to use the view state to get seen text log levels. This could potentially be avoided if we could add component ui's from this crate.

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from attrs import define, field
 
@@ -14,6 +14,9 @@ from ..._baseclasses import (
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ... import datatypes
 
 __all__ = ["TextLogColumns"]
 
@@ -26,7 +29,9 @@ class TextLogColumns(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, text_log_columns: blueprint_datatypes.TextLogColumnListLike) -> None:
+    def __init__(
+        self: Any, text_log_columns: blueprint_datatypes.TextLogColumnListLike, timeline: datatypes.Utf8Like
+    ) -> None:
         """
         Create a new instance of the TextLogColumns archetype.
 
@@ -34,12 +39,14 @@ class TextLogColumns(Archetype):
         ----------
         text_log_columns:
             All columns to be displayed.
+        timeline:
+            What timeline the timeline column should show.
 
         """
 
         # You can define your own __init__ function as a member of TextLogColumnsExt in text_log_columns_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(text_log_columns=text_log_columns)
+            self.__attrs_init__(text_log_columns=text_log_columns, timeline=timeline)
             return
         self.__attrs_clear__()
 
@@ -47,6 +54,7 @@ class TextLogColumns(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             text_log_columns=None,
+            timeline=None,
         )
 
     @classmethod
@@ -62,6 +70,7 @@ class TextLogColumns(Archetype):
         *,
         clear_unset: bool = False,
         text_log_columns: blueprint_datatypes.TextLogColumnListLike | None = None,
+        timeline: datatypes.Utf8Like | None = None,
     ) -> TextLogColumns:
         """
         Update only some specific fields of a `TextLogColumns`.
@@ -72,6 +81,8 @@ class TextLogColumns(Archetype):
             If true, all unspecified fields will be explicitly cleared.
         text_log_columns:
             All columns to be displayed.
+        timeline:
+            What timeline the timeline column should show.
 
         """
 
@@ -79,6 +90,7 @@ class TextLogColumns(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "text_log_columns": text_log_columns,
+                "timeline": timeline,
             }
 
             if clear_unset:
@@ -101,6 +113,15 @@ class TextLogColumns(Archetype):
         converter=blueprint_components.TextLogColumnListBatch._converter,  # type: ignore[misc]
     )
     # All columns to be displayed.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    timeline: blueprint_components.TimelineNameBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.TimelineNameBatch._converter,  # type: ignore[misc]
+    )
+    # What timeline the timeline column should show.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/text_log_column_list.hpp"
+#include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -23,6 +24,9 @@ namespace rerun::blueprint::archetypes {
         /// All columns to be displayed.
         std::optional<ComponentBatch> text_log_columns;
 
+        /// What timeline the timeline column should show.
+        std::optional<ComponentBatch> timeline;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TextLogColumns";
@@ -32,6 +36,11 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "TextLogColumns:text_log_columns",
             Loggable<rerun::blueprint::components::TextLogColumnList>::ComponentType
         );
+        /// `ComponentDescriptor` for the `timeline` field.
+        static constexpr auto Descriptor_timeline = ComponentDescriptor(
+            ArchetypeName, "TextLogColumns:timeline",
+            Loggable<rerun::blueprint::components::TimelineName>::ComponentType
+        );
 
       public:
         TextLogColumns() = default;
@@ -40,11 +49,16 @@ namespace rerun::blueprint::archetypes {
         TextLogColumns& operator=(const TextLogColumns& other) = default;
         TextLogColumns& operator=(TextLogColumns&& other) = default;
 
-        explicit TextLogColumns(rerun::blueprint::components::TextLogColumnList _text_log_columns)
+        explicit TextLogColumns(
+            rerun::blueprint::components::TextLogColumnList _text_log_columns,
+            rerun::blueprint::components::TimelineName _timeline
+        )
             : text_log_columns(ComponentBatch::from_loggable(
                                    std::move(_text_log_columns), Descriptor_text_log_columns
               )
-                                   .value_or_throw()) {}
+                                   .value_or_throw()),
+              timeline(ComponentBatch::from_loggable(std::move(_timeline), Descriptor_timeline)
+                           .value_or_throw()) {}
 
         /// Update only some specific fields of a `TextLogColumns`.
         static TextLogColumns update_fields() {
@@ -61,6 +75,14 @@ namespace rerun::blueprint::archetypes {
             text_log_columns =
                 ComponentBatch::from_loggable(_text_log_columns, Descriptor_text_log_columns)
                     .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// What timeline the timeline column should show.
+        TextLogColumns with_timeline(const rerun::blueprint::components::TimelineName& _timeline
+        ) && {
+            timeline =
+                ComponentBatch::from_loggable(_timeline, Descriptor_timeline).value_or_throw();
             return std::move(*this);
         }
 
