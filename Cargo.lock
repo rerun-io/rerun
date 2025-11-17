@@ -3458,6 +3458,7 @@ dependencies = [
 [[package]]
 name = "egui_table"
 version = "0.5.0"
+source = "git+https://github.com/rerun-io/egui_table?branch=lucas%2Fadd-row-ui#44287f89038718575a541c97fd204439a8524362"
 dependencies = [
  "egui",
  "serde",

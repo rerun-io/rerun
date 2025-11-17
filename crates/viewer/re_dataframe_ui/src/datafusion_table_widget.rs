@@ -7,9 +7,10 @@ use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
 
-use re_format::format_uint;
+use re_format::{format_plural_s, format_uint};
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_ui::egui_ext::response_ext::ResponseExt;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
@@ -745,49 +746,58 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 
     fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
-        let has_context_menu =
-            self.blueprint.partition_links.is_some() || self.blueprint.entry_links.is_some();
-        ui.response().context_menu(|ui| {
-            let selection = TableSelectionState::load(ui.ctx(), self.session_id);
+        let has_context_menu = self.blueprint.partition_links.is_some();
+        if has_context_menu {
+            ui.response().container_context_menu(|ui| {
+                let selection = TableSelectionState::load(ui.ctx(), self.session_id);
 
-            let mut selected_items = selection.selected_rows.clone();
-            if selected_items.is_empty() {
-                selected_items.insert(row_nr);
-            }
+                let mut selected_items = selection.selected_rows.clone();
+                if !selected_items.contains(&row_nr) {
+                    // If we right-click on a row that isn't part of the selection,
+                    // the context menu should be only for that right-clicked row.
+                    selected_items.clear();
+                };
+                if selected_items.is_empty() {
+                    selected_items.insert(row_nr);
+                }
 
-            if let Some(partition_links_spec) = &self.blueprint.partition_links {
-                let label = format!("Open {} partitions", selected_items.len());
-                if ui.button(label).clicked() {
-                    for row in &selected_items {
-                        if let Some((display_record_batch, batch_index)) =
-                            Self::with_row_batch(&mut self.display_record_batches, *row as usize)
-                        {
-                            let column_index = self.columns.iter().position(|col| {
-                                col.blueprint.display_name.as_ref()
-                                    == Some(&partition_links_spec.column_name)
-                            });
+                if let Some(partition_links_spec) = &self.blueprint.partition_links {
+                    let label = format!(
+                        "Open {} partition{}",
+                        selected_items.len(),
+                        format_plural_s(selected_items.len())
+                    );
+                    if ui.button(label).clicked() {
+                        for row in &selected_items {
+                            if let Some((display_record_batch, batch_index)) = Self::with_row_batch(
+                                &mut self.display_record_batches,
+                                *row as usize,
+                            ) {
+                                let column_index = self.columns.iter().position(|col| {
+                                    col.blueprint.display_name.as_ref()
+                                        == Some(&partition_links_spec.column_name)
+                                });
 
-                            if let Some(column) =
-                                column_index.and_then(|col| display_record_batch.columns().get(col))
-                            {
-                                match column {
-                                    DisplayColumn::RowId { .. } => {}
-                                    DisplayColumn::Timeline { .. } => {}
-                                    DisplayColumn::Component(col) => {
-                                        let string = col.string_value_at(batch_index);
-                                        if let Some(url) = string {
-                                            ui.ctx().open_url(OpenUrl::same_tab(url));
+                                if let Some(column) = column_index
+                                    .and_then(|col| display_record_batch.columns().get(col))
+                                {
+                                    match column {
+                                        DisplayColumn::RowId { .. } => {}
+                                        DisplayColumn::Timeline { .. } => {}
+                                        DisplayColumn::Component(col) => {
+                                            let string = col.string_value_at(batch_index);
+                                            if let Some(url) = string {
+                                                ui.ctx().open_url(OpenUrl::same_tab(url));
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                };
-            }
-
-            if let Some(entry_links_spec) = &self.blueprint.entry_links {}
-        });
+                    };
+                }
+            });
+        }
     }
 
     fn default_row_height(&self) -> f32 {

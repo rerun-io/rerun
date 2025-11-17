@@ -1,3 +1,4 @@
+use re_format::format_plural_s;
 use re_log_types::{Timestamp, TimestampFormat};
 use std::ops::Sub as _;
 
@@ -13,13 +14,7 @@ pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFor
     let duration = Timestamp::now().sub(timestamp);
     let seconds = duration.as_secs_f64() as u64;
 
-    let format_plural = |n: u64, unit: &str| {
-        if n == 1 {
-            format!("{n} {unit} ago")
-        } else {
-            format!("{n} {unit}s ago")
-        }
-    };
+    let format_plural = |n: u64, unit: &str| format!("{n} {unit}{} ago", format_plural_s(n));
 
     if seconds < 10 {
         "just now".to_owned()

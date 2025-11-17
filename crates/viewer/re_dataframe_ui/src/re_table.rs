@@ -2,11 +2,12 @@ use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, heade
 use crate::table_selection::TableSelectionState;
 use egui::text_selection::LabelSelectionState;
 use egui::{
-    Checkbox, Context, FontSelection, Id, Modifiers, NumExt, Rangef, RichText, Sense, TextWrapMode,
-    Ui, WidgetText,
+    Align, Checkbox, Context, Direction, FontSelection, Id, Layout, Modifiers, NumExt, Rangef,
+    RichText, TextWrapMode, Ui, UiBuilder, WidgetText,
 };
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
+use re_ui::egui_ext::response_ext::ResponseExt;
 use re_ui::{TableStyle, UiExt as _};
 use std::iter;
 use std::sync::Arc;
@@ -155,9 +156,21 @@ impl egui_table::TableDelegate for ReTable<'_> {
                 let show_checkbox = self.previous_selection.all_hovered
                     || self.previous_selection.hovered_row == Some(cell.row_nr);
                 if show_checkbox {
-                    let mut checked = self.selection.selected_rows.contains(&cell.row_nr);
-                    let response = ui.add(Checkbox::new(&mut checked, ()));
+                    let mut checked = self.previous_selection.selected_rows.contains(&cell.row_nr);
+                    let response = ui
+                        .new_child(
+                            UiBuilder::new().max_rect(ui.max_rect()).layout(
+                                Layout::centered_and_justified(Direction::TopDown)
+                                    .with_cross_align(Align::Min),
+                            ),
+                        )
+                        .add(Checkbox::new(&mut checked, ()));
                     if response.changed() {
+                        // HACK: If the checkbox is clicked, the row will also detect the click.
+                        // Since we want the checkbox to have a different click behavior,
+                        // undo the row click:
+                        self.selection = self.previous_selection.clone();
+
                         let mut modifiers = ui.input(|i| i.modifiers);
                         if !modifiers.shift {
                             // By default, the checkbox is like command clicking.
@@ -184,7 +197,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
     fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
         ui.set_style(self.original_style.clone());
         let response = ui.response();
-        if ui.rect_contains_pointer(response.rect) {
+        if response.container_contains_pointer() {
             self.selection.hovered_row = Some(row_nr);
         }
 
@@ -204,9 +217,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
             }
         }
 
-        let response = ui.interact(response.rect, response.id, Sense::click());
-        let response = response.interact(Sense::click());
-        if response.clicked() {
+        if response.container_clicked() {
             let modifiers = ui.input(|i| i.modifiers);
             self.selection.handle_row_click(row_nr, modifiers);
         };
