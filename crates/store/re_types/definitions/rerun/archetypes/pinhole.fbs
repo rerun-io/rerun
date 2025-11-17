@@ -58,7 +58,7 @@ table Pinhole (
   // TODO(#2641): This should specify a default-value of `RDF`
   camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", nullable, order: 3000);
 
-  // --- Visulization in 3D ---
+  // --- Visualization in 3D ---
 
   /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
   ///
