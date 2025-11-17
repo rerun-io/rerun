@@ -1,15 +1,13 @@
 #![expect(clippy::cast_possible_wrap)]
+#![expect(clippy::unwrap_used)]
 
 use std::sync::Arc;
 
-use arrow::array::{AsArray, ListArray};
-use re_chunk::{
-    ArrowArray, Chunk, ChunkId, TimeColumn, TimelineName,
-    external::arrow::{
-        array::{Int32Builder, ListBuilder, StringBuilder},
-        datatypes::{DataType, Field},
-    },
+use arrow::{
+    array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder},
+    datatypes::{DataType, Field},
 };
+use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
 use re_sdk::lenses::{Lens, Lenses, Op};
 use re_types::{ComponentDescriptor, archetypes::Scalars};
 
@@ -18,7 +16,10 @@ fn to_list_array<T: serde::Serialize>(data: &[T], inner_field: Arc<Field>) -> Li
     use arrow::json::ReaderBuilder;
 
     let list_field = Arc::new(Field::new_list_field(DataType::List(inner_field), true));
-    let schema = Arc::new(arrow::datatypes::Schema::new(vec![list_field]));
+    let schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
+        vec![list_field],
+        Default::default(),
+    ));
 
     // Wrap each row in an object with "item" field
     let rows: Vec<_> = data
@@ -131,16 +132,18 @@ fn test_destructure_cast() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure =
-        Lens::for_input_column(re_log_types::EntityPathFilter::parse_forgiving("nullability"), "structs")
-            .output_columns_at("nullability/a", |out| {
-                out.component(
-                    Scalars::descriptor_scalars(),
-                    [Op::access_field("a"), Op::cast(DataType::Float64)],
-                )
-            })
-            .unwrap()
-            .build();
+    let destructure = Lens::for_input_column(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        "structs",
+    )
+    .output_columns_at("nullability/a", |out| {
+        out.component(
+            Scalars::descriptor_scalars(),
+            [Op::access_field("a"), Op::cast(DataType::Float64)],
+        )
+    })
+    .unwrap()
+    .build();
 
     let mut lenses = Lenses::default();
     lenses.add_lens(destructure);
@@ -161,13 +164,15 @@ fn test_destructure() {
     let original_chunk = nullability_chunk();
     println!("{original_chunk}");
 
-    let destructure =
-        Lens::for_input_column(re_log_types::EntityPathFilter::parse_forgiving("nullability"), "structs")
-            .output_columns_at("nullability/b", |out| {
-                out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
-            })
-            .unwrap()
-            .build();
+    let destructure = Lens::for_input_column(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        "structs",
+    )
+    .output_columns_at("nullability/b", |out| {
+        out.component(Scalars::descriptor_scalars(), [Op::access_field("b")])
+    })
+    .unwrap()
+    .build();
 
     let mut lenses = Lenses::default();
     lenses.add_lens(destructure);
@@ -207,14 +212,16 @@ fn test_inner_count() {
         Ok(builder.finish())
     };
 
-    let count =
-        Lens::for_input_column(re_log_types::EntityPathFilter::parse_forgiving("nullability"), "strings")
-            .output_columns(|out| {
-                out.component(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
-                    .component(ComponentDescriptor::partial("original"), [])
-            })
-            .unwrap()
-            .build();
+    let count = Lens::for_input_column(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        "strings",
+    )
+    .output_columns(|out| {
+        out.component(ComponentDescriptor::partial("counts"), [Op::func(count_fn)])
+            .component(ComponentDescriptor::partial("original"), [])
+    })
+    .unwrap()
+    .build();
 
     let mut lenses = Lenses::default();
     lenses.add_lens(count);
@@ -245,20 +252,22 @@ fn test_static_chunk_creation() {
         .append_value("static_metadata_b");
     metadata_builder_b.append(true);
 
-    let static_lens =
-        Lens::for_input_column(re_log_types::EntityPathFilter::parse_forgiving("nullability"), "strings")
-            .output_static_columns_at("nullability/static", |out| {
-                out.component(
-                    ComponentDescriptor::partial("static_metadata_a"),
-                    [Op::constant(metadata_builder_a.finish())],
-                )
-                .component(
-                    ComponentDescriptor::partial("static_metadata_b"),
-                    [Op::constant(metadata_builder_b.finish())],
-                )
-            })
-            .unwrap()
-            .build();
+    let static_lens = Lens::for_input_column(
+        re_log_types::EntityPathFilter::parse_forgiving("nullability"),
+        "strings",
+    )
+    .output_static_columns_at("nullability/static", |out| {
+        out.component(
+            ComponentDescriptor::partial("static_metadata_a"),
+            [Op::constant(metadata_builder_a.finish())],
+        )
+        .component(
+            ComponentDescriptor::partial("static_metadata_b"),
+            [Op::constant(metadata_builder_b.finish())],
+        )
+    })
+    .unwrap()
+    .build();
 
     let mut lenses = Lenses::default();
     lenses.add_lens(static_lens);
@@ -417,8 +426,7 @@ fn test_scatter_columns() {
     // Each element is a struct with {timestamp: i64, value: String}
     let struct_list = create_test_struct_list();
 
-    let components =
-        std::iter::once((ComponentDescriptor::partial("nested_data"), struct_list));
+    let components = std::iter::once((ComponentDescriptor::partial("nested_data"), struct_list));
 
     let time_column = TimeColumn::new_sequence("tick", [1, 2, 3]);
 
@@ -518,8 +526,7 @@ fn test_scatter_columns_static() {
     // Test scatter with no existing timelines - only exploded timeline outputs
     let struct_list = create_test_struct_list();
 
-    let components =
-        std::iter::once((ComponentDescriptor::partial("nested_data"), struct_list));
+    let components = std::iter::once((ComponentDescriptor::partial("nested_data"), struct_list));
 
     // Create chunk WITHOUT any timelines
     let original_chunk = Chunk::from_auto_row_ids(

@@ -41,11 +41,10 @@ impl<S: LogSink> LensesSink<S> {
         self
     }
 
-    fn send_or_log_error(&self, store_id: StoreId, chunk: Chunk) {
+    fn send_or_log_error(&self, store_id: StoreId, chunk: &Chunk) {
         match chunk.to_arrow_msg() {
             Ok(arrow_msg) => {
-                self.sink
-                    .send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg));
+                self.sink.send(LogMsg::ArrowMsg(store_id, arrow_msg));
             }
             Err(err) => {
                 re_log::error_once!("Failed to create log message from chunk: {err}");
@@ -65,7 +64,7 @@ impl<S: LogSink> LogSink for LensesSink<S> {
                     let new_chunks = self.lenses.apply(&original_chunk);
                     for maybe_chunk in new_chunks {
                         match maybe_chunk {
-                            Ok(new_chunk) => self.send_or_log_error(store_id.clone(), new_chunk),
+                            Ok(new_chunk) => self.send_or_log_error(store_id.clone(), &new_chunk),
                             Err(partial_chunk) => {
                                 for error in partial_chunk.errors() {
                                     // TODO(grtlr): Make this even more contextualized in the future!
@@ -74,7 +73,7 @@ impl<S: LogSink> LogSink for LensesSink<S> {
                                 if let Some(chunk) = partial_chunk.take()
                                     && self.strict
                                 {
-                                    self.send_or_log_error(store_id.clone(), chunk);
+                                    self.send_or_log_error(store_id.clone(), &chunk);
                                 }
                             }
                         }

@@ -251,6 +251,14 @@ impl Lens {
 /// Also contains a list of contextualized errors that describe which columns failed.
 #[derive(Debug)]
 pub struct PartialChunk {
+    /// [`Self`] is only used in an [`Result::Err`] variant.
+    ///
+    /// We therefore box the actual payload to keep the happy path optimized.
+    inner: Box<PartialChunkInner>,
+}
+
+#[derive(Debug)]
+struct PartialChunkInner {
     /// In some cases we might not be able to produce a chunk at all.
     chunk: Option<Chunk>,
 
@@ -261,11 +269,11 @@ pub struct PartialChunk {
 impl PartialChunk {
     /// Returns the partial chunk if any and consumes `self`.
     pub fn take(self) -> Option<Chunk> {
-        self.chunk
+        self.inner.chunk
     }
 
     pub fn errors(&self) -> impl Iterator<Item = &LensError> {
-        self.errors.iter()
+        self.inner.errors.iter()
     }
 }
 
@@ -309,7 +317,7 @@ fn collect_output_times_iter<'a>(
 fn try_convert_time_column(
     timeline_name: TimelineName,
     timeline_type: TimeType,
-    list_array: ListArray,
+    list_array: &ListArray,
 ) -> Result<(TimelineName, TimeColumn), LensError> {
     if let Some(time_vals) = list_array.values().as_any().downcast_ref::<Int64Array>() {
         let time_column = re_chunk::TimeColumn::new(
@@ -321,7 +329,7 @@ fn try_convert_time_column(
     } else {
         Err(LensError::InvalidTimeColumn {
             timeline_name,
-            actual_type: format!("{}", list_array.values().data_type()),
+            actual_type: list_array.values().data_type().clone(),
         })
     }
 }
@@ -349,16 +357,20 @@ fn finalize_chunk(
                 Ok(chunk)
             } else {
                 Err(PartialChunk {
-                    chunk: Some(chunk),
-                    errors,
+                    inner: Box::new(PartialChunkInner {
+                        chunk: Some(chunk),
+                        errors,
+                    }),
                 })
             }
         }
         Err(err) => {
             errors.push(err.into());
             Err(PartialChunk {
-                chunk: None,
-                errors,
+                inner: Box::new(PartialChunkInner {
+                    chunk: None,
+                    errors,
+                }),
             })
         }
     }
@@ -398,7 +410,7 @@ impl OneToOne {
         chunk_times.extend(
             collect_output_times_iter(input, &self.times).filter_map(|result| match result {
                 Ok((timeline_name, timeline_type, list_array)) => {
-                    match try_convert_time_column(timeline_name, timeline_type, list_array) {
+                    match try_convert_time_column(timeline_name, timeline_type, &list_array) {
                         Ok(time_col) => Some(time_col),
                         Err(err) => {
                             errors.push(err);
@@ -483,18 +495,22 @@ impl OneToMany {
                 // If the first component failed, collect all errors and return
                 errors.extend(output_components.filter_map(|r| r.err()));
                 return Err(PartialChunk {
-                    chunk: None,
-                    errors,
+                    inner: Box::new(PartialChunkInner {
+                        chunk: None,
+                        errors,
+                    }),
                 });
             }
             None => {
                 return Err(PartialChunk {
-                    chunk: None,
-                    errors: vec![LensError::NoOutputColumnsProduced {
-                        input_entity: chunk.entity_path().clone(),
-                        input_component: input.descriptor.component,
-                        target_entity: entity_path.clone(),
-                    }],
+                    inner: Box::new(PartialChunkInner {
+                        chunk: None,
+                        errors: vec![LensError::NoOutputColumnsProduced {
+                            input_entity: chunk.entity_path().clone(),
+                            input_component: input.descriptor.component,
+                            target_entity: entity_path.clone(),
+                        }],
+                    }),
                 });
             }
         };
@@ -555,7 +571,7 @@ impl OneToMany {
                 Ok((timeline_name, timeline_type, list_array)) => {
                     match Explode.transform(&list_array) {
                         Ok(exploded) => {
-                            match try_convert_time_column(timeline_name, timeline_type, exploded) {
+                            match try_convert_time_column(timeline_name, timeline_type, &exploded) {
                                 Ok(time_col) => Some(time_col),
                                 Err(err) => {
                                     errors.push(err);

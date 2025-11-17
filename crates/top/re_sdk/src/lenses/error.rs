@@ -1,4 +1,5 @@
 use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
+use re_log_types::EntityPathFilter;
 
 use super::op::OpError;
 
@@ -7,10 +8,10 @@ use super::op::OpError;
 #[derive(Debug, thiserror::Error)]
 pub enum LensError {
     #[error(
-        "Lens for input component `{input_component} with entity path filter `{input_filter}` is missing output components"
+        "Lens for input component `{input_component} with entity path filter `{input_filter:?}` is missing output components"
     )]
     MissingOutputComponent {
-        input_filter: String,
+        input_filter: EntityPathFilter,
         input_component: ComponentIdentifier,
     },
 
@@ -40,10 +41,12 @@ pub enum LensError {
         source: OpError,
     },
 
-    #[error("Invalid time column type for timeline '{timeline_name}': expected List<Int64>, got {actual_type}")]
+    #[error(
+        "Invalid time column type for timeline '{timeline_name}': expected List<Int64>, got {actual_type}"
+    )]
     InvalidTimeColumn {
         timeline_name: TimelineName,
-        actual_type: String,
+        actual_type: arrow::datatypes::DataType,
     },
 
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]

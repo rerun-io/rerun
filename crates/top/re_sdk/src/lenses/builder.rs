@@ -12,6 +12,7 @@ use super::ast::OneToOne;
 use super::ast::Static;
 
 /// Builder for lenses with support for multiple output modes.
+#[must_use]
 pub struct LensBuilder {
     input: ast::InputColumn,
     outputs: Vec<ast::LensKind>,
@@ -141,6 +142,7 @@ impl LensBuilder {
 ///
 /// Each input row produces exactly one output row. Outputs inherit time columns
 /// from the input, plus any additional time columns specified.
+#[must_use]
 pub struct ColumnsBuilder {
     target_entity: ast::TargetEntity,
     components: Vec<ast::ComponentOutput>,
@@ -201,8 +203,7 @@ impl ColumnsBuilder {
             target_entity: self.target_entity,
             components: self.components.try_into().map_err(|_err| {
                 LensError::MissingOutputComponent {
-                    // TODO(grtlr): This should not use debug formatting.
-                    input_filter: format!("{:?}", input.entity_path_filter),
+                    input_filter: input.entity_path_filter.clone(),
                     input_component: input.component,
                 }
             })?,
@@ -214,6 +215,7 @@ impl ColumnsBuilder {
 /// Builder for static outputs (timeless data).
 ///
 /// Creates data that does not change over time. Static outputs have no associated time columns.
+#[must_use]
 pub struct StaticColumnsBuilder {
     target_entity: ast::TargetEntity,
     components: Vec<ast::ComponentOutput>,
@@ -250,8 +252,7 @@ impl StaticColumnsBuilder {
             target_entity: self.target_entity,
             components: self.components.try_into().map_err(|_err| {
                 LensError::MissingOutputComponent {
-                    // TODO(grtlr): This should not use debug formatting.
-                    input_filter: format!("{:?}", input.entity_path_filter),
+                    input_filter: input.entity_path_filter.clone(),
                     input_component: input.component,
                 }
             })?,
@@ -264,6 +265,7 @@ impl StaticColumnsBuilder {
 /// Each input row produces multiple output rows at the same timepoint. The timepoint
 /// is replicated/scattered across all output rows. This is useful for flattening lists
 /// or exploding batches while maintaining temporal alignment.
+#[must_use]
 pub struct ScatterColumnsBuilder {
     target_entity: ast::TargetEntity,
     components: Vec<ast::ComponentOutput>,
@@ -324,8 +326,7 @@ impl ScatterColumnsBuilder {
             target_entity: self.target_entity,
             components: self.components.try_into().map_err(|_err| {
                 LensError::MissingOutputComponent {
-                    // TODO(grtlr): This should not use debug formatting.
-                    input_filter: format!("{:?}", input.entity_path_filter),
+                    input_filter: input.entity_path_filter.clone(),
                     input_component: input.component,
                 }
             })?,
