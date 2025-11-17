@@ -78,6 +78,7 @@ pub trait HarnessExt<'h> {
     fn drag_at(&mut self, pos: egui::Pos2);
     fn hover_at(&mut self, pos: egui::Pos2);
     fn drop_at(&mut self, pos: egui::Pos2);
+    fn right_click_at(&mut self, pos: egui::Pos2);
 
     // Gets the cursor icon
     fn cursor_icon(&mut self) -> egui::CursorIcon;
@@ -344,6 +345,22 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         });
         self.remove_cursor();
         self.run_ok();
+    }
+
+    fn right_click_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Secondary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Secondary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
+        self.run();
     }
 
     fn cursor_icon(&mut self) -> egui::CursorIcon {
