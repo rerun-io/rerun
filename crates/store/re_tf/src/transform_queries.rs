@@ -128,13 +128,13 @@ fn atomic_latest_at_query_for_frame(
                     // *Something* on this row has to be non-empty & non-null!
                     // Example where this is not the case:
                     //
-                    // ┌───────────────┬─────────────┬────────────┐
-                    // │ child_frame_id│ translation │ color      │
-                    // ├───────────────┼─────────────┼────────────┤
-                    // │ ["myframe"]   │ [[1,2,3]]   │ null       │
-                    // │ null          │ null        │ 0xFF00FFFF │
-                    // │ null          │ []          │ null       │
-                    // └───────────────┴─────────────┴────────────┘
+                    // ┌────────────────┬─────────────┬────────────┐
+                    // │ child_frame_id │ translation │ color      │
+                    // ├────────────────┼─────────────┼────────────┤
+                    // │ ["myframe"]    │ [[1,2,3]]   │ null       │
+                    // │ null           │ null        │ 0xFF00FFFF │
+                    // │ null           │ []          │ null       │
+                    // └────────────────┴─────────────┴────────────┘
                     //
                     // The second row doesn't have any of the components of our atomic set.
                     // It is therefore not relevant for what we're looking for!
@@ -597,7 +597,7 @@ mod tests {
     }
 
     fn frame_condition_component() -> ComponentIdentifier {
-        // We stick witih `MyPoints` all the way and its labels happen to be compatible with frame ids (it's just utf8!)
+        // We stick with `MyPoints` all the way and its labels happen to be compatible with frame ids (it's just utf8!)
         MyPoints::descriptor_labels().component
     }
 
