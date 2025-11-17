@@ -1,3 +1,4 @@
+// This is fine, since this is only used in tests.
 #![expect(clippy::unwrap_used)]
 
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use arrow::{
 };
 
 /// Helper function to wrap an [`ArrayRef`] into a [`RecordBatch`] for easier printing.
-pub fn wrap_in_record_batch(array: ArrayRef) -> RecordBatch {
+fn wrap_in_record_batch(array: ArrayRef) -> RecordBatch {
     let schema = Arc::new(Schema::new_with_metadata(
         vec![Field::new("col", array.data_type().clone(), true)],
         Default::default(),
