@@ -432,7 +432,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
-                custom_placeholder: None,
+                custom_placeholder: Some(TimelineName::default().to_arrow()?),
                 datatype: TimelineName::arrow_datatype(),
                 verify_arrow_array: TimelineName::verify_arrow_array,
             },
