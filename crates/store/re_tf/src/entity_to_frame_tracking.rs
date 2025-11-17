@@ -1,9 +1,12 @@
-use nohash_hasher::IntSet;
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_types::TransformFrameIdHash;
 use std::collections::BTreeMap;
+
+use itertools::Itertools as _;
+use nohash_hasher::IntSet;
 use std::ops::Range;
 use vec1::smallvec_v1::SmallVec1;
+
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_types::TransformFrameIdHash;
 
 /// Datastructures for tracking which transform relationships are specified by any moment in time for a given entity.
 /// Transform relationships are keyed by their child frame, thus the only thing we ever track is the [`TransformFrameIdHash`] of child frames.
@@ -13,7 +16,7 @@ use vec1::smallvec_v1::SmallVec1;
 ///
 /// The list of frame id hashes can never be empty.
 /// If a clear or empty array is logged, we insert the implicit frame again since this is what we always fall back to.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct EntityToFrameOverTime {
     /// Tracks start times of the ranges over which a set of frames is affected.
     ///
@@ -70,7 +73,23 @@ impl EntityToFrameOverTime {
             .next()
             .map_or(TimeInt::MAX, |(t, _)| *t);
 
-        self.range_starts.insert(start_time, new_frames);
+        match self.range_starts.entry(start_time) {
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                entry.insert(new_frames);
+            }
+            std::collections::btree_map::Entry::Occupied(mut entry) => {
+                // Special case: there was already a range exactly at that start time.
+                // We have to merge the incoming list with the existing one.
+                let old_entries = entry.get_mut().iter();
+                let new_unique_list = old_entries
+                    .chain(new_frames.iter())
+                    .unique()
+                    .copied()
+                    .collect_vec();
+                *entry.get_mut() = SmallVec1::try_from_vec(new_unique_list)
+                    .expect("We always add at least one element.");
+            }
+        }
 
         (start_time..split_range_end, split_range_frames.clone())
     }
@@ -126,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_range_start() {
+    fn insert_range_start() {
         let entity_path = EntityPath::parse_forgiving("/my/path");
         let fallback_frame = TransformFrameIdHash::from_entity_path(&entity_path);
         let mut affected_frames = EntityToFrameOverTime::new(&entity_path);
@@ -170,7 +189,7 @@ mod tests {
             )
         );
 
-        // Override the one in between.
+        // Extend the one in between.
         assert_eq!(
             affected_frames.insert_range_start(
                 TimeInt::new_temporal(50),
@@ -184,10 +203,11 @@ mod tests {
     }
 
     #[test]
-    fn test_iterating_affected_frame_ranges() {
+    fn iterating_affected_frame_ranges() {
         let entity_path = EntityPath::parse_forgiving("/my/path");
         let mut affected_frames = EntityToFrameOverTime::new(&entity_path);
 
+        // Static time is always present.
         assert_eq!(
             affected_frames
                 .iter_ranges(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
@@ -285,6 +305,46 @@ mod tests {
                 .into_iter()
                 .cloned()
                 .collect_vec()
+        );
+    }
+
+    #[test]
+    fn extend_existing_range() {
+        let entity_path = EntityPath::parse_forgiving("/my/path");
+        let mut affected_frames = EntityToFrameOverTime::new(&entity_path);
+
+        affected_frames.insert_range_start(
+            TimeInt::new_temporal(0),
+            make_smallvec(&[TransformFrameIdHash::from_str("frame0")]),
+        );
+        assert_eq!(
+            affected_frames.insert_range_start(
+                TimeInt::new_temporal(0),
+                make_smallvec(&[TransformFrameIdHash::from_str("frame1")]),
+            ),
+            (
+                TimeInt::new_temporal(0)..TimeInt::MAX,
+                make_smallvec(&[TransformFrameIdHash::from_str("frame0")])
+            )
+        );
+
+        assert_eq!(
+            affected_frames
+                .iter_ranges(AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX))
+                .collect_vec(),
+            vec![
+                (
+                    TimeInt::STATIC..TimeInt::new_temporal(0),
+                    &make_smallvec(&[TransformFrameIdHash::from_entity_path(&entity_path)]),
+                ),
+                (
+                    TimeInt::new_temporal(0)..TimeInt::MAX,
+                    &make_smallvec(&[
+                        TransformFrameIdHash::from_str("frame0"),
+                        TransformFrameIdHash::from_str("frame1")
+                    ]),
+                )
+            ]
         );
     }
 }
