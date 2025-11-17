@@ -434,7 +434,7 @@ fn table_ui(
 }
 
 fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) {
-    ui.strong(column.kind_name());
+    ui.strong(column.name());
 }
 
 // We need this to be a custom ui to bew able to use the view state to get seen text log levels. This could potentially be avoided if we could add component ui's from this crate.

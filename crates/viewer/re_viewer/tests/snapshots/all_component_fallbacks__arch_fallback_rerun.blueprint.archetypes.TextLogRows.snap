@@ -2,4 +2,4 @@
 source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-log_levels: [{log_levels: []}]
+filter_by_log_level: [{log_levels: []}]

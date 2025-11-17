@@ -23,7 +23,7 @@ pub fn edit_or_view_columns_multiline(
             .text_log_columns
             .iter()
             .filter(|column| column.visible.into())
-            .map(|column| ui.strong(column.kind.kind_name()))
+            .map(|column| ui.strong(column.kind.name()))
             .reduce(|a, b| a.union(b))
             .unwrap_or_else(|| ui.weak("Empty")),
         MaybeMutRef::MutRef(column_list) => {
@@ -66,7 +66,7 @@ pub fn edit_or_view_columns_multiline(
                                     ui,
                                     |ui| {
                                         let column: &mut TextLogColumnKind = &mut col.kind;
-                                        let name = column.kind_name();
+                                        let name = column.name();
                                         if visible {
                                             ui.strong(name);
                                         } else {

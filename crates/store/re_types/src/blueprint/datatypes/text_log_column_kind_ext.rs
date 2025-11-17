@@ -1,8 +1,8 @@
 use super::TextLogColumnKind;
 
 impl TextLogColumnKind {
-    /// The name for what type of column this is.
-    pub fn kind_name(&self) -> &'static str {
+    /// The name for this kind of column.
+    pub fn name(&self) -> &'static str {
         match self {
             Self::Timeline => "Timeline",
             Self::EntityPath => "Entity path",
