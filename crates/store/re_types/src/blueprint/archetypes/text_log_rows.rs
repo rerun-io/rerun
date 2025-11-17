@@ -27,18 +27,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct TextLogRows {
     /// Log levels to display.
-    pub log_levels: Option<SerializedComponentBatch>,
+    pub filter_by_log_level: Option<SerializedComponentBatch>,
 }
 
 impl TextLogRows {
-    /// Returns the [`ComponentDescriptor`] for [`Self::log_levels`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::filter_by_log_level`].
     ///
     /// The corresponding component is [`crate::blueprint::components::TextLogLevelList`].
     #[inline]
-    pub fn descriptor_log_levels() -> ComponentDescriptor {
+    pub fn descriptor_filter_by_log_level() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
-            component: "TextLogRows:log_levels".into(),
+            component: "TextLogRows:filter_by_log_level".into(),
             component_type: Some("rerun.blueprint.components.TextLogLevelList".into()),
         }
     }
@@ -51,10 +51,10 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]
     std::sync::LazyLock::new(|| []);
 
 static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TextLogRows::descriptor_log_levels()]);
+    std::sync::LazyLock::new(|| [TextLogRows::descriptor_filter_by_log_level()]);
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TextLogRows::descriptor_log_levels()]);
+    std::sync::LazyLock::new(|| [TextLogRows::descriptor_filter_by_log_level()]);
 
 impl TextLogRows {
     /// The total number of components in the archetype: 0 required, 0 recommended, 1 optional
@@ -99,12 +99,14 @@ impl ::re_types_core::Archetype for TextLogRows {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let log_levels = arrays_by_descr
-            .get(&Self::descriptor_log_levels())
+        let filter_by_log_level = arrays_by_descr
+            .get(&Self::descriptor_filter_by_log_level())
             .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_log_levels())
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_filter_by_log_level())
             });
-        Ok(Self { log_levels })
+        Ok(Self {
+            filter_by_log_level,
+        })
     }
 }
 
@@ -112,7 +114,9 @@ impl ::re_types_core::AsComponents for TextLogRows {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.log_levels.clone()).flatten().collect()
+        std::iter::once(self.filter_by_log_level.clone())
+            .flatten()
+            .collect()
     }
 }
 
@@ -121,9 +125,14 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogRows {}
 impl TextLogRows {
     /// Create a new `TextLogRows`.
     #[inline]
-    pub fn new(log_levels: impl Into<crate::blueprint::components::TextLogLevelList>) -> Self {
+    pub fn new(
+        filter_by_log_level: impl Into<crate::blueprint::components::TextLogLevelList>,
+    ) -> Self {
         Self {
-            log_levels: try_serialize_field(Self::descriptor_log_levels(), [log_levels]),
+            filter_by_log_level: try_serialize_field(
+                Self::descriptor_filter_by_log_level(),
+                [filter_by_log_level],
+            ),
         }
     }
 
@@ -138,20 +147,23 @@ impl TextLogRows {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            log_levels: Some(SerializedComponentBatch::new(
+            filter_by_log_level: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::TextLogLevelList::arrow_empty(),
-                Self::descriptor_log_levels(),
+                Self::descriptor_filter_by_log_level(),
             )),
         }
     }
 
     /// Log levels to display.
     #[inline]
-    pub fn with_log_levels(
+    pub fn with_filter_by_log_level(
         mut self,
-        log_levels: impl Into<crate::blueprint::components::TextLogLevelList>,
+        filter_by_log_level: impl Into<crate::blueprint::components::TextLogLevelList>,
     ) -> Self {
-        self.log_levels = try_serialize_field(Self::descriptor_log_levels(), [log_levels]);
+        self.filter_by_log_level = try_serialize_field(
+            Self::descriptor_filter_by_log_level(),
+            [filter_by_log_level],
+        );
         self
     }
 }
@@ -159,6 +171,6 @@ impl TextLogRows {
 impl ::re_byte_size::SizeBytes for TextLogRows {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.log_levels.heap_size_bytes()
+        self.filter_by_log_level.heap_size_bytes()
     }
 }

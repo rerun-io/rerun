@@ -99,7 +99,7 @@ Filter message types and toggle column visibility in a selection panel.",
         );
 
         system_registry.register_fallback_provider(
-            TextLogRows::descriptor_log_levels().component,
+            TextLogRows::descriptor_filter_by_log_level().component,
             |ctx| {
                 let Ok(state) = ctx.view_state().downcast_ref::<TextViewState>() else {
                     re_log::error_once!(
@@ -212,7 +212,7 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
             &view_ctx,
-            TextLogRows::descriptor_log_levels().component,
+            TextLogRows::descriptor_filter_by_log_level().component,
         )?;
         let levels = &levels_list.0.log_levels;
 
@@ -441,7 +441,7 @@ fn column_name_ui(
     }
 }
 
-// We need this to be a custom ui to bew able to use the view state to get seen text log levels.
+// We need this to be a custom ui to bew able to use the view state to get seen text log levels. This could potentially be avoided if we could add component ui's from this crate.
 fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let property = ViewProperty::from_archetype::<TextLogRows>(
         ctx.blueprint_db(),
@@ -465,7 +465,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
             if field
                 .component_descriptor(property.archetype_name)
                 .component
-                == TextLogRows::descriptor_log_levels().component
+                == TextLogRows::descriptor_filter_by_log_level().component
             {
                 re_view::view_property_component_ui_custom(
                     &query_ctx,
@@ -482,7 +482,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
 
                         let Ok(levels_list) = property.component_or_fallback::<TextLogLevelList>(
                             ctx,
-                            TextLogRows::descriptor_log_levels().component,
+                            TextLogRows::descriptor_filter_by_log_level().component,
                         ) else {
                             ui.error_label("Failed to query text log levels component");
                             return;
@@ -521,7 +521,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
 
                             property.save_blueprint_component(
                                 ctx.viewer_ctx,
-                                &TextLogRows::descriptor_log_levels(),
+                                &TextLogRows::descriptor_filter_by_log_level(),
                                 &TextLogLevelList(bp_datatypes::TextLogLevelList { log_levels }),
                             );
                         }
@@ -539,15 +539,19 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
         }
     };
 
-    ui.list_item()
-        .interactive(false)
-        .show_hierarchical_with_children(
-            ui,
-            ui.make_persistent_id(property.archetype_name.full_name()),
-            true,
-            LabelContent::new(reflection.display_name),
-            sub_prop_ui,
-        );
+    if reflection.fields.len() == 1 {
+        sub_prop_ui(ui);
+    } else {
+        ui.list_item()
+            .interactive(false)
+            .show_hierarchical_with_children(
+                ui,
+                ui.make_persistent_id(property.archetype_name.full_name()),
+                true,
+                LabelContent::new(reflection.display_name),
+                sub_prop_ui,
+            );
+    }
 }
 
 fn calc_row_height(tokens: &DesignTokens, table_style: re_ui::TableStyle, entry: &Entry) -> f32 {

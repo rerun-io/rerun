@@ -4024,8 +4024,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
-                    name: "log_levels",
-                    display_name: "Log levels",
+                    name: "filter_by_log_level",
+                    display_name: "Filter by log level",
                     component_type: "rerun.blueprint.components.TextLogLevelList".into(),
                     docstring_md: "Log levels to display.",
                     is_required: false,

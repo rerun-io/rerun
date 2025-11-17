@@ -21,15 +21,15 @@ namespace rerun::blueprint::archetypes {
     ///
     struct TextLogRows {
         /// Log levels to display.
-        std::optional<ComponentBatch> log_levels;
+        std::optional<ComponentBatch> filter_by_log_level;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.TextLogRows";
 
-        /// `ComponentDescriptor` for the `log_levels` field.
-        static constexpr auto Descriptor_log_levels = ComponentDescriptor(
-            ArchetypeName, "TextLogRows:log_levels",
+        /// `ComponentDescriptor` for the `filter_by_log_level` field.
+        static constexpr auto Descriptor_filter_by_log_level = ComponentDescriptor(
+            ArchetypeName, "TextLogRows:filter_by_log_level",
             Loggable<rerun::blueprint::components::TextLogLevelList>::ComponentType
         );
 
@@ -40,11 +40,12 @@ namespace rerun::blueprint::archetypes {
         TextLogRows& operator=(const TextLogRows& other) = default;
         TextLogRows& operator=(TextLogRows&& other) = default;
 
-        explicit TextLogRows(rerun::blueprint::components::TextLogLevelList _log_levels)
-            : log_levels(
-                  ComponentBatch::from_loggable(std::move(_log_levels), Descriptor_log_levels)
-                      .value_or_throw()
-              ) {}
+        explicit TextLogRows(rerun::blueprint::components::TextLogLevelList _filter_by_log_level)
+            : filter_by_log_level(ComponentBatch::from_loggable(
+                                      std::move(_filter_by_log_level),
+                                      Descriptor_filter_by_log_level
+              )
+                                      .value_or_throw()) {}
 
         /// Update only some specific fields of a `TextLogRows`.
         static TextLogRows update_fields() {
@@ -55,11 +56,12 @@ namespace rerun::blueprint::archetypes {
         static TextLogRows clear_fields();
 
         /// Log levels to display.
-        TextLogRows with_log_levels(
-            const rerun::blueprint::components::TextLogLevelList& _log_levels
+        TextLogRows with_filter_by_log_level(
+            const rerun::blueprint::components::TextLogLevelList& _filter_by_log_level
         ) && {
-            log_levels =
-                ComponentBatch::from_loggable(_log_levels, Descriptor_log_levels).value_or_throw();
+            filter_by_log_level =
+                ComponentBatch::from_loggable(_filter_by_log_level, Descriptor_filter_by_log_level)
+                    .value_or_throw();
             return std::move(*this);
         }
 

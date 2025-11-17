@@ -26,27 +26,27 @@ class TextLogRows(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, log_levels: blueprint_datatypes.TextLogLevelListLike) -> None:
+    def __init__(self: Any, filter_by_log_level: blueprint_datatypes.TextLogLevelListLike) -> None:
         """
         Create a new instance of the TextLogRows archetype.
 
         Parameters
         ----------
-        log_levels:
+        filter_by_log_level:
             Log levels to display.
 
         """
 
         # You can define your own __init__ function as a member of TextLogRowsExt in text_log_rows_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(log_levels=log_levels)
+            self.__attrs_init__(filter_by_log_level=filter_by_log_level)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            log_levels=None,
+            filter_by_log_level=None,
         )
 
     @classmethod
@@ -61,7 +61,7 @@ class TextLogRows(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        log_levels: blueprint_datatypes.TextLogLevelListLike | None = None,
+        filter_by_log_level: blueprint_datatypes.TextLogLevelListLike | None = None,
     ) -> TextLogRows:
         """
         Update only some specific fields of a `TextLogRows`.
@@ -70,7 +70,7 @@ class TextLogRows(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        log_levels:
+        filter_by_log_level:
             Log levels to display.
 
         """
@@ -78,7 +78,7 @@ class TextLogRows(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "log_levels": log_levels,
+                "filter_by_log_level": filter_by_log_level,
             }
 
             if clear_unset:
@@ -95,7 +95,7 @@ class TextLogRows(Archetype):
         """Clear all the fields of a `TextLogRows`."""
         return cls.from_fields(clear_unset=True)
 
-    log_levels: blueprint_components.TextLogLevelListBatch | None = field(
+    filter_by_log_level: blueprint_components.TextLogLevelListBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=blueprint_components.TextLogLevelListBatch._converter,  # type: ignore[misc]
