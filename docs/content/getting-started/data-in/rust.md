@@ -122,7 +122,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 <!-- TODO(andreas): UPDATE DOC LINKS -->
 
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.10/struct.Points3D.html). Archetypes take care of building batches
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/struct.Points3D.html). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
