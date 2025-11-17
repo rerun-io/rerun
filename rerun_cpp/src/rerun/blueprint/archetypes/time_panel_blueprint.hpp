@@ -9,6 +9,7 @@
 #include "../../blueprint/components/panel_state.hpp"
 #include "../../blueprint/components/play_state.hpp"
 #include "../../blueprint/components/playback_speed.hpp"
+#include "../../blueprint/components/time_int.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -31,6 +32,9 @@ namespace rerun::blueprint::archetypes {
 
         /// What timeline the panel is on.
         std::optional<ComponentBatch> timeline;
+
+        /// What time the time cursor should be on.
+        std::optional<ComponentBatch> time;
 
         /// A time playback speed multiplier.
         std::optional<ComponentBatch> playback_speed;
@@ -65,6 +69,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_timeline = ComponentDescriptor(
             ArchetypeName, "TimePanelBlueprint:timeline",
             Loggable<rerun::blueprint::components::TimelineName>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `time` field.
+        static constexpr auto Descriptor_time = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:time",
+            Loggable<rerun::blueprint::components::TimeInt>::ComponentType
         );
         /// `ComponentDescriptor` for the `playback_speed` field.
         static constexpr auto Descriptor_playback_speed = ComponentDescriptor(
@@ -118,6 +127,12 @@ namespace rerun::blueprint::archetypes {
         ) && {
             timeline =
                 ComponentBatch::from_loggable(_timeline, Descriptor_timeline).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// What time the time cursor should be on.
+        TimePanelBlueprint with_time(const rerun::blueprint::components::TimeInt& _time) && {
+            time = ComponentBatch::from_loggable(_time, Descriptor_time).value_or_throw();
             return std::move(*this);
         }
 

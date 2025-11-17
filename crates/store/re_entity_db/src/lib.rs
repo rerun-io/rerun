@@ -10,7 +10,6 @@ mod ingestion_statistics;
 mod instance_path;
 mod store_bundle;
 mod time_histogram_per_timeline;
-mod times_per_timeline;
 mod versioned_instance_path;
 
 pub use self::{
@@ -20,7 +19,6 @@ pub use self::{
     instance_path::{InstancePath, InstancePathHash},
     store_bundle::{StoreBundle, StoreLoadError},
     time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
-    times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline},
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
 

@@ -34,6 +34,7 @@ class TimePanelBlueprint(Archetype):
         *,
         state: blueprint_components.PanelStateLike | None = None,
         timeline: datatypes.Utf8Like | None = None,
+        time: datatypes.TimeIntLike | None = None,
         playback_speed: datatypes.Float64Like | None = None,
         fps: datatypes.Float64Like | None = None,
         play_state: blueprint_components.PlayStateLike | None = None,
@@ -49,6 +50,8 @@ class TimePanelBlueprint(Archetype):
             Current state of the panel.
         timeline:
             What timeline the panel is on.
+        time:
+            What time the time cursor should be on.
         playback_speed:
             A time playback speed multiplier.
         fps:
@@ -71,6 +74,7 @@ class TimePanelBlueprint(Archetype):
             self.__attrs_init__(
                 state=state,
                 timeline=timeline,
+                time=time,
                 playback_speed=playback_speed,
                 fps=fps,
                 play_state=play_state,
@@ -85,6 +89,7 @@ class TimePanelBlueprint(Archetype):
         self.__attrs_init__(
             state=None,
             timeline=None,
+            time=None,
             playback_speed=None,
             fps=None,
             play_state=None,
@@ -106,6 +111,7 @@ class TimePanelBlueprint(Archetype):
         clear_unset: bool = False,
         state: blueprint_components.PanelStateLike | None = None,
         timeline: datatypes.Utf8Like | None = None,
+        time: datatypes.TimeIntLike | None = None,
         playback_speed: datatypes.Float64Like | None = None,
         fps: datatypes.Float64Like | None = None,
         play_state: blueprint_components.PlayStateLike | None = None,
@@ -123,6 +129,8 @@ class TimePanelBlueprint(Archetype):
             Current state of the panel.
         timeline:
             What timeline the panel is on.
+        time:
+            What time the time cursor should be on.
         playback_speed:
             A time playback speed multiplier.
         fps:
@@ -145,6 +153,7 @@ class TimePanelBlueprint(Archetype):
             kwargs = {
                 "state": state,
                 "timeline": timeline,
+                "time": time,
                 "playback_speed": playback_speed,
                 "fps": fps,
                 "play_state": play_state,
@@ -181,6 +190,15 @@ class TimePanelBlueprint(Archetype):
         converter=blueprint_components.TimelineNameBatch._converter,  # type: ignore[misc]
     )
     # What timeline the panel is on.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    time: blueprint_components.TimeIntBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.TimeIntBatch._converter,  # type: ignore[misc]
+    )
+    # What time the time cursor should be on.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

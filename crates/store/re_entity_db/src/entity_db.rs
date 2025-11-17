@@ -21,7 +21,7 @@ use re_query::{
 };
 use re_smart_channel::SmartChannelSource;
 
-use crate::{Error, TimesPerTimeline, ingestion_statistics::IngestionStatistics};
+use crate::{Error, ingestion_statistics::IngestionStatistics};
 
 // ----------------------------------------------------------------------------
 
@@ -86,17 +86,9 @@ pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
-    /// The global-scope time tracker.
-    ///
-    /// For each timeline, keeps track of what times exist, recursively across all
-    /// entities/components.
-    ///
-    /// Used for time control.
-    ///
-    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
-    times_per_timeline: TimesPerTimeline,
-
     /// A time histogram of all entities, for every timeline.
+    ///
+    /// Used for time control and gap detection.
     time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
 
     /// A tree-view (split on path components) of the entities.
@@ -146,7 +138,6 @@ impl EntityDb {
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
-            times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
@@ -460,9 +451,6 @@ impl EntityDb {
         self.storage_engine().store().timelines()
     }
 
-    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.times_per_timeline
-    }
 
     pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
         self.time_histogram_per_timeline
@@ -481,6 +469,11 @@ impl EntityDb {
     /// Histogram of all events on the timeeline, of all entities.
     pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
         self.time_histogram_per_timeline.get(timeline)
+    }
+
+    /// Histogram of all entities and events
+    pub fn time_histogram_per_timeline(&self) -> &crate::TimeHistogramPerTimeline {
+        &self.time_histogram_per_timeline
     }
 
     #[inline]
@@ -600,7 +593,6 @@ impl EntityDb {
 
         {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-            self.times_per_timeline.on_events(&store_events);
             self.time_histogram_per_timeline.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
@@ -675,7 +667,6 @@ impl EntityDb {
         );
 
         Self::on_store_deletions(
-            &mut self.times_per_timeline,
             &mut self.time_histogram_per_timeline,
             &mut self.tree,
             engine,
@@ -699,7 +690,6 @@ impl EntityDb {
 
         let store_events = engine.store().drop_time_range(timeline, drop_range);
         Self::on_store_deletions(
-            &mut self.times_per_timeline,
             &mut self.time_histogram_per_timeline,
             &mut self.tree,
             engine,
@@ -721,7 +711,6 @@ impl EntityDb {
 
         let store_events = engine.store().drop_entity_path(entity_path);
         Self::on_store_deletions(
-            &mut self.times_per_timeline,
             &mut self.time_histogram_per_timeline,
             &mut self.tree,
             engine,
@@ -749,14 +738,12 @@ impl EntityDb {
     // NOTE: Parameters deconstructed instead of taking `self`, because borrowck cannot understand
     // partial borrows on methods.
     fn on_store_deletions(
-        times_per_timeline: &mut TimesPerTimeline,
         time_histogram_per_timeline: &mut crate::TimeHistogramPerTimeline,
         tree: &mut crate::EntityTree,
         mut engine: StorageEngineWriteGuard<'_>,
         store_events: &[ChunkStoreEvent],
     ) {
         engine.cache().on_events(store_events);
-        times_per_timeline.on_events(store_events);
         time_histogram_per_timeline.on_events(store_events);
 
         let engine = engine.downgrade();

@@ -32,6 +32,9 @@ table TimePanelBlueprint (
   /// What timeline the panel is on.
   timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 2000);
 
+  /// What time the time cursor should be on.
+  time: rerun.blueprint.components.TimeInt ("attr.rerun.component_optional", nullable, order: 2100);
+
   /// A time playback speed multiplier.
   playback_speed: rerun.blueprint.components.PlaybackSpeed ("attr.rerun.component_optional", nullable, order: 2200);
 
