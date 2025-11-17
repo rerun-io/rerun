@@ -197,7 +197,7 @@ impl ColumnsBuilder {
         self
     }
 
-    /// Builds a [`LensKind`], the `input` is passed for providing contextualized errors.
+    /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
     fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
         Ok(ast::LensKind::Columns(OneToOne {
             target_entity: self.target_entity,
@@ -246,7 +246,7 @@ impl StaticColumnsBuilder {
         self
     }
 
-    /// Builds a [`LensKind`], the `input` is passed for providing contextualized errors.
+    /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
     fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
         Ok(ast::LensKind::StaticColumns(Static {
             target_entity: self.target_entity,
@@ -320,7 +320,7 @@ impl ScatterColumnsBuilder {
         self
     }
 
-    /// Builds a [`LensKind`], the `input` is passed for providing contextualized errors.
+    /// Builds a [`ast::LensKind`], the `input` is passed for providing contextualized errors.
     fn build(self, input: &ast::InputColumn) -> Result<ast::LensKind, LensError> {
         Ok(ast::LensKind::ScatterColumns(OneToMany {
             target_entity: self.target_entity,
