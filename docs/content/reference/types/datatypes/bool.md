@@ -23,4 +23,5 @@ boolean
 * [`Interactive`](../components/interactive.md)
 * [`SeriesVisible`](../components/series_visible.md)
 * [`ShowLabels`](../components/show_labels.md)
+* [`TextLogColumn`](../datatypes/text_log_column.md?speculative-link)
 * [`Visible`](../components/visible.md)

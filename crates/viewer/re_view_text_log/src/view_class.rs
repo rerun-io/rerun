@@ -31,7 +31,7 @@ pub struct TextViewState {
 
     seen_levels: BTreeSet<String>,
 
-    last_columns: Vec<datatypes::TextLogColumn>,
+    last_columns: Vec<datatypes::TextLogColumnKind>,
 }
 
 impl ViewState for TextViewState {
@@ -79,14 +79,20 @@ Filter message types and toggle column visibility in a selection panel.",
         system_registry.register_fallback_provider(
             TextLogColumns::descriptor_text_log_columns().component,
             |ctx| {
-                let text_log_columns = vec![
-                    datatypes::TextLogColumn::Timeline(
+                let text_log_columns = [
+                    datatypes::TextLogColumnKind::Timeline(
                         ctx.viewer_ctx().time_ctrl.timeline().name().as_str().into(),
                     ),
-                    datatypes::TextLogColumn::EntityPath,
-                    datatypes::TextLogColumn::LogLevel,
-                    datatypes::TextLogColumn::Body,
-                ];
+                    datatypes::TextLogColumnKind::EntityPath,
+                    datatypes::TextLogColumnKind::LogLevel,
+                    datatypes::TextLogColumnKind::Body,
+                ]
+                .into_iter()
+                .map(|kind| datatypes::TextLogColumn {
+                    kind,
+                    visible: true.into(),
+                })
+                .collect();
 
                 TextLogColumnList(bp_datatypes::TextLogColumnList { text_log_columns })
             },
@@ -196,7 +202,13 @@ Filter message types and toggle column visibility in a selection panel.",
             &view_ctx,
             TextLogColumns::descriptor_text_log_columns().component,
         )?;
-        let columns = &columns_list.0.text_log_columns;
+        let columns: Vec<_> = columns_list
+            .0
+            .text_log_columns
+            .iter()
+            .filter(|col| col.visible.into())
+            .map(|col| col.kind.clone())
+            .collect();
 
         let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
             &view_ctx,
@@ -251,7 +263,7 @@ Filter message types and toggle column visibility in a selection panel.",
                         ctx,
                         ui,
                         state,
-                        columns,
+                        &columns,
                         reset_column_widths,
                         &entries,
                         scroll_to_row,
@@ -274,7 +286,7 @@ fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &TextViewState,
-    columns: &[datatypes::TextLogColumn],
+    columns: &[datatypes::TextLogColumnKind],
     reset_column_widths: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
@@ -306,13 +318,14 @@ fn table_ui(
 
     for col in columns {
         match col {
-            datatypes::TextLogColumn::Timeline(_) | datatypes::TextLogColumn::EntityPath => {
+            datatypes::TextLogColumnKind::Timeline(_)
+            | datatypes::TextLogColumnKind::EntityPath => {
                 table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
             }
-            datatypes::TextLogColumn::LogLevel => {
+            datatypes::TextLogColumnKind::LogLevel => {
                 table_builder = table_builder.column(Column::auto().at_least(30.0));
             }
-            datatypes::TextLogColumn::Body => {
+            datatypes::TextLogColumnKind::Body => {
                 table_builder = table_builder.column(Column::remainder().at_least(100.0));
             }
         }
@@ -341,7 +354,7 @@ fn table_ui(
                 for col in columns {
                     row.col(|ui| {
                         match col {
-                            datatypes::TextLogColumn::Timeline(name) => {
+                            datatypes::TextLogColumnKind::Timeline(name) => {
                                 let timeline = TimelineName::new(name);
                                 let row_time = entry
                                     .timepoint
@@ -367,7 +380,7 @@ fn table_ui(
                                     }
                                 }
                             }
-                            datatypes::TextLogColumn::EntityPath => {
+                            datatypes::TextLogColumnKind::EntityPath => {
                                 item_ui::entity_path_button(
                                     ctx,
                                     &query,
@@ -377,14 +390,14 @@ fn table_ui(
                                     &entry.entity_path,
                                 );
                             }
-                            datatypes::TextLogColumn::LogLevel => {
+                            datatypes::TextLogColumnKind::LogLevel => {
                                 if let Some(lvl) = &entry.level {
                                     ui.label(level_to_rich_text(ui, lvl));
                                 } else {
                                     ui.label("-");
                                 }
                             }
-                            datatypes::TextLogColumn::Body => {
+                            datatypes::TextLogColumnKind::Body => {
                                 let mut text = egui::RichText::new(entry.body.as_str());
 
                                 if state.monospace {
@@ -413,9 +426,13 @@ fn table_ui(
     }
 }
 
-fn column_name_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, column: &datatypes::TextLogColumn) {
-    match column {
-        datatypes::TextLogColumn::Timeline(name) => {
+fn column_name_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    column: &datatypes::TextLogColumnKind,
+) {
+    match &column {
+        datatypes::TextLogColumnKind::Timeline(name) => {
             item_ui::timeline_button(ctx, ui, &TimelineName::new(name));
         }
         _ => {

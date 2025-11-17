@@ -59,6 +59,12 @@ from .tensor_dimension_selection import (
     TensorDimensionSelectionLike,
 )
 from .text_log_column import TextLogColumn, TextLogColumnArrayLike, TextLogColumnBatch, TextLogColumnLike
+from .text_log_column_kind import (
+    TextLogColumnKind,
+    TextLogColumnKindArrayLike,
+    TextLogColumnKindBatch,
+    TextLogColumnKindLike,
+)
 from .time_int import TimeInt, TimeIntArrayLike, TimeIntBatch, TimeIntLike
 from .time_range import TimeRange, TimeRangeArrayLike, TimeRangeBatch, TimeRangeLike
 from .time_range_boundary import (
@@ -211,6 +217,10 @@ __all__ = [
     "TextLogColumn",
     "TextLogColumnArrayLike",
     "TextLogColumnBatch",
+    "TextLogColumnKind",
+    "TextLogColumnKindArrayLike",
+    "TextLogColumnKindBatch",
+    "TextLogColumnKindLike",
     "TextLogColumnLike",
     "TimeInt",
     "TimeIntArrayLike",

@@ -19,7 +19,7 @@ namespace rerun {
                 arrow::list(arrow::field(
                     "item",
                     Loggable<rerun::datatypes::TextLogColumn>::arrow_datatype(),
-                    true
+                    false
                 )),
                 false
             ),
@@ -66,8 +66,7 @@ namespace rerun {
 
         {
             auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));
-            auto value_builder =
-                static_cast<arrow::DenseUnionBuilder*>(field_builder->value_builder());
+            auto value_builder = static_cast<arrow::StructBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 

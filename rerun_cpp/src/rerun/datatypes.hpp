@@ -34,6 +34,7 @@
 #include "datatypes/tensor_dimension_index_selection.hpp"
 #include "datatypes/tensor_dimension_selection.hpp"
 #include "datatypes/text_log_column.hpp"
+#include "datatypes/text_log_column_kind.hpp"
 #include "datatypes/time_int.hpp"
 #include "datatypes/time_range.hpp"
 #include "datatypes/time_range_boundary.hpp"

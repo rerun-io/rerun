@@ -41,7 +41,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
             DataType::List(std::sync::Arc::new(Field::new(
                 "item",
                 <crate::datatypes::TextLogColumn>::arrow_datatype(),
-                true,
+                false,
             ))),
             false,
         )]))
@@ -62,7 +62,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
                     <crate::datatypes::TextLogColumn>::arrow_datatype(),
-                    true,
+                    false,
                 ))),
                 false,
             )]);
@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                             std::sync::Arc::new(Field::new(
                                 "item",
                                 <crate::datatypes::TextLogColumn>::arrow_datatype(),
-                                true,
+                                false,
                             )),
                             offsets,
                             {
@@ -168,7 +168,7 @@ impl ::re_types_core::Loggable for TextLogColumnList {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::TextLogColumn>::arrow_datatype(),
-                                    true,
+                                    false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)

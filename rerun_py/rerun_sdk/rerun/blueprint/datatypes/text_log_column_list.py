@@ -67,14 +67,22 @@ class TextLogColumnListBatch(BaseBatch[TextLogColumnListArrayLike]):
             pa.list_(
                 pa.field(
                     "item",
-                    pa.dense_union([
-                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                        pa.field("Timeline", pa.utf8(), nullable=False, metadata={}),
-                        pa.field("EntityPath", pa.null(), nullable=True, metadata={}),
-                        pa.field("LogLevel", pa.null(), nullable=True, metadata={}),
-                        pa.field("Body", pa.null(), nullable=True, metadata={}),
+                    pa.struct([
+                        pa.field(
+                            "kind",
+                            pa.dense_union([
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("Timeline", pa.utf8(), nullable=False, metadata={}),
+                                pa.field("EntityPath", pa.null(), nullable=True, metadata={}),
+                                pa.field("LogLevel", pa.null(), nullable=True, metadata={}),
+                                pa.field("Body", pa.null(), nullable=True, metadata={}),
+                            ]),
+                            nullable=True,
+                            metadata={},
+                        ),
+                        pa.field("visible", pa.bool_(), nullable=False, metadata={}),
                     ]),
-                    nullable=True,
+                    nullable=False,
                     metadata={},
                 )
             ),

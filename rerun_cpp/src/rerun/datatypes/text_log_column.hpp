@@ -4,190 +4,29 @@
 #pragma once
 
 #include "../result.hpp"
-#include "utf8.hpp"
+#include "bool.hpp"
+#include "text_log_column_kind.hpp"
 
-#include <cassert>
 #include <cstdint>
-#include <cstring>
 #include <memory>
-#include <new>
-#include <utility>
 
 namespace arrow {
     class Array;
     class DataType;
-    class DenseUnionBuilder;
+    class StructBuilder;
 } // namespace arrow
 
 namespace rerun::datatypes {
-    namespace detail {
-        /// \private
-        enum class TextLogColumnTag : uint8_t {
-            /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
-            None = 0,
-            Timeline,
-            EntityPath,
-            LogLevel,
-            Body,
-        };
-
-        /// \private
-        union TextLogColumnData {
-            /// A specific timeline's column.
-            rerun::datatypes::Utf8 timeline;
-
-            TextLogColumnData() {
-                std::memset(reinterpret_cast<void*>(this), 0, sizeof(TextLogColumnData));
-            }
-
-            ~TextLogColumnData() {}
-
-            void swap(TextLogColumnData& other) noexcept {
-                // This bitwise swap would fail for self-referential types, but we don't have any of those.
-                char temp[sizeof(TextLogColumnData)];
-                void* otherbytes = reinterpret_cast<void*>(&other);
-                void* thisbytes = reinterpret_cast<void*>(this);
-                std::memcpy(temp, thisbytes, sizeof(TextLogColumnData));
-                std::memcpy(thisbytes, otherbytes, sizeof(TextLogColumnData));
-                std::memcpy(otherbytes, temp, sizeof(TextLogColumnData));
-            }
-        };
-    } // namespace detail
-
-    /// **Datatype**: A text log column kind.
+    /// **Datatype**: A text log column.
     struct TextLogColumn {
-        TextLogColumn() : _tag(detail::TextLogColumnTag::None) {}
+        /// What kind of column is this?
+        rerun::datatypes::TextLogColumnKind kind;
 
-        /// Copy constructor
-        TextLogColumn(const TextLogColumn& other) : _tag(other._tag) {
-            switch (other._tag) {
-                case detail::TextLogColumnTag::Timeline: {
-                    using TypeAlias = rerun::datatypes::Utf8;
-                    new (&_data.timeline) TypeAlias(other._data.timeline);
-                } break;
-                case detail::TextLogColumnTag::EntityPath:
-                case detail::TextLogColumnTag::LogLevel:
-                case detail::TextLogColumnTag::Body: {
-                    const void* otherbytes = reinterpret_cast<const void*>(&other._data);
-                    void* thisbytes = reinterpret_cast<void*>(&this->_data);
-                    std::memcpy(thisbytes, otherbytes, sizeof(detail::TextLogColumnData));
-                } break;
-                case detail::TextLogColumnTag::None: {
-                } break;
-                default:
-                    assert(false && "unreachable");
-            }
-        }
+        /// Is this column visible?
+        rerun::datatypes::Bool visible;
 
-        TextLogColumn& operator=(const TextLogColumn& other) noexcept {
-            TextLogColumn tmp(other);
-            this->swap(tmp);
-            return *this;
-        }
-
-        TextLogColumn(TextLogColumn&& other) noexcept : TextLogColumn() {
-            this->swap(other);
-        }
-
-        TextLogColumn& operator=(TextLogColumn&& other) noexcept {
-            this->swap(other);
-            return *this;
-        }
-
-        ~TextLogColumn() {
-            switch (this->_tag) {
-                case detail::TextLogColumnTag::None: {
-                    // Nothing to destroy
-                } break;
-                case detail::TextLogColumnTag::Timeline: {
-                    using TypeAlias = rerun::datatypes::Utf8;
-                    _data.timeline.~TypeAlias();
-                } break;
-                case detail::TextLogColumnTag::EntityPath: {
-                    // has a trivial destructor
-                } break;
-                case detail::TextLogColumnTag::LogLevel: {
-                    // has a trivial destructor
-                } break;
-                case detail::TextLogColumnTag::Body: {
-                    // has a trivial destructor
-                } break;
-                default:
-                    assert(false && "unreachable");
-            }
-        }
-
-        void swap(TextLogColumn& other) noexcept {
-            std::swap(this->_tag, other._tag);
-            this->_data.swap(other._data);
-        }
-
-        /// A specific timeline's column.
-        static TextLogColumn timeline(rerun::datatypes::Utf8 timeline) {
-            TextLogColumn self;
-            self._tag = detail::TextLogColumnTag::Timeline;
-            new (&self._data.timeline) rerun::datatypes::Utf8(std::move(timeline));
-            return self;
-        }
-
-        /// Column for which entity path this was logged to.
-        static TextLogColumn entity_path() {
-            TextLogColumn self;
-            self._tag = detail::TextLogColumnTag::EntityPath;
-            return self;
-        }
-
-        /// Column for log-level.
-        static TextLogColumn log_level() {
-            TextLogColumn self;
-            self._tag = detail::TextLogColumnTag::LogLevel;
-            return self;
-        }
-
-        /// The text message the log has.
-        static TextLogColumn body() {
-            TextLogColumn self;
-            self._tag = detail::TextLogColumnTag::Body;
-            return self;
-        }
-
-        /// Return a pointer to timeline if the union is in that state, otherwise `nullptr`.
-        const rerun::datatypes::Utf8* get_timeline() const {
-            if (_tag == detail::TextLogColumnTag::Timeline) {
-                return &_data.timeline;
-            } else {
-                return nullptr;
-            }
-        }
-
-        /// Returns true if the union is in the entity_path state.
-        bool is_entity_path() const {
-            return _tag == detail::TextLogColumnTag::EntityPath;
-        }
-
-        /// Returns true if the union is in the log_level state.
-        bool is_log_level() const {
-            return _tag == detail::TextLogColumnTag::LogLevel;
-        }
-
-        /// Returns true if the union is in the body state.
-        bool is_body() const {
-            return _tag == detail::TextLogColumnTag::Body;
-        }
-
-        /// \private
-        const detail::TextLogColumnData& get_union_data() const {
-            return _data;
-        }
-
-        /// \private
-        detail::TextLogColumnTag get_union_tag() const {
-            return _tag;
-        }
-
-      private:
-        detail::TextLogColumnTag _tag;
-        detail::TextLogColumnData _data;
+      public:
+        TextLogColumn() = default;
     };
 } // namespace rerun::datatypes
 
@@ -210,7 +49,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const datatypes::TextLogColumn* elements,
+            arrow::StructBuilder* builder, const datatypes::TextLogColumn* elements,
             size_t num_elements
         );
     };

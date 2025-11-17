@@ -21,20 +21,14 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A text log column kind.
+/// **Datatype**: A text log column.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum TextLogColumn {
-    /// A specific timeline's column.
-    Timeline(crate::datatypes::Utf8),
+pub struct TextLogColumn {
+    /// What kind of column is this?
+    pub kind: crate::datatypes::TextLogColumnKind,
 
-    /// Column for which entity path this was logged to.
-    EntityPath,
-
-    /// Column for log-level.
-    LogLevel,
-
-    /// The text message the log has.
-    Body,
+    /// Is this column visible?
+    pub visible: crate::datatypes::Bool,
 }
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumn);
@@ -43,23 +37,14 @@ impl ::re_types_core::Loggable for TextLogColumn {
     #[inline]
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
-        DataType::Union(
-            UnionFields::new(
-                vec![0, 1, 2, 3, 4],
-                vec![
-                    Field::new("_null_markers", DataType::Null, true),
-                    Field::new(
-                        "Timeline",
-                        <crate::datatypes::Utf8>::arrow_datatype(),
-                        false,
-                    ),
-                    Field::new("EntityPath", DataType::Null, true),
-                    Field::new("LogLevel", DataType::Null, true),
-                    Field::new("Body", DataType::Null, true),
-                ],
+        DataType::Struct(Fields::from(vec![
+            Field::new(
+                "kind",
+                <crate::datatypes::TextLogColumnKind>::arrow_datatype(),
+                true,
             ),
-            UnionMode::Dense,
-        )
+            Field::new("visible", <crate::datatypes::Bool>::arrow_datatype(), false),
+        ]))
     }
 
     fn to_arrow_opt<'a>(
@@ -72,126 +57,70 @@ impl ::re_types_core::Loggable for TextLogColumn {
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            // Dense Arrow union
-            let data: Vec<_> = data
+            let fields = Fields::from(vec![
+                Field::new(
+                    "kind",
+                    <crate::datatypes::TextLogColumnKind>::arrow_datatype(),
+                    true,
+                ),
+                Field::new("visible", <crate::datatypes::Bool>::arrow_datatype(), false),
+            ]);
+            let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
+                    (datum.is_some(), datum)
                 })
-                .collect();
-            let field_type_ids = [0, 1, 2, 3, 4];
-            let fields = vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new(
-                    "Timeline",
-                    <crate::datatypes::Utf8>::arrow_datatype(),
-                    false,
-                ),
-                Field::new("EntityPath", DataType::Null, true),
-                Field::new("LogLevel", DataType::Null, true),
-                Field::new("Body", DataType::Null, true),
-            ];
-            let type_ids: Vec<i8> = data
-                .iter()
-                .map(|a| match a.as_deref() {
-                    None => 0,
-                    Some(Self::Timeline(_)) => 1i8,
-                    Some(Self::EntityPath) => 2i8,
-                    Some(Self::LogLevel) => 3i8,
-                    Some(Self::Body) => 4i8,
-                })
-                .collect();
-            let offsets = {
-                let mut timeline_offset = 0;
-                let mut entity_path_offset = 0;
-                let mut log_level_offset = 0;
-                let mut body_offset = 0;
-                let mut nulls_offset = 0;
-                data.iter()
-                    .map(|v| match v.as_deref() {
-                        None => {
-                            let offset = nulls_offset;
-                            nulls_offset += 1;
-                            offset
-                        }
-                        Some(Self::Timeline(_)) => {
-                            let offset = timeline_offset;
-                            timeline_offset += 1;
-                            offset
-                        }
-                        Some(Self::EntityPath) => {
-                            let offset = entity_path_offset;
-                            entity_path_offset += 1;
-                            offset
-                        }
-                        Some(Self::LogLevel) => {
-                            let offset = log_level_offset;
-                            log_level_offset += 1;
-                            offset
-                        }
-                        Some(Self::Body) => {
-                            let offset = body_offset;
-                            body_offset += 1;
-                            offset
-                        }
-                    })
-                    .collect()
+                .unzip();
+            let validity: Option<arrow::buffer::NullBuffer> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
             };
-            let children = vec![
-                as_array_ref(NullArray::new(data.iter().filter(|v| v.is_none()).count())),
-                {
-                    let timeline: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::Timeline(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let timeline_validity: Option<arrow::buffer::NullBuffer> = None;
+            as_array_ref(StructArray::new(
+                fields,
+                vec![
                     {
-                        let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                            timeline.iter().map(|datum| datum.0.len()),
-                        );
-                        #[expect(clippy::unwrap_used)]
-                        let capacity = offsets.last().copied().unwrap() as usize;
-                        let mut buffer_builder =
-                            arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                        for data in &timeline {
-                            buffer_builder.append_slice(data.0.as_bytes());
+                        let (somes, kind): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| datum.kind.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let kind_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            _ = kind_validity;
+                            crate::datatypes::TextLogColumnKind::to_arrow_opt(kind)?
                         }
-                        let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        as_array_ref(unsafe {
-                            StringArray::new_unchecked(offsets, inner_data, timeline_validity)
-                        })
-                    }
-                },
-                as_array_ref(NullArray::new(
-                    data.iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Self::EntityPath)))
-                        .count(),
-                )),
-                as_array_ref(NullArray::new(
-                    data.iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Self::LogLevel)))
-                        .count(),
-                )),
-                as_array_ref(NullArray::new(
-                    data.iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Self::Body)))
-                        .count(),
-                )),
-            ];
-            debug_assert_eq!(field_type_ids.len(), fields.len());
-            debug_assert_eq!(fields.len(), children.len());
-            as_array_ref(UnionArray::try_new(
-                UnionFields::new(field_type_ids, fields),
-                ScalarBuffer::from(type_ids),
-                Some(offsets),
-                children,
-            )?)
+                    },
+                    {
+                        let (somes, visible): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| datum.visible.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let visible_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        as_array_ref(BooleanArray::new(
+                            BooleanBuffer::from(
+                                visible
+                                    .into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            visible_validity,
+                        ))
+                    },
+                ],
+                validity,
+            ))
         })
     }
 
@@ -206,7 +135,7 @@ impl ::re_types_core::Loggable for TextLogColumn {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow::array::UnionArray>()
+                .downcast_ref::<arrow::array::StructArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
@@ -216,107 +145,66 @@ impl ::re_types_core::Loggable for TextLogColumn {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let arrow_data_type_ids = arrow_data.type_ids();
-                let arrow_data_offsets = arrow_data
-                    .offsets()
-                    .ok_or_else(|| {
-                        let expected = Self::arrow_datatype();
-                        let actual = arrow_data.data_type().clone();
-                        DeserializationError::datatype_mismatch(expected, actual)
-                    })
-                    .with_context("rerun.datatypes.TextLogColumn")?;
-                if arrow_data_type_ids.len() != arrow_data_offsets.len() {
-                    return Err(DeserializationError::offset_slice_oob(
-                        (0, arrow_data_type_ids.len()),
-                        arrow_data_offsets.len(),
-                    ))
-                    .with_context("rerun.datatypes.TextLogColumn");
-                }
-                let timeline = {
-                    let arrow_data = arrow_data.child(1).as_ref();
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<StringArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::Utf8;
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
-                            .with_context("rerun.datatypes.TextLogColumn#Timeline")?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.windows(2), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|window| {
-                                    let start = window[0] as usize;
-                                    let end = window[1] as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::datatypes::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context("rerun.datatypes.TextLogColumn#Timeline")?
-                            .into_iter()
-                    }
-                    .collect::<Vec<_>>()
-                };
-                arrow_data_type_ids
+                let (arrow_data_fields, arrow_data_arrays) =
+                    (arrow_data.fields(), arrow_data.columns());
+                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
                     .iter()
-                    .enumerate()
-                    .map(|(i, typ)| {
-                        let offset = arrow_data_offsets[i];
-                        if *typ == 0 {
-                            Ok(None)
-                        } else {
-                            Ok(Some(match typ {
-                                1i8 => Self::Timeline({
-                                    if offset as usize >= timeline.len() {
-                                        return Err(DeserializationError::offset_oob(
-                                            offset as _,
-                                            timeline.len(),
-                                        ))
-                                        .with_context("rerun.datatypes.TextLogColumn#Timeline");
-                                    }
-
-                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    unsafe { timeline.get_unchecked(offset as usize) }
-                                        .clone()
-                                        .ok_or_else(DeserializationError::missing_data)
-                                        .with_context("rerun.datatypes.TextLogColumn#Timeline")?
-                                }),
-                                2i8 => Self::EntityPath,
-                                3i8 => Self::LogLevel,
-                                4i8 => Self::Body,
-                                _ => {
-                                    return Err(DeserializationError::missing_union_arm(
-                                        Self::arrow_datatype(),
-                                        "<invalid>",
-                                        *typ as _,
-                                    ));
-                                }
-                            }))
-                        }
+                    .map(|field| field.name().as_str())
+                    .zip(arrow_data_arrays)
+                    .collect();
+                let kind = {
+                    if !arrays_by_name.contains_key("kind") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "kind",
+                        ))
+                        .with_context("rerun.datatypes.TextLogColumn");
+                    }
+                    let arrow_data = &**arrays_by_name["kind"];
+                    crate::datatypes::TextLogColumnKind::from_arrow_opt(arrow_data)
+                        .with_context("rerun.datatypes.TextLogColumn#kind")?
+                        .into_iter()
+                };
+                let visible = {
+                    if !arrays_by_name.contains_key("visible") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "visible",
+                        ))
+                        .with_context("rerun.datatypes.TextLogColumn");
+                    }
+                    let arrow_data = &**arrays_by_name["visible"];
+                    arrow_data
+                        .as_any()
+                        .downcast_ref::<BooleanArray>()
+                        .ok_or_else(|| {
+                            let expected = DataType::Boolean;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
+                        })
+                        .with_context("rerun.datatypes.TextLogColumn#visible")?
+                        .into_iter()
+                        .map(|res_or_opt| res_or_opt.map(crate::datatypes::Bool))
+                };
+                ZipValidity::new_with_validity(
+                    ::itertools::izip!(kind, visible),
+                    arrow_data.nulls(),
+                )
+                .map(|opt| {
+                    opt.map(|(kind, visible)| {
+                        Ok(Self {
+                            kind: kind
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.TextLogColumn#kind")?,
+                            visible: visible
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context("rerun.datatypes.TextLogColumn#visible")?,
+                        })
                     })
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.datatypes.TextLogColumn")?
+                    .transpose()
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.datatypes.TextLogColumn")?
             }
         })
     }
@@ -325,17 +213,11 @@ impl ::re_types_core::Loggable for TextLogColumn {
 impl ::re_byte_size::SizeBytes for TextLogColumn {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::Timeline(v) => v.heap_size_bytes(),
-            Self::EntityPath => 0,
-            Self::LogLevel => 0,
-            Self::Body => 0,
-        }
+        self.kind.heap_size_bytes() + self.visible.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        <crate::datatypes::TextLogColumnKind>::is_pod() && <crate::datatypes::Bool>::is_pod()
     }
 }

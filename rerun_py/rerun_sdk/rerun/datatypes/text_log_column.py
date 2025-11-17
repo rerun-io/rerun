@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from collections.abc import Sequence
+from typing import Any
 
 import pyarrow as pa
 from attrs import define, field
@@ -18,129 +19,88 @@ from .._baseclasses import (
 __all__ = ["TextLogColumn", "TextLogColumnArrayLike", "TextLogColumnBatch", "TextLogColumnLike"]
 
 
-@define
+def _text_log_column__kind__special_field_converter_override(
+    x: datatypes.TextLogColumnKindLike,
+) -> datatypes.TextLogColumnKind:
+    if isinstance(x, datatypes.TextLogColumnKind):
+        return x
+    else:
+        return datatypes.TextLogColumnKind(x)
+
+
+def _text_log_column__visible__special_field_converter_override(x: datatypes.BoolLike) -> datatypes.Bool:
+    if isinstance(x, datatypes.Bool):
+        return x
+    else:
+        return datatypes.Bool(x)
+
+
+@define(init=False)
 class TextLogColumn:
-    """**Datatype**: A text log column kind."""
+    """**Datatype**: A text log column."""
 
-    # You can define your own __init__ function as a member of TextLogColumnExt in text_log_column_ext.py
+    def __init__(self: Any, kind: datatypes.TextLogColumnKindLike, visible: datatypes.BoolLike) -> None:
+        """
+        Create a new instance of the TextLogColumn datatype.
 
-    inner: None | datatypes.Utf8 = field()
-    """
-    Must be one of:
+        Parameters
+        ----------
+        kind:
+            What kind of column is this?
+        visible:
+            Is this column visible?
 
-    * Timeline (datatypes.Utf8):
-        A specific timeline's column.
+        """
 
-    * EntityPath (None):
-        Column for which entity path this was logged to.
+        # You can define your own __init__ function as a member of TextLogColumnExt in text_log_column_ext.py
+        self.__attrs_init__(kind=kind, visible=visible)
 
-    * LogLevel (None):
-        Column for log-level.
+    kind: datatypes.TextLogColumnKind = field(converter=_text_log_column__kind__special_field_converter_override)
+    # What kind of column is this?
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
-    * Body (None):
-        The text message the log has.
-    """
-
-    kind: Literal["timeline", "entity_path", "log_level", "body"] = field(default="timeline")
-    """
-    Possible values:
-
-    * "timeline":
-        A specific timeline's column.
-
-    * "entity_path":
-        Column for which entity path this was logged to.
-
-    * "log_level":
-        Column for log-level.
-
-    * "body":
-        The text message the log has.
-    """
+    visible: datatypes.Bool = field(converter=_text_log_column__visible__special_field_converter_override)
+    # Is this column visible?
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
+TextLogColumnLike = TextLogColumn
+"""A type alias for any TextLogColumn-like object."""
 
-    TextLogColumnLike = TextLogColumn | None | datatypes.Utf8
-    """A type alias for any TextLogColumn-like object."""
-
-    TextLogColumnArrayLike = TextLogColumn | None | datatypes.Utf8 | Sequence[TextLogColumnLike]
-    """A type alias for any TextLogColumn-like array object."""
-else:
-    TextLogColumnLike = Any
-    TextLogColumnArrayLike = Any
+TextLogColumnArrayLike = TextLogColumn | Sequence[TextLogColumnLike]
+"""A type alias for any TextLogColumn-like array object."""
 
 
 class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
-    _ARROW_DATATYPE = pa.dense_union([
-        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-        pa.field("Timeline", pa.utf8(), nullable=False, metadata={}),
-        pa.field("EntityPath", pa.null(), nullable=True, metadata={}),
-        pa.field("LogLevel", pa.null(), nullable=True, metadata={}),
-        pa.field("Body", pa.null(), nullable=True, metadata={}),
+    _ARROW_DATATYPE = pa.struct([
+        pa.field(
+            "kind",
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("Timeline", pa.utf8(), nullable=False, metadata={}),
+                pa.field("EntityPath", pa.null(), nullable=True, metadata={}),
+                pa.field("LogLevel", pa.null(), nullable=True, metadata={}),
+                pa.field("Body", pa.null(), nullable=True, metadata={}),
+            ]),
+            nullable=True,
+            metadata={},
+        ),
+        pa.field("visible", pa.bool_(), nullable=False, metadata={}),
     ])
 
     @staticmethod
     def _native_to_pa_array(data: TextLogColumnArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
+        from rerun.datatypes import BoolBatch, TextLogColumnKindBatch
 
-        from rerun.datatypes import Utf8Batch
+        if isinstance(data, TextLogColumn):
+            data = [data]
 
-        if not hasattr(data, "__iter__") or isinstance(data, (type(None), TextLogColumn, datatypes.Utf8)):  # type: ignore[arg-type]
-            data = [data]  # type: ignore[list-item]
-        data = cast("Sequence[TextLogColumnLike]", data)  # type: ignore[redundant-cast]
-
-        types: list[int] = []
-        value_offsets: list[int] = []
-
-        num_nulls = 0
-        variant_timeline: list[datatypes.Utf8] = []
-        variant_entity_path: int = 0
-        variant_log_level: int = 0
-        variant_body: int = 0
-
-        for value in data:
-            if value is None:
-                value_offsets.append(num_nulls)
-                num_nulls += 1
-                types.append(0)
-            else:
-                if not isinstance(value, TextLogColumn):
-                    value = TextLogColumn(value)
-                if value.kind == "timeline":
-                    value_offsets.append(len(variant_timeline))
-                    variant_timeline.append(value.inner)  # type: ignore[arg-type]
-                    types.append(1)
-                elif value.kind == "entity_path":
-                    value_offsets.append(variant_entity_path)
-                    variant_entity_path += 1
-                    types.append(2)
-                elif value.kind == "log_level":
-                    value_offsets.append(variant_log_level)
-                    variant_log_level += 1
-                    types.append(3)
-                elif value.kind == "body":
-                    value_offsets.append(variant_body)
-                    variant_body += 1
-                    types.append(4)
-
-        buffers = [
-            None,
-            pa.array(types, type=pa.int8()).buffers()[1],
-            pa.array(value_offsets, type=pa.int32()).buffers()[1],
-        ]
-        children = [
-            pa.nulls(num_nulls),
-            Utf8Batch(variant_timeline).as_arrow_array(),
-            pa.nulls(variant_entity_path),
-            pa.nulls(variant_log_level),
-            pa.nulls(variant_body),
-        ]
-
-        return pa.UnionArray.from_buffers(
-            type=data_type,
-            length=len(data),
-            buffers=buffers,
-            children=children,
+        return pa.StructArray.from_arrays(
+            [
+                TextLogColumnKindBatch([x.kind for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                BoolBatch([x.visible for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+            ],
+            fields=list(data_type),
         )

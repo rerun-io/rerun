@@ -1,7 +1,7 @@
 namespace rerun.datatypes;
 
 /// A text log column kind.
-union TextLogColumn (
+union TextLogColumnKind (
   "attr.rust.derive": "PartialEq, Eq, Hash",
   "attr.docs.unreleased"
 ) {
@@ -16,4 +16,16 @@ union TextLogColumn (
 
   /// The text message the log has.
   Body: rerun.builtins.UnitType,
+}
+
+/// A text log column.
+table TextLogColumn (
+  "attr.rust.derive": "PartialEq, Eq, Hash",
+  "attr.docs.unreleased"
+) {
+  /// What kind of column is this?
+  kind: TextLogColumnKind (order: 100);
+
+  /// Is this column visible?
+  visible: rerun.datatypes.Bool (order: 200);
 }
