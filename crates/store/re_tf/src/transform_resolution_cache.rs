@@ -1486,6 +1486,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    // Due to atomic-latest-at, the translation is no longer visible despite being on the static chunk.
                     transform: DAffine3::from_scale(glam::dvec3(123.0, 234.0, 345.0)),
                 })
             );
@@ -1578,6 +1579,7 @@ mod tests {
             assert_eq!(
                 transforms
                     .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
+                // Due to atomic-latest-at, the translation is no longer visible despite being on the static chunk.
                 vec![DAffine3::from_scale(glam::dvec3(10.0, 20.0, 30.0)),]
             );
 
