@@ -286,7 +286,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let rad = truncated_radians((deg * 4) as f32);
 ///         rec.log(
 ///             "box",
-///             &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+///             &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
 ///                 [0.0, 1.0, 0.0],
 ///                 rerun::Angle::from_radians(rad),
 ///             )),
@@ -297,7 +297,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     for t in 0..=50 {
 ///         rec.log(
 ///             "box",
-///             &rerun::Transform3D::update_fields().with_translation([0.0, 0.0, t as f32 / 10.0]),
+///             &rerun::Transform3D::new().with_translation([0.0, 0.0, t as f32 / 10.0]),
 ///         )?;
 ///     }
 ///
@@ -306,7 +306,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let rad = truncated_radians(((deg + 45) * 4) as f32);
 ///         rec.log(
 ///             "box",
-///             &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+///             &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
 ///                 [0.0, 1.0, 0.0],
 ///                 rerun::Angle::from_radians(rad),
 ///             )),

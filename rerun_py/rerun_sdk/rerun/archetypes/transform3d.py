@@ -157,7 +157,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(clear=False, axis_length=10),
+        rr.Transform3D(axis_length=10),
     )
 
     for t in range(100):
@@ -165,7 +165,6 @@ class Transform3D(Transform3DExt, Archetype):
         rr.log(
             "box",
             rr.Transform3D(
-                clear=False,
                 translation=[0, 0, t / 10.0],
                 rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)),
             ),
@@ -198,7 +197,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(clear=False, axis_length=10),
+        rr.Transform3D(axis_length=10),
     )
 
     rr.send_columns(
@@ -239,7 +238,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(clear=False, axis_length=10),
+        rr.Transform3D(axis_length=10),
     )
 
     # Update only the rotation of the box.

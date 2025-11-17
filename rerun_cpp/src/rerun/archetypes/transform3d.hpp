@@ -270,7 +270,7 @@ namespace rerun::archetypes {
     ///         auto rad = truncated_radians(deg * 4);
     ///         rec.log(
     ///             "box",
-    ///             rerun::Transform3D::update_fields().with_rotation_axis_angle(
+    ///             rerun::Transform3D::from_rotation(
     ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
     ///             )
     ///         );
@@ -280,9 +280,7 @@ namespace rerun::archetypes {
     ///     for (int t = 0; t <= 50; t++) {
     ///         rec.log(
     ///             "box",
-    ///             rerun::Transform3D::update_fields().with_translation(
-    ///                 {0.0f, 0.0f, static_cast<float>(t) / 10.0f}
-    ///             )
+    ///             rerun::Transform3D::from_translation({0.0f, 0.0f, static_cast<float>(t) / 10.0f})
     ///         );
     ///     }
     ///
@@ -291,7 +289,7 @@ namespace rerun::archetypes {
     ///         auto rad = truncated_radians((deg + 45) * 4);
     ///         rec.log(
     ///             "box",
-    ///             rerun::Transform3D::update_fields().with_rotation_axis_angle(
+    ///             rerun::Transform3D::from_rotation(
     ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
     ///             )
     ///         );
