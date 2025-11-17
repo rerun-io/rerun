@@ -129,37 +129,37 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
     ///
-    /// The corresponding component is [`crate::components::PoseTranslation3D`].
+    /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.Boxes3D".into()),
             component: "Boxes3D:centers".into(),
-            component_type: Some("rerun.components.PoseTranslation3D".into()),
+            component_type: Some("rerun.components.Translation3D".into()),
         }
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
     ///
-    /// The corresponding component is [`crate::components::PoseRotationAxisAngle`].
+    /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.Boxes3D".into()),
             component: "Boxes3D:rotation_axis_angles".into(),
-            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
+            component_type: Some("rerun.components.RotationAxisAngle".into()),
         }
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
     ///
-    /// The corresponding component is [`crate::components::PoseRotationQuat`].
+    /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.Boxes3D".into()),
             component: "Boxes3D:quaternions".into(),
-            component_type: Some("rerun.components.PoseRotationQuat".into()),
+            component_type: Some("rerun.components.RotationQuat".into()),
         }
     }
 
@@ -434,15 +434,15 @@ impl Boxes3D {
                 Self::descriptor_half_sizes(),
             )),
             centers: Some(SerializedComponentBatch::new(
-                crate::components::PoseTranslation3D::arrow_empty(),
+                crate::components::Translation3D::arrow_empty(),
                 Self::descriptor_centers(),
             )),
             rotation_axis_angles: Some(SerializedComponentBatch::new(
-                crate::components::PoseRotationAxisAngle::arrow_empty(),
+                crate::components::RotationAxisAngle::arrow_empty(),
                 Self::descriptor_rotation_axis_angles(),
             )),
             quaternions: Some(SerializedComponentBatch::new(
-                crate::components::PoseRotationQuat::arrow_empty(),
+                crate::components::RotationQuat::arrow_empty(),
                 Self::descriptor_quaternions(),
             )),
             colors: Some(SerializedComponentBatch::new(
@@ -574,7 +574,7 @@ impl Boxes3D {
     #[inline]
     pub fn with_centers(
         mut self,
-        centers: impl IntoIterator<Item = impl Into<crate::components::PoseTranslation3D>>,
+        centers: impl IntoIterator<Item = impl Into<crate::components::Translation3D>>,
     ) -> Self {
         self.centers = try_serialize_field(Self::descriptor_centers(), centers);
         self
@@ -586,9 +586,7 @@ impl Boxes3D {
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
-        rotation_axis_angles: impl IntoIterator<
-            Item = impl Into<crate::components::PoseRotationAxisAngle>,
-        >,
+        rotation_axis_angles: impl IntoIterator<Item = impl Into<crate::components::RotationAxisAngle>>,
     ) -> Self {
         self.rotation_axis_angles = try_serialize_field(
             Self::descriptor_rotation_axis_angles(),
@@ -603,7 +601,7 @@ impl Boxes3D {
     #[inline]
     pub fn with_quaternions(
         mut self,
-        quaternions: impl IntoIterator<Item = impl Into<crate::components::PoseRotationQuat>>,
+        quaternions: impl IntoIterator<Item = impl Into<crate::components::RotationQuat>>,
     ) -> Self {
         self.quaternions = try_serialize_field(Self::descriptor_quaternions(), quaternions);
         self

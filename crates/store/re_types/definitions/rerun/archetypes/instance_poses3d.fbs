@@ -25,19 +25,19 @@ table InstancePoses3D (
   "attr.rust.derive": " PartialEq"
 ) {
   /// Translation vectors.
-  translations: [rerun.components.PoseTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);
+  translations: [rerun.components.Translation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 
   /// Rotations via axis + angle.
-  rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
+  rotation_axis_angles: [rerun.components.RotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
 
   /// Rotations via quaternion.
-  quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
+  quaternions: [rerun.components.RotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
 
   /// Scaling factors.
-  scales: [rerun.components.PoseScale3D] ("attr.rerun.component_optional", nullable, order: 1400);
+  scales: [rerun.components.Scale3D] ("attr.rerun.component_optional", nullable, order: 1400);
 
   /// 3x3 transformation matrices.
-  mat3x3: [rerun.components.PoseTransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
+  mat3x3: [rerun.components.TransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
 
   // TODO(andreas): Support TransformRelation?
   // TODO(andreas): Support axis_length?
