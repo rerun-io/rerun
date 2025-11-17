@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16...3.27)
 
 # Setup builds for examples
-file(GLOB_RECURSE sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
+file(GLOB_RECURSE sources_list CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
 
 # Not complete examples:
 list(FILTER sources_list EXCLUDE REGEX .*/concepts/static/*)

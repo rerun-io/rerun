@@ -6,27 +6,24 @@ import pyarrow as pa
 from datafusion import col, functions as f
 
 if TYPE_CHECKING:
-    from .conftest import ServerInstance
+    from rerun.catalog import DatasetEntry
 
 
-def test_df_count(server_instance: ServerInstance) -> None:
+def test_df_count(readonly_test_dataset: DatasetEntry) -> None:
     """
     Tests count() on a dataframe which ensures we collect empty batches properly.
 
     See issue https://github.com/rerun-io/rerun/issues/10894 for additional context.
     """
-    dataset = server_instance.dataset
 
-    count = dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
+    count = readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
 
     assert count > 0
 
 
-def test_df_aggregation(server_instance: ServerInstance) -> None:
-    dataset = server_instance.dataset
-
+def test_df_aggregation(readonly_test_dataset: DatasetEntry) -> None:
     results = (
-        dataset.dataframe_query_view(index="time_1", contents="/**")
+        readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
         .unnest_columns("/obj1:Points3D:positions")
         .aggregate(

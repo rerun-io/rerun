@@ -316,8 +316,16 @@ impl ::prost::Name for CreateIndexRequest {
         "/rerun.cloud.v1alpha1.CreateIndexRequest".into()
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateIndexResponse {
+    /// The properties/configuration of the newly created index.
+    #[prost(message, optional, tag = "3")]
+    pub index: ::core::option::Option<IndexConfig>,
+    /// Backend-specific statistics about the index.
+    ///
+    /// This is guaranteed to be valid JSON.
+    #[prost(bytes = "bytes", tag = "4")]
+    pub statistics_json: ::prost::bytes::Bytes,
     /// Optional debug information about the index-creation task
     #[prost(message, optional, tag = "2")]
     pub debug_info: ::core::option::Option<DebugInfo>,
@@ -330,6 +338,75 @@ impl ::prost::Name for CreateIndexResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.CreateIndexResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ListIndexesRequest {}
+impl ::prost::Name for ListIndexesRequest {
+    const NAME: &'static str = "ListIndexesRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ListIndexesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ListIndexesRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListIndexesResponse {
+    /// The respective properties/configuration of the indexes.
+    #[prost(message, repeated, tag = "1")]
+    pub indexes: ::prost::alloc::vec::Vec<IndexConfig>,
+    /// Backend-specific statistics about the indexes.
+    ///
+    /// This is guaranteed to be valid JSON.
+    ///
+    /// If non-empty, this is the same length as `indexes`, and in the same order.
+    #[prost(bytes = "bytes", repeated, tag = "2")]
+    pub statistics_json: ::prost::alloc::vec::Vec<::prost::bytes::Bytes>,
+}
+impl ::prost::Name for ListIndexesResponse {
+    const NAME: &'static str = "ListIndexesResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ListIndexesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ListIndexesResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DeleteIndexesRequest {
+    /// Which column to delete the indexes for.
+    #[prost(message, optional, tag = "1")]
+    pub column: ::core::option::Option<IndexColumn>,
+}
+impl ::prost::Name for DeleteIndexesRequest {
+    const NAME: &'static str = "DeleteIndexesRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DeleteIndexesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DeleteIndexesRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteIndexesResponse {
+    /// Which indexes were actually deleted.
+    ///
+    /// Can be empty if no matching indexes were found.
+    #[prost(message, repeated, tag = "1")]
+    pub indexes: ::prost::alloc::vec::Vec<IndexConfig>,
+}
+impl ::prost::Name for DeleteIndexesResponse {
+    const NAME: &'static str = "DeleteIndexesResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DeleteIndexesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DeleteIndexesResponse".into()
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -1570,7 +1647,19 @@ impl DataSourceKind {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    ::prost::Enumeration,
+)]
 #[repr(i32)]
 pub enum VectorDistanceMetric {
     Unspecified = 0,
@@ -2175,6 +2264,50 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// List all user-defined indexes in this dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn list_indexes(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListIndexesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ListIndexes",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ListIndexes",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Delete a custom index for a specific column.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn delete_indexes(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteIndexesRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteIndexesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteIndexes",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "DeleteIndexes",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Search a previously created index.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2575,6 +2708,20 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::CreateIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::CreateIndexResponse>, tonic::Status>;
+        /// List all user-defined indexes in this dataset.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn list_indexes(
+            &self,
+            request: tonic::Request<super::ListIndexesRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>;
+        /// Delete a custom index for a specific column.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn delete_indexes(
+            &self,
+            request: tonic::Request<super::DeleteIndexesRequest>,
+        ) -> std::result::Result<tonic::Response<super::DeleteIndexesResponse>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
@@ -3479,6 +3626,90 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = CreateIndexSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/ListIndexes" => {
+                    #[allow(non_camel_case_types)]
+                    struct ListIndexesSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::ListIndexesRequest>
+                        for ListIndexesSvc<T>
+                    {
+                        type Response = super::ListIndexesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ListIndexesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::list_indexes(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ListIndexesSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/DeleteIndexes" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteIndexesSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::DeleteIndexesRequest>
+                        for DeleteIndexesSvc<T>
+                    {
+                        type Response = super::DeleteIndexesResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteIndexesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::delete_indexes(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = DeleteIndexesSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

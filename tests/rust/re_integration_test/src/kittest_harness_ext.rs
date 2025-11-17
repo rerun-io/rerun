@@ -71,11 +71,17 @@ pub trait HarnessExt<'h> {
     // Get the position of a node in the UI by its label.
     fn get_panel_position(&mut self, label: &str) -> egui::Rect;
 
+    // Click at a position in the UI.
+    fn click_at(&mut self, pos: egui::Pos2);
+
     // Drag-and-drop functions based on position
     fn drag_at(&mut self, pos: egui::Pos2);
     fn hover_at(&mut self, pos: egui::Pos2);
     fn drop_at(&mut self, pos: egui::Pos2);
     fn right_click_at(&mut self, pos: egui::Pos2);
+
+    // Gets the cursor icon
+    fn cursor_icon(&mut self) -> egui::CursorIcon;
 
     // Changes the value of a dropdown menu.
     fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
@@ -303,6 +309,18 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         self.get_by_role_and_label(Role::Pane, label).rect()
     }
 
+    fn click_at(&mut self, pos: egui::Pos2) {
+        for pressed in [true, false] {
+            self.event(egui::Event::PointerButton {
+                pos,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: Modifiers::NONE,
+            });
+            self.run();
+        }
+    }
+
     fn drag_at(&mut self, pos: egui::Pos2) {
         self.event(egui::Event::PointerButton {
             pos,
@@ -343,6 +361,12 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             modifiers: Modifiers::NONE,
         });
         self.run();
+    }
+
+    fn cursor_icon(&mut self) -> egui::CursorIcon {
+        self.run_with_viewer_context(|viewer_context| {
+            viewer_context.egui_ctx().output(|o| o.cursor_icon)
+        })
     }
 
     fn debug_viewer_state(&mut self) {

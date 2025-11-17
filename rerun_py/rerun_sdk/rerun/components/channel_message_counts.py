@@ -66,12 +66,14 @@ class ChannelMessageCounts(ComponentMixin):
 
 if TYPE_CHECKING:
     ChannelMessageCountsLike = ChannelMessageCounts | dict[int, int]
+    """A type alias for any ChannelMessageCounts-like object."""
 else:
     ChannelMessageCountsLike = Any
 
 ChannelMessageCountsArrayLike = (
     ChannelMessageCounts | Sequence[ChannelMessageCountsLike] | dict[int, int] | Sequence[dict[int, int]]
 )
+"""A type alias for any ChannelMessageCounts-like array object."""
 
 
 class ChannelMessageCountsBatch(BaseBatch[ChannelMessageCountsArrayLike], ComponentBatchMixin):

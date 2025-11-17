@@ -10,15 +10,15 @@ use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
-use re_types::blueprint::components::PanelState;
+use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
     DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, PlayState, SelectionChange, StorageContext,
-    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
-    TimeControlCommand, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -35,6 +35,7 @@ const WATERMARK: bool = false; // Nice for recording media material
 #[cfg(feature = "testing")]
 pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 
+// TODO(#11737): Remove the serde derives since almost everything is skipped.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
@@ -42,7 +43,9 @@ pub struct AppState {
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
+    #[serde(skip)]
     pub time_controls: HashMap<StoreId, TimeControl>,
+    #[serde(skip)]
     pub blueprint_time_control: TimeControl,
 
     /// Maps blueprint id to the current undo state for it.
@@ -54,6 +57,8 @@ pub struct AppState {
     blueprint_time_panel: re_time_panel::TimePanel,
     #[serde(skip)]
     blueprint_tree: re_blueprint_tree::BlueprintTree,
+    #[serde(skip)]
+    pub(crate) recording_panel: re_recording_panel::RecordingPanel,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -114,6 +119,7 @@ impl Default for AppState {
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_time_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            recording_panel: Default::default(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
@@ -489,7 +495,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
+                if display_mode.has_time_panel() {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -505,7 +511,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
+                if display_mode.has_selection_panel() {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -567,7 +573,7 @@ impl AppState {
                                         .max_height(max_recordings_height)
                                         .default_height(160.0_f32.max(recordings_min_height))
                                         .show_inside(ui, |ui| {
-                                            re_recording_panel::recordings_panel_ui(
+                                            self.recording_panel.show_panel(
                                                 &ctx,
                                                 ui,
                                                 redap_servers,
@@ -575,7 +581,7 @@ impl AppState {
                                             );
                                         });
                                 } else {
-                                    re_recording_panel::recordings_panel_ui(
+                                    self.recording_panel.show_panel(
                                         &ctx,
                                         ui,
                                         redap_servers,
@@ -921,7 +927,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            entity_db.times_per_timeline(),
+            Some(entity_db.times_per_timeline()),
             play_state,
             Some(blueprint_ctx),
         );

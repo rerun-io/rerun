@@ -38,7 +38,10 @@ class AffixFuzzer10(ComponentMixin):
 
 
 AffixFuzzer10Like = AffixFuzzer10
+"""A type alias for any AffixFuzzer10-like object."""
+
 AffixFuzzer10ArrayLike = AffixFuzzer10 | Sequence[AffixFuzzer10Like]
+"""A type alias for any AffixFuzzer10-like array object."""
 
 
 class AffixFuzzer10Batch(BaseBatch[AffixFuzzer10ArrayLike], ComponentBatchMixin):

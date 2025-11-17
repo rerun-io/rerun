@@ -8,8 +8,8 @@ use re_viewer::{
     App,
     event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind},
     external::{
-        re_types::archetypes::TextLog,
-        re_viewer_context::{PlayState, TimeControlCommand},
+        re_types::{archetypes::TextLog, blueprint::components::PlayState},
+        re_viewer_context::TimeControlCommand,
     },
     viewer_test_utils::{self, HarnessOptions},
 };

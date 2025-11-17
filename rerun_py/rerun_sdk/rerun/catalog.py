@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
+
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     CatalogClientInternal,
@@ -18,6 +19,10 @@ from rerun_bindings import (
     TableInsertMode as TableInsertMode,
     Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
+)
+from rerun_bindings.types import (
+    IndexValuesLike as IndexValuesLike,
+    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
 from .error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
@@ -91,6 +96,11 @@ class CatalogClient:
 
     def __repr__(self) -> str:
         return self._raw_client.__repr__()
+
+    @property
+    def url(self) -> str:
+        """Returns the catalog URL."""
+        return self._raw_client.url
 
     def all_entries(self) -> list[Entry]:
         """Returns a list of all entries in the catalog."""

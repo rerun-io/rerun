@@ -109,6 +109,16 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
 
+  // List all user-defined indexes in this dataset.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc ListIndexes(ListIndexesRequest) returns (ListIndexesResponse) {}
+
+  // Delete a custom index for a specific column.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc DeleteIndexes(DeleteIndexesRequest) returns (DeleteIndexesResponse) {}
+
   /* Queries */
 
   // Search a previously created index.
@@ -347,8 +357,42 @@ message CreateIndexResponse {
   reserved 1;
   reserved "data";
 
+  // The properties/configuration of the newly created index.
+  IndexConfig index = 3;
+
+  // Backend-specific statistics about the index.
+  //
+  // This is guaranteed to be valid JSON.
+  bytes statistics_json = 4;
+
   // Optional debug information about the index-creation task
   DebugInfo debug_info = 2;
+}
+
+message ListIndexesRequest {}
+
+message ListIndexesResponse {
+  // The respective properties/configuration of the indexes.
+  repeated IndexConfig indexes = 1;
+
+  // Backend-specific statistics about the indexes.
+  //
+  // This is guaranteed to be valid JSON.
+  //
+  // If non-empty, this is the same length as `indexes`, and in the same order.
+  repeated bytes statistics_json = 2;
+}
+
+message DeleteIndexesRequest {
+  // Which column to delete the indexes for.
+  IndexColumn column = 1;
+}
+
+message DeleteIndexesResponse {
+  // Which indexes were actually deleted.
+  //
+  // Can be empty if no matching indexes were found.
+  repeated IndexConfig indexes = 1;
 }
 
 message IndexConfig {

@@ -358,6 +358,32 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         |_| components::MediaType::plain_text(),
     );
 
+    // Transform3D
+    registry.register_component_fallback_provider(
+        archetypes::Transform3D::descriptor_child_frame().component,
+        |ctx| components::TransformFrameId::from_entity_path(ctx.target_entity_path),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Transform3D::descriptor_parent_frame().component,
+        |ctx| {
+            components::TransformFrameId::from_entity_path(
+                &ctx.target_entity_path
+                    .parent()
+                    .unwrap_or(re_log_types::EntityPath::root()),
+            )
+        },
+    );
+
+    // Pinhole
+    registry.register_component_fallback_provider(
+        archetypes::Pinhole::descriptor_color().component,
+        |ctx| components::Color::from(ctx.viewer_ctx().tokens().frustum_color),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Pinhole::descriptor_line_width().component,
+        |_| components::Radius::new_ui_points(1.),
+    );
+
     // SeriesLines
     registry.register_component_fallback_provider(
         archetypes::SeriesLines::descriptor_widths().component,

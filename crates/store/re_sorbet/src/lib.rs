@@ -21,7 +21,7 @@ mod component_column_descriptor;
 mod error;
 mod index_column_descriptor;
 mod ipc;
-mod metadata;
+pub mod metadata;
 mod migrations;
 mod row_id_column_descriptor;
 mod schema_builder;

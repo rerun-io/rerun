@@ -61,9 +61,9 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
             }
 
             // These metadata fields don't require value changes.
-            rename_key(&mut metadata, "rerun.index_name", "rerun:index_name");
-            rename_key(&mut metadata, "rerun.entity_path", "rerun:entity_path");
-            rename_key(&mut metadata, "rerun.kind", "rerun:kind");
+            rename_key(&mut metadata, "rerun.index_name", crate::metadata::SORBET_INDEX_NAME);
+            rename_key(&mut metadata, "rerun.entity_path", crate::metadata::SORBET_ENTITY_PATH);
+            rename_key(&mut metadata, "rerun.kind", crate::metadata::RERUN_KIND);
             rename_key(&mut metadata, "rerun.is_static", "rerun:is_static");
             rename_key(&mut metadata, "rerun.is_indicator", "rerun:is_indicator");
             rename_key(&mut metadata, "rerun.is_tombstone", "rerun:is_tombstone");
@@ -83,13 +83,13 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                         component.ends_with("Indicator"),
                         "Expected component to end with 'Indicator', got: {component:?}"
                     );
-                    metadata.insert("rerun:component".to_owned(), component);
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), component);
                 } else if field_name.starts_with("rerun.") {
                     // Long name
-                    metadata.insert("rerun:component".to_owned(), field_name.clone());
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), field_name.clone());
                 } else {
                     // Short name: expand it to be long
-                    metadata.insert("rerun:component".to_owned(), format!("rerun.components.{field_name}"));
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), format!("rerun.components.{field_name}"));
                 }
 
                 // Remove everything else.
@@ -137,11 +137,11 @@ fn rewire_tagged_components(batch: &RecordBatch) -> RecordBatch {
                 };
 
                 if let Some(archetype) = archetype {
-                    metadata.insert("rerun:archetype".to_owned(), archetype);
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_ARCHETYPE.to_owned(), archetype);
                 }
-                metadata.insert("rerun:component".to_owned(), component);
+                metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT.to_owned(), component);
                 if let Some(component_type) = component_type {
-                    metadata.insert("rerun:component_type".to_owned(), component_type);
+                    metadata.insert(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(), component_type);
                 }
             }
 
@@ -192,7 +192,9 @@ fn port_recording_info(batch: &mut RecordBatch) {
 
     // We renamed `RecordingProperties` to `RecordingInfo`,
     // and moved it from `/__properties/recording` to `/__properties`.
-    if let Some(entity_path) = batch.schema_metadata_mut().get_mut("rerun:entity_path")
+    if let Some(entity_path) = batch
+        .schema_metadata_mut()
+        .get_mut(crate::metadata::SORBET_ENTITY_PATH)
         && entity_path == "/__properties/recording"
     {
         *entity_path = "/__properties".to_owned();
@@ -220,7 +222,9 @@ fn port_recording_info(batch: &mut RecordBatch) {
             .with_metadata(field.metadata().clone());
 
             // Migrate per-column entity paths (if any):
-            if let Some(entity_path) = field.metadata_mut().get_mut("rerun:entity_path")
+            if let Some(entity_path) = field
+                .metadata_mut()
+                .get_mut(crate::metadata::SORBET_ENTITY_PATH)
                 && entity_path == "/__properties/recording"
             {
                 *entity_path = "/__properties".to_owned();

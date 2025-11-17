@@ -32,12 +32,14 @@ bitflags.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 vec1 = { workspace = true, features = ["smallvec-v1"] }
 
 [dev-dependencies]
 criterion.workspace = true
 insta.workspace = true
+mimalloc.workspace = true
 
 [lib]
 bench = false

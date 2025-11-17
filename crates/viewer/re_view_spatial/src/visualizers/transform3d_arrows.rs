@@ -120,7 +120,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                     &data_result.entity_path,
                     Transform3D::name(),
                 )
-            };
+            }
+            .as_affine3a();
 
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
             // for a bunch of unused components. The actual transform data comes out of the context manager and can't be

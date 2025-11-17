@@ -88,7 +88,9 @@ impl Points2DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_transform_required_for_entity(entity_path, Points2D::name());
+                .single_transform_required_for_entity(entity_path, Points2D::name())
+                .as_affine3a();
+
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())

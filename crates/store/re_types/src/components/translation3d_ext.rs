@@ -1,7 +1,7 @@
 use super::Translation3D;
 use crate::datatypes::Vec3D;
 
-// This is intentionally not implemented for `Vec3`:
+// This is intentionally not implemented for `DVec3`:
 // The transform semantic is expressed here, `Vec3` on the other hand implements conversion to `glam::Vec3A`.
 #[cfg(feature = "glam")]
 impl From<Translation3D> for glam::Affine3A {

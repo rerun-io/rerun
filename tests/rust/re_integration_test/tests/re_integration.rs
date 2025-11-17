@@ -24,11 +24,11 @@ pub async fn dataset_ui_test() {
     snapshot_results.add(harness.try_snapshot("dataset_ui_empty_form"));
 
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Host name:")
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "URL:")
         .click();
     harness.run_ok();
     harness
-        .get_by_role_and_label(egui::accesskit::Role::TextInput, "Host name:")
+        .get_by_role_and_label(egui::accesskit::Role::TextInput, "URL:")
         .type_text(&format!("rerun+http://localhost:{}", server.port()));
     harness.run_ok();
 
@@ -38,12 +38,21 @@ pub async fn dataset_ui_test() {
     viewer_test_utils::step_until(
         "Redap server dataset appears",
         &mut harness,
-        |harness| harness.query_by_label_contains("my_dataset").is_some(),
+        // The label eventually appears twice: first in the left panel, and in the entries table
+        // when it refreshes. Here we wait for both to appear. Later we pick the first one (in the
+        // left panel).
+        |harness| harness.query_all_by_label_contains("my_dataset").count() == 2,
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
 
-    harness.get_by_label("my_dataset").click();
+    // We pick the first one.
+    harness
+        .get_all_by_label("my_dataset")
+        .next()
+        .unwrap()
+        .click();
+
     viewer_test_utils::step_until(
         "Redap recording id appears",
         &mut harness,

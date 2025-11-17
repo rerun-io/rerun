@@ -113,10 +113,6 @@ def fetch_binary_assets(
                 f"librerun_c-{tag}-aarch64-apple-darwin.a",
                 f"commit/{commit_short}/rerun_c/macos-arm64/librerun_c.a",
             ),
-            (
-                f"librerun_c-{tag}-x86_64-apple-darwin.a",
-                f"commit/{commit_short}/rerun_c/macos-x64/librerun_c.a",
-            ),
         ]
         for name, blob_url in rerun_c_blobs:
             blob = bucket.get_blob(blob_url)
@@ -166,10 +162,6 @@ def fetch_binary_assets(
             (
                 f"rerun-cli-{tag}-aarch64-apple-darwin",
                 f"commit/{commit_short}/rerun-cli/macos-arm64/rerun",
-            ),
-            (
-                f"rerun-cli-{tag}-x86_64-apple-darwin",
-                f"commit/{commit_short}/rerun-cli/macos-x64/rerun",
             ),
         ]
         for name, blob_url in rerun_cli_blobs:

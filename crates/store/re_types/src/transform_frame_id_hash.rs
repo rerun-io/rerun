@@ -72,6 +72,29 @@ impl TransformFrameIdHash {
         }
     }
 
+    /// Create a new [`TransformFrameIdHash`] from a string representing a [`TransformFrameId`].
+    #[inline]
+    #[expect(clippy::should_implement_trait)]
+    pub fn from_str(value: &str) -> Self {
+        Self::from_str_with_optional_derived_path(value).0
+    }
+
+    /// Create a new [`TransformFrameIdHash`] from a string representing a [`TransformFrameId`].
+    ///
+    /// If the string was an entity path derived frame id, also returns that entity path.
+    #[inline]
+    pub fn from_str_with_optional_derived_path(value: &str) -> (Self, Option<EntityPath>) {
+        if let Some(path) = value.strip_prefix(TransformFrameId::ENTITY_HIERARCHY_PREFIX) {
+            let path = EntityPath::parse_forgiving(path);
+            (Self::from_entity_path(&path), Some(path))
+        } else {
+            (
+                Self(Hash64::hash((value, Self::NON_ENTITY_PATH_SALT))),
+                None,
+            )
+        }
+    }
+
     /// Fast path for creating a [`TransformFrameIdHash`] directly from an [`EntityPath`].
     ///
     /// The resulting [`TransformFrameIdHash`] represents the implicit transform frame
@@ -137,6 +160,26 @@ mod tests {
             TransformFrameIdHash::from(&derived_frame_id),
             TransformFrameIdHash::from_entity_path_hash(path.hash())
         );
+        assert_eq!(
+            TransformFrameIdHash::from_str(&format!("tf#{path}")),
+            TransformFrameIdHash::from_entity_path_hash(path.hash())
+        );
+        assert_eq!(
+            TransformFrameIdHash::from_str_with_optional_derived_path(&format!("tf#{path}")),
+            (
+                TransformFrameIdHash::from_entity_path_hash(path.hash()),
+                Some(path.clone())
+            )
+        );
+
+        // Sanity check: parse a string that could be an entity path, but it's not a built-in frame id.
+        assert_eq!(
+            TransformFrameIdHash::from_str_with_optional_derived_path(&format!("{path}")),
+            (
+                TransformFrameIdHash::new(&TransformFrameId::new(&format!("{path}"))),
+                None
+            )
+        );
     }
 
     #[test]
@@ -154,6 +197,10 @@ mod tests {
         );
         assert_ne!(
             TransformFrameIdHash::from(&frame_id),
+            TransformFrameIdHash::from_entity_path(&path)
+        );
+        assert_ne!(
+            TransformFrameIdHash::from_str(frame_id.as_str()),
             TransformFrameIdHash::from_entity_path(&path)
         );
     }

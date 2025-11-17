@@ -1,5 +1,5 @@
 ---
 title: Getting Started
-order: 0
-redirect: getting-started/what-is-rerun
+order: 1
+redirect: getting-started/quick-start
 ---

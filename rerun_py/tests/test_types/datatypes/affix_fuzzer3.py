@@ -43,6 +43,8 @@ if TYPE_CHECKING:
     from .. import datatypes
 
     AffixFuzzer3Like = AffixFuzzer3 | None | float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32]
+    """A type alias for any AffixFuzzer3-like object."""
+
     AffixFuzzer3ArrayLike = (
         AffixFuzzer3
         | None
@@ -51,6 +53,7 @@ if TYPE_CHECKING:
         | npt.NDArray[np.float32]
         | Sequence[AffixFuzzer3Like]
     )
+    """A type alias for any AffixFuzzer3-like array object."""
 else:
     AffixFuzzer3Like = Any
     AffixFuzzer3ArrayLike = Any

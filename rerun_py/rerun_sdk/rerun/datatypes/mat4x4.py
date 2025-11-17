@@ -84,10 +84,12 @@ class Mat4x4(Mat4x4Ext):
 
 if TYPE_CHECKING:
     Mat4x4Like = Mat4x4 | npt.ArrayLike
+    """A type alias for any Mat4x4-like object."""
 else:
     Mat4x4Like = Any
 
 Mat4x4ArrayLike = Mat4x4 | Sequence[Mat4x4Like]
+"""A type alias for any Mat4x4-like array object."""
 
 
 class Mat4x4Batch(BaseBatch[Mat4x4ArrayLike]):

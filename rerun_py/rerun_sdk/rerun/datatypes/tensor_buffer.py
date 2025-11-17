@@ -101,6 +101,8 @@ if TYPE_CHECKING:
         | npt.NDArray[np.uint64]
         | npt.NDArray[np.uint8]
     )
+    """A type alias for any TensorBuffer-like object."""
+
     TensorBufferArrayLike = (
         TensorBuffer
         | npt.NDArray[np.float16]
@@ -116,6 +118,7 @@ if TYPE_CHECKING:
         | npt.NDArray[np.uint8]
         | Sequence[TensorBufferLike]
     )
+    """A type alias for any TensorBuffer-like array object."""
 else:
     TensorBufferLike = Any
     TensorBufferArrayLike = Any
