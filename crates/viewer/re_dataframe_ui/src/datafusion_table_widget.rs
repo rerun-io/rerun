@@ -767,7 +767,10 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         selected_items.len(),
                         format_plural_s(selected_items.len())
                     );
-                    if ui.button(label).clicked() {
+                    if ui
+                        .add(icons::EXTERNAL_LINK.as_button_with_label(ui.tokens(), label))
+                        .clicked()
+                    {
                         for row in &selected_items {
                             if let Some((display_record_batch, batch_index)) = Self::with_row_batch(
                                 &mut self.display_record_batches,
