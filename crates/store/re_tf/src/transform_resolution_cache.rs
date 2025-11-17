@@ -1831,8 +1831,11 @@ mod tests {
 
     #[test]
     fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
-        for clear_in_separate_chunk in [false, true] {
+        for (clear_in_separate_chunk, first_clear_then_data) in
+            [(false, false), (true, false), (true, true)]
+        {
             println!("clear_in_separate_chunk: {clear_in_separate_chunk}");
+            println!("first_clear_then_data: {clear_in_separate_chunk}");
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
             let mut cache = TransformResolutionCache::default();
@@ -1841,7 +1844,7 @@ mod tests {
             let timeline_name = *timeline.name();
 
             let path = EntityPath::from("ent");
-            let mut chunk = Chunk::builder(path.clone())
+            let data_chunk = Chunk::builder(path.clone())
                 .with_archetype_auto_row(
                     [(timeline, 1)],
                     &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
@@ -1849,17 +1852,19 @@ mod tests {
                 .with_archetype_auto_row(
                     [(timeline, 3)],
                     &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0]),
-                );
-            if !clear_in_separate_chunk {
-                chunk = chunk.with_archetype(
+                )
+                .build()?;
+            let clear_chunk = Chunk::builder(path.clone())
+                .with_archetype(
                     RowId::new(),
                     [(timeline, 2)],
                     &archetypes::Clear::new(false),
-                );
-            }
-            entity_db.add_chunk(&Arc::new(chunk.build()?))?;
+                )
+                .build()?;
 
-            if clear_in_separate_chunk {
+            if clear_in_separate_chunk && !first_clear_then_data {
+                entity_db.add_chunk(&Arc::new(data_chunk))?;
+
                 // If we're putting the clear in a separate chunk, we can try warming the cache and see whether we get the right transforms.
                 {
                     apply_store_subscriber_events(&mut cache, &entity_db);
@@ -1886,13 +1891,30 @@ mod tests {
                 }
 
                 // Now add a separate chunk with a clear.
-                let chunk = Chunk::builder(path.clone())
-                    .with_archetype(
-                        RowId::new(),
-                        [(timeline, 2)],
-                        &archetypes::Clear::new(false),
-                    )
-                    .build()?;
+                entity_db.add_chunk(&Arc::new(clear_chunk))?;
+            } else if clear_in_separate_chunk && first_clear_then_data {
+                // First add clear chunk.
+                entity_db.add_chunk(&Arc::new(clear_chunk))?;
+
+                // Warm the cache with this situation.
+                apply_store_subscriber_events(&mut cache, &entity_db);
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+                let transforms = transforms_per_timeline
+                    .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
+                    .unwrap();
+                for t in [0, 1, 2] {
+                    assert_eq!(
+                        transforms
+                            .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                        None,
+                        "Expected no transform at time {t}."
+                    );
+                }
+
+                // And only now add the data chunk.
+                entity_db.add_chunk(&Arc::new(data_chunk))?;
+            } else {
+                let chunk = data_chunk.concatenated(&clear_chunk)?;
                 entity_db.add_chunk(&Arc::new(chunk))?;
             }
 
