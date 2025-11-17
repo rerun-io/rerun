@@ -85,7 +85,7 @@ webbrowser = { workspace = true, optional = true }
 libc.workspace = true
 
 [dev-dependencies]
-arrow = { workspace = true, features = ["json"] }
+arrow.workspace = true
 insta.workspace = true
 similar-asserts.workspace = true
 serde.workspace = true
