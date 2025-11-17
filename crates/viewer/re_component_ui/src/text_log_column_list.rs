@@ -36,17 +36,19 @@ pub fn edit_or_view_columns_multiline(
             let columns = &mut column_list.text_log_columns;
             let mut any_edit = false;
 
+            const ITEM_SPACING: f32 = 8.0;
             let egui::InnerResponse { mut response, .. } = egui::Frame::new()
                 .corner_radius(ui.visuals().menu_corner_radius)
                 .fill(ui.visuals().tokens().text_edit_bg_color)
-                .inner_margin(8.0)
+                .inner_margin(egui::Margin::symmetric(
+                    ITEM_SPACING as i8,
+                    (ITEM_SPACING * 0.5) as i8,
+                ))
                 .show(ui, |ui| {
                     let dnd_res =
                         egui_dnd::dnd(ui, "text_log_columns_dnd").show_custom(|ui, item_iter| {
                             for (idx, col) in columns.iter_mut().enumerate() {
                                 let id = egui::Id::new((idx, &*col));
-
-                                const ITEM_SPACING: f32 = 8.0;
                                 let space_content = |ui: &mut egui::Ui, space| {
                                     ui.set_min_size(space + egui::vec2(0.0, ITEM_SPACING));
                                 };
@@ -124,10 +126,14 @@ fn column_definition_ui(
     visible: bool,
     any_edit: &mut bool,
 ) {
+    let name = match column {
+        datatypes::TextLogColumnKind::Timeline(_) => "Timeline:",
+        _ => column.kind_name(),
+    };
     if visible {
-        ui.strong(column.kind_name());
+        ui.strong(name);
     } else {
-        ui.weak(column.kind_name());
+        ui.weak(name);
     }
 
     if let datatypes::TextLogColumnKind::Timeline(name) = column {
