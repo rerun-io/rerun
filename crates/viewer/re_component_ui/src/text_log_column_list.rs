@@ -40,69 +40,56 @@ pub fn edit_or_view_columns_multiline(
             let egui::InnerResponse { mut response, .. } = egui::Frame::new()
                 .corner_radius(ui.visuals().menu_corner_radius)
                 .fill(ui.visuals().tokens().text_edit_bg_color)
-                .inner_margin(egui::Margin::symmetric(
-                    ITEM_SPACING as i8,
-                    (ITEM_SPACING * 0.5) as i8,
-                ))
+                .inner_margin(egui::Margin {
+                    left: ITEM_SPACING as i8,
+                    right: ITEM_SPACING as i8,
+                    top: ITEM_SPACING as i8,
+                    bottom: (ITEM_SPACING * 0.5) as i8,
+                })
                 .show(ui, |ui| {
-                    let dnd_res =
-                        egui_dnd::dnd(ui, "text_log_columns_dnd").show_custom(|ui, item_iter| {
-                            for (idx, col) in columns.iter_mut().enumerate() {
-                                let id = egui::Id::new((idx, &*col));
-                                let space_content = |ui: &mut egui::Ui, space| {
-                                    ui.set_min_size(space + egui::vec2(0.0, ITEM_SPACING));
-                                };
-
-                                item_iter.space_before(ui, id, space_content);
-
-                                item_iter.next(ui, id, idx, false, |ui, item| {
-                                    let dragged = item.state.dragged;
-                                    if !dragged {
-                                        ui.add_space(ITEM_SPACING * 0.5);
-                                    }
-                                    let res = item.ui(ui, |ui, handle, _state| {
-                                        ui.horizontal(|ui| {
-                                            handle.ui(ui, |ui| {
-                                                ui.small_icon(
-                                                    &re_ui::icons::DND_HANDLE,
-                                                    Some(ui.visuals().text_color()),
-                                                );
-                                            });
-
-                                            let visible = col.visible.0;
-
-                                            let (_, changed) =
-                                                egui::containers::Sides::new().shrink_left().show(
-                                                    ui,
-                                                    |ui| {
-                                                        column_definition_ui(
-                                                            ctx,
-                                                            ui,
-                                                            &mut col.kind,
-                                                            visible,
-                                                            &mut any_edit,
-                                                        );
-                                                    },
-                                                    |ui| {
-                                                        ui.visibility_toggle_button(
-                                                            &mut col.visible.0,
-                                                        )
-                                                        .changed()
-                                                    },
-                                                );
-
-                                            any_edit |= changed;
-                                        });
-                                    });
-                                    if !dragged {
-                                        ui.add_space(ITEM_SPACING * 0.5);
-                                    }
-                                    res
+                    let text_height = ui
+                        .style()
+                        .text_styles
+                        .get(&egui::TextStyle::Body)
+                        .map(|s| s.size)
+                        .unwrap_or(0.0);
+                    let sz = egui::vec2(ui.max_rect().size().x, ITEM_SPACING + text_height);
+                    let dnd_res = egui_dnd::dnd(ui, "text_log_columns_dnd").show_sized(
+                        columns.iter_mut().enumerate(),
+                        sz,
+                        |ui, (_idx, col), handle, _state| {
+                            ui.horizontal(|ui| {
+                                handle.ui(ui, |ui| {
+                                    ui.small_icon(
+                                        &re_ui::icons::DND_HANDLE,
+                                        Some(ui.visuals().text_color()),
+                                    );
                                 });
 
-                                item_iter.space_after(ui, id, space_content);
-                            }
-                        });
+                                let visible = col.visible.0;
+
+                                let (_, changed) =
+                                    egui::containers::Sides::new().shrink_left().show(
+                                        ui,
+                                        |ui| {
+                                            column_definition_ui(
+                                                ctx,
+                                                ui,
+                                                &mut col.kind,
+                                                visible,
+                                                &mut any_edit,
+                                            );
+                                        },
+                                        |ui| {
+                                            ui.visibility_toggle_button(&mut col.visible.0)
+                                                .changed()
+                                        },
+                                    );
+
+                                any_edit |= changed;
+                            });
+                        },
+                    );
 
                     if dnd_res.is_drag_finished() {
                         any_edit = true;
