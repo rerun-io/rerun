@@ -751,15 +751,8 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             ui.response().container_context_menu(|ui| {
                 let selection = TableSelectionState::load(ui.ctx(), self.session_id);
 
-                let mut selected_items = selection.selected_rows.clone();
-                if !selected_items.contains(&row_nr) {
-                    // If we right-click on a row that isn't part of the selection,
-                    // the context menu should be only for that right-clicked row.
-                    selected_items.clear();
-                }
-                if selected_items.is_empty() {
-                    selected_items.insert(row_nr);
-                }
+                // re_table will ensure that the right-clicked row is always selected.
+                let selected_items = selection.selected_rows;
 
                 if let Some(partition_links_spec) = &self.blueprint.partition_links {
                     let label = format!(

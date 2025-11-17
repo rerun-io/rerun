@@ -231,6 +231,13 @@ impl egui_table::TableDelegate for ReTable<'_> {
             let modifiers = ui.input(|i| i.modifiers);
             self.selection.handle_row_click(row_nr, modifiers);
         }
+        if response.container_secondary_clicked() {
+            if !self.selection.selected_rows.contains(&row_nr) {
+                // If right-clicking a non-selected row, select it first.
+                let modifiers = ui.input(|i| i.modifiers);
+                self.selection.handle_row_click(row_nr, modifiers);
+            }
+        }
         self.inner.row_ui(ui, row_nr);
     }
 
