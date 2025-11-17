@@ -1,0 +1,37 @@
+#pragma once
+
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+
+#include "component_descriptor.hpp"
+#include "component_type.hpp"
+#include "result.hpp"
+
+namespace arrow {
+    class Array;
+    class DataType;
+} // namespace arrow
+
+namespace rerun {
+
+    /// Thread-safe registry for component types.
+    ///
+    /// Ensures that each component descriptor is only registered once.
+    class ComponentTypeRegistry {
+      public:
+        ComponentTypeRegistry() = default;
+
+        /// Returns the handle to the registered component type for the given descriptor/arrow-type pair.
+        ///
+        /// Registers the component type when first encountered.
+        Result<ComponentTypeHandle> get_or_register(
+            const ComponentDescriptor& descriptor, std::shared_ptr<arrow::DataType> arrow_datatype
+        );
+
+      private:
+        std::mutex mutex_;
+        std::unordered_map<ComponentDescriptorHash, ComponentTypeHandle> comp_types_per_descr_;
+    };
+
+} // namespace rerun
