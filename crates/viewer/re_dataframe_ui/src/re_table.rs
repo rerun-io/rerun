@@ -176,7 +176,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
                     let mut checked = self.previous_selection.selected_rows.contains(&cell.row_nr);
                     let response = Self::row_selection_checkbox(ui, &mut checked, false);
                     if response.changed() {
-                        // HACK: If the checkbox is clicked, the row will also detect the click.
+                        // If the checkbox is clicked, the row will also detect the click.
                         // Since we want the checkbox to have a different click behavior,
                         // undo the row click:
                         self.selection = self.previous_selection.clone();
