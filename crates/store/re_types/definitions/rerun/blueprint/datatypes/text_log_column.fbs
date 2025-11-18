@@ -6,6 +6,7 @@ enum TextLogColumnKind: ubyte (
 ) {
   /// Invalid value. Won't show up in generated types.
   Invalid = 0,
+
   /// The logs timepoint on a specific timeline.
   Timeline,
 

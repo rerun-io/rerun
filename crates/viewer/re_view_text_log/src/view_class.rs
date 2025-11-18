@@ -343,7 +343,9 @@ fn table_ui(
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             for c in columns {
-                header.col(|ui| column_name_ui(ui, c));
+                header.col(|ui| {
+                    column_name_ui(ctx, ui, c, &timeline);
+                });
             }
         })
         .body(|mut body| {
@@ -433,8 +435,16 @@ fn table_ui(
     }
 }
 
-fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) {
-    ui.strong(column.name());
+fn column_name_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    column: &bp_datatypes::TextLogColumnKind,
+    timeline: &TimelineName,
+) -> egui::Response {
+    match column {
+        bp_datatypes::TextLogColumnKind::Timeline => item_ui::timeline_button(ctx, ui, timeline),
+        _ => ui.strong(column.name()),
+    }
 }
 
 // We need this to be a custom ui to bew able to use the view state to get seen text log levels. This could potentially be avoided if we could add component ui's from this crate.
