@@ -1,7 +1,7 @@
 use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::Vec3;
 
-use macaw::{BoundingBox, IsoTransform};
+use macaw::BoundingBox;
 use re_renderer::{
     LineDrawableBuilder, Size,
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
