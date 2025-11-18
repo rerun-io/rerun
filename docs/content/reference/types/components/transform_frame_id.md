@@ -32,4 +32,5 @@ utf8
 ## Used by
 
 * [`CoordinateFrame`](../archetypes/coordinate_frame.md)
+* [`Pinhole`](../archetypes/pinhole.md)
 * [`Transform3D`](../archetypes/transform3d.md)

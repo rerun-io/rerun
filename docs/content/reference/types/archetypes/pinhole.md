@@ -6,6 +6,8 @@ title: "Pinhole"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 Camera perspective projection (a.k.a. intrinsics).
 
+If [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).
+
 ## Fields
 ### Required
 * `image_from_camera`: [`PinholeProjection`](../components/pinhole_projection.md)
@@ -15,6 +17,8 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ### Optional
 * `camera_xyz`: [`ViewCoordinates`](../components/view_coordinates.md)
+* `child_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
+* `parent_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
 * `image_plane_distance`: [`ImagePlaneDistance`](../components/image_plane_distance.md)
 * `color`: [`Color`](../components/color.md)
 * `line_width`: [`Radius`](../components/radius.md)
