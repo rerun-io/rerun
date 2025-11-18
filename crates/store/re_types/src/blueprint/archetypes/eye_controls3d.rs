@@ -34,13 +34,17 @@ pub struct EyeControls3D {
     /// Defaults to orbital.
     pub kind: Option<SerializedComponentBatch>,
 
-    /// TODO: document
+    /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+    ///
+    /// Defaults to perspective.
     pub projection: Option<SerializedComponentBatch>,
 
     /// The cameras current position.
     pub position: Option<SerializedComponentBatch>,
 
-    /// TODO: document
+    /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+    ///
+    /// Not used when the projection is perspective.
     pub vertical_world_size: Option<SerializedComponentBatch>,
 
     /// The position the camera is currently looking at.
@@ -414,7 +418,9 @@ impl EyeControls3D {
         self
     }
 
-    /// TODO: document
+    /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+    ///
+    /// Defaults to perspective.
     #[inline]
     pub fn with_projection(
         mut self,
@@ -431,7 +437,9 @@ impl EyeControls3D {
         self
     }
 
-    /// TODO: document
+    /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+    ///
+    /// Not used when the projection is perspective.
     #[inline]
     pub fn with_vertical_world_size(
         mut self,

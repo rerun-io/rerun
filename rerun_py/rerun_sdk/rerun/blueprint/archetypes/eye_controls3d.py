@@ -53,11 +53,15 @@ class EyeControls3D(Archetype):
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
         projection:
-            TODO: document
+            The projection type of the eye for the spatial 3D view (perspective or orthographic).
+
+            Defaults to perspective.
         position:
             The cameras current position.
         vertical_world_size:
-            TODO: document
+            The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+
+            Not used when the projection is perspective.
         look_target:
             The position the camera is currently looking at.
 
@@ -151,11 +155,15 @@ class EyeControls3D(Archetype):
             This controls how the eye movement behaves when the user interact with the view.
             Defaults to orbital.
         projection:
-            TODO: document
+            The projection type of the eye for the spatial 3D view (perspective or orthographic).
+
+            Defaults to perspective.
         position:
             The cameras current position.
         vertical_world_size:
-            TODO: document
+            The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+
+            Not used when the projection is perspective.
         look_target:
             The position the camera is currently looking at.
 
@@ -229,7 +237,9 @@ class EyeControls3D(Archetype):
         default=None,
         converter=blueprint_components.Eye3DProjectionBatch._converter,  # type: ignore[misc]
     )
-    # TODO: document
+    # The projection type of the eye for the spatial 3D view (perspective or orthographic).
+    #
+    # Defaults to perspective.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -247,7 +257,9 @@ class EyeControls3D(Archetype):
         default=None,
         converter=components.LengthBatch._converter,  # type: ignore[misc]
     )
-    # TODO: document
+    # The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+    #
+    # Not used when the projection is perspective.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

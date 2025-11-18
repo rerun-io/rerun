@@ -35,13 +35,17 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to orbital.
         std::optional<ComponentBatch> kind;
 
-        /// TODO: document
+        /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+        ///
+        /// Defaults to perspective.
         std::optional<ComponentBatch> projection;
 
         /// The cameras current position.
         std::optional<ComponentBatch> position;
 
-        /// TODO: document
+        /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+        ///
+        /// Not used when the projection is perspective.
         std::optional<ComponentBatch> vertical_world_size;
 
         /// The position the camera is currently looking at.
@@ -148,7 +152,9 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// TODO: document
+        /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+        ///
+        /// Defaults to perspective.
         EyeControls3D with_projection(
             const rerun::blueprint::components::Eye3DProjection& _projection
         ) && {
@@ -164,7 +170,9 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// TODO: document
+        /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+        ///
+        /// Not used when the projection is perspective.
         EyeControls3D with_vertical_world_size(const rerun::components::Length& _vertical_world_size
         ) && {
             vertical_world_size =

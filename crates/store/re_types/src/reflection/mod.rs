@@ -170,7 +170,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Eye3DProjection as Component>::name(),
             ComponentReflection {
-                docstring_md: "TODO: document",
+                docstring_md: "The projection type of the eye for the spatial 3D view.",
                 deprecation_summary: None,
                 custom_placeholder: Some(Eye3DProjection::default().to_arrow()?),
                 datatype: Eye3DProjection::arrow_datatype(),
@@ -3489,7 +3489,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "projection",
                         display_name: "Projection",
                         component_type: "rerun.blueprint.components.Eye3DProjection".into(),
-                        docstring_md: "TODO: document",
+                        docstring_md: "The projection type of the eye for the spatial 3D view (perspective or orthographic).\n\nDefaults to perspective.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
@@ -3503,7 +3503,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "vertical_world_size",
                         display_name: "Vertical world size",
                         component_type: "rerun.components.Length".into(),
-                        docstring_md: "TODO: document",
+                        docstring_md: "The vertical size of the orthographic projection plane in world units, i.e. the zoom level.\n\nNot used when the projection is perspective.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {

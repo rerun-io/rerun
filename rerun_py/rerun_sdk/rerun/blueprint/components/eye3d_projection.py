@@ -22,13 +22,13 @@ from enum import Enum
 
 
 class Eye3DProjection(Enum):
-    """**Component**: TODO: document."""
+    """**Component**: The projection type of the eye for the spatial 3D view."""
 
     Orthographic = 1
-    """TODO: document"""
+    """An orthographic projection."""
 
     Perspective = 2
-    """TODO: document"""
+    """A perspective projection."""
 
     @classmethod
     def auto(cls, val: str | int | Eye3DProjection) -> Eye3DProjection:

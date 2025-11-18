@@ -30,9 +30,9 @@ Configuration of debug drawing in the 3D view.
 Configuration for the 3D eye
 
 * `kind`: The kind of the eye for the spatial 3D view.
-* `projection`: TODO: document
+* `projection`: The projection type of the eye for the spatial 3D view (perspective or orthographic).
 * `position`: The cameras current position.
-* `vertical_world_size`: TODO: document
+* `vertical_world_size`: The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
 * `look_target`: The position the camera is currently looking at.
 * `eye_up`: The up-axis of the eye itself, in world-space.
 * `speed`: Translation speed of the eye in the view (when using WASDQE keys to move in the 3D scene).

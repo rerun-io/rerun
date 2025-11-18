@@ -22,14 +22,14 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: TODO: document
+/// **Component**: The projection type of the eye for the spatial 3D view.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum Eye3DProjection {
-    /// TODO: document
+    /// An orthographic projection.
     Orthographic = 1,
 
-    /// TODO: document
+    /// A perspective projection.
     #[default]
     Perspective = 2,
 }
@@ -135,8 +135,8 @@ impl ::re_types_core::reflection::Enum for Eye3DProjection {
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Orthographic => "TODO: document",
-            Self::Perspective => "TODO: document",
+            Self::Orthographic => "An orthographic projection.",
+            Self::Perspective => "A perspective projection.",
         }
     }
 }

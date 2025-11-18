@@ -1,15 +1,15 @@
 namespace rerun.blueprint.components;
 
-/// TODO: document
+/// The projection type of the eye for the spatial 3D view.
 enum Eye3DProjection: ubyte (
     "attr.rerun.scope": "blueprint"
 ) {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 
-    /// TODO: document
+    /// An orthographic projection.
     Orthographic,
 
-    /// TODO: document
+    /// A perspective projection.
     Perspective (default),
 }

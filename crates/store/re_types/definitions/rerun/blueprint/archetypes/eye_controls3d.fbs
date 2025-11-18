@@ -12,13 +12,17 @@ table EyeControls3D (
     /// Defaults to orbital.
     kind: rerun.blueprint.components.Eye3DKind ("attr.rerun.component_optional", nullable, order: 100);
 
-    /// TODO: document
+    /// The projection type of the eye for the spatial 3D view (perspective or orthographic).
+    ///
+    /// Defaults to perspective.
     projection: rerun.blueprint.components.Eye3DProjection ("attr.rerun.component_optional", nullable, order: 150);
 
     /// The cameras current position.
     position: rerun.components.Position3D ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// TODO: document
+    /// The vertical size of the orthographic projection plane in world units, i.e. the zoom level.
+    ///
+    /// Not used when the projection is perspective.
     vertical_world_size: rerun.components.Length ("attr.rerun.component_optional", nullable, order: 250);
 
     /// The position the camera is currently looking at.

@@ -20,13 +20,13 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: TODO: document
+    /// **Component**: The projection type of the eye for the spatial 3D view.
     enum class Eye3DProjection : uint8_t {
 
-        /// TODO: document
+        /// An orthographic projection.
         Orthographic = 1,
 
-        /// TODO: document
+        /// A perspective projection.
         Perspective = 2,
     };
 } // namespace rerun::blueprint::components
