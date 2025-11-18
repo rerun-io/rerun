@@ -8,14 +8,12 @@ from datafusion import col
 from rerun.server import Server
 
 if TYPE_CHECKING:
-    import pathlib
-
     from rerun.catalog import DatasetEntry
 
     from .conftest import PrefilledCatalog
 
 
-def test_component_filtering(test_dataset: DatasetEntry) -> None:
+def test_component_filtering(readonly_test_dataset: DatasetEntry) -> None:
     """
     Cover the case where a user specifies a component filter on the client.
 
@@ -27,14 +25,14 @@ def test_component_filtering(test_dataset: DatasetEntry) -> None:
     component_path = "/obj2:Points3D:positions"
 
     filter_on_query = (
-        test_dataset.dataframe_query_view(index="time_1", contents="/**")
+        readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
         .filter_is_not_null(component_path)
         .df()
         .collect_partitioned()
     )
 
     filter_on_dataframe = (
-        test_dataset.dataframe_query_view(index="time_1", contents="/**")
+        readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
         .filter(col(component_path).is_not_null())
         .collect_partitioned()
@@ -48,10 +46,10 @@ def test_component_filtering(test_dataset: DatasetEntry) -> None:
     assert filter_on_query == filter_on_dataframe
 
 
-def test_partition_ordering(test_dataset: DatasetEntry) -> None:
+def test_partition_ordering(readonly_test_dataset: DatasetEntry) -> None:
     for time_index in ["time_1", "time_2", "time_3"]:
         streams = (
-            test_dataset.dataframe_query_view(index=time_index, contents="/**")
+            readonly_test_dataset.dataframe_query_view(index=time_index, contents="/**")
             .fill_latest_at()
             .df()
             .select("rerun_partition_id", time_index)
@@ -83,11 +81,11 @@ def test_partition_ordering(test_dataset: DatasetEntry) -> None:
                         prior_timestamp = timestamp
 
 
-def test_dataset_to_arrow_reader(test_dataset: DatasetEntry) -> None:
-    for rb in test_dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
+def readonly_test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -> None:
+    for rb in readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
         assert rb.num_rows > 0
 
-    for partition_batch in test_dataset.partition_table().to_arrow_reader():
+    for partition_batch in readonly_test_dataset.partition_table().to_arrow_reader():
         assert partition_batch.num_rows > 0
 
 
@@ -99,19 +97,22 @@ def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:
 
 
 # TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
-def test_tables_to_arrow_reader_patched(table_filepath: pathlib.Path) -> None:
+@pytest.mark.local_only
+def test_tables_to_arrow_reader_patched() -> None:
+    from .conftest import TABLE_FILEPATH
+
     with Server(
         tables={
-            "simple_datatypes": table_filepath,
-            "second_schema.second_table": table_filepath,
-            "alternate_catalog.third_schema.third_table": table_filepath,
+            "simple_datatypes": TABLE_FILEPATH,
+            "second_schema.second_table": TABLE_FILEPATH,
+            "alternate_catalog.third_schema.third_table": TABLE_FILEPATH,
         },
     ) as server:
         for table_entry in server.client().table_entries():
             assert pyarrow.Table.from_batches(table_entry.to_arrow_reader()).num_rows > 0
 
 
-def test_query_view_from_schema(test_dataset: DatasetEntry) -> None:
+def test_query_view_from_schema(readonly_test_dataset: DatasetEntry) -> None:
     """Verify Our Schema is sufficiently descriptive to extract all contents from dataset."""
     from rerun.dataframe import IndexColumnDescriptor
 
@@ -119,22 +120,22 @@ def test_query_view_from_schema(test_dataset: DatasetEntry) -> None:
     # We should consider if our schema is sufficiently descriptive for
     # multi-indices
     index_column = None
-    for entry in test_dataset.schema():
+    for entry in readonly_test_dataset.schema():
         if isinstance(entry, IndexColumnDescriptor):
             index_column = entry.name
         else:
             local_index_column = index_column
             if entry.is_static:
                 local_index_column = None
-            contents = test_dataset.dataframe_query_view(
+            contents = readonly_test_dataset.dataframe_query_view(
                 index=local_index_column, contents={entry.entity_path: entry.component}
             ).df()
             assert contents.count() > 0
 
 
-def test_dataset_schema_comparison_self_consistent(test_dataset: DatasetEntry) -> None:
-    schema_0 = test_dataset.schema()
-    schema_1 = test_dataset.schema()
+def readonly_test_dataset_schema_comparison_self_consistent(readonly_test_dataset: DatasetEntry) -> None:
+    schema_0 = readonly_test_dataset.schema()
+    schema_1 = readonly_test_dataset.schema()
     set_diff = set(schema_0).symmetric_difference(schema_1)
 
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"

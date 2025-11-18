@@ -126,21 +126,26 @@ def test_transform3d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.scale == rr.components.Scale3DBatch(none_empty_or_value(scale, rr.components.Scale3D(scale)))
-        assert arch.rotation_axis_angle == rr.components.RotationAxisAngleBatch(
-            none_empty_or_value(rotation_axis_angle, rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10))),
+        assert arch.scale == none_empty_or_value(scale, rr.components.Scale3DBatch(rr.components.Scale3D(scale)))
+        assert arch.rotation_axis_angle == none_empty_or_value(
+            rotation_axis_angle,
+            rr.components.RotationAxisAngleBatch(rr.components.RotationAxisAngle([1, 2, 3], Angle(deg=10))),
         )
-        assert arch.quaternion == rr.components.RotationQuatBatch(
-            none_empty_or_value(quaternion, rr.components.RotationQuat(xyzw=[1, 2, 3, 4])),
+        assert arch.quaternion == none_empty_or_value(
+            quaternion,
+            rr.components.RotationQuatBatch(rr.components.RotationQuat(xyzw=[1, 2, 3, 4])),
         )
-        assert arch.translation == rr.components.Translation3DBatch(
-            none_empty_or_value(translation, rr.components.Translation3D([1, 2, 3])),
+        assert arch.translation == none_empty_or_value(
+            translation,
+            rr.components.Translation3DBatch(rr.components.Translation3D([1, 2, 3])),
         )
-        assert arch.mat3x3 == rr.components.TransformMat3x3Batch(
-            none_empty_or_value(mat3x3, rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
+        assert arch.mat3x3 == none_empty_or_value(
+            mat3x3,
+            rr.components.TransformMat3x3Batch(rr.components.TransformMat3x3([[1, 2, 3], [4, 5, 6], [7, 8, 9]])),
         )
-        assert arch.axis_length == rr.components.AxisLengthBatch(
-            none_empty_or_value(axis_length, rr.components.AxisLength(1.0)),
+        assert arch.axis_length == none_empty_or_value(
+            axis_length,
+            rr.components.AxisLengthBatch(rr.components.AxisLength(1.0)),
         )
         assert arch.relation == rr.components.TransformRelationBatch(relation)
 

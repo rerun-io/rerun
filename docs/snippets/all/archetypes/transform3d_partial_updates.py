@@ -15,7 +15,7 @@ rr.init("rerun_example_transform3d_partial_updates", spawn=True)
 rr.log(
     "box",
     rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-    rr.Transform3D(clear=False, axis_length=10),
+    rr.Transform3D(axis_length=10),
 )
 
 # Update only the rotation of the box.

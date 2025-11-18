@@ -2353,6 +2353,7 @@ impl TryFrom<QueryTasksRequest> for crate::cloud::v1alpha1::QueryTasksRequest {
 pub enum TableInsertMode {
     Append,
     Overwrite,
+    Replace,
 }
 
 impl Default for TableInsertMode {
@@ -2376,6 +2377,7 @@ impl From<crate::cloud::v1alpha1::TableInsertMode> for TableInsertMode {
         match value {
             cloud::TableInsertMode::Unspecified | cloud::TableInsertMode::Append => Self::Append,
             cloud::TableInsertMode::Overwrite => Self::Overwrite,
+            cloud::TableInsertMode::Replace => Self::Replace,
         }
     }
 }
@@ -2385,6 +2387,7 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
         match value {
             TableInsertMode::Append => Self::Append,
             TableInsertMode::Overwrite => Self::Overwrite,
+            TableInsertMode::Replace => Self::Replace,
         }
     }
 }

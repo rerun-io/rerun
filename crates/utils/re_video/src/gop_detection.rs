@@ -13,7 +13,7 @@ pub enum DetectGopStartError {
     NalHeaderError(h264_reader::nal::NalHeaderError),
 
     #[error("AV1 parser error: {0}")]
-    Av1ParserError(String),
+    Av1ParserError(std::io::Error),
 
     #[error("Detected group of picture but failed to extract encoding details: {0:?}")]
     FailedToExtractEncodingDetails(String),

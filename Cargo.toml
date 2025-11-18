@@ -186,7 +186,11 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.13"
 array-init = "2.1"
-arrow = { version = "56.1", default-features = false }
+arrow = { version = "56.1", default-features = false, features = [
+  # NOTE: Similar to `datafusion`, we enable the `json` feature on a workspace level
+  # to avoid re-compilation when changing compile targets.
+  "json",
+] }
 async-stream = "0.3"
 async-trait = "0.1.89"
 axum = "0.8.6"
@@ -297,7 +301,7 @@ pathdiff = "0.2.3"
 percent-encoding = "2.3"
 pico-args = "0.5.0"
 pin-project-lite = "0.2.16"
-ply-rs-bw = { version = "2.0.0", default-features = false }
+ply-rs-bw = { version = "=2.0.3", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
 poll-promise = "0.3.0"
 pollster = "0.4.0"
 prettyplease = "0.2.37"
@@ -327,6 +331,8 @@ rustdoc-json = "0.9.7"
 rustdoc-types = "0.56.0"
 rustls = { version = "0.23.32", default-features = false }
 saturating_cast = "0.1"
+scuffle-av1 = "0.1.4"
+scuffle-bytes-util = "0.1.4"
 semver = "1.0.27"
 seq-macro = "0.3.6"
 serde = { version = "1.0", features = ["derive"] }

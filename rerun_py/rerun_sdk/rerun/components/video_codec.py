@@ -40,6 +40,9 @@ class VideoCodec(Enum):
     [`components.VideoSample`][rerun.components.VideoSample]s using this codec should be formatted according the "Low overhead bitstream format",
     as specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).
     Each sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.
+    Samples containing keyframes must include a sequence header OBU before the `KEY_FRAME` OBU to enable
+    extraction of frame dimensions, bit depth, and color information. `INTRA_ONLY` frames are not treated
+    as keyframes since they may reference existing decoder state.
 
     Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
     """

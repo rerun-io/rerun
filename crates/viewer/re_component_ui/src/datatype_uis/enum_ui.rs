@@ -130,6 +130,14 @@ fn edit_view_enum_impl<
                 ui.markdown_ui(prev_selected_value.docstring_md());
             });
 
+            combobox_response.response.widget_info(|| {
+                egui::WidgetInfo::labeled(
+                    egui::WidgetType::ComboBox,
+                    ui.is_enabled(),
+                    current_value.to_string(),
+                )
+            });
+
             response_with_changes_of_inner(combobox_response)
         }
     } else {

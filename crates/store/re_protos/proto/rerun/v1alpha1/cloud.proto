@@ -673,6 +673,9 @@ enum TableInsertMode {
 
   // Overwrites all existing rows in the table with the new rows.
   TABLE_INSERT_MODE_OVERWRITE = 2;
+
+  // Overwrite rows based on the rerun_table_index fields.
+  TABLE_INSERT_MODE_REPLACE = 3;
 }
 
 message WriteTableRequest {

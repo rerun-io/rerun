@@ -149,12 +149,32 @@ impl CachedTransformsForTimeline {
         }
     }
 
+    fn add_clear(&mut self, cleared_path: &EntityPath, cleared_time: TimeInt) {
+        let Some(affected_child_frame_per_start_time) =
+            self.per_entity_affected_child_frames.get_mut(cleared_path)
+        else {
+            // This clear doesn't affect any known frames.
+            return;
+        };
+
+        Self::add_clear_internal(
+            affected_child_frame_per_start_time,
+            &mut self.per_child_frame_transforms,
+            cleared_path,
+            cleared_time,
+        );
+    }
+
     fn add_recursive_clears(
         &mut self,
         recursively_cleared_entity_path: &EntityPath,
-        mut times: BTreeSet<TimeInt>,
+        mut recursively_cleared_times: BTreeSet<TimeInt>,
     ) {
         re_tracing::profile_function!();
+
+        if recursively_cleared_times.is_empty() {
+            return;
+        }
 
         // Add clears to all existing entities that it affects.
         for (cleared_path, affected_child_frame_per_start_time) in
@@ -164,34 +184,13 @@ impl CachedTransformsForTimeline {
                 continue;
             }
 
-            for time in &times {
-                // Which child frames are affected by this clear?
-                let Some((_, child_frames)) = affected_child_frame_per_start_time
-                    .range_starts
-                    .range(..=time)
-                    .next_back()
-                else {
-                    debug_assert!(
-                        false,
-                        "For any given time, there should always be a time in affected_child_frame_per_start_time that is <= time."
-                    );
-                    continue;
-                };
-
-                // Insert clears into the per-child datastructures.
-                for frame in child_frames {
-                    if let Some(frame_transforms) = self.per_child_frame_transforms.get_mut(frame) {
-                        frame_transforms
-                            .events
-                            .get_mut()
-                            .insert_clear(*time, cleared_path);
-                    } else {
-                        debug_panic_missing_child_frame_transforms_for_update_on_entity(
-                            cleared_path,
-                            *frame,
-                        );
-                    }
-                }
+            for time in &recursively_cleared_times {
+                Self::add_clear_internal(
+                    affected_child_frame_per_start_time,
+                    &mut self.per_child_frame_transforms,
+                    cleared_path,
+                    *time,
+                );
             }
         }
 
@@ -199,7 +198,41 @@ impl CachedTransformsForTimeline {
         self.recursive_clears
             .entry(recursively_cleared_entity_path.clone())
             .or_default()
-            .append(&mut times);
+            .append(&mut recursively_cleared_times);
+    }
+
+    fn add_clear_internal(
+        affected_child_frame_per_start_time: &EntityToFrameOverTime,
+        per_child_frame_transforms: &mut IntMap<TransformFrameIdHash, TransformsForChildFrame>,
+        cleared_path: &EntityPath,
+        cleared_time: TimeInt,
+    ) {
+        let Some((_, child_frames)) = affected_child_frame_per_start_time
+            .range_starts
+            .range(..=cleared_time)
+            .next_back()
+        else {
+            debug_assert!(
+                false,
+                "For any given time, there should always be a time in affected_child_frame_per_start_time that is <= time."
+            );
+            return;
+        };
+
+        // Insert clears into the per-child datastructures.
+        for frame in child_frames {
+            if let Some(frame_transforms) = per_child_frame_transforms.get_mut(frame) {
+                frame_transforms
+                    .events
+                    .get_mut()
+                    .insert_clear(cleared_time, cleared_path);
+            } else {
+                debug_panic_missing_child_frame_transforms_for_update_on_entity(
+                    cleared_path,
+                    *frame,
+                );
+            }
+        }
     }
 
     fn remove_recursive_clears(
@@ -451,13 +484,12 @@ impl PartialEq for TransformsForChildFrame {
 }
 
 impl TransformsForChildFrame {
-    /// Invalidates all transforms for the given aspects starting at the given time `min_time` (inclusive) and adds new invalidated times.
+    /// Invalidates all transforms for the given aspects for the given times.
     ///
     /// [`TransformAspect::Clear`] causes all types of transforms to be invalidated and being added to.
     pub fn insert_invalidated_transform_events<I: Iterator<Item = TimeInt>>(
         &mut self,
         aspects: TransformAspect,
-        min_time: TimeInt,
         get_new_invalidated_times: impl Fn() -> I,
         entity_path: &EntityPath,
     ) {
@@ -467,23 +499,7 @@ impl TransformsForChildFrame {
             pinhole_projections,
         } = self.events.get_mut();
 
-        // This invalidates any time _after_ the first event in this chunk.
-        // (e.g. if a rotation is added prior to translations later on,
-        // then the resulting transforms at those translations change as well for latest-at queries)
-
-        // Min time is conservative - technically we want to check this for each component individually,
-        // but using the same for all is fine as it rarely matters.
-        // (it may produce some false positive transform updates)
-
-        // TODO(andreas): this is clearly _too_ conservative for long recordings.
-        // We'd like to know all points in time when a transform is fully "shadowed", so we don't have to invalidate as aggressively.
-
         if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
-            // Invalidate existing transforms after min_time (rationale see above).
-            for (_, transform) in frame_transforms.range_mut(min_time..) {
-                *transform = TransformEntry::new(transform.entity_path.clone());
-            }
-
             // Add new invalidated transforms.
             frame_transforms.extend(
                 get_new_invalidated_times()
@@ -494,11 +510,6 @@ impl TransformsForChildFrame {
         if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
             let pose_transforms = pose_transforms.get_or_insert_with(Box::default);
 
-            // Invalidate existing transforms after min_time (rationale see above).
-            for (_, transform) in pose_transforms.range_mut(min_time..) {
-                *transform = TransformEntry::new(transform.entity_path.clone());
-            }
-
             // Add new invalidated transforms.
             pose_transforms.extend(
                 get_new_invalidated_times()
@@ -508,11 +519,6 @@ impl TransformsForChildFrame {
 
         if aspects.intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear) {
             let pinhole_projections = pinhole_projections.get_or_insert_with(Box::default);
-
-            // Invalidate existing transforms after min_time (rationale see above).
-            for (_, transform) in pinhole_projections.range_mut(min_time..) {
-                *transform = TransformEntry::new(transform.entity_path.clone());
-            }
 
             // Add new invalidated transforms.
             pinhole_projections.extend(
@@ -600,28 +606,23 @@ impl TransformsForChildFrame {
             CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => {
-                let transforms = query_and_resolve_tree_transform_at_entity(
+                let transform = query_and_resolve_tree_transform_at_entity(
                     &frame_transform.entity_path,
+                    self.child_frame,
                     entity_db,
                     // Do NOT use the original query time since that may give us information about a different child frame!
                     &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
                 );
 
                 // First, we update the cache value.
-                frame_transform.value = match &transforms {
-                    Ok(transform) => {
-                        if let Some(found) = transform.iter().find_map(|(child, transform)| {
-                            (child == &self.child_frame).then_some(transform)
-                        }) {
-                            CachedTransformValue::Resident(found.clone())
-                        } else {
-                            assert!(
-                                !cfg!(debug_assertions),
-                                "[DEBUG ASSERT] not finding a child here means our book keeping failed"
-                            );
-                            CachedTransformValue::Cleared
-                        }
+                frame_transform.value = match &transform {
+                    Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+
+                    Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
+                        // This can happen if we conservatively added a timepoint before any transform event happened.
+                        CachedTransformValue::Cleared
                     }
+
                     Err(err) => {
                         re_log::error_once!("Failed to query transformations: {err}");
                         CachedTransformValue::Cleared
@@ -661,6 +662,7 @@ impl TransformsForChildFrame {
             pose_transform.value =
                 CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
                     &pose_transform.entity_path,
+                    self.child_frame, // TODO(RR-2627): We're not handling this correctly yet.
                     entity_db,
                     query,
                 ));
@@ -735,8 +737,8 @@ impl TransformResolutionCache {
     ///
     /// This will internally…
     /// * keep track of which child frames are influenced by which entity
-    /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
+    ///     * this may invalidate previous entries at the same position
     /// * remove cached entries if chunks were GC'ed
     ///
     /// See also [`Self::add_chunks`].
@@ -775,8 +777,8 @@ impl TransformResolutionCache {
     ///
     /// This will internally…
     /// * keep track of which child frames are influenced by which entity
-    /// * invalidate cache entries if needed (may happen conservatively - potentially invalidating more than needed)
     /// * create empty entries for where transforms may change over time (may happen conservatively - creating more entries than needed)
+    ///     * this may invalidate previous entries at the same position
     ///
     /// See also [`Self::process_store_events`].
     pub fn add_chunks<'a>(&mut self, chunks: impl Iterator<Item = &'a std::sync::Arc<Chunk>>) {
@@ -918,7 +920,6 @@ impl TransformResolutionCache {
 
                     frame_transforms.insert_invalidated_transform_events(
                         aspects,
-                        time_range.start,
                         || {
                             times_with_potential_update
                                 .iter()
@@ -954,26 +955,26 @@ impl TransformResolutionCache {
                 }
             }
 
-            // Keep track of recursive clears.
+            // Keep track of clears.
             if aspects.contains(TransformAspect::Clear) {
                 re_tracing::profile_scope!("check for recursive clears");
 
                 let component = archetypes::Clear::descriptor_is_recursive().component;
 
-                let recursively_cleared_times = chunk
+                let mut recursively_cleared_times = BTreeSet::new();
+                for ((time, _row_id), is_recursive_slice) in chunk
                     .iter_component_indices(*timeline, component)
                     .zip(chunk.iter_slices::<bool>(component))
-                    .filter_map(|((time, _row_id), bool_slice)| {
-                        bool_slice
-                            .values()
-                            .first()
-                            .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
-                    })
-                    .collect::<BTreeSet<_>>();
-
-                if !recursively_cleared_times.is_empty() {
-                    per_timeline.add_recursive_clears(entity_path, recursively_cleared_times);
+                {
+                    if let Some(is_recursive) = is_recursive_slice.values().first() {
+                        if *is_recursive != 0 {
+                            recursively_cleared_times.insert(time);
+                        } else {
+                            per_timeline.add_clear(entity_path, time);
+                        }
+                    }
                 }
+                per_timeline.add_recursive_clears(entity_path, recursively_cleared_times);
             }
         }
     }
@@ -1028,9 +1029,7 @@ impl TransformResolutionCache {
             "There should be only information about the static child frame"
         );
 
-        // Adding a static transform invalidates affected child frames on ALL timelines, since the resulting transforms at all times may be different now.
-        // TODO(andreas): This is too conservative for long recordings - we should know when a static transform is fully "shadowed", so we don't have to invalidate as aggressively.
-        // Furthermore, since we want to incorporate the static transforms into all timelines, we have to add this event to all timelines.
+        // Add a static transform invalidation to affected child frames on ALL timelines.
         for child_frame in child_frames {
             // Note down the events/invalidations on the static timeline itself.
             self.static_timeline
@@ -1039,7 +1038,6 @@ impl TransformResolutionCache {
                 .or_insert_with(|| TransformsForChildFrame::new_empty(child_frame))
                 .insert_invalidated_transform_events(
                     aspects,
-                    TimeInt::STATIC,
                     || std::iter::once(TimeInt::STATIC),
                     entity_path,
                 );
@@ -1058,9 +1056,10 @@ impl TransformResolutionCache {
                         )
                     });
 
+                // Due to atomic latest-at, we only have to add a static transform timepoint and do **not** need to invalidate all times going forward
+                // as they would fully shadow the static transform!
                 entity_transforms.insert_invalidated_transform_events(
                     aspects,
-                    TimeInt::STATIC,
                     || std::iter::once(TimeInt::STATIC),
                     entity_path,
                 );
@@ -1427,21 +1426,20 @@ mod tests {
                 .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::update_fields()
-                        .with_translation([123.0, 234.0, 345.0]),
+                    &archetypes::Transform3D::from_translation([123.0, 234.0, 345.0]),
                 )
                 .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
                 )
                 .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::update_fields().with_scale([123.0, 234.0, 345.0]),
+                    &archetypes::Transform3D::from_scale([123.0, 234.0, 345.0]),
                 )
                 .build()?;
 
@@ -1487,11 +1485,8 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_scale_rotation_translation(
-                        glam::dvec3(123.0, 234.0, 345.0),
-                        glam::DQuat::IDENTITY,
-                        glam::dvec3(1.0, 2.0, 3.0),
-                    ),
+                    // Due to atomic-latest-at, the translation is no longer visible despite being on the static chunk.
+                    transform: DAffine3::from_scale(glam::dvec3(123.0, 234.0, 345.0)),
                 })
             );
 
@@ -1583,18 +1578,8 @@ mod tests {
             assert_eq!(
                 transforms
                     .latest_at_instance_poses(&entity_db, &LatestAtQuery::new(*timeline.name(), 1)),
-                vec![
-                    DAffine3::from_scale_rotation_translation(
-                        glam::dvec3(10.0, 20.0, 30.0),
-                        glam::DQuat::IDENTITY,
-                        glam::dvec3(1.0, 2.0, 3.0),
-                    ),
-                    DAffine3::from_scale_rotation_translation(
-                        glam::dvec3(10.0, 20.0, 30.0),
-                        glam::DQuat::IDENTITY,
-                        glam::dvec3(4.0, 5.0, 6.0),
-                    ),
-                ]
+                // Due to atomic-latest-at, the translation is no longer visible despite being on the static chunk.
+                vec![DAffine3::from_scale(glam::dvec3(10.0, 20.0, 30.0)),]
             );
 
             // Timelines that the cache has never seen should still have the static poses.
@@ -1809,7 +1794,7 @@ mod tests {
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::update_fields().with_scale([1.0, 2.0, 3.0]),
+                &archetypes::Transform3D::from_scale([1.0, 2.0, 3.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 4)],
@@ -1851,11 +1836,7 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(1.0, 2.0, 3.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(1.0, 2.0, 3.0),
-                ),
+                transform: DAffine3::from_scale(glam::dvec3(1.0, 2.0, 3.0)),
             })
         );
         assert_eq!(
@@ -2071,8 +2052,8 @@ mod tests {
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                // Note that this doesn't clear anything that could be inserted at time 2.
-                &archetypes::Transform3D::update_fields().with_translation([2.0, 3.0, 4.0]),
+                // Note that this clears anything that could be inserted at time 2 due to atomic-query semantics.
+                &archetypes::Transform3D::from_translation([2.0, 3.0, 4.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -2106,12 +2087,12 @@ mod tests {
             );
         }
 
-        // Add a transform between the two that invalidates the one at time stamp 3.
+        // Add a transform between the two.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::update_fields().with_scale([-1.0, -2.0, -3.0]),
+                &archetypes::Transform3D::from_scale([-1.0, -2.0, -3.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -2138,22 +2119,14 @@ mod tests {
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(-1.0, -2.0, -3.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(1.0, 2.0, 3.0),
-                ),
+                transform: DAffine3::from_scale(glam::dvec3(-1.0, -2.0, -3.0)),
             })
         );
         assert_eq!(
             transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(-1.0, -2.0, -3.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(2.0, 3.0, 4.0),
-                ),
+                transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0),),
             })
         );
 
@@ -2360,23 +2333,24 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::update_fields().with_translation([1.0, 0.0, 0.0]),
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::update_fields()
+                &archetypes::Transform3D::new()
                     .with_translation([2.0, 0.0, 0.0])
-                    .with_child_frame("frame0"),
+                    .with_child_frame("frame0"), // Uses implicit entity-path derived parent frame.
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::update_fields()
+                &archetypes::Transform3D::new()
                     .with_translation([3.0, 0.0, 0.0])
+                    .with_child_frame("frame0")
                     .with_parent_frame("frame1"),
             )
             .with_archetype_auto_row(
                 [(timeline, 4)],
-                &archetypes::Transform3D::update_fields()
+                &archetypes::Transform3D::new()
                     .with_translation([4.0, 0.0, 0.0])
                     .with_child_frame("frame2")
                     .with_parent_frame("frame3"),
@@ -2538,7 +2512,7 @@ mod tests {
             Chunk::builder(static_entity_path.clone())
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields()
+                    &archetypes::Transform3D::new()
                         .with_translation([1.0, 0.0, 0.0])
                         .with_child_frame("frame0"),
                 )
@@ -2548,7 +2522,7 @@ mod tests {
             Chunk::builder(temporal_entity_path)
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::update_fields()
+                    &archetypes::Transform3D::new()
                         .with_translation([2.0, 0.0, 0.0])
                         .with_child_frame("frame1"),
                 )
@@ -2599,12 +2573,15 @@ mod tests {
             );
         }
 
-        // Now we change the static chunk to also talk about frame1 (but don't change anything else on it)
+        // Now we change the static chunk to also talk about frame1.
+        // Before, there was a translation there but due to atomic latest-at we won't see that.
         entity_db.add_chunk(&Arc::new(
             Chunk::builder(static_entity_path)
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields().with_child_frame("frame1"),
+                    &archetypes::Transform3D::new()
+                        .with_child_frame("frame1")
+                        .with_scale(2.0),
                 )
                 .build()?,
         ))?;
@@ -2628,7 +2605,7 @@ mod tests {
                 None
             );
 
-            // Check frame1 has now both the static and the temporal transform visible.
+            // Check frame1 has now both the static and the temporal transforms visible.
             let transforms_frame1 = timeline_transforms
                 .frame_transforms(TransformFrameIdHash::from_str("frame1"))
                 .unwrap();
@@ -2637,7 +2614,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+                    transform: DAffine3::from_scale(glam::DVec3::splat(2.0)),
                 })
             );
             assert_eq!(
@@ -2645,6 +2622,7 @@ mod tests {
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    // Unaffected by the static transform due to atomic latest-at.
                     transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
                 })
             );

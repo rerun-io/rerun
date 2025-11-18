@@ -5,10 +5,11 @@ file(GLOB_RECURSE sources_list CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/all
 
 # Not complete examples:
 list(FILTER sources_list EXCLUDE REGEX .*/concepts/static/*)
+list(FILTER sources_list EXCLUDE REGEX .*/migration/transactional_transforms/*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-application-id.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-recording-id.*)
-list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log_line.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log-file.*)
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log_line.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/quick_start.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/timelines_example.*)
 
