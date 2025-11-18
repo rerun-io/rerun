@@ -41,9 +41,9 @@ def create_table(client: CatalogClient, directory: Path, table_name: str, schema
 def create_status_log_table(client: CatalogClient, directory: Path) -> DataFrame:
     """Create the status log table."""
     schema = pa.schema([
-        ("rerun_partition_id", pa.utf8()),
-        ("is_complete", pa.bool_()),
-        ("update_time", pa.timestamp(unit="ms")),
+        pa.field("rerun_partition_id", pa.utf8()).with_metadata({rr.dataframe.SORBET_IS_TABLE_INDEX: "true"}),
+        pa.field("is_complete", pa.bool_()),
+        pa.field("update_time", pa.timestamp(unit="ms")),
     ])
     return create_table(client, directory, STATUS_LOG_TABLE_NAME, schema)
 
@@ -118,10 +118,13 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
 
     df.write_table(RESULTS_TABLE_NAME)
 
-    client.append_to_table(
+    # This command will replace the existing rows with a `True` completion status.
+    # If instead you wish to measure how long it takes your workflow to run, you
+    # can use an append statement as in the previous write.
+    client.update_table(
         STATUS_LOG_TABLE_NAME,
         rerun_partition_id=partition_list,
-        is_complete=[True] * len(partition_list),  # Add the `True` value to prevent this from processing again
+        is_complete=[True] * len(partition_list),
         update_time=[datetime.now()] * len(partition_list),
     )
 

@@ -13,7 +13,7 @@ use re_ui::{TableStyle, UiExt as _};
 use std::iter;
 use std::sync::Arc;
 
-/// Wrapper around [`egui_table`] that handles styling, selection, column visibility, row numbers, etc.
+/// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
 pub struct ReTable<'a> {
     session_id: Id,
     inner: &'a mut dyn egui_table::TableDelegate,
@@ -22,6 +22,10 @@ pub struct ReTable<'a> {
     previous_selection: TableSelectionState,
     num_rows: u64,
     table_style: TableStyle,
+
+    /// We apply changes to [`egui::Style`] when rendering the table.
+    ///
+    /// We remember the original so it doesn't affect the cell contents.
     original_style: Arc<egui::Style>,
 }
 
@@ -180,6 +184,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
     fn cell_ui(&mut self, ui: &mut Ui, cell: &CellInfo) {
         cell_ui(ui, self.table_style, false, |ui| {
+            ui.set_style(self.original_style.clone());
             ui.set_truncate_style();
             if cell.col_nr == 0 {
                 // This is the row number column.

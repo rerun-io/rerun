@@ -7,17 +7,15 @@ import pyarrow as pa
 if TYPE_CHECKING:
     import pathlib
 
-    from rerun.catalog import CatalogClient
-
-    from e2e_redap_tests.conftest import PrefilledCatalog
+    from e2e_redap_tests.conftest import EntryFactory, PrefilledCatalog
 
 
-def test_create_table(catalog_client: CatalogClient, tmp_path: pathlib.Path) -> None:
+def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     table_name = "created_table"
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    table_entry = catalog_client.create_table_entry(table_name, original_schema, tmp_path.absolute().as_uri())
+    table_entry = entry_factory.create_table_entry(table_name, original_schema, tmp_path.absolute().as_uri())
     df = table_entry.df()
 
     returned_schema = df.schema().remove_metadata()
@@ -30,7 +28,9 @@ def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path
     df = prefilled_catalog.dataset.dataframe_query_view(index="time_1", contents="/**").df()
     original_schema = df.schema()
 
-    table_entry = prefilled_catalog.client.create_table_entry(table_name, original_schema, tmp_path.absolute().as_uri())
+    table_entry = prefilled_catalog.factory.create_table_entry(
+        table_name, original_schema, tmp_path.absolute().as_uri()
+    )
     df = table_entry.df()
 
     # Due to https://github.com/lancedb/lance/issues/2304 we cannot

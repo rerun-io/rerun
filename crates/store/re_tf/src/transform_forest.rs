@@ -779,7 +779,6 @@ mod tests {
 
     use super::*;
 
-    use crate::TransformFromToError::NoPathBetweenFrames;
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
@@ -1178,7 +1177,6 @@ mod tests {
             let mut test_scene = simple_frame_hierarchy_test_scene()?;
 
             test_scene.add_chunk(&Arc::new(
-                // Add a connection the cache doesn't know about.
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
                         [(query.timeline(), TimeCell::from_sequence(0))],
@@ -1203,33 +1201,7 @@ mod tests {
             ))?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
 
-            // Forest should know about the old relationship, but not the new.
-            assert_eq!(
-                transform_forest
-                    .transform_from_to(
-                        TransformFrameIdHash::from_str("child2"),
-                        std::iter::once(TransformFrameIdHash::from_str("top")),
-                        &|_| 1.0
-                    )
-                    .collect::<Vec<_>>(),
-                vec![(
-                    TransformFrameIdHash::from_str("top"),
-                    Err(NoPathBetweenFrames {
-                        target: TransformFrameIdHash::from_str("child2"),
-                        src: TransformFrameIdHash::from_str("top"),
-                        target_root: TransformFrameIdHash::from_str("new_top"),
-                        source_root: TransformFrameIdHash::from_str("root"),
-                    }) // TODO(RR-2897): this is broken right now. This is what the result should be:
-                       // Ok(TransformInfo {
-                       //     root: TransformFrameIdHash::from_str("top"),
-                       //     target_from_source: glam::DAffine3::from_translation(glam::dvec3(
-                       //         4.0, 0.0, 0.0
-                       //     )),
-                       //     target_from_instances: Default::default(),
-                       //     target_from_archetype: Default::default(),
-                       // })
-                )]
-            );
+            // Forest sees the new relationship despite not having it reported since the cold cache will pick it up.
             assert_eq!(
                 transform_forest
                     .transform_from_to(
@@ -1249,13 +1221,25 @@ mod tests {
                             glam::dvec3(-5.0, 0.0, 0.0)
                         )),
                     })
-                )] // TODO(RR-2897): this is broken right now. This is what the result should be:
-                   // vec![(
-                   //     TransformFrameIdHash::from_str("child2"),
-                   //     Err(TransformFromToError::UnknownTargetFrame(
-                   //         TransformFrameIdHash::from_str("new_top")
-                   //     ))
-                   // )]
+                )]
+            );
+            assert_eq!(
+                transform_forest
+                    .transform_from_to(
+                        TransformFrameIdHash::from_str("child2"),
+                        std::iter::once(TransformFrameIdHash::from_str("top")),
+                        &|_| 1.0
+                    )
+                    .collect::<Vec<_>>(),
+                vec![(
+                    TransformFrameIdHash::from_str("top"),
+                    Err(TransformFromToError::NoPathBetweenFrames {
+                        target: TransformFrameIdHash::from_str("child2"),
+                        src: TransformFrameIdHash::from_str("top"),
+                        target_root: TransformFrameIdHash::from_str("new_top"),
+                        source_root: TransformFrameIdHash::from_str("root"),
+                    })
+                )]
             );
         }
 

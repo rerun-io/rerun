@@ -295,6 +295,16 @@ class CatalogClient:
         """
         if not named_params:
             return
+        self.write_python_objects_to_table(table_name, TableInsertMode.APPEND, **named_params)
+
+    def update_table(self, table_name: str, **named_params: Any) -> None:
+        if not named_params:
+            return
+        self.write_python_objects_to_table(table_name, TableInsertMode.REPLACE, **named_params)
+
+    def write_python_objects_to_table(self, table_name: str, insert_mode: TableInsertMode, **named_params: Any) -> None:
+        if not named_params:
+            return
         params = named_params.items()
         schema = self.get_table(name=table_name).df.schema()
 
@@ -329,7 +339,7 @@ class CatalogClient:
                 columns.append(pa.array([None] * expected_len, type=field.type))
 
         rb = pa.RecordBatch.from_arrays(columns, schema=schema)
-        self.write_table(table_name, rb, TableInsertMode.APPEND)
+        self.write_table(table_name, rb, insert_mode)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""
