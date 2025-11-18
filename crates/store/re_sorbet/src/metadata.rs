@@ -15,6 +15,10 @@ pub const SORBET_ENTITY_PATH: &str = "rerun:entity_path";
 /// field-level metadata.
 pub const RERUN_KIND: &str = "rerun:kind";
 
+/// The key used to identify table columns in the Rerun server
+/// associated as a primary index.
+pub const SORBET_IS_TABLE_INDEX: &str = "rerun:is_table_index";
+
 /// Arrow metadata for an arrow record batch.
 pub type ArrowBatchMetadata = HashMap<String, String>;
 

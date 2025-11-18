@@ -7,13 +7,6 @@ use datafusion::{
 };
 use futures::StreamExt as _;
 
-#[cfg(feature = "lance")]
-use lance::{
-    Dataset as LanceDataset,
-    datafusion::LanceTableProvider,
-    dataset::{WriteMode, WriteParams},
-};
-
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
     EntryKind,
@@ -24,7 +17,7 @@ use re_protos::cloud::v1alpha1::{
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
     #[cfg(feature = "lance")]
-    LanceDataset(Arc<LanceDataset>),
+    LanceDataset(Arc<lance::Dataset>),
 }
 
 #[derive(Clone)]
@@ -112,11 +105,13 @@ impl Table {
         match &self.table {
             TableType::DataFusionTable(t) => Arc::clone(t),
             #[cfg(feature = "lance")]
-            TableType::LanceDataset(dataset) => Arc::new(LanceTableProvider::new(
-                Arc::new(dataset.as_ref().clone()),
-                false,
-                false,
-            )),
+            TableType::LanceDataset(dataset) => {
+                Arc::new(lance::datafusion::LanceTableProvider::new(
+                    Arc::new(dataset.as_ref().clone()),
+                    false,
+                    false,
+                ))
+            }
         }
     }
 
@@ -149,6 +144,9 @@ impl Table {
         rb: RecordBatch,
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
+        use lance::dataset::{
+            MergeInsertBuilder, WhenMatched, WhenNotMatched, WriteMode, WriteParams,
+        };
         let schema = rb.schema();
         let mut params = WriteParams::default();
 
@@ -170,13 +168,40 @@ impl Table {
                     .map_err(|err| DataFusionError::External(err.into()))?;
             }
             InsertOp::Replace => {
-                exec_err!("Invalid insert operation. Only append and overwrite are supported.")?;
+                let key_columns: Vec<_> = dataset
+                    .schema()
+                    .fields
+                    .iter()
+                    .filter_map(|field| {
+                        if field
+                            .metadata
+                            .get(re_sorbet::metadata::SORBET_IS_TABLE_INDEX)
+                            .map(|v| v.to_lowercase() == "true")
+                            == Some(true)
+                        {
+                            Some(field.name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let mut builder = MergeInsertBuilder::try_new(Arc::clone(dataset), key_columns)?;
+
+                let op = builder
+                    .when_not_matched(WhenNotMatched::InsertAll)
+                    .when_matched(WhenMatched::UpdateAll)
+                    .try_build()?;
+
+                let (merge_dataset, _merge_stats) = op.execute_reader(reader).await?;
+
+                *dataset = merge_dataset;
             }
             InsertOp::Overwrite => {
                 params.mode = WriteMode::Overwrite;
 
                 let _ =
-                    LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
+                    lance::Dataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
                         .await
                         .map_err(|err| DataFusionError::External(err.into()))?;
             }
