@@ -1,10 +1,6 @@
-#![expect(clippy::cast_possible_wrap)] // usize -> i64
-
 use std::{sync::mpsc::Sender, thread};
 
 use anyhow::{Context as _, anyhow};
-
-use re_log_types::ApplicationId;
 
 use crate::lerobot::{LeRobotDatasetVersion, datasetv2, datasetv3, is_lerobot_dataset};
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -35,7 +31,7 @@ impl DataLoader for LeRobotDatasetLoader {
         match version {
             LeRobotDatasetVersion::V1 => {
                 re_log::error!("LeRobot 'v1.x' dataset format is unsupported.");
-                return Ok(());
+                Ok(())
             }
             LeRobotDatasetVersion::V2 => Self::load_v2_dataset(settings, filepath, tx),
             LeRobotDatasetVersion::V3 => Self::load_v3_dataset(settings, filepath, tx),
@@ -56,9 +52,10 @@ impl DataLoader for LeRobotDatasetLoader {
 impl LeRobotDatasetLoader {
     fn load_v2_dataset(
         settings: &crate::DataLoaderSettings,
-        filepath: std::path::PathBuf,
+        filepath: impl AsRef<std::path::Path>,
         tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
+        let filepath = filepath.as_ref().to_owned();
         let dataset = datasetv2::LeRobotDataset::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot v2 dataset failed: {err}"))?;
 
@@ -67,7 +64,7 @@ impl LeRobotDatasetLoader {
             .clone()
             .unwrap_or(filepath.display().to_string().into());
 
-        let loader_name = Self::name(&LeRobotDatasetLoader);
+        let loader_name = Self.name();
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -82,7 +79,7 @@ impl LeRobotDatasetLoader {
                     dataset.path,
                     dataset.metadata.episode_count(),
                 );
-                datasetv2::load_and_stream(&dataset, &application_id, &tx, loader_name);
+                datasetv2::load_and_stream(&dataset, &application_id, &tx, &loader_name);
             })
             .with_context(|| {
                 format!("Failed to spawn IO thread to load LeRobot v2 dataset {filepath:?}")
@@ -93,9 +90,10 @@ impl LeRobotDatasetLoader {
 
     fn load_v3_dataset(
         settings: &crate::DataLoaderSettings,
-        filepath: std::path::PathBuf,
+        filepath: impl AsRef<std::path::Path>,
         tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
+        let filepath = filepath.as_ref().to_owned();
         let dataset = datasetv3::LeRobotDatasetV3::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot v3 dataset failed: {err}"))?;
 
@@ -104,7 +102,7 @@ impl LeRobotDatasetLoader {
             .clone()
             .unwrap_or(filepath.display().to_string().into());
 
-        let loader_name = Self::name(&LeRobotDatasetLoader);
+        let loader_name = Self.name();
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -119,7 +117,7 @@ impl LeRobotDatasetLoader {
                     dataset.path,
                     dataset.metadata.episode_count(),
                 );
-                datasetv3::load_and_stream(&dataset, &application_id, &tx, loader_name);
+                datasetv3::load_and_stream(&dataset, &application_id, &tx, &loader_name);
             })
             .with_context(|| {
                 format!("Failed to spawn IO thread to load LeRobot v3 dataset {filepath:?}")
