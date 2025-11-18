@@ -17,7 +17,6 @@ use crate::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::ArrowArray as _;
 use re_chunk_store::external::arrow;
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;

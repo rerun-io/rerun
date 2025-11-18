@@ -9677,6 +9677,7 @@ name = "re_tf"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "bitflags 2.9.4",
  "criterion",
  "glam",
@@ -9686,7 +9687,6 @@ dependencies = [
  "nohash-hasher",
  "parking_lot",
  "re_arrow_util",
- "re_chunk",
  "re_chunk_store",
  "re_entity_db",
  "re_log",
