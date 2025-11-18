@@ -6,13 +6,17 @@ use re_ui::{TableStyle, UiExt as _};
 use std::iter;
 use std::sync::Arc;
 
-/// Wrapper around [`egui_table`] that handles styling, selection, column visibility, row numbers, etc.
+/// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
 pub struct ReTable<'a> {
     session_id: Id,
     inner: &'a mut dyn egui_table::TableDelegate,
     config: &'a TableConfig,
     num_rows: u64,
     table_style: TableStyle,
+
+    /// We apply changes to [`egui::Style`] when rendering the table.
+    ///
+    /// We remember the original so it doesn't affect the cell contents.
     original_style: Arc<egui::Style>,
 }
 
