@@ -1,14 +1,11 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use ahash::HashMap;
 use glam::DAffine3;
-use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use itertools::{Either, izip};
+use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet, hash_map::Entry};
-use std::ops::Range;
-use vec1::smallvec_v1::SmallVec1;
 
-use crate::entity_to_frame_tracking::EntityToFrameOverTime;
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::{
     TransformFrameIdHash,
@@ -19,9 +16,10 @@ use crate::{
     },
 };
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk_store::external::arrow;
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
-use re_log_types::external::re_types_core::ArrowString;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{
     archetypes::{self},
@@ -58,8 +56,8 @@ impl Default for TransformResolutionCache {
             per_timeline: Default::default(),
             // `CachedTransformsForTimeline` intentionally doesn't implement Default to not accidentally create it without considering static transforms.
             static_timeline: CachedTransformsForTimeline {
-                per_entity_affected_child_frames: Default::default(),
                 per_child_frame_transforms: Default::default(),
+                non_recursive_clears: Default::default(),
                 recursive_clears: Default::default(), // Unused for static timeline.
             },
         }
@@ -76,62 +74,27 @@ pub struct ParentFromChildTransform {
     pub transform: DAffine3,
 }
 
-/// Maps entity paths to [`EntityToFrameOverTime`] datastructures.
-///
-/// See [`EntityToFrameOverTime`] for details.
-#[derive(Default, Clone)]
-struct PerEntityAffectedChildFrames(IntMap<EntityPath, EntityToFrameOverTime>);
-
-impl PerEntityAffectedChildFrames {
-    fn get_or_create_for(&mut self, entity_path: &EntityPath) -> &mut EntityToFrameOverTime {
-        self.0
-            .entry(entity_path.clone())
-            .or_insert_with(|| EntityToFrameOverTime::new(entity_path))
-    }
-}
-
-impl std::ops::Deref for PerEntityAffectedChildFrames {
-    type Target = IntMap<EntityPath, EntityToFrameOverTime>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for PerEntityAffectedChildFrames {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 /// Cached transforms for a single timeline.
 ///
 /// Includes any static transforms that may apply globally.
 /// Therefore, this can't be trivially constructed.
 pub struct CachedTransformsForTimeline {
-    /// Maps entity paths to [`EntityToFrameOverTime`] datastructures.
-    ///
-    /// This allows us to keep track of which incoming (or removed) transform events on entities, apply to which
-    /// parent-from-child-transform at which time.
-    per_entity_affected_child_frames: PerEntityAffectedChildFrames,
-
     /// Transforms information for each child frame to a parent frame over time.
     // Note that these are potentially a lot of mutexes, but `parking_lot`-Mutex are incredibly lightweight on all platforms, so not a memory concern.
     per_child_frame_transforms: IntMap<TransformFrameIdHash, TransformsForChildFrame>,
 
-    // We need to keep track of all recursive clears that ever happened and when.
-    // Otherwise, new incoming entities may not correctly change their transform at the time of clear.
+    /// We need to keep track of all clears that ever happened and when.
+    /// Otherwise, new incoming frames may not correctly change their transform at the time of clear.
+    non_recursive_clears: IntMap<EntityPath, BTreeSet<TimeInt>>,
+
+    /// We need to keep track of all recursive clears that ever happened and when.
+    /// Otherwise, new incoming frames may not correctly change their transform at the time of clear.
     recursive_clears: IntMap<EntityPath, BTreeSet<TimeInt>>,
 }
 
 impl CachedTransformsForTimeline {
     fn new(timeline: &TimelineName, static_transforms: &Self) -> Self {
         Self {
-            per_entity_affected_child_frames: static_transforms
-                .per_entity_affected_child_frames
-                .clone(),
             per_child_frame_transforms: static_transforms
                 .per_child_frame_transforms
                 .iter()
@@ -145,113 +108,96 @@ impl CachedTransformsForTimeline {
                     )
                 })
                 .collect(),
+            non_recursive_clears: IntMap::default(),
             recursive_clears: IntMap::default(),
         }
     }
 
     fn add_clear(&mut self, cleared_path: &EntityPath, cleared_time: TimeInt) {
-        let Some(affected_child_frame_per_start_time) =
-            self.per_entity_affected_child_frames.get_mut(cleared_path)
-        else {
-            // This clear doesn't affect any known frames.
-            return;
-        };
-
-        Self::add_clear_internal(
-            affected_child_frame_per_start_time,
-            &mut self.per_child_frame_transforms,
-            cleared_path,
-            cleared_time,
-        );
-    }
-
-    fn add_recursive_clears(
-        &mut self,
-        recursively_cleared_entity_path: &EntityPath,
-        mut recursively_cleared_times: BTreeSet<TimeInt>,
-    ) {
-        re_tracing::profile_function!();
-
-        if recursively_cleared_times.is_empty() {
-            return;
+        // Figure out who is affected by this new clear.
+        // We generally assume Clears are quite rare, so just loop over all frames that it affects
+        // and insert a cleared transform if necessary.
+        for transforms in self.per_child_frame_transforms.values_mut() {
+            if &transforms.associated_entity_path == cleared_path {
+                transforms.events.get_mut().insert_clear(cleared_time);
+            }
         }
 
-        // Add clears to all existing entities that it affects.
-        for (cleared_path, affected_child_frame_per_start_time) in
-            &mut self.per_entity_affected_child_frames.iter_mut()
-        {
-            if !cleared_path.starts_with(recursively_cleared_entity_path) {
-                continue;
-            }
+        // Store for future reference, so we can apply this on incoming.
+        self.non_recursive_clears
+            .entry(cleared_path.clone())
+            .or_default()
+            .insert(cleared_time);
+    }
 
-            for time in &recursively_cleared_times {
-                Self::add_clear_internal(
-                    affected_child_frame_per_start_time,
-                    &mut self.per_child_frame_transforms,
-                    cleared_path,
-                    *time,
-                );
+    fn add_recursive_clear(
+        &mut self,
+        recursively_cleared_path: &EntityPath,
+        cleared_time: TimeInt,
+    ) {
+        // Figure out who is affected by this new clear.
+        // We generally assume Clears are quite rare, so just loop over all frames that it affects
+        // and insert a cleared transform if necessary.
+        for transforms in self.per_child_frame_transforms.values_mut() {
+            if transforms
+                .associated_entity_path
+                .starts_with(recursively_cleared_path)
+            {
+                transforms.events.get_mut().insert_clear(cleared_time);
             }
         }
 
         // Store for future reference.
         self.recursive_clears
-            .entry(recursively_cleared_entity_path.clone())
+            .entry(recursively_cleared_path.clone())
             .or_default()
-            .append(&mut recursively_cleared_times);
+            .insert(cleared_time);
     }
 
-    fn add_clear_internal(
-        affected_child_frame_per_start_time: &EntityToFrameOverTime,
-        per_child_frame_transforms: &mut IntMap<TransformFrameIdHash, TransformsForChildFrame>,
-        cleared_path: &EntityPath,
-        cleared_time: TimeInt,
-    ) {
-        let Some((_, child_frames)) = affected_child_frame_per_start_time
-            .range_starts
-            .range(..=cleared_time)
-            .next_back()
+    fn remove_clear(&mut self, cleared_path: &EntityPath, cleared_time: TimeInt) {
+        let std::collections::hash_map::Entry::Occupied(mut clear_entry) =
+            self.non_recursive_clears.entry(cleared_path.clone())
         else {
-            debug_assert!(
-                false,
-                "For any given time, there should always be a time in affected_child_frame_per_start_time that is <= time."
-            );
             return;
         };
+        clear_entry.get_mut().remove(&cleared_time);
+        if clear_entry.get().is_empty() {
+            clear_entry.remove();
+        }
 
-        // Insert clears into the per-child datastructures.
-        for frame in child_frames {
-            if let Some(frame_transforms) = per_child_frame_transforms.get_mut(frame) {
-                frame_transforms
-                    .events
-                    .get_mut()
-                    .insert_clear(cleared_time, cleared_path);
-            } else {
-                debug_panic_missing_child_frame_transforms_for_update_on_entity(
-                    cleared_path,
-                    *frame,
-                );
+        // Figure out who is no longer affected by this Clear and remove entry.
+        for transforms in self.per_child_frame_transforms.values_mut() {
+            if &transforms.associated_entity_path == cleared_path {
+                transforms.events.get_mut().remove_at(cleared_time);
             }
         }
     }
 
-    fn remove_recursive_clears(
+    fn remove_recursive_clear(
         &mut self,
-        recursively_cleared_entity_path: &EntityPath,
-        times: &BTreeSet<TimeInt>,
+        recursively_cleared_path: &EntityPath,
+        cleared_time: TimeInt,
     ) {
-        if let Entry::Occupied(mut clear_entry) = self
+        let std::collections::hash_map::Entry::Occupied(mut clear_entry) = self
             .recursive_clears
-            .entry(recursively_cleared_entity_path.clone())
-        {
-            *clear_entry.get_mut() = clear_entry.get().difference(times).copied().collect();
-
-            if clear_entry.get().is_empty() {
-                clear_entry.remove();
-            }
+            .entry(recursively_cleared_path.clone())
+        else {
+            return;
+        };
+        clear_entry.get_mut().remove(&cleared_time);
+        if clear_entry.get().is_empty() {
+            clear_entry.remove();
         }
 
-        // Removing clears from `self.per_child_frame_transforms` is not critical since leftover cache entries won't change outcomes.
+        // Figure out who is no longer affected by this recursive Clear and remove entry.
+        for transforms in self.per_child_frame_transforms.values_mut() {
+            if transforms
+                .associated_entity_path
+                .starts_with(recursively_cleared_path)
+            {
+                transforms.events.get_mut().remove_at(cleared_time);
+            }
+        }
     }
 
     /// Returns all transforms for a given child frame.
@@ -270,35 +216,6 @@ impl CachedTransformsForTimeline {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct TransformEntry<T> {
-    /// The entity path that produced information about this transform at this time.
-    ///
-    /// Note that it is user-data error if there are several entities producing data for the same child frame at the same time.
-    /// (the entity that holds information about a child->parent transform can, however, change over time!)
-    // TODO(andreas): Due to above restriction we can actually store a single static & dynamic entity for every source frame, meaning we no longer need this struct.
-    entity_path: EntityPath,
-
-    /// The cached transform value.
-    value: CachedTransformValue<T>,
-}
-
-impl<T> TransformEntry<T> {
-    fn new(entity_path: EntityPath) -> Self {
-        Self {
-            entity_path,
-            value: CachedTransformValue::Invalidated,
-        }
-    }
-
-    fn new_cleared(entity_path: EntityPath) -> Self {
-        Self {
-            entity_path,
-            value: CachedTransformValue::Cleared,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
 enum CachedTransformValue<T> {
     /// Cache is invalidated, we don't know what state we're in.
     Invalidated,
@@ -310,11 +227,11 @@ enum CachedTransformValue<T> {
     Cleared,
 }
 
-type FrameTransformTimeMap = BTreeMap<TimeInt, TransformEntry<ParentFromChildTransform>>;
+type FrameTransformTimeMap = BTreeMap<TimeInt, CachedTransformValue<ParentFromChildTransform>>;
 
-type PoseTransformTimeMap = BTreeMap<TimeInt, TransformEntry<Vec<DAffine3>>>;
+type PoseTransformTimeMap = BTreeMap<TimeInt, CachedTransformValue<Vec<DAffine3>>>;
 
-type PinholeProjectionMap = BTreeMap<TimeInt, TransformEntry<ResolvedPinholeProjection>>;
+type PinholeProjectionMap = BTreeMap<TimeInt, CachedTransformValue<ResolvedPinholeProjection>>;
 
 #[derive(Clone, Debug, PartialEq)]
 struct TransformsForChildFrameEvents {
@@ -336,15 +253,33 @@ impl TransformsForChildFrameEvents {
     }
 
     /// Inserts a cleared transform for the given times.
-    fn insert_clear(&mut self, time: TimeInt, entity_path: &EntityPath) {
-        self.frame_transforms
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-        self.pose_transforms
-            .get_or_insert(Default::default())
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
-        self.pinhole_projections
-            .get_or_insert(Default::default())
-            .insert(time, TransformEntry::new_cleared(entity_path.clone()));
+    fn insert_clear(&mut self, time: TimeInt) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+        let pose_transforms = pose_transforms.get_or_insert(Default::default());
+        let pinhole_projections = pinhole_projections.get_or_insert(Default::default());
+
+        frame_transforms.insert(time, CachedTransformValue::Cleared);
+        pose_transforms.insert(time, CachedTransformValue::Cleared);
+        pinhole_projections.insert(time, CachedTransformValue::Cleared);
+    }
+
+    /// Insert several cleared transforms for the given times.
+    fn insert_clears(&mut self, time: &BTreeSet<TimeInt>) {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+        let pose_transforms = pose_transforms.get_or_insert(Default::default());
+        let pinhole_projections = pinhole_projections.get_or_insert(Default::default());
+
+        frame_transforms.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
+        pose_transforms.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
+        pinhole_projections.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
     }
 
     /// Removes any events at a given time (if any).
@@ -361,87 +296,6 @@ impl TransformsForChildFrameEvents {
         }
         if let Some(pinhole_projections) = &mut pinhole_projections.as_mut() {
             pinhole_projections.remove(&time);
-        }
-    }
-
-    /// Removes all events in a given range and writes them to `destination`.
-    fn remove_in_range(&mut self, range: Range<TimeInt>, destination: &mut Self) {
-        let Self {
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        let Self {
-            frame_transforms: dst_frame_transforms,
-            pose_transforms: dst_pose_transforms,
-            pinhole_projections: dst_pinhole_projections,
-        } = destination;
-
-        frame_transforms.retain(|time, transform| {
-            if !range.contains(time) {
-                return true;
-            }
-            dst_frame_transforms.insert(*time, transform.clone());
-            false
-        });
-
-        if let Some(pose_transforms) = pose_transforms {
-            let dst_pose_transforms = dst_pose_transforms.get_or_insert_default();
-
-            pose_transforms.retain(|time, transform| {
-                if !range.contains(time) {
-                    return true;
-                }
-                dst_pose_transforms.insert(*time, transform.clone());
-                false
-            });
-        }
-
-        if let Some(pinhole_projections) = pinhole_projections {
-            let dst_pinhole_projections = dst_pinhole_projections.get_or_insert_default();
-
-            pinhole_projections.retain(|time, transform| {
-                if !range.contains(time) {
-                    return true;
-                }
-                dst_pinhole_projections.insert(*time, transform.clone());
-                false
-            });
-        }
-    }
-
-    fn insert_all_of(&mut self, other: &Self) {
-        let Self {
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self;
-
-        let Self {
-            frame_transforms: src_frame_transforms,
-            pose_transforms: src_pose_transforms,
-            pinhole_projections: src_pinhole_projections,
-        } = other;
-
-        frame_transforms.extend(
-            src_frame_transforms
-                .iter()
-                .map(|(time, transform)| (*time, transform.clone())),
-        );
-        if let Some(src_pose_transforms) = src_pose_transforms {
-            pose_transforms.get_or_insert_default().extend(
-                src_pose_transforms
-                    .iter()
-                    .map(|(time, transform)| (*time, transform.clone())),
-            );
-        }
-        if let Some(src_pinhole_projections) = src_pinhole_projections {
-            pinhole_projections.get_or_insert_default().extend(
-                src_pinhole_projections
-                    .iter()
-                    .map(|(time, transform)| (*time, transform.clone())),
-            );
         }
     }
 }
@@ -461,6 +315,15 @@ pub struct TransformsForChildFrame {
     #[cfg(debug_assertions)]
     timeline: Option<TimelineName>,
 
+    /// The entity path that produces information for this frame.
+    ///
+    /// Note that it is a user-data error to change the entity path a frame relationship is defined on.
+    /// I.e., given a frame relationship `A -> B` logged on entity `/my_path`, all future changes
+    /// to the relation of `A ->` must be logged on the same entity `/my_path`.
+    ///
+    /// This greatly simplifies clearing and tracking of transforms.
+    associated_entity_path: EntityPath,
+
     child_frame: TransformFrameIdHash,
 
     events: Mutex<TransformsForChildFrameEvents>,
@@ -471,6 +334,7 @@ impl Clone for TransformsForChildFrame {
         Self {
             #[cfg(debug_assertions)]
             timeline: self.timeline,
+            associated_entity_path: self.associated_entity_path.clone(),
             child_frame: self.child_frame,
             events: Mutex::new(self.events.lock().clone()),
         }
@@ -483,48 +347,45 @@ impl PartialEq for TransformsForChildFrame {
     }
 }
 
+fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
+    transforms: &mut BTreeMap<TimeInt, CachedTransformValue<T>>,
+    time: TimeInt,
+) {
+    use std::collections::btree_map::Entry;
+
+    let entry = transforms.entry(time);
+    if let Entry::Vacant(vacant_entry) = entry {
+        vacant_entry.insert(CachedTransformValue::Invalidated);
+    } else if let Entry::Occupied(mut occupied_entry) = entry
+        && occupied_entry.get() == &CachedTransformValue::Cleared
+    {
+        occupied_entry.insert(CachedTransformValue::Invalidated);
+    }
+}
+
 impl TransformsForChildFrame {
     /// Invalidates all transforms for the given aspects for the given times.
     ///
     /// [`TransformAspect::Clear`] causes all types of transforms to be invalidated and being added to.
-    pub fn insert_invalidated_transform_events<I: Iterator<Item = TimeInt>>(
-        &mut self,
-        aspects: TransformAspect,
-        get_new_invalidated_times: impl Fn() -> I,
-        entity_path: &EntityPath,
-    ) {
+    pub fn insert_invalidated_transform_event(&mut self, aspects: TransformAspect, time: TimeInt) {
         let TransformsForChildFrameEvents {
             frame_transforms,
             pose_transforms,
             pinhole_projections,
         } = self.events.get_mut();
 
-        if aspects.intersects(TransformAspect::Frame | TransformAspect::Clear) {
-            // Add new invalidated transforms.
-            frame_transforms.extend(
-                get_new_invalidated_times()
-                    .map(|time| (time, TransformEntry::new(entity_path.clone()))),
-            );
+        if aspects.intersects(TransformAspect::Frame) {
+            add_invalidated_entry_if_not_already_cleared(frame_transforms, time);
         }
 
-        if aspects.intersects(TransformAspect::Pose | TransformAspect::Clear) {
+        if aspects.intersects(TransformAspect::Pose) {
             let pose_transforms = pose_transforms.get_or_insert_with(Box::default);
-
-            // Add new invalidated transforms.
-            pose_transforms.extend(
-                get_new_invalidated_times()
-                    .map(|time| (time, TransformEntry::new(entity_path.clone()))),
-            );
+            add_invalidated_entry_if_not_already_cleared(pose_transforms, time);
         }
 
-        if aspects.intersects(TransformAspect::PinholeOrViewCoordinates | TransformAspect::Clear) {
+        if aspects.intersects(TransformAspect::PinholeOrViewCoordinates) {
             let pinhole_projections = pinhole_projections.get_or_insert_with(Box::default);
-
-            // Add new invalidated transforms.
-            pinhole_projections.extend(
-                get_new_invalidated_times()
-                    .map(|time| (time, TransformEntry::new(entity_path.clone()))),
-            );
+            add_invalidated_entry_if_not_already_cleared(pinhole_projections, time);
         }
     }
 }
@@ -548,12 +409,16 @@ pub struct ResolvedPinholeProjection {
 
 impl TransformsForChildFrame {
     fn new(
+        associated_entity_path: EntityPath,
         child_frame: TransformFrameIdHash,
         _timeline: TimelineName,
         static_timeline: &mut CachedTransformsForTimeline,
+        non_recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
+        recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
     ) -> Self {
         let mut events = TransformsForChildFrameEvents::new_empty();
 
+        // Take over static events.
         if let Some(static_transforms) = static_timeline
             .per_child_frame_transforms
             .get_mut(&child_frame)
@@ -561,9 +426,20 @@ impl TransformsForChildFrame {
             events = static_transforms.events.get_mut().clone();
         }
 
+        // Take over clear events.
+        if let Some(cleared_times) = non_recursive_clears.get(&associated_entity_path) {
+            events.insert_clears(cleared_times);
+        }
+        for (recursively_cleared_path, times) in recursive_clears {
+            if associated_entity_path.starts_with(recursively_cleared_path) {
+                events.insert_clears(times);
+            }
+        }
+
         Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
+            associated_entity_path,
             child_frame,
             events: Mutex::new(events),
         }
@@ -577,10 +453,11 @@ impl TransformsForChildFrame {
         }
     }
 
-    fn new_empty(child_frame: TransformFrameIdHash) -> Self {
+    fn new_empty(associated_entity_path: EntityPath, child_frame: TransformFrameIdHash) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
+            associated_entity_path,
             child_frame,
             events: Mutex::new(TransformsForChildFrameEvents::new_empty()),
         }
@@ -602,39 +479,36 @@ impl TransformsForChildFrame {
             .range_mut(..query.at().inc())
             .next_back()?;
 
-        match &frame_transform.value {
+        // Separate check to work around borrow checker issues.
+        if frame_transform == &CachedTransformValue::Invalidated {
+            let transform = query_and_resolve_tree_transform_at_entity(
+                &self.associated_entity_path,
+                self.child_frame,
+                entity_db,
+                // Do NOT use the original query time since that may give us information about a different child frame!
+                &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
+            );
+
+            // First, we update the cache value.
+            *frame_transform = match &transform {
+                Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+
+                Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
+                    // This can happen if we conservatively added a timepoint before any transform event happened.
+                    CachedTransformValue::Cleared
+                }
+
+                Err(err) => {
+                    re_log::error_once!("Failed to query transformations: {err}");
+                    CachedTransformValue::Cleared
+                }
+            };
+        }
+
+        match frame_transform {
             CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
-            CachedTransformValue::Invalidated => {
-                let transform = query_and_resolve_tree_transform_at_entity(
-                    &frame_transform.entity_path,
-                    self.child_frame,
-                    entity_db,
-                    // Do NOT use the original query time since that may give us information about a different child frame!
-                    &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
-                );
-
-                // First, we update the cache value.
-                frame_transform.value = match &transform {
-                    Ok(transform) => CachedTransformValue::Resident(transform.clone()),
-
-                    Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
-                        // This can happen if we conservatively added a timepoint before any transform event happened.
-                        CachedTransformValue::Cleared
-                    }
-
-                    Err(err) => {
-                        re_log::error_once!("Failed to query transformations: {err}");
-                        CachedTransformValue::Cleared
-                    }
-                };
-
-                // Then, we retrieve the value from the cache again and return it.
-                match &frame_transform.value {
-                    CachedTransformValue::Resident(transform) => Some(transform.clone()),
-                    CachedTransformValue::Cleared | CachedTransformValue::Invalidated => None,
-                }
-            }
+            CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
         }
     }
 
@@ -657,18 +531,18 @@ impl TransformsForChildFrame {
             return Vec::new();
         };
 
-        // Separate check to work around borrow checker issue.
-        if pose_transform.value == CachedTransformValue::Invalidated {
-            pose_transform.value =
+        // Separate check to work around borrow checker issues.
+        if pose_transform == &CachedTransformValue::Invalidated {
+            *pose_transform =
                 CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
-                    &pose_transform.entity_path,
+                    &self.associated_entity_path,
                     self.child_frame, // TODO(RR-2627): We're not handling this correctly yet.
                     entity_db,
                     query,
                 ));
         }
 
-        match &pose_transform.value {
+        match pose_transform {
             CachedTransformValue::Resident(transform) => transform.clone(),
             CachedTransformValue::Cleared => Vec::new(),
             CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
@@ -693,21 +567,21 @@ impl TransformsForChildFrame {
             .next_back()?
             .1;
 
-        // Separate check to work around borrow checker issue.
-        if pinhole_projection.value == CachedTransformValue::Invalidated {
+        // Separate check to work around borrow checker issues.
+        if pinhole_projection == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_pinhole_projection_at_entity(
-                &pinhole_projection.entity_path,
+                &self.associated_entity_path,
                 entity_db,
                 query,
             );
 
-            pinhole_projection.value = match &transform {
+            *pinhole_projection = match &transform {
                 Some(transform) => CachedTransformValue::Resident(transform.clone()),
                 None => CachedTransformValue::Cleared,
             };
         }
 
-        match &pinhole_projection.value {
+        match pinhole_projection {
             CachedTransformValue::Resident(transform) => Some(transform.clone()),
             CachedTransformValue::Cleared => None,
             CachedTransformValue::Invalidated => unreachable!("Just made transform cache-resident"),
@@ -811,170 +685,46 @@ impl TransformResolutionCache {
 
         let entity_path = chunk.entity_path();
 
-        for (timeline, time_column) in chunk.timelines() {
+        for timeline in chunk.timelines().keys() {
             let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
                 CachedTransformsForTimeline::new(timeline, &self.static_timeline)
             });
 
-            // Keeps track which of the child frames are new for this entity.
-            let mut child_frames_affected_by_this_entity_for_first_time = IntSet::default();
+            for (time, child_frame) in iter_child_frames_in_chunk(chunk, *timeline) {
+                // TODO(andreas): most of the time it's the same child frame in a row. can we speed this lookup up?
+                let frame_transforms = per_timeline
+                    .per_child_frame_transforms
+                    .entry(child_frame)
+                    .or_insert_with(|| {
+                        TransformsForChildFrame::new(
+                            entity_path.clone(),
+                            child_frame,
+                            *timeline,
+                            &mut self.static_timeline,
+                            &per_timeline.non_recursive_clears,
+                            &per_timeline.recursive_clears,
+                        )
+                    });
 
-            let affected_frames = per_timeline
-                .per_entity_affected_child_frames
-                .entry(entity_path.clone())
-                .or_insert_with(|| {
-                    child_frames_affected_by_this_entity_for_first_time
-                        .insert(TransformFrameIdHash::from_entity_path(entity_path));
-                    EntityToFrameOverTime::new(entity_path)
-                });
-
-            // First, update the list of when which child is "active" for this entity in case this chunk mentions any child frames.
-            for (start_time, child_frames) in iter_child_frames_in_chunk(chunk, *timeline) {
-                let frames = active_frame_array_from_strings(entity_path, &child_frames);
-                child_frames_affected_by_this_entity_for_first_time.extend(
-                    frames
-                        .iter()
-                        .filter(|frame| !affected_frames.all_frames.contains(frame)),
-                );
-
-                let (changed_range, previous_frames) =
-                    affected_frames.insert_range_start(start_time, frames.clone());
-
-                // Since (by convention) only this entity can affect `previous_frames`, we have to drop all their events in the `changed_range`
-                // if `previous_frames` is not equal to `child_frames`.
-                //
-                // Note that the time range insertion we just did was still necessary regardless since more (different) child frames may be added in between.
-                if previous_frames != frames {
-                    let mut moved_events = TransformsForChildFrameEvents::new_empty();
-                    for previous_child_frame in &previous_frames {
-                        let Some(frame_transforms) = per_timeline
-                            .per_child_frame_transforms
-                            .get_mut(previous_child_frame)
-                        else {
-                            // No events on this child frame, so nothing to remove!
-                            continue;
-                        };
-                        // Since (by convention) only this entity can affect `previous_frames`, we have to move all their events in the `changed_range` to the new range.
-                        frame_transforms
-                            .events
-                            .get_mut()
-                            .remove_in_range(changed_range.clone(), &mut moved_events);
-                    }
-                    // …and add them to the new child frames!
-                    for new_child_frame in frames {
-                        per_timeline
-                            .per_child_frame_transforms
-                            .entry(new_child_frame)
-                            .or_insert_with(|| {
-                                TransformsForChildFrame::new(
-                                    new_child_frame,
-                                    *timeline,
-                                    &mut self.static_timeline,
-                                )
-                            })
-                            .events
-                            .get_mut()
-                            .insert_all_of(&moved_events);
-                    }
-                }
-            }
-
-            // Now that our map of active child frames is up to date, we can insert "event points" (invalidated cache entries)
-            // into the respective per-child-frame data structures.
-            for (time_range, child_frames) in affected_frames.iter_ranges(time_column.time_range())
-            {
-                // We now look only at the times in the time column that are relevant for this child-frame.
-                // Note that there may be more times than actual relevant updates, but crucially, all queries
-                // to the current entity path yield information about the frames in `child_frames`.
-                let times_with_potential_update = if time_column.time_range().min
-                    >= time_range.start
-                    // Careful, we're comparing a std `Range` with `AbsoluteTimeRange`!
-                    // `max` is inclusive, `end` is exclusive.
-                    // The reason we have to use `Range` here over `AbsoluteTimeRange` is that `time_range` may contain `TimeRange::STATIC`.
-                    && time_column.time_range().max < time_range.end
-                {
-                    Cow::Borrowed(time_column.times_raw())
-                } else {
-                    Cow::Owned(
-                        time_column
-                            .times()
-                            // TODO(andreas): For sorted time columns we could speed this up a bit.
-                            .filter_map(|time| time_range.contains(&time).then_some(time.as_i64()))
-                            .collect_vec(),
-                    )
-                };
-
-                // Note down that all these child frames were updated at the given times.
-                for child_frame in child_frames {
-                    // Invalidate all frames for this child frame.
-                    let frame_transforms = per_timeline
-                        .per_child_frame_transforms
-                        .entry(*child_frame)
-                        .or_insert_with(|| {
-                            TransformsForChildFrame::new(
-                                *child_frame,
-                                *timeline,
-                                &mut self.static_timeline,
-                            )
-                        });
-
-                    frame_transforms.insert_invalidated_transform_events(
-                        aspects,
-                        || {
-                            times_with_potential_update
-                                .iter()
-                                .map(|t| TimeInt::new_temporal(*t))
-                        },
-                        entity_path,
-                    );
-
-                    // If we've never seen this entity update these child frames,
-                    // we have to make sure that we take recursive clears into account.
-                    if child_frames_affected_by_this_entity_for_first_time.contains(child_frame) {
-                        let mut ancestor = entity_path.clone();
-                        loop {
-                            if let Some(cleared_times) =
-                                per_timeline.recursive_clears.get(&ancestor)
-                            {
-                                for cleared_time in cleared_times {
-                                    if time_range.contains(cleared_time) {
-                                        frame_transforms
-                                            .events
-                                            .get_mut()
-                                            .insert_clear(*cleared_time, entity_path);
-                                    }
-                                }
-                            }
-
-                            match ancestor.parent() {
-                                Some(parent) => ancestor = parent,
-                                None => break,
-                            }
-                        }
-                    }
-                }
+                frame_transforms.insert_invalidated_transform_event(aspects, time);
             }
 
             // Keep track of clears.
             if aspects.contains(TransformAspect::Clear) {
-                re_tracing::profile_scope!("check for recursive clears");
-
                 let component = archetypes::Clear::descriptor_is_recursive().component;
 
-                let mut recursively_cleared_times = BTreeSet::new();
                 for ((time, _row_id), is_recursive_slice) in chunk
                     .iter_component_indices(*timeline, component)
                     .zip(chunk.iter_slices::<bool>(component))
                 {
-                    if let Some(is_recursive) = is_recursive_slice.values().first() {
-                        if *is_recursive != 0 {
-                            recursively_cleared_times.insert(time);
-                        } else {
-                            per_timeline.add_clear(entity_path, time);
-                        }
+                    if let Some(is_recursive) = is_recursive_slice.values().first()
+                        && *is_recursive != 0
+                    {
+                        per_timeline.add_recursive_clear(entity_path, time);
+                    } else {
+                        per_timeline.add_clear(entity_path, time);
                     }
                 }
-                per_timeline.add_recursive_clears(entity_path, recursively_cleared_times);
             }
         }
     }
@@ -985,84 +735,43 @@ impl TransformResolutionCache {
         debug_assert!(chunk.is_static());
 
         let entity_path = chunk.entity_path();
-        let fallback_child_frames = [TransformFrameIdHash::from_entity_path(entity_path)];
-
-        let affected_child_frames = self
-            .static_timeline
-            .per_entity_affected_child_frames
-            .get_or_create_for(entity_path);
-
-        // Note down that for these child frames we may have new static transforms.
-        let child_frames = child_frames_in_static_chunk(chunk);
-        let child_frames =
-            active_frame_array_from_strings(entity_path, &child_frames.unwrap_or_default());
-        {
-            let (changed_range, previous_frames) =
-                affected_child_frames.insert_range_start(TimeInt::STATIC, child_frames.clone());
-            debug_assert_eq!(changed_range, TimeInt::STATIC..TimeInt::STATIC);
-
-            if previous_frames != child_frames
-                && previous_frames.as_slice() != fallback_child_frames.as_slice()
-            {
-                for per_timeline_transforms in &mut self.per_timeline.values_mut() {
-                    // Propagate the new static child frames to `per_entity_affected_child_frames` on all timelines.
-                    per_timeline_transforms
-                        .per_entity_affected_child_frames
-                        .get_or_create_for(entity_path)
-                        .insert_range_start(TimeInt::STATIC, child_frames.clone());
-
-                    // Invalidate the static status on the previous child frames.
-                    for previous_child_frame in &previous_frames {
-                        if let Some(frame_transform) = per_timeline_transforms
-                            .per_child_frame_transforms
-                            .get_mut(previous_child_frame)
-                        {
-                            frame_transform.events.get_mut().remove_at(TimeInt::STATIC);
-                        }
-                    }
-                }
-            }
-        }
-        debug_assert_eq!(
-            affected_child_frames.range_starts.len(),
-            1,
-            "There should be only information about the static child frame"
-        );
 
         // Add a static transform invalidation to affected child frames on ALL timelines.
-        for child_frame in child_frames {
-            // Note down the events/invalidations on the static timeline itself.
-            self.static_timeline
+        for (time, child_frame) in
+            iter_child_frames_in_chunk(chunk, TimelineName::new("ignored for static chunk"))
+        {
+            debug_assert_eq!(time, TimeInt::STATIC);
+
+            // TODO(andreas): most of the time it's the same child frame in a row. can we speed this lookup up?
+            let frame_transforms = self
+                .static_timeline
                 .per_child_frame_transforms
                 .entry(child_frame)
-                .or_insert_with(|| TransformsForChildFrame::new_empty(child_frame))
-                .insert_invalidated_transform_events(
-                    aspects,
-                    || std::iter::once(TimeInt::STATIC),
-                    entity_path,
-                );
+                .or_insert_with(|| {
+                    TransformsForChildFrame::new_empty(entity_path.clone(), child_frame)
+                });
+            frame_transforms.insert_invalidated_transform_event(aspects, time);
 
-            for (timeline, per_timeline_transforms) in &mut self.per_timeline {
-                let entity_transforms = per_timeline_transforms
+            for (timeline, per_timeline) in &mut self.per_timeline {
+                let entity_transforms = per_timeline
                     .per_child_frame_transforms
                     .entry(child_frame)
                     .or_insert_with(|| {
                         // Need to add an entry now if there wasn't one before.
                         // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
                         TransformsForChildFrame::new(
+                            entity_path.clone(),
                             child_frame,
                             *timeline,
                             &mut self.static_timeline,
+                            &per_timeline.non_recursive_clears,
+                            &per_timeline.recursive_clears,
                         )
                     });
 
                 // Due to atomic latest-at, we only have to add a static transform timepoint and do **not** need to invalidate all times going forward
                 // as they would fully shadow the static transform!
-                entity_transforms.insert_invalidated_transform_events(
-                    aspects,
-                    || std::iter::once(TimeInt::STATIC),
-                    entity_path,
-                );
+                entity_transforms.insert_invalidated_transform_event(aspects, TimeInt::STATIC);
             }
         }
 
@@ -1074,8 +783,8 @@ impl TransformResolutionCache {
 
         let entity_path = chunk.entity_path();
 
-        // Note that we ignore static timelines for removal.
-        for (timeline, time_column) in chunk.timelines() {
+        // TODO(andreas): handle removal of static chunks?
+        for timeline in chunk.timelines().keys() {
             let Some(per_timeline) = self.per_timeline.get_mut(timeline) else {
                 continue;
             };
@@ -1086,82 +795,61 @@ impl TransformResolutionCache {
 
                 let component = archetypes::Clear::descriptor_is_recursive().component;
 
-                let recursively_cleared_times = chunk
+                for ((time, _row_id), is_recursive_slice) in chunk
                     .iter_component_indices(*timeline, component)
                     .zip(chunk.iter_slices::<bool>(component))
-                    .filter_map(|((time, _row_id), bool_slice)| {
-                        bool_slice
-                            .values()
-                            .first()
-                            .and_then(|is_recursive| (*is_recursive != 0).then_some(time))
-                    })
-                    .collect::<BTreeSet<_>>();
-
-                if !recursively_cleared_times.is_empty() {
-                    per_timeline.remove_recursive_clears(entity_path, &recursively_cleared_times);
+                {
+                    if let Some(is_recursive) = is_recursive_slice.values().first()
+                        && *is_recursive != 0
+                    {
+                        per_timeline.remove_recursive_clear(entity_path, time);
+                    } else {
+                        per_timeline.remove_clear(entity_path, time);
+                    }
                 }
             }
 
             // Remove existing data.
-            if let Some(affected_frames) = per_timeline
-                .per_entity_affected_child_frames
-                .get_mut(entity_path)
-            {
-                for (time_range, child_frames) in
-                    affected_frames.iter_ranges(time_column.time_range())
+            for (time, child_frame) in iter_child_frames_in_chunk(chunk, *timeline) {
+                let Some(transforms) = per_timeline
+                    .per_child_frame_transforms
+                    .get_mut(&child_frame)
+                else {
+                    debug_panic_missing_child_frame_transforms_for_update_on_entity(
+                        entity_path,
+                        child_frame,
+                    );
+                    continue;
+                };
+                let transforms = transforms.events.get_mut();
+
+                if aspects.contains(TransformAspect::Frame) {
+                    transforms.frame_transforms.remove(&time);
+                }
+                if aspects.contains(TransformAspect::Pose)
+                    && let Some(pose_transforms) = &mut transforms.pose_transforms
                 {
-                    for child_frame in child_frames {
-                        let Some(transforms) =
-                            per_timeline.per_child_frame_transforms.get_mut(child_frame)
-                        else {
-                            debug_panic_missing_child_frame_transforms_for_update_on_entity(
-                                entity_path,
-                                *child_frame,
-                            );
-                            continue;
-                        };
-                        let transforms = transforms.events.get_mut();
-
-                        // Remove from our record of where this entity updates things.
-                        for time in time_column.times() {
-                            // Only if this entity actually had an update for a given child frame at a time, do we have to remove transforms from that child frame.
-                            if !time_range.contains(&time) {
-                                continue;
-                            }
-
-                            if aspects.contains(TransformAspect::Frame) {
-                                transforms.frame_transforms.remove(&time);
-                            }
-                            if aspects.contains(TransformAspect::Pose)
-                                && let Some(pose_transforms) = &mut transforms.pose_transforms
-                            {
-                                pose_transforms.remove(&time);
-                            }
-                            if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
-                                && let Some(pinhole_projections) =
-                                    &mut transforms.pinhole_projections
-                            {
-                                pinhole_projections.remove(&time);
-                            }
-                        }
-
-                        // Remove child frame entry if it's empty.
-                        if transforms.frame_transforms.is_empty()
-                            && transforms
-                                .pose_transforms
-                                .as_ref()
-                                .is_none_or(|pose_transforms| pose_transforms.is_empty())
-                            && transforms
-                                .pinhole_projections
-                                .as_ref()
-                                .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
-                        {
-                            per_timeline.per_child_frame_transforms.remove(child_frame);
-                        }
-                    }
+                    pose_transforms.remove(&time);
+                }
+                if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
+                    && let Some(pinhole_projections) = &mut transforms.pinhole_projections
+                {
+                    pinhole_projections.remove(&time);
                 }
 
-                // TODO(andreas): Remove empty child frame update mentions.
+                // Remove child frame entry if it's empty.
+                if transforms.frame_transforms.is_empty()
+                    && transforms
+                        .pose_transforms
+                        .as_ref()
+                        .is_none_or(|pose_transforms| pose_transforms.is_empty())
+                    && transforms
+                        .pinhole_projections
+                        .as_ref()
+                        .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
+                {
+                    per_timeline.per_child_frame_transforms.remove(&child_frame);
+                }
             }
 
             // Remove the entire timeline if it's empty.
@@ -1183,47 +871,53 @@ fn debug_panic_missing_child_frame_transforms_for_update_on_entity(
 }
 
 /// Iterates over all child frames that are in a chunk.
+///
+/// If the chunk is static, `timeline` will be ignored.
+///
+/// Yields an entry for every row. Note that there may be many entries per time though.
+/// (Currently, there can be only a single frame id per row)
 pub fn iter_child_frames_in_chunk(
     chunk: &Chunk,
     timeline: TimelineName,
-) -> impl Iterator<Item = (TimeInt, Vec<ArrowString>)> {
+) -> impl Iterator<Item = (TimeInt, TransformFrameIdHash)> {
     // TODO(RR-2627, RR-2680): Custom child frame is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
     let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
 
-    itertools::izip!(
-        chunk
-            .iter_component_indices(timeline, child_frame_component)
-            .map(|(t, _)| t),
-        chunk.iter_slices::<String>(child_frame_component),
+    let implicit_frame = TransformFrameIdHash::from_entity_path(chunk.entity_path());
+
+    // This is similar to `iter_slices` but it also yields elements for rows where the component is null.
+    let frame_ids_per_row =
+    chunk.components().get_array(child_frame_component).map_or_else(
+        || Either::Left(std::iter::repeat(implicit_frame)),
+        |list_array| {
+            let values_raw = list_array.values();
+            let Some(values) =
+                values_raw.downcast_array_ref::<arrow::array::StringArray>()
+            else {
+                re_log::error_once!("Expected at {child_frame_component:?} @ {:?} to be a string array, but its type is instead {:?}",
+                                         chunk.entity_path(), values_raw.data_type());
+                return Either::Left(std::iter::repeat(implicit_frame));
+            };
+
+            let offsets = list_array.offsets().iter().map(|idx| *idx as usize);
+            let lengths = list_array.offsets().lengths();
+
+            Either::Right(izip!(offsets, lengths).map(move |(offset, length)| {
+                // No need to check for nulls since we treat nulls and empty arrays both as the implicit frame.
+                if length == 0 {
+                    implicit_frame
+                } else {
+                    // There can only be a single frame id per row today, so only look at the first element.
+                    TransformFrameIdHash::from_str(values.value(offset))
+                }
+            }))
+        }
+    );
+
+    izip!(
+        chunk.iter_indices(&timeline).map(|(t, _)| t),
+        frame_ids_per_row
     )
-}
-
-/// Iterates over all child frames that are in a chunk.
-pub fn child_frames_in_static_chunk(chunk: &Chunk) -> Option<Vec<ArrowString>> {
-    debug_assert!(chunk.is_static());
-
-    // TODO(RR-2627, RR-2680): Custom child frame is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
-    let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
-
-    chunk.iter_slices::<String>(child_frame_component).next()
-}
-
-/// Given a slice of arrow strings representing frames, retrieve the list of frame hashes.
-/// If there are no child frames, this returns the implicit child frame since this one is active if nothing else was specified.
-fn active_frame_array_from_strings(
-    entity_path: &EntityPath,
-    frame_names: &[ArrowString],
-) -> SmallVec1<[TransformFrameIdHash; 1]> {
-    SmallVec1::try_from_smallvec(
-        frame_names
-            .iter()
-            .map(|s| TransformFrameIdHash::from_str(s.as_str()))
-            .collect(),
-    )
-    .unwrap_or_else(|_| {
-        // Insert the implicit frame if the list was empty.
-        SmallVec1::from_array_const([TransformFrameIdHash::from_entity_path(entity_path)])
-    })
 }
 
 #[cfg(test)]
@@ -2135,8 +1829,11 @@ mod tests {
 
     #[test]
     fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
-        for clear_in_separate_chunk in [false, true] {
+        for (clear_in_separate_chunk, first_clear_then_data) in
+            [(false, false), (true, false), (true, true)]
+        {
             println!("clear_in_separate_chunk: {clear_in_separate_chunk}");
+            println!("first_clear_then_data: {first_clear_then_data}");
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
             let mut cache = TransformResolutionCache::default();
@@ -2145,7 +1842,7 @@ mod tests {
             let timeline_name = *timeline.name();
 
             let path = EntityPath::from("ent");
-            let mut chunk = Chunk::builder(path.clone())
+            let data_chunk = Chunk::builder(path.clone())
                 .with_archetype_auto_row(
                     [(timeline, 1)],
                     &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
@@ -2153,17 +1850,19 @@ mod tests {
                 .with_archetype_auto_row(
                     [(timeline, 3)],
                     &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0]),
-                );
-            if !clear_in_separate_chunk {
-                chunk = chunk.with_archetype(
+                )
+                .build()?;
+            let clear_chunk = Chunk::builder(path.clone())
+                .with_archetype(
                     RowId::new(),
                     [(timeline, 2)],
                     &archetypes::Clear::new(false),
-                );
-            }
-            entity_db.add_chunk(&Arc::new(chunk.build()?))?;
+                )
+                .build()?;
 
-            if clear_in_separate_chunk {
+            if clear_in_separate_chunk && !first_clear_then_data {
+                entity_db.add_chunk(&Arc::new(data_chunk))?;
+
                 // If we're putting the clear in a separate chunk, we can try warming the cache and see whether we get the right transforms.
                 {
                     apply_store_subscriber_events(&mut cache, &entity_db);
@@ -2190,13 +1889,30 @@ mod tests {
                 }
 
                 // Now add a separate chunk with a clear.
-                let chunk = Chunk::builder(path.clone())
-                    .with_archetype(
-                        RowId::new(),
-                        [(timeline, 2)],
-                        &archetypes::Clear::new(false),
-                    )
-                    .build()?;
+                entity_db.add_chunk(&Arc::new(clear_chunk))?;
+            } else if clear_in_separate_chunk && first_clear_then_data {
+                // First add clear chunk.
+                entity_db.add_chunk(&Arc::new(clear_chunk))?;
+
+                // Warm the cache with this situation.
+                apply_store_subscriber_events(&mut cache, &entity_db);
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+                let transforms = transforms_per_timeline
+                    .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
+                    .unwrap();
+                for t in [0, 1, 2] {
+                    assert_eq!(
+                        transforms
+                            .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                        None,
+                        "Expected no transform at time {t}."
+                    );
+                }
+
+                // And only now add the data chunk.
+                entity_db.add_chunk(&Arc::new(data_chunk))?;
+            } else {
+                let chunk = data_chunk.concatenated(&clear_chunk)?;
                 entity_db.add_chunk(&Arc::new(chunk))?;
             }
 
@@ -2545,14 +2261,6 @@ mod tests {
                     transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
                 })
             );
-            assert_eq!(
-                transforms_frame0
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-                Some(ParentFromChildTransform {
-                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
-                })
-            );
 
             // Check frame1 only ever sees the temporal transform.
             let transforms_frame1 = timeline_transforms
@@ -2573,14 +2281,15 @@ mod tests {
             );
         }
 
-        // Now we change the static chunk to also talk about frame1.
+        // Now we change the static chunk to also talk about a new frame2.
+        // (Note we're not allowed to also mention frame1 since it is already used by our non-temporal entity)
         // Before, there was a translation there but due to atomic latest-at we won't see that.
         entity_db.add_chunk(&Arc::new(
             Chunk::builder(static_entity_path)
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
                     &archetypes::Transform3D::new()
-                        .with_child_frame("frame1")
+                        .with_child_frame("frame2")
                         .with_scale(2.0),
                 )
                 .build()?,
@@ -2590,40 +2299,29 @@ mod tests {
         {
             let timeline_transforms = cache.transforms_for_timeline(*timeline.name());
 
-            // Check frame0 is now empty all the way.
+            // Information about frame0 is still there, just like it would be when adding additional temporal rows at the same time.
             let transforms_frame0 = timeline_transforms
                 .frame_transforms(TransformFrameIdHash::from_str("frame0"))
                 .unwrap();
             assert_eq!(
                 transforms_frame0
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
-                None
-            );
-            assert_eq!(
-                transforms_frame0
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-                None
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 0.0, 0.0)),
+                })
             );
 
-            // Check frame1 has now both the static and the temporal transforms visible.
-            let transforms_frame1 = timeline_transforms
-                .frame_transforms(TransformFrameIdHash::from_str("frame1"))
+            // But there's also a new frame2.
+            let transforms_frame2 = timeline_transforms
+                .frame_transforms(TransformFrameIdHash::from_str("frame2"))
                 .unwrap();
             assert_eq!(
-                transforms_frame1
+                transforms_frame2
                     .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
                 Some(ParentFromChildTransform {
                     parent: TransformFrameIdHash::entity_path_hierarchy_root(),
                     transform: DAffine3::from_scale(glam::DVec3::splat(2.0)),
-                })
-            );
-            assert_eq!(
-                transforms_frame1
-                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-                Some(ParentFromChildTransform {
-                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    // Unaffected by the static transform due to atomic latest-at.
-                    transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
                 })
             );
         }

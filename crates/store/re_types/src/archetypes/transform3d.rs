@@ -372,8 +372,6 @@ pub struct Transform3D {
     /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
     /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-    /// An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
-    /// another one temporally.
     ///
     /// ⚠ This currently also affects the child frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
@@ -975,8 +973,6 @@ impl Transform3D {
     /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
     /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-    /// An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
-    /// another one temporally.
     ///
     /// ⚠ This currently also affects the child frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].

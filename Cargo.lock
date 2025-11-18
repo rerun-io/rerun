@@ -9677,6 +9677,7 @@ name = "re_tf"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "bitflags 2.9.4",
  "criterion",
  "glam",
