@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
-use re_dataframe_ui::table_utils::{apply_table_style_fixes, cell_ui, header_ui};
+use re_dataframe_ui::re_table_utils::{apply_table_style_fixes, cell_ui, header_ui};
 use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::ComponentDescriptor;
