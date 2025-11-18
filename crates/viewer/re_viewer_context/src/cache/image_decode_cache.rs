@@ -361,7 +361,7 @@ impl Cache for ImageDecodeCache {
 mod tests {
     use super::*;
 
-    use image::{ColorType, ImageEncoder, codecs::png::PngEncoder};
+    use image::{ColorType, ImageEncoder as _, codecs::png::PngEncoder};
     use re_types::datatypes::ImageFormat as ImageFormatDatatype;
 
     #[test]
