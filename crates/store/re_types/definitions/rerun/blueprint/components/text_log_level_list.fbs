@@ -4,7 +4,7 @@ namespace rerun.blueprint.components;
 
 /// A list of text log levels to display.
 table TextLogLevelList (
-  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"

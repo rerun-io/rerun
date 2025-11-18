@@ -6,7 +6,6 @@
 #include "affix_fuzzer1.hpp"
 
 #include <array>
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <memory>

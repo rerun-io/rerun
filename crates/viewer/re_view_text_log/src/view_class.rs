@@ -216,26 +216,13 @@ Filter message types and toggle column visibility in a selection panel.",
                 TextLogColumns::descriptor_timeline().component,
             )?
             .into();
-        let columns: Vec<_> = columns_list
-            .0
-            .text_log_columns
-            .iter()
-            .filter(|col| col.visible.into())
-            .map(|col| col.kind)
-            .collect();
+        let columns = &columns_list.text_log_columns;
 
         let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
             &view_ctx,
             TextLogRows::descriptor_filter_by_log_level().component,
         )?;
         let levels = &levels_list.0.log_levels;
-
-        let reset_column_widths = if columns.as_slice() != state.last_columns.as_slice() {
-            state.last_columns = columns.clone();
-            true
-        } else {
-            false
-        };
 
         for te in &text.entries {
             if let Some(lvl) = &te.level {
@@ -276,8 +263,8 @@ Filter message types and toggle column visibility in a selection panel.",
                     table_ui(
                         ctx,
                         ui,
-                        &columns,
-                        reset_column_widths,
+                        state,
+                        columns,
                         **monospace_body,
                         &entries,
                         scroll_to_row,
@@ -301,8 +288,8 @@ Filter message types and toggle column visibility in a selection panel.",
 fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    columns: &[bp_datatypes::TextLogColumnKind],
-    reset_column_widths: bool,
+    state: &mut TextViewState,
+    columns: &[bp_datatypes::TextLogColumn],
     monospace_body: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
@@ -323,9 +310,6 @@ fn table_ui(
         .max_scroll_height(f32::INFINITY) // Fill up whole height
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center));
 
-    if reset_column_widths {
-        table_builder.reset();
-    }
     if let Some(scroll_to_row) = scroll_to_row {
         table_builder = table_builder.scroll_to_row(scroll_to_row, Some(egui::Align::Center));
     }
@@ -333,27 +317,42 @@ fn table_ui(
     let mut body_clip_rect = None;
     let mut current_time_y = None; // where to draw the current time indicator cursor
 
-    for col in columns {
-        match col {
+    for (col, last_kind) in columns.iter().zip(
+        state
+            .last_columns
+            .iter()
+            .map(Some)
+            .chain(std::iter::repeat(None)),
+    ) {
+        let table_column = match col.kind {
             bp_datatypes::TextLogColumnKind::Timeline
             | bp_datatypes::TextLogColumnKind::EntityPath => {
-                table_builder = table_builder.column(Column::auto().clip(true).at_least(32.0));
+                Column::auto().clip(true).at_least(32.0)
             }
-            bp_datatypes::TextLogColumnKind::LogLevel => {
-                table_builder = table_builder.column(Column::auto().at_least(30.0));
-            }
-            bp_datatypes::TextLogColumnKind::Body => {
-                table_builder = table_builder.column(Column::remainder().at_least(100.0));
-            }
-        }
+            bp_datatypes::TextLogColumnKind::LogLevel => Column::auto().at_least(30.0),
+            bp_datatypes::TextLogColumnKind::Body => Column::remainder().at_least(100.0),
+        };
+
+        // If this isn't the same kind as before the order changed.
+        let reset_size = last_kind.is_some_and(|last_kind| *last_kind != col.kind);
+
+        let table_column = table_column.auto_size_this_frame(reset_size);
+
+        table_builder = table_builder.column(table_column);
     }
+
+    state.last_columns.clear();
+    state.last_columns.extend(columns.iter().map(|c| c.kind));
 
     table_builder
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
-            for c in columns {
+            for col in columns {
+                if !*col.visible {
+                    continue;
+                }
                 header.col(|ui| {
-                    column_name_ui(ctx, ui, c, &timeline);
+                    column_name_ui(ctx, ui, &col.kind, &timeline);
                 });
             }
         })
@@ -371,8 +370,12 @@ fn table_ui(
                 let entry = &entries[row.index()];
 
                 for col in columns {
+                    if !*col.visible {
+                        continue;
+                    }
+
                     row.col(|ui| {
-                        match col {
+                        match col.kind {
                             bp_datatypes::TextLogColumnKind::Timeline => {
                                 let row_time = entry
                                     .timepoint

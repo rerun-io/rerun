@@ -8,7 +8,6 @@
 #include "../result.hpp"
 #include "../type_traits.hpp"
 
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <memory>
