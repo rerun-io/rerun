@@ -1,5 +1,6 @@
 use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::table_selection::TableSelectionState;
+use egui::emath::GuiRounding;
 use egui::text_selection::LabelSelectionState;
 use egui::{
     Align, Context, Direction, FontSelection, Id, Layout, Modifiers, NumExt as _, Rangef, RichText,
@@ -48,8 +49,16 @@ impl<'a> ReTable<'a> {
         }
     }
 
-    fn row_number_text(rows: u64) -> WidgetText {
-        WidgetText::from(RichText::new(format_uint(rows)).weak().monospace())
+    fn row_number_text(row: u64) -> WidgetText {
+        WidgetText::from(RichText::new(format_uint(row)).weak().monospace())
+    }
+
+    fn add_row_number_content<R>(ui: &mut Ui, content: impl FnOnce(&mut Ui) -> R) -> R {
+        content(
+            &mut ui.new_child(UiBuilder::new().max_rect(ui.max_rect()).layout(
+                Layout::centered_and_justified(Direction::TopDown).with_cross_align(Align::Max),
+            )),
+        )
     }
 
     fn row_selection_checkbox(
@@ -57,10 +66,9 @@ impl<'a> ReTable<'a> {
         checked: &mut bool,
         intermediate: bool,
     ) -> egui::Response {
-        ui.new_child(UiBuilder::new().max_rect(ui.max_rect()).layout(
-            Layout::centered_and_justified(Direction::TopDown).with_cross_align(Align::Min),
-        ))
-        .checkbox_indeterminate(checked, (), intermediate)
+        Self::add_row_number_content(ui, |ui| {
+            ui.checkbox_indeterminate(checked, (), intermediate)
+        })
     }
 
     pub fn show(&mut self, ui: &mut Ui) {
@@ -139,8 +147,10 @@ impl egui_table::TableDelegate for ReTable<'_> {
                 }
                 let show_checkbox = hovered || !self.selection.selected_rows.is_empty();
                 if show_checkbox {
-                    let mut checked = self.selection.selected_rows.len() as u64 == self.num_rows;
-                    let intermediate = !checked && !self.selection.selected_rows.is_empty();
+                    // It's checked
+                    let mut checked = !self.selection.selected_rows.is_empty();
+                    let intermediate =
+                        self.selection.selected_rows.len() as u64 != self.num_rows && checked;
                     let response = Self::row_selection_checkbox(ui, &mut checked, intermediate);
                     if response.changed() {
                         if checked {
@@ -150,7 +160,9 @@ impl egui_table::TableDelegate for ReTable<'_> {
                         }
                     }
                 } else {
-                    ui.label("#");
+                    Self::add_row_number_content(ui, |ui| {
+                        ui.label("#");
+                    });
                 }
             } else {
                 // Offset by one for the row number column.
@@ -170,6 +182,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
         cell_ui(ui, self.table_style, false, |ui| {
             ui.set_truncate_style();
             if cell.col_nr == 0 {
+                // This is the row number column.
                 let show_checkbox = self.previous_selection.all_hovered
                     || self.previous_selection.hovered_row == Some(cell.row_nr);
                 if show_checkbox {
@@ -189,8 +202,9 @@ impl egui_table::TableDelegate for ReTable<'_> {
                         self.selection.handle_row_click(cell.row_nr, modifiers);
                     }
                 } else {
-                    // This is the row number column.
-                    ui.label(Self::row_number_text(cell.row_nr));
+                    Self::add_row_number_content(ui, |ui| {
+                        ui.label(Self::row_number_text(cell.row_nr));
+                    })
                 }
             } else {
                 // Offset by one for the row number column.
@@ -211,10 +225,18 @@ impl egui_table::TableDelegate for ReTable<'_> {
             self.selection.hovered_row = Some(row_nr);
         }
 
+        let mut fill = None;
+        if self.previous_selection.hovered_row == Some(row_nr) {
+            fill = Some(
+                ui.tokens()
+                    .table_interaction_row_selection_fill
+                    .gamma_multiply(0.5),
+            );
+        }
+
         ui.style_mut().interaction.selectable_labels = false;
         if self.selection.selected_rows.contains(&row_nr) {
-            ui.painter()
-                .rect_filled(response.rect, 0.0, ui.tokens().list_item_hovered_bg);
+            fill = Some(ui.tokens().table_interaction_row_selection_fill);
             let modifiers_pressed = ui.input(|i| i.modifiers.shift || i.modifiers.command);
             let any_selection = ui
                 .ctx()
@@ -225,6 +247,14 @@ impl egui_table::TableDelegate for ReTable<'_> {
             if !modifiers_pressed || any_selection {
                 ui.style_mut().interaction.selectable_labels = true;
             }
+        }
+
+        if let Some(fill) = fill {
+            let mut fill_rect = response
+                .rect
+                .round_to_pixels(ui.pixels_per_point())
+                .round_ui();
+            ui.painter().rect_filled(fill_rect, 0.0, fill);
         }
 
         if response.container_clicked() {

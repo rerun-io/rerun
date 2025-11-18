@@ -761,7 +761,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         format_plural_s(selected_items.len())
                     );
                     if ui
-                        .add(icons::EXTERNAL_LINK.as_button_with_label(ui.tokens(), label))
+                        .add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label))
                         .clicked()
                     {
                         let column_index = self.columns.iter().position(|col| {
