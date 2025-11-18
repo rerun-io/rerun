@@ -9,7 +9,7 @@ pub trait ResponseExt {
     /// Will return false if some other area is covering the given layer, or if anything is being
     /// dragged.
     ///
-    /// This calls [`Context::rect_contains_pointer`]. See also [`Response::hovered`].
+    /// This calls [`egui::Context::rect_contains_pointer`]. See also [`Response::hovered`].
     fn container_hovered(&self) -> bool {
         self._self().ctx.dragged_id().is_none() && self.container_contains_pointer()
     }
@@ -18,7 +18,7 @@ pub trait ResponseExt {
     ///
     /// Will return false if some other area is covering the given layer.
     ///
-    /// This calls [`Context::rect_contains_pointer`]. See also [`Response::contains_pointer`].
+    /// This calls [`egui::Context::rect_contains_pointer`]. See also [`Response::contains_pointer`].
     fn container_contains_pointer(&self) -> bool {
         self._self()
             .ctx
