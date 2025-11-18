@@ -211,8 +211,12 @@ impl EyeInterpolation {
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct EyeState {
     /// Vertical field of view in radians.
+    ///
+    /// Only used by perspective projection.
     fov_y: Option<f32>,
 
+    /// Vertical size of the orthographic projection plane in world units.
+    ///
     /// Only used by orthographic projection.
     vertical_world_size: Option<f32>,
 
