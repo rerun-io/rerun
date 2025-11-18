@@ -15,6 +15,8 @@ The columns to display in the view.
 * `timeline`: What timeline the timeline column should show.
 ### `rows`
 Filter for rows to display in the view.
+### `format_options`
+Formatting options for the text log view.
 
 ## API reference links
  * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextLogView)

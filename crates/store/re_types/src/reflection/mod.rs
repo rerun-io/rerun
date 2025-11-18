@@ -4026,6 +4026,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextLogFormat"),
+            ArchetypeReflection {
+                display_name: "Text log format",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "monospace_body",
+                    display_name: "Monospace body",
+                    component_type: "rerun.blueprint.components.Enabled".into(),
+                    docstring_md: "Whether to use a monospace font for the log message body.",
+                    is_required: false,
+                }],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.TextLogRows"),
             ArchetypeReflection {
                 display_name: "Text log rows",

@@ -26,6 +26,7 @@
 #include "blueprint/archetypes/tensor_slice_selection.hpp"
 #include "blueprint/archetypes/tensor_view_fit.hpp"
 #include "blueprint/archetypes/text_log_columns.hpp"
+#include "blueprint/archetypes/text_log_format.hpp"
 #include "blueprint/archetypes/text_log_rows.hpp"
 #include "blueprint/archetypes/time_axis.hpp"
 #include "blueprint/archetypes/time_panel_blueprint.hpp"

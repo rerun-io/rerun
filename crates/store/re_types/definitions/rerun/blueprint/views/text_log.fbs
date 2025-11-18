@@ -11,4 +11,7 @@ table TextLogView (
 
   /// Filter for rows to display in the view.
   rows: rerun.blueprint.archetypes.TextLogRows (order: 2000);
+
+  /// Formatting options for the text log view.
+  format_options: rerun.blueprint.archetypes.TextLogFormat (order: 3000);
 }

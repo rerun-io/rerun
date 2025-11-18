@@ -77,6 +77,7 @@ class TextLogView(View):
         | None = None,
         columns: blueprint_archetypes.TextLogColumns | None = None,
         rows: blueprint_archetypes.TextLogRows | None = None,
+        format_options: blueprint_archetypes.TextLogFormat | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TextLogView view.
@@ -117,6 +118,8 @@ class TextLogView(View):
             The columns to display in the view.
         rows:
             Filter for rows to display in the view.
+        format_options:
+            Formatting options for the text log view.
 
         """
 
@@ -130,6 +133,11 @@ class TextLogView(View):
             if not isinstance(rows, blueprint_archetypes.TextLogRows):
                 rows = blueprint_archetypes.TextLogRows(rows)
             properties["TextLogRows"] = rows
+
+        if format_options is not None:
+            if not isinstance(format_options, blueprint_archetypes.TextLogFormat):
+                format_options = blueprint_archetypes.TextLogFormat(format_options)
+            properties["TextLogFormat"] = format_options
 
         super().__init__(
             class_identifier="TextLog",

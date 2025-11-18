@@ -31,6 +31,9 @@ pub struct TextLogView {
 
     /// Filter for rows to display in the view.
     pub rows: crate::blueprint::archetypes::TextLogRows,
+
+    /// Formatting options for the text log view.
+    pub format_options: crate::blueprint::archetypes::TextLogFormat,
 }
 
 impl ::re_types_core::View for TextLogView {
@@ -43,12 +46,15 @@ impl ::re_types_core::View for TextLogView {
 impl ::re_byte_size::SizeBytes for TextLogView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.columns.heap_size_bytes() + self.rows.heap_size_bytes()
+        self.columns.heap_size_bytes()
+            + self.rows.heap_size_bytes()
+            + self.format_options.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::TextLogColumns>::is_pod()
             && <crate::blueprint::archetypes::TextLogRows>::is_pod()
+            && <crate::blueprint::archetypes::TextLogFormat>::is_pod()
     }
 }

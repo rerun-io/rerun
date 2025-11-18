@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimelineName};
 use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::{TextLogColumns, TextLogRows};
-use re_types::blueprint::components::{TextLogColumnList, TextLogLevelList};
+use re_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
+use re_types::blueprint::components::{Enabled, TextLogColumnList, TextLogLevelList};
 use re_types::blueprint::datatypes as bp_datatypes;
 use re_types::{View as _, datatypes};
 use re_ui::list_item::LabelContent;
@@ -26,8 +26,6 @@ pub struct TextViewState {
     /// We need this because we want the user to be able to manually scroll the
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
-
-    monospace: bool,
 
     seen_levels: BTreeSet<String>,
 
@@ -164,6 +162,7 @@ Filter message types and toggle column visibility in a selection panel.",
             let ctx = self.view_context(ctx, view_id, state);
             re_view::view_property_ui::<TextLogColumns>(&ctx, ui);
             view_property_ui_rows(&ctx, ui);
+            re_view::view_property_ui::<TextLogFormat>(&ctx, ui);
         });
 
         Ok(())
@@ -194,8 +193,18 @@ Filter message types and toggle column visibility in a selection panel.",
             ctx.blueprint_query,
             query.view_id,
         );
+        let format_property = ViewProperty::from_archetype::<TextLogFormat>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
 
         let view_ctx = self.view_context(ctx, query.view_id, state);
+
+        let monospace_body = format_property.component_or_fallback::<Enabled>(
+            &view_ctx,
+            TextLogFormat::descriptor_monospace_body().component,
+        )?;
         let columns_list = columns_property.component_or_fallback::<TextLogColumnList>(
             &view_ctx,
             TextLogColumns::descriptor_text_log_columns().component,
@@ -267,9 +276,9 @@ Filter message types and toggle column visibility in a selection panel.",
                     table_ui(
                         ctx,
                         ui,
-                        state,
                         &columns,
                         reset_column_widths,
+                        **monospace_body,
                         &entries,
                         scroll_to_row,
                         column_timeline,
@@ -292,9 +301,9 @@ Filter message types and toggle column visibility in a selection panel.",
 fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &TextViewState,
     columns: &[bp_datatypes::TextLogColumnKind],
     reset_column_widths: bool,
+    monospace_body: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
     timeline: TimelineName,
@@ -409,7 +418,7 @@ fn table_ui(
                             bp_datatypes::TextLogColumnKind::Body => {
                                 let mut text = egui::RichText::new(entry.body.as_str());
 
-                                if state.monospace {
+                                if monospace_body {
                                     text = text.monospace();
                                 }
                                 if let Some(color) = entry.color {

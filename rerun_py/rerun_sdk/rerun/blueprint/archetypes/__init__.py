@@ -26,6 +26,7 @@ from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
 from .text_log_columns import TextLogColumns
+from .text_log_format import TextLogFormat
 from .text_log_rows import TextLogRows
 from .time_axis import TimeAxis
 from .time_panel_blueprint import TimePanelBlueprint
@@ -61,6 +62,7 @@ __all__ = [
     "TensorSliceSelection",
     "TensorViewFit",
     "TextLogColumns",
+    "TextLogFormat",
     "TextLogRows",
     "TimeAxis",
     "TimePanelBlueprint",
