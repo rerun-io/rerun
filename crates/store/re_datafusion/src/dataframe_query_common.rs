@@ -14,8 +14,8 @@ use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusio
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
-use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use futures::StreamExt as _;
+use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
@@ -39,7 +39,8 @@ use std::sync::Arc;
 /// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
 /// the pitfall of executing a single row at a time, but we will likely want to consider
 /// at some point moving to a dynamic sizing.
-const DEFAULT_BATCH_SIZE: usize = 2048;
+const DEFAULT_BATCH_BYTES: usize = 200 * 1024 * 1024;
+const DEFAULT_BATCH_ROWS: usize = 2048;
 
 #[derive(Debug)]
 pub struct DataframeQueryTableProvider {
@@ -286,8 +287,10 @@ impl TableProvider for DataframeQueryTableProvider {
         )
         .map(Arc::new)
         .map(|exec| {
-            Arc::new(CoalesceBatchesExec::new(exec, DEFAULT_BATCH_SIZE).with_fetch(limit))
-                as Arc<dyn ExecutionPlan>
+            Arc::new(
+                SizedCoalesceBatchesExec::new(exec, DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS)
+                    .with_fetch(limit),
+            ) as Arc<dyn ExecutionPlan>
         })
     }
 
