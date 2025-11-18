@@ -699,7 +699,7 @@ impl EyeState {
             old_pos,
             old_look_target,
             tracking_entity.as_ref(),
-        ) {
+        )? {
             return Ok(tracked_eye);
         }
 
@@ -724,7 +724,7 @@ impl EyeState {
         old_pos: Vec3,
         old_look_target: Vec3,
         tracking_entity: Option<&re_types::components::EntityPath>,
-    ) -> Option<Eye> {
+    ) -> Result<Option<Eye>, ViewPropertyQueryError> {
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());
 
@@ -734,28 +734,21 @@ impl EyeState {
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
-            let did_eye_change = match eye_controller.kind {
-                Eye3DKind::FirstPerson => eye_controller.pos != old_pos,
-                Eye3DKind::Orbital => eye_controller.look_target != old_look_target,
-            };
-
             if let Some(target_eye) = find_camera(cameras, &tracking_entity) {
                 if eye_controller.did_interact
                     && (eye_controller.pos != old_pos
                         || eye_controller.look_target != old_look_target)
                 {
-                    eye_property.clear_blueprint_component(
-                        ctx.viewer_ctx,
-                        EyeControls3D::descriptor_tracking_entity(),
-                    );
-                } else {
-                    return Some(target_eye);
+                    self.focus_entity(
+                        ctx,
+                        cameras,
+                        bounding_boxes,
+                        eye_property,
+                        &tracking_entity,
+                    )?;
                 }
-            } else if eye_controller.did_interact && did_eye_change {
-                eye_property.clear_blueprint_component(
-                    ctx.viewer_ctx,
-                    EyeControls3D::descriptor_tracking_entity(),
-                );
+
+                return Ok(Some(target_eye));
             } else {
                 // Note that we may want to focus on an _instance_ instead in the future:
                 // The problem with that is that there may be **many** instances (think point cloud)
@@ -821,13 +814,28 @@ impl EyeState {
                 self.last_orbit_radius =
                     Some(eye_controller.pos.distance(eye_controller.look_target));
 
-                return Some(eye_controller.get_eye());
+                let did_eye_change = match eye_controller.kind {
+                    Eye3DKind::FirstPerson => eye_controller.pos != old_pos,
+                    Eye3DKind::Orbital => eye_controller.look_target != old_look_target,
+                };
+
+                if eye_controller.did_interact && did_eye_change {
+                    self.focus_entity(
+                        ctx,
+                        cameras,
+                        bounding_boxes,
+                        eye_property,
+                        &tracking_entity,
+                    )?;
+                }
+
+                return Ok(Some(eye_controller.get_eye()));
             }
         } else {
             self.last_tracked_entity = None;
         }
 
-        None
+        Ok(None)
     }
 
     /// Spins the view if `spin_speed` isn't zero.
