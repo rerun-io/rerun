@@ -1,46 +1,32 @@
+use crate::lerobot::common::{
+    LEROBOT_DATASET_IGNORED_COLUMNS, load_and_stream_common, load_episode_depth_images,
+    load_episode_images, load_scalar, prepare_episode_chunks,
+};
 use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 
 use ahash::HashMap;
-use anyhow::{Context as _, Context, anyhow};
+use anyhow::{Context as _, anyhow};
+use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
-use arrow::{
-    array::{
-        ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray,
-        StructArray,
-    },
-    compute::cast,
-    datatypes::{DataType, Field},
-};
-use itertools::{Either, Itertools};
-use parquet::arrow::arrow_reader::{ParquetRecordBatchReader, ParquetRecordBatchReaderBuilder};
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+use re_chunk::ArrowArray as _;
 use re_types::archetypes::VideoStream;
 use re_types::components::VideoCodec;
-use re_video::{GopStartDetection, SampleIndex, StableIndexDeque, VideoDataDescription};
-use serde::de::{DeserializeOwned, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use re_video::{StableIndexDeque, VideoDataDescription};
+use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{
-    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
-    TimelineName, external::nohash_hasher::IntMap,
-};
-use re_log_types::{ApplicationId, StoreId};
-use re_types::{
-    archetypes::{
-        self, AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
-    },
-    components::VideoTimestamp,
-};
+use re_chunk::{Chunk, RowId, TimeColumn, TimePoint, Timeline};
+use re_log_types::ApplicationId;
+use re_types::archetypes::TextDocument;
 
-use crate::{DataLoaderError, LoadedData, load_file::prepare_store_info};
+use crate::{DataLoaderError, LoadedData};
 
 use std::sync::Arc;
 
@@ -120,7 +106,7 @@ impl LeRobotDatasetV3 {
             .ok_or(LeRobotError::InvalidEpisodeIndex(episode))?;
 
         let episode_data_path = self.metadata.info.episode_data_path(episode_data);
-        println!("Reading episode data from path: {episode_data_path:?}");
+        re_log::trace!("Reading episode data from: {episode_data_path:?}");
         let episode_parquet_file = self.path.join(episode_data_path);
 
         let file = File::open(&episode_parquet_file)
@@ -172,8 +158,7 @@ impl LeRobotDatasetV3 {
 pub struct LeRobotDatasetMetadataV3 {
     pub info: LeRobotDatasetInfoV3,
     pub tasks: LeRobotDatasetV3Tasks,
-    pub episodes: Vec<LeRobotEpisodeData>,
-    // pub tasks: Vec<LeRobotDatasetTask>,
+    pub episodes: HashMap<EpisodeIndex, LeRobotEpisodeData>,
 }
 
 impl LeRobotDatasetMetadataV3 {
@@ -184,7 +169,7 @@ impl LeRobotDatasetMetadataV3 {
 
     /// Get episode data by index.
     pub fn get_episode_data(&self, episode: EpisodeIndex) -> Option<&LeRobotEpisodeData> {
-        self.episodes.iter().find(|e| e.episode_index == episode)
+        self.episodes.get(&episode)
     }
 
     /// Loads all metadata files from the provided directory.
@@ -197,15 +182,22 @@ impl LeRobotDatasetMetadataV3 {
         let episode_data = LeRobotEpisodeData::load_from_directory(metadir.join("episodes"))?;
         let info = LeRobotDatasetInfoV3::load_from_json_file(metadir.join("info.json"))?;
         let tasks = LeRobotDatasetV3Tasks::load_from_parquet_file(metadir.join("tasks.parquet"))?;
+
+        // Convert episode data Vec to HashMap for O(1) lookups
+        let episodes = episode_data
+            .into_iter()
+            .map(|ep| (ep.episode_index, ep))
+            .collect();
+
         Ok(Self {
             info,
             tasks,
-            episodes: episode_data,
+            episodes,
         })
     }
 }
 
-/// File metadata for a specific feature (video or image) in a LeRobot dataset.
+/// File metadata for a specific feature (video or image) in a `LeRobot` dataset.
 ///
 /// In v3 datasets, each video/image feature can have its own chunk and file indices,
 /// allowing multiple episodes to share the same video file efficiently.
@@ -213,28 +205,32 @@ impl LeRobotDatasetMetadataV3 {
 pub struct FeatureFileMetadata {
     /// Chunk index where the feature's file is located
     pub chunk_index: usize,
+
     /// File index within the chunk
     pub file_index: usize,
+
     /// Start timestamp for the feature data in this file
-    #[allow(dead_code)]
     pub from_timestamp: Option<f64>,
+
     /// End timestamp for the feature data in this file
-    #[allow(dead_code)]
     pub to_timestamp: Option<f64>,
 }
 
-/// Episode metadata for a LeRobot v3 dataset.
+/// Episode metadata for a `LeRobot` v3 dataset.
 ///
 /// Contains file location information for both the episode data and individual video/image features.
 #[derive(Debug, Clone)]
 pub struct LeRobotEpisodeData {
     /// The index of this episode
     pub episode_index: EpisodeIndex,
+
     /// Chunk index for the episode's main data file
     pub data_chunk_index: usize,
+
     /// File index within the chunk for the episode's main data
     pub data_file_index: usize,
-    /// File metadata for video/image features, keyed by feature name (e.g., "observation.images.cam_high")
+
+    /// File metadata for video/image features, keyed by feature name (e.g., `observation.images.cam_high`)
     pub feature_files: HashMap<String, FeatureFileMetadata>,
 }
 
@@ -250,7 +246,7 @@ impl LeRobotEpisodeData {
             let path = entry.path();
             let path = path.as_path();
 
-            println!("Loading episode data from path: {path:?}");
+            re_log::trace!("Loading episode metadata from: {path:?}");
 
             if path.is_dir() {
                 for chunk_entry in
@@ -290,7 +286,7 @@ impl LeRobotEpisodeData {
                                 // Pattern: "videos/{feature_name}/{field}" where field is chunk_index, file_index, from_timestamp, to_timestamp
                                 let feature_metadata = Self::parse_feature_metadata(&b);
 
-                                let mut episodes = vec![];
+                                let mut episodes = Vec::with_capacity(b.num_rows());
                                 for i in 0..b.num_rows() {
                                     // Build feature_files map for this episode
                                     let feature_files = feature_metadata
@@ -301,28 +297,32 @@ impl LeRobotEpisodeData {
                                             let file_index = metadata.file_index.as_ref()?;
 
                                             Some((
-                                                feature_name.clone(),
+                                                feature_name.to_string(),
                                                 FeatureFileMetadata {
                                                     chunk_index: chunk_index.value(i) as usize,
                                                     file_index: file_index.value(i) as usize,
                                                     from_timestamp: metadata
                                                         .from_timestamp
                                                         .as_ref()
-                                                        .and_then(|ts| {
-                                                            ts.is_valid(i).then(|| ts.value(i))
+                                                        .and_then(|timestamps| {
+                                                            timestamps
+                                                                .is_valid(i)
+                                                                .then(|| timestamps.value(i))
                                                         }),
                                                     to_timestamp: metadata
                                                         .to_timestamp
                                                         .as_ref()
-                                                        .and_then(|ts| {
-                                                            ts.is_valid(i).then(|| ts.value(i))
+                                                        .and_then(|timestamps| {
+                                                            timestamps
+                                                                .is_valid(i)
+                                                                .then(|| timestamps.value(i))
                                                         }),
                                                 },
                                             ))
                                         })
                                         .collect();
 
-                                    episodes.push(LeRobotEpisodeData {
+                                    episodes.push(Self {
                                         episode_index: EpisodeIndex(
                                             episode_index.value(i) as usize
                                         ),
@@ -349,10 +349,12 @@ impl LeRobotEpisodeData {
     ///
     /// Looks for columns matching pattern `videos/{feature_name}/{field}`
     /// and groups them by feature name.
-    fn parse_feature_metadata(batch: &RecordBatch) -> HashMap<String, FeatureMetadataColumns> {
+    ///
+    /// Uses Arc<str> for feature names to enable cheap cloning in the hot path.
+    fn parse_feature_metadata(batch: &RecordBatch) -> HashMap<Arc<str>, FeatureMetadataColumns> {
         use arrow::array::Float64Array;
 
-        let mut features: HashMap<String, FeatureMetadataColumns> = HashMap::default();
+        let mut features: HashMap<Arc<str>, FeatureMetadataColumns> = HashMap::default();
         let schema = batch.schema();
 
         for field in schema.fields() {
@@ -361,7 +363,7 @@ impl LeRobotEpisodeData {
             // Look for columns like "videos/{feature_name}/chunk_index"
             if let Some(rest) = column_name.strip_prefix("videos/") {
                 if let Some((feature_name, field_name)) = rest.rsplit_once('/') {
-                    let entry = features.entry(feature_name.to_owned()).or_default();
+                    let entry = features.entry(Arc::from(feature_name)).or_default();
 
                     match field_name {
                         "chunk_index" => {
@@ -369,7 +371,7 @@ impl LeRobotEpisodeData {
                                 .column_by_name(column_name)
                                 .and_then(|c| c.downcast_array_ref::<Int64Array>())
                             {
-                                entry.chunk_index = Some(Arc::new(col.clone()));
+                                entry.chunk_index = Some(col.clone());
                             }
                         }
                         "file_index" => {
@@ -377,7 +379,7 @@ impl LeRobotEpisodeData {
                                 .column_by_name(column_name)
                                 .and_then(|c| c.downcast_array_ref::<Int64Array>())
                             {
-                                entry.file_index = Some(Arc::new(col.clone()));
+                                entry.file_index = Some(col.clone());
                             }
                         }
                         "from_timestamp" => {
@@ -385,7 +387,7 @@ impl LeRobotEpisodeData {
                                 .column_by_name(column_name)
                                 .and_then(|c| c.downcast_array_ref::<Float64Array>())
                             {
-                                entry.from_timestamp = Some(Arc::new(col.clone()));
+                                entry.from_timestamp = Some(col.clone());
                             }
                         }
                         "to_timestamp" => {
@@ -393,7 +395,7 @@ impl LeRobotEpisodeData {
                                 .column_by_name(column_name)
                                 .and_then(|c| c.downcast_array_ref::<Float64Array>())
                             {
-                                entry.to_timestamp = Some(Arc::new(col.clone()));
+                                entry.to_timestamp = Some(col.clone());
                             }
                         }
                         _ => {} // Ignore unknown fields
@@ -409,10 +411,10 @@ impl LeRobotEpisodeData {
 /// Temporary structure to hold Arrow arrays for feature metadata during parsing.
 #[derive(Default)]
 struct FeatureMetadataColumns {
-    chunk_index: Option<Arc<Int64Array>>,
-    file_index: Option<Arc<Int64Array>>,
-    from_timestamp: Option<Arc<arrow::array::Float64Array>>,
-    to_timestamp: Option<Arc<arrow::array::Float64Array>>,
+    chunk_index: Option<Int64Array>,
+    file_index: Option<Int64Array>,
+    from_timestamp: Option<arrow::array::Float64Array>,
+    to_timestamp: Option<arrow::array::Float64Array>,
 }
 
 /// `LeRobot` dataset metadata.
@@ -547,23 +549,6 @@ impl LeRobotDatasetInfoV3 {
     }
 }
 
-// TODO(gijsd): Do we want to stream in episodes or tasks?
-#[cfg(not(target_arch = "wasm32"))]
-fn load_jsonl_file<D>(filepath: impl AsRef<Path>) -> Result<Vec<D>, LeRobotError>
-where
-    D: DeserializeOwned,
-{
-    use crate::lerobot::LeRobotError;
-
-    let entries = std::fs::read_to_string(filepath.as_ref())
-        .map_err(|err| LeRobotError::IO(err, filepath.as_ref().to_owned()))?
-        .lines()
-        .map(|line| serde_json::from_str(line))
-        .collect::<Result<Vec<D>, _>>()?;
-
-    Ok(entries)
-}
-
 pub struct LeRobotDatasetV3Tasks {
     pub tasks: HashMap<TaskIndex, LeRobotDatasetTask>,
 }
@@ -579,23 +564,30 @@ impl LeRobotDatasetV3Tasks {
         let tasks = reader
             .filter_map(|b| {
                 let b = b.ok()?;
-                let task_index = b.column_by_name("task_index")?;
-                let task = b.column_by_name("__index_level_0__")?;
-                let task_index = task_index
+                let task_index_col = b.column_by_name("task_index")?;
+                let task_col = b.column_by_name("__index_level_0__")?;
+                let task_index = task_index_col
                     .as_any()
                     .downcast_ref::<arrow::array::Int64Array>()?;
-                let task = task.as_any().downcast_ref::<StringArray>()?;
+                let task = task_col.as_any().downcast_ref::<StringArray>()?;
+
+                let num_rows = b.num_rows();
+                // Return iterator directly without intermediate Vec
                 Some(
-                    (0..b.num_rows())
-                        .map(|i| LeRobotDatasetTask {
-                            index: TaskIndex(task_index.value(i) as usize),
-                            task: task.value(i).to_owned(),
+                    (0..num_rows)
+                        .map(move |i| {
+                            (
+                                TaskIndex(task_index.value(i) as usize),
+                                LeRobotDatasetTask {
+                                    index: TaskIndex(task_index.value(i) as usize),
+                                    task: task.value(i).to_owned(),
+                                },
+                            )
                         })
-                        .collect::<Vec<_>>(),
+                        .collect(),
                 )
             })
-            .flatten()
-            .map(|t| (t.index, t))
+            .flat_map(|e: Vec<(TaskIndex, LeRobotDatasetTask)>| e)
             .collect::<HashMap<_, _>>();
 
         Ok(Self { tasks })
@@ -606,82 +598,20 @@ impl LeRobotDatasetV3Tasks {
 // V3 Dataset Loading Functions
 // ============================================================================
 
-/// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
-const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
-    &["episode_index", "index", "frame_index", "timestamp"];
-
 pub fn load_and_stream(
     dataset: &LeRobotDatasetV3,
     application_id: &ApplicationId,
     tx: &Sender<LoadedData>,
-    loader_name: String,
+    loader_name: &str,
 ) {
-    // set up all recordings
-    let episodes = prepare_episode_chunks(dataset, application_id, tx, loader_name.clone());
+    let episodes = dataset
+        .metadata
+        .episodes
+        .values()
+        .map(|episode| episode.episode_index);
+    let store_ids = prepare_episode_chunks(episodes, application_id, tx, loader_name);
 
-    for (episode, store_id) in &episodes {
-        // log episode data to its respective recording
-        match load_episode(dataset, *episode) {
-            Ok(chunks) => {
-                let recording_info = re_types::archetypes::RecordingInfo::new()
-                    .with_name(format!("Episode {}", episode.0));
-
-                let Ok(initial) = Chunk::builder(EntityPath::properties())
-                    .with_archetype(RowId::new(), TimePoint::STATIC, &recording_info)
-                    .build()
-                else {
-                    re_log::error!(
-                        "Failed to build recording properties chunk for episode {}",
-                        episode.0
-                    );
-                    return;
-                };
-
-                for chunk in std::iter::once(initial).chain(chunks.into_iter()) {
-                    let data = LoadedData::Chunk(loader_name.clone(), store_id.clone(), chunk);
-
-                    if tx.send(data).is_err() {
-                        break; // The other end has decided to hang up, not our problem.
-                    }
-                }
-            }
-            Err(err) => {
-                re_log::warn!(
-                    "Failed to load episode {} from LeRobot dataset: {err}",
-                    episode.0
-                );
-            }
-        }
-    }
-}
-
-/// Prepare the viewer for all episodes, by sending out a [`SetStoreInfo`](`re_log_types::SetStoreInfo`)
-/// [`LogMsg`](`re_log_types::LogMsg`) for each episode.
-fn prepare_episode_chunks(
-    dataset: &LeRobotDatasetV3,
-    application_id: &ApplicationId,
-    tx: &Sender<LoadedData>,
-    loader_name: String,
-) -> Vec<(EpisodeIndex, StoreId)> {
-    let mut store_ids = vec![];
-
-    for episode_data in &dataset.metadata.episodes {
-        let episode = episode_data.episode_index;
-
-        let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
-        let set_store_info = LoadedData::LogMsg(
-            loader_name.clone(),
-            prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
-        );
-
-        if tx.send(set_store_info).is_err() {
-            break;
-        }
-
-        store_ids.push((episode, store_id));
-    }
-
-    store_ids
+    load_and_stream_common(dataset, &store_ids, tx, loader_name, load_episode);
 }
 
 /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
@@ -727,7 +657,7 @@ pub fn load_episode(
                     feature_key,
                     episode,
                     &timeline,
-                    time_column.clone(),
+                    &time_column,
                 )?);
             }
 
@@ -775,87 +705,47 @@ fn log_episode_task(
 
     let mut chunk = Chunk::builder("task");
     let mut row_id = RowId::new();
-    let mut time_int = TimeInt::ZERO;
 
-    for task_index in task_indices {
-        let Some(task) = task_index
+    for (frame_idx, task_index_opt) in task_indices.iter().enumerate() {
+        let Some(task_idx) = task_index_opt
             .and_then(|i| usize::try_from(i).ok())
-            .and_then(|i| dataset.task_by_index(TaskIndex(i)))
+            .map(TaskIndex)
         else {
-            // if there is no valid task for the current frame index, we skip it.
-            time_int = time_int.inc();
             continue;
         };
 
-        let timepoint = TimePoint::default().with(*timeline, time_int);
-        let text = TextDocument::new(task.task.clone());
-        chunk = chunk.with_archetype(row_id, timepoint, &text);
+        // Only log when task changes to avoid redundant string cloning
 
-        row_id = row_id.next();
-        time_int = time_int.inc();
+        if let Some(task) = dataset.task_by_index(task_idx) {
+            let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
+            let text = TextDocument::new(task.task.clone());
+            chunk = chunk.with_archetype(row_id, timepoint, &text);
+            row_id = row_id.next();
+        }
     }
 
     Ok(std::iter::once(chunk.build()?))
 }
 
-fn load_episode_images(
+/// Extract feature-specific timestamp metadata for a given episode and observation.
+///
+/// Returns (`start_time`, `end_time`) in seconds, defaulting to (0.0, 0.0) if not found.
+fn get_feature_timestamps(
+    dataset: &LeRobotDatasetV3,
+    episode: EpisodeIndex,
     observation: &str,
-    timeline: &Timeline,
-    data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
-    let image_bytes = data
-        .column_by_name(observation)
-        .and_then(|c| c.downcast_array_ref::<StructArray>())
-        .and_then(|a| a.column_by_name("bytes"))
-        .and_then(|a| a.downcast_array_ref::<BinaryArray>())
-        .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
-
-    let mut chunk = Chunk::builder(observation);
-    let mut row_id = RowId::new();
-
-    for frame_idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(frame_idx);
-        let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
-        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
-        chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
-
-        row_id = row_id.next();
-    }
-
-    Ok(std::iter::once(chunk.build().with_context(|| {
-        format!("Failed to build image chunk for image: {observation}")
-    })?))
-}
-
-fn load_episode_depth_images(
-    observation: &str,
-    timeline: &Timeline,
-    data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
-    let image_bytes = data
-        .column_by_name(observation)
-        .and_then(|c| c.downcast_array_ref::<StructArray>())
-        .and_then(|a| a.column_by_name("bytes"))
-        .and_then(|a| a.downcast_array_ref::<BinaryArray>())
-        .with_context(|| format!("Failed to get binary data from image feature: {observation}"))?;
-
-    let mut chunk = Chunk::builder(observation);
-    let mut row_id = RowId::new();
-
-    for frame_idx in 0..image_bytes.len() {
-        let img_buffer = image_bytes.value(frame_idx);
-        let depth_image = DepthImage::from_file_contents(img_buffer.to_owned())
-            .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
-
-        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
-        chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
-
-        row_id = row_id.next();
-    }
-
-    Ok(std::iter::once(chunk.build().with_context(|| {
-        format!("Failed to build image chunk for image: {observation}")
-    })?))
+) -> (f64, f64) {
+    dataset
+        .metadata
+        .get_episode_data(episode)
+        .and_then(|ep_data| ep_data.feature_files.get(observation))
+        .map(|file_meta| {
+            (
+                file_meta.from_timestamp.unwrap_or(0.0),
+                file_meta.to_timestamp.unwrap_or(0.0),
+            )
+        })
+        .unwrap_or((0.0, 0.0))
 }
 
 fn load_episode_video(
@@ -863,7 +753,7 @@ fn load_episode_video(
     observation: &str,
     episode: EpisodeIndex,
     timeline: &Timeline,
-    time_column: TimeColumn,
+    time_column: &TimeColumn,
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let contents = dataset
         .read_episode_video_contents(observation, episode)
@@ -873,41 +763,29 @@ fn load_episode_video(
     let video_bytes = contents.as_ref();
 
     // Parse the video to get its structure
-    let video = VideoDataDescription::load_from_bytes(
-        video_bytes,
-        "video/mp4",
-        "observation.images.cam_high",
-    )
-    .map_err(|err| {
-        anyhow!("failed to read video data description for feature: {observation}: {err}")
-    })?;
+    let video = VideoDataDescription::load_from_bytes(video_bytes, "video/mp4", observation)
+        .map_err(|err| {
+            anyhow!("Failed to read video data description for feature '{observation}': {err}")
+        })?;
 
-    let start_time = dataset
-        .metadata
-        .episodes
-        .get(episode.0)
-        .and_then(|ep_data| ep_data.feature_files.get(observation))
-        .and_then(|file_meta| file_meta.from_timestamp)
-        .unwrap_or(0.0);
-    let end_time = dataset
-        .metadata
-        .episodes
-        .get(episode.0)
-        .and_then(|ep_data| ep_data.feature_files.get(observation))
-        .and_then(|file_meta| file_meta.to_timestamp)
-        .unwrap_or(0.0);
+    let (start_time, end_time) = get_feature_timestamps(dataset, episode, observation);
 
     if video.samples.is_empty() {
         return Err(DataLoaderError::Other(anyhow!(
-            "Video feature {observation} for episode {episode:?} did not contain any samples"
+            "Video feature '{observation}' for episode {episode:?} did not contain any samples"
         )));
     }
 
-    // Convert timestamps to video time (assuming seconds)
-    let timescale = video.timescale.unwrap();
+    // Convert timestamps to video time
+    let timescale = video
+        .timescale
+        .ok_or_else(|| anyhow!("Video feature '{observation}' is missing timescale information"))?;
+    re_log::trace!("Video '{observation}' timescale: {timescale:?}");
+
     let start_video_time = re_video::Time::from_secs(start_time, timescale);
     let end_video_time = re_video::Time::from_secs(end_time, timescale);
 
+    // Find the GOPs (Group of Pictures) that contain our time range
     let start_gop = video
         .gop_index_containing_presentation_timestamp(start_video_time)
         .unwrap_or(0);
@@ -916,34 +794,23 @@ fn load_episode_video(
         .gop_index_containing_presentation_timestamp(end_video_time)
         .unwrap_or(video.gops.num_elements() - 1);
 
-    let start_sample_idx = video.gops[start_gop].sample_range.start;
-    let end_sample_idx_exclusive = video.gops[end_gop].sample_range.end;
+    // Determine the sample range to extract from the video
+    let start_sample = video.gops[start_gop].sample_range.start;
+    let end_sample = video.gops[end_gop].sample_range.end;
+    let sample_range = start_sample..end_sample;
 
-    let sample_range = start_sample_idx..end_sample_idx_exclusive;
-
-    // Extract all samples in this range into a Vec
-    let mut samples = Vec::new();
+    // Extract all video samples in this range
+    let mut samples = Vec::with_capacity(sample_range.len());
     let mut buffers = StableIndexDeque::new();
     buffers.push_back(video_bytes); // original asset slice
 
     for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
         let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
-            anyhow!("Sample {sample_idx} out of bounds for feature {observation}")
+            anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
         })?;
 
-        samples.push((sample_meta.clone(), chunk.data)); // chunk.data is the per-sample bytes
+        samples.push((sample_meta.clone(), chunk.data));
     }
-
-    println!(
-        "Extracted {} samples from time range {:.3}s to {:.3}s",
-        samples.len(),
-        start_time,
-        end_time
-    );
-    println!(
-        "Sample range: {} to {}",
-        sample_range.start, sample_range.end
-    );
 
     let (samples_meta, samples): (Vec<_>, Vec<_>) = samples.into_iter().unzip();
 
@@ -951,406 +818,32 @@ fn load_episode_video(
         .with_many_codec(vec![VideoCodec::AV1; samples.len()])
         .with_many_sample(samples)
         .columns_of_unit_batches()
-        .with_context(|| format!("failed to create `VideoStream`"))?;
+        .with_context(|| "Failed to create VideoStream")?;
 
-    // Build uniform time column that goes between start and end for the amount of samples
+    // Map video samples to episode frame indices
+    //
+    // Video samples may not align 1:1 with episode frames. We distribute samples uniformly
+    // across the frame timeline. When there are more samples than frames, multiple samples
+    // map to the same frame index; when there are fewer samples, some frames have no samples.
     let num_samples = samples_meta.len();
-    let uniform_times: Vec<i64> = if num_samples > 1 {
-        // Create evenly spaced timestamps based on presentation timestamps
-        let first_sample = &samples_meta[0];
-        let last_sample = &samples_meta[num_samples - 1];
-        let first_pts = first_sample.presentation_timestamp.0 * 1_000_000; // convert to nanoseconds
-        let last_pts = last_sample.presentation_timestamp.0 * 1_000_000; // convert to nanoseconds
+    let frame_count = time_column.num_rows();
 
-        (0..num_samples)
-            .map(|i| first_pts + ((last_pts - first_pts) * i as i64) / (num_samples - 1) as i64)
-            .collect()
-    } else if num_samples == 1 {
-        vec![samples_meta[0].presentation_timestamp.0]
-    } else {
-        vec![]
-    };
+    let uniform_times: Vec<i64> = (0..num_samples)
+        .map(|i| i64::try_from((i * frame_count) / num_samples).unwrap_or_default())
+        .collect();
 
     let uniform_time_column = TimeColumn::new(
         Some(true), // is_sorted
-        Timeline::new_duration("video"),
+        *timeline,
         ScalarBuffer::from(uniform_times),
     );
 
     let samples_chunk = Chunk::from_auto_row_ids(
         re_chunk::ChunkId::new(),
         entity_path.into(),
-        std::iter::once(("video".into(), uniform_time_column)).collect(),
+        std::iter::once((timeline.name().to_owned(), uniform_time_column)).collect(),
         samples_column.collect(),
     )?;
 
     Ok(std::iter::once(samples_chunk))
-}
-
-fn find_previous_or_current_gop_start(
-    video: &VideoDataDescription,
-    mut sample_idx: SampleIndex,
-    video_bytes: &[u8],
-    observation: &str,
-) -> Result<SampleIndex, DataLoaderError> {
-    let min_index = video.samples.min_index();
-    sample_idx = sample_idx.max(min_index);
-
-    loop {
-        if sample_is_gop_start(video, sample_idx, video_bytes, observation)? {
-            return Ok(sample_idx);
-        }
-
-        if sample_idx == min_index {
-            return Ok(sample_idx);
-        }
-
-        sample_idx -= 1;
-    }
-}
-
-fn find_next_gop_start_after(
-    video: &VideoDataDescription,
-    sample_idx: SampleIndex,
-    video_bytes: &[u8],
-    observation: &str,
-) -> Result<SampleIndex, DataLoaderError> {
-    let min_index = video.samples.min_index();
-    let mut current_idx = sample_idx.saturating_add(1).max(min_index);
-    let end_index = video.samples.next_index();
-
-    while current_idx < end_index {
-        if sample_is_gop_start(video, current_idx, video_bytes, observation)? {
-            return Ok(current_idx);
-        }
-
-        current_idx += 1;
-    }
-
-    Ok(end_index)
-}
-
-fn sample_is_gop_start(
-    video: &VideoDataDescription,
-    sample_idx: SampleIndex,
-    video_bytes: &[u8],
-    observation: &str,
-) -> Result<bool, DataLoaderError> {
-    let sample_meta = video.samples.get(sample_idx).ok_or_else(|| {
-        DataLoaderError::Other(anyhow!(
-            "Sample index {sample_idx} is out of bounds for feature {observation}"
-        ))
-    })?;
-
-    if sample_meta.is_sync {
-        return Ok(true);
-    }
-
-    let byte_range = sample_meta.byte_span.range_usize();
-    if byte_range.end > video_bytes.len() {
-        return Err(DataLoaderError::Other(anyhow!(
-            "Video sample range {:?} for feature {observation} is out of bounds (video size: {})",
-            byte_range,
-            video_bytes.len()
-        )));
-    }
-    let sample_bytes = &video_bytes[byte_range];
-
-    match re_video::detect_gop_start(sample_bytes, video.codec) {
-        Ok(GopStartDetection::StartOfGop(_)) => Ok(true),
-        Ok(GopStartDetection::NotStartOfGop) => Ok(false),
-        Err(err) => {
-            re_log::warn_once!(
-                "Failed to detect GOP start for sample {sample_idx} in feature {observation}: {err}"
-            );
-            Ok(false)
-        }
-    }
-}
-
-/// Helper type similar to [`Either`], but with 3 variants.
-enum ScalarChunkIterator {
-    Empty(std::iter::Empty<Chunk>),
-    Batch(Box<dyn ExactSizeIterator<Item = Chunk>>),
-
-    // Boxed, because `Chunk` is huge, and by extension so is `std::iter::Once<Chunk>`.
-    Single(Box<std::iter::Once<Chunk>>),
-}
-
-impl Iterator for ScalarChunkIterator {
-    type Item = Chunk;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Empty(iter) => iter.next(),
-            Self::Batch(iter) => iter.next(),
-            Self::Single(iter) => iter.next(),
-        }
-    }
-}
-
-impl ExactSizeIterator for ScalarChunkIterator {}
-
-fn load_scalar(
-    feature_key: &str,
-    feature: &Feature,
-    timelines: &IntMap<TimelineName, TimeColumn>,
-    data: &RecordBatch,
-) -> Result<ScalarChunkIterator, DataLoaderError> {
-    let field = data
-        .schema_ref()
-        .field_with_name(feature_key)
-        .with_context(|| {
-            format!("Failed to get field for feature {feature_key} from parquet file")
-        })?;
-
-    let entity_path = EntityPath::parse_forgiving(field.name());
-
-    match field.data_type() {
-        DataType::FixedSizeList(_, _) => {
-            let fixed_size_array = data
-                .column_by_name(feature_key)
-                .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
-                .ok_or_else(|| {
-                    DataLoaderError::Other(anyhow!(
-                        "Failed to downcast feature to FixedSizeListArray"
-                    ))
-                })?;
-
-            let batch_chunks =
-                make_scalar_batch_entity_chunks(entity_path, feature, timelines, fixed_size_array)?;
-            Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
-        }
-        DataType::List(_field) => {
-            let list_array = data
-                .column_by_name(feature_key)
-                .and_then(|col| col.downcast_array_ref::<arrow::array::ListArray>())
-                .ok_or_else(|| {
-                    DataLoaderError::Other(anyhow!("Failed to downcast feature to ListArray"))
-                })?;
-
-            let sliced = extract_list_array_elements_as_f64(list_array).with_context(|| {
-                format!("Failed to cast scalar feature {entity_path} to Float64")
-            })?;
-
-            Ok(ScalarChunkIterator::Single(Box::new(std::iter::once(
-                make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
-            ))))
-        }
-        DataType::Float32 | DataType::Float64 => {
-            let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
-                DataLoaderError::Other(anyhow!(
-                    "Failed to get LeRobot dataset column data for: {:?}",
-                    field.name()
-                ))
-            })?;
-
-            let sliced = extract_scalar_slices_as_f64(feature_data).with_context(|| {
-                format!("Failed to cast scalar feature {entity_path} to Float64")
-            })?;
-
-            Ok(ScalarChunkIterator::Single(Box::new(std::iter::once(
-                make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
-            ))))
-        }
-        _ => {
-            re_log::warn_once!(
-                "Tried logging scalar {} with unsupported dtype: {}",
-                field.name(),
-                field.data_type()
-            );
-            Ok(ScalarChunkIterator::Empty(std::iter::empty()))
-        }
-    }
-}
-
-fn make_scalar_batch_entity_chunks(
-    entity_path: EntityPath,
-    feature: &Feature,
-    timelines: &IntMap<TimelineName, TimeColumn>,
-    data: &FixedSizeListArray,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
-    let num_elements = data.value_length() as usize;
-
-    let mut chunks = Vec::with_capacity(num_elements);
-
-    let sliced = extract_fixed_size_list_array_elements_as_f64(data)
-        .with_context(|| format!("Failed to cast scalar feature {entity_path} to Float64"))?;
-
-    chunks.push(make_scalar_entity_chunk(
-        entity_path.clone(),
-        timelines,
-        &sliced,
-    )?);
-
-    // If we have names for this feature, we insert a single static chunk containing the names.
-    if let Some(names) = feature.names.clone() {
-        let names: Vec<_> = (0..data.value_length() as usize)
-            .map(|idx| names.name_for_index(idx))
-            .collect();
-
-        chunks.push(
-            Chunk::builder(entity_path)
-                .with_row(
-                    RowId::new(),
-                    TimePoint::default(),
-                    std::iter::once((
-                        archetypes::SeriesLines::descriptor_names(),
-                        Arc::new(StringArray::from_iter(names)) as Arc<dyn ArrowArray>,
-                    )),
-                )
-                .build()?,
-        );
-    }
-
-    Ok(chunks.into_iter())
-}
-
-fn make_scalar_entity_chunk(
-    entity_path: EntityPath,
-    timelines: &IntMap<TimelineName, TimeColumn>,
-    sliced_data: &[ArrayRef],
-) -> Result<Chunk, DataLoaderError> {
-    let data_arrays = sliced_data
-        .iter()
-        .map(|e| Some(e.as_ref()))
-        .collect::<Vec<_>>();
-
-    let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
-    #[expect(clippy::unwrap_used)] // we know we've given the right field type
-    let data_field_array: arrow::array::ListArray =
-        re_arrow_util::arrays_to_list_array(data_field_inner.data_type().clone(), &data_arrays)
-            .unwrap();
-
-    Ok(Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        entity_path,
-        timelines.clone(),
-        std::iter::once((Scalars::descriptor_scalars().clone(), data_field_array)).collect(),
-    )?)
-}
-
-fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
-    // cast the slice to f64 first, as scalars need an f64
-    let scalar_values = cast(&data, &DataType::Float64)
-        .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))?;
-
-    Ok((0..data.len())
-        .map(|idx| scalar_values.slice(idx, 1))
-        .collect::<Vec<_>>())
-}
-
-fn extract_fixed_size_list_array_elements_as_f64(
-    data: &FixedSizeListArray,
-) -> anyhow::Result<Vec<ArrayRef>> {
-    (0..data.len())
-        .map(|idx| {
-            cast(&data.value(idx), &DataType::Float64)
-                .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
-        })
-        .collect::<Result<Vec<_>, _>>()
-}
-
-fn extract_list_array_elements_as_f64(
-    data: &arrow::array::ListArray,
-) -> anyhow::Result<Vec<ArrayRef>> {
-    (0..data.len())
-        .map(|idx| {
-            cast(&data.value(idx), &DataType::Float64)
-                .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
-        })
-        .collect::<Result<Vec<_>, _>>()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_load_dataset_tasks() {
-        let tasks = LeRobotDatasetV3Tasks::load_from_parquet_file(
-            "/Users/gijsd/rerun-io/lerobot_datasets/aloha_mobile_cabinet/meta/tasks.parquet",
-        )
-        .unwrap();
-
-        println!("tasks: {:?}", tasks.tasks);
-    }
-
-    #[test]
-    fn test_load_dataset_metadata() {
-        let metadata = LeRobotDatasetMetadataV3::load_from_directory(
-            "/Users/gijsd/rerun-io/lerobot_datasets/aloha_mobile_cabinet/meta",
-        )
-        .unwrap();
-
-        // Verify episode metadata was loaded
-        assert!(!metadata.episodes.is_empty(), "Should have loaded episodes");
-
-        // Check that the first episode has feature file metadata
-        let first_episode = &metadata.episodes[0];
-        assert!(
-            !first_episode.feature_files.is_empty(),
-            "First episode should have feature file metadata"
-        );
-
-        // Verify video feature metadata exists
-        let video_features = [
-            "observation.images.cam_high",
-            "observation.images.cam_left_wrist",
-            "observation.images.cam_right_wrist",
-        ];
-
-        for feature in video_features {
-            let file_metadata = first_episode.feature_files.get(feature);
-            assert!(
-                file_metadata.is_some(),
-                "Feature {feature} should have file metadata"
-            );
-
-            if let Some(metadata) = file_metadata {
-                println!(
-                    "Feature '{}': chunk={}, file={}, from_ts={:?}, to_ts={:?}",
-                    feature,
-                    metadata.chunk_index,
-                    metadata.file_index,
-                    metadata.from_timestamp,
-                    metadata.to_timestamp
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn test_video_path_with_feature_metadata() {
-        let dataset = LeRobotDatasetV3::load_from_directory(
-            "/Users/gijsd/rerun-io/lerobot_datasets/aloha_mobile_cabinet",
-        )
-        .unwrap();
-
-        let first_episode = &dataset.metadata.episodes[0];
-        let feature_key = "observation.images.cam_high";
-
-        // Generate video path
-        let video_path = dataset
-            .metadata
-            .info
-            .video_path(feature_key, first_episode)
-            .unwrap();
-
-        println!("Generated video path: {:?}", video_path);
-
-        // The path should use the feature-specific chunk/file indices
-        assert!(
-            video_path.to_string_lossy().contains("chunk-000"),
-            "Path should contain chunk directory"
-        );
-        assert!(
-            video_path.to_string_lossy().contains("file-"),
-            "Path should contain file reference"
-        );
-        assert!(
-            video_path.to_string_lossy().contains(feature_key),
-            "Path should contain feature name"
-        );
-    }
 }
