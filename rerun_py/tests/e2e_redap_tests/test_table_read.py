@@ -83,6 +83,7 @@ def test_datafusion_catalog_get_tables(prefilled_catalog: PrefilledCatalog) -> N
 
 
 # TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
+@pytest.mark.local_only
 def test_datafusion_catalog_get_tables_patched() -> None:
     from .conftest import TABLE_FILEPATH
 

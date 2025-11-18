@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 
 if TYPE_CHECKING:
     import pathlib
@@ -10,6 +11,7 @@ if TYPE_CHECKING:
     from e2e_redap_tests.conftest import EntryFactory, PrefilledCatalog
 
 
+@pytest.mark.creates_table
 def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     table_name = "created_table"
 
@@ -22,6 +24,7 @@ def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
     assert returned_schema == original_schema
 
 
+@pytest.mark.creates_table
 def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
     table_name = "dataset_to_table"
 
