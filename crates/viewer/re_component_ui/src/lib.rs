@@ -43,7 +43,7 @@ use re_types::{
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
+        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, Length, LinearSpeed,
         MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Position3D, Range1D, Scale3D,
         SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
         ValueRange, Vector3D, VideoCodec, Visible,
@@ -85,6 +85,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<GridSpacing>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
+    // TODO: is this fine, or should we have a specific type for the vertical_world_size and make only that editable here instead?
+    registry.add_singleline_edit_or_view::<Length>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<LinearSpeed>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<AngularSpeed>(edit_f64_min_to_max_float);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_ui_points);
