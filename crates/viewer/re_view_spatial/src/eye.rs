@@ -698,6 +698,7 @@ impl EyeState {
             &mut eye_controller,
             old_pos,
             old_look_target,
+            old_eye_up,
             tracking_entity.as_ref(),
         )? {
             return Ok(tracked_eye);
@@ -723,6 +724,7 @@ impl EyeState {
         eye_controller: &mut EyeController,
         old_pos: Vec3,
         old_look_target: Vec3,
+        old_eye_up: Vec3,
         tracking_entity: Option<&re_types::components::EntityPath>,
     ) -> Result<Option<Eye>, ViewPropertyQueryError> {
         if let Some(tracking_entity) = &tracking_entity {
@@ -821,14 +823,18 @@ impl EyeState {
                 };
 
                 if eye_controller.did_interact && did_eye_change {
-                    // Focusing the entity will set the blueprint to the position we're tracking right now and clear tracking.
-                    self.focus_entity(
-                        ctx,
-                        cameras,
-                        bounding_boxes,
+                    eye_controller.save_to_blueprint(
+                        ctx.viewer_ctx,
                         eye_property,
-                        &tracking_entity,
-                    )?;
+                        old_pos,
+                        old_look_target,
+                        old_eye_up,
+                    );
+
+                    eye_property.clear_blueprint_component(
+                        ctx.viewer_ctx,
+                        EyeControls3D::descriptor_tracking_entity(),
+                    );
                 }
 
                 return Ok(Some(eye_controller.get_eye()));
