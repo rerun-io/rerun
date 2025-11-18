@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::io::{Cursor, SeekFrom};
 
 use scuffle_av1::{ObuHeader, ObuType, seq::SequenceHeaderObu};
 
@@ -9,31 +9,53 @@ use std::io;
 
 /// Try to determine whether an AV1 frame chunk is the start of a GOP.
 ///
-/// This is a simplified approach that only looks for keyframes, we don't
-/// consider `INTRA_ONLY` frames as GOP starts because they technically can rely on existing
-/// decoder state.
+/// This uses a simplified approach that requires both a sequence header OBU and at least one
+/// keyframe OBU to be present. If either is missing, we don't consider it a GOP start.
+///
+/// While it's technically valid for AV1 samples to contain keyframes without a sequence header
+/// (relying on decoder state from earlier samples), we require it here because we need to extract
+/// frame dimensions, bit depth, and chroma subsampling info. Without the sequence header, we can't
+/// reliably determine these encoding details.
+///
+/// We intentionally ignore `INTRA_ONLY` frames even though they're also independently decodable.
+/// This is because `INTRA_ONLY` frames can technically reference existing decoder state (like
+/// previously decoded reference frames or sequence headers), so they're not truly independent
+/// GOP boundaries. Only `KEY_FRAME` OBUs represent a clean break where decoding can start fresh
+/// without any prior state.
 pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
     let mut keyframe_found = false;
-    let mut chroma_subsampling: Option<ChromaSubsamplingModes> = None;
-    let mut dimensions: Option<[u16; 2]> = None;
-    let mut bit_depth: Option<u8> = None;
+    let mut video_encoding_details: Option<VideoEncodingDetails> = None;
 
     let mut cursor = Cursor::new(data);
 
-    while let Ok(header) = ObuHeader::parse(&mut cursor) {
+    loop {
+        let Ok(header) = ObuHeader::parse(&mut cursor) else {
+            // If we already know it's a GOP start, ignore trailing garbage.
+            if keyframe_found && video_encoding_details.is_some() {
+                break;
+            }
+
+            // Otherwise, treat bad / truncated data as not a GOP start.
+            return Ok(GopStartDetection::NotStartOfGop);
+        };
+
+        let obu_size = header.size.unwrap_or_default();
+
         match header.obu_type {
             ObuType::SequenceHeader => {
                 let seq = SequenceHeaderObu::parse(header, &mut cursor)
                     .map_err(DetectGopStartError::Av1ParserError)?;
 
-                bit_depth = Some(seq.color_config.bit_depth as u8);
-                dimensions.get_or_insert([seq.max_frame_width as u16, seq.max_frame_height as u16]);
-                chroma_subsampling.get_or_insert(chroma_mode_from_color_config(&seq.color_config));
+                video_encoding_details = Some(VideoEncodingDetails {
+                    codec_string: "av01".to_owned(),
+                    coded_dimensions: [seq.max_frame_width as u16, seq.max_frame_height as u16],
+                    bit_depth: Some(seq.color_config.bit_depth as u8),
+                    chroma_subsampling: Some(chroma_mode_from_color_config(&seq.color_config)),
+                    stsd: None,
+                });
             }
             ObuType::Frame | ObuType::FrameHeader => {
-                if is_keyframe(header.obu_type, &mut cursor)
-                    .map_err(DetectGopStartError::Av1ParserError)?
-                {
+                if is_keyframe(&mut cursor).map_err(DetectGopStartError::Av1ParserError)? {
                     keyframe_found = true;
                 }
             }
@@ -41,36 +63,37 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                 // Skip other OBUs
             }
         }
+
+        // Ensure we skip to the next OBU
+        skip_obu(&mut cursor, obu_size).map_err(DetectGopStartError::Av1ParserError)?;
     }
 
-    if !keyframe_found || dimensions.is_none() {
-        return Ok(GopStartDetection::NotStartOfGop);
+    if keyframe_found && let Some(details) = video_encoding_details {
+        Ok(GopStartDetection::StartOfGop(details))
+    } else {
+        Ok(GopStartDetection::NotStartOfGop)
     }
+}
 
-    // If we found a GOP start, we should have dimensions either from the
-    // frame header or the sequence header.
-    let coded_dimensions = dimensions.unwrap_or_default();
+fn skip_obu<R: io::Read + io::Seek>(reader: &mut R, obu_size: u64) -> io::Result<()> {
+    let offset = i64::try_from(obu_size).map_err(|err| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("payload size exceeds seek limits: {err}"),
+        )
+    })?;
 
-    Ok(GopStartDetection::StartOfGop(VideoEncodingDetails {
-        codec_string: "av01".to_owned(),
-        coded_dimensions,
-        bit_depth,
-        chroma_subsampling,
-        stsd: None,
-    }))
+    reader.seek(SeekFrom::Current(offset))?;
+    Ok(())
 }
 
 /// Determine if the frame is a keyframe based on the OBU type and its content.
 #[inline]
-fn is_keyframe<R: io::Read>(obu_type: ObuType, reader: &mut R) -> io::Result<bool> {
+fn is_keyframe<R: io::Read>(reader: &mut R) -> io::Result<bool> {
     let mut reader = BitReader::new(reader);
 
     // only present for frame header OBUs, skip for frame OBUs
-    let show_existing_frame = if obu_type == ObuType::FrameHeader {
-        reader.read_bit()?
-    } else {
-        false
-    };
+    let show_existing_frame = reader.read_bit()?;
 
     if show_existing_frame {
         return Ok(false);
@@ -144,8 +167,7 @@ mod test {
 
     #[test]
     fn test_detect_av1_invalid_data() {
-        // Random invalid data, the parser will panic on invalid OBU structure.
-        // Make sure we handle that gracefully and don't forward to the parser.
+        // Random invalid data, make sure we handle that gracefully and don't panic
         let invalid_data = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
         let result = detect_av1_keyframe_start(invalid_data);
 
