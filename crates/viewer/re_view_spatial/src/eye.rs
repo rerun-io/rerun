@@ -739,6 +739,7 @@ impl EyeState {
                     && (eye_controller.pos != old_pos
                         || eye_controller.look_target != old_look_target)
                 {
+                    // Focusing the entity will set the blueprint to the position we're tracking right now and clear tracking.
                     self.focus_entity(
                         ctx,
                         cameras,
@@ -820,6 +821,7 @@ impl EyeState {
                 };
 
                 if eye_controller.did_interact && did_eye_change {
+                    // Focusing the entity will set the blueprint to the position we're tracking right now and clear tracking.
                     self.focus_entity(
                         ctx,
                         cameras,
