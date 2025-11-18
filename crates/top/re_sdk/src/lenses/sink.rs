@@ -1,33 +1,55 @@
 use re_chunk::Chunk;
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, StoreId};
 
 use crate::sink::LogSink;
 
-use super::{Lens, ast::LensRegistry};
+use super::{Lens, ast::Lenses};
 
 /// A sink which can transform a [`LogMsg`] and forward the result to an underlying backing [`LogSink`].
 ///
 /// The sink will only forward components that are matched by a lens specified via [`Self::with_lens`].
 pub struct LensesSink<S: LogSink> {
     sink: S,
-    registry: LensRegistry,
+    lenses: Lenses,
+    strict: bool,
 }
 
 impl<S: LogSink> LensesSink<S> {
     /// Creates a new sink without any lenses attached.
     ///
     /// Use [`Self::with_lens`] to add an additional lens to this sink.
+    ///
+    /// By default, the sink will do its best effort to produce chunks despite
+    /// of errors in Lenses that it might encounter.
     pub fn new(sink: S) -> Self {
         Self {
             sink,
-            registry: Default::default(),
+            lenses: Default::default(),
+            strict: false,
         }
     }
 
     /// Adds a [`Lens`] to this sink.
     pub fn with_lens(mut self, lens: Lens) -> Self {
-        self.registry.add_lens(lens);
+        self.lenses.add_lens(lens);
         self
+    }
+
+    /// When `strict` is `true` Lenses that encounter an error will not emit partial chunks.
+    pub fn strict(mut self, strict: bool) -> Self {
+        self.strict = strict;
+        self
+    }
+
+    fn send_or_log_error(&self, store_id: StoreId, chunk: &Chunk) {
+        match chunk.to_arrow_msg() {
+            Ok(arrow_msg) => {
+                self.sink.send(LogMsg::ArrowMsg(store_id, arrow_msg));
+            }
+            Err(err) => {
+                re_log::error_once!("Failed to create log message from chunk: {err}");
+            }
+        }
     }
 }
 
@@ -38,18 +60,21 @@ impl<S: LogSink> LogSink for LensesSink<S> {
                 self.sink.send(msg);
             }
             LogMsg::ArrowMsg(store_id, arrow_msg) => match Chunk::from_arrow_msg(arrow_msg) {
-                Ok(chunk) => {
-                    let new_chunks = self.registry.apply(&chunk);
-                    for new_chunk in new_chunks {
-                        match new_chunk.to_arrow_msg() {
-                            Ok(arrow_msg) => {
-                                self.sink
-                                    .send(LogMsg::ArrowMsg(store_id.clone(), arrow_msg));
-                            }
-                            Err(err) => {
-                                re_log::error_once!(
-                                    "failed to create log message from chunk: {err}"
-                                );
+                Ok(original_chunk) => {
+                    let new_chunks = self.lenses.apply(&original_chunk);
+                    for maybe_chunk in new_chunks {
+                        match maybe_chunk {
+                            Ok(new_chunk) => self.send_or_log_error(store_id.clone(), &new_chunk),
+                            Err(partial_chunk) => {
+                                for error in partial_chunk.errors() {
+                                    // TODO(grtlr): Make this even more contextualized in the future!
+                                    re_log::error_once!("Error encountered for lens: {error}");
+                                }
+                                if let Some(chunk) = partial_chunk.take()
+                                    && self.strict
+                                {
+                                    self.send_or_log_error(store_id.clone(), &chunk);
+                                }
                             }
                         }
                     }

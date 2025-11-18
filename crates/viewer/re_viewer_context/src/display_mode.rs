@@ -1,3 +1,4 @@
+use crate::Item;
 use re_log_types::{StoreId, TableId};
 
 /// Which display mode are we currently in?
@@ -37,5 +38,32 @@ impl DisplayMode {
 
     pub fn has_time_panel(&self) -> bool {
         matches!(self, Self::LocalRecordings(_))
+    }
+
+    pub fn item(&self) -> Option<Item> {
+        match self {
+            Self::LocalRecordings(store_id) => Some(Item::StoreId(store_id.clone())),
+            Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
+            Self::RedapEntry(entry_uri) => Some(Item::RedapEntry(entry_uri.clone())),
+            Self::RedapServer(origin) => Some(Item::RedapServer(origin.clone())),
+            Self::Settings | Self::Loading(_) | Self::ChunkStoreBrowser => None,
+        }
+    }
+
+    pub fn from_item(item: &crate::Item) -> Option<Self> {
+        match item {
+            Item::StoreId(store_id) => Some(Self::LocalRecordings(store_id.clone())),
+            Item::TableId(table_id) => Some(Self::LocalTable(table_id.clone())),
+            Item::RedapEntry(entry_uri) => Some(Self::RedapEntry(entry_uri.clone())),
+            Item::RedapServer(origin) => Some(Self::RedapServer(origin.clone())),
+
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::InstancePath(_)
+            | Item::ComponentPath(_)
+            | Item::Container(_)
+            | Item::View(_)
+            | Item::DataResult(_, _) => None,
+        }
     }
 }

@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray};
+use arrow::array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray, UInt32Array};
+use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::Field;
 
 use crate::{Error, Transform};
@@ -274,6 +275,111 @@ impl Transform for StructToFixedList {
         })?;
         Ok(FixedSizeListArray::new(
             field, list_size, values, None, // No outer nulls
+        ))
+    }
+}
+
+/// Explodes a list by scattering each inner element to a separate row.
+///
+/// Takes a `List<T>` and returns a flattened `List<T>` where each inner element
+/// becomes its own row.
+///
+/// # Example
+///
+/// - `[[1, 2, 3], [4, 5]]` → `[[1], [2], [3], [4], [5]]` (each element becomes a row)
+/// - `[[1, 2], null, [], [3]]` → `[[1], [2], null, [], [3]]` (nulls and empties preserved)
+/// - `[[[1, 2], [3]], [[4, 5, 6]]]` → `[[1, 2], [3], [4, 5, 6]]` (flatten one level)
+pub struct Explode;
+
+impl Transform for Explode {
+    type Source = ListArray;
+    type Target = ListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+        let values_array = source.values();
+        let offsets = source.offsets();
+
+        // Compute exact output size: each non-null/non-empty element produces one row,
+        // plus one row for each null or empty list
+        let mut capacity = 0;
+        for i in 0..source.len() {
+            let start = offsets[i];
+            let end = offsets[i + 1];
+
+            if source.is_null(i) || start == end {
+                capacity += 1; // One row for null or empty
+            } else {
+                capacity += (end - start) as usize; // One row per element
+            }
+        }
+
+        // Pre-allocate vectors with exact capacity
+        let mut indices = Vec::with_capacity(capacity);
+        let mut new_offsets = Vec::with_capacity(capacity + 1);
+        new_offsets.push(0i32);
+        let mut new_validity = Vec::with_capacity(capacity);
+        let mut current_offset = 0i32;
+
+        for i in 0..source.len() {
+            let start = offsets[i] as usize;
+            let end = offsets[i + 1] as usize;
+
+            if source.is_null(i) {
+                // Null row: add a null row with no values
+                new_validity.push(false);
+                new_offsets.push(current_offset);
+            } else if start == end {
+                // Empty list: add an empty row
+                new_validity.push(true);
+                new_offsets.push(current_offset);
+            } else {
+                // Non-empty list: explode each element to its own row
+                for j in start..end {
+                    indices.push(j as u32);
+                    current_offset += 1;
+                    new_offsets.push(current_offset);
+                    new_validity.push(values_array.is_valid(j));
+                }
+            }
+        }
+
+        // Verify that we calculated the correct size and no reallocation occurred
+        debug_assert_eq!(
+            new_offsets.len(),
+            capacity + 1,
+            "new_offsets length mismatch: expected {}, got {}",
+            capacity + 1,
+            new_offsets.len()
+        );
+        debug_assert_eq!(
+            new_validity.len(),
+            capacity,
+            "new_validity length mismatch: expected {}, got {}",
+            capacity,
+            new_validity.len()
+        );
+
+        // Extract values using take
+        let values = if indices.is_empty() {
+            values_array.slice(0, 0)
+        } else {
+            let indices_array = UInt32Array::from(indices);
+            // We explicitly allow `take` here because we care about nulls.
+            #[expect(clippy::disallowed_methods)]
+            arrow::compute::take(values_array.as_ref(), &indices_array, None)?
+        };
+
+        // We know that `source` is a `ListArray` by it's type. But Arrow won't expose its field directly.
+        let field = match source.data_type() {
+            arrow::datatypes::DataType::List(f) => f.clone(),
+            _ => unreachable!(),
+        };
+
+        Ok(ListArray::new(
+            field,
+            OffsetBuffer::new(new_offsets.into()),
+            values,
+            Some(NullBuffer::from(new_validity)),
         ))
     }
 }

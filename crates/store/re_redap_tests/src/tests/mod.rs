@@ -1,17 +1,7 @@
 mod column_projection;
 mod common;
-#[cfg(feature = "lance")]
-mod create_table;
-#[cfg(not(feature = "lance"))]
-mod create_table {
-    // This is a stub test so that we do not have issues with setting
-    // --no-default-options when running tests
-    pub async fn create_table_entry(
-        _service: impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
-    ) {
-    }
-}
 mod create_dataset;
+mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
@@ -19,18 +9,7 @@ mod indexes;
 mod query_dataset;
 mod register_partition;
 mod update_entry;
-#[cfg(feature = "lance")]
 mod write_table;
-
-#[cfg(not(feature = "lance"))]
-mod write_table {
-    // This is a stub test so that we do not have issues with setting
-    // --no-default-options when running tests
-    pub async fn write_table(
-        _service: impl re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
-    ) {
-    }
-}
 
 macro_rules! define_redap_tests {
     (
@@ -77,6 +56,7 @@ define_redap_tests! {
     create_table::create_table_entry,
     dataset_schema::empty_dataset_schema,
     dataset_schema::simple_dataset_schema,
+    entries_table::entries_table_with_empty_dataset,
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,

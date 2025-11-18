@@ -1,11 +1,12 @@
 //! Data structures describing the contents of the recording panel.
 
 use std::collections::BTreeMap;
+use std::iter;
 use std::sync::Arc;
 use std::task::Poll;
 
 use ahash::HashMap;
-use itertools::Itertools as _;
+use itertools::{Either, Itertools as _};
 
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
@@ -20,6 +21,9 @@ use re_viewer_context::{DisplayMode, Item, ViewerContext};
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct RecordingPanelData<'a> {
+    /// All the configured servers.
+    pub servers: Vec<ServerData<'a>>,
+
     /// All the locally loaded application IDs and the corresponding recordings.
     pub local_apps: Vec<AppIdData<'a>>,
 
@@ -31,9 +35,6 @@ pub struct RecordingPanelData<'a> {
 
     /// Should the example section be displayed at all?
     pub show_example_section: bool,
-
-    /// All the configured servers.
-    pub servers: Vec<ServerData<'a>>,
 
     /// Recordings that are currently being loaded that we cannot attribute yet to a specific
     /// section.
@@ -148,11 +149,11 @@ impl<'a> RecordingPanelData<'a> {
             .collect();
 
         Self {
+            servers,
             local_apps,
             local_tables,
             example_apps,
             show_example_section,
-            servers,
             loading_receivers,
         }
     }
@@ -162,6 +163,33 @@ impl<'a> RecordingPanelData<'a> {
             && self.local_tables.is_empty()
             && self.example_apps.is_empty()
             && self.servers.is_empty()
+    }
+
+    /// Search for the relevant store id and, if found, return its sibling entity dbs and its index
+    /// within them.
+    pub fn collection_from_recording(
+        &'a self,
+        store_id: &re_log_types::StoreId,
+    ) -> Option<(usize, Vec<&'a EntityDb>)> {
+        for server in &self.servers {
+            for dataset in server.entries_data.iter_datasets() {
+                let store_iter = dataset.iter_loaded_stores();
+
+                if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
+                    return Some((pos, store_iter.collect()));
+                }
+            }
+        }
+
+        for local_app in self.local_apps.iter().chain(self.example_apps.iter()) {
+            let store_iter = local_app.iter_loaded_stores();
+
+            if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
+                return Some((pos, store_iter.collect()));
+            }
+        }
+
+        None
     }
 }
 
@@ -220,6 +248,10 @@ impl<'a> AppIdData<'a> {
 
     pub fn item(&self) -> Item {
         Item::AppId(self.app_id.clone())
+    }
+
+    pub fn iter_loaded_stores(&'a self) -> impl Iterator<Item = &'a EntityDb> + Clone {
+        self.loaded_recordings.iter().map(|rec| rec.entity_db)
     }
 }
 
@@ -382,6 +414,16 @@ impl<'a> ServerEntriesData<'a> {
             Poll::Pending => Self::Loading,
         }
     }
+
+    pub fn iter_datasets(&'a self) -> impl Iterator<Item = &'a DatasetData<'a>> {
+        match self {
+            Self::Loaded {
+                dataset_entries, ..
+            } => Either::Left(dataset_entries.iter()),
+
+            Self::Error(..) | Self::Loading => Either::Right(iter::empty()),
+        }
+    }
 }
 
 // ---
@@ -391,6 +433,17 @@ impl<'a> ServerEntriesData<'a> {
 pub struct DatasetData<'a> {
     pub entry_data: EntryData,
     pub displayed_partitions: Vec<PartitionData<'a>>,
+}
+
+impl<'a> DatasetData<'a> {
+    pub fn iter_loaded_stores(&'a self) -> impl Iterator<Item = &'a EntityDb> + Clone {
+        self.displayed_partitions
+            .iter()
+            .filter_map(|partition| match partition {
+                PartitionData::Loaded { entity_db } => Some(*entity_db),
+                PartitionData::Loading { .. } => None,
+            })
+    }
 }
 
 // ---

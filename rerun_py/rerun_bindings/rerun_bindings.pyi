@@ -10,7 +10,6 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
@@ -1283,8 +1282,9 @@ class Entry:
     def name(self) -> str:
         """The entry's name."""
 
+    # TODO(RR-2938): this should return `CatalogClient`
     @property
-    def catalog(self) -> CatalogClient:
+    def catalog(self) -> CatalogClientInternal:
         """The catalog client that this entry belongs to."""
 
     @property
@@ -1627,6 +1627,7 @@ class TableInsertMode:
 
     APPEND: TableInsertMode
     OVERWRITE: TableInsertMode
+    REPLACE: TableInsertMode
 
     def __str__(self, /) -> str:
         """Return str(self)."""

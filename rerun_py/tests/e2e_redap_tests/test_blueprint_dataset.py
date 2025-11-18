@@ -2,16 +2,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 import rerun as rr
 import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .conftest import ServerInstance
+    from e2e_redap_tests.conftest import EntryFactory
 
 
-def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: Path) -> None:
+@pytest.mark.local_only
+def test_configure_blueprint_dataset(entry_factory: EntryFactory, tmp_path: Path) -> None:
+    """
+    Test configuring a blueprint dataset.
+
+    This test is marked as local_only because it uses RecordingStream to generate
+    .rrd and .rbl files on-the-fly, which cannot be used with remote deployments.
+    """
     # Create a recording and save it to a temporary file
     rrd_path = tmp_path / "recording.rrd"
     rec = rr.RecordingStream("rerun_example_dataset_blueprint")
@@ -25,8 +33,7 @@ def test_configure_blueprint_dataset(server_instance: ServerInstance, tmp_path: 
     blueprint.save("rerun_example_dataset_blueprint", rbl_path)
 
     # Create a new dataset
-    client = server_instance.client
-    ds = client.create_dataset("my_new_dataset")
+    ds = entry_factory.create_dataset("my_new_dataset")
 
     # Register our recording to the dataset
     ds.register(rrd_path.absolute().as_uri())

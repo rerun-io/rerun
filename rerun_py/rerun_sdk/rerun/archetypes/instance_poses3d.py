@@ -29,6 +29,11 @@ class InstancePoses3D(Archetype):
     If both [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D] are present,
     first the tree propagating [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is applied, then [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
 
+    Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
+    This means that if you first log a pose with only a translation, and then log one with only a rotation,
+    it will be resolved to a pose with only a rotation.
+    (This is unlike how we usually apply latest-at semantics on an archetype where we take the latest state of any component independently)
+
     From the point of view of the entity's coordinate system,
     all components are applied in the inverse order they are listed here.
     E.g. if both a translation and a max3x3 transform are present,

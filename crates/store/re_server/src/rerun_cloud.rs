@@ -562,7 +562,7 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let entry_id = request.into_inner().try_into()?;
 
-        self.store.write().await.delete_dataset(entry_id)?;
+        self.store.write().await.delete_entry(entry_id)?;
 
         Ok(tonic::Response::new(DeleteEntryResponse {}))
     }
@@ -779,6 +779,7 @@ impl RerunCloudService for RerunCloudHandler {
             {
                 TableInsertMode::Append => InsertOp::Append,
                 TableInsertMode::Overwrite => InsertOp::Overwrite,
+                TableInsertMode::Replace => InsertOp::Replace,
             };
 
             table.write_table(rb, insert_op).await.map_err(|err| {

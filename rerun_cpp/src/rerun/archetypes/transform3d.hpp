@@ -32,9 +32,10 @@ namespace rerun::archetypes {
     /// E.g. if both a translation and a max3x3 transform are present,
     /// the 3x3 matrix is applied first, followed by the translation.
     ///
-    /// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+    /// Whenever you log this archetype, the state of the resulting transform relationship is fully reset to the new archetype.
     /// This means that if you first log a transform with only a translation, and then log one with only a rotation,
     /// it will be resolved to a transform with only a rotation.
+    /// (This is unlike how we usually apply latest-at semantics on an archetype where we take the latest state of any component independently)
     ///
     /// For transforms that affect only a single entity and do not propagate along the entity tree refer to `archetypes::InstancePoses3D`.
     ///
