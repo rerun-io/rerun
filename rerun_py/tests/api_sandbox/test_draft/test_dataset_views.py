@@ -43,19 +43,19 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
 
     assert sorted(simple_filt.segment_ids()) == inline_snapshot(["complex_recording_2"])
 
-    assert segment_stable_snapshot(simple_filt.segment_table()) == inline_snapshot("""\
-┌───────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                         │
-│ * version: 0.1.1                                                                  │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
-│ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
-│ │ ---                 ┆ ---               ┆ ---              ┆ ---              │ │
-│ │ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │ │
-│ ╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╡ │
-│ │ complex_recording_2 ┆ [base]            ┆ 3                ┆ 2010             │ │
-│ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
-└───────────────────────────────────────────────────────────────────────────────────┘\
+    assert segment_stable_snapshot(simple_filt.segment_table(join_meta=complex_metadata)) == inline_snapshot("""\
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                               │
+│ * version: 0.1.1                                                                                        │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
+│ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
+│ │ ---                 ┆ ---               ┆ ---              ┆ ---              ┆ ---                 │ │
+│ │ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        ┆ type: nullable bool │ │
+│ ╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╪═════════════════════╡ │
+│ │ complex_recording_2 ┆ [base]            ┆ 3                ┆ 2010             ┆ false               │ │
+│ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┴─────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
     good_segments = complex_dataset.segment_table(join_meta=complex_metadata).filter(col("success"))
