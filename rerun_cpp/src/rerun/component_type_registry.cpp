@@ -1,5 +1,7 @@
 #include "component_type_registry.hpp"
 
+#include <mutex>
+
 namespace rerun {
 
     /// Returns the handle to the registered component type for the given descriptor.
