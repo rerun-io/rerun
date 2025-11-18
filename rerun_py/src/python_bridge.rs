@@ -17,6 +17,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use re_auth::OauthLoginFlow;
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -31,6 +32,7 @@ use re_sdk::{
 };
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
+use tokio::runtime::Runtime;
 
 // --- FFI ---
 
@@ -167,6 +169,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
+    m.add_class::<PyOauthLoginFlow>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -174,6 +177,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
         return Ok(());
     }
+
+    m.add_function(wrap_pyfunction!(boo, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -796,6 +801,7 @@ fn set_global_blueprint_recording(
 /// Returns the currently active blueprint recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
+    println!("get_thread_local_blueprint_recording+++"); // TODO:
     RecordingStream::thread_local(re_sdk::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
@@ -2221,4 +2227,40 @@ authkey = multiprocessing.current_process().authkey
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
+}
+
+#[pyclass(
+    frozen,
+    name = "OauthLoginFlow",
+    module = "rerun_bindings.rerun_bindings"
+)]
+struct PyOauthLoginFlow {
+    inner: OauthLoginFlow,
+    runtime: Runtime,
+}
+
+#[pymethods]
+impl PyOauthLoginFlow {
+    #[new]
+    fn new() -> PyResult<Self> {
+        let runtime = Runtime::new()?;
+        Ok(Self {
+            inner: OauthLoginFlow::new().map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            runtime,
+        })
+    }
+
+    fn get_credentials(&self) -> PyResult<String> {
+        let result = self
+            .runtime
+            .block_on(async { self.inner.get_credentials().await });
+        result
+            .map(|credentials| credentials.access_token().as_str().to_owned())
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+#[pyfunction]
+fn boo() {
+    println!("boo!!!");
 }
