@@ -1530,4 +1530,120 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn slice_memory_size_conservation() -> anyhow::Result<()> {
+        use arrow::array::{ListArray as ArrowListArray, UInt8Array as ArrowUInt8Array};
+        use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+        use re_byte_size::SizeBytes as _;
+        use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
+
+        // Create a chunk with 3 rows of raw blob data with different sizes
+        let entity_path = "test/entity";
+
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+
+        // Create blob data of different sizes
+        let blob_size_1 = 10_000; // 10KB
+        let blob_size_2 = 20_000; // 20KB
+        let blob_size_3 = 30_000; // 30KB
+
+        let blob_data_1: Vec<u8> = (0..blob_size_1 as u8).cycle().take(blob_size_1).collect();
+        let blob_data_2: Vec<u8> = (0..blob_size_2 as u8).cycle().take(blob_size_2).collect();
+        let blob_data_3: Vec<u8> = (0..blob_size_3 as u8).cycle().take(blob_size_3).collect();
+
+        // Combine all blob data for the ListArray
+        let mut all_blob_data: Vec<u8> = Vec::new();
+        all_blob_data.extend(&blob_data_1);
+        all_blob_data.extend(&blob_data_2);
+        all_blob_data.extend(&blob_data_3);
+
+        // Create the inner UInt8Array containing all blob data
+        let values_array = ArrowUInt8Array::from(all_blob_data);
+
+        // Create the ListArray
+        let list_array = ArrowListArray::new(
+            arrow::datatypes::Field::new("item", arrow::datatypes::DataType::UInt8, false).into(),
+            ArrowOffsetBuffer::from_lengths([blob_size_1, blob_size_2, blob_size_3]),
+            std::sync::Arc::new(values_array),
+            None,
+        );
+
+        // Create component descriptor
+        let blob_descriptor = ComponentDescriptor::partial("blob");
+
+        // Create component column
+        let component_column = SerializedComponentColumn::new(list_array, blob_descriptor);
+
+        // Create the chunk manually with raw component data
+        let chunk = Chunk::new(
+            crate::ChunkId::new(),
+            re_log_types::EntityPath::from(entity_path),
+            Some(true), // is_sorted
+            RowId::arrow_from_slice(&[row_id1, row_id2, row_id3]),
+            std::iter::once((
+                *Timeline::new_sequence("frame").name(),
+                crate::TimeColumn::new_sequence("frame", [1, 2, 3]),
+            ))
+            .collect(),
+            std::iter::once(component_column).collect(),
+        )?;
+
+        let original_size = chunk.heap_size_bytes();
+        eprintln!("Original chunk size: {original_size} bytes");
+
+        // Create 3 single-row slices
+        let slice1 = chunk.row_sliced(0, 1);
+        let slice2 = chunk.row_sliced(1, 1);
+        let slice3 = chunk.row_sliced(2, 1);
+
+        let slice1_size = slice1.heap_size_bytes();
+        let slice2_size = slice2.heap_size_bytes();
+        let slice3_size = slice3.heap_size_bytes();
+
+        eprintln!("Slice 1 size: {slice1_size} bytes ({blob_size_1} byte blob)");
+        eprintln!("Slice 2 size: {slice2_size} bytes ({blob_size_2} byte blob)");
+        eprintln!("Slice 3 size: {slice3_size} bytes ({blob_size_3} byte blob)");
+
+        let total_slice_size = slice1_size + slice2_size + slice3_size;
+        eprintln!("Total slices size: {total_slice_size} bytes");
+
+        // The slices should add up to approximately the original size
+        // We allow some overhead for metadata duplication (row IDs, timeline data, etc.)
+        // but the component data should be accurately sliced
+        let acceptable_overhead = 500; // bytes for metadata overhead (increased for raw arrays)
+
+        assert!(
+            total_slice_size <= original_size + acceptable_overhead,
+            "Slices total size ({total_slice_size}) should not exceed original size ({original_size}) by more than {acceptable_overhead} bytes of overhead",
+        );
+
+        // Each slice should be proportional to its data size
+        // The slice with 30KB should be larger than the slice with 10KB
+        assert!(
+            slice3_size > slice1_size,
+            "Slice 3 with {blob_size_3} bytes ({slice3_size} total bytes) should be larger than slice 1 with {blob_size_1} bytes ({slice1_size} total bytes)",
+        );
+
+        assert!(
+            slice2_size > slice1_size,
+            "Slice 2 with {blob_size_2} bytes ({slice2_size} total bytes) should be larger than slice 1 with {blob_size_1} bytes ({slice1_size} total bytes)",
+        );
+
+        // Verify that the sliced data actually reflects the expected blob sizes
+        // The component data size should be roughly proportional to the blob sizes
+        let size_ratio_3_to_1 = slice3_size as f64 / slice1_size as f64;
+        let expected_ratio_3_to_1 = blob_size_3 as f64 / blob_size_1 as f64; // 3.0
+
+        assert!(
+            size_ratio_3_to_1 > 2.0 && size_ratio_3_to_1 < 4.0,
+            "Size ratio between slice 3 and slice 1 ({size_ratio_3_to_1:.2}) should be close to expected blob ratio ({expected_ratio_3_to_1:.2})",
+        );
+
+        eprintln!("✓ Raw arrow array slice memory calculation test passed!");
+
+        Ok(())
+    }
 }
