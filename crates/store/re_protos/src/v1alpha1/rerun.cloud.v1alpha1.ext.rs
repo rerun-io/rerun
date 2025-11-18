@@ -2023,7 +2023,28 @@ pub enum IndexProperties {
     },
 
     VectorIvfPq {
-        num_partitions: Option<u32>,
+        // Target size of the IVF partition in rows
+        //
+        // This maps to lance's underlying `target_partition_size` property
+        // and it indirectly determines how many inverted indices (partitions)
+        // to build (the larger this value, the fewer partitions will be built):
+        // num_partitions = total_vectors / target_partition_num_rows
+        //
+        // A smaller number here will lead to more partitions, which can improve
+        // search recall at the cost of higher training time and memory usage.
+        //
+        // If missing, we Lance will pick a default value, which, today, is
+        // 8192 rows per partition.
+        //
+        // Note that Lance will cap the maximum `num_partitions` to 4192:
+        // `num_partitions = min(4192, total_vectors / target_partition_num_rows)`
+        // So this means that setting this value too low will have no effect for
+        // large enough datasets.
+        //
+        // References:
+        // - [https://github.com/rerun-io/lance/blob/547bf3e288ff0bc13e96f29c7af46155fbd9f5c2/rust/lance/src/index/vector.rs#L336]
+        // - [https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/vector/ivf/builder.rs#L123]
+        // - [https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/lib.rs#L280]
         target_partition_num_rows: Option<u32>,
         num_sub_vectors: u32,
         metric: VectorDistanceMetric,
@@ -2044,7 +2065,6 @@ impl std::fmt::Display for IndexProperties {
             ),
 
             Self::VectorIvfPq {
-                num_partitions,
                 target_partition_num_rows,
                 num_sub_vectors,
                 metric,
@@ -2053,11 +2073,6 @@ impl std::fmt::Display for IndexProperties {
                     write!(
                         f,
                         "VectorIvfPq {{ target_partition_num_rows: {target_partition_num_rows}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
-                    )
-                } else if let Some(num_partitions) = num_partitions {
-                    write!(
-                        f,
-                        "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric} }}"
                     )
                 } else {
                     write!(
@@ -2093,14 +2108,12 @@ impl From<IndexProperties> for crate::cloud::v1alpha1::IndexProperties {
                 )),
             },
             IndexProperties::VectorIvfPq {
-                num_partitions,
                 target_partition_num_rows,
                 num_sub_vectors,
                 metric,
             } => Self {
                 props: Some(crate::cloud::v1alpha1::index_properties::Props::Vector(
                     crate::cloud::v1alpha1::VectorIvfPqIndex {
-                        num_partitions,
                         target_partition_num_rows,
                         num_sub_vectors: Some(num_sub_vectors),
                         distance_metrics: metric.into(),
@@ -2138,7 +2151,6 @@ impl TryFrom<crate::cloud::v1alpha1::IndexProperties> for IndexProperties {
             }),
 
             Props::Vector(data) => Ok(Self::VectorIvfPq {
-                num_partitions: data.num_partitions,
                 target_partition_num_rows: data.target_partition_num_rows,
                 num_sub_vectors: data.num_sub_vectors.ok_or_else(|| {
                     missing_field!(
