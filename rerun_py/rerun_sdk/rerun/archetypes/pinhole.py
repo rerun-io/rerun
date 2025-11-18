@@ -25,6 +25,8 @@ class Pinhole(PinholeExt, Archetype):
     """
     **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 
+    If [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
     Examples
@@ -91,6 +93,8 @@ class Pinhole(PinholeExt, Archetype):
             image_from_camera=None,
             resolution=None,
             camera_xyz=None,
+            child_frame=None,
+            parent_frame=None,
             image_plane_distance=None,
             color=None,
             line_width=None,
@@ -111,6 +115,8 @@ class Pinhole(PinholeExt, Archetype):
         image_from_camera: datatypes.Mat3x3Like | None = None,
         resolution: datatypes.Vec2DLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesLike | None = None,
+        child_frame: datatypes.Utf8Like | None = None,
+        parent_frame: datatypes.Utf8Like | None = None,
         image_plane_distance: datatypes.Float32Like | None = None,
         color: datatypes.Rgba32Like | None = None,
         line_width: datatypes.Float32Like | None = None,
@@ -124,6 +130,8 @@ class Pinhole(PinholeExt, Archetype):
             If true, all unspecified fields will be explicitly cleared.
         image_from_camera:
             Camera projection, from image coordinates to view coordinates.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         resolution:
             Pixel resolution (usually integers) of child image space. Width and height.
 
@@ -133,6 +141,8 @@ class Pinhole(PinholeExt, Archetype):
             ```
 
             `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         camera_xyz:
             Sets the view coordinates for the camera.
 
@@ -161,6 +171,28 @@ class Pinhole(PinholeExt, Archetype):
 
             The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
             but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+        child_frame:
+            The child frame this transform transforms from.
+
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+
+            If not specified, this is set to the implicit transform frame of the current entity path.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+        parent_frame:
+            The parent frame this transform transforms into.
+
+            If not specified, this is set to the implicit transform frame of the current entity path's parent.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         image_plane_distance:
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
@@ -178,6 +210,8 @@ class Pinhole(PinholeExt, Archetype):
                 "image_from_camera": image_from_camera,
                 "resolution": resolution,
                 "camera_xyz": camera_xyz,
+                "child_frame": child_frame,
+                "parent_frame": parent_frame,
                 "image_plane_distance": image_plane_distance,
                 "color": color,
                 "line_width": line_width,
@@ -204,6 +238,8 @@ class Pinhole(PinholeExt, Archetype):
         image_from_camera: datatypes.Mat3x3ArrayLike | None = None,
         resolution: datatypes.Vec2DArrayLike | None = None,
         camera_xyz: datatypes.ViewCoordinatesArrayLike | None = None,
+        child_frame: datatypes.Utf8ArrayLike | None = None,
+        parent_frame: datatypes.Utf8ArrayLike | None = None,
         image_plane_distance: datatypes.Float32ArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
         line_width: datatypes.Float32ArrayLike | None = None,
@@ -220,6 +256,8 @@ class Pinhole(PinholeExt, Archetype):
         ----------
         image_from_camera:
             Camera projection, from image coordinates to view coordinates.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         resolution:
             Pixel resolution (usually integers) of child image space. Width and height.
 
@@ -229,6 +267,8 @@ class Pinhole(PinholeExt, Archetype):
             ```
 
             `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         camera_xyz:
             Sets the view coordinates for the camera.
 
@@ -257,6 +297,28 @@ class Pinhole(PinholeExt, Archetype):
 
             The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
             but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+        child_frame:
+            The child frame this transform transforms from.
+
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+
+            If not specified, this is set to the implicit transform frame of the current entity path.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+        parent_frame:
+            The parent frame this transform transforms into.
+
+            If not specified, this is set to the implicit transform frame of the current entity path's parent.
+            This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+
+            To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         image_plane_distance:
             The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 
@@ -274,6 +336,8 @@ class Pinhole(PinholeExt, Archetype):
                 image_from_camera=image_from_camera,
                 resolution=resolution,
                 camera_xyz=camera_xyz,
+                child_frame=child_frame,
+                parent_frame=parent_frame,
                 image_plane_distance=image_plane_distance,
                 color=color,
                 line_width=line_width,
@@ -287,6 +351,8 @@ class Pinhole(PinholeExt, Archetype):
             "Pinhole:image_from_camera": image_from_camera,
             "Pinhole:resolution": resolution,
             "Pinhole:camera_xyz": camera_xyz,
+            "Pinhole:child_frame": child_frame,
+            "Pinhole:parent_frame": parent_frame,
             "Pinhole:image_plane_distance": image_plane_distance,
             "Pinhole:color": color,
             "Pinhole:line_width": line_width,
@@ -327,6 +393,8 @@ class Pinhole(PinholeExt, Archetype):
     )
     # Camera projection, from image coordinates to view coordinates.
     #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     resolution: components.ResolutionBatch | None = field(
@@ -342,6 +410,8 @@ class Pinhole(PinholeExt, Archetype):
     # ```
     #
     # `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -377,6 +447,46 @@ class Pinhole(PinholeExt, Archetype):
     #
     # The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
     # but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    child_frame: components.TransformFrameIdBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
+    )
+    # The child frame this transform transforms from.
+    #
+    # The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+    # E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+    # with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+    #
+    # If not specified, this is set to the implicit transform frame of the current entity path.
+    # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+    #
+    # To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    #
+    # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    parent_frame: components.TransformFrameIdBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
+    )
+    # The parent frame this transform transforms into.
+    #
+    # If not specified, this is set to the implicit transform frame of the current entity path's parent.
+    # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+    #
+    # To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    #
+    # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
