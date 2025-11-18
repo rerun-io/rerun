@@ -270,7 +270,7 @@ namespace rerun::archetypes {
     ///         auto rad = truncated_radians(deg * 4);
     ///         rec.log(
     ///             "box",
-    ///             rerun::Transform3D::update_fields().with_rotation_axis_angle(
+    ///             rerun::Transform3D::from_rotation(
     ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
     ///             )
     ///         );
@@ -280,9 +280,7 @@ namespace rerun::archetypes {
     ///     for (int t = 0; t <= 50; t++) {
     ///         rec.log(
     ///             "box",
-    ///             rerun::Transform3D::update_fields().with_translation(
-    ///                 {0.0f, 0.0f, static_cast<float>(t) / 10.0f}
-    ///             )
+    ///             rerun::Transform3D::from_translation({0.0f, 0.0f, static_cast<float>(t) / 10.0f})
     ///         );
     ///     }
     ///
@@ -291,7 +289,7 @@ namespace rerun::archetypes {
     ///         auto rad = truncated_radians((deg + 45) * 4);
     ///         rec.log(
     ///             "box",
-    ///             rerun::Transform3D::update_fields().with_rotation_axis_angle(
+    ///             rerun::Transform3D::from_rotation(
     ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::radians(rad))
     ///             )
     ///         );
@@ -303,21 +301,33 @@ namespace rerun::archetypes {
     /// ```
     struct Transform3D {
         /// Translation vector.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> translation;
 
         /// Rotation via axis + angle.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> rotation_axis_angle;
 
         /// Rotation via quaternion.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> quaternion;
 
         /// Scaling factor.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> scale;
 
         /// 3x3 transformation matrix.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> mat3x3;
 
         /// Specifies the relation this transform establishes between this entity and its parent.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> relation;
 
         /// The child frame this transform transforms from.
@@ -333,6 +343,8 @@ namespace rerun::archetypes {
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> child_frame;
 
         /// The parent frame this transform transforms into.
@@ -343,6 +355,8 @@ namespace rerun::archetypes {
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> parent_frame;
 
         /// Visual length of the 3 axes.
@@ -436,7 +450,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_,
             const components::TransformMat3x3& mat3x3_, bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields().with_translation(translation_).with_mat3x3(mat3x3_);
+            *this = Transform3D().with_translation(translation_).with_mat3x3(mat3x3_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -474,7 +488,7 @@ namespace rerun::archetypes {
         /// \param translation_ \çopydoc Transform3D::translation
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::Translation3D& translation_, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_translation(translation_);
+            *this = Transform3D().with_translation(translation_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -495,7 +509,7 @@ namespace rerun::archetypes {
         /// \param mat3x3_ \copydoc Transform3D::mat3x3
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const components::TransformMat3x3& mat3x3_, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_mat3x3(mat3x3_);
+            *this = Transform3D().with_mat3x3(mat3x3_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -537,7 +551,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const Rotation3D& rotation,
             const components::Scale3D& scale_, bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields()
+            *this = Transform3D()
                         .with_translation(translation_)
                         .with_scale(scale_)
                         .with_rotation(rotation);
@@ -600,8 +614,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const Rotation3D& rotation,
             bool from_parent = false
         ) {
-            *this =
-                Transform3D::clear_fields().with_translation(translation_).with_rotation(rotation);
+            *this = Transform3D().with_translation(translation_).with_rotation(rotation);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -629,7 +642,7 @@ namespace rerun::archetypes {
             const components::Translation3D& translation_, const components::Scale3D& scale_,
             bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields().with_translation(translation_).with_scale(scale_);
+            *this = Transform3D().with_translation(translation_).with_scale(scale_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -671,7 +684,7 @@ namespace rerun::archetypes {
         Transform3D(
             const Rotation3D& rotation, const components::Scale3D& scale_, bool from_parent = false
         ) {
-            *this = Transform3D::clear_fields().with_scale(scale_).with_rotation(rotation);
+            *this = Transform3D().with_scale(scale_).with_rotation(rotation);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -716,7 +729,7 @@ namespace rerun::archetypes {
         /// \param rotation Rotation represented either as a quaternion or axis + angle rotation.
         /// \param from_parent If true, the transform relation to `TransformRelation::ChildFromParent`.
         Transform3D(const Rotation3D& rotation, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_rotation(rotation);
+            *this = Transform3D().with_rotation(rotation);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -737,7 +750,7 @@ namespace rerun::archetypes {
         /// \param scale_ If true, the transform relation to `TransformRelation::ChildFromParent`.
         /// \param from_parent \copydoc Transform3D::scale
         Transform3D(const components::Scale3D& scale_, bool from_parent = false) {
-            *this = Transform3D::clear_fields().with_scale(scale_);
+            *this = Transform3D().with_scale(scale_);
             if (from_parent) {
                 *this =
                     std::move(*this).with_relation(components::TransformRelation::ChildFromParent);
@@ -789,6 +802,8 @@ namespace rerun::archetypes {
         static Transform3D clear_fields();
 
         /// Translation vector.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_translation(const rerun::components::Translation3D& _translation) && {
             translation = ComponentBatch::from_loggable(_translation, Descriptor_translation)
                               .value_or_throw();
@@ -808,6 +823,8 @@ namespace rerun::archetypes {
         }
 
         /// Rotation via axis + angle.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_rotation_axis_angle(
             const rerun::components::RotationAxisAngle& _rotation_axis_angle
         ) && {
@@ -831,6 +848,8 @@ namespace rerun::archetypes {
         }
 
         /// Rotation via quaternion.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_quaternion(const rerun::components::RotationQuat& _quaternion) && {
             quaternion =
                 ComponentBatch::from_loggable(_quaternion, Descriptor_quaternion).value_or_throw();
@@ -850,6 +869,8 @@ namespace rerun::archetypes {
         }
 
         /// Scaling factor.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_scale(const rerun::components::Scale3D& _scale) && {
             scale = ComponentBatch::from_loggable(_scale, Descriptor_scale).value_or_throw();
             return std::move(*this);
@@ -865,6 +886,8 @@ namespace rerun::archetypes {
         }
 
         /// 3x3 transformation matrix.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_mat3x3(const rerun::components::TransformMat3x3& _mat3x3) && {
             mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
             return std::move(*this);
@@ -881,6 +904,8 @@ namespace rerun::archetypes {
         }
 
         /// Specifies the relation this transform establishes between this entity and its parent.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_relation(const rerun::components::TransformRelation& _relation) && {
             relation =
                 ComponentBatch::from_loggable(_relation, Descriptor_relation).value_or_throw();
@@ -912,6 +937,8 @@ namespace rerun::archetypes {
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_child_frame(const rerun::components::TransformFrameId& _child_frame) && {
             child_frame = ComponentBatch::from_loggable(_child_frame, Descriptor_child_frame)
                               .value_or_throw();
@@ -938,6 +965,8 @@ namespace rerun::archetypes {
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
         ///
         /// To set the frame an entity is part of see `archetypes::CoordinateFrame`.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         Transform3D with_parent_frame(const rerun::components::TransformFrameId& _parent_frame) && {
             parent_frame = ComponentBatch::from_loggable(_parent_frame, Descriptor_parent_frame)
                                .value_or_throw();

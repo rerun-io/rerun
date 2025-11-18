@@ -286,7 +286,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let rad = truncated_radians((deg * 4) as f32);
 ///         rec.log(
 ///             "box",
-///             &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+///             &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
 ///                 [0.0, 1.0, 0.0],
 ///                 rerun::Angle::from_radians(rad),
 ///             )),
@@ -297,7 +297,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     for t in 0..=50 {
 ///         rec.log(
 ///             "box",
-///             &rerun::Transform3D::update_fields().with_translation([0.0, 0.0, t as f32 / 10.0]),
+///             &rerun::Transform3D::new().with_translation([0.0, 0.0, t as f32 / 10.0]),
 ///         )?;
 ///     }
 ///
@@ -306,7 +306,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         let rad = truncated_radians(((deg + 45) * 4) as f32);
 ///         rec.log(
 ///             "box",
-///             &rerun::Transform3D::update_fields().with_rotation(rerun::RotationAxisAngle::new(
+///             &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
 ///                 [0.0, 1.0, 0.0],
 ///                 rerun::Angle::from_radians(rad),
 ///             )),
@@ -338,21 +338,33 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Transform3D {
     /// Translation vector.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub translation: Option<SerializedComponentBatch>,
 
     /// Rotation via axis + angle.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub rotation_axis_angle: Option<SerializedComponentBatch>,
 
     /// Rotation via quaternion.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub quaternion: Option<SerializedComponentBatch>,
 
     /// Scaling factor.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub scale: Option<SerializedComponentBatch>,
 
     /// 3x3 transformation matrix.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub mat3x3: Option<SerializedComponentBatch>,
 
     /// Specifies the relation this transform establishes between this entity and its parent.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub relation: Option<SerializedComponentBatch>,
 
     /// The child frame this transform transforms from.
@@ -369,6 +381,8 @@ pub struct Transform3D {
     ///
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    ///
     /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub child_frame: Option<SerializedComponentBatch>,
 
@@ -380,6 +394,8 @@ pub struct Transform3D {
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
     ///
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     ///
     /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub parent_frame: Option<SerializedComponentBatch>,
@@ -657,6 +673,22 @@ impl ::re_types_core::AsComponents for Transform3D {
 impl ::re_types_core::ArchetypeReflectionMarker for Transform3D {}
 
 impl Transform3D {
+    /// Create a new `Transform3D`.
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            translation: None,
+            rotation_axis_angle: None,
+            quaternion: None,
+            scale: None,
+            mat3x3: None,
+            relation: None,
+            child_frame: None,
+            parent_frame: None,
+            axis_length: None,
+        }
+    }
+
     /// Update only some specific fields of a `Transform3D`.
     #[inline]
     pub fn update_fields() -> Self {
@@ -789,6 +821,8 @@ impl Transform3D {
     }
 
     /// Translation vector.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_translation(
         mut self,
@@ -812,6 +846,8 @@ impl Transform3D {
     }
 
     /// Rotation via axis + angle.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_rotation_axis_angle(
         mut self,
@@ -839,6 +875,8 @@ impl Transform3D {
     }
 
     /// Rotation via quaternion.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_quaternion(
         mut self,
@@ -862,6 +900,8 @@ impl Transform3D {
     }
 
     /// Scaling factor.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_scale(mut self, scale: impl Into<crate::components::Scale3D>) -> Self {
         self.scale = try_serialize_field(Self::descriptor_scale(), [scale]);
@@ -882,6 +922,8 @@ impl Transform3D {
     }
 
     /// 3x3 transformation matrix.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_mat3x3(mut self, mat3x3: impl Into<crate::components::TransformMat3x3>) -> Self {
         self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), [mat3x3]);
@@ -902,6 +944,8 @@ impl Transform3D {
     }
 
     /// Specifies the relation this transform establishes between this entity and its parent.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_relation(
         mut self,
@@ -938,6 +982,8 @@ impl Transform3D {
     ///
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    ///
     /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #[inline]
     pub fn with_child_frame(
@@ -969,6 +1015,8 @@ impl Transform3D {
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
     ///
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     ///
     /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #[inline]

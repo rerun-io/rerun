@@ -1627,6 +1627,7 @@ class TableInsertMode:
 
     APPEND: TableInsertMode
     OVERWRITE: TableInsertMode
+    REPLACE: TableInsertMode
 
     def __str__(self, /) -> str:
         """Return str(self)."""
