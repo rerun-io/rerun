@@ -1834,7 +1834,7 @@ mod tests {
             [(false, false), (true, false), (true, true)]
         {
             println!("clear_in_separate_chunk: {clear_in_separate_chunk}");
-            println!("first_clear_then_data: {clear_in_separate_chunk}");
+            println!("first_clear_then_data: {first_clear_then_data}");
 
             let mut entity_db = new_entity_db_with_subscriber_registered();
             let mut cache = TransformResolutionCache::default();
