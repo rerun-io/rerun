@@ -22,6 +22,7 @@ enum TextLogColumnKind: ubyte (
 
 /// A text log column.
 table TextLogColumn (
+  "attr.python.aliases": "blueprint_datatypes.TextLogColumnKindLike",
   "attr.rust.derive": "PartialEq, Eq, Hash",
   "attr.rerun.scope": "blueprint",
   "attr.docs.unreleased"

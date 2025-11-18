@@ -40,12 +40,6 @@ namespace rerun::blueprint::archetypes {
         TextLogFormat& operator=(const TextLogFormat& other) = default;
         TextLogFormat& operator=(TextLogFormat&& other) = default;
 
-        explicit TextLogFormat(rerun::blueprint::components::Enabled _monospace_body)
-            : monospace_body(ComponentBatch::from_loggable(
-                                 std::move(_monospace_body), Descriptor_monospace_body
-              )
-                                 .value_or_throw()) {}
-
         /// Update only some specific fields of a `TextLogFormat`.
         static TextLogFormat update_fields() {
             return TextLogFormat();

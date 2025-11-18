@@ -137,9 +137,9 @@ class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
             [
                 pa.array(np.asarray([x.width for x in data], dtype=np.uint32)),
                 pa.array(np.asarray([x.height for x in data], dtype=np.uint32)),
-                PixelFormatBatch([x.pixel_format for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ColorModelBatch([x.color_model for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ChannelDatatypeBatch([x.channel_datatype for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                PixelFormatBatch([x.pixel_format for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                ColorModelBatch([x.color_model for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                ChannelDatatypeBatch([x.channel_datatype for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

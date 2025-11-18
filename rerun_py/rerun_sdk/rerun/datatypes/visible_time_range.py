@@ -93,8 +93,8 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Utf8Batch([x.timeline for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeRangeBatch([x.range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Utf8Batch([x.timeline for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                TimeRangeBatch([x.range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

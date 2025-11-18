@@ -71,8 +71,8 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                EnumTestBatch([x.value1 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ValuedEnumBatch([x.value2 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                EnumTestBatch([x.value1 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                ValuedEnumBatch([x.value2 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

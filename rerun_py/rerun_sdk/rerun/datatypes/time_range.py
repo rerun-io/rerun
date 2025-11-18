@@ -110,8 +110,8 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                TimeRangeBoundaryBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeRangeBoundaryBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeRangeBoundaryBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                TimeRangeBoundaryBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

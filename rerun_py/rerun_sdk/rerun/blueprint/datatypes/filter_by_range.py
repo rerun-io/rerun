@@ -83,8 +83,8 @@ class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                TimeIntBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeIntBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeIntBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                TimeIntBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

@@ -15,9 +15,7 @@ from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
 )
-
-if TYPE_CHECKING:
-    from ...blueprint import datatypes as blueprint_datatypes
+from .text_log_column_ext import TextLogColumnExt
 
 __all__ = ["TextLogColumn", "TextLogColumnArrayLike", "TextLogColumnBatch", "TextLogColumnLike"]
 
@@ -30,28 +28,14 @@ def _text_log_column__visible__special_field_converter_override(x: datatypes.Boo
 
 
 @define(init=False)
-class TextLogColumn:
+class TextLogColumn(TextLogColumnExt):
     """
     **Datatype**: A text log column.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, visible: datatypes.BoolLike, kind: blueprint_datatypes.TextLogColumnKindLike) -> None:
-        """
-        Create a new instance of the TextLogColumn datatype.
-
-        Parameters
-        ----------
-        visible:
-            Is this column visible?
-        kind:
-            What kind of column is this?
-
-        """
-
-        # You can define your own __init__ function as a member of TextLogColumnExt in text_log_column_ext.py
-        self.__attrs_init__(visible=visible, kind=kind)
+    # __init__ can be found in text_log_column_ext.py
 
     visible: datatypes.Bool = field(converter=_text_log_column__visible__special_field_converter_override)
     # Is this column visible?
@@ -64,8 +48,13 @@ class TextLogColumn:
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
-TextLogColumnLike = TextLogColumn
-"""A type alias for any TextLogColumn-like object."""
+if TYPE_CHECKING:
+    from ...blueprint import datatypes as blueprint_datatypes
+
+    TextLogColumnLike = TextLogColumn | blueprint_datatypes.TextLogColumnKindLike
+    """A type alias for any TextLogColumn-like object."""
+else:
+    TextLogColumnLike = Any
 
 TextLogColumnArrayLike = TextLogColumn | Sequence[TextLogColumnLike]
 """A type alias for any TextLogColumn-like array object."""
@@ -87,8 +76,8 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                BoolBatch([x.visible for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TextLogColumnKindBatch([x.kind for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                BoolBatch([x.visible for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                TextLogColumnKindBatch([x.kind for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

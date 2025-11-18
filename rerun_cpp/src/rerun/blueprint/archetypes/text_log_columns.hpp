@@ -49,16 +49,11 @@ namespace rerun::blueprint::archetypes {
         TextLogColumns& operator=(const TextLogColumns& other) = default;
         TextLogColumns& operator=(TextLogColumns&& other) = default;
 
-        explicit TextLogColumns(
-            rerun::blueprint::components::TextLogColumnList _text_log_columns,
-            rerun::blueprint::components::TimelineName _timeline
-        )
+        explicit TextLogColumns(rerun::blueprint::components::TextLogColumnList _text_log_columns)
             : text_log_columns(ComponentBatch::from_loggable(
                                    std::move(_text_log_columns), Descriptor_text_log_columns
               )
-                                   .value_or_throw()),
-              timeline(ComponentBatch::from_loggable(std::move(_timeline), Descriptor_timeline)
-                           .value_or_throw()) {}
+                                   .value_or_throw()) {}
 
         /// Update only some specific fields of a `TextLogColumns`.
         static TextLogColumns update_fields() {

@@ -3,6 +3,7 @@ namespace rerun.blueprint.datatypes;
 
 /// A list of text log columns.
 table TextLogColumnList (
+  "attr.python.aliases": "Sequence[blueprint_datatypes.TextLogColumnLike]",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint",
   "attr.docs.unreleased"

@@ -61,8 +61,8 @@ class AbsoluteTimeRangeBatch(BaseBatch[AbsoluteTimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                TimeIntBatch([x.min for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeIntBatch([x.max for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeIntBatch([x.min for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                TimeIntBatch([x.max for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

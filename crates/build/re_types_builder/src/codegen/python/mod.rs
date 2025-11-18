@@ -2220,7 +2220,7 @@ fn quote_arrow_serialization(
                         // Type checker struggles with this occasionally, exact pattern is unclear.
                         // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
                         let field_fwd = format!(
-                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]"
+                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]"
                         );
                         code.push_indented(2, &field_fwd, 1);
                     }

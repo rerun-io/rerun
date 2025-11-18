@@ -8,5 +8,5 @@ table TextLogFormat (
   // --- Optional ---
 
   /// Whether to use a monospace font for the log message body.
-  monospace_body: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", order: 100);
+  monospace_body: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 }

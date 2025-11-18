@@ -14,15 +14,13 @@ from attrs import define, field
 from ..._baseclasses import (
     BaseBatch,
 )
-
-if TYPE_CHECKING:
-    from ...blueprint import datatypes as blueprint_datatypes
+from .text_log_column_list_ext import TextLogColumnListExt
 
 __all__ = ["TextLogColumnList", "TextLogColumnListArrayLike", "TextLogColumnListBatch", "TextLogColumnListLike"]
 
 
 @define(init=False)
-class TextLogColumnList:
+class TextLogColumnList(TextLogColumnListExt):
     """
     **Datatype**: A list of text log columns.
 
@@ -43,7 +41,9 @@ class TextLogColumnList:
         # You can define your own __init__ function as a member of TextLogColumnListExt in text_log_column_list_ext.py
         self.__attrs_init__(text_log_columns=text_log_columns)
 
-    text_log_columns: list[blueprint_datatypes.TextLogColumn] = field()
+    text_log_columns: list[blueprint_datatypes.TextLogColumn] = field(
+        converter=TextLogColumnListExt.text_log_columns__field_converter_override,  # type: ignore[misc]
+    )
     # All columns to be displayed.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -53,8 +53,13 @@ class TextLogColumnList:
         return len(self.text_log_columns)
 
 
-TextLogColumnListLike = TextLogColumnList
-"""A type alias for any TextLogColumnList-like object."""
+if TYPE_CHECKING:
+    from ...blueprint import datatypes as blueprint_datatypes
+
+    TextLogColumnListLike = TextLogColumnList | Sequence[blueprint_datatypes.TextLogColumnLike]
+    """A type alias for any TextLogColumnList-like object."""
+else:
+    TextLogColumnListLike = Any
 
 TextLogColumnListArrayLike = TextLogColumnList | Sequence[TextLogColumnListLike]
 """A type alias for any TextLogColumnList-like array object."""
@@ -82,6 +87,4 @@ class TextLogColumnListBatch(BaseBatch[TextLogColumnListArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TextLogColumnListArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TextLogColumnList not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in text_log_column_list_ext.py
+        return TextLogColumnListExt.native_to_pa_array_override(data, data_type)

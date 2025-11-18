@@ -77,8 +77,8 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Vec3DBatch([x.axis for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                AngleBatch([x.angle for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Vec3DBatch([x.axis for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                AngleBatch([x.angle for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

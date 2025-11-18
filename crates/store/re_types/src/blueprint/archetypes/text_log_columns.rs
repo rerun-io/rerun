@@ -157,14 +157,13 @@ impl TextLogColumns {
     #[inline]
     pub fn new(
         text_log_columns: impl Into<crate::blueprint::components::TextLogColumnList>,
-        timeline: impl Into<crate::blueprint::components::TimelineName>,
     ) -> Self {
         Self {
             text_log_columns: try_serialize_field(
                 Self::descriptor_text_log_columns(),
                 [text_log_columns],
             ),
-            timeline: try_serialize_field(Self::descriptor_timeline(), [timeline]),
+            timeline: None,
         }
     }
 

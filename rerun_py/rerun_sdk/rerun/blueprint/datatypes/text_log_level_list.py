@@ -14,15 +14,13 @@ from attrs import define, field
 from ..._baseclasses import (
     BaseBatch,
 )
-
-if TYPE_CHECKING:
-    from ... import datatypes
+from .text_log_level_list_ext import TextLogLevelListExt
 
 __all__ = ["TextLogLevelList", "TextLogLevelListArrayLike", "TextLogLevelListBatch", "TextLogLevelListLike"]
 
 
 @define(init=False)
-class TextLogLevelList:
+class TextLogLevelList(TextLogLevelListExt):
     """
     **Datatype**: A list of text log levels.
 
@@ -43,7 +41,9 @@ class TextLogLevelList:
         # You can define your own __init__ function as a member of TextLogLevelListExt in text_log_level_list_ext.py
         self.__attrs_init__(log_levels=log_levels)
 
-    log_levels: list[datatypes.Utf8] = field()
+    log_levels: list[datatypes.Utf8] = field(
+        converter=TextLogLevelListExt.log_levels__field_converter_override,  # type: ignore[misc]
+    )
     # Log levels to display.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -53,8 +53,13 @@ class TextLogLevelList:
         return len(self.log_levels)
 
 
-TextLogLevelListLike = TextLogLevelList
-"""A type alias for any TextLogLevelList-like object."""
+if TYPE_CHECKING:
+    from ... import datatypes
+
+    TextLogLevelListLike = TextLogLevelList | Sequence[datatypes.Utf8Like]
+    """A type alias for any TextLogLevelList-like object."""
+else:
+    TextLogLevelListLike = Any
 
 TextLogLevelListArrayLike = TextLogLevelList | Sequence[TextLogLevelListLike]
 """A type alias for any TextLogLevelList-like array object."""
@@ -72,6 +77,4 @@ class TextLogLevelListBatch(BaseBatch[TextLogLevelListArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TextLogLevelListArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TextLogLevelList not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in text_log_level_list_ext.py
+        return TextLogLevelListExt.native_to_pa_array_override(data, data_type)

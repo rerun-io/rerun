@@ -206,7 +206,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                AffixFuzzer4Batch([x.single_optional_union for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                AffixFuzzer4Batch([x.single_optional_union for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
             ],
             fields=list(data_type),
         )

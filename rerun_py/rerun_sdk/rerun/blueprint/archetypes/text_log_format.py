@@ -29,7 +29,7 @@ class TextLogFormat(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, monospace_body: datatypes.BoolLike) -> None:
+    def __init__(self: Any, *, monospace_body: datatypes.BoolLike | None = None) -> None:
         """
         Create a new instance of the TextLogFormat archetype.
 

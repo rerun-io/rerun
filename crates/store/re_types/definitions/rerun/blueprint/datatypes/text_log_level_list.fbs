@@ -3,6 +3,7 @@ namespace rerun.blueprint.datatypes;
 
 /// A list of text log levels.
 table TextLogLevelList (
+  "attr.python.aliases": "Sequence[datatypes.Utf8Like]",
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint",
   "attr.docs.unreleased"

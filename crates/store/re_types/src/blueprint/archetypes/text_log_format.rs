@@ -123,12 +123,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogFormat {}
 impl TextLogFormat {
     /// Create a new `TextLogFormat`.
     #[inline]
-    pub fn new(monospace_body: impl Into<crate::blueprint::components::Enabled>) -> Self {
+    pub fn new() -> Self {
         Self {
-            monospace_body: try_serialize_field(
-                Self::descriptor_monospace_body(),
-                [monospace_body],
-            ),
+            monospace_body: None,
         }
     }
 

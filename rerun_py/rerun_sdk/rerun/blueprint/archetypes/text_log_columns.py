@@ -30,7 +30,10 @@ class TextLogColumns(Archetype):
     """
 
     def __init__(
-        self: Any, text_log_columns: blueprint_datatypes.TextLogColumnListLike, timeline: datatypes.Utf8Like
+        self: Any,
+        text_log_columns: blueprint_datatypes.TextLogColumnListLike,
+        *,
+        timeline: datatypes.Utf8Like | None = None,
     ) -> None:
         """
         Create a new instance of the TextLogColumns archetype.

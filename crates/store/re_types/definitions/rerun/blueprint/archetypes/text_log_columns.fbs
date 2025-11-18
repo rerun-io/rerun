@@ -11,6 +11,6 @@ table TextLogColumns (
   text_log_columns: rerun.blueprint.components.TextLogColumnList ("attr.rerun.component_optional", order: 1000);
 
   /// What timeline the timeline column should show.
-  timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", order: 2000);
+  timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 2000);
 }
 
