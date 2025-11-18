@@ -3,11 +3,10 @@ use std::io::{IsTerminal as _, Write as _};
 use anyhow::Context as _;
 use itertools::Either;
 
-use re_chunk::{ChunkId, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
-use re_sdk::{SizeBytes as _, StoreKind};
+use re_sdk::StoreKind;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -251,9 +250,7 @@ fn merge_and_compact(
 
                 let mut store = ChunkStore::new(store_id.clone(), store_config.clone());
                 for chunk in engine.read().store().iter_chunks() {
-                    for decompacted_chunk in decompact_chunk_if_needed(chunk, store_config) {
-                        store.insert_chunk(&decompacted_chunk)?;
-                    }
+                    store.insert_chunk(chunk)?;
                 }
 
                 num_chunks_after += store.num_chunks() as u64;
@@ -351,64 +348,4 @@ fn merge_and_compact(
     );
 
     Ok(())
-}
-
-/// Naively splits a chunk if it exceeds the configured thresholds.
-fn decompact_chunk_if_needed(
-    chunk: &std::sync::Arc<re_chunk::Chunk>,
-    config: &ChunkStoreConfig,
-) -> Vec<std::sync::Arc<re_chunk::Chunk>> {
-    let chunk_size_bytes = chunk.total_size_bytes();
-    let chunk_num_rows = chunk.num_rows() as u64;
-
-    // Check if we need to split based on size or row count
-    let needs_split_bytes = config.chunk_max_bytes > 0 && chunk_size_bytes > config.chunk_max_bytes;
-    let needs_split_rows = config.chunk_max_rows > 0 && chunk_num_rows > config.chunk_max_rows;
-    let needs_split_unsorted = config.chunk_max_rows_if_unsorted > 0
-        && chunk_num_rows > config.chunk_max_rows_if_unsorted
-        && !chunk.is_time_sorted();
-
-    if !needs_split_bytes && !needs_split_rows && !needs_split_unsorted {
-        return vec![chunk.clone()];
-    }
-
-    // Determine the target number of rows per split chunk
-    let target_rows = if needs_split_unsorted {
-        config.chunk_max_rows_if_unsorted
-    } else if needs_split_rows {
-        config.chunk_max_rows
-    } else {
-        // For byte-based splitting, estimate rows per split chunk based on current density
-        let bytes_per_row = chunk_size_bytes / chunk_num_rows.max(1);
-        config.chunk_max_bytes / bytes_per_row.max(1)
-    };
-
-    let target_rows = target_rows.max(1) as usize; // Ensure at least 1 row per chunk
-
-    let mut result = Vec::new();
-    let mut start_idx = 0;
-
-    while start_idx < chunk.num_rows() {
-        let remaining_rows = chunk.num_rows() - start_idx;
-        let chunk_size = remaining_rows.min(target_rows);
-
-        let split_chunk = chunk.row_sliced(start_idx, chunk_size);
-        // Generate new row IDs for the split chunk to avoid duplicates
-        let first_row_id = RowId::new();
-        let split_chunk = split_chunk.clone_as(ChunkId::new(), first_row_id);
-        result.push(std::sync::Arc::new(split_chunk));
-
-        start_idx += chunk_size;
-    }
-
-    re_log::debug!(
-        entity_path = %chunk.entity_path(),
-        original_rows = chunk.num_rows(),
-        original_bytes = %re_format::format_bytes(chunk_size_bytes as _),
-        split_into = result.len(),
-        target_rows,
-        "split chunk during merge/compact"
-    );
-
-    result
 }
