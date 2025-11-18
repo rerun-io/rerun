@@ -240,11 +240,12 @@ fn gc_string_view_batch(batch: &RecordBatch) -> RecordBatch {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::ops::Range;
 
     use super::*;
 
-    use arrow::array::{StringViewArray, UInt32Array, builder::ArrayBuilder};
+    use arrow::array::{StringViewArray, UInt32Array, builder::ArrayBuilder as _};
     use arrow::datatypes::{DataType, Field, Schema};
 
     #[test]
@@ -254,8 +255,9 @@ mod tests {
             .with_batches(std::iter::repeat_n(batch, 10))
             // expected output is batches of at least 20 rows (except for the final batch)
             .with_target_batch_rows(21)
+            .with_target_batch_bytes(1024 * 1024)
             .with_expected_output_sizes(vec![24, 24, 24, 8])
-            .run()
+            .run();
     }
 
     #[test]
@@ -315,14 +317,24 @@ mod tests {
             .with_target_batch_rows(20)
             .with_fetch(Some(7))
             .with_expected_output_sizes(vec![7])
-            .run()
+            .run();
+    }
+
+    #[test]
+    fn test_coalesce_batch_limited_by_bytes() {
+        let batch = uint32_batch(0..8);
+        Test::new()
+            .with_batches(std::iter::repeat_n(batch, 4))
+            .with_target_batch_bytes(20)
+            .with_expected_output_sizes(vec![8, 8, 8, 8])
+            .run();
     }
 
     /// Test for [`SizedBatchCoalescer`]
     ///
     /// Pushes the input batches to the coalescer and verifies that the resulting
     /// batches have the expected number of rows and contents.
-    #[derive(Debug, Clone, Default)]
+    #[derive(Debug, Clone)]
     struct Test {
         /// Batches to feed to the coalescer. Tests must have at least one
         /// schema
@@ -339,6 +351,19 @@ mod tests {
 
         /// Fetch (limit)
         fetch: Option<usize>,
+    }
+
+    impl Default for Test {
+        fn default() -> Self {
+            Self {
+                // Initialize with large values in case these are not set explicitly
+                input_batches: vec![],
+                target_batch_rows: 1000,
+                target_batch_bytes: 1024 * 1024,
+                expected_output_sizes: vec![],
+                fetch: None,
+            }
+        }
     }
 
     impl Test {
@@ -451,13 +476,19 @@ mod tests {
         }
     }
 
-    /// Return a batch of UInt32 with the specified range
+    /// Return a batch of `UInt32` with the specified range
     fn uint32_batch(range: Range<u32>) -> RecordBatch {
-        let schema = Arc::new(Schema::new(vec![Field::new("c0", DataType::UInt32, false)]));
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![Field::new("c0", DataType::UInt32, false)],
+            HashMap::default(),
+        ));
 
-        RecordBatch::try_new(
+        let mut options = RecordBatchOptions::new();
+        options = options.with_row_count(Some(range.len()));
+        RecordBatch::try_new_with_options(
             Arc::clone(&schema),
             vec![Arc::new(UInt32Array::from_iter_values(range))],
+            &options,
         )
         .unwrap()
     }
@@ -556,7 +587,7 @@ mod tests {
         fn build(self) -> StringViewArray {
             let mut builder = StringViewBuilder::with_capacity(100).with_fixed_block_size(8192);
             loop {
-                for &v in self.strings.iter() {
+                for &v in &self.strings {
                     builder.append_option(v);
                     if builder.len() >= self.rows {
                         return builder.finish();
