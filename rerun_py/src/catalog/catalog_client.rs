@@ -21,7 +21,6 @@ use crate::catalog::{
 };
 use crate::utils::{get_tokio_runtime, wait_for_future};
 use arrow::pyarrow::FromPyArrow as _;
-use re_redap_client::ConnectionClient;
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation
@@ -281,6 +280,7 @@ impl PyCatalogClientInternal {
         let table_entry = connection.create_table_entry(py, name, schema, &url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
+
         Py::new(
             py,
             PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
@@ -351,7 +351,7 @@ impl PyCatalogClientInternal {
 }
 
 impl PyCatalogClientInternal {
-    fn update_catalog_providers(&self, py: Python, force_register: bool) -> Result<(), PyErr> {
+    fn update_catalog_providers(&self, py: Python<'_>, force_register: bool) -> Result<(), PyErr> {
         let client = wait_for_future(py, self.connection.client())?;
         let runtime = get_tokio_runtime().handle();
 
