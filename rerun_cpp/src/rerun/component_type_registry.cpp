@@ -6,9 +6,22 @@ namespace rerun {
     ///
     /// Registers the component type when first encountered.
     Result<ComponentTypeHandle> ComponentTypeRegistry::get_or_register(
-        const ComponentDescriptor& descriptor, std::shared_ptr<arrow::DataType> arrow_datatype
+        const ComponentDescriptor& descriptor,
+        const std::shared_ptr<arrow::DataType>& arrow_datatype
     ) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        {
+            // The read-only operation in this scope can be done concurrently.
+            std::shared_lock lock(mutex_);
+
+            const auto descr_hash = descriptor.hashed();
+            if (const auto search = comp_types_per_descr_.find(descr_hash);
+                search != comp_types_per_descr_.end()) {
+                return search->second;
+            }
+        }
+
+        // Only one thread is allowed to do the initial registration of a new component type.
+        std::unique_lock lock(mutex_);
 
         const auto descr_hash = descriptor.hashed();
         if (const auto search = comp_types_per_descr_.find(descr_hash);
