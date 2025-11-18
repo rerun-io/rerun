@@ -1426,21 +1426,20 @@ mod tests {
                 .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::update_fields()
-                        .with_translation([123.0, 234.0, 345.0]),
+                    &archetypes::Transform3D::from_translation([123.0, 234.0, 345.0]),
                 )
                 .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::update_fields().with_translation([1.0, 2.0, 3.0]),
+                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
                 )
                 .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::update_fields().with_scale([123.0, 234.0, 345.0]),
+                    &archetypes::Transform3D::from_scale([123.0, 234.0, 345.0]),
                 )
                 .build()?;
 
@@ -1795,7 +1794,7 @@ mod tests {
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::update_fields().with_scale([1.0, 2.0, 3.0]),
+                &archetypes::Transform3D::from_scale([1.0, 2.0, 3.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 4)],
@@ -2054,7 +2053,7 @@ mod tests {
             .with_archetype_auto_row(
                 [(timeline, 3)],
                 // Note that this clears anything that could be inserted at time 2 due to atomic-query semantics.
-                &archetypes::Transform3D::update_fields().with_translation([2.0, 3.0, 4.0]),
+                &archetypes::Transform3D::from_translation([2.0, 3.0, 4.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -2093,7 +2092,7 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::update_fields().with_scale([-1.0, -2.0, -3.0]),
+                &archetypes::Transform3D::from_scale([-1.0, -2.0, -3.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -2334,24 +2333,24 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::update_fields().with_translation([1.0, 0.0, 0.0]),
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::update_fields()
+                &archetypes::Transform3D::new()
                     .with_translation([2.0, 0.0, 0.0])
                     .with_child_frame("frame0"), // Uses implicit entity-path derived parent frame.
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::update_fields()
+                &archetypes::Transform3D::new()
                     .with_translation([3.0, 0.0, 0.0])
                     .with_child_frame("frame0")
                     .with_parent_frame("frame1"),
             )
             .with_archetype_auto_row(
                 [(timeline, 4)],
-                &archetypes::Transform3D::update_fields()
+                &archetypes::Transform3D::new()
                     .with_translation([4.0, 0.0, 0.0])
                     .with_child_frame("frame2")
                     .with_parent_frame("frame3"),
@@ -2513,7 +2512,7 @@ mod tests {
             Chunk::builder(static_entity_path.clone())
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields()
+                    &archetypes::Transform3D::new()
                         .with_translation([1.0, 0.0, 0.0])
                         .with_child_frame("frame0"),
                 )
@@ -2523,7 +2522,7 @@ mod tests {
             Chunk::builder(temporal_entity_path)
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::update_fields()
+                    &archetypes::Transform3D::new()
                         .with_translation([2.0, 0.0, 0.0])
                         .with_child_frame("frame1"),
                 )
@@ -2575,12 +2574,12 @@ mod tests {
         }
 
         // Now we change the static chunk to also talk about frame1.
-        // Before, there was translation there but due to atomic latest-at we won't see that.
+        // Before, there was a translation there but due to atomic latest-at we won't see that.
         entity_db.add_chunk(&Arc::new(
             Chunk::builder(static_entity_path)
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::update_fields()
+                    &archetypes::Transform3D::new()
                         .with_child_frame("frame1")
                         .with_scale(2.0),
                 )

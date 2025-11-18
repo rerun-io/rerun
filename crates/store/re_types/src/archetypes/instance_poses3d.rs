@@ -101,18 +101,28 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct InstancePoses3D {
     /// Translation vectors.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub translations: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Scaling factors.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub scales: Option<SerializedComponentBatch>,
 
     /// 3x3 transformation matrices.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub mat3x3: Option<SerializedComponentBatch>,
 }
 
@@ -411,6 +421,8 @@ impl InstancePoses3D {
     }
 
     /// Translation vectors.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_translations(
         mut self,
@@ -421,6 +433,8 @@ impl InstancePoses3D {
     }
 
     /// Rotations via axis + angle.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
@@ -436,6 +450,8 @@ impl InstancePoses3D {
     }
 
     /// Rotations via quaternion.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_quaternions(
         mut self,
@@ -446,6 +462,8 @@ impl InstancePoses3D {
     }
 
     /// Scaling factors.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_scales(
         mut self,
@@ -456,6 +474,8 @@ impl InstancePoses3D {
     }
 
     /// 3x3 transformation matrices.
+    ///
+    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_mat3x3(
         mut self,

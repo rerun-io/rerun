@@ -22,12 +22,6 @@ impl Transform3D {
         parent_frame: None,
     };
 
-    /// Clear all the fields of a `Transform3D`.
-    #[deprecated(since = "0.22.0", note = "Use `Self::clear_fields()` instead.")]
-    pub fn clear() -> Self {
-        Self::clear_fields()
-    }
-
     /// Convenience method that takes any kind of (single) rotation representation and sets it on this transform.
     #[inline]
     pub fn with_rotation(self, rotation: impl Into<Rotation3D>) -> Self {
@@ -42,25 +36,25 @@ impl Transform3D {
     /// From a translation, clearing all other fields.
     #[inline]
     pub fn from_translation(translation: impl Into<Translation3D>) -> Self {
-        Self::clear_fields().with_translation(translation)
+        Self::new().with_translation(translation)
     }
 
     /// From a 3x3 matrix, clearing all other fields.
     #[inline]
     pub fn from_mat3x3(mat3x3: impl Into<TransformMat3x3>) -> Self {
-        Self::clear_fields().with_mat3x3(mat3x3)
+        Self::new().with_mat3x3(mat3x3)
     }
 
     /// From a rotation, clearing all other fields.
     #[inline]
     pub fn from_rotation(rotation: impl Into<Rotation3D>) -> Self {
-        Self::clear_fields().with_rotation(rotation)
+        Self::new().with_rotation(rotation)
     }
 
     /// From a scale, clearing all other fields.
     #[inline]
     pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
-        Self::clear_fields().with_scale(scale)
+        Self::new().with_scale(scale)
     }
 
     /// From a translation applied after a rotation, known as a rigid transformation.
@@ -71,7 +65,7 @@ impl Transform3D {
         translation: impl Into<Translation3D>,
         rotation: impl Into<Rotation3D>,
     ) -> Self {
-        Self::clear_fields()
+        Self::new()
             .with_translation(translation)
             .with_rotation(rotation)
     }
@@ -82,7 +76,7 @@ impl Transform3D {
         translation: impl Into<Translation3D>,
         mat3x3: impl Into<TransformMat3x3>,
     ) -> Self {
-        Self::clear_fields()
+        Self::new()
             .with_mat3x3(mat3x3)
             .with_translation(translation)
     }
@@ -93,9 +87,7 @@ impl Transform3D {
         translation: impl Into<Translation3D>,
         scale: impl Into<Scale3D>,
     ) -> Self {
-        Self::clear_fields()
-            .with_scale(scale)
-            .with_translation(translation)
+        Self::new().with_scale(scale).with_translation(translation)
     }
 
     /// From a translation, applied after a rotation & scale, known as an affine transformation, clearing all other fields.
@@ -105,7 +97,7 @@ impl Transform3D {
         rotation: impl Into<Rotation3D>,
         scale: impl Into<Scale3D>,
     ) -> Self {
-        Self::clear_fields()
+        Self::new()
             .with_scale(scale)
             .with_translation(translation)
             .with_rotation(rotation)
@@ -114,8 +106,6 @@ impl Transform3D {
     /// From a rotation & scale, clearing all other fields.
     #[inline]
     pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
-        Self::clear_fields()
-            .with_rotation(rotation)
-            .with_scale(scale)
+        Self::new().with_rotation(rotation).with_scale(scale)
     }
 }
