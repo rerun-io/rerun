@@ -8,7 +8,7 @@ import rerun as rr
     ["archetype", "expected"],
     [
         [
-            rr.Transform3D(),
+            rr.Transform3D().from_fields(clear_unset=True),
             (
                 "rr.Transform3D(\n"
                 "  translation=[],\n"
@@ -25,19 +25,7 @@ import rerun as rr
         ],
         [
             rr.Transform3D(translation=[10, 10, 10]),
-            (
-                "rr.Transform3D(\n"
-                "  translation=[[10.0, 10.0, 10.0]],\n"
-                "  rotation_axis_angle=[],\n"
-                "  quaternion=[],\n"
-                "  scale=[],\n"
-                "  mat3x3=[],\n"
-                "  relation=[],\n"
-                "  child_frame=[],\n"
-                "  parent_frame=[],\n"
-                "  axis_length=[]\n"
-                ")"
-            ),
+            ("rr.Transform3D(\n  translation=[[10.0, 10.0, 10.0]]\n)"),
         ],
         [
             rr.Points2D(positions=[[0, 0], [1, 1], [2, 2]]),
