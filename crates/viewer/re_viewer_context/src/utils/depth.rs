@@ -1,3 +1,5 @@
+//! Utilities for decoding depth compression formats.
+
 use std::mem::size_of;
 
 use byteorder::{ByteOrder as _, LittleEndian};

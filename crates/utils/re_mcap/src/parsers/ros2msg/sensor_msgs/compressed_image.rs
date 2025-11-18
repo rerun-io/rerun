@@ -1,7 +1,9 @@
+use std::mem::size_of;
+
 use super::super::definitions::sensor_msgs;
 use anyhow::{Context as _, bail};
+use byteorder::ByteOrder as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_depth_compression::parse_ros_rvl_metadata;
 use re_types::{
     archetypes::{EncodedDepthImage, EncodedImage, VideoStream},
     components::{MediaType, VideoCodec},
@@ -14,6 +16,79 @@ use crate::parsers::{
     decode::{MessageParser, ParserContext},
 };
 use crate::util::TimestampCell;
+
+const CONFIG_HEADER_SIZE: usize = size_of::<i32>() + size_of::<[f32; 2]>();
+const RESOLUTION_HEADER_SIZE: usize = size_of::<[u32; 2]>();
+
+/// Metadata extracted from a ROS2 `compressedDepth` RVL payload.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct RvlMetadata {
+    pub width: u32,
+    pub height: u32,
+    pub depth_quant_a: f32,
+    pub depth_quant_b: f32,
+    payload_offset: usize,
+    num_pixels: usize,
+}
+
+#[derive(Debug, thiserror::Error)]
+enum RvlDecodeError {
+    #[error("compressed depth payload missing RVL header")]
+    MissingHeader,
+
+    #[error("RVL payload missing resolution header")]
+    MissingResolution,
+
+    #[error("RVL payload reports zero resolution")]
+    ZeroResolution,
+
+    #[error("RVL image resolution would overflow")]
+    ResolutionOverflow,
+
+    #[error("RVL payload shorter than expected for resolution {width}x{height}")]
+    PayloadLengthMismatch { width: u32, height: u32 },
+}
+
+fn parse_ros_rvl_metadata(data: &[u8]) -> Result<RvlMetadata, RvlDecodeError> {
+    if data.len() <= CONFIG_HEADER_SIZE {
+        return Err(RvlDecodeError::MissingHeader);
+    }
+
+    let config = &data[..CONFIG_HEADER_SIZE];
+    let quant_offset = size_of::<i32>();
+    let depth_quant_a = byteorder::LittleEndian::read_f32(&config[quant_offset..quant_offset + 4]);
+    let depth_quant_b =
+        byteorder::LittleEndian::read_f32(&config[quant_offset + 4..quant_offset + 8]);
+
+    if data.len() < CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE {
+        return Err(RvlDecodeError::MissingResolution);
+    }
+    let resolution_offset = CONFIG_HEADER_SIZE;
+    let width = byteorder::LittleEndian::read_u32(&data[resolution_offset..resolution_offset + 4]);
+    let height =
+        byteorder::LittleEndian::read_u32(&data[resolution_offset + 4..resolution_offset + 8]);
+    if width == 0 || height == 0 {
+        return Err(RvlDecodeError::ZeroResolution);
+    }
+
+    let payload_offset = CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE;
+    let num_pixels = (width as u64)
+        .checked_mul(height as u64)
+        .ok_or(RvlDecodeError::ResolutionOverflow)? as usize;
+
+    if data.len() < payload_offset {
+        return Err(RvlDecodeError::PayloadLengthMismatch { width, height });
+    }
+
+    Ok(RvlMetadata {
+        width,
+        height,
+        depth_quant_a,
+        depth_quant_b,
+        payload_offset,
+        num_pixels,
+    })
+}
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 pub struct CompressedImageMessageParser {

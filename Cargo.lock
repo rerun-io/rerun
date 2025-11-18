@@ -8870,14 +8870,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_depth_compression"
-version = "0.28.0-alpha.1+dev"
-dependencies = [
- "byteorder",
- "thiserror 2.0.17",
-]
-
-[[package]]
 name = "re_dev_tools"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
@@ -9139,7 +9131,6 @@ dependencies = [
  "mcap",
  "prost-reflect",
  "re_chunk",
- "re_depth_compression",
  "re_log",
  "re_log_types",
  "re_ros_msg",
@@ -10345,6 +10336,7 @@ dependencies = [
  "bit-vec",
  "bitflags 2.9.4",
  "bytemuck",
+ "byteorder",
  "crossbeam",
  "datafusion",
  "directories",
@@ -10371,7 +10363,6 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_data_source",
- "re_depth_compression",
  "re_entity_db",
  "re_format",
  "re_log",
