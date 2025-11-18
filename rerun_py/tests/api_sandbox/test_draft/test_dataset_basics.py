@@ -9,13 +9,6 @@ from inline_snapshot import snapshot as inline_snapshot
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import datafusion
-
-
-def segment_stable_snapshot(df: datafusion.DataFrame) -> str:
-    """Create a stable snapshot of a segment DataFrame by sorting and dropping unstable columns."""
-    return str(df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id"))
-
 
 def test_dataset_basics(complex_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
