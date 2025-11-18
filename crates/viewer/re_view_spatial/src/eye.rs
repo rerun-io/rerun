@@ -555,6 +555,21 @@ impl EyeController {
             return;
         }
 
+        if self.projection == Eye3DProjection::Orthographic {
+            // With an orthographic camera, changing the distance would have no effect on the view.
+            // Instead, we change the vertical world size. This works in both orbital and first-person mode.
+            self.vertical_world_size = Some(
+                self.vertical_world_size
+                    .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
+                    / zoom_factor,
+            );
+            self.did_interact = true;
+
+            // Note: we don't update parameters for perspective cameras when in orthographic mode.
+            // This is done once when switching projections, via `handle_projection_change`.
+            return;
+        }
+
         match self.kind {
             Eye3DKind::Orbital => {
                 let radius = self.pos.distance(self.look_target);
@@ -571,20 +586,6 @@ impl EyeController {
                     self.pos = self.look_target - self.fwd() * new_radius;
                     self.did_interact = true;
                 }
-
-                // With an orthographic camera, changing the distance would have no effect on the view.
-                // Instead, we change the vertical world size. This works in both orbital and first-person mode.
-                //
-                // Note that while that property is only relevant for orthographic views, we always update it here,
-                // regardless of the current projection. This ensures a nice consistent zoom when switching projections.
-                // We DON'T do it in first person mode though, as the distance from eye to look target doesn't change there when zooming.
-                self.vertical_world_size = Some(
-                    self.vertical_world_size
-                        .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
-                        / zoom_factor,
-                );
-                // Only consider this as interaction that shall update the blueprint if we are actually orthographic.
-                self.did_interact |= self.projection == Eye3DProjection::Orthographic;
             }
             Eye3DKind::FirstPerson => {
                 // Move along the forward axis when zooming in first person mode.
@@ -691,6 +692,43 @@ impl EyeController {
             eye_state.last_interaction_time = Some(response.ctx.time());
         }
     }
+
+    /// Handles changes in projection mode (perspective <-> orthographic).
+    /// Aims to set the new eye parameters to meaningful values when switching.
+    pub fn handle_projection_change(&mut self, eye_state: &EyeState) {
+        // Is our desired projection different from the last state?
+        if !eye_state.last_eye.is_some_and(|last_eye| {
+            matches!(
+                (last_eye.is_perspective(), self.projection),
+                (true, Eye3DProjection::Orthographic) | (false, Eye3DProjection::Perspective)
+            )
+        }) {
+            return;
+        }
+
+        // In order to achieve a deterministic switch, we derive the `vertical_world_size` from
+        // the perspective frustum at the current radius, and vice versa.
+        match self.projection {
+            Eye3DProjection::Orthographic => {
+                // Handle switch from perspective to orthographic.
+                self.vertical_world_size = Some(
+                    self.radius()
+                        * f32::tan(eye_state.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y) * 0.5)
+                        * 2.0,
+                );
+            }
+            Eye3DProjection::Perspective => {
+                // Handle switch from orthographic to perspective.
+                let radius = (self
+                    .vertical_world_size
+                    .unwrap_or(Eye::DEFAULT_VERTICAL_WORLD_SIZE)
+                    * 0.5)
+                    / f32::tan(eye_state.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y) * 0.5);
+                self.pos = self.look_target - self.fwd() * radius;
+            }
+        }
+        self.did_interact = true;
+    }
 }
 
 pub fn find_camera(cameras: &[PinholeWrapper], needle: &EntityPath) -> Option<Eye> {
@@ -749,6 +787,9 @@ impl EyeState {
             vertical_world_size: old_vertical_world_size,
             ..
         } = eye_controller;
+
+        // Handle projection changes first, as they can change the eye parameters.
+        eye_controller.handle_projection_change(self);
 
         let mut drag_threshold = 0.0;
 
