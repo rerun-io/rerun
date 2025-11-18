@@ -1,6 +1,6 @@
 use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
 use crate::table_selection::TableSelectionState;
-use egui::emath::GuiRounding;
+use egui::emath::GuiRounding as _;
 use egui::text_selection::LabelSelectionState;
 use egui::{
     Align, Context, Direction, FontSelection, Id, Layout, Modifiers, NumExt as _, Rangef, RichText,
@@ -209,7 +209,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
                 } else {
                     Self::add_row_number_content(ui, |ui| {
                         ui.label(Self::row_number_text(cell.row_nr));
-                    })
+                    });
                 }
             } else {
                 // Offset by one for the row number column.
@@ -255,7 +255,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
         }
 
         if let Some(fill) = fill {
-            let mut fill_rect = response
+            let fill_rect = response
                 .rect
                 .round_to_pixels(ui.pixels_per_point())
                 .round_ui();
