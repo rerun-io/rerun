@@ -186,9 +186,27 @@ impl MediaType {
                 && buf[1] == b'o'
                 && buf[2] == b'l'
                 && buf[3] == b'i'
-                && buf[3] == b'd'
+                && buf[4] == b'd'
             // Binary STL is hard to infer since it starts with an 80 byte header that is commonly ignored, see
             // https://en.wikipedia.org/wiki/STL_(file_format)#Binary
+        }
+
+        fn rvl_matcher(buf: &[u8]) -> bool {
+            // RVL (Range Image Visualization Library) format structure:
+            // - Config Header (12 bytes): i32 reserved + f32 depth_quant_a + f32 depth_quant_b
+            // - Resolution Header (8 bytes): u32 width + u32 height
+            // - RVL Payload: variable length compressed data
+
+            if buf.len() < 20 {
+                return false; // Minimum size check (12 + 8 bytes)
+            }
+
+            // Read width and height from bytes 12-15 and 16-19 respectively
+            let width = u32::from_le_bytes([buf[12], buf[13], buf[14], buf[15]]);
+            let height = u32::from_le_bytes([buf[16], buf[17], buf[18], buf[19]]);
+
+            // Basic validation - width and height should be reasonable
+            width > 0 && height > 0 && width <= 65536 && height <= 65536
         }
 
         // NOTE:
@@ -200,6 +218,7 @@ impl MediaType {
         let mut inferer = infer::Infer::new();
         inferer.add(Self::GLB, "glb", glb_matcher);
         inferer.add(Self::STL, "stl", stl_matcher);
+        inferer.add(Self::RVL, "rvl", rvl_matcher);
 
         inferer
             .get(data)
@@ -280,4 +299,77 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::png().file_extension(), Some("png"));
     assert_eq!(MediaType::rvl().file_extension(), Some("rvl"));
     assert_eq!(MediaType::stl().file_extension(), Some("stl"));
+}
+
+#[test]
+fn test_guess_from_data() {
+    // Empty data
+    assert_eq!(MediaType::guess_from_data(&[]), None);
+
+    // Test GLB detection
+    let glb_magic = b"glTF";
+    assert_eq!(
+        MediaType::guess_from_data(glb_magic),
+        Some(MediaType::glb())
+    );
+
+    // Test ASCII STL detection
+    let stl_magic = b"solid";
+    assert_eq!(
+        MediaType::guess_from_data(stl_magic),
+        Some(MediaType::stl())
+    );
+    // Invalid STL - not "solid"
+    assert_eq!(MediaType::guess_from_data(b"solidx"), None);
+    assert_eq!(MediaType::guess_from_data(b"soli"), None);
+
+    // Test RVL detection - create minimal valid RVL header
+    let mut rvl_header = vec![0u8; 20]; // 20 bytes minimum
+    // Config header (12 bytes): reserved (0), depth_quant_a (0.0), depth_quant_b (0.0)
+    // Resolution header (8 bytes): width = 640, height = 480
+    rvl_header[12..16].copy_from_slice(&640u32.to_le_bytes());
+    rvl_header[16..20].copy_from_slice(&480u32.to_le_bytes());
+
+    assert_eq!(
+        MediaType::guess_from_data(&rvl_header),
+        Some(MediaType::rvl())
+    );
+
+    // Test RVL with different dimensions
+    let mut rvl_header2 = vec![0u8; 20];
+    rvl_header2[12..16].copy_from_slice(&1920u32.to_le_bytes());
+    rvl_header2[16..20].copy_from_slice(&1080u32.to_le_bytes());
+
+    assert_eq!(
+        MediaType::guess_from_data(&rvl_header2),
+        Some(MediaType::rvl())
+    );
+
+    // Too short for RVL
+    assert_eq!(
+        MediaType::guess_from_data(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        None
+    );
+
+    // Invalid RVL - zero width
+    let mut rvl_invalid_width = vec![0u8; 20];
+    rvl_invalid_width[12..16].copy_from_slice(&0u32.to_le_bytes());
+    rvl_invalid_width[16..20].copy_from_slice(&480u32.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&rvl_invalid_width), None);
+
+    // Invalid RVL - zero height
+    let mut rvl_invalid_height = vec![0u8; 20];
+    rvl_invalid_height[12..16].copy_from_slice(&640u32.to_le_bytes());
+    rvl_invalid_height[16..20].copy_from_slice(&0u32.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&rvl_invalid_height), None);
+
+    // Invalid RVL - dimensions too large
+    let mut rvl_too_large = vec![0u8; 20];
+    rvl_too_large[12..16].copy_from_slice(&70000u32.to_le_bytes());
+    rvl_too_large[16..20].copy_from_slice(&480u32.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&rvl_too_large), None);
+
+    // Random data that shouldn't match
+    let random_data = b"Hello, World!";
+    assert_eq!(MediaType::guess_from_data(random_data), None);
 }
