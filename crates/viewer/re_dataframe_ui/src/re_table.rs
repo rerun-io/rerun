@@ -184,7 +184,6 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
     fn cell_ui(&mut self, ui: &mut Ui, cell: &CellInfo) {
         cell_ui(ui, self.table_style, false, |ui| {
-            ui.set_style(self.original_style.clone());
             ui.set_truncate_style();
             if cell.col_nr == 0 {
                 // This is the row number column.
