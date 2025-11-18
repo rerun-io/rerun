@@ -8,6 +8,8 @@ import pytest
 if TYPE_CHECKING:
     import pathlib
 
+    from rerun.catalog import CatalogClient
+
     from e2e_redap_tests.conftest import EntryFactory, PrefilledCatalog
 
 
