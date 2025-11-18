@@ -174,7 +174,7 @@ fn decode_encoded_depth(
 ) -> Result<ImageInfo, ImageLoadError> {
     match media_type {
         MediaType::PNG => decode_png_depth(blob_row_id, blob_component, image_bytes, format),
-        "application/rvl" => decode_rvl_depth(blob_row_id, blob_component, image_bytes, format),
+        MediaType::RVL => decode_rvl_depth(blob_row_id, blob_component, image_bytes, format),
         other => Err(ImageLoadError::UnsupportedMimeType(other.to_owned())),
     }
 }

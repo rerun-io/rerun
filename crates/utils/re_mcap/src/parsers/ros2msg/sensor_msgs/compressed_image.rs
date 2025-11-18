@@ -15,8 +15,6 @@ use crate::parsers::{
 };
 use crate::util::TimestampCell;
 
-const RVL_MEDIA_TYPE: &str = "application/rvl";
-
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 pub struct CompressedImageMessageParser {
     /// The raw image data blobs.
@@ -94,7 +92,7 @@ impl MessageParser for CompressedImageMessageParser {
 
         let components = match mode {
             ParsedPayloadKind::DepthRvl => {
-                let media_types = std::iter::repeat_n(MediaType::from(RVL_MEDIA_TYPE), blobs.len());
+                let media_types = std::iter::repeat_n(MediaType::rvl(), blobs.len());
                 EncodedDepthImage::update_fields()
                     .with_many_blob(blobs)
                     .with_many_format(image_formats)

@@ -18,6 +18,6 @@ impl EncodedDepthImage {
         datatype: ChannelDatatype,
     ) -> Self {
         let format = ImageFormat::depth([width, height], datatype);
-        Self::from_encoded_bytes(bytes, format).with_media_type(MediaType::from("application/rvl"))
+        Self::from_encoded_bytes(bytes, format).with_media_type(MediaType::rvl())
     }
 }

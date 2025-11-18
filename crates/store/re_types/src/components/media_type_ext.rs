@@ -47,6 +47,14 @@ impl MediaType {
     pub const STL: &'static str = "model/stl";
 
     // -------------------------------------------------------
+    // Compressed Depth Data:
+
+    /// [RVL compressed depth](https://rgbd-data.org/): `application/rvl`.
+    ///
+    /// Range Image Visualization Library (RVL) compressed depth data format.
+    pub const RVL: &'static str = "application/rvl";
+
+    // -------------------------------------------------------
     // Videos:
 
     /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
@@ -108,6 +116,15 @@ impl MediaType {
     #[inline]
     pub fn stl() -> Self {
         Self(Self::STL.into())
+    }
+
+    // -------------------------------------------------------
+    // Compressed Depth Data:
+
+    /// `application/rvl`
+    #[inline]
+    pub fn rvl() -> Self {
+        Self(Self::RVL.into())
     }
 
     // -------------------------------------------------------
@@ -212,6 +229,7 @@ impl MediaType {
             // Special-case some where there are multiple extensions:
             Self::JPEG => Some("jpg"),
             Self::MARKDOWN => Some("md"),
+            Self::RVL => Some("rvl"),
             Self::STL => Some("stl"),
             Self::TEXT => Some("txt"),
 
@@ -260,5 +278,6 @@ fn test_media_type_extension() {
     assert_eq!(MediaType::markdown().file_extension(), Some("md"));
     assert_eq!(MediaType::plain_text().file_extension(), Some("txt"));
     assert_eq!(MediaType::png().file_extension(), Some("png"));
+    assert_eq!(MediaType::rvl().file_extension(), Some("rvl"));
     assert_eq!(MediaType::stl().file_extension(), Some("stl"));
 }
