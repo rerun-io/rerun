@@ -53,6 +53,8 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
                     chroma_subsampling: Some(chroma_mode_from_color_config(&seq.color_config)),
                     stsd: None,
                 });
+
+                continue;
             }
             ObuType::Frame | ObuType::FrameHeader => {
                 if is_keyframe(&mut cursor).map_err(DetectGopStartError::Av1ParserError)? {
@@ -64,7 +66,7 @@ pub fn detect_av1_keyframe_start(data: &[u8]) -> Result<GopStartDetection, Detec
             }
         }
 
-        // Ensure we skip to the next OBU
+        // Skip the OBU payload
         skip_obu(&mut cursor, obu_size).map_err(DetectGopStartError::Av1ParserError)?;
     }
 
