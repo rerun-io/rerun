@@ -1,4 +1,4 @@
-//! [`GenericCoalesceBatchesExec`] combines small batches into larger batches.
+//! [`SizedCoalesceBatchesExec`] combines small batches into larger batches.
 
 use std::any::Any;
 use std::pin::Pin;
@@ -22,7 +22,7 @@ use datafusion::physical_plan::{
 use futures::ready;
 use futures::stream::{Stream, StreamExt as _};
 
-/// `CoalesceBatchesExec` combines small batches into larger batches for more
+/// `SizedCoalesceBatchesExec` combines small batches into larger batches for more
 /// efficient vectorized processing by later operators.
 ///
 /// The operator buffers batches until it collects `target_batch_rows` rows and
