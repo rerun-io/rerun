@@ -2021,3 +2021,27 @@ class _ServerInternal:
     def address(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
+
+#####################################################################################################################
+## AUTH                                                                                                            ##
+#####################################################################################################################
+
+class OauthLoginFlow:
+    """Eeee."""
+
+    def __init__(self) -> None:
+        """
+        Create a new OAuth login flow.
+
+        Boo.
+        """
+
+    def get_credentials(self) -> str:
+        """
+        Get the credentials for the OAuth login flow.
+
+        TODO.
+        """
+
+def boo() -> None:
+    """Boo."""
