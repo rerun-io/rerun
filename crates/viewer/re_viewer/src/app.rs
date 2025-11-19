@@ -14,6 +14,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
+use re_ui::egui_ext::context_ext::ContextExt;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
@@ -351,22 +352,17 @@ impl App {
             creation_context.egui_ctx.on_begin_pass(
                 "filter space key",
                 Arc::new(move |ctx| {
-                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
-                        let is_text_edit_focused =
-                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
-
-                        if !is_text_edit_focused {
-                            let shortcut = UICommand::PlaybackTogglePlayPause
-                                .primary_kb_shortcut(ctx.os())
-                                .expect("Play / pause should have a keyboard shortcut");
-                            debug_assert_eq!(
-                                shortcut.logical_key,
-                                egui::Key::Space,
-                                "Expected space key shortcut"
-                            );
-                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
-                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
-                            }
+                    if !ctx.text_edit_focused() {
+                        let shortcut = UICommand::PlaybackTogglePlayPause
+                            .primary_kb_shortcut(ctx.os())
+                            .expect("Play / pause should have a keyboard shortcut");
+                        debug_assert_eq!(
+                            shortcut.logical_key,
+                            egui::Key::Space,
+                            "Expected space key shortcut"
+                        );
+                        if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
+                            command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
                         }
                     }
                 }),
