@@ -575,8 +575,8 @@ class DatasetView:
             view = view.fill_latest_at()
 
         if using_index_values is not None:
-            # Fake the intended behavior: index values are provided on a per-segment basis. If missing, it is assumed
-            # that all rows are selected.
+            # Fake the intended behavior: index values are provided on a per-segment basis. If a segement is missing,
+            # no rows are generated for it.
             segments = self._lazy_state.filtered_segments or self._inner.partition_ids()
 
             df = None
@@ -584,15 +584,7 @@ class DatasetView:
                 if segment in using_index_values:
                     index_values = using_index_values[segment]
                 else:
-                    values = (
-                        self._inner.dataframe_query_view(index=index, contents=full_contents)
-                        .filter_partition_id(segment)
-                        .df()
-                        .select(index)
-                        .to_pydict()[index]
-                    )
-
-                    index_values = np.array(values, dtype=np.datetime64)
+                    index_values = np.array([], dtype=np.datetime64)
 
                 other_df = (
                     view.filter_partition_id(segment)
