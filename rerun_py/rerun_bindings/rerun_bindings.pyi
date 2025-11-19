@@ -1532,7 +1532,6 @@ class DatasetEntry(Entry):
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
-        num_partitions: int | None = None,
         target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
@@ -1555,12 +1554,12 @@ class DatasetEntry(Entry):
             The component column to create the index on.
         time_index : IndexColumnSelector
             Which timeline this index will map to.
-        num_partitions : int | None
-            The number of partitions to create for the index.
-            (Deprecated, use target_partition_num_rows instead)
         target_partition_num_rows : int | None
             The target size (in number of rows) for each partition.
-            Defaults to 4096 if neither this nor num_partitions is specified.
+            The underlying indexer (lance) will pick a default when no value
+            is specified - today this is 8192. It will also cap the
+            maximum number of partitions independently of this setting - currently
+            4096.
         num_sub_vectors : int
             The number of sub-vectors to use when building the index.
         distance_metric : VectorDistanceMetricLike
