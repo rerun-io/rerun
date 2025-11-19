@@ -20,11 +20,11 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use super::{eye::Eye, ui::create_labels};
+use crate::contexts::TransformTreeContext;
 use crate::{
     Pinhole, SpatialView2D, ui::SpatialViewState, view_kind::SpatialViewKind,
     visualizers::collect_ui_labels,
 };
-
 // ---
 
 /// Pan and zoom, and return the current transform.
@@ -151,17 +151,18 @@ impl SpatialView2D {
         }
 
         // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
-
-        // Note that we can't rely on the camera being part of scene.space_cameras since that requires
-        // the camera to be added to the scene!
-        //
-        // TODO(#6743): We don't have a data-result or the other pieces
-        // necessary to properly handle overrides, defaults, or fallbacks.
-        state.pinhole_at_origin = crate::pinhole::query_pinhole_from_store_without_blueprint(
-            ctx,
-            &ctx.current_query(),
-            query.space_origin,
-        );
+        let transforms = system_output
+            .context_systems
+            .get::<TransformTreeContext>()?;
+        state.pinhole_at_origin = transforms
+            .pinhole_tree_root_info(transforms.target_frame())
+            .map(|pinhole_at_root| {
+                let pinhole = &pinhole_at_root.pinhole_projection;
+                Pinhole {
+                    image_from_camera: pinhole.image_from_camera.0.into(),
+                    resolution: pinhole.resolution.unwrap_or_default().into(), // TODO: use fallback.
+                }
+            });
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
@@ -360,8 +361,6 @@ fn setup_target_config(
                 principal_point.extend(1.0),
             ),
             resolution,
-            color: None,
-            line_width: None,
         }
     };
     let pinhole_rect = Rect::from_min_size(
