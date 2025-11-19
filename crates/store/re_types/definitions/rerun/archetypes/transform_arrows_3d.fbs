@@ -1,6 +1,6 @@
 namespace rerun.archetypes;
 
-/// A visual representation of a [archetypes.Transform3D] or an [archetypes.InstancePoses3D] that shows three arrows.
+/// A visual representation of a [archetypes.Transform3D] or an [archetypes.InstancePoses3D].
 ///
 /// TODO: Example
 table TransformArrows3D (

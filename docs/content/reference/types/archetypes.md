@@ -64,7 +64,7 @@ This page lists all built-in archetypes.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
 * [`Points3D`](archetypes/points3d.md): A 3D point cloud with positions and optional colors, radii, labels, etc.
 * [`Transform3D`](archetypes/transform3d.md): A transform between two 3D spaces, i.e. a pose.
-* [`TransformArrows3D`](archetypes/transform_arrows3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) or an [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) that shows three arrows.
+* [`TransformArrows3D`](archetypes/transform_arrows3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) or an [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).
 * [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 
 ## Text

@@ -21,7 +21,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: A visual representation of a [`archetypes::Transform3D`][crate::archetypes::Transform3D] or an [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] that shows three arrows.
+/// **Archetype**: A visual representation of a [`archetypes::Transform3D`][crate::archetypes::Transform3D] or an [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
 ///
 /// TODO: Example
 #[derive(Clone, Debug, PartialEq, Default)]

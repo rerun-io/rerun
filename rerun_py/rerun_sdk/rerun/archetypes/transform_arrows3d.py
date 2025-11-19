@@ -24,7 +24,7 @@ __all__ = ["TransformArrows3D"]
 @define(str=False, repr=False, init=False)
 class TransformArrows3D(Archetype):
     """
-    **Archetype**: A visual representation of a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] or an [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] that shows three arrows.
+    **Archetype**: A visual representation of a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] or an [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
 
     TODO: Example
     """

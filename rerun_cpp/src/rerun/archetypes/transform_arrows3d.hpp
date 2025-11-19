@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A visual representation of a `archetypes::Transform3D` or an `archetypes::InstancePoses3D` that shows three arrows.
+    /// **Archetype**: A visual representation of a `archetypes::Transform3D` or an `archetypes::InstancePoses3D`.
     ///
     /// TODO: Example
     struct TransformArrows3D {
