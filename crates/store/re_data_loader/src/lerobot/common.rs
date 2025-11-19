@@ -110,7 +110,10 @@ pub fn load_episode_images(
     for frame_idx in 0..image_bytes.len() {
         let img_buffer = image_bytes.value(frame_idx);
         let encoded_image = EncodedImage::from_file_contents(img_buffer.to_owned());
-        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
+
+        let frame_idx = i64::try_from(frame_idx)
+            .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
+        let timepoint = TimePoint::default().with(*timeline, frame_idx);
         chunk = chunk.with_archetype(row_id, timepoint, &encoded_image);
 
         row_id = row_id.next();
@@ -142,7 +145,9 @@ pub fn load_episode_depth_images(
             re_types::archetypes::DepthImage::from_file_contents(img_buffer.to_owned())
                 .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
 
-        let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
+        let frame_idx = i64::try_from(frame_idx)
+            .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
+        let timepoint = TimePoint::default().with(*timeline, frame_idx);
         chunk = chunk.with_archetype(row_id, timepoint, &depth_image);
 
         row_id = row_id.next();
