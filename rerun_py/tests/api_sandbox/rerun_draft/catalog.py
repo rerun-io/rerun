@@ -304,7 +304,6 @@ class DatasetEntry(Entry):
         *,
         column: Any,
         time_index: Any,
-        num_partitions: int | None = None,
         target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: Any = ...,
@@ -312,7 +311,6 @@ class DatasetEntry(Entry):
         return self._inner.create_vector_index(
             column=column,
             time_index=time_index,
-            num_partitions=num_partitions,
             target_partition_num_rows=target_partition_num_rows,
             num_sub_vectors=num_sub_vectors,
             distance_metric=distance_metric,
