@@ -714,10 +714,11 @@ fn log_episode_task(
             continue;
         };
 
-        // Only log when task changes to avoid redundant string cloning
-
         if let Some(task) = dataset.task_by_index(task_idx) {
-            let timepoint = TimePoint::default().with(*timeline, frame_idx as i64);
+            let frame_idx = i64::try_from(frame_idx)
+                .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
+
+            let timepoint = TimePoint::default().with(*timeline, frame_idx);
             let text = TextDocument::new(task.task.clone());
             chunk = chunk.with_archetype(row_id, timepoint, &text);
             row_id = row_id.next();
