@@ -10,15 +10,17 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import datafusion
+import numpy as np
 import pyarrow as pa
 from rerun import catalog as _catalog
 from rerun.dataframe import ComponentColumnDescriptor, IndexColumnDescriptor
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
     from datetime import datetime
 
-    from rerun_bindings import Schema as _Schema  # noqa: TID251
+    from rerun_bindings import Schema as _Schema, IndexValuesLike  # noqa: TID251
 
 
 class CatalogClient:
@@ -272,7 +274,7 @@ class DatasetEntry(Entry):
         index: str | None,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: Any = None,
+        using_index_values: dict[str, IndexValuesLike] | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         view = DatasetView(self._inner, _LazyDatasetState())
@@ -541,7 +543,7 @@ class DatasetView:
         index: str | None,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: Any = None,
+        using_index_values: dict[str, IndexValuesLike] | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         """
@@ -569,18 +571,48 @@ class DatasetView:
             include_tombstone_columns=include_tombstone_columns,
         )
 
-        if self._lazy_state.filtered_segments is not None:
-            view = view.filter_partition_id(*self._lazy_state.filtered_segments)
-
-        # Apply using_index_values if provided
-        if using_index_values is not None:
-            view = view.using_index_values(using_index_values)
-
         # Apply fill_latest_at if requested
         if fill_latest_at:
             view = view.fill_latest_at()
 
-        return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+        if using_index_values is not None:
+            # Fake the intended behavior: index values are provided on a per-segment basis. If missing, it is assumed
+            # that all rows are selected.
+            segments = self._lazy_state.filtered_segments or self._inner.partition_ids()
+
+            df = None
+            for segment in segments:
+                if segment in using_index_values:
+                    index_values = using_index_values[segment]
+                else:
+                    values = (
+                        self._inner.dataframe_query_view(index=index, contents=full_contents)
+                        .filter_partition_id(segment)
+                        .df()
+                        .select(index)
+                        .to_pydict()[index]
+                    )
+
+                    index_values = np.array(values, dtype=np.datetime64)
+
+                other_df = (
+                    view.filter_partition_id(segment)
+                    .using_index_values(index_values)
+                    .df()
+                    .with_column_renamed("rerun_partition_id", "rerun_segment_id")
+                )
+
+                if df is None:
+                    df = other_df
+                else:
+                    df = df.union(other_df)
+
+            return df
+        else:
+            if self._lazy_state.filtered_segments is not None:
+                view = view.filter_partition_id(*self._lazy_state.filtered_segments)
+
+            return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
         """
