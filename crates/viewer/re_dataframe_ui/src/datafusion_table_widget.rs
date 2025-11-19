@@ -644,7 +644,7 @@ impl DataFusionTableDelegate<'_> {
         }
     }
 
-    pub fn row_context_menu(&self, ui: &mut Ui, _row_number: u64) {
+    pub fn row_context_menu(&self, ui: &Ui, _row_number: u64) {
         let has_context_menu = self.blueprint.partition_links.is_some();
         if !has_context_menu {
             return;
@@ -671,7 +671,7 @@ impl DataFusionTableDelegate<'_> {
                         if let Some(partition_link) =
                             self.partition_link_for_row(row, partition_links_spec)
                         {
-                            ui.ctx().open_url(OpenUrl::same_tab(partition_link))
+                            ui.ctx().open_url(OpenUrl::same_tab(partition_link));
                         } else {
                             error!("Could not get partition link for row {}", row);
                         }
