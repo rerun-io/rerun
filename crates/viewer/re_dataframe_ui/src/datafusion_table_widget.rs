@@ -662,20 +662,29 @@ impl DataFusionTableDelegate<'_> {
                     selected_rows.len(),
                     format_plural_s(selected_rows.len())
                 );
-                if ui
-                    .add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label))
-                    .clicked()
-                {
+                let response =
+                    ui.add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label));
+
+                let open = |new_tab| {
                     // Let's open the recordings in order
                     for row in selected_rows.iter().copied().sorted() {
                         if let Some(partition_link) =
                             self.partition_link_for_row(row, partition_links_spec)
                         {
-                            ui.ctx().open_url(OpenUrl::same_tab(partition_link));
+                            ui.ctx().open_url(OpenUrl {
+                                url: partition_link,
+                                new_tab,
+                            });
                         } else {
                             error!("Could not get partition link for row {}", row);
                         }
                     }
+                };
+
+                if response.clicked_with_open_in_background() {
+                    open(true);
+                } else if response.clicked() {
+                    open(false);
                 }
             }
         });
