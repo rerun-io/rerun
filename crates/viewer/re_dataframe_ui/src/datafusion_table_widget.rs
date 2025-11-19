@@ -8,6 +8,7 @@ use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_format::{format_plural_s, format_uint};
+use re_log::error;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
@@ -627,6 +628,58 @@ impl DataFusionTableDelegate<'_> {
         }
         None
     }
+
+    fn partition_link_for_row(&self, row: u64, spec: &PartitionLinksSpec) -> Option<String> {
+        let (display_record_batch, batch_index) =
+            Self::with_row_batch(self.display_record_batches, row as usize)?;
+        let column_index = self
+            .columns
+            .iter()
+            .position(|col| col.blueprint.display_name.as_ref() == Some(&spec.column_name))?;
+        let column = display_record_batch.columns().get(column_index)?;
+
+        match column {
+            DisplayColumn::RowId { .. } | DisplayColumn::Timeline { .. } => None,
+            DisplayColumn::Component(col) => col.string_value_at(batch_index),
+        }
+    }
+
+    pub fn row_context_menu(&self, ui: &mut Ui, _row_number: u64) {
+        let has_context_menu = self.blueprint.partition_links.is_some();
+        if !has_context_menu {
+            return;
+        }
+
+        ui.response().container_context_menu(|ui| {
+            let selection = TableSelectionState::load(ui.ctx(), self.session_id);
+
+            // re_table will ensure that the right-clicked row is always selected.
+            let selected_rows = selection.selected_rows;
+
+            if let Some(partition_links_spec) = &self.blueprint.partition_links {
+                let label = format!(
+                    "Open {} partition{}",
+                    selected_rows.len(),
+                    format_plural_s(selected_rows.len())
+                );
+                if ui
+                    .add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label))
+                    .clicked()
+                {
+                    // Let's open the recordings in order
+                    for row in selected_rows.iter().copied().sorted() {
+                        if let Some(partition_link) =
+                            self.partition_link_for_row(row, partition_links_spec)
+                        {
+                            ui.ctx().open_url(OpenUrl::same_tab(partition_link))
+                        } else {
+                            error!("Could not get partition link for row {}", row);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
@@ -745,55 +798,8 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         }
     }
 
-    fn row_ui(&mut self, ui: &mut Ui, _row_nr: u64) {
-        let has_context_menu = self.blueprint.partition_links.is_some();
-        if has_context_menu {
-            ui.response().container_context_menu(|ui| {
-                let selection = TableSelectionState::load(ui.ctx(), self.session_id);
-
-                // re_table will ensure that the right-clicked row is always selected.
-                let selected_items = selection.selected_rows;
-
-                if let Some(partition_links_spec) = &self.blueprint.partition_links {
-                    let label = format!(
-                        "Open {} partition{}",
-                        selected_items.len(),
-                        format_plural_s(selected_items.len())
-                    );
-                    if ui
-                        .add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label))
-                        .clicked()
-                    {
-                        let column_index = self.columns.iter().position(|col| {
-                            col.blueprint.display_name.as_ref()
-                                == Some(&partition_links_spec.column_name)
-                        });
-
-                        // Let's open the tabs in order
-                        for row in selected_items.iter().copied().sorted() {
-                            if let Some((display_record_batch, batch_index)) =
-                                Self::with_row_batch(self.display_record_batches, row as usize)
-                            {
-                                if let Some(column) = column_index
-                                    .and_then(|col| display_record_batch.columns().get(col))
-                                {
-                                    match column {
-                                        DisplayColumn::RowId { .. }
-                                        | DisplayColumn::Timeline { .. } => {}
-                                        DisplayColumn::Component(col) => {
-                                            let string = col.string_value_at(batch_index);
-                                            if let Some(url) = string {
-                                                ui.ctx().open_url(OpenUrl::same_tab(url));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
+        self.row_context_menu(ui, row_nr);
     }
 
     fn default_row_height(&self) -> f32 {
