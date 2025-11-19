@@ -487,7 +487,9 @@ fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) -
     ui.strong(column.name())
 }
 
-// We need this to be a custom ui to bew able to use the view state to get seen text log levels. This could potentially be avoided if we could add component ui's from this crate.
+/// We need this to be a custom ui to be able to use the view state to get seen text log levels.
+///
+/// This could potentially be avoided if we could add component ui's from this crate.
 fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let property = ViewProperty::from_archetype::<TextLogRows>(
         ctx.blueprint_db(),
