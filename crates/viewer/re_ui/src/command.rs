@@ -9,7 +9,7 @@ pub trait UICommandSender {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct SetPlaybackSpeed(pub egui::emath::OrderedFloat<f32>);
+pub struct SetPlaybackSpeed(pub egui::emath::OrderedFloat<f32>);
 impl Default for SetPlaybackSpeed {
     fn default() -> Self {
         Self(egui::emath::OrderedFloat(1.0))
@@ -520,7 +520,7 @@ impl UICommand {
         matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
     }
 
-    fn handle_playback_chord(ctx: &egui::Context) {
+    fn handle_playback_chord(ctx: &egui::Context) -> Option<Self> {
         const CHORD_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
 
         #[derive(Default, Clone)]
@@ -529,8 +529,123 @@ impl UICommand {
             keys_pressed: Vec<Key>,
         }
 
-        let chord_state =
+        let mut chord_state =
             ctx.data_mut(|data| data.get_temp_mut_or_default::<ChordState>(Id::NULL).clone());
+
+        let now = std::time::Instant::now();
+
+        // Don't do chord logic if any modifiers are pressed
+        let has_modifiers = ctx.input(|i| {
+            i.modifiers.ctrl || i.modifiers.shift || i.modifiers.alt || i.modifiers.command
+        });
+        if has_modifiers {
+            return None;
+        }
+
+        // Check if timeout expired - if so, clear old state
+        if let Some(last_time) = chord_state.last_key_time {
+            if now.duration_since(last_time) >= CHORD_TIMEOUT {
+                ctx.data_mut(|data| data.insert_temp(Id::NULL, ChordState::default()));
+                chord_state = ChordState::default();
+            }
+        }
+
+        // Check for any non-number key press - cancel the chord
+        let non_number_pressed = ctx.input(|i| {
+            // Check if any key other than numbers was pressed
+            i.keys_down.iter().any(|key| {
+                !matches!(
+                    key,
+                    Key::Num0
+                        | Key::Num1
+                        | Key::Num2
+                        | Key::Num3
+                        | Key::Num4
+                        | Key::Num5
+                        | Key::Num6
+                        | Key::Num7
+                        | Key::Num8
+                        | Key::Num9
+                )
+            })
+        });
+
+        if non_number_pressed {
+            // Cancel chord
+            ctx.data_mut(|data| data.insert_temp(Id::NULL, ChordState::default()));
+            return None;
+        }
+
+        // Check for number key press
+        let pressed_key = ctx.input(|i| {
+            // Check which number key was pressed
+            for key in [
+                Key::Num0,
+                Key::Num1,
+                Key::Num2,
+                Key::Num3,
+                Key::Num4,
+                Key::Num5,
+                Key::Num6,
+                Key::Num7,
+                Key::Num8,
+                Key::Num9,
+            ] {
+                if i.key_pressed(key) {
+                    return Some(key);
+                }
+            }
+            None
+        });
+
+        if let Some(key) = pressed_key {
+            // Check if we should add to existing sequence or start new one
+            let should_continue = chord_state
+                .last_key_time
+                .map(|t| now.duration_since(t) < CHORD_TIMEOUT)
+                .unwrap_or(false);
+
+            if should_continue {
+                chord_state.keys_pressed.push(key);
+            } else {
+                chord_state.keys_pressed = vec![key];
+            }
+
+            chord_state.last_key_time = Some(now);
+
+            // Parse the accumulated keys into a speed string
+            let speed_str: String = chord_state
+                .keys_pressed
+                .iter()
+                .filter_map(|k| match k {
+                    Key::Num0 => Some('0'),
+                    Key::Num1 => Some('1'),
+                    Key::Num2 => Some('2'),
+                    Key::Num3 => Some('3'),
+                    Key::Num4 => Some('4'),
+                    Key::Num5 => Some('5'),
+                    Key::Num6 => Some('6'),
+                    Key::Num7 => Some('7'),
+                    Key::Num8 => Some('8'),
+                    Key::Num9 => Some('9'),
+                    _ => None,
+                })
+                .collect();
+
+            // Save updated state
+            ctx.data_mut(|data| data.insert_temp(Id::NULL, chord_state));
+
+            // Parse and immediately trigger command
+            if let Ok(speed) = speed_str.parse::<f32>() {
+                if speed > 0.0 {
+                    return Some(Self::PlaybackSpeed(SetPlaybackSpeed(
+                        egui::emath::OrderedFloat(speed),
+                    )));
+                }
+            }
+        }
+
+        None
     }
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
@@ -560,7 +675,7 @@ impl UICommand {
             -num_shift_alts // most first
         });
 
-        egui_ctx.input_mut(|input| {
+        let command = egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
                 if anything_has_focus {
                     // If a text edit has focus, is should usually get exclusive access to that input.
@@ -581,7 +696,13 @@ impl UICommand {
                 }
             }
             None
-        })
+        });
+
+        if command.is_none() {
+            Self::handle_playback_chord(egui_ctx)
+        } else {
+            command
+        }
     }
 
     /// Show this command as a menu-button.
