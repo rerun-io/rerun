@@ -15,12 +15,11 @@ import pyarrow as pa
 from rerun import catalog as _catalog
 from rerun.dataframe import ComponentColumnDescriptor, IndexColumnDescriptor
 
-
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
     from datetime import datetime
 
-    from rerun_bindings import Schema as _Schema, IndexValuesLike  # noqa: TID251
+    from rerun_bindings import IndexValuesLike, Schema as _Schema  # noqa: TID251
 
 
 class CatalogClient:

@@ -163,6 +163,8 @@ def test_dataframe_api_using_index_values(complex_dataset: DatasetEntry) -> None
 
     table = df.to_arrow_table()
 
+    # NOLINT_START
+
     assert str(table) == inline_snapshot("""\
 pyarrow.Table
 rerun_segment_id: string not null
@@ -181,3 +183,5 @@ timeline: [[1999-12-31 23:59:59.000000000,2000-01-01 00:00:01.000500000,2000-01-
 /points:Points2D:positions: [[null,[[0,1],[3,4]],...,[[2,3],[5,6]],[[2,3],[5,6]]]]
 /text:TextLog:text: [[null,["Hello"],...,["Hello"],["World"]]]\
 """)
+
+    # NOLINT_END
