@@ -27,6 +27,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct TextLogFormat {
     /// Whether to use a monospace font for the log message body.
+    ///
+    /// Defaults to not being enabled.
     pub monospace_body: Option<SerializedComponentBatch>,
 }
 
@@ -148,6 +150,8 @@ impl TextLogFormat {
     }
 
     /// Whether to use a monospace font for the log message body.
+    ///
+    /// Defaults to not being enabled.
     #[inline]
     pub fn with_monospace_body(
         mut self,

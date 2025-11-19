@@ -38,6 +38,8 @@ class TextLogFormat(Archetype):
         monospace_body:
             Whether to use a monospace font for the log message body.
 
+            Defaults to not being enabled.
+
         """
 
         # You can define your own __init__ function as a member of TextLogFormatExt in text_log_format_ext.py
@@ -76,6 +78,8 @@ class TextLogFormat(Archetype):
         monospace_body:
             Whether to use a monospace font for the log message body.
 
+            Defaults to not being enabled.
+
         """
 
         inst = cls.__new__(cls)
@@ -104,6 +108,8 @@ class TextLogFormat(Archetype):
         converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
     )
     # Whether to use a monospace font for the log message body.
+    #
+    # Defaults to not being enabled.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

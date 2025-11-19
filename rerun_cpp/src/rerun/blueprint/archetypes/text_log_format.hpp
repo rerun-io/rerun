@@ -21,6 +21,8 @@ namespace rerun::blueprint::archetypes {
     ///
     struct TextLogFormat {
         /// Whether to use a monospace font for the log message body.
+        ///
+        /// Defaults to not being enabled.
         std::optional<ComponentBatch> monospace_body;
 
       public:
@@ -49,6 +51,8 @@ namespace rerun::blueprint::archetypes {
         static TextLogFormat clear_fields();
 
         /// Whether to use a monospace font for the log message body.
+        ///
+        /// Defaults to not being enabled.
         TextLogFormat with_monospace_body(
             const rerun::blueprint::components::Enabled& _monospace_body
         ) && {

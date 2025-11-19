@@ -4036,7 +4036,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "monospace_body",
                     display_name: "Monospace body",
                     component_type: "rerun.blueprint.components.Enabled".into(),
-                    docstring_md: "Whether to use a monospace font for the log message body.",
+                    docstring_md: "Whether to use a monospace font for the log message body.\n\nDefaults to not being enabled.",
                     is_required: false,
                 }],
             },
