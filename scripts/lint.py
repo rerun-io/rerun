@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import git
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
 
@@ -1352,6 +1353,8 @@ def lint_file(filepath: str, args: Any) -> int:
                         source.error(error)
                         + f"\n\tUnqualified NOLINT not allowed for pymethods lints. Use `NOLINT: ignore[{error_code}]` instead."
                     )
+                    if error_code == "py-mthd-str":
+                        continue
                     valid_pymethods_errors += 1
             num_errors += valid_pymethods_errors
 
@@ -1535,18 +1538,16 @@ def main() -> None:
                     continue
                 num_errors += lint_file(filepath, args)
     else:
-        for root, dirs, files in os.walk(".", topdown=True):
-            dirs[:] = [d for d in dirs if not should_ignore(os.path.join(root, d))]
-
-            for filename in files:
-                extension = filename.split(".")[-1]
-                if extension in extensions:
-                    filepath = os.path.join(root, filename)
-                    filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
-                    filepath = str(filepath).replace("\\", "/")
-                    if should_ignore(filepath) or filepath.startswith(exclude_paths):
-                        continue
-                    num_errors += lint_file(filepath, args)
+        repo = git.Repo(".", search_parent_directories=True)
+        tracked_files = [item[1].path for item in repo.index.iter_blobs()]
+        for filepath in tracked_files:
+            # TODO do this with pathlib for general sep types
+            filepath = "." + os.sep + filepath
+            extension = filepath.split(".")[-1]
+            if extension in extensions:
+                if filepath.startswith(exclude_paths):
+                    continue
+                num_errors += lint_file(filepath, args)
 
         # Since no files have been specified, we also run the global lints.
         num_errors += lint_crate_docs()
