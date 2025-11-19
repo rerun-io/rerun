@@ -36,7 +36,7 @@ def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path
     )
     df = table_entry.df()
 
-    # Due to https://github.com/lancedb/lance/issues/2304 we cannot
+    # Due to https://github.com/lance-format/lance/issues/2304 we cannot
     # directly compare the returned schema. Verify we at least
     # get back the same columns and metadata
 
