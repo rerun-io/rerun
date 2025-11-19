@@ -2,4 +2,4 @@
 source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
-filter_by_log_level: [INFO]
+monospace_body: [false]

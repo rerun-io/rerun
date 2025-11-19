@@ -80,12 +80,12 @@ Filter message types and toggle column visibility in a selection panel.",
             |ctx| {
                 ctx.viewer_ctx()
                     .recording()
-                    .times_per_timeline()
                     .timelines()
+                    .keys()
                     .map(|t| {
                         TimelineColumn(bp_datatypes::TimelineColumn {
                             visible: true.into(),
-                            timeline: t.name().as_str().into(),
+                            timeline: t.as_str().into(),
                         })
                     })
                     .collect::<Vec<_>>()
