@@ -2453,6 +2453,144 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+
+        let image_from_camera =
+            components::PinholeProjection::from_focal_length_and_principal_point(
+                [1.0, 2.0],
+                [1.0, 2.0],
+            );
+
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            // Add pinhole with explicit child and parent frames
+            .with_archetype_auto_row(
+                [(timeline, 0)],
+                &archetypes::Pinhole::new(image_from_camera)
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            // Add a 3D transform on top.
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0])
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            // Add a 3D transform to a different child frame.
+            .with_archetype_auto_row(
+                [(timeline, 2)],
+                &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0])
+                    .with_child_frame("other_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            // Add a pinhole to that same relation, this time with an explicit resolution.
+            .with_archetype_auto_row(
+                [(timeline, 3)],
+                &archetypes::Pinhole::new(image_from_camera)
+                    .with_resolution([1.0, 2.0])
+                    .with_child_frame("other_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        apply_store_subscriber_events(&mut cache, &entity_db);
+
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+
+        // Check transforms going out from child_frame
+        let transforms = transforms_per_timeline
+            .frame_transforms(TransformFrameIdHash::from_str("child_frame"))
+            .unwrap();
+        for t in [0, 1, 2, 3] {
+            // Pinhole from child_frame->X exists at all times unchanged.
+            assert_eq!(
+                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                Some(ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    image_from_camera,
+                    resolution: None,
+                    view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+                }),
+                "Unexpected pinhole for child_frame at time t={t}"
+            );
+
+            // After time 1 we have a transform on top
+            if t == 0 {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    None,
+                    "Unexpected transform for child_frame at time t={t}"
+                );
+            } else {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    }),
+                    "Unexpected transform for child_frame at time t={t}"
+                );
+            }
+        }
+
+        // Check transforms going out from other_frame
+        let transforms = transforms_per_timeline
+            .frame_transforms(TransformFrameIdHash::from_str("other_frame"))
+            .unwrap();
+        for t in [0, 1, 2, 3] {
+            // Pinhole from other_frame->X exists only at time t==3
+            if t < 3 {
+                assert_eq!(
+                    transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    None,
+                    "Unexpected pinhole for other_frame at time t={t}"
+                );
+            } else {
+                assert_eq!(
+                    transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    Some(ResolvedPinholeProjection {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        image_from_camera,
+                        resolution: Some([1.0, 2.0].into()),
+                        view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+                    }),
+                    "Unexpected pinhole for other_frame at time t={t}"
+                );
+            }
+
+            // After time 2 we have a transform.
+            if t < 2 {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    None,
+                    "Unexpected transform for other_frame at time t={t}"
+                );
+            } else {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
+                    }),
+                    "Unexpected transform for other_frame at time t={t}"
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     // TODO(andreas): We're missing tests for more corner cases involving child frames and (recursive) clears.
 
     #[test]
