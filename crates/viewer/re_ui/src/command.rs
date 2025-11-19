@@ -1,4 +1,4 @@
-use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
+use egui::{Id, Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;
@@ -6,6 +6,14 @@ use crate::context_ext::ContextExt as _;
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
     fn send_ui(&self, command: UICommand);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct SetPlaybackSpeed(pub egui::emath::OrderedFloat<f32>);
+impl Default for SetPlaybackSpeed {
+    fn default() -> Self {
+        Self(egui::emath::OrderedFloat(1.0))
+    }
 }
 
 /// All the commands we support.
@@ -78,6 +86,7 @@ pub enum UICommand {
     PlaybackStepBack,
     PlaybackStepForward,
     PlaybackRestart,
+    PlaybackSpeed(SetPlaybackSpeed),
 
     // Dev-tools:
     #[cfg(not(target_arch = "wasm32"))]
@@ -271,6 +280,11 @@ impl UICommand {
             ),
             Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
 
+            Self::PlaybackSpeed(_) => (
+                "Set playback speed",
+                "This is a chord, so you can press 5+0 to set the speed to 50x",
+            ),
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => (
                 "Screenshot",
@@ -444,6 +458,11 @@ impl UICommand {
             Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
             Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
 
+            Self::PlaybackSpeed(_) => {
+                // This is a chord, so no single shortcut.
+                smallvec![]
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => smallvec![],
             #[cfg(not(target_arch = "wasm32"))]
@@ -480,6 +499,9 @@ impl UICommand {
     /// Return the keyboard shortcut for this command, nicely formatted
     // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
+        if matches!(self, Self::PlaybackSpeed(_)) {
+            return Some("1-99".to_owned());
+        }
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
@@ -496,6 +518,19 @@ impl UICommand {
 
     pub fn is_link(self) -> bool {
         matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
+    }
+
+    fn handle_playback_chord(ctx: &egui::Context) {
+        const CHORD_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
+
+        #[derive(Default, Clone)]
+        struct ChordState {
+            last_key_time: Option<std::time::Instant>,
+            keys_pressed: Vec<Key>,
+        }
+
+        let chord_state =
+            ctx.data_mut(|data| data.get_temp_mut_or_default::<ChordState>(Id::NULL).clone());
     }
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]

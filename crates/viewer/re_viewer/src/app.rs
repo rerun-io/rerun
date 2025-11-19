@@ -1673,6 +1673,16 @@ impl App {
                 }
             }
 
+            UICommand::PlaybackSpeed(speed) => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::SetSpeed(speed.0.0)],
+                        });
+                }
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => {
                 self.screenshotter.request_screenshot(egui_ctx);
