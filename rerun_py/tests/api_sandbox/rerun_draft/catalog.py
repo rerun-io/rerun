@@ -161,7 +161,7 @@ class Entry:
 class Schema:
     """A schema view over a dataset in the catalog."""
 
-    def __init__(self, inner: _Schema, lazy_state: LazyDatasetState) -> None:
+    def __init__(self, inner: _Schema, lazy_state: _LazyDatasetState) -> None:
         self._inner: _Schema = inner
         self._component_columns: list[ComponentColumnDescriptor] = []
         self._index_columns: list[IndexColumnDescriptor] = []
@@ -229,7 +229,7 @@ class DatasetEntry(Entry):
         return self._inner.set_default_blueprint_partition_id(segment_id)
 
     def schema(self) -> Schema:
-        return Schema(self._inner.schema(), LazyDatasetState())
+        return Schema(self._inner.schema(), _LazyDatasetState())
 
     def segment_ids(self) -> list[str]:
         return self._inner.partition_ids()
@@ -237,7 +237,7 @@ class DatasetEntry(Entry):
     def segment_table(
         self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
     ) -> datafusion.DataFrame:
-        view = DatasetView(self._inner, LazyDatasetState())
+        view = DatasetView(self._inner, _LazyDatasetState())
         return view.segment_table(join_meta=join_meta, join_key=join_key)
 
     def manifest(self) -> Any:
@@ -275,7 +275,7 @@ class DatasetEntry(Entry):
         using_index_values: Any = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
-        view = DatasetView(self._inner, LazyDatasetState())
+        view = DatasetView(self._inner, _LazyDatasetState())
         return view.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
@@ -353,18 +353,18 @@ class DatasetEntry(Entry):
         Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
         or a sequence of segment ID strings.
         """
-        new_lazy_state = LazyDatasetState().with_segment_filters(segment_ids)
+        new_lazy_state = _LazyDatasetState().with_segment_filters(segment_ids)
 
         return DatasetView(self._inner, lazy_state=new_lazy_state)
 
     def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
         """Returns a new DatasetEntry filtered to the given entity paths."""
-        new_lazy_state = LazyDatasetState().with_content_filters(exprs)
+        new_lazy_state = _LazyDatasetState().with_content_filters(exprs)
 
         return DatasetView(self._inner, lazy_state=new_lazy_state)
 
 
-class ContentMatcher:
+class _ContentMatcher:
     """
     Helper class to match contents expressions against entity paths.
 
@@ -424,13 +424,13 @@ class ContentMatcher:
 
 
 @dataclass
-class LazyDatasetState:
+class _LazyDatasetState:
     # None means no filtering
     # Otherwise we accumulate a set via intersection
     filtered_segments: set[str] | None = None
-    content_path_filters: list[ContentMatcher] = field(default_factory=list)
+    content_path_filters: list[_ContentMatcher] = field(default_factory=list)
 
-    def with_segment_filters(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> LazyDatasetState:
+    def with_segment_filters(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> _LazyDatasetState:
         new_lazy_state = copy.deepcopy(self)
 
         if isinstance(segment_ids, datafusion.DataFrame):
@@ -452,12 +452,12 @@ class LazyDatasetState:
     def with_content_filters(
         self,
         exprs: Sequence[str],
-    ) -> LazyDatasetState:
+    ) -> _LazyDatasetState:
         new_lazy_state = copy.deepcopy(self)
 
         exprs = " ".join(exprs)
 
-        new_lazy_state.content_path_filters.append(ContentMatcher(exprs))
+        new_lazy_state.content_path_filters.append(_ContentMatcher(exprs))
 
         return new_lazy_state
 
@@ -465,9 +465,9 @@ class LazyDatasetState:
 class DatasetView:
     """A view over a dataset in the catalog."""
 
-    def __init__(self, inner: _catalog.DatasetEntry, lazy_state: LazyDatasetState) -> None:
+    def __init__(self, inner: _catalog.DatasetEntry, lazy_state: _LazyDatasetState) -> None:
         self._inner: _catalog.DatasetEntry = inner
-        self._lazy_state: LazyDatasetState = lazy_state
+        self._lazy_state: _LazyDatasetState = lazy_state
 
     def schema(self) -> Schema:
         return Schema(self._inner.schema(), self._lazy_state)
@@ -475,7 +475,7 @@ class DatasetView:
     def arrow_schema(self) -> pa.Schema:
         filtered_schema = self._inner.arrow_schema()
 
-        for filter in self._lazy_state.content_path_filters or [ContentMatcher("/**")]:
+        for filter in self._lazy_state.content_path_filters or [_ContentMatcher("/**")]:
             filtered_schema = pa.schema([
                 field
                 for field in filtered_schema
