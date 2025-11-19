@@ -12,11 +12,11 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_partial_updates");
     rec.spawn().exit_on_failure();
 
-    // Set up a 3D box.
+    // Set up a 3D box and transform arrows.
     rec.log(
         "box",
         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-        rerun::Transform3D().with_axis_length(10.0)
+        rerun::TransformArrows3D(10.0)
     );
 
     // Update only the rotation of the box.
@@ -50,5 +50,5 @@ int main() {
     }
 
     // Clear all of the box's attributes, and reset its axis length.
-    rec.log("box", rerun::Transform3D::clear_fields().with_axis_length(15.0));
+    rec.log("box", rerun::Transform3D::clear_fields(), rerun::TransformArrows3D(15.0));
 }

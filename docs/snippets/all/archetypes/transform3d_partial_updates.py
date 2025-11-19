@@ -11,11 +11,11 @@ def truncated_radians(deg: float) -> float:
 
 rr.init("rerun_example_transform3d_partial_updates", spawn=True)
 
-# Set up a 3D box.
+# Set up a 3D box and transform arrows.
 rr.log(
     "box",
     rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-    rr.Transform3D(axis_length=10),
+    rr.TransformArrows3D(10.0),
 )
 
 # Update only the rotation of the box.
@@ -48,5 +48,6 @@ for deg in range(46):
 # Clear all of the box's attributes, and reset its axis length.
 rr.log(
     "box",
-    rr.Transform3D.from_fields(clear_unset=True, axis_length=15),
+    rr.Transform3D.from_fields(clear_unset=True),
+    rr.TransformArrows3D(15.0),
 )
