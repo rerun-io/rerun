@@ -19,9 +19,7 @@ use crate::{
 /// If an entity was at any point in time passes the "maybe visualizable" filter for the visualizer, it will be
 /// kept in the list of entities.
 ///
-/// "maybe visualizable" is determined by..
-/// * set of required components
-/// * additional custom data based criteria a visualizer may set
+/// "maybe visualizable" is determined by the set of required components
 ///
 /// There's only a single entity subscriber per visualizer *type*.
 /// This means that if the same visualizer is used in multiple views, only a single
