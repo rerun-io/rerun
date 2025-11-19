@@ -1,7 +1,11 @@
 use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, Instance};
-use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, components::AxisLength};
+use re_types::{
+    Archetype, ComponentType,
+    archetypes::{Points3D, Transform3D, TransformArrows3D},
+    components::AxisLength,
+};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
@@ -13,9 +17,9 @@ use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
-pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
+pub struct TransformArrows3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for Transform3DArrowsVisualizer {
+impl Default for TransformArrows3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialViewKind::ThreeD,
@@ -23,9 +27,9 @@ impl Default for Transform3DArrowsVisualizer {
     }
 }
 
-impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
+impl IdentifiedViewSystem for TransformArrows3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Transform3DArrows".into()
+        "TransformArrows3D".into()
     }
 }
 
@@ -35,34 +39,25 @@ struct Transform3DVisualizabilityFilter {
 
 impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
     fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        // There's no required component on `Transform3D` archetype, so by default it would always be visualizable.
-        // That's not entirely wrong, after all, the transform arrows make always sense!
-        // But today, this notion messes with a lot of things:
-        // * it means everything can be visualized in a 3D view!
-        // * if there's no indicated visualizer, we show any visualizer that is visualizable (that would be this one always then)
-        event
-            .diff
-            .chunk
-            .component_descriptors()
-            .filter_map(|c| c.component_type)
-            .any(|component_type| {
-                self.visualizability_trigger_components
-                    .contains(&component_type)
-            })
+        true
     }
 }
 
-impl VisualizerSystem for Transform3DArrowsVisualizer {
+impl VisualizerSystem for TransformArrows3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Transform3D>()
+        let mut query_info = VisualizerQueryInfo::from_archetype::<TransformArrows3D>();
+        query_info.required = Default::default();
+        query_info
     }
 
+    // TODO: Add `InstancePoses3D`
     fn data_based_visualizability_filter(
         &self,
     ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
         Some(Box::new(Transform3DVisualizabilityFilter {
             visualizability_trigger_components: Transform3D::all_components()
                 .iter()
+                .chain(std::iter::once(&Points3D::descriptor_positions()))
                 .filter_map(|descr| descr.component_type)
                 .collect(),
         }))
@@ -131,13 +126,13 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [Transform3D::descriptor_axis_length().component],
+                [TransformArrows3D::descriptor_axis_length().component],
                 false,
             );
 
             let axis_length: f32 = results
                 .get_mono_with_fallback::<AxisLength>(
-                    Transform3D::descriptor_axis_length().component,
+                    TransformArrows3D::descriptor_axis_length().component,
                 )
                 .into();
 
@@ -243,7 +238,7 @@ impl VisualizerSystem for AxisLengthDetector {
 
         query_info
             .required
-            .insert(Transform3D::descriptor_axis_length().component);
+            .insert(TransformArrows3D::descriptor_axis_length().component);
 
         query_info
     }

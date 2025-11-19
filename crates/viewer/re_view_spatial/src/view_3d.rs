@@ -37,7 +37,7 @@ use crate::{
 };
 use crate::{
     shared_fallbacks,
-    visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer},
+    visualizers::{AxisLengthDetector, CamerasVisualizer, TransformArrows3DVisualizer},
 };
 
 #[derive(Default)]
@@ -393,7 +393,7 @@ impl ViewClass for SpatialView3D {
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        let arrows_viz = Transform3DArrowsVisualizer::identifier();
+        let arrows_viz = TransformArrows3DVisualizer::identifier();
         let axis_detector = AxisLengthDetector::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 
