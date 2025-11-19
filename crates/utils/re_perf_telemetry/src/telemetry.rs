@@ -1,8 +1,10 @@
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor};
 use opentelemetry_sdk::{
     logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
 };
 use std::sync::Arc;
+use std::time::Duration;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
@@ -323,8 +325,18 @@ impl Telemetry {
                 .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
                 .build()?;
 
+            let batch_config = BatchConfigBuilder::default()
+                .with_max_queue_size(20_000) // Hold more spans in queue
+                .with_max_export_batch_size(4096) // Export more spans at once
+                .with_scheduled_delay(Duration::from_secs(10)) // Less frequent exports
+                .build();
+
+            let batch_processor = BatchSpanProcessor::builder(exporter)
+                .with_batch_config(batch_config)
+                .build();
+
             let provider = SdkTracerProvider::builder()
-                .with_batch_exporter(exporter)
+                .with_span_processor(batch_processor)
                 .build();
 
             // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.
