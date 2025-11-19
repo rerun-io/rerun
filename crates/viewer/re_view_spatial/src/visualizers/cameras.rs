@@ -254,14 +254,14 @@ impl VisualizerSystem for CamerasVisualizer {
                 .is_none()
             {
                 continue;
-            };
+            }
 
             let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
                 Pinhole::descriptor_camera_xyz().component,
             );
-            let child_frame = query_results.get_mono::<components::TransformFrameId>(
-                Pinhole::descriptor_child_frame().component,
-            );
+            // let child_frame = query_results.get_mono::<components::TransformFrameId>(
+            //     Pinhole::descriptor_child_frame().component,
+            // );
             let image_plane_distance = query_results
                 .get_mono_with_fallback::<components::ImagePlaneDistance>(
                     Pinhole::descriptor_image_plane_distance().component,

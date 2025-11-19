@@ -300,10 +300,8 @@ impl TransformForest {
 
                 // That parent apparently won't show up in any transform stack (we didn't walk there because there was no information about it!)
                 // So if we don't add this root now to our `root_from_frame` map, we'd never fill out the required self-reference!
-                self.root_from_frame.insert(
-                    parent_frame,
-                    TransformInfo::new_root(parent_frame),
-                );
+                self.root_from_frame
+                    .insert(parent_frame, TransformInfo::new_root(parent_frame));
 
                 (parent_frame, glam::DAffine3::IDENTITY)
             }
@@ -390,6 +388,7 @@ impl TransformForest {
     }
 }
 
+#[expect(clippy::declare_interior_mutable_const)] // TODO: use Lazy after all?
 const UNKNOWN_TRANSFORM_ID: LazyCell<TransformFrameId> =
     LazyCell::new(|| TransformFrameId::new("<unknown>"));
 
@@ -783,6 +782,7 @@ fn transforms_at(
     // Parent frame may be defined on either the pinhole projection or `parent_from_child`.
     let parent_frame = if let Some(transform) = parent_from_child.as_ref() {
         // If there's a pinhole AND a regular transform, they need to have the same target.
+        #[expect(clippy::borrow_interior_mutable_const)]
         if let Some(pinhole_projection) = &pinhole_projection.as_ref()
             && pinhole_projection.parent != transform.parent
         {
