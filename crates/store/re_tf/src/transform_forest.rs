@@ -783,16 +783,37 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
     use re_types::components::TransformFrameId;
-    use re_types::{RowId, archetypes};
+    use re_types::{RowId, archetypes, components};
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
+    }
+
+    fn test_resolved_pinhole(parent: TransformFrameIdHash) -> ResolvedPinholeProjection {
+        ResolvedPinholeProjection {
+            parent,
+            image_from_camera: components::PinholeProjection::from_focal_length_and_principal_point(
+                [1.0, 2.0],
+                [50.0, 100.0],
+            ),
+            resolution: Some([100.0, 200.0].into()),
+            view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+        }
     }
 
     /// A test scene that relies exclusively on the entity hierarchy.
     ///
     /// We're using relatively basic transforms here as we assume that resolving transforms have been tested on [`TransformResolutionCache`] already.
     /// Similarly, since [`TransformForest`] does not yet maintain anything over time, we're using static timing instead.
+    ///
+    /// Tree structure:
+    /// ```text
+    /// tf#/top
+    /// ├─── tf#/top/pinhole
+    /// │          └─── tf#/top/pinhole/child2d
+    /// └─── tf#/top/child3d
+    /// ```
+    ///
     /// TODO(RR-2510): add another scene (or extension) where we override transforms on select entities
     fn entity_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
@@ -945,13 +966,22 @@ mod tests {
         Ok(())
     }
 
-    /// A test scene that exclusively uses the parent/child farme ids.
+    /// A test scene that exclusively uses the parent/child frame ids.
     ///
     /// We're using relatively basic transforms here as we assume that resolving transforms have been tested on [`TransformResolutionCache`] already.
     /// Similarly, since [`TransformForest`] does not yet maintain anything over time, we're using static timing instead.
     ///
+    /// Tree structure:
+    /// ```text
+    /// root
+    /// ├── top
+    /// │    ├── child0
+    /// │    └── child1
+    /// └── pinhole
+    ///      └── child2d
+    /// ```
+    ///
     /// TODO(RR-2627): Add instances poses into the mix.
-    /// TODO(RR-2680): Add pinholes into the mix.
     /// TODO(RR-2799): Variant where everything is just logged on a single entity
     fn simple_frame_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
@@ -986,6 +1016,33 @@ mod tests {
                 )
                 .build()?,
         ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("transforms3"))
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0])
+                        .with_child_frame("pinhole")
+                        .with_parent_frame("root"),
+                )
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &test_pinhole()
+                        .with_child_frame("pinhole")
+                        .with_parent_frame("root"),
+                )
+                .build()?,
+        ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("transforms4"))
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([0.0, 2.0, 0.0])
+                        .with_child_frame("child2d")
+                        .with_parent_frame("pinhole"),
+                )
+                .build()?,
+        ))?;
 
         Ok(entity_db)
     }
@@ -1009,7 +1066,19 @@ mod tests {
                 transform_forest.root_info(TransformFrameIdHash::from_str("root")),
                 Some(&TransformTreeRootInfo::TransformFrameRoot)
             );
-            assert_eq!(transform_forest.roots.len(), 2);
+            assert_eq!(
+                transform_forest.root_info(TransformFrameIdHash::from_str("pinhole")),
+                Some(&TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                    parent_tree_root: TransformFrameIdHash::from_str("root"),
+                    pinhole_projection: test_resolved_pinhole(TransformFrameIdHash::from_str(
+                        "root"
+                    )),
+                    parent_root_from_pinhole_root: glam::DAffine3::from_translation(glam::dvec3(
+                        0.0, 1.0, 0.0
+                    )),
+                }))
+            );
+            assert_eq!(transform_forest.roots.len(), 3);
         }
 
         // Check that there is no connection between the implicit & explicit frames.
@@ -1041,15 +1110,19 @@ mod tests {
                 TransformFrameId::new("root"),
                 TransformFrameId::new("child0"),
                 TransformFrameId::new("child1"),
-            ],
+                TransformFrameId::new("pinhole"),
+                TransformFrameId::new("child2d"),
+            ]
+            .iter(),
             [
                 TransformFrameId::from_entity_path(&"transforms0".into()),
                 TransformFrameId::from_entity_path(&"transforms1".into()),
                 TransformFrameId::from_entity_path(&"transforms2".into()),
                 TransformFrameId::from_entity_path(&EntityPath::root()),
-            ],
+            ]
+            .iter(),
         ] {
-            for pair in tree_elements.iter().permutations(2) {
+            for pair in tree_elements.permutations(2) {
                 let from = pair[0];
                 let to = pair[1];
                 assert!(
