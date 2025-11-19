@@ -1419,6 +1419,9 @@ class RecordingStream:
 
         send_columns(entity_path=entity_path, indexes=indexes, columns=columns, strict=strict, recording=self)
 
+    def __str__(self) -> str:
+        return str(self.inner)
+
 
 class BinaryStream:
     """An encoded stream of bytes that can be saved as an rrd or sent to the viewer."""

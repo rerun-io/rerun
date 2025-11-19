@@ -1353,8 +1353,6 @@ def lint_file(filepath: str, args: Any) -> int:
                         source.error(error)
                         + f"\n\tUnqualified NOLINT not allowed for pymethods lints. Use `NOLINT: ignore[{error_code}]` instead."
                     )
-                    if error_code == "py-mthd-str":
-                        continue
                     valid_pymethods_errors += 1
             num_errors += valid_pymethods_errors
 

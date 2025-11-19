@@ -17,7 +17,7 @@ pub struct PyRRDArchive {
     pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRRDArchive {
     /// The number of recordings in the archive.
     fn num_recordings(&self) -> usize {
