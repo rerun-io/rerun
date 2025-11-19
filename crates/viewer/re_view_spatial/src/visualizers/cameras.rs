@@ -41,8 +41,6 @@ impl IdentifiedViewSystem for CamerasVisualizer {
 }
 
 struct CameraComponentDataWithFallbacks {
-    image_from_camera: glam::Mat3,
-    resolution: glam::Vec2,
     color: egui::Color32,
     line_width: re_renderer::Size,
     camera_xyz: components::ViewCoordinates,
@@ -58,28 +56,40 @@ impl CamerasVisualizer {
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
     ) {
+        let instance = Instance::from(0);
+        let ent_path = &data_result.entity_path;
+
+        // Note that this is NOT the child/target frame of the pinhole transform itself, but rather the frame we're on.
+        // TODO: so.. I have to log the pinhole on a given entity, set its child/parent correctly and then on top also set the CoordinateFrame to its child frame?
+        let pinhole_frame_id = transforms.transform_frame_id_for(ent_path.hash()); // TODO: consider renaming `transform_frame_id_for` to `coordinate_frame_for`
+
+        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
+        else {
+            // This implies that the transform context didn't see the pinhole transform.
+            // Should be impossible!
+            re_log::error_once!(
+                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!",
+            );
+            return;
+        };
+        let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
+
         // Check for valid resolution.
-        let w = pinhole_properties.resolution.x;
-        let h = pinhole_properties.resolution.y;
+        let resolution = resolved_pinhole.resolution.unwrap_or_default(); // TODO: use fallback!!
+        let w = resolution.x();
+        let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
-        let color = pinhole_properties.color;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
             return;
         }
 
-        let instance = Instance::from(0);
-        let ent_path = &data_result.entity_path;
-        let frame_id = transforms.transform_frame_id_for(ent_path.hash());
-
         let pinhole = crate::Pinhole {
-            image_from_camera: pinhole_properties.image_from_camera,
-            resolution: pinhole_properties.resolution,
-            color: Some(pinhole_properties.color),
-            line_width: Some(pinhole_properties.line_width),
+            image_from_camera: (*resolved_pinhole.image_from_camera).into(),
+            resolution: glam::vec2(w, h),
         };
 
         // If the camera is the target frame, there is nothing for us to display.
-        if transforms.target_frame() == frame_id {
+        if transforms.target_frame() == pinhole_frame_id {
             self.pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -90,14 +100,6 @@ impl CamerasVisualizer {
             return;
         }
 
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(frame_id) else {
-            // This implies that the transform context didn't see the pinhole transform.
-            // Should be impossible!
-            re_log::error_once!(
-                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!",
-            );
-            return;
-        };
         let world_from_camera = pinhole_tree_root_info
             .parent_root_from_pinhole_root
             .as_affine3a();
@@ -183,7 +185,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(color)
+                .color(pinhole_properties.color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 
@@ -243,19 +245,22 @@ impl VisualizerSystem for CamerasVisualizer {
                 query_shadowed_components,
             );
 
-            let Some(pinhole_projection) = query_results
+            // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the
+            // pinhole information from the transform tree instead, which already has this and other properties queried.
+            if query_results
                 .get_required_mono::<components::PinholeProjection>(
                     Pinhole::descriptor_image_from_camera().component,
                 )
-            else {
+                .is_none()
+            {
                 continue;
             };
 
-            let resolution = query_results.get_mono_with_fallback::<components::Resolution>(
-                Pinhole::descriptor_resolution().component,
-            );
             let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
                 Pinhole::descriptor_camera_xyz().component,
+            );
+            let child_frame = query_results.get_mono::<components::TransformFrameId>(
+                Pinhole::descriptor_child_frame().component,
             );
             let image_plane_distance = query_results
                 .get_mono_with_fallback::<components::ImagePlaneDistance>(
@@ -272,8 +277,6 @@ impl VisualizerSystem for CamerasVisualizer {
             );
 
             let component_data = CameraComponentDataWithFallbacks {
-                image_from_camera: pinhole_projection.0.into(),
-                resolution: resolution.into(),
                 color,
                 line_width,
                 camera_xyz,
@@ -284,6 +287,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash());
 
+            // TODO: pass on `child_frame` and use it if available.
             self.visit_instance(
                 &mut line_builder,
                 transforms,
