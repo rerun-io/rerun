@@ -845,7 +845,7 @@ unnecessary_debug_formatting = "allow"
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-egui_table = { git = "https://github.com/rerun-io/egui_table", branch = "lucas/add-row-ui" }
+egui_table = { git = "https://github.com/rerun-io/egui_table", branch = "main" }
 # egui_table = { path = "../egui_table" }
 
 # egui_dnd = { git = "https://github.com/rerun-io/hello_egui.git", branch = "emilk/egui-0.33.0" }
