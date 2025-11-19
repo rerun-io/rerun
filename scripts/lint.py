@@ -36,6 +36,7 @@ ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 pyclass_start = re.compile(r"#\[pyclass\(")
+pymethods_start = re.compile(r"#\[pymethods\]")
 
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
@@ -655,6 +656,156 @@ def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int]
     return errors, error_linenumbers, error_codes
 
 
+def lint_pymethods_requirements(lines_in: list[str]) -> tuple[list[str], list[int], list[str]]:
+    """Only for Rust files. Check that #[pymethods] blocks have a __str__ method."""
+
+    errors: list[str] = []
+    error_linenumbers: list[int] = []
+    error_codes: list[str] = []
+
+    i = 0
+    while i < len(lines_in):
+        line = lines_in[i]
+        line_nr = i + 1
+
+        # Check if this line starts a pymethods declaration
+        if pymethods_start.search(line.strip()):
+            # Find the corresponding impl block
+            j = i + 1
+            impl_start_line = None
+            class_name = None
+
+            # Look for the impl block that follows
+            while j < len(lines_in):
+                impl_line = lines_in[j].strip()
+                if impl_line.startswith("impl "):
+                    impl_start_line = j
+                    # Extract class name from "impl ClassName {"
+                    match = re.search(r"impl\s+(\w+)\s*\{", impl_line)
+                    if match:
+                        class_name = match.group(1)
+                    break
+                elif impl_line and not impl_line.startswith("//"):
+                    # If we hit any non-comment, non-empty line that's not impl, stop looking
+                    break
+                j += 1
+
+            if impl_start_line is None or class_name is None:
+                i += 1
+                continue
+
+            # Find the end of the impl block by counting braces
+            brace_count = 0
+            impl_content = ""
+            k = impl_start_line
+
+            while k < len(lines_in):
+                current_line = lines_in[k]
+                impl_content += current_line
+                brace_count += current_line.count("{") - current_line.count("}")
+
+                if brace_count == 0 and "{" in lines_in[impl_start_line]:
+                    # We've found the end of the impl block
+                    break
+                k += 1
+
+            # Check if __str__ or __repr__ is present in the impl content
+            # Remove comments to avoid false matches
+            impl_content_no_comments = re.sub(r"//.*", "", impl_content)
+
+            has_str = re.search(r"\b__str__\b", impl_content_no_comments)
+            has_repr = re.search(r"\b__repr__\b", impl_content_no_comments)
+
+            if not has_str and not has_repr:
+                errors.append(
+                    f"{line_nr}: #[pymethods] impl {class_name} should include a '__str__' method (or '__repr__' which serves as fallback)"
+                )
+                error_linenumbers.append(line_nr)
+                error_codes.append("py-mthd-str")
+
+            # Move the index to after the impl block
+            i = k + 1
+        else:
+            i += 1
+
+    return errors, error_linenumbers, error_codes
+
+
+def test_lint_pymethods_requirements() -> None:
+    """Test the lint_pymethods_requirements function with various pymethods declarations."""
+
+    should_pass = [
+        # pymethods with __str__
+        """#[pymethods]
+impl MyClass {
+    pub fn __str__(&self) -> String {
+        "test".to_string()
+    }
+}""",
+        # pymethods with __repr__ (serves as __str__ fallback)
+        """#[pymethods]
+impl MyClass {
+    fn __repr__(&self) -> String {
+        "test".to_string()
+    }
+}""",
+        # pymethods with both __str__ and __repr__
+        """#[pymethods]
+impl MyClass {
+    pub fn __str__(&self) -> String {
+        "str".to_string()
+    }
+    fn __repr__(&self) -> String {
+        "repr".to_string()
+    }
+}""",
+        # pymethods with other methods and __str__
+        """#[pymethods]
+impl MyClass {
+    #[new]
+    pub fn new() -> Self {
+        Self {}
+    }
+    pub fn __str__(&self) -> String {
+        "test".to_string()
+    }
+}""",
+    ]
+
+    should_error = [
+        # pymethods without __str__ or __repr__
+        """#[pymethods]
+impl MyClass {
+    #[new]
+    pub fn new() -> Self {
+        Self {}
+    }
+}""",
+        # pymethods with other methods but no __str__ or __repr__
+        """#[pymethods]
+impl MyClass {
+    pub fn other_method(&self) -> i32 {
+        42
+    }
+    pub fn another_method(&self) -> bool {
+        true
+    }
+}""",
+    ]
+
+    # Test cases that should pass (no errors)
+    for test_case in should_pass:
+        lines = test_case.split("\n")
+        errors, _, _ = lint_pymethods_requirements(lines)
+        assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
+
+    # Test cases that should fail (produce errors)
+    for test_case in should_error:
+        lines = test_case.split("\n")
+        errors, _, _ = lint_pymethods_requirements(lines)
+        assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
+
+
 def test_lint_pyclass_requirements() -> None:
     """Test the lint_pyclass_requirements function with various pyclass declarations."""
 
@@ -1190,6 +1341,20 @@ def lint_file(filepath: str, args: Any) -> int:
                     valid_errors += 1
             num_errors += valid_errors
 
+            # Check for pymethods requirements (__str__ method) in rerun_py Rust files
+            pymethods_errors, pymethods_error_lines, pymethods_error_codes = lint_pymethods_requirements(source.lines)
+            valid_pymethods_errors = 0
+            for error, line_number, error_code in zip(
+                pymethods_errors, pymethods_error_lines, pymethods_error_codes, strict=True
+            ):
+                if not source.should_ignore(line_number, code=error_code):
+                    print(
+                        source.error(error)
+                        + f"\n\tUnqualified NOLINT not allowed for pymethods lints. Use `NOLINT: ignore[{error_code}]` instead."
+                    )
+                    valid_pymethods_errors += 1
+            num_errors += valid_pymethods_errors
+
         if args.fix:
             source.rewrite(lines_out)
 
@@ -1262,6 +1427,7 @@ def main() -> None:
     test_lint_line()
     test_lint_vertical_spacing()
     test_lint_pyclass_requirements()
+    test_lint_pymethods_requirements()
     test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
