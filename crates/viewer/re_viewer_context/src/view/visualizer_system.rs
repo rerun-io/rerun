@@ -5,9 +5,9 @@ use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizableEntities, VisualizableFilterContext,
+    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableFilterContext,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -103,14 +103,6 @@ pub trait VisualizerSystem: Send + Sync + 'static {
         _context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         VisualizableEntities(entities.0)
-    }
-
-    /// Additional filter for visualizability based on component data.
-    ///
-    /// If none is specified, "maybe visualizable" is solely determined by required components.
-    /// (for final visualizability, the view instance dependent filter is applied, see [`crate::VisualizerSystem::filter_visualizable_entities`])
-    fn data_based_visualizability_filter(&self) -> Option<Box<dyn DataBasedVisualizabilityFilter>> {
-        None
     }
 
     /// Queries the chunk store and performs data conversions to make it ready for display.

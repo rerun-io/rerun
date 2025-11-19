@@ -37,38 +37,6 @@ pub struct VisualizerEntitySubscriber {
     required_components_indices: IntMap<ComponentIdentifier, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
-
-    /// Additional filter for visualizability.
-    additional_filter: Box<dyn DataBasedVisualizabilityFilter>,
-}
-
-/// Additional filter for visualizability on top of the default check for required components.
-///
-/// This is part of the "maybe visualizable" criteria.
-/// I.e. if this (and the required components) are passed, an entity is deemed "maybe visualizable"
-/// on all timelines & time points.
-/// However, there might be additional view instance based filters that prune this set further to the final
-/// "visualizable" set.
-pub trait DataBasedVisualizabilityFilter: Send + Sync {
-    /// Updates the internal visualizability filter state based on the given events.
-    ///
-    /// Called for every update no matter whether the entity is already has all required components or not.
-    ///
-    /// Returns true if the entity changed in the event is now visualizable to the visualizer (bar any view dependent restrictions), false otherwise.
-    /// Once a entity passes this filter, it can never go back to being filtered out.
-    /// **This implies that the filter does not _need_ to be stateful.**
-    /// It is perfectly fine to return `true` only if some aspect in the diff is regarded as visualizable and false otherwise.
-    /// (However, if necessary, the filter *can* keep track of state.)
-    fn update_visualizability(&mut self, _event: &ChunkStoreEvent) -> bool;
-}
-
-struct DefaultVisualizabilityFilter;
-
-impl DataBasedVisualizabilityFilter for DefaultVisualizabilityFilter {
-    #[inline]
-    fn update_visualizability(&mut self, _event: &ChunkStoreEvent) -> bool {
-        true
-    }
 }
 
 #[derive(Default)]
@@ -107,9 +75,6 @@ impl VisualizerEntitySubscriber {
                 .map(|(i, name)| (name, i))
                 .collect(),
             per_store_mapping: Default::default(),
-            additional_filter: visualizer
-                .data_based_visualizability_filter()
-                .unwrap_or_else(|| Box::new(DefaultVisualizabilityFilter)),
         }
     }
 
@@ -193,10 +158,11 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 .required_component_and_filter_bitmap_per_entity
                 .entry(entity_path.hash())
                 .or_insert_with(|| {
-                    BitVec::from_elem(self.required_components_indices.len() + 1, false)
+                    BitVec::from_elem(self.required_components_indices.len(), false)
                 });
 
-            if required_components_bitmap.all() {
+            // TODO: explain
+            if required_components_bitmap.all() && !required_components_bitmap.is_empty() {
                 // We already know that this entity is visualizable to the visualizer.
                 continue;
             }
@@ -217,16 +183,8 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 }
             }
 
-            let bit_index_for_filter = self.required_components_indices.len();
-            let custom_filter = required_components_bitmap[bit_index_for_filter];
-            if !custom_filter {
-                required_components_bitmap.set(
-                    bit_index_for_filter,
-                    self.additional_filter.update_visualizability(event),
-                );
-            }
-
-            if required_components_bitmap.all() {
+            // TODO: document is empty (removal of flag)
+            if required_components_bitmap.all() || required_components_bitmap.is_empty() {
                 re_log::trace!(
                     "Entity {:?} in store {:?} may now be visualizable by {:?}",
                     entity_path,

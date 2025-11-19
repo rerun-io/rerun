@@ -33,34 +33,12 @@ impl IdentifiedViewSystem for TransformArrows3DVisualizer {
     }
 }
 
-struct Transform3DVisualizabilityFilter {
-    visualizability_trigger_components: IntSet<ComponentType>,
-}
-
-impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
-    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        true
-    }
-}
-
 impl VisualizerSystem for TransformArrows3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
+        // TODO: explain!
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformArrows3D>();
         query_info.required = Default::default();
         query_info
-    }
-
-    // TODO: Add `InstancePoses3D`
-    fn data_based_visualizability_filter(
-        &self,
-    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
-        Some(Box::new(Transform3DVisualizabilityFilter {
-            visualizability_trigger_components: Transform3D::all_components()
-                .iter()
-                .chain(std::iter::once(&Points3D::descriptor_positions()))
-                .filter_map(|descr| descr.component_type)
-                .collect(),
-        }))
     }
 
     fn filter_visualizable_entities(
