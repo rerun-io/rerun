@@ -1,9 +1,10 @@
-use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
 use std::sync::Arc;
 
-use re_chunk_store::ChunkStoreEvent;
+use ahash::HashMap;
+
+use re_chunk_store::{ChunkStoreEvent, LatestAtQuery};
 use re_entity_db::EntityDb;
-use re_tf::TransformResolutionCache;
+use re_tf::{TransformForest, TransformResolutionCache};
 use re_viewer_context::{Cache, CacheMemoryReport};
 
 /// Stores a [`TransformResolutionCache`] for each recording.
@@ -11,33 +12,43 @@ use re_viewer_context::{Cache, CacheMemoryReport};
 /// Ensures that the cache stays up to date.
 #[derive(Default)]
 pub struct TransformDatabaseStoreCache {
-    initialized: bool,
-    transform_cache: Arc<Mutex<TransformResolutionCache>>,
+    transform_cache: TransformResolutionCache,
+
+    /// The transform forest may change over time, we store different one for each query we did.
+    ///
+    /// We currently aggressively purge this every frame, but in the future we may hold on to topology-only changes for longer.
+    latest_transform_forest: HashMap<LatestAtQuery, Arc<TransformForest>>,
 }
 
 impl TransformDatabaseStoreCache {
-    /// Gets access to the transform cache.
-    ///
-    /// If the cache was newly added, will make sure that all existing chunks in the entity db are processed.
-    pub fn lock_transform_cache(
+    /// Retrieves an existing `TransformForest` for the given query or computes a new one if it doesn't exist.
+    pub fn get_or_create_forest(
         &mut self,
         entity_db: &EntityDb,
-    ) -> ArcMutexGuard<RawMutex, TransformResolutionCache> {
-        if !self.initialized {
-            self.initialized = true;
-            self.transform_cache
-                .lock()
-                .add_chunks(entity_db.storage_engine().store().iter_chunks());
-        }
-
-        self.transform_cache.lock_arc()
+        query: &LatestAtQuery,
+    ) -> Arc<TransformForest> {
+        self.latest_transform_forest
+            .entry(query.clone())
+            .or_insert_with(|| {
+                Arc::new(TransformForest::new(
+                    entity_db,
+                    &self.transform_cache,
+                    query,
+                ))
+            })
+            .clone()
     }
 }
 
 impl Cache for TransformDatabaseStoreCache {
+    fn begin_frame(&mut self) {
+        // Discard all transform forests used last frame.
+        // TODO(andreas): If our query(/queries) didn't change we could keep them, would be an easy win for static time cursor.
+        self.latest_transform_forest.clear();
+    }
+
     fn purge_memory(&mut self) {
-        // Can't purge memory from the transform cache right now and even if we could, there's
-        // no point to it since we can't build it up in a more compact fashion yet.
+        *self = Default::default();
     }
 
     fn memory_report(&self) -> CacheMemoryReport {
@@ -56,13 +67,7 @@ impl Cache for TransformDatabaseStoreCache {
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {
         re_tracing::profile_function!();
 
-        debug_assert!(
-            self.transform_cache.try_lock().is_some(),
-            "Transform cache is still locked on processing store events. This should never happen."
-        );
-
         self.transform_cache
-            .lock()
             .process_store_events(events.iter().copied());
     }
 

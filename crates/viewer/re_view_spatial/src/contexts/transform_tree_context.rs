@@ -58,38 +58,17 @@ impl IdentifiedViewSystem for TransformTreeContext {
     }
 }
 
-struct TransformTreeContextOncePerFrameResult {
-    transform_forest: Arc<re_tf::TransformForest>,
-}
-
 impl ViewContextSystem for TransformTreeContext {
-    fn execute_once_per_frame(
-        ctx: &re_viewer_context::ViewerContext<'_>,
-    ) -> ViewContextSystemOncePerFrameResult {
-        let caches = ctx.store_context.caches;
-        let transform_cache = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.lock_transform_cache(ctx.recording()));
-
-        let transform_forest =
-            re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
-
-        Box::new(TransformTreeContextOncePerFrameResult {
-            transform_forest: Arc::new(transform_forest),
-        })
-    }
-
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
-        static_execution_result: &ViewContextSystemOncePerFrameResult,
+        _static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
-        self.transform_forest = static_execution_result
-            .downcast_ref::<TransformTreeContextOncePerFrameResult>()
-            .expect("Unexpected static execution result type")
-            .transform_forest
-            .clone();
-
+        let caches = ctx.viewer_ctx.store_context.caches;
+        self.transform_forest = caches
+            .entry(|c: &mut TransformDatabaseStoreCache| c.get_or_create_forest(ctx.recording(), &ctx.current_query()));
+            
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
         self.entity_transform_id_mapping = EntityTransformIdMapping::new(ctx, query);
