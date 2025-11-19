@@ -178,7 +178,7 @@ pub enum VerifyError {
 }
 
 /// In-memory credential storage
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct Credentials {
     user: User,
     refresh_token: RefreshToken,

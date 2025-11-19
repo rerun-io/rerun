@@ -2230,30 +2230,62 @@ authkey = multiprocessing.current_process().authkey
 }
 
 #[pyclass(
-    frozen,
+    // frozen,
     name = "OauthLoginFlow",
     module = "rerun_bindings.rerun_bindings"
 )]
+
 struct PyOauthLoginFlow {
-    inner: OauthLoginFlow,
-    runtime: Runtime,
+    login_flow: Option<OauthLoginFlow>,
 }
 
 #[pymethods]
 impl PyOauthLoginFlow {
     #[new]
     fn new() -> PyResult<Self> {
-        let runtime = Runtime::new()?;
+        println!("PyOauthLoginFlow::new");
+
+        let login_flow =
+            OauthLoginFlow::new().map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        println!(
+            "PyOauthLoginFlow::new runtime started: {}",
+            login_flow.login_url
+        );
         Ok(Self {
-            inner: OauthLoginFlow::new().map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-            runtime,
+            login_flow: Some(login_flow),
         })
     }
 
-    fn get_credentials(&self) -> PyResult<String> {
-        let result = self
-            .runtime
-            .block_on(async { self.inner.get_credentials().await });
+    // fn flow(&self) -> Result<&OauthLoginFlow, PyRuntimeError> {
+    //     match &self.login_flow {
+    //         Some(flow) => Ok(flow),
+    //         None => Err(PyRuntimeError::new_err(
+    //             "Login flow ended. Please create a new one.",
+    //         )),
+    //     }
+    // }
+
+    fn login_url(&self) -> PyResult<String> {
+        match &self.login_flow {
+            Some(flow) => Ok(flow.login_url.clone()),
+            None => Err(PyRuntimeError::new_err(
+                "Login flow ended. Please create a new one.",
+            )),
+        }
+        // Ok(self.flow()?.login_url.clone())
+    }
+
+    fn get_credentials(&mut self) -> PyResult<String> {
+        println!("PyOauthLoginFlow::get_credentials");
+        let Some(login_flow) = &self.login_flow else {
+            return Err(PyRuntimeError::new_err(
+                "Login flow ended. Please create a new one.",
+            ));
+        };
+        let result = Runtime::new()?.block_on(async { login_flow.get_credentials().await });
+
+        self.login_flow = None;
+
         result
             .map(|credentials| credentials.access_token().as_str().to_owned())
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))

@@ -2037,6 +2037,11 @@ class OauthLoginFlow:
         Boo.
         """
 
+    def login_url(self) -> str:
+        """
+        Get the URL for the OAuth login flow.
+        """
+
     def get_credentials(self) -> str:
         """
         Get the credentials for the OAuth login flow.

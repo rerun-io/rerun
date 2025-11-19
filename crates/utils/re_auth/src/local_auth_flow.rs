@@ -1,4 +1,8 @@
+use std::mem;
+use std::sync::Arc;
 use std::time::Duration;
+
+use parking_lot::Mutex;
 
 use crate::callback_server::Error;
 use crate::callback_server::OauthCallbackServer;
@@ -7,10 +11,23 @@ use crate::oauth::api::AuthenticateWithCode;
 use crate::oauth::api::Pkce;
 use crate::oauth::api::send_async;
 
-pub struct OauthLoginFlow {
-    pkce: Pkce,
+#[derive(Default)]
+enum OauthLoginFlowState {
+    InProgress(OauthLoginInProgress),
+    Finished(Result<Credentials, Error>),
+
+    #[default]
+    Invalid,
+}
+
+struct OauthLoginInProgress {
     server: OauthCallbackServer,
+    pkce: Pkce,
     login_url: String,
+}
+
+pub struct OauthLoginFlow {
+    state: Arc<Mutex<OauthLoginFlowState>>,
 }
 
 impl OauthLoginFlow {
@@ -53,12 +70,23 @@ impl OauthLoginFlow {
 
         // Login process:
 
+        println!("OauthLoginFlow::new starting server"); // TODO:
+
         // 1. Start web server listening for token
         let pkce = Pkce::new();
         let server = OauthCallbackServer::new(&pkce, None)?; // TODO: login_hint
 
+        println!("OauthLoginFlow::new {}", server.get_login_url()); // TODO:
+
+        let state = Arc::new(Mutex::new(OauthLoginFlowState::InProgress(
+            OauthLoginInProgress {
+                login_url: server.get_login_url().to_owned(),
+                server,
+                pkce,
+            },
+        )));
+
         // 2. Open authorization URL in browser
-        let login_url = server.get_login_url().to_owned();
 
         // Once the user opens the link, they are redirected to the login UI.
         // If they were already logged in, it will immediately redirect them
@@ -77,28 +105,61 @@ impl OauthLoginFlow {
         // }
         // p.inc(1);
 
-        Ok(Self {
-            server,
-            login_url,
-            pkce,
-        })
+        {
+            let state = Arc::clone(&state);
+            tokio::spawn(async move {
+                Self::wait_for_credentials(state);
+            });
+        }
+
+        Ok(Self { state })
     }
 
-    pub async fn get_credentials(&self) -> Result<Credentials, Error> {
+    async fn wait_for_credentials(state: Arc<Mutex<OauthLoginFlowState>>) {
         // 3. Wait for callback
         // p.set_message("Waiting for browser…");
+        println!("OauthLoginFlow::wait_for_credentials"); // TODO:
+
         let code = loop {
-            match self.server.check_for_browser_response()? {
-                None => {
-                    // p.inc(1);
-                    std::thread::sleep(Duration::from_millis(10));
+            let response = {
+                let state = state.lock();
+                let OauthLoginFlowState::InProgress(in_progress) = &*state else {
+                    re_log::error!("OAuth login flow ended unexpectedly.");
+                    return;
+                };
+                in_progress.server.check_for_browser_response()
+            };
+
+            match response {
+                Ok(Some(response)) => break response,
+                Err(err) => {
+                    re_log::error!("checking for browser response failed: {err:?}");
+                    *state.lock() = OauthLoginFlowState::Finished(Err(err));
+                    return;
                 }
-                Some(response) => break response,
-            }
+                Ok(None) => {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            };
         };
 
+        println!("OauthLoginFlow::wait_for_credentials code: {code}"); // TODO:
+
+        let mut state = state.lock();
+        let OauthLoginFlowState::InProgress(in_progress) = &*state else {
+            re_log::error!("OAuth login flow ended unexpectedly.");
+            return;
+        };
+        let credentials = Self::exchange_code_for_credentials(&code, in_progress).await;
+        *state = OauthLoginFlowState::Finished(credentials);
+    }
+
+    async fn exchange_code_for_credentials(
+        code: &str,
+        state: &OauthLoginInProgress,
+    ) -> Result<Credentials, Error> {
         // 4. Exchange code for credentials
-        let auth = send_async(AuthenticateWithCode::new(&code, &self.pkce))
+        let auth = send_async(AuthenticateWithCode::new(&code, &state.pkce))
             .await
             .map_err(|err| Error::Generic(err.into()))?;
 
@@ -111,8 +172,62 @@ impl OauthLoginFlow {
             "Success! You are now logged in as {}",
             credentials.user().email
         );
-        println!("Rerun will automatically use the credentials stored on your machine.");
+        println!("Rerun will automatically use the credentials stored on your machine."); // TODO:
 
         Ok(credentials)
+    }
+
+    pub async fn get_credentials(&self) -> Option<Result<Credentials, Error>> {
+        let mut state = self.state.lock();
+        if matches!(&*state, OauthLoginFlowState::InProgress(_)) {
+            return None;
+        }
+        match std::mem::take(&mut *state) {
+            OauthLoginFlowState::Finished(result) => Some(result),
+            _ => None,
+        }
+
+        // if let OauthLoginFlowState::Finished(_) = &*state {
+        //     // let b = mem::replace(&mut *state, OauthLoginFlowState::Invalid);
+        //     // match b {
+        //     //     OauthLoginFlowState::Finished(result) => return Some(result),
+        //     //     _ => unreachable!(),
+        //     // }
+        // }
+        // None
+
+        // // 3. Wait for callback
+        // // p.set_message("Waiting for browser…");
+        // println!("OauthLoginFlow::get_credentials"); // TODO:
+
+        // let code = loop {
+        //     match self.server.check_for_browser_response()? {
+        //         None => {
+        //             // p.inc(1);
+        //             std::thread::sleep(Duration::from_millis(10));
+        //         }
+        //         Some(response) => break response,
+        //     }
+        // };
+
+        // println!("OauthLoginFlow::get_credentials code: {code}"); // TODO:
+
+        // // 4. Exchange code for credentials
+        // let auth = send_async(AuthenticateWithCode::new(&code, &self.pkce))
+        //     .await
+        //     .map_err(|err| Error::Generic(err.into()))?;
+
+        // // 5. Store credentials
+        // let credentials = Credentials::from_auth_response(auth.into())?.ensure_stored()?;
+
+        // // p.finish_and_clear();
+
+        // println!(
+        //     "Success! You are now logged in as {}",
+        //     credentials.user().email
+        // );
+        // println!("Rerun will automatically use the credentials stored on your machine."); // TODO:
+
+        // Ok(credentials)
     }
 }
