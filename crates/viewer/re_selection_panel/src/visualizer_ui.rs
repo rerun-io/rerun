@@ -606,13 +606,13 @@ fn available_inactive_visualizers(
     let visualizable_entities = view
         .class(ctx.viewer_ctx.view_class_registry())
         .determine_visualizable_entities(
-            &maybe_visualizable_entities,
+            dbg!(&maybe_visualizable_entities),
             entity_db,
             all_visualizers,
             &view.space_origin,
         );
 
-    visualizable_entities
+    dbg!(visualizable_entities)
         .iter()
         .filter(|&(vis, ents)| {
             ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
