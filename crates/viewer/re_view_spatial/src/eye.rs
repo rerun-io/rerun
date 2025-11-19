@@ -76,11 +76,17 @@ impl Eye {
         let projection = if let Some(fov_y) = self.fov_y {
             Mat4::perspective_infinite_rh(fov_y, aspect_ratio, self.near())
         } else {
+            //
+            let vertical_world_size = self
+                .vertical_world_size
+                .unwrap_or(Self::DEFAULT_VERTICAL_WORLD_SIZE);
+            let horizontal_world_size = vertical_world_size * aspect_ratio;
+
             Mat4::orthographic_rh(
-                space2d_rect.left(),
-                space2d_rect.right(),
-                space2d_rect.bottom(),
-                space2d_rect.top(),
+                -0.5 * horizontal_world_size,
+                0.5 * horizontal_world_size,
+                -0.5 * vertical_world_size,
+                0.5 * vertical_world_size,
                 self.near(),
                 self.far(),
             )
