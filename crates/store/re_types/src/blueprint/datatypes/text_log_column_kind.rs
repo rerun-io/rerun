@@ -26,18 +26,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum TextLogColumnKind {
-    /// The logs timepoint on a specific timeline.
-    Timeline = 1,
-
     /// Which entity path this was logged to.
     #[default]
-    EntityPath = 2,
+    EntityPath = 1,
 
     /// The log level, i.e INFO, WARN, ERROR.
-    LogLevel = 3,
+    LogLevel = 2,
 
     /// The text message the log has.
-    Body = 4,
+    Body = 3,
 }
 
 ::re_types_core::macros::impl_into_cow!(TextLogColumnKind);
@@ -102,10 +99,9 @@ impl ::re_types_core::Loggable for TextLogColumnKind {
             .with_context("rerun.blueprint.datatypes.TextLogColumnKind#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::Timeline)),
-                Some(2) => Ok(Some(Self::EntityPath)),
-                Some(3) => Ok(Some(Self::LogLevel)),
-                Some(4) => Ok(Some(Self::Body)),
+                Some(1) => Ok(Some(Self::EntityPath)),
+                Some(2) => Ok(Some(Self::LogLevel)),
+                Some(3) => Ok(Some(Self::Body)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -121,7 +117,6 @@ impl ::re_types_core::Loggable for TextLogColumnKind {
 impl std::fmt::Display for TextLogColumnKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Timeline => write!(f, "Timeline"),
             Self::EntityPath => write!(f, "EntityPath"),
             Self::LogLevel => write!(f, "LogLevel"),
             Self::Body => write!(f, "Body"),
@@ -132,13 +127,12 @@ impl std::fmt::Display for TextLogColumnKind {
 impl ::re_types_core::reflection::Enum for TextLogColumnKind {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::Timeline, Self::EntityPath, Self::LogLevel, Self::Body]
+        &[Self::EntityPath, Self::LogLevel, Self::Body]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::Timeline => "The logs timepoint on a specific timeline.",
             Self::EntityPath => "Which entity path this was logged to.",
             Self::LogLevel => "The log level, i.e INFO, WARN, ERROR.",
             Self::Body => "The text message the log has.",

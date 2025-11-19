@@ -23,6 +23,8 @@ namespace rerun::blueprint::datatypes {
     ///
     struct TextLogColumn {
         /// Is this column visible?
+        ///
+        /// Defaults to true.
         rerun::datatypes::Bool visible;
 
         /// What kind of column is this?

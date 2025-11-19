@@ -23,16 +23,13 @@ from enum import Enum
 class TextLogColumnKind(Enum):
     """**Datatype**: A text log column kind."""
 
-    Timeline = 1
-    """The logs timepoint on a specific timeline."""
-
-    EntityPath = 2
+    EntityPath = 1
     """Which entity path this was logged to."""
 
-    LogLevel = 3
+    LogLevel = 2
     """The log level, i.e INFO, WARN, ERROR."""
 
-    Body = 4
+    Body = 3
     """The text message the log has."""
 
     @classmethod
@@ -57,15 +54,13 @@ class TextLogColumnKind(Enum):
 
 
 TextLogColumnKindLike = (
-    TextLogColumnKind
-    | Literal["Body", "EntityPath", "LogLevel", "Timeline", "body", "entitypath", "loglevel", "timeline"]
-    | int
+    TextLogColumnKind | Literal["Body", "EntityPath", "LogLevel", "body", "entitypath", "loglevel"] | int
 )
 """A type alias for any TextLogColumnKind-like object."""
 
 TextLogColumnKindArrayLike = (
     TextLogColumnKind
-    | Literal["Body", "EntityPath", "LogLevel", "Timeline", "body", "entitypath", "loglevel", "timeline"]
+    | Literal["Body", "EntityPath", "LogLevel", "body", "entitypath", "loglevel"]
     | int
     | Sequence[TextLogColumnKindLike]
 )

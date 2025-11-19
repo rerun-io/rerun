@@ -2173,7 +2173,14 @@ fn quote_arrow_serialization(
                 2,
             );
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
-            code.push_indented(1, "data = [data]", 2);
+            code.push_indented(1, "data = [data]", 1);
+
+            code.push_indented(0, "else:", 1);
+            code.push_indented(
+                1,
+                format!("data = [x if isinstance(x, {name}) else {name}(x) for x in data]"),
+                2,
+            );
 
             code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
             code.push_indented(1, "[", 1);

@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "../../blueprint/components/text_log_level_list.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
+#include "../../components/text_log_level.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -21,6 +21,8 @@ namespace rerun::blueprint::archetypes {
     ///
     struct TextLogRows {
         /// Log levels to display.
+        ///
+        /// Defaults to showing all logged levels.
         std::optional<ComponentBatch> filter_by_log_level;
 
       public:
@@ -30,7 +32,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `filter_by_log_level` field.
         static constexpr auto Descriptor_filter_by_log_level = ComponentDescriptor(
             ArchetypeName, "TextLogRows:filter_by_log_level",
-            Loggable<rerun::blueprint::components::TextLogLevelList>::ComponentType
+            Loggable<rerun::components::TextLogLevel>::ComponentType
         );
 
       public:
@@ -39,13 +41,6 @@ namespace rerun::blueprint::archetypes {
         TextLogRows(const TextLogRows& other) = default;
         TextLogRows& operator=(const TextLogRows& other) = default;
         TextLogRows& operator=(TextLogRows&& other) = default;
-
-        explicit TextLogRows(rerun::blueprint::components::TextLogLevelList _filter_by_log_level)
-            : filter_by_log_level(ComponentBatch::from_loggable(
-                                      std::move(_filter_by_log_level),
-                                      Descriptor_filter_by_log_level
-              )
-                                      .value_or_throw()) {}
 
         /// Update only some specific fields of a `TextLogRows`.
         static TextLogRows update_fields() {
@@ -56,8 +51,10 @@ namespace rerun::blueprint::archetypes {
         static TextLogRows clear_fields();
 
         /// Log levels to display.
+        ///
+        /// Defaults to showing all logged levels.
         TextLogRows with_filter_by_log_level(
-            const rerun::blueprint::components::TextLogLevelList& _filter_by_log_level
+            const Collection<rerun::components::TextLogLevel>& _filter_by_log_level
         ) && {
             filter_by_log_level =
                 ComponentBatch::from_loggable(_filter_by_log_level, Descriptor_filter_by_log_level)

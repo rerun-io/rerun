@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from attrs import define, field
 
@@ -14,9 +14,6 @@ from ..._baseclasses import (
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
-
-if TYPE_CHECKING:
-    from ... import datatypes
 
 __all__ = ["TextLogColumns"]
 
@@ -31,33 +28,37 @@ class TextLogColumns(Archetype):
 
     def __init__(
         self: Any,
-        text_log_columns: blueprint_datatypes.TextLogColumnListLike,
         *,
-        timeline: datatypes.Utf8Like | None = None,
+        timeline_columns: blueprint_datatypes.TimelineColumnArrayLike | None = None,
+        text_log_columns: blueprint_datatypes.TextLogColumnArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the TextLogColumns archetype.
 
         Parameters
         ----------
+        timeline_columns:
+            What timeline columns to show.
+
+            Defaults to displaying all timelines.
         text_log_columns:
             All columns to be displayed.
-        timeline:
-            What timeline the timeline column should show.
+
+            Defaults to showing all text log column kinds in the order of the enum.
 
         """
 
         # You can define your own __init__ function as a member of TextLogColumnsExt in text_log_columns_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(text_log_columns=text_log_columns, timeline=timeline)
+            self.__attrs_init__(timeline_columns=timeline_columns, text_log_columns=text_log_columns)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
+            timeline_columns=None,
             text_log_columns=None,
-            timeline=None,
         )
 
     @classmethod
@@ -72,8 +73,8 @@ class TextLogColumns(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        text_log_columns: blueprint_datatypes.TextLogColumnListLike | None = None,
-        timeline: datatypes.Utf8Like | None = None,
+        timeline_columns: blueprint_datatypes.TimelineColumnArrayLike | None = None,
+        text_log_columns: blueprint_datatypes.TextLogColumnArrayLike | None = None,
     ) -> TextLogColumns:
         """
         Update only some specific fields of a `TextLogColumns`.
@@ -82,18 +83,22 @@ class TextLogColumns(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
+        timeline_columns:
+            What timeline columns to show.
+
+            Defaults to displaying all timelines.
         text_log_columns:
             All columns to be displayed.
-        timeline:
-            What timeline the timeline column should show.
+
+            Defaults to showing all text log column kinds in the order of the enum.
 
         """
 
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
+                "timeline_columns": timeline_columns,
                 "text_log_columns": text_log_columns,
-                "timeline": timeline,
             }
 
             if clear_unset:
@@ -110,21 +115,25 @@ class TextLogColumns(Archetype):
         """Clear all the fields of a `TextLogColumns`."""
         return cls.from_fields(clear_unset=True)
 
-    text_log_columns: blueprint_components.TextLogColumnListBatch | None = field(
+    timeline_columns: blueprint_components.TimelineColumnBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.TextLogColumnListBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TimelineColumnBatch._converter,  # type: ignore[misc]
     )
-    # All columns to be displayed.
+    # What timeline columns to show.
+    #
+    # Defaults to displaying all timelines.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    timeline: blueprint_components.TimelineNameBatch | None = field(
+    text_log_columns: blueprint_components.TextLogColumnBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.TimelineNameBatch._converter,  # type: ignore[misc]
+        converter=blueprint_components.TextLogColumnBatch._converter,  # type: ignore[misc]
     )
-    # What timeline the timeline column should show.
+    # All columns to be displayed.
+    #
+    # Defaults to showing all text log column kinds in the order of the enum.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -9,5 +9,4 @@
 #include "blueprint/datatypes/tensor_dimension_index_slider.hpp"
 #include "blueprint/datatypes/text_log_column.hpp"
 #include "blueprint/datatypes/text_log_column_kind.hpp"
-#include "blueprint/datatypes/text_log_column_list.hpp"
-#include "blueprint/datatypes/text_log_level_list.hpp"
+#include "blueprint/datatypes/timeline_column.hpp"

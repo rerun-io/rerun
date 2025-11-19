@@ -23,17 +23,14 @@ namespace rerun::blueprint::datatypes {
     /// **Datatype**: A text log column kind.
     enum class TextLogColumnKind : uint8_t {
 
-        /// The logs timepoint on a specific timeline.
-        Timeline = 1,
-
         /// Which entity path this was logged to.
-        EntityPath = 2,
+        EntityPath = 1,
 
         /// The log level, i.e INFO, WARN, ERROR.
-        LogLevel = 3,
+        LogLevel = 2,
 
         /// The text message the log has.
-        Body = 4,
+        Body = 3,
     };
 } // namespace rerun::blueprint::datatypes
 

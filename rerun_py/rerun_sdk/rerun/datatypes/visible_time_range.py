@@ -90,6 +90,8 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
         if isinstance(data, VisibleTimeRange):
             data = [data]
+        else:
+            data = [x if isinstance(x, VisibleTimeRange) else VisibleTimeRange(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

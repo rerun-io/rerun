@@ -40,6 +40,8 @@ class TextLogColumn(TextLogColumnExt):
     visible: datatypes.Bool = field(converter=_text_log_column__visible__special_field_converter_override)
     # Is this column visible?
     #
+    # Defaults to true.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     kind: blueprint_datatypes.TextLogColumnKind = field()
@@ -73,6 +75,8 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
 
         if isinstance(data, TextLogColumn):
             data = [data]
+        else:
+            data = [x if isinstance(x, TextLogColumn) else TextLogColumn(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

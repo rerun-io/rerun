@@ -68,6 +68,8 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
 
         if isinstance(data, MultiEnum):
             data = [data]
+        else:
+            data = [x if isinstance(x, MultiEnum) else MultiEnum(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

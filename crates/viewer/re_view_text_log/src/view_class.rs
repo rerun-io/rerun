@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
 
-use re_data_ui::item_ui;
+use re_data_ui::item_ui::{self, timeline_button};
 use re_log_types::{EntityPath, TimelineName};
 use re_types::ViewClassIdentifier;
 use re_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
-use re_types::blueprint::components::{Enabled, TextLogColumnList, TextLogLevelList};
+use re_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_types::blueprint::datatypes as bp_datatypes;
+use re_types::components::TextLogLevel;
 use re_types::{View as _, datatypes};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
@@ -29,7 +30,7 @@ pub struct TextViewState {
 
     seen_levels: BTreeSet<String>,
 
-    last_columns: Vec<bp_datatypes::TextLogColumnKind>,
+    last_columns_min_sizes: Vec<u32>,
 }
 
 impl ViewState for TextViewState {
@@ -74,27 +75,41 @@ Filter message types and toggle column visibility in a selection panel.",
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_fallback_provider(
+        system_registry.register_array_fallback_provider(
+            TextLogColumns::descriptor_timeline_columns().component,
+            |ctx| {
+                ctx.viewer_ctx()
+                    .recording()
+                    .times_per_timeline()
+                    .timelines()
+                    .map(|t| {
+                        TimelineColumn(bp_datatypes::TimelineColumn {
+                            visible: true.into(),
+                            timeline: t.name().as_str().into(),
+                        })
+                    })
+                    .collect::<Vec<_>>()
+            },
+        );
+
+        system_registry.register_array_fallback_provider(
             TextLogColumns::descriptor_text_log_columns().component,
             |_ctx| {
-                let text_log_columns = [
-                    bp_datatypes::TextLogColumnKind::Timeline,
+                [
                     bp_datatypes::TextLogColumnKind::EntityPath,
                     bp_datatypes::TextLogColumnKind::LogLevel,
                     bp_datatypes::TextLogColumnKind::Body,
                 ]
-                .into_iter()
-                .map(|kind| bp_datatypes::TextLogColumn {
-                    kind,
-                    visible: true.into(),
+                .map(|kind| {
+                    TextLogColumn(bp_datatypes::TextLogColumn {
+                        kind,
+                        visible: true.into(),
+                    })
                 })
-                .collect();
-
-                TextLogColumnList(bp_datatypes::TextLogColumnList { text_log_columns })
             },
         );
 
-        system_registry.register_fallback_provider(
+        system_registry.register_array_fallback_provider(
             TextLogRows::descriptor_filter_by_log_level().component,
             |ctx| {
                 let Ok(state) = ctx.view_state().downcast_ref::<TextViewState>() else {
@@ -102,15 +117,13 @@ Filter message types and toggle column visibility in a selection panel.",
                         "Failed to get `TextViewState` in text log view fallback, this is a bug."
                     );
 
-                    return TextLogLevelList::default();
+                    return Vec::new();
                 };
-                let log_levels = state
+                state
                     .seen_levels
                     .iter()
-                    .map(|lvl| datatypes::Utf8::from(lvl.as_str()))
-                    .collect::<Vec<_>>();
-
-                TextLogLevelList(bp_datatypes::TextLogLevelList { log_levels })
+                    .map(|lvl| TextLogLevel(datatypes::Utf8::from(lvl.as_str())))
+                    .collect::<Vec<_>>()
             },
         );
         system_registry.register_visualizer::<TextLogSystem>()
@@ -205,24 +218,20 @@ Filter message types and toggle column visibility in a selection panel.",
             &view_ctx,
             TextLogFormat::descriptor_monospace_body().component,
         )?;
-        let columns_list = columns_property.component_or_fallback::<TextLogColumnList>(
+        let columns = columns_property.component_array_or_fallback::<TextLogColumn>(
             &view_ctx,
             TextLogColumns::descriptor_text_log_columns().component,
         )?;
 
-        let column_timeline = columns_property
-            .component_or_fallback::<re_types::blueprint::components::TimelineName>(
-                &view_ctx,
-                TextLogColumns::descriptor_timeline().component,
-            )?
-            .into();
-        let columns = &columns_list.text_log_columns;
+        let timeline_columns = columns_property.component_array_or_fallback::<TimelineColumn>(
+            &view_ctx,
+            TextLogColumns::descriptor_timeline_columns().component,
+        )?;
 
-        let levels_list = rows_property.component_or_fallback::<TextLogLevelList>(
+        let levels = rows_property.component_array_or_fallback::<TextLogLevel>(
             &view_ctx,
             TextLogRows::descriptor_filter_by_log_level().component,
         )?;
-        let levels = &levels_list.0.log_levels;
 
         for te in &text.entries {
             if let Some(lvl) = &te.level {
@@ -264,11 +273,11 @@ Filter message types and toggle column visibility in a selection panel.",
                         ctx,
                         ui,
                         state,
-                        columns,
+                        &timeline_columns,
+                        &columns,
                         **monospace_body,
                         &entries,
                         scroll_to_row,
-                        column_timeline,
                     );
                 })
             })
@@ -289,11 +298,11 @@ fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut TextViewState,
-    columns: &[bp_datatypes::TextLogColumn],
+    timeline_columns: &[TimelineColumn],
+    columns: &[TextLogColumn],
     monospace_body: bool,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
-    timeline: TimelineName,
 ) {
     let tokens = ui.tokens();
     let table_style = re_ui::TableStyle::Dense;
@@ -317,42 +326,62 @@ fn table_ui(
     let mut body_clip_rect = None;
     let mut current_time_y = None; // where to draw the current time indicator cursor
 
-    for (col, last_kind) in columns.iter().zip(
-        state
-            .last_columns
-            .iter()
-            .map(Some)
-            .chain(std::iter::repeat(None)),
-    ) {
-        let table_column = match col.kind {
-            bp_datatypes::TextLogColumnKind::Timeline
-            | bp_datatypes::TextLogColumnKind::EntityPath => {
-                Column::auto().clip(true).at_least(32.0)
-            }
-            bp_datatypes::TextLogColumnKind::LogLevel => Column::auto().at_least(30.0),
-            bp_datatypes::TextLogColumnKind::Body => Column::remainder().at_least(100.0),
-        };
+    let mut new_column_sizes = Vec::new();
+    let mut last_columns = state.last_columns_min_sizes.iter();
 
-        // If this isn't the same kind as before the order changed.
-        let reset_size = last_kind.is_some_and(|last_kind| *last_kind != col.kind);
+    let mut size_column = |column: Column, min_size: u32| {
+        // If this isn't the same min size as before the order changed.
+        let auto_resize = last_columns.next().is_some_and(|c| *c != min_size);
 
-        let table_column = table_column.auto_size_this_frame(reset_size);
+        new_column_sizes.push(min_size);
 
-        table_builder = table_builder.column(table_column);
+        column
+            .at_least(min_size as f32)
+            .auto_size_this_frame(auto_resize)
+    };
+
+    for col in timeline_columns {
+        if *col.visible {
+            table_builder = table_builder.column(size_column(Column::auto().clip(true), 32));
+        }
     }
 
-    state.last_columns.clear();
-    state.last_columns.extend(columns.iter().map(|c| c.kind));
+    for col in columns {
+        if !*col.visible {
+            continue;
+        }
+
+        let col = match col.kind {
+            bp_datatypes::TextLogColumnKind::EntityPath => {
+                size_column(Column::auto().clip(true), 32)
+            }
+            bp_datatypes::TextLogColumnKind::LogLevel => size_column(Column::auto(), 30),
+            bp_datatypes::TextLogColumnKind::Body => size_column(Column::remainder(), 100),
+        };
+
+        table_builder = table_builder.column(col);
+    }
+
+    state.last_columns_min_sizes = new_column_sizes;
 
     table_builder
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
+            for col in timeline_columns {
+                if !*col.visible {
+                    continue;
+                }
+
+                header.col(|ui| {
+                    timeline_button(ctx, ui, &TimelineName::new(&col.timeline));
+                });
+            }
             for col in columns {
                 if !*col.visible {
                     continue;
                 }
                 header.col(|ui| {
-                    column_name_ui(ctx, ui, &col.kind, &timeline);
+                    column_name_ui(ui, &col.kind);
                 });
             }
         })
@@ -369,67 +398,74 @@ fn table_ui(
             body.heterogeneous_rows(row_heights, |mut row| {
                 let entry = &entries[row.index()];
 
+                for col in timeline_columns {
+                    if !*col.visible {
+                        continue;
+                    }
+
+                    let timeline = TimelineName::new(&col.timeline);
+
+                    row.col(|ui| {
+                        let row_time = entry
+                            .timepoint
+                            .get(&timeline)
+                            .map(re_log_types::TimeInt::from)
+                            .unwrap_or(re_log_types::TimeInt::STATIC);
+                        item_ui::time_button(ctx, ui, &timeline, row_time);
+
+                        if let Some(global_time) = global_time
+                            && timeline == *global_timeline.name()
+                        {
+                            #[expect(clippy::comparison_chain)]
+                            if global_time < row_time {
+                                // We've past the global time - it is thus above this row.
+                                if current_time_y.is_none() {
+                                    current_time_y = Some(ui.max_rect().top());
+                                }
+                            } else if global_time == row_time {
+                                // This row is exactly at the current time.
+                                // We could draw the current time exactly onto this row, but that would look bad,
+                                // so let's draw it under instead. It looks better in the "following" mode.
+                                current_time_y = Some(ui.max_rect().bottom());
+                            }
+                        }
+                    });
+                }
+
                 for col in columns {
                     if !*col.visible {
                         continue;
                     }
 
-                    row.col(|ui| {
-                        match col.kind {
-                            bp_datatypes::TextLogColumnKind::Timeline => {
-                                let row_time = entry
-                                    .timepoint
-                                    .get(&timeline)
-                                    .map(re_log_types::TimeInt::from)
-                                    .unwrap_or(re_log_types::TimeInt::STATIC);
-                                item_ui::time_button(ctx, ui, &timeline, row_time);
+                    row.col(|ui| match col.kind {
+                        bp_datatypes::TextLogColumnKind::EntityPath => {
+                            item_ui::entity_path_button(
+                                ctx,
+                                &query,
+                                ctx.recording(),
+                                ui,
+                                None,
+                                &entry.entity_path,
+                            );
+                        }
+                        bp_datatypes::TextLogColumnKind::LogLevel => {
+                            if let Some(lvl) = &entry.level {
+                                ui.label(level_to_rich_text(ui, lvl));
+                            } else {
+                                ui.label("-");
+                            }
+                        }
+                        bp_datatypes::TextLogColumnKind::Body => {
+                            let mut text = egui::RichText::new(entry.body.as_str());
 
-                                if let Some(global_time) = global_time
-                                    && timeline == *global_timeline.name()
-                                {
-                                    #[expect(clippy::comparison_chain)]
-                                    if global_time < row_time {
-                                        // We've past the global time - it is thus above this row.
-                                        if current_time_y.is_none() {
-                                            current_time_y = Some(ui.max_rect().top());
-                                        }
-                                    } else if global_time == row_time {
-                                        // This row is exactly at the current time.
-                                        // We could draw the current time exactly onto this row, but that would look bad,
-                                        // so let's draw it under instead. It looks better in the "following" mode.
-                                        current_time_y = Some(ui.max_rect().bottom());
-                                    }
-                                }
+                            if monospace_body {
+                                text = text.monospace();
                             }
-                            bp_datatypes::TextLogColumnKind::EntityPath => {
-                                item_ui::entity_path_button(
-                                    ctx,
-                                    &query,
-                                    ctx.recording(),
-                                    ui,
-                                    None,
-                                    &entry.entity_path,
-                                );
+                            if let Some(color) = entry.color {
+                                text = text.color(color);
                             }
-                            bp_datatypes::TextLogColumnKind::LogLevel => {
-                                if let Some(lvl) = &entry.level {
-                                    ui.label(level_to_rich_text(ui, lvl));
-                                } else {
-                                    ui.label("-");
-                                }
-                            }
-                            bp_datatypes::TextLogColumnKind::Body => {
-                                let mut text = egui::RichText::new(entry.body.as_str());
 
-                                if monospace_body {
-                                    text = text.monospace();
-                                }
-                                if let Some(color) = entry.color {
-                                    text = text.color(color);
-                                }
-
-                                ui.label(text);
-                            }
+                            ui.label(text);
                         }
                     });
                 }
@@ -447,16 +483,8 @@ fn table_ui(
     }
 }
 
-fn column_name_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    column: &bp_datatypes::TextLogColumnKind,
-    timeline: &TimelineName,
-) -> egui::Response {
-    match column {
-        bp_datatypes::TextLogColumnKind::Timeline => item_ui::timeline_button(ctx, ui, timeline),
-        _ => ui.strong(column.name()),
-    }
+fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) -> egui::Response {
+    ui.strong(column.name())
 }
 
 // We need this to be a custom ui to bew able to use the view state to get seen text log levels. This could potentially be avoided if we could add component ui's from this crate.
@@ -498,15 +526,13 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             return;
                         };
 
-                        let Ok(levels_list) = property.component_or_fallback::<TextLogLevelList>(
+                        let Ok(levels) = property.component_array_or_fallback::<TextLogLevel>(
                             ctx,
                             TextLogRows::descriptor_filter_by_log_level().component,
                         ) else {
                             ui.error_label("Failed to query text log levels component");
                             return;
                         };
-
-                        let levels = &levels_list.0.log_levels;
 
                         let mut new_levels = state
                             .seen_levels
@@ -534,13 +560,13 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             let log_levels: Vec<_> = new_levels
                                 .into_iter()
                                 .filter(|(_, active)| *active)
-                                .map(|(lvl, _)| datatypes::Utf8::from(lvl))
+                                .map(|(lvl, _)| TextLogLevel(lvl.into()))
                                 .collect();
 
                             property.save_blueprint_component(
                                 ctx.viewer_ctx,
                                 &TextLogRows::descriptor_filter_by_log_level(),
-                                &TextLogLevelList(bp_datatypes::TextLogLevelList { log_levels }),
+                                &log_levels,
                             );
                         }
                     }),

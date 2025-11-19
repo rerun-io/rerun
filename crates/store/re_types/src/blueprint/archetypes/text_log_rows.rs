@@ -27,19 +27,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct TextLogRows {
     /// Log levels to display.
+    ///
+    /// Defaults to showing all logged levels.
     pub filter_by_log_level: Option<SerializedComponentBatch>,
 }
 
 impl TextLogRows {
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_by_log_level`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::TextLogLevelList`].
+    /// The corresponding component is [`crate::components::TextLogLevel`].
     #[inline]
     pub fn descriptor_filter_by_log_level() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
             component: "TextLogRows:filter_by_log_level".into(),
-            component_type: Some("rerun.blueprint.components.TextLogLevelList".into()),
+            component_type: Some("rerun.components.TextLogLevel".into()),
         }
     }
 }
@@ -125,14 +127,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogRows {}
 impl TextLogRows {
     /// Create a new `TextLogRows`.
     #[inline]
-    pub fn new(
-        filter_by_log_level: impl Into<crate::blueprint::components::TextLogLevelList>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            filter_by_log_level: try_serialize_field(
-                Self::descriptor_filter_by_log_level(),
-                [filter_by_log_level],
-            ),
+            filter_by_log_level: None,
         }
     }
 
@@ -148,22 +145,22 @@ impl TextLogRows {
         use ::re_types_core::Loggable as _;
         Self {
             filter_by_log_level: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::TextLogLevelList::arrow_empty(),
+                crate::components::TextLogLevel::arrow_empty(),
                 Self::descriptor_filter_by_log_level(),
             )),
         }
     }
 
     /// Log levels to display.
+    ///
+    /// Defaults to showing all logged levels.
     #[inline]
     pub fn with_filter_by_log_level(
         mut self,
-        filter_by_log_level: impl Into<crate::blueprint::components::TextLogLevelList>,
+        filter_by_log_level: impl IntoIterator<Item = impl Into<crate::components::TextLogLevel>>,
     ) -> Self {
-        self.filter_by_log_level = try_serialize_field(
-            Self::descriptor_filter_by_log_level(),
-            [filter_by_log_level],
-        );
+        self.filter_by_log_level =
+            try_serialize_field(Self::descriptor_filter_by_log_level(), filter_by_log_level);
         self
     }
 }

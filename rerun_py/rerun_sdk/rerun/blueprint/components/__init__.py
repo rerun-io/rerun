@@ -37,10 +37,10 @@ from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
-from .text_log_column_list import TextLogColumnList, TextLogColumnListBatch
-from .text_log_level_list import TextLogLevelList, TextLogLevelListBatch
+from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
+from .timeline_column import TimelineColumn, TimelineColumnBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
@@ -141,14 +141,14 @@ __all__ = [
     "SelectedColumnsBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
-    "TextLogColumnList",
-    "TextLogColumnListBatch",
-    "TextLogLevelList",
-    "TextLogLevelListBatch",
+    "TextLogColumn",
+    "TextLogColumnBatch",
     "TimeInt",
     "TimeIntBatch",
     "TimeRange",
     "TimeRangeBatch",
+    "TimelineColumn",
+    "TimelineColumnBatch",
     "TimelineName",
     "TimelineNameBatch",
     "ViewClass",

@@ -74,6 +74,8 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
 
         if isinstance(data, RotationAxisAngle):
             data = [data]
+        else:
+            data = [x if isinstance(x, RotationAxisAngle) else RotationAxisAngle(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

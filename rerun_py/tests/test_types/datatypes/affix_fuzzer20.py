@@ -66,6 +66,8 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
 
         if isinstance(data, AffixFuzzer20):
             data = [data]
+        else:
+            data = [x if isinstance(x, AffixFuzzer20) else AffixFuzzer20(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

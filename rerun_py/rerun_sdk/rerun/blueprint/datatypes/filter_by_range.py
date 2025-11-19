@@ -80,6 +80,8 @@ class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):
 
         if isinstance(data, FilterByRange):
             data = [data]
+        else:
+            data = [x if isinstance(x, FilterByRange) else FilterByRange(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

@@ -9,10 +9,10 @@ from typing import Any
 
 from attrs import define, field
 
+from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
 )
-from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["TextLogRows"]
@@ -26,7 +26,7 @@ class TextLogRows(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, filter_by_log_level: blueprint_datatypes.TextLogLevelListLike) -> None:
+    def __init__(self: Any, *, filter_by_log_level: datatypes.Utf8ArrayLike | None = None) -> None:
         """
         Create a new instance of the TextLogRows archetype.
 
@@ -34,6 +34,8 @@ class TextLogRows(Archetype):
         ----------
         filter_by_log_level:
             Log levels to display.
+
+            Defaults to showing all logged levels.
 
         """
 
@@ -61,7 +63,7 @@ class TextLogRows(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        filter_by_log_level: blueprint_datatypes.TextLogLevelListLike | None = None,
+        filter_by_log_level: datatypes.Utf8ArrayLike | None = None,
     ) -> TextLogRows:
         """
         Update only some specific fields of a `TextLogRows`.
@@ -72,6 +74,8 @@ class TextLogRows(Archetype):
             If true, all unspecified fields will be explicitly cleared.
         filter_by_log_level:
             Log levels to display.
+
+            Defaults to showing all logged levels.
 
         """
 
@@ -95,12 +99,14 @@ class TextLogRows(Archetype):
         """Clear all the fields of a `TextLogRows`."""
         return cls.from_fields(clear_unset=True)
 
-    filter_by_log_level: blueprint_components.TextLogLevelListBatch | None = field(
+    filter_by_log_level: components.TextLogLevelBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.TextLogLevelListBatch._converter,  # type: ignore[misc]
+        converter=components.TextLogLevelBatch._converter,  # type: ignore[misc]
     )
     # Log levels to display.
+    #
+    # Defaults to showing all logged levels.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

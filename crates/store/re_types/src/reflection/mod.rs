@@ -388,23 +388,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TextLogColumnList as Component>::name(),
+            <TextLogColumn as Component>::name(),
             ComponentReflection {
-                docstring_md: "A list of columns in a text log view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "A text log column\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
-                custom_placeholder: None,
-                datatype: TextLogColumnList::arrow_datatype(),
-                verify_arrow_array: TextLogColumnList::verify_arrow_array,
-            },
-        ),
-        (
-            <TextLogLevelList as Component>::name(),
-            ComponentReflection {
-                docstring_md: "A list of text log levels to display.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
-                deprecation_summary: None,
-                custom_placeholder: Some(TextLogLevelList::default().to_arrow()?),
-                datatype: TextLogLevelList::arrow_datatype(),
-                verify_arrow_array: TextLogLevelList::verify_arrow_array,
+                custom_placeholder: Some(TextLogColumn::default().to_arrow()?),
+                datatype: TextLogColumn::arrow_datatype(),
+                verify_arrow_array: TextLogColumn::verify_arrow_array,
             },
         ),
         (
@@ -425,6 +415,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: None,
                 datatype: TimeRange::arrow_datatype(),
                 verify_arrow_array: TimeRange::verify_arrow_array,
+            },
+        ),
+        (
+            <TimelineColumn as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A timeline column in a text log table.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TimelineColumn::default().to_arrow()?),
+                datatype: TimelineColumn::arrow_datatype(),
+                verify_arrow_array: TimelineColumn::verify_arrow_array,
             },
         ),
         (
@@ -4009,17 +4009,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
-                        name: "text_log_columns",
-                        display_name: "Text log columns",
-                        component_type: "rerun.blueprint.components.TextLogColumnList".into(),
-                        docstring_md: "All columns to be displayed.",
+                        name: "timeline_columns",
+                        display_name: "Timeline columns",
+                        component_type: "rerun.blueprint.components.TimelineColumn".into(),
+                        docstring_md: "What timeline columns to show.\n\nDefaults to displaying all timelines.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
-                        name: "timeline",
-                        display_name: "Timeline",
-                        component_type: "rerun.blueprint.components.TimelineName".into(),
-                        docstring_md: "What timeline the timeline column should show.",
+                        name: "text_log_columns",
+                        display_name: "Text log columns",
+                        component_type: "rerun.blueprint.components.TextLogColumn".into(),
+                        docstring_md: "All columns to be displayed.\n\nDefaults to showing all text log column kinds in the order of the enum.",
                         is_required: false,
                     },
                 ],
@@ -4051,8 +4051,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![ArchetypeFieldReflection {
                     name: "filter_by_log_level",
                     display_name: "Filter by log level",
-                    component_type: "rerun.blueprint.components.TextLogLevelList".into(),
-                    docstring_md: "Log levels to display.",
+                    component_type: "rerun.components.TextLogLevel".into(),
+                    docstring_md: "Log levels to display.\n\nDefaults to showing all logged levels.",
                     is_required: false,
                 }],
             },

@@ -132,6 +132,8 @@ class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
 
         if isinstance(data, ImageFormat):
             data = [data]
+        else:
+            data = [x if isinstance(x, ImageFormat) else ImageFormat(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

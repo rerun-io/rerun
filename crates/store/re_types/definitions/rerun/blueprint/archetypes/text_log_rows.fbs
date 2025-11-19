@@ -8,7 +8,9 @@ table TextLogRows (
   // --- Optional ---
 
   /// Log levels to display.
-  filter_by_log_level: rerun.blueprint.components.TextLogLevelList ("attr.rerun.component_optional", order: 100);
+  ///
+  /// Defaults to showing all logged levels.
+  filter_by_log_level: [rerun.components.TextLogLevel] ("attr.rerun.component_optional", nullable, order: 100);
 }
 
 

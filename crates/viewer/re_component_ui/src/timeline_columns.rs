@@ -1,34 +1,54 @@
-use re_types::blueprint::{components::TextLogColumnList, datatypes::TextLogColumnKind};
+use re_data_ui::item_ui::timeline_button;
+
+use re_log_types::TimelineName;
+use re_types::blueprint::components::TimelineColumn;
 use re_ui::{HasDesignTokens as _, UiExt as _};
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn edit_or_view_columns_singleline(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    column_list: &mut MaybeMutRef<'_, TextLogColumnList>,
+    columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {
-    ui.weak(match column_list.text_log_columns.len() {
+    ui.weak(match columns.len() {
         1 => "1 column".to_owned(),
         l => format!("{l} columns"),
     })
 }
 
 pub fn edit_or_view_columns_multiline(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    column_list: &mut MaybeMutRef<'_, TextLogColumnList>,
+    columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {
-    match column_list {
-        MaybeMutRef::Ref(column_list) => column_list
-            .text_log_columns
+    match columns {
+        MaybeMutRef::Ref(columns) => columns
             .iter()
             .filter(|column| column.visible.into())
-            .map(|column| ui.strong(column.kind.name()))
+            .map(|column| timeline_button(ctx, ui, &TimelineName::new(&column.timeline)))
             .reduce(|a, b| a.union(b))
             .unwrap_or_else(|| ui.weak("Empty")),
-        MaybeMutRef::MutRef(column_list) => {
-            let columns = &mut column_list.text_log_columns;
+        MaybeMutRef::MutRef(columns) => {
             let mut any_edit = false;
+
+            let extra_columns = ctx
+                .recording()
+                .times_per_timeline()
+                .timelines()
+                .filter(|timeline| {
+                    columns
+                        .iter()
+                        .all(|col| col.timeline.as_str() != timeline.name().as_str())
+                })
+                .map(|timeline| {
+                    TimelineColumn(re_types::blueprint::datatypes::TimelineColumn {
+                        visible: false.into(),
+                        timeline: timeline.name().as_str().into(),
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            columns.extend(extra_columns);
 
             const ITEM_SPACING: f32 = 8.0;
             let egui::InnerResponse { mut response, .. } = egui::Frame::new()
@@ -48,7 +68,7 @@ pub fn edit_or_view_columns_multiline(
                         .map(|s| s.size)
                         .unwrap_or(0.0);
                     let sz = egui::vec2(ui.max_rect().size().x, ITEM_SPACING + text_height);
-                    let dnd_res = egui_dnd::dnd(ui, "text_log_columns_dnd").show_sized(
+                    let dnd_res = egui_dnd::dnd(ui, "timeline_columns_dnd").show_sized(
                         columns.iter_mut().enumerate(),
                         sz,
                         |ui, (_idx, col), handle, _state| {
@@ -62,15 +82,18 @@ pub fn edit_or_view_columns_multiline(
 
                                 let visible = col.visible.0;
 
+                                let col = &mut **col;
                                 egui::containers::Sides::new().shrink_left().show(
                                     ui,
                                     |ui| {
-                                        let column: &mut TextLogColumnKind = &mut col.kind;
-                                        let name = column.name();
                                         if visible {
-                                            ui.strong(name);
+                                            timeline_button(
+                                                ctx,
+                                                ui,
+                                                &TimelineName::new(&col.timeline),
+                                            );
                                         } else {
-                                            ui.weak(name);
+                                            ui.weak(col.timeline.as_str());
                                         }
                                     },
                                     |ui| {

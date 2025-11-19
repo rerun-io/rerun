@@ -9,5 +9,4 @@ selected_columns.rs linguist-generated=true
 tensor_dimension_index_slider.rs linguist-generated=true
 text_log_column.rs linguist-generated=true
 text_log_column_kind.rs linguist-generated=true
-text_log_column_list.rs linguist-generated=true
-text_log_level_list.rs linguist-generated=true
+timeline_column.rs linguist-generated=true

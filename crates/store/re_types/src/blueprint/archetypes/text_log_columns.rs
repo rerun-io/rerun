@@ -26,35 +26,39 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct TextLogColumns {
-    /// All columns to be displayed.
-    pub text_log_columns: Option<SerializedComponentBatch>,
+    /// What timeline columns to show.
+    ///
+    /// Defaults to displaying all timelines.
+    pub timeline_columns: Option<SerializedComponentBatch>,
 
-    /// What timeline the timeline column should show.
-    pub timeline: Option<SerializedComponentBatch>,
+    /// All columns to be displayed.
+    ///
+    /// Defaults to showing all text log column kinds in the order of the enum.
+    pub text_log_columns: Option<SerializedComponentBatch>,
 }
 
 impl TextLogColumns {
+    /// Returns the [`ComponentDescriptor`] for [`Self::timeline_columns`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::TimelineColumn`].
+    #[inline]
+    pub fn descriptor_timeline_columns() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+            component: "TextLogColumns:timeline_columns".into(),
+            component_type: Some("rerun.blueprint.components.TimelineColumn".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::text_log_columns`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::TextLogColumnList`].
+    /// The corresponding component is [`crate::blueprint::components::TextLogColumn`].
     #[inline]
     pub fn descriptor_text_log_columns() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
             component: "TextLogColumns:text_log_columns".into(),
-            component_type: Some("rerun.blueprint.components.TextLogColumnList".into()),
-        }
-    }
-
-    /// Returns the [`ComponentDescriptor`] for [`Self::timeline`].
-    ///
-    /// The corresponding component is [`crate::blueprint::components::TimelineName`].
-    #[inline]
-    pub fn descriptor_timeline() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
-            component: "TextLogColumns:timeline".into(),
-            component_type: Some("rerun.blueprint.components.TimelineName".into()),
+            component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
         }
     }
 }
@@ -68,16 +72,16 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]
 static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
+            TextLogColumns::descriptor_timeline_columns(),
             TextLogColumns::descriptor_text_log_columns(),
-            TextLogColumns::descriptor_timeline(),
         ]
     });
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
+            TextLogColumns::descriptor_timeline_columns(),
             TextLogColumns::descriptor_text_log_columns(),
-            TextLogColumns::descriptor_timeline(),
         ]
     });
 
@@ -124,17 +128,19 @@ impl ::re_types_core::Archetype for TextLogColumns {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let timeline_columns = arrays_by_descr
+            .get(&Self::descriptor_timeline_columns())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_timeline_columns())
+            });
         let text_log_columns = arrays_by_descr
             .get(&Self::descriptor_text_log_columns())
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_text_log_columns())
             });
-        let timeline = arrays_by_descr
-            .get(&Self::descriptor_timeline())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_timeline()));
         Ok(Self {
+            timeline_columns,
             text_log_columns,
-            timeline,
         })
     }
 }
@@ -143,7 +149,7 @@ impl ::re_types_core::AsComponents for TextLogColumns {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.text_log_columns.clone(), self.timeline.clone()]
+        [self.timeline_columns.clone(), self.text_log_columns.clone()]
             .into_iter()
             .flatten()
             .collect()
@@ -155,15 +161,10 @@ impl ::re_types_core::ArchetypeReflectionMarker for TextLogColumns {}
 impl TextLogColumns {
     /// Create a new `TextLogColumns`.
     #[inline]
-    pub fn new(
-        text_log_columns: impl Into<crate::blueprint::components::TextLogColumnList>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            text_log_columns: try_serialize_field(
-                Self::descriptor_text_log_columns(),
-                [text_log_columns],
-            ),
-            timeline: None,
+            timeline_columns: None,
+            text_log_columns: None,
         }
     }
 
@@ -178,35 +179,44 @@ impl TextLogColumns {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            text_log_columns: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::TextLogColumnList::arrow_empty(),
-                Self::descriptor_text_log_columns(),
+            timeline_columns: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TimelineColumn::arrow_empty(),
+                Self::descriptor_timeline_columns(),
             )),
-            timeline: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::TimelineName::arrow_empty(),
-                Self::descriptor_timeline(),
+            text_log_columns: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TextLogColumn::arrow_empty(),
+                Self::descriptor_text_log_columns(),
             )),
         }
     }
 
-    /// All columns to be displayed.
+    /// What timeline columns to show.
+    ///
+    /// Defaults to displaying all timelines.
     #[inline]
-    pub fn with_text_log_columns(
+    pub fn with_timeline_columns(
         mut self,
-        text_log_columns: impl Into<crate::blueprint::components::TextLogColumnList>,
+        timeline_columns: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::TimelineColumn>,
+        >,
     ) -> Self {
-        self.text_log_columns =
-            try_serialize_field(Self::descriptor_text_log_columns(), [text_log_columns]);
+        self.timeline_columns =
+            try_serialize_field(Self::descriptor_timeline_columns(), timeline_columns);
         self
     }
 
-    /// What timeline the timeline column should show.
+    /// All columns to be displayed.
+    ///
+    /// Defaults to showing all text log column kinds in the order of the enum.
     #[inline]
-    pub fn with_timeline(
+    pub fn with_text_log_columns(
         mut self,
-        timeline: impl Into<crate::blueprint::components::TimelineName>,
+        text_log_columns: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::TextLogColumn>,
+        >,
     ) -> Self {
-        self.timeline = try_serialize_field(Self::descriptor_timeline(), [timeline]);
+        self.text_log_columns =
+            try_serialize_field(Self::descriptor_text_log_columns(), text_log_columns);
         self
     }
 }
@@ -214,6 +224,6 @@ impl TextLogColumns {
 impl ::re_byte_size::SizeBytes for TextLogColumns {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.text_log_columns.heap_size_bytes() + self.timeline.heap_size_bytes()
+        self.timeline_columns.heap_size_bytes() + self.text_log_columns.heap_size_bytes()
     }
 }

@@ -57,6 +57,8 @@ class AffixFuzzer8Batch(BaseBatch[AffixFuzzer8ArrayLike], ComponentBatchMixin):
     def _native_to_pa_array(data: AffixFuzzer8ArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, AffixFuzzer8):
             data = [data]
+        else:
+            data = [x if isinstance(x, AffixFuzzer8) else AffixFuzzer8(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

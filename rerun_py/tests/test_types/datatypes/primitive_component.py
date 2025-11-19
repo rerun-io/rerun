@@ -55,6 +55,8 @@ class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, PrimitiveComponent):
             data = [data]
+        else:
+            data = [x if isinstance(x, PrimitiveComponent) else PrimitiveComponent(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

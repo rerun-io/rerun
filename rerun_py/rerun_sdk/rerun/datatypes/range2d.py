@@ -93,6 +93,8 @@ class Range2DBatch(BaseBatch[Range2DArrayLike]):
 
         if isinstance(data, Range2D):
             data = [data]
+        else:
+            data = [x if isinstance(x, Range2D) else Range2D(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

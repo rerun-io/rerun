@@ -107,6 +107,8 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
 
         if isinstance(data, TimeRange):
             data = [data]
+        else:
+            data = [x if isinstance(x, TimeRange) else TimeRange(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [

@@ -7,9 +7,6 @@ enum TextLogColumnKind: ubyte (
   /// Invalid value. Won't show up in generated types.
   Invalid = 0,
 
-  /// The logs timepoint on a specific timeline.
-  Timeline,
-
   /// Which entity path this was logged to.
   EntityPath (default),
 
@@ -28,6 +25,8 @@ table TextLogColumn (
   "attr.docs.unreleased"
 ) {
   /// Is this column visible?
+  ///
+  /// Defaults to true.
   visible: rerun.datatypes.Bool (order: 100);
 
   /// What kind of column is this?

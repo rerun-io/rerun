@@ -76,6 +76,10 @@ class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelection
     def _native_to_pa_array(data: TensorDimensionIndexSelectionArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, TensorDimensionIndexSelection):
             data = [data]
+        else:
+            data = [
+                x if isinstance(x, TensorDimensionIndexSelection) else TensorDimensionIndexSelection(x) for x in data
+            ]
 
         return pa.StructArray.from_arrays(
             [

@@ -7,10 +7,15 @@ table TextLogColumns (
 ) {
   // --- Optional ---
 
-  /// All columns to be displayed.
-  text_log_columns: rerun.blueprint.components.TextLogColumnList ("attr.rerun.component_optional", order: 1000);
 
-  /// What timeline the timeline column should show.
-  timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 2000);
+  /// What timeline columns to show.
+  ///
+  /// Defaults to displaying all timelines.
+  timeline_columns: [rerun.blueprint.components.TimelineColumn] ("attr.rerun.component_optional", nullable, order: 1000);
+
+  /// All columns to be displayed.
+  ///
+  /// Defaults to showing all text log column kinds in the order of the enum.
+  text_log_columns: [rerun.blueprint.components.TextLogColumn] ("attr.rerun.component_optional", nullable, order: 2000);
 }
 
