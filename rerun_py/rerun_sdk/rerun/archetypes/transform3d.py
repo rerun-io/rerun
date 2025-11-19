@@ -299,7 +299,6 @@ class Transform3D(Transform3DExt, Archetype):
             relation=None,
             child_frame=None,
             parent_frame=None,
-            axis_length=None,
         )
 
     @classmethod
@@ -322,7 +321,6 @@ class Transform3D(Transform3DExt, Archetype):
         relation: components.TransformRelationLike | None = None,
         child_frame: datatypes.Utf8Like | None = None,
         parent_frame: datatypes.Utf8Like | None = None,
-        axis_length: datatypes.Float32Like | None = None,
     ) -> Transform3D:
         """
         Update only some specific fields of a `Transform3D`.
@@ -382,11 +380,6 @@ class Transform3D(Transform3DExt, Archetype):
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
 
             Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-        axis_length:
-            Visual length of the 3 axes.
-
-            The length is interpreted in the local coordinate system of the transform.
-            If the transform is scaled, the axes will be scaled accordingly.
 
         """
 
@@ -401,7 +394,6 @@ class Transform3D(Transform3DExt, Archetype):
                 "relation": relation,
                 "child_frame": child_frame,
                 "parent_frame": parent_frame,
-                "axis_length": axis_length,
             }
 
             if clear_unset:
@@ -430,7 +422,6 @@ class Transform3D(Transform3DExt, Archetype):
         relation: components.TransformRelationArrayLike | None = None,
         child_frame: datatypes.Utf8ArrayLike | None = None,
         parent_frame: datatypes.Utf8ArrayLike | None = None,
-        axis_length: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -493,11 +484,6 @@ class Transform3D(Transform3DExt, Archetype):
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
 
             Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-        axis_length:
-            Visual length of the 3 axes.
-
-            The length is interpreted in the local coordinate system of the transform.
-            If the transform is scaled, the axes will be scaled accordingly.
 
         """
 
@@ -512,7 +498,6 @@ class Transform3D(Transform3DExt, Archetype):
                 relation=relation,
                 child_frame=child_frame,
                 parent_frame=parent_frame,
-                axis_length=axis_length,
             )
 
         batches = inst.as_component_batches()
@@ -528,7 +513,6 @@ class Transform3D(Transform3DExt, Archetype):
             "Transform3D:relation": relation,
             "Transform3D:child_frame": child_frame,
             "Transform3D:parent_frame": parent_frame,
-            "Transform3D:axis_length": axis_length,
         }
         columns = []
 
@@ -667,18 +651,6 @@ class Transform3D(Transform3DExt, Archetype):
     # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    axis_length: components.AxisLengthBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.AxisLengthBatch._converter,  # type: ignore[misc]
-    )
-    # Visual length of the 3 axes.
-    #
-    # The length is interpreted in the local coordinate system of the transform.
-    # If the transform is scaled, the axes will be scaled accordingly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

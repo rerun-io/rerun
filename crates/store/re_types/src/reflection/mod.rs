@@ -3193,14 +3193,23 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "The parent frame this transform transforms into.\n\n⚠ This currently also affects the parent frame of [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).\n\nIf not specified, this is set to the implicit transform frame of the current entity path's parent.\nThis means that if a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.\n\nTo set the frame an entity is part of see [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame).\n\nAny update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                         is_required: false,
                     },
-                    ArchetypeFieldReflection {
-                        name: "axis_length",
-                        display_name: "Axis length",
-                        component_type: "rerun.components.AxisLength".into(),
-                        docstring_md: "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
-                        is_required: false,
-                    },
                 ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.TransformArrows3D"),
+            ArchetypeReflection {
+                display_name: "Transform arrows 3D",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "axis_length",
+                    display_name: "Axis length",
+                    component_type: "rerun.components.AxisLength".into(),
+                    docstring_md: "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
+                    is_required: true,
+                }],
             },
         ),
         (
