@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import copy
 import itertools
+import logging
 import tempfile
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -582,7 +583,7 @@ class DatasetView:
             df = None
             for segment in segments:
                 if segment in using_index_values:
-                    index_values = using_index_values[segment]
+                    index_values = using_index_values.pop(segment)
                 else:
                     index_values = np.array([], dtype=np.datetime64)
 
@@ -598,7 +599,22 @@ class DatasetView:
                 else:
                     df = df.union(other_df)
 
-            return df
+            if len(using_index_values) > 0:
+                logging.warning(
+                    "Index values for the following inexistent or filtered segments were ignored: "
+                    f"{', '.join(using_index_values.keys())}"
+                )
+
+            if df is None:
+                # Return an empty DataFrame with the correct schema
+                return (
+                    self._inner.dataframe_query_view(index=index, contents=full_contents)
+                    .using_index_values(np.array([], dtype=np.datetime64))
+                    .df()
+                    .with_column_renamed("rerun_partition_id", "rerun_segment_id")
+                )
+            else:
+                return df
         else:
             if self._lazy_state.filtered_segments is not None:
                 view = view.filter_partition_id(*self._lazy_state.filtered_segments)

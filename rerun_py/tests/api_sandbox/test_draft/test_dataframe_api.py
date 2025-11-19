@@ -7,6 +7,7 @@ import numpy as np
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
+    from pytest import LogCaptureFixture
     from rerun_draft.catalog import DatasetEntry
 
 
@@ -119,12 +120,10 @@ def test_dataframe_api_using_index_values(complex_dataset: DatasetEntry) -> None
                 dtype=np.datetime64,
             ),
             "complex_recording_1": np.array(
-                np.array(
-                    [
-                        datetime.datetime(2000, 1, 1, 0, 0, 2),
-                    ],
-                    dtype=np.datetime64,
-                )
+                [
+                    datetime.datetime(2000, 1, 1, 0, 0, 2),
+                ],
+                dtype=np.datetime64,
             ),
             # complex_recording_2 unspecify, all rows are included
         },
@@ -174,4 +173,46 @@ timeline: [[1999-12-31 23:59:59.000000000,2000-01-01 00:00:01.000500000,2000-01-
 /points:Points2D:colors: [[null,[4278190335,16711935],[4278190591,16712191]]]
 /points:Points2D:positions: [[null,[[0,1],[3,4]],[[1,2],[4,5]]]]
 /text:TextLog:text: [[null,["Hello"],["Hello"]]]\
+""")
+
+
+def test_dataframe_api_using_index_values_empty(basic_dataset: DatasetEntry, caplog: LogCaptureFixture) -> None:
+    df = basic_dataset.reader(
+        index="timeline",
+        using_index_values={
+            "doesnt_exist": np.array(
+                [
+                    datetime.datetime(1999, 12, 31, 23, 59, 59),
+                    datetime.datetime(2000, 1, 1, 0, 0, 1, microsecond=500),
+                ],
+                dtype=np.datetime64,
+            ),
+            "simple_recording_0": np.array([], dtype=np.datetime64),
+        },
+        fill_latest_at=True,
+    )
+
+    assert len(caplog.records) == 1
+    assert caplog.records[0].msg == inline_snapshot(
+        "Index values for the following inexistent or filtered segments were ignored: doesnt_exist"
+    )
+
+    assert str(df) == inline_snapshot("No data to display")
+
+    table = df.to_arrow_table()
+
+    assert str(table) == inline_snapshot("""\
+pyarrow.Table
+rerun_segment_id: string not null
+timeline: timestamp[ns]
+/points:Points2D:colors: list<item: uint32>
+  child 0, item: uint32
+/points:Points2D:positions: list<item: fixed_size_list<item: float not null>[2]>
+  child 0, item: fixed_size_list<item: float not null>[2]
+      child 0, item: float not null
+----
+rerun_segment_id: []
+timeline: []
+/points:Points2D:colors: []
+/points:Points2D:positions: []\
 """)
