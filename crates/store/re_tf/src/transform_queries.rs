@@ -242,17 +242,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
 
     // TODO(andreas): silently ignores deserialization error right now.
 
-    let parent = unit_chunk
-        .component_mono::<components::TransformFrameId>(identifier_parent_frame)
-        .and_then(|v| v.ok())
-        .map_or_else(
-            || {
-                TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or(EntityPath::root()),
-                )
-            },
-            |frame_id| TransformFrameIdHash::new(&frame_id),
-        );
+    let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame);
 
     let mut transform = DAffine3::IDENTITY;
 
@@ -488,34 +478,86 @@ pub fn query_and_resolve_instance_poses_at_entity(
 
 pub fn query_and_resolve_pinhole_projection_at_entity(
     entity_path: &EntityPath,
+    child_frame_id: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
-) -> Option<ResolvedPinholeProjection> {
-    entity_db
-        .latest_at_component::<components::PinholeProjection>(
-            entity_path,
-            query,
-            archetypes::Pinhole::descriptor_image_from_camera().component,
-        )
-        .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
-            // Pinholes don't have an explicit target frame yet, so they always apply to the parent frame.
-            parent: TransformFrameIdHash::from_entity_path(
-                &entity_path.parent().unwrap_or(EntityPath::root()),
-            ),
+) -> Result<ResolvedPinholeProjection, TransformError> {
+    // Topology
+    let identifier_parent_frame = archetypes::Pinhole::descriptor_parent_frame().component;
+    let identifier_child_frame = archetypes::Pinhole::descriptor_child_frame().component;
+    // Geometry
+    let identifier_image_from_camera =
+        archetypes::Pinhole::descriptor_image_from_camera().component;
+    let identifier_resolution = archetypes::Pinhole::descriptor_resolution().component;
 
-            image_from_camera,
-            resolution: entity_db
-                .latest_at_component::<components::Resolution>(
-                    entity_path,
-                    query,
-                    archetypes::Pinhole::descriptor_resolution().component,
+    let all_components_of_transaction = [
+        identifier_parent_frame,
+        identifier_child_frame,
+        // Geometry
+        identifier_image_from_camera,
+        identifier_resolution,
+    ];
+
+    let unit_chunk = atomic_latest_at_query_for_frame(
+        entity_db,
+        query,
+        entity_path,
+        identifier_child_frame,
+        child_frame_id,
+        &all_components_of_transaction,
+    );
+    let Some(unit_chunk) = unit_chunk else {
+        return Err(TransformError::MissingTransform {
+            entity_path: entity_path.clone(),
+        });
+    };
+
+    let Some(image_from_camera) = unit_chunk
+        .component_mono::<components::PinholeProjection>(identifier_image_from_camera)
+        .and_then(|v| v.ok())
+    else {
+        // Intrinsics are required.
+        return Err(TransformError::MissingTransform {
+            entity_path: entity_path.clone(),
+        });
+    };
+    let resolution = unit_chunk
+        .component_mono::<components::Resolution>(identifier_resolution)
+        .and_then(|v| v.ok());
+
+    let parent = get_parent_frame(&unit_chunk, entity_path, identifier_parent_frame);
+
+    Ok(ResolvedPinholeProjection {
+        parent,
+        image_from_camera,
+        resolution,
+
+        // TODO(andreas): view coordinates are in a weird limbo state in more than one way.
+        // Not only are they only _partially_ relevant for the camera's transform (they both name axis & orient cameras),
+        // we also rely on them too much being latest-at driven and to make matters worse query them from two different archetypes.
+        view_coordinates: {
+            query_view_coordinates(entity_path, entity_db, query)
+                .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
+        },
+    })
+}
+
+fn get_parent_frame(
+    unit_chunk: &UnitChunkShared,
+    entity_path: &EntityPath,
+    identifier_parent_frame: ComponentIdentifier,
+) -> TransformFrameIdHash {
+    unit_chunk
+        .component_mono::<components::TransformFrameId>(identifier_parent_frame)
+        .and_then(|v| v.ok())
+        .map_or_else(
+            || {
+                TransformFrameIdHash::from_entity_path(
+                    &entity_path.parent().unwrap_or(EntityPath::root()),
                 )
-                .map(|(_index, resolution)| resolution),
-            view_coordinates: {
-                query_view_coordinates(entity_path, entity_db, query)
-                    .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
             },
-        })
+            |frame_id| TransformFrameIdHash::new(&frame_id),
+        )
 }
 
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.

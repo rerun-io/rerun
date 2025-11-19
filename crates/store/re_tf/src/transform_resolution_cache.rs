@@ -608,13 +608,23 @@ impl TransformsForChildFrame {
         if pinhole_projection == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_pinhole_projection_at_entity(
                 &self.associated_entity_path,
+                self.child_frame,
                 entity_db,
                 query,
             );
 
             *pinhole_projection = match &transform {
-                Some(transform) => CachedTransformValue::Resident(transform.clone()),
-                None => CachedTransformValue::Cleared,
+                Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+
+                Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
+                    // This can happen if we conservatively added a timepoint before any transform event happened.
+                    CachedTransformValue::Cleared
+                }
+
+                Err(err) => {
+                    re_log::error_once!("Failed to query transformations: {err}");
+                    CachedTransformValue::Cleared
+                }
             };
         }
 
