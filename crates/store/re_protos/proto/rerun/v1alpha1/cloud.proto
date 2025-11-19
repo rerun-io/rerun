@@ -446,11 +446,11 @@ message VectorIvfPqIndex {
   // A smaller number here will lead to more partitions, which can improve
   // search recall at the cost of higher training time and memory usage.
   //
-  // If missing, we Lance will pick a default value, which, today, is
+  // If missing, we let Lance will pick a default value, which, today, is
   // 8192 rows per partition.
   //
-  // Note that Lance will cap the maximum `num_partitions` to 4192:
-  // `num_partitions = min(4192, total_vectors / target_partition_num_rows)`
+  // Note that Lance will cap the maximum `num_partitions` to 4096:
+  // `num_partitions = min(4096, total_vectors / target_partition_num_rows)`
   // So this means that setting this value too low will have no effect for
   // large enough datasets.
   //
@@ -462,7 +462,7 @@ message VectorIvfPqIndex {
 
   // num_partitions is deprecated starting from rerun-cloud v0.7.0
   // Use target_partition_num_rows instead
-  // See: RR-2798)
+  // See: RR-2798
   reserved 1;
   reserved "num_partitions";
 }

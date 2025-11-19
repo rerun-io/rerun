@@ -514,10 +514,11 @@ pub struct VectorIvfPqIndex {
     /// A smaller number here will lead to more partitions, which can improve
     /// search recall at the cost of higher training time and memory usage.
     ///
-    /// If missing, this (today) defaults to 8192 rows per partition.
+    /// If missing, we let Lance will pick a default value, which, today, is
+    /// 8192 rows per partition.
     ///
-    /// Note that Lance will CAP the maximum `num_partitions` to 4192:
-    /// `num_partitions = min(4192, total_vectors / target_partition_num_rows)`
+    /// Note that Lance will cap the maximum `num_partitions` to 4096:
+    /// `num_partitions = min(4096, total_vectors / target_partition_num_rows)`
     /// So this means that setting this value too low will have no effect for
     /// large enough datasets.
     ///
