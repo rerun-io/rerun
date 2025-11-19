@@ -743,7 +743,8 @@ impl EyeState {
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
-            let did_eye_change = match eye_controller.kind {
+            // If the position that doesn't move by changing the eye's rotation changed.
+            let did_eye_orbit_center_change = match eye_controller.kind {
                 Eye3DKind::FirstPerson => eye_controller.pos != old_pos,
                 Eye3DKind::Orbital => eye_controller.look_target != old_look_target,
             };
@@ -835,7 +836,7 @@ impl EyeState {
                     Some(eye_controller.pos.distance(eye_controller.look_target));
 
                 // When we stop tracking, set the blueprint eye state to the tracked view.
-                if eye_controller.did_interact && did_eye_change {
+                if eye_controller.did_interact && did_eye_orbit_center_change {
                     eye_controller.save_to_blueprint(
                         ctx.viewer_ctx,
                         eye_property,
