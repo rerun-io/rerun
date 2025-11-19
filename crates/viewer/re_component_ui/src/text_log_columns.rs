@@ -7,10 +7,23 @@ pub fn edit_or_view_columns_singleline(
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TextLogColumn>>,
 ) -> egui::Response {
-    ui.weak(match columns.len() {
-        1 => "1 column".to_owned(),
-        l => format!("{l} columns"),
+    ui.horizontal(|ui| {
+        let mut first = true;
+        for col in columns.iter() {
+            if !*col.visible {
+                continue;
+            }
+
+            if first {
+                first = false;
+            } else {
+                ui.separator();
+            }
+
+            ui.strong(col.kind.name());
+        }
     })
+    .response
 }
 
 pub fn edit_or_view_columns_multiline(

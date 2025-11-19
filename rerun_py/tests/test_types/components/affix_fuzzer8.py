@@ -55,14 +55,16 @@ class AffixFuzzer8Batch(BaseBatch[AffixFuzzer8ArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer8ArrayLike, data_type: pa.DataType) -> pa.Array:
+        typed_data: Sequence[AffixFuzzer8]
+
         if isinstance(data, AffixFuzzer8):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, AffixFuzzer8) else AffixFuzzer8(x) for x in data]
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                pa.array(np.asarray([x.single_float_optional for x in data], dtype=np.float32)),
+                pa.array(np.asarray([x.single_float_optional for x in typed_data], dtype=np.float32)),
             ],
             fields=list(data_type),
         )

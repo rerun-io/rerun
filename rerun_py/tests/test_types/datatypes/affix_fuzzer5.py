@@ -201,14 +201,16 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
     def _native_to_pa_array(data: AffixFuzzer5ArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import AffixFuzzer4Batch
 
+        typed_data: Sequence[AffixFuzzer5]
+
         if isinstance(data, AffixFuzzer5):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, AffixFuzzer5) else AffixFuzzer5(x) for x in data]
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                AffixFuzzer4Batch([x.single_optional_union for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                AffixFuzzer4Batch([x.single_optional_union for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

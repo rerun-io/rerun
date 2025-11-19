@@ -66,15 +66,17 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
     def _native_to_pa_array(data: MultiEnumArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import EnumTestBatch, ValuedEnumBatch
 
+        typed_data: Sequence[MultiEnum]
+
         if isinstance(data, MultiEnum):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, MultiEnum) else MultiEnum(x) for x in data]
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                EnumTestBatch([x.value1 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
-                ValuedEnumBatch([x.value2 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                EnumTestBatch([x.value1 for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ValuedEnumBatch([x.value2 for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

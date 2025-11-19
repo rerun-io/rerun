@@ -72,15 +72,17 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import AngleBatch, Vec3DBatch
 
+        typed_data: Sequence[RotationAxisAngle]
+
         if isinstance(data, RotationAxisAngle):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, RotationAxisAngle) else RotationAxisAngle(x) for x in data]
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                Vec3DBatch([x.axis for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
-                AngleBatch([x.angle for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                Vec3DBatch([x.axis for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                AngleBatch([x.angle for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

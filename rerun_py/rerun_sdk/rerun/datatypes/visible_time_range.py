@@ -88,15 +88,17 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
     def _native_to_pa_array(data: VisibleTimeRangeArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import TimeRangeBatch, Utf8Batch
 
+        typed_data: Sequence[VisibleTimeRange]
+
         if isinstance(data, VisibleTimeRange):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, VisibleTimeRange) else VisibleTimeRange(x) for x in data]
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                Utf8Batch([x.timeline for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
-                TimeRangeBatch([x.range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                Utf8Batch([x.timeline for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeRangeBatch([x.range for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

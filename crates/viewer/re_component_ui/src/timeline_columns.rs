@@ -6,14 +6,18 @@ use re_ui::{HasDesignTokens as _, UiExt as _};
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn edit_or_view_columns_singleline(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {
-    ui.weak(match columns.len() {
-        1 => "1 column".to_owned(),
-        l => format!("{l} columns"),
+    ui.horizontal(|ui| {
+        for col in columns.iter() {
+            if *col.visible {
+                timeline_button(ctx, ui, &TimelineName::new(&col.timeline));
+            }
+        }
     })
+    .response
 }
 
 pub fn edit_or_view_columns_multiline(
@@ -24,8 +28,8 @@ pub fn edit_or_view_columns_multiline(
     match columns {
         MaybeMutRef::Ref(columns) => columns
             .iter()
-            .filter(|column| column.visible.into())
-            .map(|column| timeline_button(ctx, ui, &TimelineName::new(&column.timeline)))
+            .filter(|col| col.visible.into())
+            .map(|col| timeline_button(ctx, ui, &TimelineName::new(&col.timeline)))
             .reduce(|a, b| a.union(b))
             .unwrap_or_else(|| ui.weak("Empty")),
         MaybeMutRef::MutRef(columns) => {

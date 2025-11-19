@@ -77,15 +77,17 @@ class TimelineColumnBatch(BaseBatch[TimelineColumnArrayLike]):
     def _native_to_pa_array(data: TimelineColumnArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import BoolBatch, Utf8Batch
 
+        typed_data: Sequence[TimelineColumn]
+
         if isinstance(data, TimelineColumn):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, TimelineColumn) else TimelineColumn(x) for x in data]
+            typed_data = [x if isinstance(x, TimelineColumn) else TimelineColumn(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [
-                BoolBatch([x.visible for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
-                Utf8Batch([x.timeline for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                BoolBatch([x.visible for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Utf8Batch([x.timeline for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

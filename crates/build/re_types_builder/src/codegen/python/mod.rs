@@ -2012,6 +2012,7 @@ fn quote_arrow_support_from_obj(
         objects,
         obj,
         type_registry,
+        ext_class,
     ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
@@ -2117,6 +2118,7 @@ fn quote_arrow_serialization(
     objects: &Objects,
     obj: &Object,
     type_registry: &TypeRegistry,
+    ext_class: &ExtensionClass,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
@@ -2166,27 +2168,42 @@ fn quote_arrow_serialization(
 
             let mut code = String::new();
 
+            // Would be more correct to also check if the init method has a single parameter here.
+            let convert_inner = ext_class.has_init
+                && obj
+                    .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
+                    .is_some_and(|s| !s.is_empty());
+
             code.push_indented(0, "from typing import cast", 1);
             code.push_indented(
                 0,
                 quote_local_batch_type_imports(&obj.fields, obj.is_testing()),
                 2,
             );
+
+            code.push_indented(0, format!("typed_data: Sequence[{name}]"), 2);
+
             code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
-            code.push_indented(1, "data = [data]", 1);
+            code.push_indented(1, "typed_data = [data]", 1);
 
             code.push_indented(0, "else:", 1);
-            code.push_indented(
-                1,
-                format!("data = [x if isinstance(x, {name}) else {name}(x) for x in data]"),
-                2,
-            );
+            if convert_inner {
+                code.push_indented(
+                    1,
+                    format!(
+                        "typed_data = [x if isinstance(x, {name}) else {name}(x) for x in data]"
+                    ),
+                    2,
+                );
+            } else {
+                code.push_indented(1, "typed_data = data", 2);
+            }
 
             code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
             code.push_indented(1, "[", 1);
             for field in &obj.fields {
                 let field_name = &field.name;
-                let field_array = format!("[x.{field_name} for x in data]");
+                let field_array = format!("[x.{field_name} for x in typed_data]");
 
                 match &field.typ {
                     Type::UInt8
@@ -2227,7 +2244,7 @@ fn quote_arrow_serialization(
                         // Type checker struggles with this occasionally, exact pattern is unclear.
                         // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
                         let field_fwd = format!(
-                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]"
+                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]"
                         );
                         code.push_indented(2, &field_fwd, 1);
                     }

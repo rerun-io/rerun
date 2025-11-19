@@ -73,15 +73,17 @@ class TextLogColumnBatch(BaseBatch[TextLogColumnArrayLike]):
         from rerun.blueprint.datatypes import TextLogColumnKindBatch
         from rerun.datatypes import BoolBatch
 
+        typed_data: Sequence[TextLogColumn]
+
         if isinstance(data, TextLogColumn):
-            data = [data]
+            typed_data = [data]
         else:
-            data = [x if isinstance(x, TextLogColumn) else TextLogColumn(x) for x in data]
+            typed_data = [x if isinstance(x, TextLogColumn) else TextLogColumn(x) for x in data]
 
         return pa.StructArray.from_arrays(
             [
-                BoolBatch([x.visible for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
-                TextLogColumnKindBatch([x.kind for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type, union-attr]
+                BoolBatch([x.visible for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TextLogColumnKindBatch([x.kind for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )
