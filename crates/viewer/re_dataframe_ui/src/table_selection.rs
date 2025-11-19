@@ -24,7 +24,11 @@ impl TableSelectionState {
         });
     }
 
-    pub fn handle_row_click(&mut self, row: u64, modifiers: Modifiers) {
+    /// Update the selection based on a row / item click.
+    ///
+    /// `checkbox_click` will act as if [`Modifiers::COMMAND`] is held (so, toggle selection for
+    /// that row without clearing other selections).
+    pub fn handle_row_click(&mut self, row: u64, modifiers: Modifiers, checkbox_click: bool) {
         if modifiers.shift {
             if let Some(last_shift) = self.last_shift_selected_row {
                 // Clear previous shift selection
@@ -48,7 +52,7 @@ impl TableSelectionState {
                 self.selected_rows.insert(row);
             }
             self.last_shift_selected_row = Some(row);
-        } else if modifiers.command {
+        } else if modifiers.command || checkbox_click {
             if !self.selected_rows.remove(&row) {
                 self.selected_rows.insert(row);
                 self.last_non_shift_selected_row = Some(row);

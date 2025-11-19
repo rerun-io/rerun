@@ -3,7 +3,7 @@ use crate::table_selection::TableSelectionState;
 use egui::emath::GuiRounding as _;
 use egui::text_selection::LabelSelectionState;
 use egui::{
-    Align, Context, Direction, FontSelection, Id, Layout, Modifiers, NumExt as _, Rangef, RichText,
+    Align, Context, Direction, FontSelection, Id, Layout, NumExt as _, Rangef, RichText,
     TextWrapMode, Ui, UiBuilder, WidgetText,
 };
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
@@ -198,12 +198,9 @@ impl egui_table::TableDelegate for ReTable<'_> {
                         // undo the row click:
                         self.selection = self.previous_selection.clone();
 
-                        let mut modifiers = ui.input(|i| i.modifiers);
-                        if !modifiers.shift {
-                            // By default, the checkbox is like command clicking.
-                            modifiers = Modifiers::COMMAND;
-                        }
-                        self.selection.handle_row_click(cell.row_nr, modifiers);
+                        let modifiers = ui.input(|i| i.modifiers);
+                        self.selection
+                            .handle_row_click(cell.row_nr, modifiers, true);
                     }
                 } else {
                     Self::add_row_number_content(ui, |ui| {
@@ -263,13 +260,13 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
         if response.container_clicked() {
             let modifiers = ui.input(|i| i.modifiers);
-            self.selection.handle_row_click(row_nr, modifiers);
+            self.selection.handle_row_click(row_nr, modifiers, false);
         }
         if response.container_secondary_clicked() && !self.selection.selected_rows.contains(&row_nr)
         {
             // If right-clicking a non-selected row, select it first.
             let modifiers = ui.input(|i| i.modifiers);
-            self.selection.handle_row_click(row_nr, modifiers);
+            self.selection.handle_row_click(row_nr, modifiers, false);
         }
         self.inner.row_ui(ui, row_nr);
     }
