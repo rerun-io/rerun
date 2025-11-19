@@ -577,6 +577,9 @@ impl EyeController {
 
             // Note: we don't update parameters for perspective cameras when in orthographic mode.
             // This is done once when switching projections, via `handle_projection_change`.
+
+            // TODO: is this correct? like this, the grid doesn't scale when zooming....
+            // ... on the other hand, we should probably scale the grid _only_ based on vertical_world_size in ortho mode?
             return;
         }
 
