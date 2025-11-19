@@ -42,7 +42,7 @@
 #include "archetypes/text_document.hpp"
 #include "archetypes/text_log.hpp"
 #include "archetypes/transform3d.hpp"
-#include "archetypes/transform_arrows3d.hpp"
+#include "archetypes/transform_axes3d.hpp"
 #include "archetypes/video_frame_reference.hpp"
 #include "archetypes/video_stream.hpp"
 #include "archetypes/view_coordinates.hpp"

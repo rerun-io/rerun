@@ -3,7 +3,7 @@ use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype, ComponentType,
-    archetypes::{Points3D, Transform3D, TransformArrows3D},
+    archetypes::{Points3D, Transform3D, TransformAxes3D},
     components::AxisLength,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -17,9 +17,9 @@ use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
-pub struct TransformArrows3DVisualizer(SpatialViewVisualizerData);
+pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for TransformArrows3DVisualizer {
+impl Default for TransformAxes3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialViewKind::ThreeD,
@@ -27,16 +27,16 @@ impl Default for TransformArrows3DVisualizer {
     }
 }
 
-impl IdentifiedViewSystem for TransformArrows3DVisualizer {
+impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TransformArrows3D".into()
+        "TransformAxes3D".into()
     }
 }
 
-impl VisualizerSystem for TransformArrows3DVisualizer {
+impl VisualizerSystem for TransformAxes3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         // TODO: explain!
-        let mut query_info = VisualizerQueryInfo::from_archetype::<TransformArrows3D>();
+        let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
         query_info.required = Default::default();
         query_info
     }
@@ -104,13 +104,13 @@ impl VisualizerSystem for TransformArrows3DVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [TransformArrows3D::descriptor_axis_length().component],
+                [TransformAxes3D::descriptor_axis_length().component],
                 false,
             );
 
             let axis_length: f32 = results
                 .get_mono_with_fallback::<AxisLength>(
-                    TransformArrows3D::descriptor_axis_length().component,
+                    TransformAxes3D::descriptor_axis_length().component,
                 )
                 .into();
 
@@ -216,7 +216,7 @@ impl VisualizerSystem for AxisLengthDetector {
 
         query_info
             .required
-            .insert(TransformArrows3D::descriptor_axis_length().component);
+            .insert(TransformAxes3D::descriptor_axis_length().component);
 
         query_info
     }

@@ -100,8 +100,8 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
     let maybe_visualizable_entities = view_class_registry
         .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
 
-    // We `maybe_visualizable_entities` by the entities that were actually logged.
-    // TODO: This seems important enough to live on the `view_class_registry`.
+    // We filter `maybe_visualizable_entities` by the entities that were actually logged.
+    // TODO: This does not work for time series views yet.
     let maybe_visualizable_entities = PerVisualizer::<MaybeVisualizableEntities>(
         maybe_visualizable_entities
             .iter()

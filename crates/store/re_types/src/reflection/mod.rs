@@ -3197,9 +3197,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.TransformArrows3D"),
+            ArchetypeName::new("rerun.archetypes.TransformAxes3D"),
             ArchetypeReflection {
-                display_name: "Transform arrows 3D",
+                display_name: "Transform axes 3D",
                 deprecation_summary: None,
                 scope: None,
                 view_types: &["Spatial3DView"],

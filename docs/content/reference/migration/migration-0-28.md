@@ -9,8 +9,8 @@ order: 982
 
 The `axis_length` parameter/method has been removed from `Transform3D`. To visualize coordinate axes for your transforms:
 
-- Use the new `TransformArrows3D` archetype by logging it separately alongside your `Transform3D`
-- Existing `.rrd` recordings will be automatically migrated when opened (the migration converts `Transform3D:axis_length` components to `TransformArrows3D:axis_length`)
+- Use the new `TransformAxes3D` archetype by logging it separately alongside your `Transform3D`
+- Existing `.rrd` recordings will be automatically migrated when opened (the migration converts `Transform3D:axis_length` components to `TransformAxes3D:axis_length`)
 
 ## Changes to `Transform3D`/`InstancePose3D` are now treated transactionally by the Viewer
 

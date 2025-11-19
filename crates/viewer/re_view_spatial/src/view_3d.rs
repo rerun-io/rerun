@@ -37,7 +37,7 @@ use crate::{
 };
 use crate::{
     shared_fallbacks,
-    visualizers::{AxisLengthDetector, CamerasVisualizer, TransformArrows3DVisualizer},
+    visualizers::{AxisLengthDetector, CamerasVisualizer, TransformAxes3DVisualizer},
 };
 
 #[derive(Default)]
@@ -393,7 +393,7 @@ impl ViewClass for SpatialView3D {
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        let arrows_viz = TransformArrows3DVisualizer::identifier();
+        let axes_viz = TransformAxes3DVisualizer::identifier();
         let axis_detector = AxisLengthDetector::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 
@@ -426,7 +426,7 @@ impl ViewClass for SpatialView3D {
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
             .iter()
             .filter_map(|(visualizer, ents)| {
-                if visualizer != &arrows_viz && ents.contains(entity_path) {
+                if visualizer != &axes_viz && ents.contains(entity_path) {
                     Some(visualizer)
                 } else {
                     None
@@ -442,14 +442,14 @@ impl ViewClass for SpatialView3D {
             .collect();
 
         // Arrow visualizer is not enabled yet but we could…
-        if !enabled_visualizers.contains(&arrows_viz) && visualizable.contains(&arrows_viz) {
+        if !enabled_visualizers.contains(&axes_viz) && visualizable.contains(&axes_viz) {
             // … then we enable it if either:
             // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
             // - If we already have the [`CamerasVisualizer`] active.
             if maybe_visualizable.contains(&axis_detector)
                 || enabled_visualizers.contains(&camera_viz)
             {
-                enabled_visualizers.push(arrows_viz);
+                enabled_visualizers.push(axes_viz);
             }
         }
 

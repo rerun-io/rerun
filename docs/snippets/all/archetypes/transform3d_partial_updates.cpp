@@ -16,7 +16,7 @@ int main() {
     rec.log(
         "box",
         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-        rerun::TransformArrows3D(10.0)
+        rerun::TransformAxes3D(10.0)
     );
 
     // Update only the rotation of the box.
@@ -50,5 +50,5 @@ int main() {
     }
 
     // Clear all of the box's attributes, and reset its axis length.
-    rec.log("box", rerun::Transform3D::clear_fields(), rerun::TransformArrows3D(15.0));
+    rec.log("box", rerun::Transform3D::clear_fields(), rerun::TransformAxes3D(15.0));
 }

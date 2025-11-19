@@ -30,11 +30,11 @@ fn migrate_transform3d_axis_length(batch: RecordBatch) -> RecordBatch {
             let mut new_metadata = field.metadata().clone();
             new_metadata.insert(
                 re_types_core::FIELD_METADATA_KEY_ARCHETYPE.into(),
-                "rerun.archetypes.TransformArrows3D".into(),
+                "rerun.archetypes.TransformAxes3D".into(),
             );
             new_metadata.insert(
                 re_types_core::FIELD_METADATA_KEY_COMPONENT.into(),
-                "TransformArrows3D:axis_length".into(),
+                "TransformAxes3D:axis_length".into(),
             );
             Field::new_list_field(field.data_type().clone(), field.is_nullable())
                 .with_metadata(new_metadata)
@@ -46,7 +46,6 @@ fn migrate_transform3d_axis_length(batch: RecordBatch) -> RecordBatch {
     let new_schema =
         Schema::new_with_metadata(new_fields.collect::<Fields>(), schema.metadata().clone());
 
-    // Create new RecordBatch using provided performance optimization
     RecordBatch::try_new_with_options(
         Arc::new(new_schema.clone()),
         columns,
