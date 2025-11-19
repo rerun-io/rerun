@@ -38,6 +38,9 @@ pub enum VideoCodec {
     /// [`components::VideoSample`][crate::components::VideoSample]s using this codec should be formatted according the "Low overhead bitstream format",
     /// as specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).
     /// Each sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.
+    /// Samples containing keyframes must include a sequence header OBU before the `KEY_FRAME` OBU to enable
+    /// extraction of frame dimensions, bit depth, and color information. `INTRA_ONLY` frames are not treated
+    /// as keyframes since they may reference existing decoder state.
     ///
     /// Enum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian.
     #[allow(clippy::upper_case_acronyms)]
@@ -172,7 +175,7 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
     fn docstring_md(self) -> &'static str {
         match self {
             Self::AV1 => {
-                "AOMedia Video 1 (AV1)\n\nSee <https://en.wikipedia.org/wiki/AV1>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according the \"Low overhead bitstream format\",\nas specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).\nEach sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.\n\nEnum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian."
+                "AOMedia Video 1 (AV1)\n\nSee <https://en.wikipedia.org/wiki/AV1>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according the \"Low overhead bitstream format\",\nas specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).\nEach sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.\nSamples containing keyframes must include a sequence header OBU before the `KEY_FRAME` OBU to enable\nextraction of frame dimensions, bit depth, and color information. `INTRA_ONLY` frames are not treated\nas keyframes since they may reference existing decoder state.\n\nEnum value is the fourcc for 'av01' (the WebCodec string assigned to this codec) in big endian."
             }
             Self::H264 => {
                 "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)\n\nEnum value is the fourcc for 'avc1' (the WebCodec string assigned to this codec) in big endian."

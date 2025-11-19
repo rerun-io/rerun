@@ -104,6 +104,18 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             headers = ?safe_headers,
             email,
             entry_id,
+            // Record trace_id and benchmark_id as top level span fields.
+            //
+            // At this stage we may not know yet the actual trace_id (depending on whether
+            // we're generating a new trace or continuing an existing one). However,
+            // we need to pre-declare these fields if we want to record values for them later.
+            //
+            // The fields will be filled in by a separate [`tracing_subscriber::Layer`] (see
+            // [`TraceIdLayer`]).
+            trace_id = tracing::field::Empty,
+            // This will only be filled if we have a benchmark_id in the tracestate.
+            // That's OK, it won't be printed if empty.
+            benchmark_id = tracing::field::Empty,
         );
 
         let size = SpanMetadata::insert_opt(
@@ -704,5 +716,52 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
         });
 
         Ok(req)
+    }
+}
+
+// ---
+
+use opentelemetry::trace::TraceContextExt as _;
+use tracing::{Span, Subscriber, span::Id};
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+use tracing_subscriber::{Layer, layer::Context};
+
+/// A `tracing_subscriber::Layer` that injects the opentelemetry `trace_id` as a `benchmark_id` field
+/// top level field on every span.
+///
+/// This allows us to use the upstream tooling to filter logs within a span by `trace_id`
+#[derive(Default)]
+pub struct TraceIdLayer {
+    _private: (),
+}
+
+// Just a marker to avoid injecting multiple times per span.
+struct TraceIdInjected;
+
+impl<S> Layer<S> for TraceIdLayer
+where
+    S: Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+{
+    fn on_enter(&self, id: &Id, ctx: Context<'_, S>) {
+        if let Some(span_ref) = ctx.span(id) {
+            if span_ref.extensions().get::<TraceIdInjected>().is_some() {
+                return;
+            }
+
+            let current_span = Span::current();
+            let otel_cx = current_span.context();
+            let otel_span = otel_cx.span();
+            let span_cx = otel_span.span_context();
+
+            if span_cx.is_valid() {
+                let trace_id = span_cx.trace_id();
+                let trace_state = span_cx.trace_state();
+                current_span.record("trace_id", trace_id.to_string());
+                if let Some(benchmark_id) = trace_state.get("benchmark_id") {
+                    current_span.record("benchmark_id", benchmark_id.to_owned());
+                }
+                span_ref.extensions_mut().insert(TraceIdInjected);
+            }
+        }
     }
 }

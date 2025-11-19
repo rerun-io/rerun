@@ -54,9 +54,10 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                 let link_path = urdf.get_link_path(child_link);
                 rec.log(
                     link_path,
-                    &rerun::Transform3D::update_fields().with_rotation(
-                        rerun::RotationAxisAngle::new(fixed_axis, dynamic_angle as f32),
-                    ),
+                    &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
+                        fixed_axis,
+                        dynamic_angle as f32,
+                    )),
                 )?;
             }
         }
