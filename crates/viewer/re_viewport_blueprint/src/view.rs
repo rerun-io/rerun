@@ -4,7 +4,7 @@ use re_types::ViewClassIdentifier;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
-use re_log_types::{EntityPathSubs, Timeline};
+use re_log_types::{EntityPathSubs, TimelineName};
 use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
@@ -389,7 +389,7 @@ impl ViewBlueprint {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: TimelineName,
         view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
@@ -411,7 +411,7 @@ impl ViewBlueprint {
         let time_range = ranges.ok().flatten().and_then(|ranges| {
             ranges
                 .iter()
-                .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
+                .find(|range| range.timeline.as_str() == active_timeline.as_str())
                 .map(|range| range.range.clone())
         });
         time_range.map_or_else(

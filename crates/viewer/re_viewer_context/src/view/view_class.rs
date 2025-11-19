@@ -119,6 +119,8 @@ pub trait ViewClass: Send + Sync {
     /// See [`crate::VisualizerSystem::filter_visualizable_entities`].
     fn visualizable_filter_context(
         &self,
+        _caches: &crate::Caches,
+        _query: &re_chunk::LatestAtQuery,
         _space_origin: &EntityPath,
         _entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext> {
@@ -225,6 +227,8 @@ pub trait ViewClass: Send + Sync {
     // Updated whenever `maybe_visualizable_entities_per_visualizer` or the view blueprint changes.
     fn determine_visualizable_entities(
         &self,
+        caches: &crate::Caches,
+        query: &re_chunk::LatestAtQuery,
         maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         entity_db: &EntityDb,
         visualizers: &crate::VisualizerCollection,
@@ -232,7 +236,7 @@ pub trait ViewClass: Send + Sync {
     ) -> PerVisualizer<VisualizableEntities> {
         re_tracing::profile_function!();
 
-        let filter_ctx = self.visualizable_filter_context(space_origin, entity_db);
+        let filter_ctx = self.visualizable_filter_context(caches, query, space_origin, entity_db);
 
         PerVisualizer::<VisualizableEntities>(
             visualizers

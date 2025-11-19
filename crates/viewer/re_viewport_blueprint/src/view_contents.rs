@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use re_entity_db::{EntityDb, EntityTree, external::re_chunk_store::LatestAtQuery};
 use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
-    ResolvedEntityPathRule, Timeline, path::RuleEffect,
+    ResolvedEntityPathRule, TimelineName, path::RuleEffect,
 };
 use re_types::Loggable as _;
 use re_types::{
@@ -475,7 +475,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: TimelineName,
         query_result: &mut DataQueryResult,
         handle: DataResultHandle,
         default_query_range: &QueryRange,
@@ -556,7 +556,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             if let Ok(visible_time_ranges) =
                                 blueprint_components::VisibleTimeRange::from_arrow(&component_data)
                                 && let Some(time_range) = visible_time_ranges.iter().find(|range| {
-                                    range.timeline.as_str() == active_timeline.name().as_str()
+                                    range.timeline.as_str() == active_timeline.as_str()
                                 })
                             {
                                 property_overrides.query_range =
@@ -615,7 +615,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
-        active_timeline: &Timeline,
+        active_timeline: TimelineName,
         view_class_registry: &ViewClassRegistry,
         query_result: &mut DataQueryResult,
         view_state: &dyn ViewState,

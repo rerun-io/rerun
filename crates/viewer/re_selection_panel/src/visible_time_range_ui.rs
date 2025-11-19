@@ -37,7 +37,7 @@ pub fn visible_time_range_ui_for_view(
     let query_range = view.query_range(
         ctx.store_context.blueprint,
         ctx.blueprint_query,
-        ctx.time_ctrl.timeline(),
+        ctx.current_query().timeline(),
         ctx.view_class_registry(),
         view_state,
     );

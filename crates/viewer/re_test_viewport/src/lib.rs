@@ -96,6 +96,8 @@ impl TestContextExt for TestContext {
 
                             let visualizable_entities = class
                                 .determine_visualizable_entities(
+                                    ctx.store_context.caches,
+                                    &ctx.current_query(),
                                     ctx.maybe_visualizable_entities_per_visualizer,
                                     ctx.recording(),
                                     &class_registry
@@ -125,7 +127,7 @@ impl TestContextExt for TestContext {
                             resolver.update_overrides(
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
-                                ctx.time_ctrl.timeline(),
+                                *ctx.time_ctrl.timeline().name(),
                                 class_registry,
                                 &mut data_query_result,
                                 self.view_states.lock().get_mut_or_create(*view_id, class),

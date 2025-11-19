@@ -606,6 +606,8 @@ fn available_inactive_visualizers(
     let visualizable_entities = view
         .class(ctx.viewer_ctx.view_class_registry())
         .determine_visualizable_entities(
+            ctx.viewer_ctx.store_context.caches,
+            &ctx.current_query(),
             &maybe_visualizable_entities,
             entity_db,
             all_visualizers,

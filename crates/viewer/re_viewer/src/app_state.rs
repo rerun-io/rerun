@@ -3,7 +3,7 @@ use std::{borrow::Cow, str::FromStr as _};
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
-use re_chunk::{Timeline, TimelineName};
+use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
@@ -295,6 +295,16 @@ impl AppState {
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
+                let app_blueprint_ctx = AppBlueprintCtx {
+                    command_sender,
+                    current_blueprint: store_context.blueprint,
+                    default_blueprint: store_context.default_blueprint,
+                    blueprint_query,
+                };
+                let time_ctrl =
+                    create_time_control_for(time_controls, recording, &app_blueprint_ctx);
+                let blueprint_query = app_blueprint_ctx.blueprint_query;
+
                 // Execute the queries for every `View`
                 let query_results = {
                     re_tracing::profile_scope!("query_results");
@@ -309,6 +319,8 @@ impl AppState {
                             let visualizable_entities = view
                                 .class(view_class_registry)
                                 .determine_visualizable_entities(
+                                    store_context.caches,
+                                    &time_ctrl.current_query(),
                                     &maybe_visualizable_entities_per_visualizer,
                                     recording,
                                     &view_class_registry
@@ -328,16 +340,6 @@ impl AppState {
                         })
                         .collect::<_>()
                 };
-
-                let app_blueprint_ctx = AppBlueprintCtx {
-                    command_sender,
-                    current_blueprint: store_context.blueprint,
-                    default_blueprint: store_context.default_blueprint,
-                    blueprint_query,
-                };
-                let time_ctrl =
-                    create_time_control_for(time_controls, recording, &app_blueprint_ctx);
-                let blueprint_query = app_blueprint_ctx.blueprint_query;
 
                 let egui_ctx = ui.ctx().clone();
                 let display_mode = self.navigation.peek();
@@ -389,7 +391,7 @@ impl AppState {
                     view_class_registry,
                     &viewport_ui.blueprint,
                     &blueprint_query,
-                    time_ctrl.timeline(),
+                    &time_ctrl.current_query(),
                     &maybe_visualizable_entities_per_visualizer,
                     &indicated_entities_per_visualizer,
                     view_states,
@@ -806,7 +808,7 @@ fn update_overrides(
     view_class_registry: &ViewClassRegistry,
     viewport_blueprint: &ViewportBlueprint,
     blueprint_query: &LatestAtQuery,
-    active_timeline: &Timeline,
+    current_query: &LatestAtQuery,
     maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
     indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     view_states: &mut ViewStates,
@@ -854,6 +856,8 @@ fn update_overrides(
                 let visualizable_entities = view
                     .class(view_class_registry)
                     .determine_visualizable_entities(
+                        store_context.caches,
+                        current_query,
                         maybe_visualizable_entities_per_visualizer,
                         store_context.recording,
                         &view_class_registry.new_visualizer_collection(view.class_identifier()),
@@ -871,7 +875,7 @@ fn update_overrides(
                 resolver.update_overrides(
                     store_context.blueprint,
                     blueprint_query,
-                    active_timeline,
+                    current_query.timeline(),
                     view_class_registry,
                     &mut query_result,
                     view_state,

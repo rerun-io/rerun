@@ -1,5 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
-
+use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_types::{
@@ -14,6 +14,7 @@ use re_viewer_context::{
     VisualizableFilterContext,
 };
 
+use crate::caches::TransformDatabaseStoreCache;
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
@@ -165,14 +166,20 @@ impl ViewClass for SpatialView2D {
 
     fn visualizable_filter_context(
         &self,
+        caches: &re_viewer_context::Caches,
+        query: &LatestAtQuery,
         space_origin: &EntityPath,
         entity_db: &re_entity_db::EntityDb,
     ) -> Box<dyn VisualizableFilterContext> {
         re_tracing::profile_function!();
 
-        // TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
         // If the topology hasn't changed, we don't need to recompute any of this.
         // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
+
+        let transform_forest = caches.entry(|db: &mut TransformDatabaseStoreCache| {
+            db.get_or_create_forest(entity_db, query)
+        });
+        // TODO: Make use of our new powers.
 
         let context = SpatialTopology::access(entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);

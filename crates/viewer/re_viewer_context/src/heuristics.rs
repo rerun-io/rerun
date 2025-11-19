@@ -36,7 +36,12 @@ where
     let recommended_views = maybe_visualizable_entities
         .intersection(indicator_matching_entities)
         .filter_map(|entity| {
-            let context = view.visualizable_filter_context(entity, ctx.recording());
+            let context = view.visualizable_filter_context(
+                ctx.store_context.caches,
+                &ctx.current_query(),
+                entity,
+                ctx.recording(),
+            );
             if !visualizer
                 .filter_visualizable_entities(
                     MaybeVisualizableEntities(std::iter::once(entity.clone()).collect()),

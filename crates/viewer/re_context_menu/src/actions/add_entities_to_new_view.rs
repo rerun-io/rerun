@@ -101,6 +101,8 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
         };
 
         let visualizable_entities = entry.class.determine_visualizable_entities(
+            ctx.viewer_context.store_context.caches,
+            &ctx.viewer_context.current_query(),
             &maybe_visualizable_entities,
             recording,
             &view_class_registry.new_visualizer_collection(entry.identifier),

@@ -170,6 +170,7 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
 ///
 /// Spatial topology is time independent but may change as new data comes in.
 /// Generally, the assumption is that topological cuts stay constant over time.
+// TODO(RR-2592): This is very redundant with re_tf's TransformForest. The tricky thing is that re_tf assumes dynamic topology and this one assumes static topology!
 pub struct SpatialTopology {
     /// All subspaces, identified by their origin-hash.
     subspaces: IntMap<EntityPathHash, SubSpace>,
