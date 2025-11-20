@@ -110,7 +110,7 @@ examples = [
   "hloc_glomap",
   "instant_splat",
   "raw_mesh",
-  "vistadream"
+  "vistadream",
 ]
 
 [categories.integrations]

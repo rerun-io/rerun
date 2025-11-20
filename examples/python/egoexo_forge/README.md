@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "EgoExo Forge"
+title = "EgoExo forge"
 tags = ["3D", "HuggingFace", "Egocentric", "Exocentric", "manipulation"]
 source = "https://github.com/rerun-io/egoexo-forge"
 thumbnail = "https://static.rerun.io/egoexo_forge/629a093f1e2653711ad8fdd59c68b2318ca6bc6c/480w.png"
