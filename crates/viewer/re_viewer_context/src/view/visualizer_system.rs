@@ -36,13 +36,33 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
     }
 }
 
+/// Specifies how component requirements should be evaluated for visualizer entity matching.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RequiredComponents {
+    /// No component requirements - all entities are candidates.
+    None,
+
+    /// Entity must have _all_ of these components.
+    All(ComponentSet),
+
+    /// Entity must have _any one_ of these components.
+    Any(ComponentSet),
+}
+
+impl Default for RequiredComponents {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+// TODO: Hide these fields once all tests pass.
 pub struct VisualizerQueryInfo {
     /// This is not required, but if it is found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
     pub relevant_archetype: Option<ArchetypeName>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    pub required: ComponentSet,
+    pub required: RequiredComponents,
 
     /// Returns the list of components that the system _queries_.
     ///
@@ -57,10 +77,12 @@ impl VisualizerQueryInfo {
     pub fn from_archetype<A: Archetype>() -> Self {
         Self {
             relevant_archetype: A::name().into(),
-            required: A::required_components()
-                .iter()
-                .map(|c| c.component)
-                .collect(),
+            required: RequiredComponents::All(
+                A::required_components()
+                    .iter()
+                    .map(|c| c.component)
+                    .collect(),
+            ),
             queried: A::all_components().iter().cloned().collect(),
         }
     }
@@ -68,7 +90,7 @@ impl VisualizerQueryInfo {
     pub fn empty() -> Self {
         Self {
             relevant_archetype: Default::default(),
-            required: ComponentSet::default(),
+            required: RequiredComponents::None,
             queried: SortedComponentSet::default(),
         }
     }

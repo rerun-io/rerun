@@ -407,13 +407,10 @@ impl ViewClass for SpatialView3D {
             })
             .collect();
 
-        // We never want to consider `Transform3DArrows` as directly indicated since it uses the
-        // the Transform3D archetype. This is often used to transform other 3D primitives, where
-        // it might be annoying to always have the arrows show up.
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
             .iter()
             .filter_map(|(visualizer, ents)| {
-                if visualizer != &axes_viz && ents.contains(entity_path) {
+                if ents.contains(entity_path) {
                     Some(visualizer)
                 } else {
                     None

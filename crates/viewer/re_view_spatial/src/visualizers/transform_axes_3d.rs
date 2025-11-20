@@ -6,9 +6,9 @@ use re_types::{
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
@@ -34,7 +34,21 @@ impl IdentifiedViewSystem for TransformAxes3DVisualizer {
 impl VisualizerSystem for TransformAxes3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
-        query_info.required = Default::default();
+
+        // Make this visualizer available for any entity with Transform3D components
+        query_info.required = RequiredComponents::Any(
+            [
+                Transform3D::descriptor_translation().component,
+                Transform3D::descriptor_rotation_axis_angle().component,
+                Transform3D::descriptor_quaternion().component,
+                Transform3D::descriptor_scale().component,
+                Transform3D::descriptor_mat3x3().component,
+                TransformAxes3D::descriptor_axis_length().component,
+            ]
+            .into_iter()
+            .collect(),
+        );
+
         query_info
     }
 

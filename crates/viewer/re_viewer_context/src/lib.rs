@@ -104,7 +104,7 @@ pub use self::{
     view::{
         DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, OverridePath,
         PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedView,
-        SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt,
+        RequiredComponents, SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt,
         ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
         ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
         ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,

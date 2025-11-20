@@ -12,6 +12,8 @@ use crate::{
     VisualizerSystem,
 };
 
+use super::RequiredComponents;
+
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.
 ///
@@ -31,10 +33,32 @@ pub struct VisualizerEntitySubscriber {
     /// See [`crate::VisualizerQueryInfo::relevant_archetype`]
     relevant_archetype: Option<ArchetypeName>,
 
+    /// The mode for checking component requirements.
+    ///
+    /// See [`crate::VisualizerQueryInfo::required`]
+    requirement_mode: RequiredComponentMode,
+
     /// Assigns each required component an index.
+    ///
+    /// The components stored in here, and how the are handled depends on [`Self::requirement_mode`].
     required_components_indices: IntMap<ComponentIdentifier, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
+}
+
+/// Internal representation of how to check required components.
+///
+/// Corresponds to [`RequiredComponents`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RequiredComponentMode {
+    /// All entities match.
+    None,
+
+    /// Entity must have all tracked components.
+    All,
+
+    /// Entity must have at least one component.
+    Any,
 }
 
 #[derive(Default)]
@@ -63,11 +87,17 @@ impl VisualizerEntitySubscriber {
     pub fn new<T: IdentifiedViewSystem + VisualizerSystem>(visualizer: &T) -> Self {
         let visualizer_query_info = visualizer.visualizer_query_info();
 
+        let (requirement_mode, required_components) = match visualizer_query_info.required {
+            RequiredComponents::None => (RequiredComponentMode::None, Default::default()),
+            RequiredComponents::All(components) => (RequiredComponentMode::All, components),
+            RequiredComponents::Any(components) => (RequiredComponentMode::Any, components),
+        };
+
         Self {
             visualizer: T::identifier(),
             relevant_archetype: visualizer_query_info.relevant_archetype,
-            required_components_indices: visualizer_query_info
-                .required
+            requirement_mode,
+            required_components_indices: required_components
                 .into_iter()
                 .enumerate()
                 .map(|(i, name)| (name, i))
@@ -151,54 +181,107 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     .insert(entity_path.clone());
             }
 
-            // Update required component tracking:
-            let required_components_bitmap = store_mapping
-                .required_component_and_filter_bitmap_per_entity
-                .entry(entity_path.hash())
-                .or_insert_with(|| {
-                    BitVec::from_elem(self.required_components_indices.len(), false)
-                });
+            // Check component requirements based on mode
+            match self.requirement_mode {
+                RequiredComponentMode::None => {
+                    // No requirements means that all entities are candidates.
+                    re_log::trace!(
+                        "Entity {:?} in store {:?} may now be visualizable by {:?} (no requirements)",
+                        entity_path,
+                        event.store_id,
+                        self.visualizer
+                    );
 
-            // Early-out: if all required components are already present (and there are required
-            // components), we already marked this entity as maybe-visualizable in a previous event.
-            // We check `!is_empty()` because visualizers with no requirements still need to
-            // process events to get added to the visualizable set on their first event.
-            if required_components_bitmap.all() && !required_components_bitmap.is_empty() {
-                continue;
-            }
+                    store_mapping
+                        .maybe_visualizable_entities
+                        .0
+                        .insert(entity_path.clone());
+                }
+                RequiredComponentMode::All => {
+                    // Entity must have all required components
+                    let required_components_bitmap = store_mapping
+                        .required_component_and_filter_bitmap_per_entity
+                        .entry(entity_path.hash())
+                        .or_insert_with(|| {
+                            BitVec::from_elem(self.required_components_indices.len(), false)
+                        });
 
-            #[expect(clippy::iter_over_hash_type)]
-            for SerializedComponentColumn {
-                list_array,
-                descriptor,
-            } in event.diff.chunk.components().values()
-            {
-                if let Some(index) = self.required_components_indices.get(&descriptor.component) {
-                    // The component might be present, but logged completely empty.
-                    // That shouldn't count towards filling "having the required component present"!
-                    // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )
-                    if !list_array.values().is_empty() {
-                        required_components_bitmap.set(*index, true);
+                    // TODO: remove is empty once tests pass. (add debug assert)
+                    // Early-out: if all required components are already present, we already
+                    // marked this entity as maybe-visualizable in a previous event.
+                    if required_components_bitmap.all() && !required_components_bitmap.is_empty() {
+                        continue;
+                    }
+
+                    #[expect(clippy::iter_over_hash_type)]
+                    for SerializedComponentColumn {
+                        list_array,
+                        descriptor,
+                    } in event.diff.chunk.components().values()
+                    {
+                        if let Some(index) =
+                            self.required_components_indices.get(&descriptor.component)
+                        {
+                            // The component might be present, but logged completely empty.
+                            // That shouldn't count towards having the component present!
+                            if !list_array.values().is_empty() {
+                                required_components_bitmap.set(*index, true);
+                            }
+                        }
+                    }
+
+                    // TODO: remove is empty once tests pass.
+                    // Check if all required components are now present
+                    if required_components_bitmap.all() || required_components_bitmap.is_empty() {
+                        re_log::trace!(
+                            "Entity {:?} in store {:?} may now be visualizable by {:?}",
+                            entity_path,
+                            event.store_id,
+                            self.visualizer
+                        );
+
+                        store_mapping
+                            .maybe_visualizable_entities
+                            .0
+                            .insert(entity_path.clone());
                     }
                 }
-            }
+                RequiredComponentMode::Any => {
+                    // Entity must have any of the required components
+                    let mut has_any_component = false;
 
-            // An entity is maybe-visualizable if either:
-            // 1. All required components are present, OR
-            // 2. The visualizer has no required components
-            //    - Visualizers with no requirements accept all entities
-            if required_components_bitmap.all() || required_components_bitmap.is_empty() {
-                re_log::trace!(
-                    "Entity {:?} in store {:?} may now be visualizable by {:?}",
-                    entity_path,
-                    event.store_id,
-                    self.visualizer
-                );
+                    #[expect(clippy::iter_over_hash_type)]
+                    for SerializedComponentColumn {
+                        list_array,
+                        descriptor,
+                    } in event.diff.chunk.components().values()
+                    {
+                        if self
+                            .required_components_indices
+                            .contains_key(&descriptor.component)
+                        {
+                            // The component might be present, but logged completely empty.
+                            if !list_array.values().is_empty() {
+                                has_any_component = true;
+                                break;
+                            }
+                        }
+                    }
 
-                store_mapping
-                    .maybe_visualizable_entities
-                    .0
-                    .insert(entity_path.clone());
+                    if has_any_component {
+                        re_log::trace!(
+                            "Entity {:?} in store {:?} may now be visualizable by {:?} (has any required component)",
+                            entity_path,
+                            event.store_id,
+                            self.visualizer
+                        );
+
+                        store_mapping
+                            .maybe_visualizable_entities
+                            .0
+                            .insert(entity_path.clone());
+                    }
+                }
             }
         }
     }
