@@ -1,7 +1,6 @@
 use egui::{Response, Ui};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
@@ -89,34 +88,21 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
 
     let view_class_registry = ctx.viewer_context.view_class_registry();
     let recording = ctx.viewer_context.recording();
-    let maybe_visualizable_entities = view_class_registry
-        .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
+    let visualizable_entities =
+        view_class_registry.visualizable_entities_for_visualizer_systems(recording.store_id());
 
     for entry in view_class_registry.iter_registry() {
-        let Some(suggested_origin) = entry
-            .class
-            .recommended_origin_for_entities(&entities_of_interest, recording)
-        else {
-            continue;
-        };
-
-        let visualizable_entities = entry.class.determine_visualizable_entities(
-            &maybe_visualizable_entities,
-            recording,
-            &view_class_registry.new_visualizer_collection(entry.identifier),
-            &suggested_origin,
-        );
-
         // We consider a view class to be recommended if all selected entities are
         // "visualizable" with it. By "visualizable" we mean that either the entity itself, or any
         // of its sub-entities, are visualizable.
 
         let covered = entities_of_interest.iter().all(|entity| {
-            visualizable_entities.0.iter().any(|(_, entities)| {
-                entities
-                    .0
-                    .iter()
-                    .any(|visualizable_entity| visualizable_entity.starts_with(entity))
+            visualizable_entities.iter().any(|(visualizer, entities)| {
+                entry.visualizer_system_ids.contains(visualizer)
+                    && entities
+                        .0
+                        .iter()
+                        .any(|visualizable_entity| visualizable_entity.starts_with(entity))
             })
         });
 

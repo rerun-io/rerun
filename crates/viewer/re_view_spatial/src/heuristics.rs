@@ -29,7 +29,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
 
             if data.preferred_view_kind == Some(visualizer_kind) {
                 let indicator_matching = ctx.indicated_entities_per_visualizer.get(&id)?;
-                let maybe_visualizable = ctx.maybe_visualizable_entities_per_visualizer.get(&id)?;
+                let maybe_visualizable = ctx.visualizable_entities_per_visualizer.get(&id)?;
                 Some(indicator_matching.intersection(maybe_visualizable))
             } else {
                 None

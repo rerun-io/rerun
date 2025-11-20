@@ -5,15 +5,13 @@ use re_types::{
     image::ImageKind,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableRectSourceData, PickableTexturedRect, view_kind::SpatialViewKind,
+    visualizers::textured_rect_from_image,
 };
 
 use super::SpatialViewVisualizerData;
@@ -46,14 +44,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         VisualizerQueryInfo::from_archetype::<SegmentationImage>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
 
     fn execute(
         &mut self,

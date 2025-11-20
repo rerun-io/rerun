@@ -2,7 +2,6 @@ use std::{borrow::Cow, str::FromStr as _};
 
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
-
 use re_chunk::{Timeline, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
@@ -16,14 +15,13 @@ use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
     DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
-    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    PerVisualizer, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext, VisualizableEntities, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::ViewportBlueprint;
-use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
+use re_viewport_blueprint::{ViewportBlueprint, ui::add_view_or_container_modal_ui};
 
 use crate::{
     StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,
@@ -290,8 +288,8 @@ impl AppState {
 
                 let recording = store_context.recording;
 
-                let maybe_visualizable_entities_per_visualizer = view_class_registry
-                    .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
+                let visualizable_entities_per_visualizer = view_class_registry
+                    .visualizable_entities_for_visualizer_systems(recording.store_id());
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
@@ -303,17 +301,10 @@ impl AppState {
                         .views
                         .values()
                         .map(|view| {
-                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                            let visualizable_entities = view
-                                .class(view_class_registry)
-                                .determine_visualizable_entities(
-                                    &maybe_visualizable_entities_per_visualizer,
-                                    recording,
-                                    &view_class_registry
-                                        .new_visualizer_collection(view.class_identifier()),
-                                    &view.space_origin,
+                            let visualizable_entities = view_class_registry
+                                .visualizable_entities_for_view(
+                                    view.class_identifier(),
+                                    &visualizable_entities_per_visualizer,
                                 );
 
                             (
@@ -361,8 +352,7 @@ impl AppState {
                     connected_receivers: rx_log,
                     store_context,
                     storage_context,
-                    maybe_visualizable_entities_per_visualizer:
-                        &maybe_visualizable_entities_per_visualizer,
+                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
                     time_ctrl,
@@ -390,7 +380,7 @@ impl AppState {
                     &viewport_ui.blueprint,
                     &blueprint_query,
                     time_ctrl.timeline(),
-                    &maybe_visualizable_entities_per_visualizer,
+                    &visualizable_entities_per_visualizer,
                     &indicated_entities_per_visualizer,
                     view_states,
                 );
@@ -417,8 +407,7 @@ impl AppState {
                     connected_receivers: rx_log,
                     store_context,
                     storage_context,
-                    maybe_visualizable_entities_per_visualizer:
-                        &maybe_visualizable_entities_per_visualizer,
+                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
                     time_ctrl,
@@ -807,7 +796,7 @@ fn update_overrides(
     viewport_blueprint: &ViewportBlueprint,
     blueprint_query: &LatestAtQuery,
     active_timeline: &Timeline,
-    maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
+    visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
     indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, DataQueryResult> {
@@ -848,22 +837,14 @@ fn update_overrides(
                  view_state,
                  mut query_result,
              }| {
-                // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                let visualizable_entities = view
-                    .class(view_class_registry)
-                    .determine_visualizable_entities(
-                        maybe_visualizable_entities_per_visualizer,
-                        store_context.recording,
-                        &view_class_registry.new_visualizer_collection(view.class_identifier()),
-                        &view.space_origin,
-                    );
+                let visualizable_entities = view_class_registry.visualizable_entities_for_view(
+                    view.class_identifier(),
+                    visualizable_entities_per_visualizer,
+                );
 
                 let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
                     view,
                     view_class_registry,
-                    maybe_visualizable_entities_per_visualizer,
                     &visualizable_entities,
                     indicated_entities_per_visualizer,
                 );

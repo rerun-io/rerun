@@ -4,14 +4,13 @@ use re_log_types::{EntityPath, Instance};
 use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, components::AxisLength};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::SpatialViewVisualizerData;
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -68,13 +67,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         }))
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        filter_visualizable_3d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
 
     fn execute(
         &mut self,
@@ -261,13 +254,5 @@ impl VisualizerSystem for AxisLengthDetector {
         self
     }
 
-    #[inline]
-    fn filter_visualizable_entities(
-        &self,
-        _entities: MaybeVisualizableEntities,
-        _context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        // Never actually visualize this detector
-        Default::default()
-    }
+    // TODO: Need Jochen's PR for this to be not a disaster!
 }

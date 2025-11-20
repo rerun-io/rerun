@@ -1,10 +1,9 @@
 use re_types::{Archetype as _, archetypes::VideoStream, components::Opacity};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, VideoStreamCache, VideoStreamProcessingError,
-    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for, video_stream_time_from_query,
+    IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for, video_stream_time_from_query,
 };
 
 use crate::{
@@ -12,7 +11,7 @@ use crate::{
     contexts::{EntityDepthOffsets, TransformTreeContext},
     view_kind::SpatialViewKind,
     visualizers::{
-        SpatialViewVisualizerData, filter_visualizable_2d_entities,
+        SpatialViewVisualizerData,
         video::{
             VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
             visualize_video_frame_texture,
@@ -43,14 +42,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
         VisualizerQueryInfo::from_archetype::<VideoStream>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
 
     fn execute(
         &mut self,

@@ -1,14 +1,13 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::{IntMap, IntSet};
-
 use re_chunk::{ArchetypeName, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_types_core::SerializedComponentColumn;
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
+    IdentifiedViewSystem, IndicatedEntities, ViewSystemIdentifier, VisualizableEntities,
     VisualizerSystem,
 };
 
@@ -84,7 +83,7 @@ struct VisualizerEntityMapping {
     required_component_and_filter_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
 
     /// Which entities the visualizer can be applied to.
-    maybe_visualizable_entities: MaybeVisualizableEntities,
+    maybe_visualizable_entities: VisualizableEntities,
 
     /// List of all entities in this store that at some point in time had any of the relevant archetypes.
     ///
@@ -115,10 +114,7 @@ impl VisualizerEntitySubscriber {
 
     /// List of entities that are may be visualizable by the visualizer.
     #[inline]
-    pub fn maybe_visualizable_entities(
-        &self,
-        store: &StoreId,
-    ) -> Option<&MaybeVisualizableEntities> {
+    pub fn visualizable_entities(&self, store: &StoreId) -> Option<&VisualizableEntities> {
         self.per_store_mapping
             .get(store)
             .map(|mapping| &mapping.maybe_visualizable_entities)

@@ -1,7 +1,6 @@
 //! Utilities for determining if an entity can be added to a view.
 
 use nohash_hasher::IntMap;
-
 use re_entity_db::EntityTree;
 use re_log_types::EntityPath;
 use re_viewer_context::{DataQueryResult, ViewerContext};
@@ -71,19 +70,13 @@ pub fn create_entity_add_info(
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
-    // TODO(andreas): This should be state that is already available because it's part of the view's state.
-    let class = view.class(ctx.view_class_registry());
-    let visualizable_entities = class.determine_visualizable_entities(
-        ctx.maybe_visualizable_entities_per_visualizer,
-        ctx.recording(),
-        &ctx.view_class_registry()
-            .new_visualizer_collection(view.class_identifier()),
-        &view.space_origin,
-    );
+    let class = ctx
+        .view_class_registry()
+        .get_class_entry_or_log_error(view.class_identifier());
 
     tree.visit_children_recursively(|entity_path| {
         let can_add: CanAddToView =
-            if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
+            if ctx.visualizable_entities_per_visualizer.iter().any(|(vis, entities)| class.visualizer_system_ids.contains(vis) && entities.contains(entity_path)) {
                 CanAddToView::Compatible {
                     already_added: query_result.result_for_entity(entity_path).is_some(),
                 }

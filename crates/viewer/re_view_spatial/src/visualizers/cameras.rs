@@ -8,12 +8,11 @@ use re_types::{
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    DataResult, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks,
+    ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::SpatialViewVisualizerData;
 use crate::{
     contexts::TransformTreeContext, pinhole_wrapper::PinholeWrapper, visualizers::process_radius,
 };
@@ -206,14 +205,7 @@ impl VisualizerSystem for CamerasVisualizer {
         VisualizerQueryInfo::from_archetype::<Pinhole>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
 
     fn execute(
         &mut self,

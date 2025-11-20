@@ -107,7 +107,7 @@ impl ViewClass for TextDocumentView {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, include_entity)
     }
 
     fn ui(

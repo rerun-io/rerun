@@ -153,7 +153,7 @@ impl ViewClass for GraphView {
     ) -> ViewSpawnHeuristics {
         // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
         if let Some(maybe_visualizable) = ctx
-            .maybe_visualizable_entities_per_visualizer
+            .visualizable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())
         {
             ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
