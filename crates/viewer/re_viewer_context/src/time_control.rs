@@ -231,6 +231,9 @@ pub enum TimeControlCommand {
     TogglePlayPause,
     StepTimeBack,
     StepTimeForward,
+    MoveBySeconds(f64),
+    MoveBeginning,
+    MoveEnd,
 
     /// Restart the time cursor to the start.
     ///
@@ -906,6 +909,34 @@ impl TimeControl {
 
                 NeedsRepaint::Yes
             }
+            TimeControlCommand::MoveBySeconds(seconds) => {
+                self.move_by_seconds(*seconds);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::MoveBeginning => {
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                    self.states
+                        .entry(*self.timeline.name())
+                        .or_insert_with(|| TimeState::new(full_valid_range.min))
+                        .time = full_valid_range.min.into();
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::MoveEnd => {
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                    self.states
+                        .entry(*self.timeline.name())
+                        .or_insert_with(|| TimeState::new(full_valid_range.max))
+                        .time = full_valid_range.max.into();
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
             TimeControlCommand::Restart => {
                 if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
                     self.following = false;
@@ -1120,6 +1151,16 @@ impl TimeControl {
             } else {
                 step_fwd_time(time, &stats.per_time).into()
             };
+
+            if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                state.time = new_time;
+            }
+        }
+    }
+
+    fn move_by_seconds(&mut self, seconds: f64) {
+        if let Some(time) = self.time() {
+            let new_time = TimeReal::from_secs(time.as_secs_f64() + seconds as f64);
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;

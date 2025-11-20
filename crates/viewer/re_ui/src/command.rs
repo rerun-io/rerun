@@ -86,6 +86,12 @@ pub enum UICommand {
     PlaybackFollow,
     PlaybackStepBack,
     PlaybackStepForward,
+    PlaybackBack,
+    PlaybackForward,
+    PlaybackBackFast,
+    PlaybackForwardFast,
+    PlaybackBeginning,
+    PlaybackEnd,
     PlaybackRestart,
     PlaybackSpeed(SetPlaybackSpeed),
 
@@ -279,6 +285,21 @@ impl UICommand {
                 "Step forwards",
                 "Move the time marker to the next point in time with any data",
             ),
+            Self::PlaybackBack => (
+                "Move backwards",
+                "Move the time marker backward by 1 second",
+            ),
+            Self::PlaybackForward => ("Move forwards", "Move the time marker forward by 1 second"),
+            Self::PlaybackBackFast => (
+                "Move backwards fast",
+                "Move the time marker backwards by 10 seconds",
+            ),
+            Self::PlaybackForwardFast => (
+                "Move forwards fast",
+                "Move the time marker forwards by 10 seconds",
+            ),
+            Self::PlaybackBeginning => ("Go to beginning", "Go to beginning of timeline"),
+            Self::PlaybackEnd => ("Go to end", "Go to end of timeline"),
             Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
 
             Self::PlaybackSpeed(_) => (
@@ -363,6 +384,10 @@ impl UICommand {
 
         fn alt(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::ALT, key)
+        }
+
+        fn shift(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::SHIFT, key)
         }
 
         fn cmd_shift(key: Key) -> KeyboardShortcut {
@@ -457,6 +482,12 @@ impl UICommand {
             Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
             Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
             Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
+            Self::PlaybackBack => smallvec![key(Key::ArrowLeft)],
+            Self::PlaybackForward => smallvec![key(Key::ArrowRight)],
+            Self::PlaybackBackFast => smallvec![shift(Key::ArrowLeft)],
+            Self::PlaybackForwardFast => smallvec![shift(Key::ArrowRight)],
+            Self::PlaybackBeginning => smallvec![key(Key::Home)],
+            Self::PlaybackEnd => smallvec![key(Key::End)],
             Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
 
             Self::PlaybackSpeed(_) => {
@@ -501,7 +532,7 @@ impl UICommand {
     // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
         if matches!(self, Self::PlaybackSpeed(_)) {
-            return Some("1-99".to_owned());
+            return Some("01-99".to_owned());
         }
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.

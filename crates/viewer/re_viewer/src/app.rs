@@ -353,17 +353,26 @@ impl App {
                 "filter space key",
                 Arc::new(move |ctx| {
                     if !ctx.text_edit_focused() {
-                        let shortcut = UICommand::PlaybackTogglePlayPause
-                            .primary_kb_shortcut(ctx.os())
-                            .expect("Play / pause should have a keyboard shortcut");
-                        debug_assert_eq!(
-                            shortcut.logical_key,
-                            egui::Key::Space,
-                            "Expected space key shortcut"
-                        );
-                        if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
-                            command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
-                        }
+                        let conflicting_commands = [
+                            UICommand::PlaybackTogglePlayPause,
+                            UICommand::PlaybackBeginning,
+                            UICommand::PlaybackEnd,
+                            UICommand::PlaybackForwardFast,
+                            UICommand::PlaybackBackFast,
+                            UICommand::PlaybackForward,
+                            UICommand::PlaybackBack,
+                        ];
+
+                        let os = ctx.os();
+                        ctx.input_mut(|i| {
+                            for command in conflicting_commands {
+                                for shortcut in command.kb_shortcuts(os) {
+                                    if i.consume_shortcut(&shortcut) {
+                                        command_sender.send_ui(command);
+                                    }
+                                }
+                            }
+                        });
                     }
                 }),
             );
@@ -1656,6 +1665,60 @@ impl App {
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
                             time_commands: vec![TimeControlCommand::StepTimeForward],
+                        });
+                }
+            }
+            UICommand::PlaybackBack => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-1.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackForward => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(1.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackBackFast => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-10.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackForwardFast => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(10.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackBeginning => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBeginning],
+                        });
+                }
+            }
+            UICommand::PlaybackEnd => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveEnd],
                         });
                 }
             }
