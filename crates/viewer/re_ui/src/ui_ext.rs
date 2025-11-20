@@ -1,8 +1,8 @@
 use std::hash::Hash;
 
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, StrokeKind, Widget as _, WidgetInfo,
-    WidgetText,
+    CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
+    WidgetInfo, WidgetText,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -210,19 +210,19 @@ pub trait UiExt {
         response
     }
 
-    fn re_checkbox(
+    fn re_checkbox<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(checked, text, false)
+        self.checkbox_indeterminate(checked, text.into_atoms(), false)
     }
 
     #[expect(clippy::disallowed_types)]
-    fn checkbox_indeterminate(
+    fn checkbox_indeterminate<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
         indeterminate: bool,
     ) -> egui::Response {
         self.ui_mut()

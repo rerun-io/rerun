@@ -294,6 +294,13 @@ impl EyeController {
         })
     }
 
+    fn copy_from_eye(&mut self, eye: &Eye) {
+        self.pos = eye.pos_in_world();
+        self.look_target = eye.pos_in_world() + eye.forward_in_world();
+        self.eye_up = eye.world_from_rub_view.transform_vector3(Vec3::Y);
+        self.fov_y = eye.fov_y;
+    }
+
     /// Saves the subset of eye controls that can change through user input to the blueprint.
     /// Does nothing if no interaction happened.
     fn save_to_blueprint(
@@ -698,6 +705,7 @@ impl EyeState {
             &mut eye_controller,
             old_pos,
             old_look_target,
+            old_eye_up,
             tracking_entity.as_ref(),
         ) {
             return Ok(tracked_eye);
@@ -723,6 +731,7 @@ impl EyeState {
         eye_controller: &mut EyeController,
         old_pos: Vec3,
         old_look_target: Vec3,
+        old_eye_up: Vec3,
         tracking_entity: Option<&re_types::components::EntityPath>,
     ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
@@ -734,7 +743,8 @@ impl EyeState {
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
-            let did_eye_change = match eye_controller.kind {
+            // If the position that doesn't move by changing the eye's rotation changed.
+            let did_eye_orbit_center_change = match eye_controller.kind {
                 Eye3DKind::FirstPerson => eye_controller.pos != old_pos,
                 Eye3DKind::Orbital => eye_controller.look_target != old_look_target,
             };
@@ -744,6 +754,15 @@ impl EyeState {
                     && (eye_controller.pos != old_pos
                         || eye_controller.look_target != old_look_target)
                 {
+                    // When we stop tracking, set the blueprint eye state to the tracked view.
+                    eye_controller.copy_from_eye(&target_eye);
+                    eye_controller.save_to_blueprint(
+                        ctx.viewer_ctx,
+                        eye_property,
+                        old_pos,
+                        old_look_target,
+                        old_eye_up,
+                    );
                     eye_property.clear_blueprint_component(
                         ctx.viewer_ctx,
                         EyeControls3D::descriptor_tracking_entity(),
@@ -751,11 +770,6 @@ impl EyeState {
                 } else {
                     return Some(target_eye);
                 }
-            } else if eye_controller.did_interact && did_eye_change {
-                eye_property.clear_blueprint_component(
-                    ctx.viewer_ctx,
-                    EyeControls3D::descriptor_tracking_entity(),
-                );
             } else {
                 // Note that we may want to focus on an _instance_ instead in the future:
                 // The problem with that is that there may be **many** instances (think point cloud)
@@ -821,7 +835,23 @@ impl EyeState {
                 self.last_orbit_radius =
                     Some(eye_controller.pos.distance(eye_controller.look_target));
 
-                return Some(eye_controller.get_eye());
+                // When we stop tracking, set the blueprint eye state to the tracked view.
+                if eye_controller.did_interact && did_eye_orbit_center_change {
+                    eye_controller.save_to_blueprint(
+                        ctx.viewer_ctx,
+                        eye_property,
+                        old_pos,
+                        old_look_target,
+                        old_eye_up,
+                    );
+
+                    eye_property.clear_blueprint_component(
+                        ctx.viewer_ctx,
+                        EyeControls3D::descriptor_tracking_entity(),
+                    );
+                } else {
+                    return Some(eye_controller.get_eye());
+                }
             }
         } else {
             self.last_tracked_entity = None;
@@ -888,9 +918,7 @@ impl EyeState {
         } = eye_controller;
         // Focusing cameras is not something that happens now, since those are always tracked.
         if let Some(target_eye) = find_camera(cameras, focused_entity) {
-            eye_controller.pos = target_eye.pos_in_world();
-            eye_controller.look_target = target_eye.pos_in_world() + target_eye.forward_in_world();
-            eye_controller.eye_up = target_eye.world_from_rub_view.transform_vector3(Vec3::Y);
+            eye_controller.copy_from_eye(&target_eye);
         } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&focused_entity.hash()) {
             let fwd = self
                 .last_eye

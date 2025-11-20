@@ -942,6 +942,15 @@ impl PyDatasetEntry {
             unsafe_allow_recent_cleanup,
         )
     }
+
+    pub fn __str__(self_: PyRef<'_, Self>) -> String {
+        let super_ = self_.as_super();
+        format!(
+            "DatasetEntry(name='{}', id='{}')",
+            super_.name(),
+            super_.details.id
+        )
+    }
 }
 
 impl PyDatasetEntry {
