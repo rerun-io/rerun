@@ -125,7 +125,7 @@ def test_dataframe_api_using_index_values(complex_dataset: DatasetEntry) -> None
                 ],
                 dtype=np.datetime64,
             ),
-            # complex_recording_2 unspecify, all rows are included
+            # complex_recording_2 not included -- no rows are returned
         },
         fill_latest_at=True,
     ).sort("rerun_segment_id", "timeline")
