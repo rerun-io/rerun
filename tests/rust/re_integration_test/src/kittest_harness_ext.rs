@@ -479,9 +479,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
 
         let store_hub = self.state_mut().testonly_get_store_hub();
-        let recording_entity_db = store_hub
-            .active_recording()
-            .expect("No active recording");
+        let recording_entity_db = store_hub.active_recording().expect("No active recording");
         let messages = recording_entity_db.to_messages(None);
 
         let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
@@ -499,9 +497,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
 
         let store_hub = self.state_mut().testonly_get_store_hub();
-        let blueprint_entity_db = store_hub
-            .active_blueprint()
-            .expect("No active blueprint");
+        let blueprint_entity_db = store_hub.active_blueprint().expect("No active blueprint");
         let messages = blueprint_entity_db.to_messages(None);
 
         let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
