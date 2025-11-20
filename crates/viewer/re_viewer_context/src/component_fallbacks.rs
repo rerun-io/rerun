@@ -201,6 +201,7 @@ impl FallbackProviderRegistry {
             }),
         );
     }
+
     fn get_fallback_function<'a>(
         &'a self,
         component: ComponentIdentifier,
