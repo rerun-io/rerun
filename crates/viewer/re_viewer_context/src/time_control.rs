@@ -910,7 +910,7 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::MoveBySeconds(seconds) => {
-                self.move_by_seconds(*seconds);
+                self.move_by_seconds(times_per_timeline, *seconds);
 
                 NeedsRepaint::Yes
             }
@@ -1158,9 +1158,23 @@ impl TimeControl {
         }
     }
 
-    fn move_by_seconds(&mut self, seconds: f64) {
+    fn move_by_seconds(&mut self, times_per_timeline: &TimesPerTimeline, seconds: f64) {
         if let Some(time) = self.time() {
-            let new_time = TimeReal::from_secs(time.as_secs_f64() + seconds as f64);
+            let mut new_time = match self.time_type() {
+                TimeType::Sequence => time + TimeReal::from(seconds as i64),
+                TimeType::DurationNs | TimeType::TimestampNs => time + TimeReal::from_secs(seconds),
+            };
+
+            let range = self
+                .loop_selection()
+                .or_else(|| self.full_valid_range(times_per_timeline).map(|r| r.into()));
+            if let Some(range) = range {
+                if new_time < TimeReal::from(range.min) {
+                    new_time = TimeReal::from(range.max);
+                } else if new_time > TimeReal::from(range.max) {
+                    new_time = TimeReal::from(range.min);
+                }
+            };
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;
