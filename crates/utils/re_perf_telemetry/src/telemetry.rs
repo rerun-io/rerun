@@ -331,7 +331,7 @@ impl Telemetry {
 
             let batch_config = BatchConfigBuilder::default()
                 .with_max_queue_size(5_000)
-                .with_max_export_batch_size(4096)
+                .with_max_export_batch_size(2048)
                 .with_scheduled_delay(Duration::from_secs(10))
                 .build();
 
