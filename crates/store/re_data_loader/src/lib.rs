@@ -10,6 +10,8 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint
 mod load_file;
 mod loader_archetype;
 mod loader_directory;
+#[cfg(feature = "hdf5")]
+mod loader_hdf5;
 mod loader_rrd;
 mod loader_urdf;
 
@@ -33,6 +35,9 @@ pub use self::{
     loader_directory::DirectoryLoader, loader_rrd::RrdLoader, loader_urdf::UrdfDataLoader,
     loader_urdf::UrdfTree,
 };
+
+#[cfg(feature = "hdf5")]
+pub use self::loader_hdf5::Hdf5Loader;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
@@ -416,17 +421,24 @@ impl LoadedData {
 ///
 /// Lazy initialized the first time a file is opened.
 static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
-    vec![
+    let mut loaders: Vec<Arc<dyn DataLoader>> = vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
         Arc::new(McapLoader::default()),
-        #[cfg(not(target_arch = "wasm32"))]
-        Arc::new(LeRobotDatasetLoader),
-        #[cfg(not(target_arch = "wasm32"))]
-        Arc::new(ExternalLoader),
-        Arc::new(UrdfDataLoader),
-    ]
+    ];
+
+    #[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
+    loaders.push(Arc::new(Hdf5Loader));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        loaders.push(Arc::new(LeRobotDatasetLoader));
+        loaders.push(Arc::new(ExternalLoader));
+    }
+
+    loaders.push(Arc::new(UrdfDataLoader));
+    loaders
 });
 
 /// Iterator over all registered [`DataLoader`]s.
@@ -485,6 +497,8 @@ pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 /// 3rd party formats with built-in support.
 pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
 
+pub const SUPPORTED_HDF5_EXTENSIONS: &[&str] = &["h5", "hdf5", "hdf"];
+
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
 
@@ -493,6 +507,7 @@ pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
     SUPPORTED_RERUN_EXTENSIONS
         .iter()
         .chain(SUPPORTED_THIRD_PARTY_FORMATS)
+        .chain(SUPPORTED_HDF5_EXTENSIONS)
         .chain(SUPPORTED_IMAGE_EXTENSIONS)
         .chain(SUPPORTED_VIDEO_EXTENSIONS)
         .chain(SUPPORTED_MESH_EXTENSIONS)
@@ -516,4 +531,7 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("rrd"));
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
+    assert!(is_supported_file_extension("h5"));
+    assert!(is_supported_file_extension("hdf5"));
+    assert!(is_supported_file_extension("hdf"));
 }
