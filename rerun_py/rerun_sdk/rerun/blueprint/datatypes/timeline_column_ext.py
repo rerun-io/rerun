@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ... import datatypes
+if TYPE_CHECKING:
+    from ... import datatypes
+
 
 class TimelineColumnExt:
     """Extension for [TimelineColumn][rerun.blueprint.datatypes.TimelineColumn]."""
 
-    def __init__(self: Any, timeline: datatypes.Utf8Like, *, visible: datatypes.BoolLike = True):
+    def __init__(self: Any, timeline: datatypes.Utf8Like, *, visible: datatypes.BoolLike = True) -> None:
         """
         Create a new instance of the TextLogColumn datatype.
 
@@ -22,4 +24,3 @@ class TimelineColumnExt:
         """
 
         self.__attrs_init__(visible=visible, timeline=timeline)
-

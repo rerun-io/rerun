@@ -915,6 +915,7 @@ fn try_deserialize_array<C: re_types::Component>(
         }
     }
 }
+
 /// The ui we fall back to if everything else fails.
 fn fallback_ui(
     ui: &mut egui::Ui,
