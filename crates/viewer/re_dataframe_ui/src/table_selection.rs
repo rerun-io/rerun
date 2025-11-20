@@ -26,7 +26,7 @@ impl TableSelectionState {
 
     pub fn clear(ctx: &egui::Context, id: Id) {
         ctx.data_mut(|data| {
-            data.remove::<TableSelectionState>(id);
+            data.remove::<Self>(id);
         });
     }
 
