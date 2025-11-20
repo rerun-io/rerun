@@ -767,15 +767,17 @@ impl ChunkStore {
 
         let mut result = Vec::new();
         let mut start_idx = 0;
+        let mut cur_chunk_id = chunk.id();
 
         while start_idx < chunk.num_rows() {
             let remaining_rows = chunk.num_rows() - start_idx;
             let chunk_size = remaining_rows.min(target_rows);
 
-            let split_chunk = chunk.row_sliced(start_idx, chunk_size);
-            // Generate new row IDs for the split chunk to avoid duplicates
-            let first_row_id = RowId::new();
-            let split_chunk = split_chunk.clone_as(ChunkId::new(), first_row_id);
+            let split_chunk = chunk
+                .row_sliced(start_idx, chunk_size)
+                .with_id(cur_chunk_id);
+            cur_chunk_id = cur_chunk_id.next();
+
             result.push(std::sync::Arc::new(split_chunk));
 
             start_idx += chunk_size;
