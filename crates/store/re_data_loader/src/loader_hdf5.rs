@@ -114,8 +114,9 @@ fn load_hdf5_file(
     }
 
     // Open HDF5 file
-    let file = File::open(filepath)
-        .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to open HDF5 file: {e}")))?;
+    let file = File::open(filepath).map_err(|err| {
+        DataLoaderError::Other(anyhow::anyhow!("Failed to open HDF5 file: {err}"))
+    })?;
 
     re_log::info!("HDF5 file opened successfully: {}", filepath.display());
 
@@ -138,9 +139,9 @@ fn extract_hdf5_group(
     tx: &Sender<LoadedData>,
 ) -> std::result::Result<(), DataLoaderError> {
     // Get all member names in this group
-    let member_names = group
-        .member_names()
-        .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to get group members: {e}")))?;
+    let member_names = group.member_names().map_err(|err| {
+        DataLoaderError::Other(anyhow::anyhow!("Failed to get group members: {err}"))
+    })?;
 
     for member_name in member_names {
         let member_path = if group_path.is_empty() {
@@ -151,8 +152,8 @@ fn extract_hdf5_group(
 
         // Try to open as dataset first
         if let Ok(dataset) = group.dataset(&member_name) {
-            if let Err(e) = extract_hdf5_dataset(&dataset, &member_path, settings, store_id, tx) {
-                re_log::warn!("Failed to extract dataset '{}': {}", member_path, e);
+            if let Err(err) = extract_hdf5_dataset(&dataset, &member_path, settings, store_id, tx) {
+                re_log::warn!("Failed to extract dataset '{}': {}", member_path, err);
             }
         }
         // Try to open as group
@@ -209,7 +210,9 @@ fn extract_hdf5_dataset(
         arrays,
         &arrow::record_batch::RecordBatchOptions::new().with_row_count(None),
     )
-    .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to create RecordBatch: {e}")))?;
+    .map_err(|err| {
+        DataLoaderError::Other(anyhow::anyhow!("Failed to create RecordBatch: {err}"))
+    })?;
 
     // Convert to entity path
     let entity_path = if let Some(prefix) = &settings.entity_path_prefix {
