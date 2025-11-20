@@ -412,8 +412,7 @@ fn walk_towards_parent(
         && unprocessed_frames.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let transforms =
-            transforms_at(current_frame, entity_db, query, id_registry, transforms);
+        let transforms = transforms_at(current_frame, entity_db, query, id_registry, transforms);
         next_frame = transforms.parent_frame;
 
         // No matter whether there's a next frame or not, we push the transform information we got about this frame onto the stack
@@ -752,7 +751,7 @@ fn transforms_at(
     let mut parent_from_child;
     let child_from_instance_poses;
     let pinhole_projection;
-    
+
     if let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) {
         parent_from_child = source_transforms.latest_at_transform(entity_db, query);
         child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
