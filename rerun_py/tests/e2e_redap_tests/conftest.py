@@ -48,9 +48,17 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def pytest_configure(config: pytest.Config) -> None:
     """Register custom pytest markers."""
+
     config.addinivalue_line(
         "markers",
         "local_only: mark test as requiring local resources (e.g., uses RecordingStream to generate .rrd files on-the-fly)",
+    )
+
+    # TODO(RR-2969): these tests needs to be identified because we must currently provide an URI for the created table
+    # which, in general, is not possible for arbitrary server URLs.
+    config.addinivalue_line(
+        "markers",
+        "creates_table: mark test as creating a table (which requires providing a server-accessible path)",
     )
 
 

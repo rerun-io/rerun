@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 import atexit
+import copy
+import itertools
+import logging
 import tempfile
-from pathlib import Path
+from collections import defaultdict
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
+import datafusion
+import numpy as np
+import pyarrow as pa
 from rerun import catalog as _catalog
+from rerun.dataframe import ComponentColumnDescriptor, IndexColumnDescriptor
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
     from datetime import datetime
 
-    import datafusion
-    import pyarrow as pa
+    from rerun_bindings import IndexValuesLike, Schema as _Schema  # noqa: TID251
 
 
 class CatalogClient:
@@ -151,6 +160,50 @@ class Entry:
         return self._inner.update(name=name)
 
 
+class Schema:
+    """A schema view over a dataset in the catalog."""
+
+    def __init__(self, inner: _Schema, lazy_state: _LazyDatasetState) -> None:
+        self._inner: _Schema = inner
+        self._component_columns: list[ComponentColumnDescriptor] = []
+        self._index_columns: list[IndexColumnDescriptor] = []
+
+        # Use lazy_state to filter component columns
+        for col in self._inner:
+            if isinstance(col, ComponentColumnDescriptor):
+                if all(filter.matches(col.entity_path) for filter in lazy_state.content_path_filters):
+                    self._component_columns.append(col)
+            elif isinstance(col, IndexColumnDescriptor):
+                self._index_columns.append(col)
+
+    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
+        return itertools.chain(self._index_columns, self._component_columns)
+
+    def index_columns(self) -> list[IndexColumnDescriptor]:
+        return self._index_columns
+
+    def component_columns(self) -> list[ComponentColumnDescriptor]:
+        return self._component_columns
+
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
+        for col in self._component_columns:
+            if col.entity_path == entity_path and col.component == component:
+                return col
+        return None
+
+    def column_names(self) -> list[str]:
+        names = []
+        for col in self:
+            names.append(col.name)
+        return names
+
+    def __repr__(self) -> str:
+        lines = []
+        for col in self:
+            lines.append(repr(col))
+        return "\n".join(lines)
+
+
 class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
 
@@ -177,15 +230,17 @@ class DatasetEntry(Entry):
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
         return self._inner.set_default_blueprint_partition_id(segment_id)
 
-    def schema(self) -> Any:
-        return self._inner.schema()
+    def schema(self) -> Schema:
+        return Schema(self._inner.schema(), _LazyDatasetState())
 
     def segment_ids(self) -> list[str]:
         return self._inner.partition_ids()
 
-    def segment_table(self) -> datafusion.DataFrame:
-        # Get the partition table from the inner object
-        return self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+    def segment_table(
+        self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+    ) -> datafusion.DataFrame:
+        view = DatasetView(self._inner, _LazyDatasetState())
+        return view.segment_table(join_meta=join_meta, join_key=join_key)
 
     def manifest(self) -> Any:
         return self._inner.manifest()
@@ -213,32 +268,27 @@ class DatasetEntry(Entry):
     def download_segment(self, segment_id: str) -> Any:
         return self._inner.download_partition(segment_id)
 
-    def query(
+    def reader(
         self,
         *,
         index: str | None,
-        contents: Any,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: Any = None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
-        view = self._inner.dataframe_query_view(
+        view = DatasetView(self._inner, _LazyDatasetState())
+        return view.reader(
             index=index,
-            contents=contents,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
+            using_index_values=using_index_values,
+            fill_latest_at=fill_latest_at,
         )
 
-        # Apply using_index_values if provided
-        if using_index_values is not None:
-            view = view.using_index_values(using_index_values)
-
-        # Apply fill_latest_at if requested
-        if fill_latest_at:
-            view = view.fill_latest_at()
-
-        return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+        view = DatasetView(self._inner, _LazyDatasetState())
+        return view.index_ranges(index)
 
     def create_fts_index(
         self,
@@ -260,7 +310,6 @@ class DatasetEntry(Entry):
         *,
         column: Any,
         time_index: Any,
-        num_partitions: int | None = None,
         target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: Any = ...,
@@ -268,7 +317,6 @@ class DatasetEntry(Entry):
         return self._inner.create_vector_index(
             column=column,
             time_index=time_index,
-            num_partitions=num_partitions,
             target_partition_num_rows=target_partition_num_rows,
             num_sub_vectors=num_sub_vectors,
             distance_metric=distance_metric,
@@ -301,6 +349,344 @@ class DatasetEntry(Entry):
             cleanup_before=cleanup_before,
             unsafe_allow_recent_cleanup=unsafe_allow_recent_cleanup,
         )
+
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+        """
+        Returns a new DatasetEntry filtered to the given segment IDs.
+
+        Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
+        or a sequence of segment ID strings.
+        """
+        new_lazy_state = _LazyDatasetState().with_segment_filters(segment_ids)
+
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """Returns a new DatasetEntry filtered to the given entity paths."""
+        new_lazy_state = _LazyDatasetState().with_content_filters(exprs)
+
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
+
+
+class _ContentMatcher:
+    """
+    Helper class to match contents expressions against entity paths.
+
+    This is a poor version of the actual Rerun logic, but good enough for testing.
+    """
+
+    def normalize_path(self, path: str) -> str:
+        prefix = "+"
+        if path.startswith(("+", "-")):
+            prefix = path[0]
+            path = path[1:]
+            path = path.lstrip("+-")
+
+        normalized_path = str(PurePosixPath("/" + path.lstrip("/")))
+
+        return prefix + normalized_path
+
+    def __init__(self, exprs: str) -> None:
+        # path -> included?
+        self.exact: dict[str, bool] = {}
+        self.prefix: list[tuple[str, bool]] = []
+
+        # Split by whitespace, normalize each path
+        # Add to exact or prefix lists based on /** suffix
+        for raw_expr in exprs.split():
+            expr = self.normalize_path(raw_expr)
+            if expr.endswith("/**"):
+                if expr.startswith("-"):
+                    self.prefix.append((expr[1:-3], False))
+                else:
+                    self.prefix.append((expr[1:-3], True))
+            else:
+                if expr.startswith("-"):
+                    self.exact[expr[1:]] = False
+                else:
+                    self.exact[expr[1:]] = True
+
+        # Unless `/__properties__/**` was explicitly included, always exclude it
+        if not any(prefix == "/__properties" for prefix, _ in self.prefix):
+            self.prefix.append(("/__properties", False))
+
+        # Sort prefix expressions by length (longest first)
+        self.prefix.sort(key=lambda p: len(p[0]), reverse=True)
+
+    def matches(self, path: str) -> bool:
+        path = str(PurePosixPath("/" + path.lstrip("/")))
+
+        # First check for exact match
+        if path in self.exact:
+            return self.exact[path]
+
+        # Otherwise find the first matching prefix
+        for prefix, included in self.prefix:
+            if path.startswith(prefix):
+                return included
+        return False
+
+
+@dataclass
+class _LazyDatasetState:
+    # None means no filtering
+    # Otherwise we accumulate a set via intersection
+    filtered_segments: set[str] | None = None
+    content_path_filters: list[_ContentMatcher] = field(default_factory=list)
+
+    def with_segment_filters(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> _LazyDatasetState:
+        new_lazy_state = copy.deepcopy(self)
+
+        if isinstance(segment_ids, datafusion.DataFrame):
+            if "rerun_segment_id" not in segment_ids.schema().names:
+                raise ValueError("DataFrame segment_ids must have a column named 'rerun_segment_id'.")
+            filt_segment_ids = {
+                segment_id.as_py() for batch in segment_ids.collect() for segment_id in batch.column("rerun_segment_id")
+            }
+        else:
+            filt_segment_ids = set(segment_ids)
+
+        if new_lazy_state.filtered_segments is not None:
+            new_lazy_state.filtered_segments &= filt_segment_ids
+        else:
+            new_lazy_state.filtered_segments = filt_segment_ids
+
+        return new_lazy_state
+
+    def with_content_filters(
+        self,
+        exprs: Sequence[str],
+    ) -> _LazyDatasetState:
+        new_lazy_state = copy.deepcopy(self)
+
+        exprs = " ".join(exprs)
+
+        new_lazy_state.content_path_filters.append(_ContentMatcher(exprs))
+
+        return new_lazy_state
+
+
+class DatasetView:
+    """A view over a dataset in the catalog."""
+
+    def __init__(self, inner: _catalog.DatasetEntry, lazy_state: _LazyDatasetState) -> None:
+        self._inner: _catalog.DatasetEntry = inner
+        self._lazy_state: _LazyDatasetState = lazy_state
+
+    def schema(self) -> Schema:
+        return Schema(self._inner.schema(), self._lazy_state)
+
+    def arrow_schema(self) -> pa.Schema:
+        filtered_schema = self._inner.arrow_schema()
+
+        for filter in self._lazy_state.content_path_filters or [_ContentMatcher("/**")]:
+            filtered_schema = pa.schema([
+                field
+                for field in filtered_schema
+                if field.metadata.get(b"rerun:kind", None) != b"data"
+                or filter.matches(field.metadata.get(b"rerun:entity_path", b"").decode("utf-8"))
+            ])
+
+        return filtered_schema
+
+    def segment_ids(self) -> list[str]:
+        if self._lazy_state.filtered_segments is not None:
+            return [pid for pid in self._inner.partition_ids() if pid in self._lazy_state.filtered_segments]
+        else:
+            return self._inner.partition_ids()
+
+    def download_segment(self, segment_id: str) -> Any:
+        return self._inner.download_partition(segment_id)
+
+    def segment_table(
+        self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+    ) -> datafusion.DataFrame:
+        # Get the partition table from the inner object
+
+        partitions = self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+        if self._lazy_state.filtered_segments is not None:
+            ctx = datafusion.SessionContext()
+
+            segment_df = ctx.from_arrow(
+                pa.Table.from_arrays(
+                    [pa.array(list(self._lazy_state.filtered_segments))], names=["filtered_segment_id"]
+                ),
+            )
+
+            partitions = partitions.join(segment_df, left_on="rerun_segment_id", right_on="filtered_segment_id").drop(
+                "filtered_segment_id"
+            )
+
+        if join_meta is not None:
+            if isinstance(join_meta, TableEntry):
+                join_meta = join_meta.reader()
+            if join_key not in partitions.schema().names:
+                raise ValueError(f"Dataset partition table must contain join_key column '{join_key}'.")
+            if join_key not in join_meta.schema().names:
+                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
+
+            meta_join_key = join_key + "_meta"
+
+            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
+
+            return partitions.join(
+                join_meta,
+                left_on=join_key,
+                right_on=meta_join_key,
+                how="left",
+            ).drop(meta_join_key)
+        else:
+            return partitions
+
+    def reader(
+        self,
+        *,
+        index: str | None,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
+        fill_latest_at: bool = False,
+    ) -> datafusion.DataFrame:
+        """
+        Create a reader over this DatasetView as a datafusion DataFrame.
+
+        The reader will return rows for all data that exists on the specified index.
+        It will either return 1 row per index value, or if `using_index_values` is provided,
+        it will instead generate rows for each of the provided values.
+
+        `using_index_values` can be provided in either of these forms:
+        - a dictionary mapping segment IDs to index values
+        - a DataFusion DataFrame with a column named 'rerun_segment_id' and a column named after the provided `index`
+
+        The operation is lazy. The data will not be read from the source dataset until consumed.
+        """
+        full_contents = defaultdict(list)
+
+        # Note: arrow_schema() here already describes the intended schema
+        for fld in self.arrow_schema():
+            if fld.metadata.get(b"rerun:kind", None) == b"data":
+                entity_path = fld.metadata.get(b"rerun:entity_path", b"").decode("utf-8")
+                component = fld.metadata.get(b"rerun:component", b"").decode("utf-8")
+                full_contents[entity_path].append(component)
+
+        view = self._inner.dataframe_query_view(
+            index=index,
+            contents=full_contents,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+        )
+
+        # Apply fill_latest_at if requested
+        if fill_latest_at:
+            view = view.fill_latest_at()
+
+        if using_index_values and index is None:
+            raise ValueError("index must be provided when using_index_values is provided")
+
+        if using_index_values is not None:
+            # convert to dictionary representation
+            if isinstance(using_index_values, datafusion.DataFrame):
+                rows = using_index_values.select("rerun_segment_id", index).to_pylist()
+
+                using_index_values = defaultdict(list)
+                for row in rows:
+                    using_index_values[row["rerun_segment_id"]].append(row[index])
+
+                using_index_values = {k: np.array(v, dtype=np.datetime64) for k, v in using_index_values.items()}
+
+            # Fake the intended behavior: index values are provided on a per-segment basis. If a segment is missing,
+            # no rows are generated for it.
+            segments = self._lazy_state.filtered_segments or self._inner.partition_ids()
+
+            df = None
+            for segment in segments:
+                if segment in using_index_values:
+                    index_values = using_index_values.pop(segment)
+                else:
+                    index_values = np.array([], dtype=np.datetime64)
+
+                other_df = (
+                    view.filter_partition_id(segment)
+                    .using_index_values(index_values)
+                    .df()
+                    .with_column_renamed("rerun_partition_id", "rerun_segment_id")
+                )
+
+                if df is None:
+                    df = other_df
+                else:
+                    df = df.union(other_df)
+
+            if len(using_index_values) > 0:
+                logging.warning(
+                    "Index values for the following inexistent or filtered segments were ignored: "
+                    f"{', '.join(using_index_values.keys())}"
+                )
+
+            if df is None:
+                # Return an empty DataFrame with the correct schema
+                return (
+                    self._inner.dataframe_query_view(index=index, contents=full_contents)
+                    .using_index_values(np.array([], dtype=np.datetime64))
+                    .df()
+                    .with_column_renamed("rerun_partition_id", "rerun_segment_id")
+                )
+            else:
+                return df
+        else:
+            if self._lazy_state.filtered_segments is not None:
+                view = view.filter_partition_id(*self._lazy_state.filtered_segments)
+
+            return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+        import datafusion.functions as F
+        from datafusion import col
+
+        schema = self.schema()
+        exprs = []
+
+        for index_column in schema.index_columns():
+            exprs.append(F.min(col(index_column.name)).alias(f"{index_column.name}:min"))
+            exprs.append(F.max(col(index_column.name)).alias(f"{index_column.name}:max"))
+
+        # TODO(ab, jleibs): we're still unsure about these, so let's keep them aside for now.
+        # for component_column in schema.component_columns():
+        #     if component_column.name.startswith("property:"):
+        #         continue
+        #     exprs.append(F.count(col(component_column.name)).alias(f"count({component_column.name})"))
+
+        return self.reader(index=index).aggregate("rerun_segment_id", exprs)
+
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+        """
+        Returns a new DatasetEntry filtered to the given segment IDs.
+
+        Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
+        or a sequence of segment ID strings.
+        """
+        new_lazy_state = self._lazy_state.with_segment_filters(segment_ids)
+
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """
+        Returns a new DatasetEntry filtered to the given entity paths.
+
+        NOTE: The choice of `contents` and `filter` are both intentional here.
+
+        Contents as a string gives us more flexibility in specifying what to include/exclude in ways that
+        include components. For example: `+/**:Points3D` or maybe `+/** -:Image`. This follows how we
+        specify this in blueprints.
+
+        We choose `filter` rather than `select` to make it clear that this is an operation that not only
+        reduces the number of columns but ALSO reduces the number of rows. I.e. we remove every row for
+        which there are no remaining non-index columns after filtering.
+        """
+        new_lazy_state = self._lazy_state.with_content_filters(exprs)
+
+        return DatasetView(self._inner, lazy_state=new_lazy_state)
 
 
 class TableEntry(Entry):

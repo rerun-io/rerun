@@ -83,6 +83,10 @@ impl PyTableEntry {
     pub fn storage_url(&self) -> String {
         self.url.clone().unwrap_or_default()
     }
+
+    pub fn __str__(&self) -> String {
+        format!("TableEntry(url='{}')", self.url.clone().unwrap_or_default())
+    }
 }
 
 impl PyTableEntry {

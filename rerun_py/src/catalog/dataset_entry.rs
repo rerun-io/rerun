@@ -622,12 +622,12 @@ impl PyDatasetEntry {
     ///     The component column to create the index on.
     /// time_index : IndexColumnSelector
     ///     Which timeline this index will map to.
-    /// num_partitions : int | None
-    ///     The number of partitions to create for the index.
-    ///     (Deprecated, use target_partition_num_rows instead)
     /// target_partition_num_rows : int | None
     ///     The target size (in number of rows) for each partition.
-    ///     Defaults to 4096 if neither this nor num_partitions is specified.
+    ///     The underlying indexer (lance) will pick a default when no value
+    ///     is specified - today this is 8192. It will also cap the
+    ///     maximum number of partitions independently of this setting - currently
+    ///     4096.
     /// num_sub_vectors : int
     ///     The number of sub-vectors to use when building the index.
     /// distance_metric : VectorDistanceMetricLike
@@ -636,7 +636,6 @@ impl PyDatasetEntry {
         *,
         column,
         time_index,
-        num_partitions = None,
         target_partition_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
@@ -646,8 +645,6 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        // TODO(RR-2798): Remove num_partitions since deprecated
-        num_partitions: Option<u32>,
         target_partition_num_rows: Option<u32>,
         num_sub_vectors: u32,
         distance_metric: VectorDistanceMetricLike,
@@ -664,33 +661,7 @@ impl PyDatasetEntry {
         let distance_metric: re_protos::cloud::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
 
-        let (num_partitions, target_partition_num_rows) = match (
-            num_partitions,
-            target_partition_num_rows,
-        ) {
-            // num_partitions is deprecated
-            (Some(n), None) => {
-                re_log::warn!(
-                    "The 'num_partitions' parameter is deprecated. Please use 'target_partition_num_rows' instead."
-                );
-                (Some(n), None)
-            }
-            // target_partition_num_rows is preferred
-            (None, Some(s)) => (None, Some(s)),
-            // If neither is set, default target_partition_num_rows to 4096
-            (None, None) => (None, Some(4096)),
-            // If both are set it's an error
-            (Some(_), Some(_)) => {
-                return Err(PyValueError::new_err(
-                    "Cannot specify both num_partitions and target_partition_num_rows.",
-                ));
-            }
-        };
-
-        // Otherwise
-
         let properties = IndexProperties::VectorIvfPq {
-            num_partitions,
             target_partition_num_rows,
             num_sub_vectors,
             metric: distance_metric,
@@ -969,6 +940,15 @@ impl PyDatasetEntry {
             compact_fragments,
             cleanup_before,
             unsafe_allow_recent_cleanup,
+        )
+    }
+
+    pub fn __str__(self_: PyRef<'_, Self>) -> String {
+        let super_ = self_.as_super();
+        format!(
+            "DatasetEntry(name='{}', id='{}')",
+            super_.name(),
+            super_.details.id
         )
     }
 }

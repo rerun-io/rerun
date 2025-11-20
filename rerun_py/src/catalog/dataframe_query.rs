@@ -439,6 +439,18 @@ impl PyDataframeQueryView {
             self_.partition_ids.as_slice(),
         )
     }
+
+    pub fn __str__(&self, py: Python<'_>) -> String {
+        let dataset_str = PyDatasetEntry::__str__(self.dataset.borrow(py));
+        let query_expr_str = format!("{:#?}", self.query_expression);
+
+        let dataset_line = indent::indent_all_by(1, format!("dataset={dataset_str},"));
+        let query_line = indent::indent_all_by(1, format!("query_expression={query_expr_str},"));
+        let partition_line =
+            indent::indent_all_by(1, format!("partition_ids={:?}", self.partition_ids));
+
+        format!("DataframeQueryView(\n{dataset_line}\n{query_line}\n{partition_line}\n)")
+    }
 }
 
 impl PyDataframeQueryView {

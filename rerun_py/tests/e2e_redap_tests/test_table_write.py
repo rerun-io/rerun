@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .conftest import EntryFactory
 
 
+@pytest.mark.creates_table
 def test_datafusion_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """Test DataFusion write operations (append/overwrite) on a table created from scratch."""
     base_name = "test_table"
@@ -45,6 +46,7 @@ def test_datafusion_write_table(entry_factory: EntryFactory, tmp_path: pathlib.P
     assert ctx.table(table_name).count() == smaller_count
 
 
+@pytest.mark.creates_table
 def test_client_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """Test client write operations with various input formats on a table created from scratch."""
     base_name = "test_table"
@@ -97,6 +99,7 @@ def test_client_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path)
     assert final_count == 3
 
 
+@pytest.mark.creates_table
 def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """Test client append_to_table convenience method on a table created from scratch."""
     base_name = "test_table"

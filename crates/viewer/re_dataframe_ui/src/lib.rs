@@ -11,6 +11,7 @@ mod re_table;
 pub mod re_table_utils;
 mod requested_object;
 mod table_blueprint;
+mod table_selection;
 
 pub use self::{
     datafusion_table_widget::{DataFusionTableWidget, TableStatus},

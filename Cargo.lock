@@ -3439,8 +3439,7 @@ dependencies = [
 [[package]]
 name = "egui_table"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cc6e7eef49daf597eab65ed37c1b0058e34a1b7b10b4a0239a6e244c66917a9"
+source = "git+https://github.com/rerun-io/egui_table?branch=main#108c543d1f6a8da4ff063849bd64af4a72fcb294"
 dependencies = [
  "egui",
  "serde",
@@ -9677,6 +9676,7 @@ name = "re_tf"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "bitflags 2.9.4",
  "criterion",
  "glam",
@@ -10713,6 +10713,7 @@ dependencies = [
  "datafusion-ffi",
  "document-features",
  "futures",
+ "indent",
  "infer",
  "itertools 0.14.0",
  "jiff",

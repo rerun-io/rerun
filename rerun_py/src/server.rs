@@ -17,7 +17,7 @@ pub struct PyServerInternal {
     address: SocketAddr,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyServerInternal {
     #[new]
     #[pyo3(signature = (*, address="0.0.0.0", port=51234, datasets=None, tables=None))]

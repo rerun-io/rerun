@@ -20,7 +20,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 pub struct PyViewerClient {
     conn: ViewerConnectionHandle,
 }
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyViewerClient {
     /// Create a new viewer client object.
     #[new]
