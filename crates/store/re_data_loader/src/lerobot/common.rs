@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, mpsc::Sender};
 
 use anyhow::{Context as _, anyhow};
 use arrow::{
@@ -17,6 +17,15 @@ use re_types::archetypes::EncodedImage;
 
 use crate::lerobot::{EpisodeIndex, Feature};
 use crate::{DataLoaderError, LoadedData, load_file::prepare_store_info};
+
+/// Shared interface for all `LeRobot` dataset versions.
+pub trait LeRobotDataset {
+    /// Returns an iterator over all episode indices within the dataset.
+    fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex>;
+
+    /// Loads a specific episode and returns its chunks.
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError>;
+}
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
 pub const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
@@ -90,6 +99,24 @@ pub fn load_and_stream_common<Dataset>(
             }
         }
     }
+}
+
+/// Prepare store info for all episodes and stream them using the provided loader.
+pub fn load_and_stream_versioned<D: LeRobotDataset>(
+    dataset: &D,
+    application_id: &ApplicationId,
+    tx: &Sender<LoadedData>,
+    loader_name: &str,
+) {
+    let store_ids = prepare_episode_chunks(
+        dataset.iter_episode_indices(),
+        application_id,
+        tx,
+        loader_name,
+    );
+    load_and_stream_common(dataset, &store_ids, tx, loader_name, |dataset, episode| {
+        dataset.load_episode_chunks(episode)
+    });
 }
 
 pub fn load_episode_images(

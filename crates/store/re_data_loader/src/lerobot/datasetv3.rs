@@ -1,10 +1,9 @@
 use crate::lerobot::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, load_and_stream_common, load_episode_depth_images,
-    load_episode_images, load_scalar, prepare_episode_chunks,
+    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
+    load_episode_depth_images, load_episode_images, load_scalar,
 };
 use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
-use std::borrow::Cow;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -77,6 +76,7 @@ use std::sync::Arc;
 pub struct LeRobotDatasetV3 {
     pub path: PathBuf,
     pub metadata: LeRobotDatasetMetadataV3,
+    video_cache: parking_lot::RwLock<HashMap<PathBuf, Arc<[u8]>>>,
 }
 
 impl LeRobotDatasetV3 {
@@ -95,6 +95,7 @@ impl LeRobotDatasetV3 {
         Ok(Self {
             path: path.to_path_buf(),
             metadata,
+            video_cache: parking_lot::RwLock::new(HashMap::default()),
         })
     }
 
@@ -125,24 +126,40 @@ impl LeRobotDatasetV3 {
         &self,
         observation_key: &str,
         episode: EpisodeIndex,
-    ) -> Result<Cow<'_, [u8]>, LeRobotError> {
+    ) -> Result<Arc<[u8]>, LeRobotError> {
         let episode_data = self
             .metadata
             .get_episode_data(episode)
             .ok_or(LeRobotError::InvalidEpisodeIndex(episode))?;
-
         let video_file = self
             .metadata
             .info
             .video_path(observation_key, episode_data)?;
         let videopath = self.path.join(video_file);
 
+        // fast path, check whether we already have this video cached
+        {
+            let cache = self.video_cache.read();
+            if let Some(cached_contents) = cache.get(&videopath) {
+                return Ok(Arc::clone(cached_contents));
+            }
+        }
+
         let contents = {
             re_tracing::profile_scope!("fs::read");
-            std::fs::read(&videopath).map_err(|err| LeRobotError::IO(err, videopath))?
+            std::fs::read(&videopath).map_err(|err| LeRobotError::IO(err, videopath.clone()))?
         };
 
-        Ok(Cow::Owned(contents))
+        // cache contents of big video blobs
+        let mut cache = self.video_cache.write();
+        if let Some(cached_contents) = cache.get(&videopath) {
+            return Ok(Arc::clone(cached_contents));
+        }
+
+        let contents: Arc<[u8]> = Arc::from(contents.into_boxed_slice());
+        cache.insert(videopath, contents.clone());
+
+        Ok(contents)
     }
 
     /// Retrieve the task using the provided task index.
@@ -170,6 +187,11 @@ impl LeRobotDatasetMetadataV3 {
     /// Get episode data by index.
     pub fn get_episode_data(&self, episode: EpisodeIndex) -> Option<&LeRobotEpisodeData> {
         self.episodes.get(&episode)
+    }
+
+    /// Iterate over the indices of all episodes in the dataset.
+    pub fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> + '_ {
+        self.episodes.values().map(|episode| episode.episode_index)
     }
 
     /// Loads all metadata files from the provided directory.
@@ -572,7 +594,6 @@ impl LeRobotDatasetV3Tasks {
                 let task = task_col.as_any().downcast_ref::<StringArray>()?;
 
                 let num_rows = b.num_rows();
-                // Return iterator directly without intermediate Vec
                 Some(
                     (0..num_rows)
                         .map(move |i| {
@@ -594,24 +615,13 @@ impl LeRobotDatasetV3Tasks {
     }
 }
 
-// ============================================================================
-// V3 Dataset Loading Functions
-// ============================================================================
-
 pub fn load_and_stream(
     dataset: &LeRobotDatasetV3,
     application_id: &ApplicationId,
     tx: &Sender<LoadedData>,
     loader_name: &str,
 ) {
-    let episodes = dataset
-        .metadata
-        .episodes
-        .values()
-        .map(|episode| episode.episode_index);
-    let store_ids = prepare_episode_chunks(episodes, application_id, tx, loader_name);
-
-    load_and_stream_common(dataset, &store_ids, tx, loader_name, load_episode);
+    load_and_stream_versioned(dataset, application_id, tx, loader_name);
 }
 
 /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
@@ -619,7 +629,7 @@ pub fn load_and_stream(
 /// This function processes an episode from the dataset by extracting the relevant data columns and
 /// converting them into appropriate Rerun data structures. It handles different types of data
 /// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
-pub fn load_episode(
+fn load_episode(
     dataset: &LeRobotDatasetV3,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
@@ -693,6 +703,16 @@ pub fn load_episode(
     Ok(chunks)
 }
 
+impl LeRobotDataset for LeRobotDatasetV3 {
+    fn iter_episode_indices(&self) -> impl std::iter::Iterator<Item = EpisodeIndex> {
+        self.metadata.iter_episode_indices()
+    }
+
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError> {
+        load_episode(self, episode)
+    }
+}
+
 fn log_episode_task(
     dataset: &LeRobotDatasetV3,
     timeline: &Timeline,
@@ -761,7 +781,7 @@ fn load_episode_video(
         .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
 
     let entity_path = observation;
-    let video_bytes = contents.as_ref();
+    let video_bytes: &[u8] = &contents;
 
     // Parse the video to get its structure
     let video = VideoDataDescription::load_from_bytes(video_bytes, "video/mp4", observation)

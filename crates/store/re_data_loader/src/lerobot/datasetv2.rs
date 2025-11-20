@@ -1,6 +1,6 @@
 use crate::lerobot::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, load_and_stream_common, load_episode_depth_images,
-    load_episode_images, load_scalar, prepare_episode_chunks,
+    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
+    load_episode_depth_images, load_episode_images, load_scalar,
 };
 use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
@@ -70,12 +70,12 @@ use crate::{DataLoaderError, LoadedData};
 /// Each episode is identified by a unique index and mapped to its corresponding chunk, based on the number of episodes
 /// per chunk (which can be found in `meta/info.json`).
 #[derive(Debug, Clone)]
-pub struct LeRobotDataset {
+pub struct LeRobotDatasetV2 {
     pub path: PathBuf,
     pub metadata: LeRobotDatasetMetadata,
 }
 
-impl LeRobotDataset {
+impl LeRobotDatasetV2 {
     /// Loads a `LeRobotDataset` from a directory.
     ///
     /// This method initializes a dataset by reading its metadata from the `meta/` directory.
@@ -158,6 +158,11 @@ impl LeRobotDatasetMetadata {
     /// Get episode metadata by index.
     pub fn get_episode(&self, episode: EpisodeIndex) -> Option<&LeRobotDatasetEpisode> {
         self.episodes.get(&episode)
+    }
+
+    /// Iterate over the indices of all episodes in the dataset.
+    pub fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> {
+        self.episodes.keys().copied()
     }
 
     /// Loads all metadata files from the provided directory.
@@ -345,20 +350,13 @@ pub struct LeRobotDatasetEpisode {
     pub length: u32,
 }
 
-// ============================================================================
-// V2 Dataset Loading Functions
-// ============================================================================
-
 pub fn load_and_stream(
-    dataset: &LeRobotDataset,
+    dataset: &LeRobotDatasetV2,
     application_id: &ApplicationId,
     tx: &Sender<LoadedData>,
     loader_name: &str,
 ) {
-    let episodes = dataset.metadata.episodes.keys().copied();
-    let store_ids = prepare_episode_chunks(episodes, application_id, tx, loader_name);
-
-    load_and_stream_common(dataset, &store_ids, tx, loader_name, load_episode);
+    load_and_stream_versioned(dataset, application_id, tx, loader_name);
 }
 
 /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
@@ -366,8 +364,8 @@ pub fn load_and_stream(
 /// This function processes an episode from the dataset by extracting the relevant data columns and
 /// converting them into appropriate Rerun data structures. It handles different types of data
 /// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
-pub fn load_episode(
-    dataset: &LeRobotDataset,
+fn load_episode(
+    dataset: &LeRobotDatasetV2,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
     let data = dataset
@@ -440,8 +438,18 @@ pub fn load_episode(
     Ok(chunks)
 }
 
+impl LeRobotDataset for LeRobotDatasetV2 {
+    fn iter_episode_indices(&self) -> impl std::iter::Iterator<Item = EpisodeIndex> {
+        self.metadata.iter_episode_indices()
+    }
+
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError> {
+        load_episode(self, episode)
+    }
+}
+
 fn log_episode_task(
-    dataset: &LeRobotDataset,
+    dataset: &LeRobotDatasetV2,
     timeline: &Timeline,
     data: &RecordBatch,
 ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
@@ -476,7 +484,7 @@ fn log_episode_task(
 }
 
 fn load_episode_video(
-    dataset: &LeRobotDataset,
+    dataset: &LeRobotDatasetV2,
     observation: &str,
     episode: EpisodeIndex,
     timeline: &Timeline,
