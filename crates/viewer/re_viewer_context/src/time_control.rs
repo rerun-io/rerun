@@ -1176,6 +1176,29 @@ impl TimeControl {
                 }
             };
 
+            // if we're outside of a valid time range, move forward/back to the nearest valid range
+            let forward = seconds >= 0.0;
+            let mut valid_ranges = self.valid_time_ranges_for(self.timeline().name().clone());
+            if !forward {
+                valid_ranges.reverse();
+            }
+            for valid_range in valid_ranges {
+                if new_time < TimeReal::from(valid_range.min()) {
+                    if forward {
+                        new_time = TimeReal::from(valid_range.min());
+                        break;
+                    }
+                } else if new_time > TimeReal::from(valid_range.max()) {
+                    if !forward {
+                        new_time = TimeReal::from(valid_range.max());
+                        break;
+                    }
+                } else {
+                    // we're inside a valid range
+                    break;
+                }
+            }
+
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;
             }
