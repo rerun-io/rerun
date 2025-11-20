@@ -287,7 +287,7 @@ class DatasetEntry(Entry):
         )
 
     def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
-        view = DatasetView(self._inner, LazyDatasetState())
+        view = DatasetView(self._inner, _LazyDatasetState())
         return view.index_ranges(index)
 
     def create_fts_index(
