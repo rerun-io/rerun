@@ -12,7 +12,7 @@ mod receiver;
 mod sender;
 
 pub use receive_set::ReceiveSet;
-pub use receiver::Receiver;
+pub use receiver::{Receiver, ReceiverAddOrder};
 pub use sender::Sender;
 
 // --- Source ---

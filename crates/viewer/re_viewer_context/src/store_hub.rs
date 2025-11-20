@@ -251,17 +251,23 @@ impl StoreHub {
                 .and_then(|id| self.store_bundle.get(id));
 
             // Calls `store_bundle.get()` internally and can therefore vary from the active entry.
-            let recording = self
-                .active_recording_or_table
-                .as_ref()
-                .and_then(|id| match id {
-                    RecordingOrTable::Recording { store_id } => self.store_bundle.get(store_id),
-                    RecordingOrTable::Table { .. } => None,
-                });
+            let recording = if let Some(id) = &self.active_recording_or_table {
+                match id {
+                    RecordingOrTable::Recording { store_id } => {
+                        let recording = self.store_bundle.get(store_id);
 
-            if recording.is_none() && self.active_recording_or_table.is_none() {
-                self.active_recording_or_table = None;
-            }
+                        // If we can't get the recording, clear it.
+                        if recording.is_none() {
+                            self.active_recording_or_table = None;
+                        }
+
+                        recording
+                    }
+                    RecordingOrTable::Table { .. } => None,
+                }
+            } else {
+                None
+            };
 
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(&app_id);
             let caches = self.active_caches();

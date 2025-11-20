@@ -12,7 +12,7 @@ use re_log_types::{
 };
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_smart_channel::{ReceiveSet, ReceiverAddOrder, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
@@ -2103,7 +2103,7 @@ impl App {
 
         let start = web_time::Instant::now();
 
-        while let Some((channel_source, msg)) = self.rx_log.try_recv() {
+        while let Some((channel_source, order, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
             let msg = match msg.payload {
@@ -2126,7 +2126,7 @@ impl App {
 
             match msg {
                 DataSourceMessage::LogMsg(msg) => {
-                    self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
+                    self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source, order);
                 }
 
                 DataSourceMessage::UiCommand(ui_command) => {
@@ -2151,6 +2151,7 @@ impl App {
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
         channel_source: &SmartChannelSource,
+        order: ReceiverAddOrder,
     ) {
         let store_id = msg.store_id();
 
@@ -2256,7 +2257,7 @@ impl App {
 
         // Handle any action that is triggered by a new store _after_ processing the message that caused it.
         if msg_will_add_new_store {
-            self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
+            self.on_new_store(egui_ctx, store_id, channel_source, store_hub, order);
         }
     }
 
@@ -2266,6 +2267,7 @@ impl App {
         store_id: &StoreId,
         channel_source: &SmartChannelSource,
         store_hub: &mut StoreHub,
+        order: ReceiverAddOrder,
     ) {
         if channel_source.select_when_loaded() {
             // Set the recording-id after potentially creating the store in the hub.
@@ -2286,6 +2288,7 @@ impl App {
         }
 
         let entity_db = store_hub.entity_db_mut(store_id);
+        entity_db.set_added_order(order);
         let is_example = entity_db.store_class().is_example();
 
         if cfg!(target_arch = "wasm32") && !self.startup_options.is_in_notebook && !is_example {

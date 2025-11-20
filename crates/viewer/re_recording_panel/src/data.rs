@@ -12,10 +12,17 @@ use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
-use re_smart_channel::SmartChannelSource;
+use re_smart_channel::{ReceiverAddOrder, SmartChannelSource};
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
+
+#[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
+pub(crate) struct OrderedSource {
+    pub source: Arc<SmartChannelSource>,
+    pub added_order: ReceiverAddOrder,
+}
 
 /// Short-lived structure containing all the data that will be displayed in the recording panel.
 #[derive(Debug)]
@@ -38,7 +45,7 @@ pub struct RecordingPanelData<'a> {
 
     /// Recordings that are currently being loaded that we cannot attribute yet to a specific
     /// section.
-    pub loading_receivers: Vec<Arc<SmartChannelSource>>,
+    pub loading_receivers: Vec<OrderedSource>,
 }
 
 impl<'a> RecordingPanelData<'a> {
@@ -50,10 +57,8 @@ impl<'a> RecordingPanelData<'a> {
         //
 
         let mut loading_receivers = vec![];
-        let mut loading_partitions: HashMap<
-            re_uri::Origin,
-            HashMap<EntryId, Vec<Arc<SmartChannelSource>>>,
-        > = HashMap::default();
+        let mut loading_partitions: HashMap<re_uri::Origin, HashMap<EntryId, Vec<OrderedSource>>> =
+            HashMap::default();
 
         let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
             .storage_context
@@ -62,14 +67,18 @@ impl<'a> RecordingPanelData<'a> {
             .filter_map(|store| store.data_source.clone())
             .collect();
 
-        for source in ctx.connected_receivers.sources() {
+        for (added_order, source) in ctx.connected_receivers.sources_with_order() {
             if sources_with_stores.contains(&source) {
                 continue;
             }
 
-            match source.as_ref() {
+            let ordered_source = OrderedSource {
+                source,
+                added_order,
+            };
+            match ordered_source.source.as_ref() {
                 SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
-                    loading_receivers.push(source);
+                    loading_receivers.push(ordered_source);
                 }
 
                 SmartChannelSource::RedapGrpcStream { uri, .. } => {
@@ -78,7 +87,7 @@ impl<'a> RecordingPanelData<'a> {
                         .or_default()
                         .entry(EntryId::from(uri.dataset_id))
                         .or_default()
-                        .push(source);
+                        .push(ordered_source);
                 }
 
                 // We only show things we know are very-soon-to-be recordings, which these are not.
@@ -89,6 +98,8 @@ impl<'a> RecordingPanelData<'a> {
                 | SmartChannelSource::MessageProxy(_) => {}
             }
         }
+
+        loading_receivers.sort_by_key(|source| source.added_order);
 
         //
         // Find everything else
@@ -280,7 +291,7 @@ impl<'a> ServerData<'a> {
     fn new(
         ctx: &'a ViewerContext<'_>,
         server: &re_redap_browser::Server,
-        loading_partitions: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
+        loading_partitions: Option<&HashMap<EntryId, Vec<OrderedSource>>>,
     ) -> Self {
         let origin = server.origin();
         let item = Item::RedapServer(origin.clone());
@@ -329,7 +340,7 @@ impl<'a> ServerEntriesData<'a> {
         ctx: &'a ViewerContext<'a>,
         entries: &Entries,
         origin: &re_uri::Origin,
-        loading_partitions: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
+        loading_partitions: Option<&HashMap<EntryId, Vec<OrderedSource>>>,
     ) -> Self {
         match entries.state() {
             Poll::Ready(Ok(entries)) => {
@@ -376,14 +387,20 @@ impl<'a> ServerEntriesData<'a> {
                                 .collect();
 
                             if let Some(loading_partitions) = loading_partitions
-                                && let Some(smart_channels) = loading_partitions.get(&entry.id())
+                                && let Some(sources) = loading_partitions.get(&entry.id())
                             {
-                                displayed_partitions.extend(smart_channels.iter().map(|source| {
+                                displayed_partitions.extend(sources.iter().map(|source| {
                                     PartitionData::Loading {
-                                        receiver: source.clone(),
+                                        receiver: source.source.clone(),
+                                        added_order: source.added_order,
                                     }
                                 }));
                             }
+
+                            displayed_partitions.sort_by_key(|partition| match partition {
+                                PartitionData::Loading { added_order, .. } => *added_order,
+                                PartitionData::Loaded { entity_db } => entity_db.added_order(),
+                            });
 
                             dataset_entries.push(DatasetData {
                                 entry_data,
@@ -506,6 +523,7 @@ impl EntryData {
 pub enum PartitionData<'a> {
     Loading {
         receiver: Arc<SmartChannelSource>,
+        added_order: ReceiverAddOrder,
     },
     Loaded {
         #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_entity_db"))]

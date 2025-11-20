@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use egui::{RichText, Widget as _};
 
 use re_data_ui::{
@@ -18,11 +16,11 @@ use re_viewer_context::{
     open_url::ViewerOpenUrl,
 };
 
-use crate::RecordingPanelCommand;
 use crate::data::{
     AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
     RemoteTableData, ServerData, ServerEntriesData,
 };
+use crate::{RecordingPanelCommand, data::OrderedSource};
 
 #[derive(Debug, Clone, Default)]
 pub struct RecordingPanel {
@@ -427,7 +425,9 @@ fn dataset_entry_ui(
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for partition in displayed_partitions {
                     match partition {
-                        PartitionData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
+                        PartitionData::Loading { receiver, .. } => {
+                            receiver_ui(ctx, ui, receiver, true);
+                        }
 
                         PartitionData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
@@ -644,10 +644,10 @@ fn table_item_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table_id: &TableId)
 fn loading_receivers_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    loading_receivers: &Vec<Arc<SmartChannelSource>>,
+    loading_receivers: &Vec<OrderedSource>,
 ) {
-    for receiver in loading_receivers {
-        receiver_ui(ctx, ui, receiver, false);
+    for source in loading_receivers {
+        receiver_ui(ctx, ui, &source.source, false);
     }
 }
 
