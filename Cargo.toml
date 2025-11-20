@@ -223,7 +223,7 @@ crossbeam = "0.8.0"
 datafusion = { version = "50.1.0", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
-  # The features here are the same as in https://github.com/lancedb/lance/blob/v0.38.0/Cargo.toml#L99-L107
+  # The features here are the same as in https://github.com/lance-format/lance/blob/v0.38.0/Cargo.toml#L99-L107
   # This is very hacky, and I don't like it.
   "crypto_expressions",
   "datetime_expressions",

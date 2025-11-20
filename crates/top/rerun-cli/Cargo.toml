@@ -91,7 +91,7 @@ native_viewer = ["rerun/native_viewer"]
 oss_server = ["rerun/oss_server"]
 
 ## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
-## This is opt-in because of <https://github.com/lancedb/lance/issues/3073>.
+## This is opt-in because of <https://github.com/lance-format/lance/issues/3073>.
 # TODO(lancedb/lance#3073): remove feature flag
 lance = ["re_server/lance"]
 
