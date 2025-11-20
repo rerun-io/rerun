@@ -24,6 +24,12 @@ impl TableSelectionState {
         });
     }
 
+    pub fn clear(ctx: &egui::Context, id: Id) {
+        ctx.data_mut(|data| {
+            data.remove::<TableSelectionState>(id);
+        });
+    }
+
     /// Update the selection based on a row / item click.
     ///
     /// `checkbox_click` will act as if [`Modifiers::COMMAND`] is held (so, toggle selection for
