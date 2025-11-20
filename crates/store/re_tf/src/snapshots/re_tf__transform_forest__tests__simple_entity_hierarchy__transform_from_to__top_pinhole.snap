@@ -325,4 +325,15 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
             },
         ),
     ),
+    (
+        tf#/top/pure_leaf_pinhole,
+        Err(
+            NoPathBetweenFrames {
+                target: tf#/top/pinhole,
+                src: tf#/top/pure_leaf_pinhole,
+                target_root: tf#/top/pinhole,
+                source_root: tf#/top/pure_leaf_pinhole,
+            },
+        ),
+    ),
 ]

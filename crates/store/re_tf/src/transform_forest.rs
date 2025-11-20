@@ -7,9 +7,11 @@ use crate::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformFrameIdHash,
     TransformResolutionCache, image_view_coordinates,
 };
+
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_types::ArchetypeName;
+use re_types::components::TransformFrameId;
 
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
@@ -277,18 +279,18 @@ impl TransformForest {
         };
 
         // Figure out the root frame for this entire stack.
-        let (mut root_frame, mut root_from_target) = if let Some(parent_from_child) =
-            top_of_stack.parent_from_child.as_ref()
+        let (mut root_frame, mut root_from_target) = if let Some(parent_frame) =
+            top_of_stack.parent_frame
         {
             // We have a connection further up the stack. That means we must have stopped because we already know that target!
-            if let Some(root_from_frame) = self.root_from_frame.get(&parent_from_child.parent) {
+            if let Some(root_from_frame) = self.root_from_frame.get(&parent_frame) {
                 // Yes, we can short-circuit to a known root!
                 debug_assert!(self.roots.contains_key(&root_from_frame.root));
                 (root_from_frame.root, root_from_frame.target_from_source)
             } else {
                 // We didn't know the target. Must mean that the target is a new root!
                 let previous_root = self.roots.insert(
-                    parent_from_child.parent,
+                    parent_frame,
                     // There's apparently no information about this root, so it can't be a pinhole!
                     TransformTreeRootInfo::TransformFrameRoot,
                 );
@@ -296,12 +298,10 @@ impl TransformForest {
 
                 // That parent apparently won't show up in any transform stack (we didn't walk there because there was no information about it!)
                 // So if we don't add this root now to our `root_from_frame` map, we'd never fill out the required self-reference!
-                self.root_from_frame.insert(
-                    parent_from_child.parent,
-                    TransformInfo::new_root(parent_from_child.parent),
-                );
+                self.root_from_frame
+                    .insert(parent_frame, TransformInfo::new_root(parent_frame));
 
-                (parent_from_child.parent, glam::DAffine3::IDENTITY)
+                (parent_frame, glam::DAffine3::IDENTITY)
             }
         } else {
             // We're not pointing at a new root. So we ourselves must be a root!
@@ -346,7 +346,11 @@ impl TransformForest {
                 root_frame = transforms.child_frame;
 
                 let previous_root = self.roots.insert(root_frame, new_root_info);
-                debug_assert!(previous_root.is_none(), "Root was added already"); // TODO(RR-2667): Build out into cycle detection
+                debug_assert!(
+                    previous_root.is_none(),
+                    "Root was added already at {:?} as {previous_root:?}",
+                    cache.frame_id_registry().lookup_frame_id(root_frame)
+                ); // TODO(RR-2667): Build out into cycle detection
 
                 root_from_current_frame = glam::DAffine3::IDENTITY;
             }
@@ -382,6 +386,9 @@ impl TransformForest {
     }
 }
 
+static UNKNOWN_TRANSFORM_ID: std::sync::LazyLock<TransformFrameId> =
+    std::sync::LazyLock::new(|| TransformFrameId::new("<unknown>"));
+
 /// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
 /// Stops until not more connection is found or an already processed `frame_id` is hit.
 fn walk_towards_parent(
@@ -405,19 +412,22 @@ fn walk_towards_parent(
         && unprocessed_frames.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let mut transforms = transforms_at(current_frame, entity_db, query, transforms);
+        let mut transforms =
+            transforms_at(current_frame, entity_db, query, id_registry, transforms);
 
         // Maybe there's an implicit connection that we have to fill in?
         if transforms.parent_from_child.is_none()
+            && transforms.pinhole_projection.is_none()
             && let Some(parent) = implicit_transform_parent(current_frame, id_registry)
         {
+            transforms.parent_frame = Some(parent);
             transforms.parent_from_child = Some(ParentFromChildTransform {
                 parent,
                 transform: glam::DAffine3::IDENTITY,
             });
         }
 
-        next_frame = transforms.parent_from_child.as_ref().map(|r| r.parent);
+        next_frame = transforms.parent_frame;
 
         // No matter the previous outcome, we push the transform information we got about this frame onto the stack
         // since we want something for every source we process.
@@ -738,6 +748,7 @@ fn pinhole3d_from_image_plane(
 }
 
 struct ParentChildTransforms {
+    parent_frame: Option<TransformFrameIdHash>,
     child_frame: TransformFrameIdHash,
     parent_from_child: Option<ParentFromChildTransform>,
     child_from_instance_poses: Vec<glam::DAffine3>,
@@ -748,10 +759,12 @@ fn transforms_at(
     child_frame: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
+    id_registry: &FrameIdRegistry,
     transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> ParentChildTransforms {
     let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) else {
         return ParentChildTransforms {
+            parent_frame: None,
             child_frame,
             parent_from_child: None,
             child_from_instance_poses: Vec::new(),
@@ -763,7 +776,34 @@ fn transforms_at(
     let child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
     let pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
 
+    // Parent frame may be defined on either the pinhole projection or `parent_from_child`.
+    let parent_frame = if let Some(transform) = parent_from_child.as_ref() {
+        // If there's a pinhole AND a regular transform, they need to have the same target.
+        if let Some(pinhole_projection) = &pinhole_projection.as_ref()
+            && pinhole_projection.parent != transform.parent
+        {
+            re_log::warn_once!(
+                "The transform frame {:?} is connected to {:?} via a pinhole but also connected to {:?} via a transform. Any frame is only ever allowed to have a single parent at any given time.",
+                id_registry
+                    .lookup_frame_id(child_frame)
+                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
+                id_registry
+                    .lookup_frame_id(pinhole_projection.parent)
+                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
+                id_registry
+                    .lookup_frame_id(transform.parent)
+                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
+            );
+        }
+
+        Some(transform.parent)
+    } else {
+        // If there's no regular transform, maybe the Pinhole has a connection to offer.
+        pinhole_projection.as_ref().map(|p| p.parent)
+    };
+
     ParentChildTransforms {
+        parent_frame,
         child_frame,
         parent_from_child,
         child_from_instance_poses,
@@ -783,16 +823,38 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
     use re_types::components::TransformFrameId;
-    use re_types::{RowId, archetypes};
+    use re_types::{RowId, archetypes, components};
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
+    }
+
+    fn test_resolved_pinhole(parent: TransformFrameIdHash) -> ResolvedPinholeProjection {
+        ResolvedPinholeProjection {
+            parent,
+            image_from_camera: components::PinholeProjection::from_focal_length_and_principal_point(
+                [1.0, 2.0],
+                [50.0, 100.0],
+            ),
+            resolution: Some([100.0, 200.0].into()),
+            view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+        }
     }
 
     /// A test scene that relies exclusively on the entity hierarchy.
     ///
     /// We're using relatively basic transforms here as we assume that resolving transforms have been tested on [`TransformResolutionCache`] already.
     /// Similarly, since [`TransformForest`] does not yet maintain anything over time, we're using static timing instead.
+    ///
+    /// Tree structure:
+    /// ```text
+    /// tf#/top
+    /// ├─── tf#/top/pinhole
+    /// │          └─── tf#/top/pinhole/child2d
+    /// ├─── tf#/top/pure_leaf_pinhole
+    /// └─── tf#/top/child3d
+    /// ```
+    ///
     /// TODO(RR-2510): add another scene (or extension) where we override transforms on select entities
     fn entity_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
@@ -816,6 +878,12 @@ mod tests {
                     TimePoint::STATIC,
                     &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0]),
                 )
+                .with_archetype(RowId::new(), TimePoint::STATIC, &test_pinhole())
+                .build()?,
+        ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::from("top/pure_leaf_pinhole"))
+                // A pinhole without any extrinsics which is also a leaf.
                 .with_archetype(RowId::new(), TimePoint::STATIC, &test_pinhole())
                 .build()?,
         ))?;
@@ -866,27 +934,35 @@ mod tests {
                 transform_forest.root_info(TransformFrameIdHash::entity_path_hierarchy_root()),
                 Some(&TransformTreeRootInfo::TransformFrameRoot)
             );
-            // Pinhole roots are a bit more complex. Let's use `insta` to verify.
-            insta::assert_snapshot!(
-                "simple_entity_hierarchy__root_info_pinhole",
-                pretty_print_transform_frame_ids_in(
-                    transform_forest.root_info(TransformFrameIdHash::from_entity_path(
-                        &EntityPath::from("top/pinhole")
-                    )),
-                    &transform_cache
-                )
-            );
-            // … but it's hard to reason about the parent root id, so let's verify that just to be sure.
             assert_eq!(
-                transform_forest
-                    .pinhole_tree_root_info(TransformFrameIdHash::from_entity_path(
-                        &EntityPath::from("top/pinhole")
-                    ))
-                    .unwrap()
-                    .parent_tree_root,
-                TransformFrameIdHash::entity_path_hierarchy_root()
+                transform_forest.root_info(TransformFrameIdHash::from_entity_path(
+                    &EntityPath::from("top/pinhole")
+                )),
+                Some(&TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                    parent_tree_root: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    pinhole_projection: test_resolved_pinhole(
+                        TransformFrameIdHash::from_entity_path(&EntityPath::from("top"))
+                    ),
+                    parent_root_from_pinhole_root: glam::DAffine3::from_translation(glam::dvec3(
+                        1.0, 1.0, 0.0
+                    )),
+                }))
             );
-            assert_eq!(transform_forest.roots.len(), 2);
+            assert_eq!(
+                transform_forest.root_info(TransformFrameIdHash::from_entity_path(
+                    &EntityPath::from("top/pure_leaf_pinhole")
+                )),
+                Some(&TransformTreeRootInfo::Pinhole(PinholeTreeRoot {
+                    parent_tree_root: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    pinhole_projection: test_resolved_pinhole(
+                        TransformFrameIdHash::from_entity_path(&EntityPath::from("top"))
+                    ),
+                    parent_root_from_pinhole_root: glam::DAffine3::from_translation(glam::dvec3(
+                        1.0, 0.0, 0.0
+                    )),
+                }))
+            );
+            assert_eq!(transform_forest.roots.len(), 3);
         }
 
         // Perform some tree queries.
@@ -896,6 +972,7 @@ mod tests {
             EntityPath::from("top/pinhole"),
             EntityPath::from("top/nonexistent"),
             EntityPath::from("top/pinhole/child2d"),
+            EntityPath::from("top/pure_leaf_pinhole"),
         ];
         let source_paths = [
             EntityPath::root(),
@@ -904,6 +981,7 @@ mod tests {
             EntityPath::from("top/child3d"),
             EntityPath::from("top/nonexistent"),
             EntityPath::from("top/pinhole/child2d"),
+            EntityPath::from("top/pure_leaf_pinhole"),
         ];
 
         for target in &target_paths {
