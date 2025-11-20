@@ -31,7 +31,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.set_time_sequence("step", 0);
     ///
-    ///     rec.log("base", rerun::Transform3D(), rerun::TransformArrows3D(1.0));
+    ///     rec.log("base", rerun::Transform3D(), rerun::TransformAxes3D(1.0));
     ///
     ///     for (int deg = 0; deg <360; deg++) {
     ///         rec.set_time_sequence("step", deg);
@@ -42,13 +42,13 @@ namespace rerun::archetypes {
     ///                 {1.0f, 1.0f, 1.0f},
     ///                 rerun::Angle::degrees(static_cast<float>(deg))
     ///             )),
-    ///             rerun::TransformArrows3D(0.5)
+    ///             rerun::TransformAxes3D(0.5)
     ///         );
     ///
     ///         rec.log(
     ///             "base/rotated/translated",
     ///             rerun::Transform3D().with_translation({2.0f, 0.0f, 0.0f}),
-    ///             rerun::TransformArrows3D(0.5)
+    ///             rerun::TransformAxes3D(0.5)
     ///         );
     ///     }
     /// }

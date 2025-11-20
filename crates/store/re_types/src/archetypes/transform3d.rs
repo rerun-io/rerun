@@ -183,7 +183,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &[
 ///             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
 ///                 .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
-///             &rerun::TransformArrows3D::new(10.0),
+///             &rerun::TransformAxes3D::new(10.0),
 ///         ],
 ///     )?;
 ///
@@ -229,7 +229,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &[
 ///             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
 ///                 .with_fill_mode(rerun::FillMode::Solid) as &dyn rerun::AsComponents,
-///             &rerun::TransformArrows3D::new(10.0),
+///             &rerun::TransformAxes3D::new(10.0),
 ///         ],
 ///     )?;
 ///
@@ -279,7 +279,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &[
 ///             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
 ///                 .with_fill_mode(rerun::FillMode::Solid) as &dyn AsComponents,
-///             &rerun::TransformArrows3D::new(10.0),
+///             &rerun::TransformAxes3D::new(10.0),
 ///         ],
 ///     )?;
 ///

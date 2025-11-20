@@ -38,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         "base",
 ///         &[
 ///             &rerun::Transform3D::new() as &dyn AsComponents,
-///             &rerun::TransformArrows3D::new(1.0),
+///             &rerun::TransformAxes3D::new(1.0),
 ///         ],
 ///     )?;
 ///
@@ -51,14 +51,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///                     [1.0, 1.0, 1.0],
 ///                     rerun::Angle::from_degrees(deg as f32),
 ///                 )) as &dyn AsComponents,
-///                 &rerun::TransformArrows3D::new(0.5),
+///                 &rerun::TransformAxes3D::new(0.5),
 ///             ],
 ///         )?;
 ///         rec.log(
 ///             "base/rotated/translated",
 ///             &[
 ///                 &rerun::Transform3D::new().with_translation([2.0, 0.0, 0.0]) as &dyn AsComponents,
-///                 &rerun::TransformArrows3D::new(0.5),
+///                 &rerun::TransformAxes3D::new(0.5),
 ///             ],
 ///         )?;
 ///     }
