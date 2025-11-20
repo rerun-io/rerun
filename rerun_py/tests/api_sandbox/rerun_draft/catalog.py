@@ -286,6 +286,10 @@ class DatasetEntry(Entry):
             fill_latest_at=fill_latest_at,
         )
 
+    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+        view = DatasetView(self._inner, _LazyDatasetState())
+        return view.index_ranges(index)
+
     def create_fts_index(
         self,
         *,
@@ -635,6 +639,25 @@ class DatasetView:
                 view = view.filter_partition_id(*self._lazy_state.filtered_segments)
 
             return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+
+    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+        import datafusion.functions as F
+        from datafusion import col
+
+        schema = self.schema()
+        exprs = []
+
+        for index_column in schema.index_columns():
+            exprs.append(F.min(col(index_column.name)).alias(f"{index_column.name}:min"))
+            exprs.append(F.max(col(index_column.name)).alias(f"{index_column.name}:max"))
+
+        # TODO(ab, jleibs): we're still unsure about these, so let's keep them aside for now.
+        # for component_column in schema.component_columns():
+        #     if component_column.name.startswith("property:"):
+        #         continue
+        #     exprs.append(F.count(col(component_column.name)).alias(f"count({component_column.name})"))
+
+        return self.reader(index=index).aggregate("rerun_segment_id", exprs)
 
     def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
         """
