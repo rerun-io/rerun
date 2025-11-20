@@ -56,7 +56,7 @@ impl LeRobotDatasetLoader {
         tx: Sender<LoadedData>,
     ) -> Result<(), DataLoaderError> {
         let filepath = filepath.as_ref().to_owned();
-        let dataset = datasetv2::LeRobotDataset::load_from_directory(&filepath)
+        let dataset = datasetv2::LeRobotDatasetV2::load_from_directory(&filepath)
             .map_err(|err| anyhow!("Loading LeRobot v2 dataset failed: {err}"))?;
 
         let application_id = settings
