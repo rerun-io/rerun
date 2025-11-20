@@ -525,7 +525,8 @@ impl ComponentUiRegistry {
         ui.sanity_check();
     }
 
-    fn get_untyped_component_ui(
+    /// Tries to lookup a ui callback with the given constraints.
+    fn untyped_component_ui_callback(
         &self,
         component_type: ComponentType,
         allow_multiline: bool,
