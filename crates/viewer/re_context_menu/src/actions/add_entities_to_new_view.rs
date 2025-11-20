@@ -5,10 +5,7 @@ use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_types::ViewClassIdentifier;
 use re_ui::UiExt as _;
-use re_viewer_context::{
-    Item, MaybeVisualizableEntities, PerVisualizer, RecommendedView, SystemCommand,
-    SystemCommandSender as _,
-};
+use re_viewer_context::{Item, RecommendedView, SystemCommand, SystemCommandSender as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
@@ -92,25 +89,8 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
 
     let view_class_registry = ctx.viewer_context.view_class_registry();
     let recording = ctx.viewer_context.recording();
-
-    // All entities for which the archetype of a visualizer was logged.
-    let indicate = view_class_registry.indicated_entities_per_visualizer(recording.store_id());
-
-    // All entities for which all _required_ components are present.
     let maybe_visualizable_entities = view_class_registry
         .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
-
-    // We filter `maybe_visualizable_entities` by the entities that were actually logged.
-    // TODO: This does not work for time series views yet.
-    let maybe_visualizable_entities = PerVisualizer::<MaybeVisualizableEntities>(
-        maybe_visualizable_entities
-            .iter()
-            .filter_map(|(ident, ents)| {
-                let indicated = indicate.get(ident)?;
-                (indicated.0 == ents.0).then_some((*ident, ents.clone()))
-            })
-            .collect(),
-    );
 
     for entry in view_class_registry.iter_registry() {
         let Some(suggested_origin) = entry

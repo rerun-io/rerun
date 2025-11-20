@@ -1,9 +1,7 @@
-use nohash_hasher::IntSet;
-
 use re_log_types::{EntityPath, Instance};
 use re_types::{
-    Archetype, ComponentType,
-    archetypes::{Points3D, Transform3D, TransformAxes3D},
+    Archetype as _,
+    archetypes::{Transform3D, TransformAxes3D},
     components::AxisLength,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -35,7 +33,6 @@ impl IdentifiedViewSystem for TransformAxes3DVisualizer {
 
 impl VisualizerSystem for TransformAxes3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        // TODO: explain!
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
         query_info.required = Default::default();
         query_info
@@ -194,53 +191,4 @@ pub fn add_axis_arrows(
         .color(tokens.axis_color_z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
-}
-
-/// The `AxisLengthDetector` doesn't actually visualize anything, but it allows us to detect
-/// when a transform has set the [`AxisLength`] component.
-///
-/// See the logic in [`crate::SpatialView3D`]`::choose_default_visualizers`.
-#[derive(Default)]
-pub struct AxisLengthDetector();
-
-impl IdentifiedViewSystem for AxisLengthDetector {
-    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "AxisLengthDetector".into()
-    }
-}
-
-impl VisualizerSystem for AxisLengthDetector {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
-        query_info.relevant_archetypes = Default::default();
-
-        query_info
-            .required
-            .insert(TransformAxes3D::descriptor_axis_length().component);
-
-        query_info
-    }
-
-    fn execute(
-        &mut self,
-        _ctx: &ViewContext<'_>,
-        _query: &ViewQuery<'_>,
-        _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        Ok(vec![])
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn filter_visualizable_entities(
-        &self,
-        _entities: MaybeVisualizableEntities,
-        _context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        // Never actually visualize this detector
-        Default::default()
-    }
 }

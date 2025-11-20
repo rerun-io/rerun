@@ -37,7 +37,7 @@ use crate::{
 };
 use crate::{
     shared_fallbacks,
-    visualizers::{AxisLengthDetector, CamerasVisualizer, TransformAxes3DVisualizer},
+    visualizers::{CamerasVisualizer, TransformAxes3DVisualizer},
 };
 
 #[derive(Default)]
@@ -389,25 +389,12 @@ impl ViewClass for SpatialView3D {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
         visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
         let axes_viz = TransformAxes3DVisualizer::identifier();
-        let axis_detector = AxisLengthDetector::identifier();
         let camera_viz = CamerasVisualizer::identifier();
-
-        let maybe_visualizable: HashSet<&ViewSystemIdentifier> =
-            maybe_visualizable_entities_per_visualizer
-                .iter()
-                .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(visualizer)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
 
         let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
             .iter()
@@ -443,12 +430,8 @@ impl ViewClass for SpatialView3D {
 
         // Arrow visualizer is not enabled yet but we could…
         if !enabled_visualizers.contains(&axes_viz) && visualizable.contains(&axes_viz) {
-            // … then we enable it if either:
-            // - If someone set an axis_length explicitly, so [`AxisLengthDetector`] is applicable.
-            // - If we already have the [`CamerasVisualizer`] active.
-            if maybe_visualizable.contains(&axis_detector)
-                || enabled_visualizers.contains(&camera_viz)
-            {
+            // …if we already have the [`CamerasVisualizer`] active.
+            if enabled_visualizers.contains(&camera_viz) {
                 enabled_visualizers.push(axes_viz);
             }
         }
