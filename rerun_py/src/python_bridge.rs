@@ -17,7 +17,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_auth::OauthLoginFlow;
+use re_auth::{OauthLoginFlow, oauth::Credentials};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -170,6 +170,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
     m.add_class::<PyOauthLoginFlow>()?;
+    m.add_class::<PyCredentials>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -178,7 +179,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         return Ok(());
     }
 
-    m.add_function(wrap_pyfunction!(boo, m)?)?;
+    m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -2234,9 +2235,8 @@ authkey = multiprocessing.current_process().authkey
     name = "OauthLoginFlow",
     module = "rerun_bindings.rerun_bindings"
 )]
-
 struct PyOauthLoginFlow {
-    login_flow: Option<OauthLoginFlow>,
+    login_flow: OauthLoginFlow,
 }
 
 #[pymethods]
@@ -2249,42 +2249,28 @@ impl PyOauthLoginFlow {
             OauthLoginFlow::new().map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
         println!(
             "PyOauthLoginFlow::new runtime started: {}",
-            login_flow.login_url
+            login_flow.server.get_login_url()
         );
-        Ok(Self {
-            login_flow: Some(login_flow),
-        })
+        Ok(Self { login_flow })
     }
 
-    // fn flow(&self) -> Result<&OauthLoginFlow, PyRuntimeError> {
-    //     match &self.login_flow {
-    //         Some(flow) => Ok(flow),
-    //         None => Err(PyRuntimeError::new_err(
-    //             "Login flow ended. Please create a new one.",
-    //         )),
-    //     }
-    // }
-
-    fn login_url(&self) -> PyResult<String> {
-        match &self.login_flow {
-            Some(flow) => Ok(flow.login_url.clone()),
-            None => Err(PyRuntimeError::new_err(
-                "Login flow ended. Please create a new one.",
-            )),
-        }
-        // Ok(self.flow()?.login_url.clone())
+    fn login_url(&self) -> String {
+        self.login_flow.server.get_login_url().to_owned()
     }
 
     fn get_credentials(&mut self) -> PyResult<String> {
         println!("PyOauthLoginFlow::get_credentials");
-        let Some(login_flow) = &self.login_flow else {
-            return Err(PyRuntimeError::new_err(
-                "Login flow ended. Please create a new one.",
-            ));
-        };
-        let result = Runtime::new()?.block_on(async { login_flow.get_credentials().await });
 
-        self.login_flow = None;
+        let result: Result<Credentials, re_auth::callback_server::Error> = Runtime::new()?
+            .block_on(async {
+                loop {
+                    let result = self.login_flow.poll().await?;
+                    match result {
+                        Some(credentials) => break Ok(credentials),
+                        None => tokio::time::sleep(Duration::from_millis(10)).await,
+                    }
+                }
+            });
 
         result
             .map(|credentials| credentials.access_token().as_str().to_owned())
@@ -2292,7 +2278,39 @@ impl PyOauthLoginFlow {
     }
 }
 
+#[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
+struct PyCredentials {
+    access_token: String,
+    refresh_token: String,
+    user_email: String,
+}
+
+#[pymethods]
+impl PyCredentials {
+    #[getter]
+    fn access_token(&self) -> String {
+        self.access_token.clone()
+    }
+
+    #[getter]
+    fn refresh_token(&self) -> String {
+        self.refresh_token.clone()
+    }
+
+    #[getter]
+    fn user_email(&self) -> String {
+        self.user_email.clone()
+    }
+}
+
 #[pyfunction]
-fn boo() {
-    println!("boo!!!");
+fn get_credentials() -> PyResult<Option<PyCredentials>> {
+    let cred = re_auth::oauth::load_credentials()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    Ok(cred.map(|credentials| PyCredentials {
+        access_token: credentials.access_token().as_str().to_owned(),
+        refresh_token: credentials.refresh_token(),
+        user_email: credentials.user().email.clone(),
+    }))
 }

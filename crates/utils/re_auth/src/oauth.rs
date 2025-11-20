@@ -178,7 +178,7 @@ pub enum VerifyError {
 }
 
 /// In-memory credential storage
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Credentials {
     user: User,
     refresh_token: RefreshToken,
@@ -244,6 +244,10 @@ impl Credentials {
 
     pub fn access_token(&self) -> &AccessToken {
         &self.access_token
+    }
+
+    pub fn refresh_token(&self) -> String {
+        self.refresh_token.0.clone()
     }
 
     /// The currently authenticated user.

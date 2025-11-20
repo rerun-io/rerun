@@ -2049,5 +2049,21 @@ class OauthLoginFlow:
         TODO.
         """
 
-def boo() -> None:
-    """Boo."""
+class Credentials:
+    """Eeee."""
+
+    @property
+    def access_token(self) -> str:
+        """The access token."""
+
+    @property
+    def refresh_token(self) -> str:
+        """The refresh token."""
+
+    @property
+    def user_email(self) -> str:
+        """The user email."""
+
+
+def get_credentials() -> Credentials | None:
+    """Returns the access token for the current user."""

@@ -120,6 +120,7 @@ from .archetypes.boxes2d_ext import (
 )
 from .auth import (
     Auth as Auth,
+    login_with_browser as login_with_browser,
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,

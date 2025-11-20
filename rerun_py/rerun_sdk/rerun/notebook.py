@@ -124,12 +124,23 @@ class Viewer:
         if not HAS_NOTEBOOK:
             raise RerunMissingDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
+
+        # Auth
+        # print("AUTH:", auth.status())
+        credentials = bindings.get_credentials()
+        token = os.environ.get("REDAP_TOKEN", None)
+        if credentials is not None:
+            token = credentials.access_token
+
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
             url=url,
-            fallback_token=os.environ.get("REDAP_TOKEN", None),
+            fallback_token=token,
         )
+
+        if credentials is not None:
+            self._viewer.set_access_token(credentials.access_token, credentials.refresh_token, credentials.user_email)
 
         # Viewer event handling
         self._event_callbacks: list[Callable[[ViewerEvent], None]] = []
@@ -161,11 +172,6 @@ class Viewer:
                 raise ValueError(
                     "Can only set a blueprint if there's either an active recording or a recording passed in"
                 )
-
-        # Auth
-        # print("AUTH:", auth.status())
-        if auth.access_token is not None:
-            self.set_access_token(auth.access_token, auth.refresh_token, auth.user_profile["email"])
 
     def add_recording(
         self,
