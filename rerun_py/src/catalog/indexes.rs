@@ -72,6 +72,11 @@ impl PyIndexingResult {
             None => Ok(None),
         }
     }
+
+    pub fn __repr__(&self) -> String {
+        // Technically not a repr, but nice to printout when this is in a list.
+        format!("IndexingResult(index={})", self.index)
+    }
 }
 
 // ---

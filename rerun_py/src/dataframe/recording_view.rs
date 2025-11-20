@@ -78,7 +78,7 @@ impl PyRecordingView {
 /// was logged to a given index multiple times, only the most recent row will be included in the view, as determined
 /// by the `row_id` column. This will generally be the last value logged, as row_ids are guaranteed to be monotonically
 /// increasing when data is sent from a single process.
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecordingView {
     /// The schema describing all the columns available in the view.
     ///

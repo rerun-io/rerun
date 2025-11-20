@@ -126,7 +126,7 @@ impl PyRecording {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
