@@ -15,9 +15,9 @@ https://vimeo.com/1136303951?autoplay=1&loop=1&autopause=0&background=1&muted=1&
 VistaDream addresses the challenge of 3D scene reconstruction from a single image through a novel two-stage pipeline:
 
 1. **Coarse 3D Scaffold Construction**: Creates a global scene structure by outpainting image boundaries and estimating depth maps.
-2. **Multi-view Consistency Sampling (MCS)**: Uses iterative diffusion-based RGB-D inpainting with multi-view consistency constraints to generate high-quality novel views.
+2. **Multi-view Consistency Sampling**: Uses iterative diffusion-based RGB-D inpainting with multi-view consistency constraints to generate high-quality novel views.
 
-The framework integrates multiple state-of-the-art models:
+The framework utilizes:
 
 - **Flux diffusion models** for high-quality image outpainting and inpainting.
 - **3D Gaussian Splatting** for efficient 3D scene representation.
@@ -27,9 +27,9 @@ The framework integrates multiple state-of-the-art models:
 
 This is an external example. Check the [repository](https://github.com/rerun-io/vistadream) for more information.
 
-**Requires: Linux** with **NVIDIA GPU** (tested with CUDA 12.9)
+**Requires**: Linux with an NVIDIA GPU (tested with CUDA 12.9)
 
-Make sure you have the [Pixi package manager](https://pixi.sh/latest/#installation) installed and run
+Make sure you have the [Pixi package manager](https://pixi.sh/latest/#installation) installed and run:
 
 ```sh
 git clone https://github.com/rerun-io/vistadream.git
