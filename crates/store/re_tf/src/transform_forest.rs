@@ -412,25 +412,12 @@ fn walk_towards_parent(
         && unprocessed_frames.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let mut transforms =
+        let transforms =
             transforms_at(current_frame, entity_db, query, id_registry, transforms);
-
-        // Maybe there's an implicit connection that we have to fill in?
-        if transforms.parent_from_child.is_none()
-            && transforms.pinhole_projection.is_none()
-            && let Some(parent) = implicit_transform_parent(current_frame, id_registry)
-        {
-            transforms.parent_frame = Some(parent);
-            transforms.parent_from_child = Some(ParentFromChildTransform {
-                parent,
-                transform: glam::DAffine3::IDENTITY,
-            });
-        }
-
         next_frame = transforms.parent_frame;
 
-        // No matter the previous outcome, we push the transform information we got about this frame onto the stack
-        // since we want something for every source we process.
+        // No matter whether there's a next frame or not, we push the transform information we got about this frame onto the stack
+        // since we expect an entry for every source we process.
         transform_stack.push(transforms);
     }
 }
@@ -762,24 +749,24 @@ fn transforms_at(
     id_registry: &FrameIdRegistry,
     transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> ParentChildTransforms {
-    let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) else {
-        return ParentChildTransforms {
-            parent_frame: None,
-            child_frame,
-            parent_from_child: None,
-            child_from_instance_poses: Vec::new(),
-            pinhole_projection: None,
-        };
-    };
+    let mut parent_from_child;
+    let child_from_instance_poses;
+    let pinhole_projection;
+    
+    if let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) {
+        parent_from_child = source_transforms.latest_at_transform(entity_db, query);
+        child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
+        pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
+    } else {
+        parent_from_child = None;
+        child_from_instance_poses = Vec::new();
+        pinhole_projection = None;
+    }
 
-    let parent_from_child = source_transforms.latest_at_transform(entity_db, query);
-    let child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
-    let pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
-
-    // Parent frame may be defined on either the pinhole projection or `parent_from_child`.
+    // Parent frame may be defined on either the pinhole projection or `parent_from_child`, or implicitly via entity derived transform frames.
     let parent_frame = if let Some(transform) = parent_from_child.as_ref() {
         // If there's a pinhole AND a regular transform, they need to have the same target.
-        if let Some(pinhole_projection) = &pinhole_projection.as_ref()
+        if let Some(pinhole_projection) = pinhole_projection.as_ref()
             && pinhole_projection.parent != transform.parent
         {
             re_log::warn_once!(
@@ -797,9 +784,19 @@ fn transforms_at(
         }
 
         Some(transform.parent)
-    } else {
+    } else if let Some(pinhole_projection) = pinhole_projection.as_ref() {
         // If there's no regular transform, maybe the Pinhole has a connection to offer.
-        pinhole_projection.as_ref().map(|p| p.parent)
+        Some(pinhole_projection.parent)
+    } else if let Some(parent) = implicit_transform_parent(child_frame, id_registry) {
+        // Maybe there's an implicit connection that we have to fill in?
+        // Implicit connections are identity connections!
+        parent_from_child = Some(ParentFromChildTransform {
+            parent,
+            transform: glam::DAffine3::IDENTITY,
+        });
+        Some(parent)
+    } else {
+        None
     };
 
     ParentChildTransforms {
