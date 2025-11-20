@@ -274,7 +274,7 @@ class DatasetEntry(Entry):
         index: str | None,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: dict[str, IndexValuesLike] | None = None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         view = DatasetView(self._inner, _LazyDatasetState())
@@ -541,15 +541,19 @@ class DatasetView:
         index: str | None,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: dict[str, IndexValuesLike] | None = None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         """
         Create a reader over this DatasetView as a datafusion DataFrame.
 
         The reader will return rows for all data that exists on the specified index.
-        It will either return 1 row per index value, or if using_index_values is provided,
+        It will either return 1 row per index value, or if `using_index_values` is provided,
         it will instead generate rows for each of the provided values.
+
+        `using_index_values` can be provided in either of these forms:
+        - a dictionary mapping segment IDs to index values
+        - a DataFusion DataFrame with a column named 'rerun_segment_id' and a column named after the provided `index`
 
         The operation is lazy. The data will not be read from the source dataset until consumed.
         """
@@ -573,7 +577,20 @@ class DatasetView:
         if fill_latest_at:
             view = view.fill_latest_at()
 
+        if using_index_values and index is None:
+            raise ValueError("index must be provided when using_index_values is provided")
+
         if using_index_values is not None:
+            # convert to dictionary representation
+            if isinstance(using_index_values, datafusion.DataFrame):
+                rows = using_index_values.select("rerun_segment_id", index).to_pylist()
+
+                using_index_values = defaultdict(list)
+                for row in rows:
+                    using_index_values[row["rerun_segment_id"]].append(row[index])
+
+                using_index_values = {k: np.array(v, dtype=np.datetime64) for k, v in using_index_values.items()}
+
             # Fake the intended behavior: index values are provided on a per-segment basis. If a segment is missing,
             # no rows are generated for it.
             segments = self._lazy_state.filtered_segments or self._inner.partition_ids()

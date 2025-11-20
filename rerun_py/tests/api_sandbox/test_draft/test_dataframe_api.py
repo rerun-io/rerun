@@ -4,6 +4,7 @@ import datetime
 from typing import TYPE_CHECKING
 
 import numpy as np
+from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
@@ -215,4 +216,51 @@ rerun_segment_id: []
 timeline: []
 /points:Points2D:colors: []
 /points:Points2D:positions: []\
+""")
+
+
+def test_dataframe_api_using_index_values_dataframe(complex_dataset: DatasetEntry) -> None:
+    """Demonstrate using the output of one query as `using_index_values` input for another."""
+
+    # TODO(ab, jleibs): this example is slightly unfortunate because it is more about filtering rows than
+    # interpolating rows.
+
+    rows_of_interest = (
+        complex_dataset.filter_contents(["points"])
+        .reader(index="timeline")
+        .filter(col("/points:Points2D:colors").is_not_null())
+    )
+
+    df = (
+        complex_dataset.filter_contents(["text"])
+        .reader(index="timeline", using_index_values=rows_of_interest)
+        .sort("rerun_segment_id", "timeline")
+    )
+
+    assert str(df) == inline_snapshot("""\
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                   │
+│ * version: 0.1.1                                                                            │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬──────────────────────────────┬────────────────────────────────────┐ │
+│ │ rerun_segment_id    ┆ timeline                     ┆ /text:TextLog:text                 │ │
+│ │ ---                 ┆ ---                          ┆ ---                                │ │
+│ │ type: Utf8          ┆ type: nullable Timestamp(ns) ┆ type: nullable List[nullable Utf8] │ │
+│ │                     ┆ index_name: timeline         ┆ archetype: TextLog                 │ │
+│ │                     ┆ kind: index                  ┆ component: TextLog:text            │ │
+│ │                     ┆                              ┆ component_type: Text               │ │
+│ │                     ┆                              ┆ entity_path: /text                 │ │
+│ │                     ┆                              ┆ kind: data                         │ │
+│ ╞═════════════════════╪══════════════════════════════╪════════════════════════════════════╡ │
+│ │ complex_recording_0 ┆ 2000-01-01T00:00:01          ┆ null                               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_1 ┆ 2000-01-01T00:00:02          ┆ null                               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_2 ┆ 2000-01-01T00:00:03          ┆ null                               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_3 ┆ 2000-01-01T00:00:04          ┆ null                               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ complex_recording_4 ┆ 2000-01-01T00:00:05          ┆ null                               │ │
+│ └─────────────────────┴──────────────────────────────┴────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
