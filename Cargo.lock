@@ -8979,6 +8979,8 @@ dependencies = [
  "egui_tiles",
  "ndarray",
  "parking_lot",
+ "re_build_info",
+ "re_log_encoding",
  "re_protos",
  "re_redap_client",
  "re_sdk",
