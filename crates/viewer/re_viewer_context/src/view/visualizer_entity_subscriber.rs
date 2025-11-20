@@ -1,6 +1,6 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 
 use re_chunk::{ArchetypeName, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
@@ -28,8 +28,8 @@ pub struct VisualizerEntitySubscriber {
     /// Visualizer type this subscriber is associated with.
     visualizer: ViewSystemIdentifier,
 
-    /// See [`crate::VisualizerQueryInfo::relevant_archetypes`]
-    relevant_archetypes: IntSet<ArchetypeName>,
+    /// See [`crate::VisualizerQueryInfo::relevant_archetype`]
+    relevant_archetype: Option<ArchetypeName>,
 
     /// Assigns each required component an index.
     required_components_indices: IntMap<ComponentIdentifier, usize>,
@@ -65,7 +65,7 @@ impl VisualizerEntitySubscriber {
 
         Self {
             visualizer: T::identifier(),
-            relevant_archetypes: visualizer_query_info.relevant_archetypes,
+            relevant_archetype: visualizer_query_info.relevant_archetype,
             required_components_indices: visualizer_query_info
                 .required
                 .into_iter()
@@ -135,14 +135,14 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             let entity_path = event.diff.chunk.entity_path();
 
             // Update archetype tracking:
-            if self.relevant_archetypes.is_empty()
-                || self.relevant_archetypes.iter().any(|archetype| {
+            if self.relevant_archetype.is_none()
+                || self.relevant_archetype.is_some_and(|archetype| {
                     event
                         .diff
                         .chunk
                         .components()
                         .component_descriptors()
-                        .any(|component_descr| component_descr.archetype == Some(*archetype))
+                        .any(|component_descr| component_descr.archetype == Some(archetype))
                 })
             {
                 store_mapping

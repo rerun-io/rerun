@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use nohash_hasher::IntSet;
 use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
@@ -12,8 +11,6 @@ use crate::{
 
 #[derive(Debug, Clone, Default)]
 pub struct SortedComponentSet(linked_hash_map::LinkedHashMap<ComponentDescriptor, ()>);
-
-pub type UnorderedArchetypeSet = IntSet<ArchetypeName>;
 
 impl SortedComponentSet {
     pub fn insert(&mut self, k: ComponentDescriptor) -> Option<()> {
@@ -40,9 +37,9 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
 }
 
 pub struct VisualizerQueryInfo {
-    /// These are not required, but if _any_ of these are found, it is a strong indication that this
+    /// This is not required, but if it is found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
-    pub relevant_archetypes: UnorderedArchetypeSet,
+    pub relevant_archetype: Option<ArchetypeName>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     pub required: ComponentSet,
@@ -59,7 +56,7 @@ pub struct VisualizerQueryInfo {
 impl VisualizerQueryInfo {
     pub fn from_archetype<A: Archetype>() -> Self {
         Self {
-            relevant_archetypes: std::iter::once(A::name()).collect(),
+            relevant_archetype: A::name().into(),
             required: A::required_components()
                 .iter()
                 .map(|c| c.component)
@@ -70,7 +67,7 @@ impl VisualizerQueryInfo {
 
     pub fn empty() -> Self {
         Self {
-            relevant_archetypes: Default::default(),
+            relevant_archetype: Default::default(),
             required: ComponentSet::default(),
             queried: SortedComponentSet::default(),
         }

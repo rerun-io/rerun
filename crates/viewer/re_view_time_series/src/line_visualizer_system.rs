@@ -42,7 +42,7 @@ impl VisualizerSystem for SeriesLinesSystem {
             .queried
             .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.relevant_archetypes = std::iter::once(archetypes::SeriesLines::name()).collect();
+        query_info.relevant_archetype = archetypes::SeriesLines::name().into();
 
         query_info
     }
