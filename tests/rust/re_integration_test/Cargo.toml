@@ -11,6 +11,8 @@ version.workspace = true
 publish = false
 
 [dependencies]
+re_build_info.workspace = true
+re_log_encoding.workspace = true
 re_protos.workspace = true
 re_redap_client.workspace = true
 re_sdk.workspace = true
