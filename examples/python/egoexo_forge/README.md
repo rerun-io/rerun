@@ -32,3 +32,4 @@ Or locally, make sure you have the [Pixi package manager](https://pixi.sh/latest
 git clone https://github.com/rerun-io/egoexo-forge.git
 cd egoexo-forge
 pixi run app
+```
