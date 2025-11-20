@@ -11,6 +11,9 @@ use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 #[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
 use std::{path::Path, sync::mpsc::Sender};
 
+#[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
+use hdf5_metno::{Dataset, File};
+
 #[cfg(feature = "hdf5")]
 const HDF5_LOADER_NAME: &str = "Hdf5Loader";
 
@@ -95,7 +98,7 @@ fn load_hdf5_file(
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
 ) -> std::result::Result<(), DataLoaderError> {
-    use hdf5_metno::File;
+    // File is already imported at the top level
 
     re_tracing::profile_function!();
     let store_id = settings.recommended_store_id();
@@ -115,15 +118,223 @@ fn load_hdf5_file(
     }
 
     // Open HDF5 file
-    let _file = File::open(filepath)
-        .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to open HDF5 file: {}", e)))?;
+    let file = File::open(filepath)
+        .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to open HDF5 file: {e}")))?;
 
-    // TODO: Implement actual HDF5 dataset extraction
-    // This is a placeholder that will be implemented in the next phase
     re_log::info!("HDF5 file opened successfully: {}", filepath.display());
-    re_log::warn!("HDF5 dataset extraction not yet implemented");
+
+    // Extract datasets recursively from the root group
+    extract_hdf5_group(
+        &file,
+        "",  // Root path
+        settings,
+        &store_id,
+        tx,
+    )?;
 
     Ok(())
+}
+
+/// Recursively extracts datasets from an HDF5 group
+#[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
+fn extract_hdf5_group(
+    group: &hdf5_metno::Group,
+    group_path: &str,
+    settings: &DataLoaderSettings,
+    store_id: &StoreId,
+    tx: &Sender<LoadedData>,
+) -> std::result::Result<(), DataLoaderError> {
+    // Get all member names in this group
+    let member_names = group.member_names()
+        .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to get group members: {e}")))?;
+
+    for member_name in member_names {
+        let member_path = if group_path.is_empty() {
+            member_name.clone()
+        } else {
+            format!("{group_path}/{member_name}")
+        };
+
+        // Try to open as dataset first
+        if let Ok(dataset) = group.dataset(&member_name) {
+            if let Err(e) = extract_hdf5_dataset(&dataset, &member_path, settings, store_id, tx) {
+                re_log::warn!("Failed to extract dataset '{}': {}", member_path, e);
+            }
+        }
+        // Try to open as group
+        else if let Ok(subgroup) = group.group(&member_name) {
+            extract_hdf5_group(&subgroup, &member_path, settings, store_id, tx)?;
+        }
+        // Skip if it's neither a dataset nor group
+        else {
+            re_log::debug!("Skipping member '{}': not a dataset or group", member_path);
+        }
+    }
+
+    Ok(())
+}
+
+/// Extracts a single HDF5 dataset and converts it to Arrow format
+#[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
+fn extract_hdf5_dataset(
+    dataset: &hdf5_metno::Dataset,
+    dataset_path: &str,
+    settings: &DataLoaderSettings,
+    store_id: &StoreId,
+    tx: &Sender<LoadedData>,
+) -> std::result::Result<(), DataLoaderError> {
+    use arrow::record_batch::RecordBatch;
+    use re_log_types::{ArrowMsg, EntityPath};
+
+    re_log::debug!("Extracting dataset: {}", dataset_path);
+
+    // Get dataset shape and type info
+    let shape = dataset.shape();
+    let ndim = dataset.ndim();
+
+    re_log::debug!("Dataset '{}' has shape {:?}, ndim: {}", dataset_path, shape, ndim);
+
+    // For now, only handle 1D and 2D datasets
+    if ndim == 0 || ndim > 2 {
+        return Err(DataLoaderError::Other(anyhow::anyhow!(
+            "Dataset '{dataset_path}' has unsupported dimensionality: {ndim}D (only 1D and 2D supported)"
+        )));
+    }
+
+    // Try to read as different data types using reflection-based approach
+    let (schema, arrays) = read_dataset_to_arrow(&dataset, dataset_path, &shape)?;
+
+    // Create RecordBatch with proper options
+    let batch = RecordBatch::try_new_with_options(
+        std::sync::Arc::new(schema),
+        arrays,
+        &arrow::record_batch::RecordBatchOptions::new().with_row_count(None),
+    )
+    .map_err(|e| DataLoaderError::Other(anyhow::anyhow!("Failed to create RecordBatch: {e}")))?;
+
+    // Convert to entity path
+    let _entity_path = if let Some(prefix) = &settings.entity_path_prefix {
+        EntityPath::from(format!("{prefix}/{dataset_path}"))
+    } else {
+        EntityPath::from(dataset_path)
+    };
+
+    // Create Arrow message using the correct API
+    let chunk_id = re_chunk::ChunkId::new();
+    let arrow_msg = ArrowMsg {
+        chunk_id: chunk_id.as_tuid(),
+        batch,
+        on_release: None,
+    };
+
+    // Send the data
+    if tx
+        .send(LoadedData::ArrowMsg(
+            HDF5_LOADER_NAME.to_owned(),
+            store_id.clone(),
+            arrow_msg,
+        ))
+        .is_err()
+    {
+        re_log::debug!("Failed to send dataset '{}' because channel was closed", dataset_path);
+    } else {
+        re_log::debug!("Successfully sent dataset: {}", dataset_path);
+    }
+
+    Ok(())
+}
+
+
+
+/// Read HDF5 dataset and convert to Arrow format using reflection-based approach
+#[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
+fn read_dataset_to_arrow(
+    dataset: &Dataset,
+    dataset_path: &str,
+    shape: &[usize],
+) -> std::result::Result<(arrow::datatypes::Schema, Vec<std::sync::Arc<dyn arrow::array::Array>>), DataLoaderError> {
+    use arrow::{
+        array::{Float64Array, Float32Array, Int64Array, Int32Array, UInt64Array, UInt32Array, Int16Array, UInt16Array, Int8Array, UInt8Array},
+        datatypes::DataType,
+    };
+
+    // Try different data types and convert to Arrow arrays
+    macro_rules! try_read_type {
+        ($rust_type:ty, $arrow_array:ty, $data_type:expr) => {
+            if let Ok(data) = dataset.read::<$rust_type, _>() {
+                return convert_ndarray_to_arrow::<$rust_type, $arrow_array>(data, shape, $data_type, dataset_path);
+            }
+        };
+    }
+
+    // Try common numeric types in order of preference
+    try_read_type!(f64, Float64Array, DataType::Float64);
+    try_read_type!(f32, Float32Array, DataType::Float32);
+    try_read_type!(i64, Int64Array, DataType::Int64);
+    try_read_type!(i32, Int32Array, DataType::Int32);
+    try_read_type!(u64, UInt64Array, DataType::UInt64);
+    try_read_type!(u32, UInt32Array, DataType::UInt32);
+    try_read_type!(i16, Int16Array, DataType::Int16);
+    try_read_type!(u16, UInt16Array, DataType::UInt16);
+    try_read_type!(i8, Int8Array, DataType::Int8);
+    try_read_type!(u8, UInt8Array, DataType::UInt8);
+
+    Err(DataLoaderError::Other(anyhow::anyhow!(
+        "Dataset '{dataset_path}' has unsupported data type"
+    )))
+}
+
+/// Convert ndarray to Arrow arrays with proper schema - simplified version
+#[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
+fn convert_ndarray_to_arrow<T, A>(
+    data: ndarray::ArrayD<T>,
+    shape: &[usize],
+    data_type: arrow::datatypes::DataType,
+    dataset_path: &str,
+) -> std::result::Result<(arrow::datatypes::Schema, Vec<std::sync::Arc<dyn arrow::array::Array>>), DataLoaderError>
+where
+    T: Clone,
+    A: arrow::array::Array + 'static,
+    A: From<Vec<T>>,
+{
+    use arrow::datatypes::{Field, Schema};
+
+    let (data_vec, _offset) = data.into_raw_vec_and_offset();
+    
+    if shape.len() == 1 {
+        // 1D dataset - single column
+        let array = A::from(data_vec);
+        let field = Field::new("value", data_type, false);
+        let schema = Schema::new_with_metadata(vec![field], std::collections::HashMap::new());
+        Ok((schema, vec![std::sync::Arc::new(array)]))
+    } else if shape.len() == 2 {
+        // 2D dataset - multiple columns
+        let rows = shape[0];
+        let cols = shape[1];
+        let mut arrays = Vec::new();
+        let mut fields = Vec::new();
+        
+        for col in 0..cols {
+            let mut column_data = Vec::with_capacity(rows);
+            for row in 0..rows {
+                let index = row * cols + col;
+                if index < data_vec.len() {
+                    column_data.push(data_vec[index].clone());
+                }
+            }
+            
+            let array = A::from(column_data);
+            arrays.push(std::sync::Arc::new(array) as std::sync::Arc<dyn arrow::array::Array>);
+            fields.push(Field::new(format!("col_{col}"), data_type.clone(), false));
+        }
+        
+        let schema = Schema::new_with_metadata(fields, std::collections::HashMap::new());
+        Ok((schema, arrays))
+    } else {
+        Err(DataLoaderError::Other(anyhow::anyhow!(
+            "Dataset '{dataset_path}' has unsupported shape: {shape:?}"
+        )))
+    }
 }
 
 #[cfg(feature = "hdf5")]
