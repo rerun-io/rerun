@@ -1,4 +1,5 @@
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithTonicConfig;
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor};
 use opentelemetry_sdk::{
     logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
@@ -206,6 +207,7 @@ impl Telemetry {
                 .add_directive_if_absent(base, "h2", forced)?
                 .add_directive_if_absent(base, "hyper", forced)?
                 .add_directive_if_absent(base, "hyper_util", forced)?
+                .add_directive_if_absent(base, "lance", forced)?
                 .add_directive_if_absent(base, "lance-arrow", forced)?
                 .add_directive_if_absent(base, "lance-core", forced)?
                 .add_directive_if_absent(base, "lance-datafusion", forced)?
@@ -230,6 +232,7 @@ impl Telemetry {
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
+                .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
                 .add_directive_if_absent(base, "lance_encoding", "off")
         };
@@ -323,12 +326,13 @@ impl Telemetry {
         let (tracer_provider, layer_traces_otlp) = if otel_enabled {
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
+                .with_compression(opentelemetry_otlp::Compression::Gzip)
                 .build()?;
 
             let batch_config = BatchConfigBuilder::default()
-                .with_max_queue_size(20_000) // Hold more spans in queue
-                .with_max_export_batch_size(4096) // Export more spans at once
-                .with_scheduled_delay(Duration::from_secs(10)) // Less frequent exports
+                .with_max_queue_size(5_000)
+                .with_max_export_batch_size(4096)
+                .with_scheduled_delay(Duration::from_secs(10))
                 .build();
 
             let batch_processor = BatchSpanProcessor::builder(exporter)
