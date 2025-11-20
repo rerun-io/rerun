@@ -73,6 +73,9 @@ pub fn edit_or_view_columns_multiline(
                         .unwrap_or(0.0);
                     let sz = egui::vec2(ui.max_rect().size().x, ITEM_SPACING + text_height);
                     let dnd_res = egui_dnd::dnd(ui, "timeline_columns_dnd").show_sized(
+                        // We include the index in the item here because the item
+                        // so doing this will make columns with the
+                        // same name not collide.
                         columns.iter_mut().enumerate(),
                         sz,
                         |ui, (_idx, col), handle, _state| {
