@@ -30,7 +30,6 @@ default = []
 ## for more information.
 data_loaders = ["dep:re_data_loader", "dep:re_smart_channel"]
 
-
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.

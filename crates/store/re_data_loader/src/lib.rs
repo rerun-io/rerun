@@ -421,27 +421,19 @@ impl LoadedData {
 ///
 /// Lazy initialized the first time a file is opened.
 static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
-    let mut loaders: Vec<Arc<dyn DataLoader>> = vec![
+    vec![
         Arc::new(RrdLoader) as Arc<dyn DataLoader>,
         Arc::new(ArchetypeLoader),
         Arc::new(DirectoryLoader),
         Arc::new(McapLoader::default()),
-    ];
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        re_log::debug!("Adding HDF5 loader to builtin loaders");
-        loaders.push(Arc::new(Hdf5Loader));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        loaders.push(Arc::new(LeRobotDatasetLoader));
-        loaders.push(Arc::new(ExternalLoader));
-    }
-
-    loaders.push(Arc::new(UrdfDataLoader));
-    loaders
+        #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(LeRobotDatasetLoader),
+        #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(ExternalLoader),
+        Arc::new(UrdfDataLoader),
+        #[cfg(not(target_arch = "wasm32"))]
+        Arc::new(Hdf5Loader),
+    ]
 });
 
 /// Iterator over all registered [`DataLoader`]s.
