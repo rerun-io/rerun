@@ -10,7 +10,7 @@ use re_log_types::{ArrowMsg, EntityPath, LogMsg, RecordingId, StoreId, TimePoint
 mod load_file;
 mod loader_archetype;
 mod loader_directory;
-#[cfg(feature = "hdf5")]
+#[cfg(not(target_arch = "wasm32"))]
 mod loader_hdf5;
 mod loader_rrd;
 mod loader_urdf;
@@ -36,7 +36,7 @@ pub use self::{
     loader_urdf::UrdfTree,
 };
 
-#[cfg(feature = "hdf5")]
+#[cfg(not(target_arch = "wasm32"))]
 pub use self::loader_hdf5::Hdf5Loader;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -428,8 +428,11 @@ static BUILTIN_LOADERS: LazyLock<Vec<Arc<dyn DataLoader>>> = LazyLock::new(|| {
         Arc::new(McapLoader::default()),
     ];
 
-    #[cfg(all(feature = "hdf5", not(target_arch = "wasm32")))]
-    loaders.push(Arc::new(Hdf5Loader));
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        re_log::debug!("Adding HDF5 loader to builtin loaders");
+        loaders.push(Arc::new(Hdf5Loader));
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     {

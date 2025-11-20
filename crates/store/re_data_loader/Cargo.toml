@@ -21,7 +21,6 @@ all-features = true
 
 [features]
 default = []
-hdf5 = ["dep:hdf5-metno"]
 
 
 [dependencies]
@@ -58,7 +57,7 @@ urdf-rs.workspace = true
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
-hdf5-metno = { workspace = true, optional = true, features = ["static"] }
+hdf5-metno = { workspace = true, features = ["static"] }
 parquet = { workspace = true, features = ["arrow", "snap"] }
 re_crash_handler.workspace = true
 
@@ -67,3 +66,4 @@ re_chunk_store.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
 
 insta = { workspace = true, features = ["glob"] }
+tempfile.workspace = true
