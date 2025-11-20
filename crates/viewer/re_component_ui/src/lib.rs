@@ -26,6 +26,7 @@ mod transforms;
 mod variant_uis;
 mod video_timestamp;
 mod view_coordinates;
+mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
 
