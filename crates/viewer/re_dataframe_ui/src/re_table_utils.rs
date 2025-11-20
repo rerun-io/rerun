@@ -1,8 +1,10 @@
 use ahash::HashSet;
 use egui::containers::menu::{MenuButton, MenuConfig};
+use egui::emath::GuiRounding as _;
 use egui::{Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
-
 use re_ui::{UiExt as _, design_tokens_of, icons};
+
+pub const CELL_SEPARATOR_STROKE_OFFSET: f32 = 0.5;
 
 /// This applies some fixes so that the column resize bar is correctly displayed.
 ///
@@ -41,7 +43,11 @@ pub fn header_ui<R>(
     connected_to_next_cell: bool,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> egui::InnerResponse<R> {
-    let rect = ui.max_rect();
+    let rect = ui
+        .max_rect()
+        .round_to_pixels(ui.pixels_per_point())
+        .round_ui();
+
     ui.painter()
         .rect_filled(rect, 0.0, ui.tokens().table_header_bg_fill);
 
@@ -51,7 +57,7 @@ pub fn header_ui<R>(
 
     if !connected_to_next_cell {
         ui.painter().vline(
-            rect.max.x - 1.0,
+            rect.max.x - CELL_SEPARATOR_STROKE_OFFSET,
             rect.y_range(),
             Stroke::new(1.0, ui.tokens().table_header_stroke_color),
         );
@@ -59,7 +65,7 @@ pub fn header_ui<R>(
 
     ui.painter().hline(
         rect.x_range(),
-        rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
+        rect.max.y - CELL_SEPARATOR_STROKE_OFFSET, // - 1.0 prevents it from being overdrawn by the following row
         Stroke::new(1.0, ui.tokens().table_header_stroke_color),
     );
 
@@ -76,11 +82,14 @@ pub fn cell_ui<R>(
         .inner_margin(ui.tokens().table_cell_margin(table_style))
         .show(ui, content);
 
-    let rect = ui.max_rect();
+    let rect = ui
+        .max_rect()
+        .round_to_pixels(ui.pixels_per_point())
+        .round_ui();
 
     if !connected_to_next_cell {
         ui.painter().vline(
-            rect.max.x - 1.0,
+            rect.max.x - CELL_SEPARATOR_STROKE_OFFSET,
             rect.y_range(),
             Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
         );
@@ -88,7 +97,7 @@ pub fn cell_ui<R>(
 
     ui.painter().hline(
         rect.x_range(),
-        rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
+        rect.max.y - CELL_SEPARATOR_STROKE_OFFSET, // - 1.0 prevents it from being overdrawn by the following row
         Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
     );
 
