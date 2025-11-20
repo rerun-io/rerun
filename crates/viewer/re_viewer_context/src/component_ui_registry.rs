@@ -603,8 +603,11 @@ impl ComponentUiRegistry {
         if let Some(component_type) = component_descr.component_type {
             let allow_multiline = ui_layout == UiLayout::SelectionPanel;
             let is_single_value = component_raw.len() == 1;
-            let edit_or_view_ui =
-                self.get_untyped_component_ui(component_type, allow_multiline, is_single_value);
+            let edit_or_view_ui = self.untyped_component_ui_callback(
+                component_type,
+                allow_multiline,
+                is_single_value,
+            );
 
             if let Some(edit_or_view_ui) = edit_or_view_ui {
                 // Use it in view mode (no mutation).
@@ -849,7 +852,7 @@ impl ComponentUiRegistry {
         let is_single_value = raw_current_value.len() == 1;
 
         let edit_or_view =
-            self.get_untyped_component_ui(component_type, allow_multiline, is_single_value);
+            self.untyped_component_ui_callback(component_type, allow_multiline, is_single_value);
 
         if let Some(edit_or_view) = edit_or_view {
             if let Some(updated) = (*edit_or_view)(
@@ -875,34 +878,6 @@ impl ComponentUiRegistry {
     }
 }
 
-fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
-    let component_type = C::name();
-    let deserialized = C::from_arrow(value);
-    match deserialized {
-        Ok(values) => {
-            if values.len() > 1 {
-                // Whatever we did prior to calling this should have taken care if it!
-                re_log::error_once!(
-                    "Can only edit a single value at a time, got {} values for editing {component_type}",
-                    values.len()
-                );
-            }
-            if let Some(v) = values.into_iter().next() {
-                Some(v)
-            } else {
-                re_log::warn_once!(
-                    "Editor UI for {component_type} needs a start value to operate on."
-                );
-                None
-            }
-        }
-        Err(err) => {
-            re_log::error_once!("Failed to deserialize component of type {component_type}: {err}",);
-            None
-        }
-    }
-}
-
 fn try_deserialize_array<C: re_types::Component>(
     value: &dyn arrow::array::Array,
 ) -> Option<Vec<C>> {
@@ -914,6 +889,26 @@ fn try_deserialize_array<C: re_types::Component>(
             re_log::error_once!("Failed to deserialize component of type {component_type}: {err}",);
             None
         }
+    }
+}
+
+fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
+    let component_type = C::name();
+
+    let values = try_deserialize_array::<C>(value)?;
+
+    if values.len() > 1 {
+        // Whatever we did prior to calling this should have taken care if it!
+        re_log::error_once!(
+            "Can only edit a single value at a time, got {} values for editing {component_type}",
+            values.len()
+        );
+    }
+    if let Some(v) = values.into_iter().next() {
+        Some(v)
+    } else {
+        re_log::warn_once!("Editor UI for {component_type} needs a start value to operate on.");
+        None
     }
 }
 
