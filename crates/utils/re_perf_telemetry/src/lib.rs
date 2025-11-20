@@ -62,7 +62,7 @@ pub use self::{
     args::{LogFormat, TelemetryArgs},
     grpc::{
         ClientTelemetryLayer, GrpcMakeSpan, GrpcOnEos, GrpcOnFirstBodyChunk, GrpcOnRequest,
-        GrpcOnResponse, ServerTelemetryLayer, TracingInjectorInterceptor,
+        GrpcOnResponse, ServerTelemetryLayer, TraceIdLayer, TracingInjectorInterceptor,
         new_client_telemetry_layer, new_server_telemetry_layer,
     },
     telemetry::{Telemetry, TelemetryDropBehavior},

@@ -97,6 +97,7 @@ def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:
 
 
 # TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
+@pytest.mark.local_only
 def test_tables_to_arrow_reader_patched() -> None:
     from .conftest import TABLE_FILEPATH
 

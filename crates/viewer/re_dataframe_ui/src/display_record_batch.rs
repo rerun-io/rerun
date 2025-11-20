@@ -204,6 +204,14 @@ impl DisplayComponentColumn {
                 .is_some_and(Self::is_blob_image)
     }
 
+    pub fn string_value_at(&self, row: usize) -> Option<String> {
+        let data = self.component_data.row_data(row)?;
+
+        let string_component = data.downcast_array_ref::<arrow::array::StringArray>()?;
+
+        Some(string_component.value(0).to_owned())
+    }
+
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,

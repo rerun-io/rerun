@@ -11,10 +11,10 @@ use quote::{format_ident, quote};
 
 use crate::{
     ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
-    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, TypeRegistry,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    TypeRegistry,
     codegen::{
         Target, autogen_warning,
         rust::{
@@ -1478,20 +1478,15 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(pub)
         };
 
-        if required.is_empty() && obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-            // Skip the `new` method.
-            quote!()
-        } else {
-            let docstring = quote_doc_line(&format!("Create a new `{name}`."));
+        let docstring = quote_doc_line(&format!("Create a new `{name}`."));
 
-            quote! {
-                #docstring
-                #[inline]
-                #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
-                    Self {
-                        #(#quoted_required,)*
-                        #(#quoted_optional,)*
-                    }
+        quote! {
+            #docstring
+            #[inline]
+            #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
+                Self {
+                    #(#quoted_required,)*
+                    #(#quoted_optional,)*
                 }
             }
         }

@@ -141,6 +141,10 @@
     "table_interaction_noninteractive_bg_stroke": {
       "color": "{Gray.200}"
     },
+    "table_interaction_row_selection_fill": {
+      "color": "{Blue.750}",
+      "alpha": 10
+    },
     "table_sort_icon_color": {
       "color": "{Blue.450}"
     },

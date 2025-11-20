@@ -157,7 +157,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(clear=False, axis_length=10),
+        rr.Transform3D(axis_length=10),
     )
 
     for t in range(100):
@@ -165,7 +165,6 @@ class Transform3D(Transform3DExt, Archetype):
         rr.log(
             "box",
             rr.Transform3D(
-                clear=False,
                 translation=[0, 0, t / 10.0],
                 rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)),
             ),
@@ -198,7 +197,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(clear=False, axis_length=10),
+        rr.Transform3D(axis_length=10),
     )
 
     rr.send_columns(
@@ -239,7 +238,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(clear=False, axis_length=10),
+        rr.Transform3D(axis_length=10),
     )
 
     # Update only the rotation of the box.
@@ -334,24 +333,34 @@ class Transform3D(Transform3DExt, Archetype):
             If true, all unspecified fields will be explicitly cleared.
         translation:
             Translation vector.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         rotation_axis_angle:
             Rotation via axis + angle.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         quaternion:
             Rotation via quaternion.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         scale:
             Scaling factor.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         mat3x3:
             3x3 transformation matrix.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         relation:
             Specifies the relation this transform establishes between this entity and its parent.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         child_frame:
             The child frame this transform transforms from.
 
             The entity at which the transform relationship of any given child frame is specified mustn't change over time.
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
             with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-            An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
-            another one temporally.
 
             ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
             ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
@@ -360,6 +369,8 @@ class Transform3D(Transform3DExt, Archetype):
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         parent_frame:
             The parent frame this transform transforms into.
 
@@ -369,6 +380,8 @@ class Transform3D(Transform3DExt, Archetype):
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         axis_length:
             Visual length of the 3 axes.
 
@@ -431,24 +444,34 @@ class Transform3D(Transform3DExt, Archetype):
         ----------
         translation:
             Translation vector.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         rotation_axis_angle:
             Rotation via axis + angle.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         quaternion:
             Rotation via quaternion.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         scale:
             Scaling factor.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         mat3x3:
             3x3 transformation matrix.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         relation:
             Specifies the relation this transform establishes between this entity and its parent.
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         child_frame:
             The child frame this transform transforms from.
 
             The entity at which the transform relationship of any given child frame is specified mustn't change over time.
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
             with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-            An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
-            another one temporally.
 
             ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
             ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
@@ -457,6 +480,8 @@ class Transform3D(Transform3DExt, Archetype):
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         parent_frame:
             The parent frame this transform transforms into.
 
@@ -466,6 +491,8 @@ class Transform3D(Transform3DExt, Archetype):
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+
+            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         axis_length:
             Visual length of the 3 axes.
 
@@ -539,6 +566,8 @@ class Transform3D(Transform3DExt, Archetype):
     )
     # Translation vector.
     #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     rotation_axis_angle: components.RotationAxisAngleBatch | None = field(
@@ -547,6 +576,8 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotation via axis + angle.
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -557,6 +588,8 @@ class Transform3D(Transform3DExt, Archetype):
     )
     # Rotation via quaternion.
     #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     scale: components.Scale3DBatch | None = field(
@@ -565,6 +598,8 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.Scale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factor.
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -575,6 +610,8 @@ class Transform3D(Transform3DExt, Archetype):
     )
     # 3x3 transformation matrix.
     #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     relation: components.TransformRelationBatch | None = field(
@@ -583,6 +620,8 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformRelationBatch._converter,  # type: ignore[misc]
     )
     # Specifies the relation this transform establishes between this entity and its parent.
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -596,8 +635,6 @@ class Transform3D(Transform3DExt, Archetype):
     # The entity at which the transform relationship of any given child frame is specified mustn't change over time.
     # E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     # with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-    # An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
-    # another one temporally.
     #
     # ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
     # ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
@@ -606,6 +643,8 @@ class Transform3D(Transform3DExt, Archetype):
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     #
     # To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #
@@ -624,6 +663,8 @@ class Transform3D(Transform3DExt, Archetype):
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
     #
     # To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+    #
+    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #
