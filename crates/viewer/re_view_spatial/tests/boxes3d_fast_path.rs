@@ -8,8 +8,11 @@ use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
-/// Test that the fast path renderer is used for 1000+ boxes with translation-only transforms.
-/// This validates that the GPU-accelerated box cloud renderer works correctly.
+/// Test that the fast path renderer works for solid boxes with translation-only transforms.
+/// The fast path uses GPU instanced rendering and is automatically selected when:
+/// - Fill mode is Solid (not wireframe)
+/// - No per-instance rotations
+/// - All transforms are translation-only (no rotation/scaling)
 #[test]
 pub fn test_boxes3d_fast_path() {
     const ADAPTER_ERR: &str = "No graphics adapter found!";
@@ -35,8 +38,8 @@ pub fn test_boxes3d_fast_path() {
 fn run_fast_path_test() {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
-    // Create 1000 boxes with translation-only transforms
-    // This should trigger the fast path (BOX_CLOUD_THRESHOLD = 1000)
+    // Create 1000 solid boxes with translation-only transforms.
+    // This should use the fast instanced rendering path.
     let num_boxes = 1000;
     let mut centers = Vec::with_capacity(num_boxes);
     let mut half_sizes = Vec::with_capacity(num_boxes);
