@@ -14,7 +14,10 @@ use re_viewport_blueprint::ViewBlueprint;
 /// 3. After adding the visualizer, transform axes appear in the 3D view
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_custom_visualizer_axes() {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
+        ..Default::default()
+    });
     harness.init_recording();
     harness.set_blueprint_panel_opened(true);
     harness.set_selection_panel_opened(true);

@@ -243,7 +243,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let mut recording_store = EntityDb::new(recording_store_id.clone());
 
         recording_store.set_store_info(SetStoreInfo {
-            row_id: Tuid::new(),
+            row_id: Tuid::ZERO,
             info: store_info,
         });
         {
@@ -259,7 +259,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::now(),
+                    &re_types::components::Timestamp::from(0),
                 )
                 .expect("Failed to set recording start time");
         }
