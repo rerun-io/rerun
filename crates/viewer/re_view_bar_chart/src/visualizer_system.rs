@@ -10,7 +10,7 @@ use re_types::{
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -42,7 +42,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {
@@ -70,7 +70,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             }
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

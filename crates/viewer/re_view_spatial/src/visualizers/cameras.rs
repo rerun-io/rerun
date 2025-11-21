@@ -9,7 +9,7 @@ use re_types::{
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
+    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -220,7 +220,9 @@ impl VisualizerSystem for CamerasVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
@@ -293,7 +295,7 @@ impl VisualizerSystem for CamerasVisualizer {
             );
         }
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -11,8 +11,8 @@ use re_view::{
     range_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewer_context::{external::re_entity_db::InstancePath, typed_fallback_for};
 use re_viewport_blueprint::ViewPropertyQueryError;
@@ -52,11 +52,11 @@ impl VisualizerSystem for SeriesLinesSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         self.load_scalars(ctx, query)?;
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

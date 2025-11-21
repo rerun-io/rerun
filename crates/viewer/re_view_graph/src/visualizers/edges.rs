@@ -8,7 +8,8 @@ use re_types::{
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::graph::NodeId;
@@ -49,7 +50,7 @@ impl VisualizerSystem for EdgesVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
         // TODO(cmc): could we (improve and then) use reflection for this?
@@ -111,7 +112,7 @@ impl VisualizerSystem for EdgesVisualizer {
 
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

@@ -2,6 +2,7 @@
 
 use nohash_hasher::{IntMap, IntSet};
 use re_log_types::EntityPath;
+use re_types_core::ViewClassIdentifier;
 
 use crate::ViewSystemIdentifier;
 
@@ -60,6 +61,10 @@ impl std::ops::Deref for VisualizableEntities {
     }
 }
 
+/// List of elements per visualizer system.
+///
+/// Careful, if you're in the context of a view, this may contain visualizers that aren't relevant to the current view.
+/// Refer to [`PerVisualizerInView`] for a collection that is limited to visualizers active for a given view.
 #[derive(Default, Debug)]
 pub struct PerVisualizer<T: Default>(pub IntMap<ViewSystemIdentifier, T>);
 
@@ -69,5 +74,36 @@ impl<T: Default> std::ops::Deref for PerVisualizer<T> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// Like [`PerVisualizer`], but ensured that all visualizers are relevant for the given view.
+#[derive(Debug)]
+pub struct PerVisualizerInView<T> {
+    /// View for which this list is filtered down.
+    ///
+    /// Most of the time we don't actually need this field but it is useful for debugging
+    /// and ensuring that [`Self::per_visualizer`] is scoped down to this view.
+    pub view_class_identifier: ViewClassIdentifier,
+
+    /// Items per visualizer system.
+    pub per_visualizer: IntMap<ViewSystemIdentifier, T>,
+}
+
+impl<T> PerVisualizerInView<T> {
+    pub fn empty(view_class_identifier: ViewClassIdentifier) -> Self {
+        Self {
+            view_class_identifier,
+            per_visualizer: Default::default(),
+        }
+    }
+}
+
+impl<T> std::ops::Deref for PerVisualizerInView<T> {
+    type Target = IntMap<ViewSystemIdentifier, T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.per_visualizer
     }
 }

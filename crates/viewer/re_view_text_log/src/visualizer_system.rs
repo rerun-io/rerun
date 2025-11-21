@@ -11,7 +11,7 @@ use re_types::{
 use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ impl VisualizerSystem for TextLogSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let query =
@@ -63,7 +63,7 @@ impl VisualizerSystem for TextLogSystem {
             self.entries.sort_by_key(|e| e.time);
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

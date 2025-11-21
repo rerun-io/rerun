@@ -5,7 +5,7 @@ use re_viewer_context::external::re_chunk_store::external::re_chunk;
 
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewState, ViewerContext,
-    VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
 };
 
 #[derive(Default)]
@@ -36,9 +36,8 @@ impl VisualizerSystem for TestSystem {
         _ctx: &re_viewer_context::ViewContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
         _context_systems: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, re_viewer_context::ViewSystemExecutionError>
-    {
-        Ok(Vec::new())
+    ) -> Result<VisualizerExecutionOutput, re_viewer_context::ViewSystemExecutionError> {
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

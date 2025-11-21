@@ -5,8 +5,8 @@ use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, component
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
@@ -81,7 +81,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
         let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -166,7 +168,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
         }
 
-        Ok(vec![line_builder.into_draw_data()?.into()])
+        Ok(output.with_draw_data([line_builder.into_draw_data()?.into()]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -253,8 +255,8 @@ impl VisualizerSystem for AxisLengthDetector {
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        Ok(vec![])
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

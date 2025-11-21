@@ -1,6 +1,6 @@
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 /// An empty system to accept all entities in the view
@@ -23,8 +23,8 @@ impl VisualizerSystem for EmptySystem {
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        Ok(vec![])
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

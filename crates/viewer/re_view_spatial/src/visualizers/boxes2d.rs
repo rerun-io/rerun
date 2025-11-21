@@ -8,7 +8,7 @@ use re_types::{
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
@@ -195,7 +195,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -282,7 +283,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
