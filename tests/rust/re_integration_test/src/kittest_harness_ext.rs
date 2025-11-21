@@ -243,7 +243,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let mut recording_store = EntityDb::new(recording_store_id.clone());
 
         recording_store.set_store_info(SetStoreInfo {
-            row_id: Tuid::ZERO,
+            row_id: Tuid::new(),
             info: store_info,
         });
         {

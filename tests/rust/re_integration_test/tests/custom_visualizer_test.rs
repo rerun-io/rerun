@@ -46,13 +46,13 @@ pub async fn test_custom_visualizer_axes() {
     harness.setup_viewport_blueprint(|_viewer_context, blueprint| {
         let mut view_3d =
             ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView3D::identifier());
-        view_3d.display_name = Some("3D View".to_owned());
+        view_3d.display_name = Some("3D view".to_owned());
         blueprint.add_view_at_root(view_3d);
     });
 
     harness.snapshot_app("custom_visualizer_axes_1");
 
-    harness.blueprint_tree().right_click_label("3D View");
+    harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
     harness.snapshot_app("custom_visualizer_axes_2");
 
