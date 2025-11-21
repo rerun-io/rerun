@@ -3,7 +3,7 @@ use re_types::Archetype;
 use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError,
+    ViewSystemExecutionError, VisualizerExecutionOutput,
 };
 
 use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
@@ -90,6 +90,7 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     context_systems: &ViewContextCollection,
+    output: &mut VisualizerExecutionOutput,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
 where
@@ -112,6 +113,10 @@ where
         let Some(transform_info) =
             transforms.transform_info_for_entity(data_result.entity_path.hash())
         else {
+            output.report_error_for(
+                data_result.entity_path.clone(),
+                "No transform connecting to the View's origin found.",
+            );
             continue;
         };
 

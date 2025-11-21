@@ -4,8 +4,8 @@ use re_renderer::{RenderContext, renderer::GpuMeshInstance};
 use re_types::{archetypes::Mesh3D, components::ImageFormat};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
@@ -132,7 +132,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -140,6 +140,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

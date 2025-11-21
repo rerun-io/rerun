@@ -6,8 +6,8 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -61,13 +61,14 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
 
         use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

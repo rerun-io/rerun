@@ -8,8 +8,8 @@ use re_types::{
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 use std::iter;
 
@@ -146,7 +146,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
@@ -159,6 +159,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

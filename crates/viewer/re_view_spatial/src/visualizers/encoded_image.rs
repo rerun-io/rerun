@@ -6,8 +6,9 @@ use re_types::{
 use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -57,12 +58,13 @@ impl VisualizerSystem for EncodedImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
                 Ok(())

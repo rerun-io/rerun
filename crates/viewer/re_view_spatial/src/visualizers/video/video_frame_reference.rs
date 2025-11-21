@@ -9,9 +9,9 @@ use re_types::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, VideoAssetCache, ViewContext,
-    ViewContextCollection, ViewId, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    ViewContextCollection, ViewId, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -67,12 +67,13 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
 
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.

@@ -9,8 +9,9 @@ use re_types::{
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -200,7 +201,7 @@ impl VisualizerSystem for Points3DVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
 
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
@@ -219,6 +220,7 @@ impl VisualizerSystem for Points3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

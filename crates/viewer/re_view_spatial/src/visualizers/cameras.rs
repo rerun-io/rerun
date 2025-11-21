@@ -9,8 +9,9 @@ use re_types::{
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
+    VisualizableEntities, VisualizableFilterContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
