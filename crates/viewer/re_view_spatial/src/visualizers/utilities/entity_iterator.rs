@@ -115,7 +115,7 @@ where
         else {
             output.report_error_for(
                 data_result.entity_path.clone(),
-                "No transform connecting to the View's origin found.",
+                "No transform connecting to the view's origin found.",
             );
             continue;
         };

@@ -331,7 +331,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
             },
         )
-        .map_err(|e| ViewSystemExecutionError::DrawDataCreationError(Box::new(e)))?;
+        .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
         output.draw_data.push(depth_cloud.into());
 
         output.draw_data.push(PickableTexturedRect::to_draw_data(

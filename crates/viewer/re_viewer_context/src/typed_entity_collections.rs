@@ -63,12 +63,12 @@ impl std::ops::Deref for VisualizableEntities {
 
 /// List of elements per visualizer system.
 ///
-/// Careful, if you're in the context of a view, this may contain visualizers that aren't relevant to the current view.
-/// Refer to [`PerVisualizerInView`] for a collection that is limited to visualizers active for a given view.
-#[derive(Default, Debug)]
-pub struct PerVisualizer<T: Default>(pub IntMap<ViewSystemIdentifier, T>);
+/// Careful, if you're in the context of a view, this *may* contain visualizers that aren't relevant to the current view.
+/// Refer to [`PerVisualizerInViewClass`] for a collection that is limited to visualizers active for a given view class.
+#[derive(Debug)]
+pub struct PerVisualizer<T>(pub IntMap<ViewSystemIdentifier, T>);
 
-impl<T: Default> std::ops::Deref for PerVisualizer<T> {
+impl<T> std::ops::Deref for PerVisualizer<T> {
     type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]
@@ -77,9 +77,16 @@ impl<T: Default> std::ops::Deref for PerVisualizer<T> {
     }
 }
 
-/// Like [`PerVisualizer`], but ensured that all visualizers are relevant for the given view.
+// Manual default impl, otherwise T: Default would be required.
+impl<T> Default for PerVisualizer<T> {
+    fn default() -> Self {
+        Self(IntMap::default())
+    }
+}
+
+/// Like [`PerVisualizer`], but ensured that all visualizers are relevant for the given view class.
 #[derive(Debug)]
-pub struct PerVisualizerInView<T> {
+pub struct PerVisualizerInViewClass<T> {
     /// View for which this list is filtered down.
     ///
     /// Most of the time we don't actually need this field but it is useful for debugging
@@ -90,7 +97,7 @@ pub struct PerVisualizerInView<T> {
     pub per_visualizer: IntMap<ViewSystemIdentifier, T>,
 }
 
-impl<T> PerVisualizerInView<T> {
+impl<T> PerVisualizerInViewClass<T> {
     pub fn empty(view_class_identifier: ViewClassIdentifier) -> Self {
         Self {
             view_class_identifier,
@@ -99,7 +106,7 @@ impl<T> PerVisualizerInView<T> {
     }
 }
 
-impl<T> std::ops::Deref for PerVisualizerInView<T> {
+impl<T> std::ops::Deref for PerVisualizerInViewClass<T> {
     type Target = IntMap<ViewSystemIdentifier, T>;
 
     #[inline]

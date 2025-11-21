@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
 
 use re_viewer_context::{
-    PerSystemDataResults, PerVisualizerInView, SystemExecutionOutput, ViewContextCollection,
+    PerSystemDataResults, PerVisualizerInViewClass, SystemExecutionOutput, ViewContextCollection,
     ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
     VisualizerExecutionOutput,
@@ -25,7 +25,7 @@ fn run_view_systems(
     >,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
-) -> PerVisualizerInView<Result<VisualizerExecutionOutput, ViewSystemExecutionError>> {
+) -> PerVisualizerInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>> {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
     let view_ctx = view.bundle_context_with_state(ctx, view_state);
@@ -44,18 +44,18 @@ fn run_view_systems(
             });
     };
 
-    // TODO: keep track of errors.
     re_tracing::profile_wait!("VisualizerSystem::execute");
     let per_visualizer_results = view_systems
         .systems
         .par_iter_mut()
         .map(|(name, part)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            (*name, part.execute(&view_ctx, query, context_systems))
+            let result = part.execute(&view_ctx, query, context_systems);
+            (*name, result.map_err(Arc::new))
         })
         .collect();
 
-    PerVisualizerInView {
+    PerVisualizerInViewClass {
         view_class_identifier: view.class_identifier(),
         per_visualizer: per_visualizer_results,
     }
