@@ -322,6 +322,7 @@ impl StoreHub {
         let removed_store = self.store_bundle.remove(store_id);
 
         let Some(removed_store) = removed_store else {
+            re_log::error!("Failed to remove {store_id:?}");
             return;
         };
 
@@ -334,9 +335,15 @@ impl StoreHub {
                     .recordings()
                     .any(|rec| rec.application_id() == app_id);
 
+                // If this is the only recording with this app id, remove the app.
                 if !any_other_recordings_for_this_app {
                     re_log::trace!("Removed last recording of {app_id}. Closing app.");
                     self.close_app(app_id);
+                }
+                // Otherwise remove stores with the same data source we're closing.
+                else if removed_store.data_source.is_some() {
+                    self.store_bundle
+                        .retain(|r| r.data_source != removed_store.data_source);
                 }
             }
             StoreKind::Blueprint => {
