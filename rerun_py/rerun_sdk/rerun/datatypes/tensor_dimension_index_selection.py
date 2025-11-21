@@ -74,13 +74,17 @@ class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelection
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionIndexSelectionArrayLike, data_type: pa.DataType) -> pa.Array:
+        typed_data: Sequence[TensorDimensionIndexSelection]
+
         if isinstance(data, TensorDimensionIndexSelection):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                pa.array(np.asarray([x.dimension for x in data], dtype=np.uint32)),
-                pa.array(np.asarray([x.index for x in data], dtype=np.uint64)),
+                pa.array(np.asarray([x.dimension for x in typed_data], dtype=np.uint32)),
+                pa.array(np.asarray([x.index for x in typed_data], dtype=np.uint64)),
             ],
             fields=list(data_type),
         )

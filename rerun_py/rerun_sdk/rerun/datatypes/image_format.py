@@ -130,16 +130,20 @@ class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
     def _native_to_pa_array(data: ImageFormatArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import ChannelDatatypeBatch, ColorModelBatch, PixelFormatBatch
 
+        typed_data: Sequence[ImageFormat]
+
         if isinstance(data, ImageFormat):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                pa.array(np.asarray([x.width for x in data], dtype=np.uint32)),
-                pa.array(np.asarray([x.height for x in data], dtype=np.uint32)),
-                PixelFormatBatch([x.pixel_format for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ColorModelBatch([x.color_model for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                ChannelDatatypeBatch([x.channel_datatype for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                pa.array(np.asarray([x.width for x in typed_data], dtype=np.uint32)),
+                pa.array(np.asarray([x.height for x in typed_data], dtype=np.uint32)),
+                PixelFormatBatch([x.pixel_format for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ColorModelBatch([x.color_model for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ChannelDatatypeBatch([x.channel_datatype for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

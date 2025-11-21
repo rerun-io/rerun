@@ -39,8 +39,10 @@ pub use re_types::blueprint::components::RootContainer;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SelectedColumns;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
+pub use re_types::blueprint::components::TextLogColumn;
 pub use re_types::blueprint::components::TimeInt;
 pub use re_types::blueprint::components::TimeRange;
+pub use re_types::blueprint::components::TimelineColumn;
 pub use re_types::blueprint::components::TimelineName;
 pub use re_types::blueprint::components::ViewClass;
 pub use re_types::blueprint::components::ViewFit;
@@ -91,8 +93,10 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
+        && validate_component::<TextLogColumn>(blueprint)
         && validate_component::<TimeInt>(blueprint)
         && validate_component::<TimeRange>(blueprint)
+        && validate_component::<TimelineColumn>(blueprint)
         && validate_component::<TimelineName>(blueprint)
         && validate_component::<ViewClass>(blueprint)
         && validate_component::<ViewFit>(blueprint)

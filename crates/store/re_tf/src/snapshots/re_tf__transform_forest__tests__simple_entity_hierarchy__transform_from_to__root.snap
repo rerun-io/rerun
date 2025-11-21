@@ -325,4 +325,62 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
             },
         ),
     ),
+    (
+        tf#/top/pure_leaf_pinhole,
+        Ok(
+            TransformInfo {
+                root: tf#/top/pure_leaf_pinhole,
+                target_from_source: DAffine3 {
+                    matrix3: DMat3 {
+                        x_axis: DVec3(
+                            1.0,
+                            0.0,
+                            0.0,
+                        ),
+                        y_axis: DVec3(
+                            0.0,
+                            0.5,
+                            0.0,
+                        ),
+                        z_axis: DVec3(
+                            0.0,
+                            0.0,
+                            0.6666666666666666,
+                        ),
+                    },
+                    translation: DVec3(
+                        -49.0,
+                        -50.0,
+                        1.0,
+                    ),
+                },
+                target_from_instances: [
+                    DAffine3 {
+                        matrix3: DMat3 {
+                            x_axis: DVec3(
+                                1.0,
+                                0.0,
+                                0.0,
+                            ),
+                            y_axis: DVec3(
+                                0.0,
+                                0.5,
+                                0.0,
+                            ),
+                            z_axis: DVec3(
+                                0.0,
+                                0.0,
+                                0.6666666666666666,
+                            ),
+                        },
+                        translation: DVec3(
+                            -49.0,
+                            -50.0,
+                            1.0,
+                        ),
+                    },
+                ],
+            },
+        ),
+    ),
 ]

@@ -150,6 +150,8 @@ pub struct DesignTokens {
     /// Color for table interaction noninteractive background stroke
     pub table_interaction_noninteractive_bg_stroke: Color32,
 
+    pub table_interaction_row_selection_fill: Color32,
+
     pub table_sort_icon_color: Color32,
 
     pub drag_pill_droppable_fill: Color32,
@@ -322,6 +324,7 @@ impl DesignTokens {
             table_interaction_noninteractive_bg_stroke: get_color(
                 "table_interaction_noninteractive_bg_stroke",
             ),
+            table_interaction_row_selection_fill: get_color("table_interaction_row_selection_fill"),
             table_sort_icon_color: get_color("table_sort_icon_color"),
 
             drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),

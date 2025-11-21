@@ -3439,8 +3439,7 @@ dependencies = [
 [[package]]
 name = "egui_table"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cc6e7eef49daf597eab65ed37c1b0058e34a1b7b10b4a0239a6e244c66917a9"
+source = "git+https://github.com/rerun-io/egui_table?branch=main#108c543d1f6a8da4ff063849bd64af4a72fcb294"
 dependencies = [
  "egui",
  "serde",
@@ -8586,6 +8585,7 @@ version = "0.28.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
+ "egui_dnd",
  "egui_extras",
  "egui_kittest",
  "egui_plot",
@@ -8980,6 +8980,8 @@ dependencies = [
  "egui_tiles",
  "ndarray",
  "parking_lot",
+ "re_build_info",
+ "re_log_encoding",
  "re_protos",
  "re_redap_client",
  "re_sdk",
@@ -10163,6 +10165,7 @@ dependencies = [
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
+ "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -10172,6 +10175,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]
@@ -10714,6 +10718,7 @@ dependencies = [
  "datafusion-ffi",
  "document-features",
  "futures",
+ "indent",
  "infer",
  "itertools 0.14.0",
  "jiff",

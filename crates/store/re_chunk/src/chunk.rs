@@ -1442,7 +1442,7 @@ impl re_byte_size::SizeBytes for TimeColumn {
         } = self;
 
         timeline.heap_size_bytes()
-            + times.heap_size_bytes() // cheap
+            + times.heap_size_bytes()
             + is_sorted.heap_size_bytes()
             + time_range.heap_size_bytes()
     }

@@ -388,6 +388,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TextLogColumn as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A text log column\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TextLogColumn::default().to_arrow()?),
+                datatype: TextLogColumn::arrow_datatype(),
+                verify_arrow_array: TextLogColumn::verify_arrow_array,
+            },
+        ),
+        (
             <TimeInt as Component>::name(),
             ComponentReflection {
                 docstring_md: "A reference to a time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -405,6 +415,16 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 custom_placeholder: None,
                 datatype: TimeRange::arrow_datatype(),
                 verify_arrow_array: TimeRange::verify_arrow_array,
+            },
+        ),
+        (
+            <TimelineColumn as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A timeline column in a text log table.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(TimelineColumn::default().to_arrow()?),
+                datatype: TimelineColumn::arrow_datatype(),
+                verify_arrow_array: TimelineColumn::verify_arrow_array,
             },
         ),
         (
@@ -3976,6 +3996,63 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Scaling",
                     component_type: "rerun.blueprint.components.ViewFit".into(),
                     docstring_md: "How the image is scaled to fit the view.",
+                    is_required: false,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextLogColumns"),
+            ArchetypeReflection {
+                display_name: "Text log columns",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "timeline_columns",
+                        display_name: "Timeline columns",
+                        component_type: "rerun.blueprint.components.TimelineColumn".into(),
+                        docstring_md: "What timeline columns to show.\n\nDefaults to displaying all timelines.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "text_log_columns",
+                        display_name: "Text log columns",
+                        component_type: "rerun.blueprint.components.TextLogColumn".into(),
+                        docstring_md: "All columns to be displayed.\n\nDefaults to showing all text log column kinds in the order of the enum.",
+                        is_required: false,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextLogFormat"),
+            ArchetypeReflection {
+                display_name: "Text log format",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "monospace_body",
+                    display_name: "Monospace body",
+                    component_type: "rerun.blueprint.components.Enabled".into(),
+                    docstring_md: "Whether to use a monospace font for the log message body.\n\nDefaults to not being enabled.",
+                    is_required: false,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.TextLogRows"),
+            ArchetypeReflection {
+                display_name: "Text log rows",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "filter_by_log_level",
+                    display_name: "Filter by log level",
+                    component_type: "rerun.components.TextLogLevel".into(),
+                    docstring_md: "Log levels to display.\n\nDefaults to showing all logged levels.",
                     is_required: false,
                 }],
             },

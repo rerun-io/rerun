@@ -22,7 +22,7 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single boolean.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Bool(pub bool);
 
