@@ -1540,7 +1540,7 @@ def main() -> None:
         tracked_files = [item[1].path for item in repo.index.iter_blobs()]
         for filepath in tracked_files:
             # TODO do this with pathlib for general sep types
-            filepath = "." + os.sep + filepath
+            filepath = "./" + filepath
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if filepath.startswith(exclude_paths):
