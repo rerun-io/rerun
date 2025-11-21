@@ -8285,9 +8285,7 @@ name = "raw_mesh"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "anyhow",
- "bytes",
  "clap",
- "gltf",
  "rerun",
 ]
 
