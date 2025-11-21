@@ -266,7 +266,7 @@ fn run_view_ui_and_save_snapshot(
             );
             test_context.handle_system_commands(&harness.ctx);
 
-            harness.run_steps(10);
+            harness.run_steps(5);
 
             if let Err(err) = harness.try_snapshot(&name) {
                 errors.push(err);

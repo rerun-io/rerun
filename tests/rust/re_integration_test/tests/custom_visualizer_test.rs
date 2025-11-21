@@ -6,11 +6,11 @@ use re_viewer::external::{re_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
-/// Test adding a custom visualizer (TransformAxes3D) through the UI.
+/// Test adding a custom visualizer (`TransformAxes3D`) through the UI.
 ///
 /// This test verifies that:
-/// 1. An entity with Transform3D (but no TransformAxes3D) can be visualized with boxes
-/// 2. The TransformAxes3D visualizer can be manually added via the UI
+/// 1. An entity with `Transform3D` (but no `TransformAxes3D`) can be visualized with boxes
+/// 2. The `TransformAxes3D` visualizer can be manually added via the UI
 /// 3. After adding the visualizer, transform axes appear in the 3D view
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_custom_visualizer_axes() {
