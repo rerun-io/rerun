@@ -7,7 +7,7 @@
 //!
 //! This module supports both v2 and v3 `LeRobot` datasets!
 //!
-//! See [`datasetv2::LeRobotDataset`] and [`datasetv3::LeRobotDatasetV3`] for more information on the dataset formats.
+//! See [`datasetv2::LeRobotDatasetV2`] and [`datasetv3::LeRobotDatasetV3`] for more information on the dataset formats.
 pub mod common;
 pub mod datasetv2;
 pub mod datasetv3;

@@ -1,6 +1,6 @@
 use crate::lerobot::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
-    load_episode_depth_images, load_episode_images, load_scalar,
+    load_and_stream_versioned, load_episode_depth_images, load_episode_images, load_scalar,
+    LeRobotDataset, LEROBOT_DATASET_IGNORED_COLUMNS,
 };
 use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 
 use ahash::HashMap;
-use anyhow::{Context as _, anyhow};
+use anyhow::{anyhow, Context as _};
 use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
@@ -371,8 +371,6 @@ impl LeRobotEpisodeData {
     ///
     /// Looks for columns matching pattern `videos/{feature_name}/{field}`
     /// and groups them by feature name.
-    ///
-    /// Uses Arc<str> for feature names to enable cheap cloning in the hot path.
     fn parse_feature_metadata(batch: &RecordBatch) -> HashMap<Arc<str>, FeatureMetadataColumns> {
         use arrow::array::Float64Array;
 

@@ -185,7 +185,7 @@ pub fn load_episode_depth_images(
     })?))
 }
 
-/// Helper type similar to [`Either`], but with 3 variants.
+/// Helper type similar to [`itertools::Either`], but with 3 variants.
 pub enum ScalarChunkIterator {
     Empty(std::iter::Empty<Chunk>),
     Batch(Box<dyn ExactSizeIterator<Item = Chunk>>),
