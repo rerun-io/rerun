@@ -100,6 +100,8 @@ struct PointCloudBatch {
     bind_group: GpuBindGroup,
     vertex_range: Range<u32>,
     active_phases: EnumSet<DrawPhase>,
+    /// World-space position used for sorting (typically the batch's world transform origin)
+    sorting_position: glam::Vec3A,
 }
 
 /// A point cloud drawing operation.
@@ -116,18 +118,22 @@ impl DrawData for PointCloudDrawData {
 
     fn collect_drawables(
         &self,
-        _view_info: &DrawableCollectionViewInfo,
+        view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
         // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
         // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
 
         for (batch_idx, batch) in self.batches.iter().enumerate() {
+            // Compute distance to camera for front-to-back sorting
+            // This enables early-z rejection and reduces overdraw
+            let camera_distance =
+                (view_info.camera_world_position - batch.sorting_position).length();
+
             collector.add_drawable(
                 batch.active_phases,
                 DrawDataDrawable {
-                    // TODO(andreas): Don't have distance information yet. For now just always draw points last since they're quite expensive.
-                    distance_sort_key: f32::MAX,
+                    distance_sort_key: camera_distance,
                     draw_data_payload: batch_idx as _,
                 },
             );
@@ -170,6 +176,9 @@ pub struct PointCloudBatchInfo {
 
     /// Depth offset applied after projection.
     pub depth_offset: DepthOffset,
+
+    #[doc(hidden)]
+    pub(crate) point_bounds: Option<(glam::Vec3, glam::Vec3)>,
 }
 
 impl Default for PointCloudBatchInfo {
@@ -184,6 +193,39 @@ impl Default for PointCloudBatchInfo {
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
             depth_offset: 0,
+            point_bounds: None,
+        }
+    }
+}
+
+impl PointCloudBatchInfo {
+    pub(crate) fn update_object_space_bounds(&mut self, positions: &[glam::Vec3]) {
+        if positions.is_empty() {
+            return;
+        }
+
+        if let Some((min_bound, max_bound)) = &mut self.point_bounds {
+            for &pos in positions {
+                *min_bound = min_bound.min(pos);
+                *max_bound = max_bound.max(pos);
+            }
+        } else {
+            let mut min_bound = positions[0];
+            let mut max_bound = positions[0];
+            for &pos in &positions[1..] {
+                min_bound = min_bound.min(pos);
+                max_bound = max_bound.max(pos);
+            }
+            self.point_bounds = Some((min_bound, max_bound));
+        }
+    }
+
+    pub(crate) fn sorting_position_world(&self) -> glam::Vec3A {
+        if let Some((min_bound, max_bound)) = self.point_bounds {
+            let center = (min_bound + max_bound) * 0.5;
+            glam::Vec3A::from(self.world_from_obj.transform_point3(center))
+        } else {
+            glam::Vec3A::from(self.world_from_obj.translation)
         }
     }
 }
@@ -235,6 +277,7 @@ impl PointCloudDrawData {
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
             depth_offset: 0,
+            point_bounds: None,
         }];
         let batches = if batches.is_empty() {
             &fallback_batches
@@ -365,12 +408,17 @@ impl PointCloudDrawData {
                     active_phases.insert(DrawPhase::OutlineMask);
                 }
 
+                // Use the batch's world-space bounding box center (falls back to transform origin).
+                // TODO(#perf): For batches with identity transforms this prevents degenerating to the origin.
+                let sorting_position = batch_info.sorting_position_world();
+
                 batches_internal.push(point_renderer.create_point_cloud_batch(
                     ctx,
                     batch_info.label.clone(),
                     uniform_buffer_binding,
                     start_point_for_next_batch..point_vertex_range_end,
                     active_phases,
+                    sorting_position,
                 ));
 
                 for (range, _) in &batch_info.additional_outline_mask_ids_vertex_ranges {
@@ -382,6 +430,7 @@ impl PointCloudDrawData {
                         uniform_buffer_bindings_mask_only_batches.next().unwrap(),
                         range.clone(),
                         enum_set![DrawPhase::OutlineMask],
+                        sorting_position,
                     ));
                 }
 
@@ -418,6 +467,7 @@ impl PointCloudRenderer {
         uniform_buffer_binding: BindGroupEntry,
         vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,
+        sorting_position: glam::Vec3A,
     ) -> PointCloudBatch {
         // TODO(andreas): There should be only a single bindgroup with dynamic indices for all batches.
         //                  (each batch would then know which dynamic indices to use in the bindgroup)
@@ -435,6 +485,7 @@ impl PointCloudRenderer {
             bind_group,
             vertex_range: (vertex_range.start * 6)..(vertex_range.end * 6),
             active_phases,
+            sorting_position,
         }
     }
 }
@@ -640,5 +691,84 @@ impl Renderer for PointCloudRenderer {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::Cell;
+
+    use bytemuck::cast_slice;
+
+    use crate::{
+        allocator::GpuReadbackIdentifier,
+        Color32,
+        PickingLayerInstanceId,
+        PointCloudBuilder,
+        RenderContext,
+        Rgba,
+        Size,
+        ScreenshotProcessor,
+        view_builder::{TargetConfiguration, ViewBuilder},
+    };
+
+    #[test]
+    fn tiny_points_culled_without_nan_artifacts() {
+        re_log::setup_logging();
+
+        let mut ctx = RenderContext::new_test();
+        let screenshot_id: GpuReadbackIdentifier = 0x1234;
+
+        ctx.execute_test_frame(|ctx| {
+            let mut view = ViewBuilder::new(ctx, TargetConfiguration::default()).unwrap();
+
+            view.schedule_screenshot_with_format(
+                ctx,
+                screenshot_id,
+                wgpu::TextureFormat::Rgba32Float,
+                (),
+            )
+            .unwrap();
+
+            let mut builder = PointCloudBuilder::new(ctx);
+            builder
+                .batch("tiny radius")
+                .add_points(
+                    &[glam::vec3(0.0, 0.0, 5.0)],
+                    &[Size::new_scene_units(1e-6)],
+                    &[Color32::WHITE],
+                    &[PickingLayerInstanceId::default()],
+                );
+
+            view.queue_draw(ctx, builder.into_draw_data().unwrap());
+
+            [view.draw(ctx, Rgba::BLACK).unwrap()]
+        });
+
+        // Poll the device again to ensure async buffer mapping callbacks complete
+        ctx.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(std::time::Duration::from_secs(10)),
+            })
+            .expect("Failed to wait for buffer mapping");
+
+        let received = Cell::new(false);
+        while ScreenshotProcessor::next_readback_result::<()>(
+            &ctx,
+            screenshot_id,
+            |data, extent, ()| {
+                received.set(true);
+                assert_eq!(extent, glam::uvec2(100, 100));
+                let expected_size =
+                    (extent.x as usize) * (extent.y as usize) * 4 * std::mem::size_of::<f32>();
+                assert_eq!(data.len(), expected_size);
+                let floats = cast_slice::<u8, f32>(data);
+                assert!(floats.iter().all(|value| !value.is_nan()));
+            },
+        )
+        .is_some()
+        {}
+        assert!(received.get());
     }
 }
