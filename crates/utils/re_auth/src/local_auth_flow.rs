@@ -58,14 +58,6 @@ impl OauthLoginFlow {
 
         println!("OauthLoginFlow::new {}", server.get_login_url()); // TODO:
 
-        // let state = Arc::new(Mutex::new(OauthLoginFlowState::InProgress(
-        //     OauthLoginInProgress {
-        //         login_url: server.get_login_url().to_owned(),
-        //         server,
-        //         pkce,
-        //     },
-        // )));
-
         // // 2. Open authorization URL in browser
 
         // // Once the user opens the link, they are redirected to the login UI.
