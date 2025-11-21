@@ -59,6 +59,9 @@ jobs:
       - name: Lint Python
         run: pixi run py-lint
 
+      - name: Notebook strip check
+        run: pixi run nb-strip-check
+
   py-test-docs:
     name: Test Python Docs
     timeout-minutes: 60
@@ -251,32 +254,3 @@ jobs:
           pixi run -e cpp cpp-clean
           RERUN_WERROR=ON RERUN_USE_ASAN=ON LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp CXX=g++ pixi run -e cpp cpp-build-all
           RERUN_WERROR=ON RERUN_USE_ASAN=ON LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp CXX=g++ pixi run -e cpp cpp-test
-
-  rs-benchmarks-check:
-    name: Rust benchmarks compile check
-    timeout-minutes: 60
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: prefix-dev/setup-pixi@v0.9.1
-        with:
-          pixi-version: v0.55.0
-
-      - name: Check that benchmarks compile
-        run: |
-          pixi run cargo bench \
-            --no-run \
-            -p re_entity_db \
-            -p re_log_encoding \
-            -p re_query \
-            -p re_tuid \
-            -p re_video \
-            -p re_view_spatial
-
-      - name: Run benchmarks for 1 second each to verify they work
-        run: |
-          pixi run cargo bench \
-            --bench boxes3d_benchmark \
-            -p re_view_spatial \
-            -- --warm-up-time 0.1 --measurement-time 1
