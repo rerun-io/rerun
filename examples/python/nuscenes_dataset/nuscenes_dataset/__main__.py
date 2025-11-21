@@ -154,9 +154,9 @@ def log_lidar_and_ego_pose(
             rr.Transform3D(
                 translation=ego_pose["translation"],
                 rotation=rr.Quaternion(xyzw=rotation_xyzw),
-                axis_length=10.0,  # The length of the visualized axis.
                 relation=rr.TransformRelation.ParentFromChild,
             ),
+            rr.TransformAxes3D(10.0),  # The length of the visualized axis.
             rr.GeoPoints(lat_lon=position_lat_lon, radii=rr.Radius.ui_points(8.0), colors=0xFF0000FF),
         )
         # TODO(#10632): We don't want the radius for the trajectory line to be the same as the radius of the points.

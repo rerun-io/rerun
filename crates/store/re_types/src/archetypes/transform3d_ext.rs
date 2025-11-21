@@ -17,7 +17,6 @@ impl Transform3D {
         scale: None,
         mat3x3: None,
         relation: None,
-        axis_length: None,
         child_frame: None,
         parent_frame: None,
     };

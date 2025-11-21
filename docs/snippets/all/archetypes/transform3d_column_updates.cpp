@@ -22,7 +22,7 @@ int main() {
     rec.log(
         "box",
         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-        rerun::Transform3D().with_axis_length(10.0)
+        rerun::TransformAxes3D(10.0)
     );
 
     std::vector<std::array<float, 3>> translations;

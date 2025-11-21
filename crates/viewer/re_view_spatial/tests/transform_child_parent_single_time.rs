@@ -23,17 +23,22 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity() {
         ("green", components::Color::from_rgb(0, 255, 0)),
         ("blue", components::Color::from_rgb(0, 0, 255)),
     ] {
+        let half_size = 1.0;
         test_context.log_entity(name, |builder| {
             builder
                 .with_archetype_auto_row(
                     time.clone(),
-                    &archetypes::Boxes3D::from_half_sizes([(1.0, 1.0, 1.0)])
+                    &archetypes::Boxes3D::from_half_sizes([(half_size, half_size, half_size)])
                         .with_colors([color])
                         .with_fill_mode(components::FillMode::Solid),
                 )
                 .with_archetype_auto_row(
                     time.clone(),
                     &archetypes::CoordinateFrame::new(format!("{name}_frame")),
+                )
+                .with_archetype_auto_row(
+                    time.clone(),
+                    &archetypes::TransformAxes3D::new(half_size * 2.2),
                 )
         });
     }

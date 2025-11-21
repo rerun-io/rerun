@@ -32,15 +32,12 @@ namespace rerun::archetypes {
         archetype.parent_frame =
             ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_parent_frame)
                 .value_or_throw();
-        archetype.axis_length =
-            ComponentBatch::empty<rerun::components::AxisLength>(Descriptor_axis_length)
-                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> Transform3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(9);
+        columns.reserve(8);
         if (translation.has_value()) {
             columns.push_back(translation.value().partitioned(lengths_).value_or_throw());
         }
@@ -64,9 +61,6 @@ namespace rerun::archetypes {
         }
         if (parent_frame.has_value()) {
             columns.push_back(parent_frame.value().partitioned(lengths_).value_or_throw());
-        }
-        if (axis_length.has_value()) {
-            columns.push_back(axis_length.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -96,9 +90,6 @@ namespace rerun::archetypes {
         if (parent_frame.has_value()) {
             return columns(std::vector<uint32_t>(parent_frame.value().length(), 1));
         }
-        if (axis_length.has_value()) {
-            return columns(std::vector<uint32_t>(axis_length.value().length(), 1));
-        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -110,7 +101,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(9);
+        cells.reserve(8);
 
         if (archetype.translation.has_value()) {
             cells.push_back(archetype.translation.value());
@@ -135,9 +126,6 @@ namespace rerun {
         }
         if (archetype.parent_frame.has_value()) {
             cells.push_back(archetype.parent_frame.value());
-        }
-        if (archetype.axis_length.has_value()) {
-            cells.push_back(archetype.axis_length.value());
         }
 
         return rerun::take_ownership(std::move(cells));

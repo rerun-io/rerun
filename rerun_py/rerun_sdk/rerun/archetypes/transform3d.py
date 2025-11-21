@@ -157,7 +157,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(axis_length=10),
+        rr.TransformAxes3D(10.0),
     )
 
     for t in range(100):
@@ -197,7 +197,7 @@ class Transform3D(Transform3DExt, Archetype):
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(axis_length=10),
+        rr.TransformAxes3D(10.0),
     )
 
     rr.send_columns(
@@ -234,11 +234,11 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_partial_updates", spawn=True)
 
-    # Set up a 3D box.
+    # Set up a 3D box and transform arrows.
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.Transform3D(axis_length=10),
+        rr.TransformAxes3D(10.0),
     )
 
     # Update only the rotation of the box.
@@ -271,7 +271,8 @@ class Transform3D(Transform3DExt, Archetype):
     # Clear all of the box's attributes, and reset its axis length.
     rr.log(
         "box",
-        rr.Transform3D.from_fields(clear_unset=True, axis_length=15),
+        rr.Transform3D.from_fields(clear_unset=True),
+        rr.TransformAxes3D(15.0),
     )
     ```
     <center>
@@ -299,7 +300,6 @@ class Transform3D(Transform3DExt, Archetype):
             relation=None,
             child_frame=None,
             parent_frame=None,
-            axis_length=None,
         )
 
     @classmethod
@@ -322,7 +322,6 @@ class Transform3D(Transform3DExt, Archetype):
         relation: components.TransformRelationLike | None = None,
         child_frame: datatypes.Utf8Like | None = None,
         parent_frame: datatypes.Utf8Like | None = None,
-        axis_length: datatypes.Float32Like | None = None,
     ) -> Transform3D:
         """
         Update only some specific fields of a `Transform3D`.
@@ -382,11 +381,6 @@ class Transform3D(Transform3DExt, Archetype):
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
 
             Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-        axis_length:
-            Visual length of the 3 axes.
-
-            The length is interpreted in the local coordinate system of the transform.
-            If the transform is scaled, the axes will be scaled accordingly.
 
         """
 
@@ -401,7 +395,6 @@ class Transform3D(Transform3DExt, Archetype):
                 "relation": relation,
                 "child_frame": child_frame,
                 "parent_frame": parent_frame,
-                "axis_length": axis_length,
             }
 
             if clear_unset:
@@ -430,7 +423,6 @@ class Transform3D(Transform3DExt, Archetype):
         relation: components.TransformRelationArrayLike | None = None,
         child_frame: datatypes.Utf8ArrayLike | None = None,
         parent_frame: datatypes.Utf8ArrayLike | None = None,
-        axis_length: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -493,11 +485,6 @@ class Transform3D(Transform3DExt, Archetype):
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
 
             Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-        axis_length:
-            Visual length of the 3 axes.
-
-            The length is interpreted in the local coordinate system of the transform.
-            If the transform is scaled, the axes will be scaled accordingly.
 
         """
 
@@ -512,7 +499,6 @@ class Transform3D(Transform3DExt, Archetype):
                 relation=relation,
                 child_frame=child_frame,
                 parent_frame=parent_frame,
-                axis_length=axis_length,
             )
 
         batches = inst.as_component_batches()
@@ -528,7 +514,6 @@ class Transform3D(Transform3DExt, Archetype):
             "Transform3D:relation": relation,
             "Transform3D:child_frame": child_frame,
             "Transform3D:parent_frame": parent_frame,
-            "Transform3D:axis_length": axis_length,
         }
         columns = []
 
@@ -667,18 +652,6 @@ class Transform3D(Transform3DExt, Archetype):
     # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    axis_length: components.AxisLengthBatch | None = field(
-        metadata={"component": True},
-        default=None,
-        converter=components.AxisLengthBatch._converter,  # type: ignore[misc]
-    )
-    # Visual length of the 3 axes.
-    #
-    # The length is interpreted in the local coordinate system of the transform.
-    # If the transform is scaled, the axes will be scaled accordingly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

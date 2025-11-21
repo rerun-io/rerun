@@ -42,8 +42,7 @@ impl VisualizerSystem for SeriesPointsSystem {
             .queried
             .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
-        query_info.relevant_archetypes =
-            std::iter::once(archetypes::SeriesPoints::name()).collect();
+        query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
 
         query_info
     }

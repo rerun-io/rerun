@@ -1,19 +1,16 @@
 use std::collections::BTreeMap;
 
-use nohash_hasher::IntSet;
 use re_chunk::ArchetypeName;
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizableEntities, VisualizableFilterContext,
+    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
+    VisualizableFilterContext,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct SortedComponentSet(linked_hash_map::LinkedHashMap<ComponentDescriptor, ()>);
-
-pub type UnorderedArchetypeSet = IntSet<ArchetypeName>;
 
 impl SortedComponentSet {
     pub fn insert(&mut self, k: ComponentDescriptor) -> Option<()> {
@@ -39,13 +36,33 @@ impl FromIterator<ComponentDescriptor> for SortedComponentSet {
     }
 }
 
+/// Specifies how component requirements should be evaluated for visualizer entity matching.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RequiredComponents {
+    /// No component requirements - all entities are candidates.
+    None,
+
+    /// Entity must have _all_ of these components.
+    All(ComponentSet),
+
+    /// Entity must have _any one_ of these components.
+    Any(ComponentSet),
+}
+
+impl Default for RequiredComponents {
+    fn default() -> Self {
+        Self::None
+    }
+}
+
+// TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
 pub struct VisualizerQueryInfo {
-    /// These are not required, but if _any_ of these are found, it is a strong indication that this
+    /// This is not required, but if it is found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
-    pub relevant_archetypes: UnorderedArchetypeSet,
+    pub relevant_archetype: Option<ArchetypeName>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    pub required: ComponentSet,
+    pub required: RequiredComponents,
 
     /// Returns the list of components that the system _queries_.
     ///
@@ -59,19 +76,21 @@ pub struct VisualizerQueryInfo {
 impl VisualizerQueryInfo {
     pub fn from_archetype<A: Archetype>() -> Self {
         Self {
-            relevant_archetypes: std::iter::once(A::name()).collect(),
-            required: A::required_components()
-                .iter()
-                .map(|c| c.component)
-                .collect(),
+            relevant_archetype: A::name().into(),
+            required: RequiredComponents::All(
+                A::required_components()
+                    .iter()
+                    .map(|c| c.component)
+                    .collect(),
+            ),
             queried: A::all_components().iter().cloned().collect(),
         }
     }
 
     pub fn empty() -> Self {
         Self {
-            relevant_archetypes: Default::default(),
-            required: ComponentSet::default(),
+            relevant_archetype: Default::default(),
+            required: RequiredComponents::None,
             queried: SortedComponentSet::default(),
         }
     }
@@ -103,14 +122,6 @@ pub trait VisualizerSystem: Send + Sync + 'static {
         _context: &dyn VisualizableFilterContext,
     ) -> VisualizableEntities {
         VisualizableEntities(entities.0)
-    }
-
-    /// Additional filter for visualizability based on component data.
-    ///
-    /// If none is specified, "maybe visualizable" is solely determined by required components.
-    /// (for final visualizability, the view instance dependent filter is applied, see [`crate::VisualizerSystem::filter_visualizable_entities`])
-    fn data_based_visualizability_filter(&self) -> Option<Box<dyn DataBasedVisualizabilityFilter>> {
-        None
     }
 
     /// Queries the chunk store and performs data conversions to make it ready for display.

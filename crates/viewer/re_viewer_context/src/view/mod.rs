@@ -39,8 +39,9 @@ pub use view_query::{
     ViewQuery,
 };
 pub use view_states::ViewStates;
-pub use visualizer_entity_subscriber::DataBasedVisualizabilityFilter;
-pub use visualizer_system::{VisualizerCollection, VisualizerQueryInfo, VisualizerSystem};
+pub use visualizer_system::{
+    RequiredComponents, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
+};
 
 // ---------------------------------------------------------------------------
 
