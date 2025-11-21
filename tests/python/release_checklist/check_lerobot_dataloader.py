@@ -8,7 +8,7 @@ import rerun as rr
 README = """\
 # LeRobot dataloader check
 
-This will load a small LeRobot dataset -- simply make sure that it does.
+This will load a small v2 LeRobot dataset -- simply make sure that it does.
 
 The LeRobot dataset loader works by creating a new _recording_ for each episode in the dataset.
 I.e., you should see exactly 3 recordings, corresponding to episode 0, 1 and 2.

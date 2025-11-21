@@ -1,6 +1,6 @@
 use crate::lerobot::common::{
-    load_and_stream_versioned, load_episode_depth_images, load_episode_images, load_scalar,
-    LeRobotDataset, LEROBOT_DATASET_IGNORED_COLUMNS,
+    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
+    load_episode_depth_images, load_episode_images, load_scalar,
 };
 use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 
 use ahash::HashMap;
-use anyhow::{anyhow, Context as _};
+use anyhow::{Context as _, anyhow};
 use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
