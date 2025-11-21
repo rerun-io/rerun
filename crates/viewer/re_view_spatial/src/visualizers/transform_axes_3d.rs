@@ -8,7 +8,7 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
@@ -59,7 +59,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
         let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -144,7 +146,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             );
         }
 
-        Ok(vec![line_builder.into_draw_data()?.into()])
+        Ok(output.with_draw_data([line_builder.into_draw_data()?.into()]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

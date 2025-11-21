@@ -94,7 +94,8 @@ pub use self::{
         time_panel_blueprint_entity_path,
     },
     typed_entity_collections::{
-        IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
+        IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, PerVisualizerInView,
+        VisualizableEntities,
     },
     undo::BlueprintUndoState,
     utils::{
@@ -110,7 +111,7 @@ pub use self::{
         ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
         ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
         ViewSystemRegistrator, VisualizableFilterContext, VisualizerCollection,
-        VisualizerQueryInfo, VisualizerSystem,
+        VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     },
     viewer_context::ViewerContext,
     visitor_flow_control::VisitorControlFlow,

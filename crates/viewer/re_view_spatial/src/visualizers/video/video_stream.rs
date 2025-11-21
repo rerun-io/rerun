@@ -3,8 +3,8 @@ use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, VideoStreamCache, VideoStreamProcessingError,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for, video_stream_time_from_query,
+    VisualizableEntities, VisualizableFilterContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for, video_stream_time_from_query,
 };
 
 use crate::{
@@ -57,8 +57,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        re_tracing::profile_function!();
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
         let transforms = context_systems.get::<TransformTreeContext>()?;
@@ -221,10 +221,10 @@ impl VisualizerSystem for VideoStreamVisualizer {
             }
         }
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -1,4 +1,7 @@
-use crate::{ViewContextCollection, VisualizerCollection};
+use crate::{
+    PerVisualizerInView, ViewContextCollection, ViewSystemExecutionError, VisualizerCollection,
+    VisualizerExecutionOutput,
+};
 
 /// Output of view system execution.
 pub struct SystemExecutionOutput {
@@ -8,11 +11,23 @@ pub struct SystemExecutionOutput {
     /// Executed context systems, may hold state that the ui method needs.
     pub context_systems: ViewContextCollection,
 
-    /// Draw data gathered during execution of the view part systems.
-    ///
-    /// Ui methods are supposed to use this to create [`re_renderer::ViewBuilder`]s.
-    // _TODO(andreas)_: In the future view builder execution should be outside of the view ui method.
-    //                This would allow to run the wgpu command buffer buildup in parallel.
-    //                (This implies that we'd pass out the readily built command buffer here instead of drawables.)
-    pub draw_data: Vec<re_renderer::QueueableDrawData>,
+    /// Result of all visualizer executions for this view.
+    pub visualizer_execution_output:
+        PerVisualizerInView<Result<VisualizerExecutionOutput, ViewSystemExecutionError>>,
+}
+
+impl SystemExecutionOutput {
+    /// Removes & returns all successfully created draw data from all visualizer executions.
+    pub fn drain_draw_data(&mut self) -> impl Iterator<Item = re_renderer::QueueableDrawData> {
+        self.visualizer_execution_output
+            .per_visualizer
+            .iter_mut()
+            .filter_map(|(_, result)| {
+                result
+                    .as_mut()
+                    .ok()
+                    .map(|output| output.draw_data.drain(..))
+            })
+            .flatten()
+    }
 }

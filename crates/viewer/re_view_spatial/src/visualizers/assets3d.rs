@@ -5,7 +5,7 @@ use re_types::{ArrowString, archetypes::Asset3D, components::AlbedoFactor};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
@@ -130,7 +130,8 @@ impl VisualizerSystem for Asset3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -182,13 +183,13 @@ impl VisualizerSystem for Asset3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
-            Ok(draw_data) => Ok(vec![draw_data.into()]),
-            Err(err) => {
-                re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Ok(Vec::new()) // TODO(andreas): Pass error on?
-            }
-        }
+        Ok(
+            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+                ctx.viewer_ctx.render_ctx(),
+                &instances,
+            )?
+            .into()]),
+        )
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

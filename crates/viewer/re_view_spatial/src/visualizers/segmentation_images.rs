@@ -7,7 +7,7 @@ use re_types::{
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -60,7 +60,9 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
+
         use super::entity_iterator::{iter_component, iter_slices, process_archetype};
         process_archetype::<Self, SegmentationImage, _>(
             ctx,
@@ -160,10 +162,10 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             )
         });
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
