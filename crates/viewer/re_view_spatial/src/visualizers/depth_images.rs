@@ -245,6 +245,7 @@ impl VisualizerSystem for DepthImageVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
