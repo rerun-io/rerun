@@ -231,10 +231,6 @@ When an external `DataLoader` is asked to load some data that it doesn't know ho
 should exit with this exit code.
 """
 
-# Global auth handler
-# TODO:
-auth = Auth()
-
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
 def init(
