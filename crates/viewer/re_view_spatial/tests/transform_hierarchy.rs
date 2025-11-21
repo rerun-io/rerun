@@ -19,11 +19,17 @@ pub fn test_transform_hierarchy() {
 
     // The Rerun logo obj's convention is y up.
     test_context.log_entity("/", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::default(),
-            &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_UP(),
-        )
+        builder
+            .with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_UP(),
+            )
+            .with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &re_types::archetypes::TransformAxes3D::new(1.0),
+            )
     });
 
     {
@@ -125,9 +131,11 @@ pub fn test_transform_hierarchy() {
                     &re_types::archetypes::Transform3D::from_rotation(
                         // -45 degrees around the y axis.
                         // Via https://www.andre-gaschler.com/rotationconverter/
-                        re_types::components::RotationQuat(re_types::datatypes::Quaternion::from_xyzw(
-                            [0.0, -0.3826834, 0.0, 0.9238796],
-                        )),
+                        re_types::components::RotationQuat(
+                            re_types::datatypes::Quaternion::from_xyzw([
+                                0.0, -0.3826834, 0.0, 0.9238796,
+                            ]),
+                        ),
                     ),
                 )
                 .with_archetype(
