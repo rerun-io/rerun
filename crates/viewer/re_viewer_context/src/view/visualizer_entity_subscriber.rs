@@ -206,10 +206,9 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                             BitVec::from_elem(self.required_components_indices.len(), false)
                         });
 
-                    // TODO: remove is empty once tests pass. (add debug assert)
                     // Early-out: if all required components are already present, we already
                     // marked this entity as maybe-visualizable in a previous event.
-                    if required_components_bitmap.all() && !required_components_bitmap.is_empty() {
+                    if required_components_bitmap.all() {
                         continue;
                     }
 
@@ -230,9 +229,8 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         }
                     }
 
-                    // TODO: remove is empty once tests pass.
                     // Check if all required components are now present
-                    if required_components_bitmap.all() || required_components_bitmap.is_empty() {
+                    if required_components_bitmap.all() {
                         re_log::trace!(
                             "Entity {:?} in store {:?} may now be visualizable by {:?}",
                             entity_path,
