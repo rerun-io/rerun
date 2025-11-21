@@ -246,6 +246,8 @@ impl AppState {
                     view_states,
                     selection_state,
                     focused_item,
+                    recordings_context,
+                    previous_store_id,
                     ..
                 } = self;
 
@@ -346,6 +348,31 @@ impl AppState {
                     default_blueprint: store_context.default_blueprint,
                     blueprint_query,
                 };
+
+                // If the recording has changed, save the previous state and restore the new state.
+                let current_store_id = store_context.recording.store_id().clone();
+                if previous_store_id.as_ref() != Some(&current_store_id) {
+                    if let Some(prev_id) = previous_store_id {
+                        // Save state for the previous recording
+                        let ctx = recordings_context.entry(prev_id.clone()).or_default();
+                        ctx.selection = selection_state.selected_items().clone();
+
+                        if let Some(time_ctrl) = time_controls.get(prev_id) {
+                            ctx.current_selection = *time_ctrl.timeline();
+                            ctx.current_time_selection = time_ctrl.time_selection().unwrap_or(AbsoluteTimeRange::default());
+                            ctx.time_point = time_ctrl.time_point().unwrap_or(AbsoluteTimeRange::default());
+                        }
+                    }
+
+
+                    if let Some(ctx) = recordings_context.get(&current_store_id) {
+                        selection_state.set_selection(ctx.selection.clone());
+                        
+                    }
+
+                    *previous_store_id = Some(current_store_id.clone());
+                }
+
                 let time_ctrl =
                     create_time_control_for(time_controls, recording, &app_blueprint_ctx);
                 let blueprint_query = app_blueprint_ctx.blueprint_query;
@@ -375,15 +402,17 @@ impl AppState {
                     maybe_visualizable_entities_per_visualizer:
                         &maybe_visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
-                    query_results: &query_results,
+
                     time_ctrl,
                     blueprint_time_ctrl: blueprint_time_control,
                     selection_state,
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
-                    recordings_context: HashMap::new(),
+                    recordings_context,
+                    query_results: &query_results,
                 };
+
 
                 // enable the heuristics if we must this frame
                 if store_context.should_enable_heuristics {
