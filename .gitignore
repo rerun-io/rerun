@@ -92,3 +92,6 @@ justfile
 
 # Lychee link checker cache
 .lycheecache
+
+# Development notes
+notes
