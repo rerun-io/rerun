@@ -55,7 +55,7 @@ impl Default for RequiredComponents {
     }
 }
 
-// TODO: Hide these fields once all tests pass.
+// TODO(grtlr): Eventually we will want to hide these fields to prevent visualizers doing too much shenanigans.
 pub struct VisualizerQueryInfo {
     /// This is not required, but if it is found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
