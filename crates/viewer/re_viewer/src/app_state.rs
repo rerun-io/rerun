@@ -367,7 +367,7 @@ impl AppState {
 
                     if let Some(ctx) = recordings_context.get(&current_store_id) {
                         selection_state.set_selection(ctx.selection.clone());
-                        
+
                     }
 
                     *previous_store_id = Some(current_store_id.clone());
@@ -402,7 +402,7 @@ impl AppState {
                     maybe_visualizable_entities_per_visualizer:
                         &maybe_visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
-
+                    query_results: &query_results,
                     time_ctrl,
                     blueprint_time_ctrl: blueprint_time_control,
                     selection_state,
@@ -410,7 +410,6 @@ impl AppState {
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
                     recordings_context,
-                    query_results: &query_results,
                 };
 
 

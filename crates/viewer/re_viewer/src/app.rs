@@ -555,8 +555,6 @@ impl App {
                     self.egui_ctx.request_repaint();
                 }
 
-                // println!("command to change time has recieved for storeId: {:?}" , store_id.clone());
-                // println!("triggetring handle time ctrl from active recording if clause");
                 handle_time_ctrl_event(recording, self.event_dispatcher.as_ref(), &response);
             }
 
@@ -3513,17 +3511,14 @@ fn handle_time_ctrl_event(
     };
 
     if let Some(playing) = response.playing_change {
-        println!("Play state changed");
         events.on_play_state_change(recording, playing);
     }
 
     if let Some((timeline, time)) = response.timeline_change {
-        println!("Timeline has been changed");
         events.on_timeline_change(recording, timeline, time);
     }
 
     if let Some(time) = response.time_change {
-        println!("Clicked on some random time");
         events.on_time_update(recording, time);
     }
 }
