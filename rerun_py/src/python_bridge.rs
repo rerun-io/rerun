@@ -2246,7 +2246,7 @@ impl PyOauthLoginFlow {
         println!("PyOauthLoginFlow::new");
 
         let login_flow =
-            OauthLoginFlow::new().map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            OauthLoginFlow::init().map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
         println!(
             "PyOauthLoginFlow::new runtime started: {}",
             login_flow.server.get_login_url()

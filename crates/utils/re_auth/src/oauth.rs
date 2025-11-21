@@ -5,6 +5,9 @@ use crate::Jwt;
 pub mod api;
 mod storage;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod login_flow;
+
 /// Tokens with fewer than this number of seconds left before expiration
 /// are considered expired. This ensures tokens don't become expired
 /// during network transit.
@@ -348,9 +351,6 @@ pub enum MalformedTokenError {
 
     #[error("failed to deserialize payload: {0}")]
     Serde(serde_json::Error),
-
-    #[error("[temp] JWT error: {0}")]
-    TempJwtError(String),
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]

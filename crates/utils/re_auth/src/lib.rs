@@ -10,9 +10,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod error;
 
-#[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
-mod local_auth_flow;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod provider;
 
@@ -36,7 +33,7 @@ pub use token::{Jwt, TokenError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use error::Error;
 #[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
-pub use local_auth_flow::OauthLoginFlow;
+pub use oauth::login_flow::OauthLoginFlow;
 #[cfg(not(target_arch = "wasm32"))]
 pub use provider::{Claims, RedapProvider, SecretKey, VerificationOptions};
 #[cfg(not(target_arch = "wasm32"))]
