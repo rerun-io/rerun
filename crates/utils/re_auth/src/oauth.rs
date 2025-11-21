@@ -5,6 +5,9 @@ use crate::Jwt;
 pub mod api;
 mod storage;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod login_flow;
+
 /// Tokens with fewer than this number of seconds left before expiration
 /// are considered expired. This ensures tokens don't become expired
 /// during network transit.
@@ -217,8 +220,40 @@ impl Credentials {
         }))
     }
 
+    /// Creates credentials from raw token strings.
+    ///
+    /// Warning: it does not check the signature of the access token.
+    pub fn try_new(
+        access_token: String,
+        refresh_token: String,
+        email: String,
+    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+        // TODO(aedm): check signature of the JWT token
+        let claims = Jwt(access_token.clone()).claims()?;
+
+        let user = User {
+            id: claims.sub,
+            email,
+        };
+        let access_token = AccessToken {
+            token: access_token,
+            expires_at: claims.exp,
+        };
+        let refresh_token = RefreshToken(refresh_token);
+
+        Ok(InMemoryCredentials(Self {
+            user,
+            access_token,
+            refresh_token,
+        }))
+    }
+
     pub fn access_token(&self) -> &AccessToken {
         &self.access_token
+    }
+
+    pub fn refresh_token(&self) -> String {
+        self.refresh_token.0.clone()
     }
 
     /// The currently authenticated user.
@@ -261,6 +296,11 @@ impl AccessToken {
         // Time in seconds since unix epoch
         let now: i64 = jsonwebtoken::get_current_timestamp().saturating_cast();
         self.expires_at - now
+    }
+
+    // TODO(aedm): document
+    pub fn new(token: String, expires_at: i64) -> Self {
+        Self { token, expires_at }
     }
 
     /// Construct an [`AccessToken`] without verifying it.

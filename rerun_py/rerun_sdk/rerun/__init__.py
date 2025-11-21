@@ -118,6 +118,9 @@ from .archetypes import (
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
 )
+from .auth import (
+    login_with_browser as login_with_browser,
+)
 from .components import (
     AlbedoFactor as AlbedoFactor,
     GraphEdge as GraphEdge,
@@ -356,6 +359,13 @@ def init(
         from rerun.sinks import spawn as _spawn
 
         _spawn(default_blueprint=default_blueprint)
+
+
+# def auth() -> None:
+#     global _auth
+#     if _auth is None:
+#         _auth = Auth()
+#     return _auth
 
 
 def version() -> str:

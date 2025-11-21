@@ -17,6 +17,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use re_auth::{OauthLoginFlow, oauth::Credentials};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -31,6 +32,7 @@ use re_sdk::{
 };
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
+use tokio::runtime::Runtime;
 
 // --- FFI ---
 
@@ -167,6 +169,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
+    m.add_class::<PyOauthLoginFlow>()?;
+    m.add_class::<PyCredentials>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -174,6 +178,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
         return Ok(());
     }
+
+    m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -804,6 +810,7 @@ fn set_global_blueprint_recording(
 /// Returns the currently active blueprint recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
+    println!("get_thread_local_blueprint_recording+++"); // TODO:
     RecordingStream::thread_local(re_sdk::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
@@ -2241,4 +2248,89 @@ authkey = multiprocessing.current_process().authkey
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
+}
+
+#[pyclass(
+    // frozen,
+    name = "OauthLoginFlow",
+    module = "rerun_bindings.rerun_bindings"
+)]
+struct PyOauthLoginFlow {
+    login_flow: OauthLoginFlow,
+}
+
+#[pymethods]
+impl PyOauthLoginFlow {
+    #[new]
+    fn new() -> PyResult<Self> {
+        println!("PyOauthLoginFlow::new");
+
+        let login_flow =
+            OauthLoginFlow::init().map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        println!(
+            "PyOauthLoginFlow::new runtime started: {}",
+            login_flow.server.get_login_url()
+        );
+        Ok(Self { login_flow })
+    }
+
+    fn login_url(&self) -> String {
+        self.login_flow.server.get_login_url().to_owned()
+    }
+
+    fn get_credentials(&mut self) -> PyResult<String> {
+        println!("PyOauthLoginFlow::get_credentials");
+
+        let result: Result<Credentials, re_auth::callback_server::Error> = Runtime::new()?
+            .block_on(async {
+                loop {
+                    let result = self.login_flow.poll().await?;
+                    match result {
+                        Some(credentials) => break Ok(credentials),
+                        None => tokio::time::sleep(Duration::from_millis(10)).await,
+                    }
+                }
+            });
+
+        result
+            .map(|credentials| credentials.access_token().as_str().to_owned())
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+#[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
+struct PyCredentials {
+    access_token: String,
+    refresh_token: String,
+    user_email: String,
+}
+
+#[pymethods]
+impl PyCredentials {
+    #[getter]
+    fn access_token(&self) -> String {
+        self.access_token.clone()
+    }
+
+    #[getter]
+    fn refresh_token(&self) -> String {
+        self.refresh_token.clone()
+    }
+
+    #[getter]
+    fn user_email(&self) -> String {
+        self.user_email.clone()
+    }
+}
+
+#[pyfunction]
+fn get_credentials() -> PyResult<Option<PyCredentials>> {
+    let cred = re_auth::oauth::load_credentials()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    Ok(cred.map(|credentials| PyCredentials {
+        access_token: credentials.access_token().as_str().to_owned(),
+        refresh_token: credentials.refresh_token(),
+        user_email: credentials.user().email.clone(),
+    }))
 }
