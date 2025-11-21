@@ -19,6 +19,9 @@ theme:
 
 plugins:
   - search: # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
+      # Copy-pasted from https://squidfunk.github.io/mkdocs-material/plugins/search/#config.separator
+      # with the addition of underscore. Splits things for better partial matching.
+      # Further exploration of the parts at the link.
       separator: '[\s\-,:!=\[\]()"/_]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
   - autorefs
   - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
