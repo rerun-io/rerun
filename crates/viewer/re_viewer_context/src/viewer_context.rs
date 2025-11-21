@@ -3,7 +3,7 @@ use ahash::HashMap;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{EntryId, TableId};
+use re_log_types::{EntryId, StoreId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_ui::ContextExt as _;
 use re_ui::list_item::ListItem;
@@ -19,6 +19,7 @@ use crate::{
     query_context::DataQueryResult,
 };
 use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
+use crate::recording_context::RecordingContext;
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -75,6 +76,8 @@ pub struct ViewerContext<'a> {
     pub connected_receivers: &'a re_smart_channel::ReceiveSet<re_log_types::DataSourceMessage>,
 
     pub store_context: &'a StoreContext<'a>,
+
+    pub recordings_context: &'a mut HashMap<StoreId, RecordingContext>,
 }
 
 // Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a

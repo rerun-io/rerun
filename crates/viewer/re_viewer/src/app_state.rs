@@ -1,6 +1,6 @@
 use std::{borrow::Cow, str::FromStr as _};
 
-use ahash::HashMap;
+use ahash::{HashMap, HashMapExt};
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::{Timeline, TimelineName};
@@ -17,9 +17,10 @@ use re_viewer_context::{
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
     DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
-    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    StoreHub, SystemCommand,    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClassRegistry, ViewId,
+    ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
+    recording_context::RecordingContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -107,6 +108,14 @@ pub struct AppState {
     /// that last several frames.
     #[serde(skip)]
     pub(crate) focused_item: Option<Item>,
+
+    /// State for each recording (timeline, time, selection, etc.)
+    #[serde(skip)]
+    pub recordings_context: HashMap<StoreId, RecordingContext>,
+
+    /// Track the previous recording to detect switches
+    #[serde(skip)]
+    pub previous_store_id: Option<StoreId>,
 }
 
 impl Default for AppState {
@@ -130,6 +139,8 @@ impl Default for AppState {
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+            recordings_context: Default::default(),
+            previous_store_id: Default::default(),
 
             #[cfg(feature = "testing")]
             test_hook: None,
@@ -371,6 +382,7 @@ impl AppState {
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
+                    recordings_context: HashMap::new(),
                 };
 
                 // enable the heuristics if we must this frame
@@ -427,6 +439,7 @@ impl AppState {
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
+                    recordings_context: HashMap::new(),
                 };
 
                 //
@@ -730,6 +743,7 @@ impl AppState {
     }
 
     pub fn time_control(&self, rec_id: &StoreId) -> Option<&TimeControl> {
+        println!("Time control fn called for storedId: {:?}" , rec_id);
         self.time_controls.get(rec_id)
     }
 

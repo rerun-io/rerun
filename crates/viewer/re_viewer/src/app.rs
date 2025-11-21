@@ -526,6 +526,7 @@ impl App {
             };
 
             let dt = self.egui_ctx.input(|i| i.stable_dt);
+
             if let Some(recording) = store_hub.active_recording() {
                 // Are we still connected to the data source for the current store?
                 let more_data_is_coming =
@@ -554,6 +555,8 @@ impl App {
                     self.egui_ctx.request_repaint();
                 }
 
+                // println!("command to change time has recieved for storeId: {:?}" , store_id.clone());
+                // println!("triggetring handle time ctrl from active recording if clause");
                 handle_time_ctrl_event(recording, self.event_dispatcher.as_ref(), &response);
             }
 
@@ -1092,6 +1095,10 @@ impl App {
             }
 
             SystemCommand::SetSelection(set) => {
+
+
+                let current_store_id = self.store_hub.unwrap().active_store_id();
+
                 if let Some(item) = set.selection.single_item() {
                     // If the selected item has its own page, switch to it.
                     if let Some(display_mode) = DisplayMode::from_item(item) {
@@ -2903,6 +2910,7 @@ impl eframe::App for App {
             }
         }
 
+
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
         self.move_time();
@@ -3505,14 +3513,17 @@ fn handle_time_ctrl_event(
     };
 
     if let Some(playing) = response.playing_change {
+        println!("Play state changed");
         events.on_play_state_change(recording, playing);
     }
 
     if let Some((timeline, time)) = response.timeline_change {
+        println!("Timeline has been changed");
         events.on_timeline_change(recording, timeline, time);
     }
 
     if let Some(time) = response.time_change {
+        println!("Clicked on some random time");
         events.on_time_update(recording, time);
     }
 }
