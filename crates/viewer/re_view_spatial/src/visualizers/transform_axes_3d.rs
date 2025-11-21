@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _,
-    archetypes::{Transform3D, TransformAxes3D},
+    archetypes::{CoordinateFrame, Transform3D, TransformAxes3D},
     components::AxisLength,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -44,6 +44,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 Transform3D::descriptor_scale().component,
                 Transform3D::descriptor_mat3x3().component,
                 TransformAxes3D::descriptor_axis_length().component,
+                CoordinateFrame::descriptor_frame_id().component,
             ]
             .into_iter()
             .collect(),
