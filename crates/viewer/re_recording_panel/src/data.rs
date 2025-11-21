@@ -19,8 +19,9 @@ use re_viewer_context::{DisplayMode, Item, ViewerContext};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
-pub(crate) struct OrderedSource {
+pub struct OrderedSource {
     pub source: Arc<SmartChannelSource>,
+    #[cfg_attr(feature = "testing", serde(skip))]
     pub added_order: ReceiverAddOrder,
 }
 
@@ -523,6 +524,7 @@ impl EntryData {
 pub enum PartitionData<'a> {
     Loading {
         receiver: Arc<SmartChannelSource>,
+        #[cfg_attr(feature = "testing", serde(skip))]
         added_order: ReceiverAddOrder,
     },
     Loaded {
