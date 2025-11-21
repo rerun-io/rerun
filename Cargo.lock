@@ -9090,6 +9090,7 @@ dependencies = [
  "arrow",
  "byteorder",
  "cdr-encoding",
+ "glam",
  "insta",
  "mcap",
  "prost-reflect",

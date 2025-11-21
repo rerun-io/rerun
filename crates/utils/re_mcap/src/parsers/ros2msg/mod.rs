@@ -2,6 +2,7 @@ use crate::parsers::MessageParser;
 
 mod definitions;
 
+pub mod geometry_msgs;
 pub mod rcl_interfaces;
 pub mod scalar_parser;
 pub mod sensor_msgs;
