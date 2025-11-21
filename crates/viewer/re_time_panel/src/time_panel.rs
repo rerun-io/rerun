@@ -367,9 +367,11 @@ impl TimePanel {
                     });
                 }
                 ui.horizontal(|ui| {
+                    let timelines = entity_db.timelines();
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.time_histogram_per_timeline(),
+                        &timelines,
                         ui,
                         time_commands,
                     );
@@ -384,7 +386,8 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let timelines = entity_db.timelines();
+            let time_histogram_per_timeline = entity_db.time_histogram_per_timeline();
 
             if has_more_than_one_time_point {
                 self.time_control_ui
@@ -393,7 +396,8 @@ impl TimePanel {
 
             self.time_control_ui.timeline_selector_ui(
                 time_ctrl,
-                times_per_timeline,
+                time_histogram_per_timeline,
+                &timelines,
                 ui,
                 time_commands,
             );
@@ -1292,9 +1296,11 @@ impl TimePanel {
                     self.time_control_ui.fps_ui(time_ctrl, ui, time_commands);
                 });
                 ui.horizontal(|ui| {
+                    let timelines = entity_db.timelines();
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.time_histogram_per_timeline(),
+                        &timelines,
                         ui,
                         time_commands,
                     );
@@ -1308,13 +1314,15 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let timelines = entity_db.timelines();
+            let time_histogram_per_timeline = entity_db.time_histogram_per_timeline();
 
             self.time_control_ui
                 .play_pause_ui(time_ctrl, ui, time_commands);
             self.time_control_ui.timeline_selector_ui(
                 time_ctrl,
-                times_per_timeline,
+                time_histogram_per_timeline,
+                &timelines,
                 ui,
                 time_commands,
             );

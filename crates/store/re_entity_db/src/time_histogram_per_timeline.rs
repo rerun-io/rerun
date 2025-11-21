@@ -149,10 +149,10 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
                 .collect_vec();
             match event.kind {
                 ChunkStoreDiffKind::Addition => {
-                    self.add(&times, event.num_components() as _);
+                    self.add(&times, 1);
                 }
                 ChunkStoreDiffKind::Deletion => {
-                    self.remove(&times, event.num_components() as _);
+                    self.remove(&times, 1);
                 }
             }
         }
