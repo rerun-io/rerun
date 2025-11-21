@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, sync::LazyLock};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, LazyLock},
+};
 
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
@@ -12,6 +15,7 @@ use re_chunk_store::{
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
+use re_smart_channel::SmartChannelSource;
 use re_types::{archetypes, components::Timestamp};
 
 use crate::{
@@ -51,6 +55,7 @@ pub struct StoreHub {
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
 
+    data_source_order: DataSourceOrder,
     store_bundle: StoreBundle,
     table_stores: HashMap<TableId, TableStore>,
 
@@ -65,6 +70,25 @@ pub struct StoreHub {
 
     /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last garbage collected
     blueprint_last_gc: HashMap<StoreId, ChunkStoreGeneration>,
+}
+
+#[derive(Default)]
+struct DataSourceOrder {
+    next: u64,
+    ordering: HashMap<SmartChannelSource, u64>,
+}
+
+impl DataSourceOrder {
+    fn order_of(&self, source: &SmartChannelSource) -> u64 {
+        self.ordering.get(source).copied().unwrap_or(u64::MAX)
+    }
+
+    fn add(&mut self, source: &SmartChannelSource) {
+        if !self.ordering.contains_key(source) {
+            self.next += 1;
+            self.ordering.insert(source.clone(), self.next);
+        }
+    }
 }
 
 /// Load a blueprint from persisted storage, e.g. disk.
@@ -172,6 +196,7 @@ impl StoreHub {
 
             should_enable_heuristics_by_app_id: Default::default(),
 
+            data_source_order: Default::default(),
             caches_per_recording: Default::default(),
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
@@ -299,6 +324,35 @@ impl StoreHub {
     /// Read-only access to a [`EntityDb`] by id
     pub fn entity_db(&self, store_id: &StoreId) -> Option<&EntityDb> {
         self.store_bundle.get(store_id)
+    }
+
+    pub fn data_source_order(&self, data_source: &SmartChannelSource) -> u64 {
+        self.data_source_order.order_of(data_source)
+    }
+
+    /// Called once a frame to make sure the data source order is correct.
+    pub fn update_data_source_order(&mut self, loading_sources: &[Arc<SmartChannelSource>]) {
+        let keep: HashSet<&SmartChannelSource> = loading_sources
+            .iter()
+            .map(|source| &**source)
+            .chain(
+                self.store_bundle
+                    .recordings()
+                    .filter_map(|db| db.data_source.as_ref()),
+            )
+            .collect();
+        self.data_source_order
+            .ordering
+            .retain(|source, _| keep.contains(source));
+
+        for source in self
+            .store_bundle
+            .recordings()
+            .filter_map(|db| db.data_source.as_ref())
+            .chain(loading_sources.iter().map(|s| &**s))
+        {
+            self.data_source_order.add(source);
+        }
     }
 
     // ---------------------
@@ -989,6 +1043,7 @@ impl StoreHub {
             active_blueprint_by_app_id: _,
             store_bundle,
             table_stores,
+            data_source_order: _,
             should_enable_heuristics_by_app_id: _,
             caches_per_recording,
             blueprint_last_save: _,

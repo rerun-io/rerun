@@ -1,24 +1,15 @@
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering::Relaxed},
+    atomic::{AtomicBool, Ordering::Relaxed},
 };
 
 use crate::{SharedStats, SmartChannelSource, SmartMessage, TryRecvError};
-
-/// An order to compare with other receivers to see which was added first.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-pub struct ReceiverAddOrder(u64);
-
-impl ReceiverAddOrder {
-    pub const START: Self = Self(0);
-}
 
 pub struct Receiver<T: Send> {
     pub(crate) rx: crossbeam::channel::Receiver<SmartMessage<T>>,
     stats: Arc<SharedStats>,
     pub(crate) source: Arc<SmartChannelSource>,
     connected: AtomicBool,
-    added_order: ReceiverAddOrder,
 }
 
 impl<T: Send> Receiver<T> {
@@ -27,20 +18,12 @@ impl<T: Send> Receiver<T> {
         stats: Arc<SharedStats>,
         source: Arc<SmartChannelSource>,
     ) -> Self {
-        static ORDER_COUNTER: AtomicU64 = AtomicU64::new(1);
         Self {
             rx,
             stats,
             source,
             connected: AtomicBool::new(true),
-            added_order: ReceiverAddOrder(
-                ORDER_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-            ),
         }
-    }
-
-    pub(crate) fn added_order(&self) -> ReceiverAddOrder {
-        self.added_order
     }
 
     /// Are we still connected?

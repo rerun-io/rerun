@@ -19,7 +19,7 @@ use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
     StorageEngineWriteGuard,
 };
-use re_smart_channel::{ReceiverAddOrder, SmartChannelSource};
+use re_smart_channel::SmartChannelSource;
 
 use crate::{Error, TimesPerTimeline, ingestion_statistics::IngestionStatistics};
 
@@ -114,9 +114,6 @@ pub struct EntityDb {
     storage_engine: StorageEngine,
 
     stats: IngestionStatistics,
-
-    /// The order this should have with respect to other [`EntityDb`].
-    added_order: ReceiverAddOrder,
 }
 
 impl Debug for EntityDb {
@@ -154,16 +151,7 @@ impl EntityDb {
             time_histogram_per_timeline: Default::default(),
             storage_engine,
             stats: IngestionStatistics::default(),
-            added_order: ReceiverAddOrder::START,
         }
-    }
-
-    pub fn set_added_order(&mut self, added_order: ReceiverAddOrder) {
-        self.added_order = added_order;
-    }
-
-    pub fn added_order(&self) -> ReceiverAddOrder {
-        self.added_order
     }
 
     #[inline]

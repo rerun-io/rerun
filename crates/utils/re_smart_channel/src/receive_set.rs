@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crossbeam::channel::Select;
 use parking_lot::Mutex;
 
-use crate::{Receiver, RecvError, SmartChannelSource, SmartMessage, receiver::ReceiverAddOrder};
+use crate::{Receiver, RecvError, SmartChannelSource, SmartMessage};
 
 /// A set of connected [`Receiver`]s.
 ///
@@ -81,18 +81,6 @@ impl<T: Send> ReceiveSet<T> {
         rx.iter().map(|r| r.source.clone()).collect()
     }
 
-    /// List of connected receiver sources.
-    ///
-    /// This gets culled after calling one of the `recv` methods.
-    pub fn sources_with_order(&self) -> Vec<(ReceiverAddOrder, Arc<SmartChannelSource>)> {
-        re_tracing::profile_function!();
-        let mut rx = self.receivers.lock();
-        rx.retain(|r| r.is_connected());
-        rx.iter()
-            .map(|r| (r.added_order(), r.source.clone()))
-            .collect()
-    }
-
     /// Any connected receivers?
     ///
     /// This gets updated after calling one of the `recv` methods.
@@ -152,7 +140,7 @@ impl<T: Send> ReceiveSet<T> {
     }
 
     /// Returns immediately if there is nothing to receive.
-    pub fn try_recv(&self) -> Option<(Arc<SmartChannelSource>, ReceiverAddOrder, SmartMessage<T>)> {
+    pub fn try_recv(&self) -> Option<(Arc<SmartChannelSource>, SmartMessage<T>)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -170,14 +158,14 @@ impl<T: Send> ReceiveSet<T> {
         let oper = sel.try_select().ok()?;
         let index = oper.index();
         if let Ok(msg) = oper.recv(&rx[index].rx) {
-            return Some((rx[index].source.clone(), rx[index].added_order(), msg));
+            return Some((rx[index].source.clone(), msg));
         }
 
         // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
         // Why use `select` first? Because `select` is fair (random) when there is contention.
         for rx in rx.iter() {
             if let Ok(msg) = rx.try_recv() {
-                return Some((rx.source.clone(), rx.added_order(), msg));
+                return Some((rx.source.clone(), msg));
             }
         }
 
