@@ -1,38 +1,35 @@
-//! Box renderer for efficient rendering of large numbers of axis-aligned boxes.
+//! Box cloud renderer for efficient rendering of large numbers of axis-aligned boxes.
 //!
-//! How it works:
-//! =================
-//! Boxes are rendered as procedurally generated geometry with vertices created in the vertex shader.
-//! Uploaded are only the data for the actual boxes (center + half_size + color), no vertex buffer!
+//! Uses instanced rendering similar to the mesh renderer:
+//! - Static vertex buffer containing unit cube geometry (36 vertices)
+//! - Instance buffer with per-box data (center, half-size, color, picking IDs)
+//! - Single draw call per batch using GPU instancing
 //!
-//! Like with the `super::point_cloud::PointCloudRenderer`, we're rendering all boxes in a single draw call.
-//! Each box is rendered as 12 triangles (2 per face * 6 faces) = 36 vertices.
-//!
-//! For WebGL compatibility, data is uploaded as textures. Color is stored in a separate srgb texture, meaning
-//! that srgb->linear conversion happens on texture load.
+//! This approach is appropriate for boxes because:
+//! - All boxes share the same geometry (unlike point sprites)
+//! - No per-box texture binding required (unlike rectangles)
+//! - Standard GPU instancing path provides good performance and driver optimization
 
-use std::{num::NonZeroU64, ops::Range};
+use std::ops::Range;
 
 use crate::{
-    BoxCloudBuilder, DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference,
+    BoxCloudBuilder, Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, DrawableCollector,
+    OutlineMaskPreference, PickingLayerInstanceId,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
     renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    wgpu_resources::GpuRenderPipelinePoolAccessor,
+    view_builder::ViewBuilder,
+    wgpu_resources::{
+        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
+        GpuBindGroupLayoutHandle, GpuBuffer, GpuRenderPipelineHandle,
+        GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+        VertexBufferLayout,
+    },
 };
 use bitflags::bitflags;
 use enumset::{EnumSet, enum_set};
-use itertools::Itertools as _;
 use smallvec::smallvec;
-
-use crate::{
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
-    },
-};
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
 
@@ -49,19 +46,66 @@ bitflags! {
 }
 
 pub mod gpu_data {
-    use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types};
+    use crate::{wgpu_buffer_types, wgpu_resources::VertexBufferLayout};
 
-    // Box data is stored as Vec4s in texture.
-    // Each box uses 2 texels:
-    // - Texel 0: (center.x, center.y, center.z, half_size.x)
-    // - Texel 1: (half_size.y, half_size.z, 0, 0)
+    use super::*;
 
-    /// Uniform buffer that changes once per draw data rendering.
+    /// Vertex data for unit cube geometry.
+    /// The cube is centered at origin with extent [-0.5, 0.5]³.
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct DrawDataUniformBuffer {
-        pub edge_radius_boost_in_ui_points: wgpu_buffer_types::F32RowPadded,
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    pub struct BoxVertex {
+        pub position: [f32; 3],
+        pub normal: [f32; 3],
+    }
+
+    impl BoxVertex {
+        pub fn vertex_buffer_layout() -> VertexBufferLayout {
+            VertexBufferLayout {
+                array_stride: std::mem::size_of::<Self>() as _,
+                step_mode: wgpu::VertexStepMode::Vertex,
+                attributes: VertexBufferLayout::attributes_from_formats(
+                    0,
+                    [
+                        wgpu::VertexFormat::Float32x3, // position
+                        wgpu::VertexFormat::Float32x3, // normal
+                    ]
+                    .into_iter(),
+                ),
+            }
+        }
+    }
+
+    /// Per-instance data in the instance buffer.
+    /// Keep in sync with `box_cloud.wgsl`
+    #[repr(C)]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct BoxInstanceData {
+        pub center: [f32; 3],
+        pub half_size_x: f32,
+        pub half_size_yz: [f32; 2],
+        pub color: Color32,
+        pub picking_instance_id: PickingLayerInstanceId,
+    }
+
+    impl BoxInstanceData {
+        pub fn vertex_buffer_layout() -> VertexBufferLayout {
+            VertexBufferLayout {
+                array_stride: std::mem::size_of::<Self>() as _,
+                step_mode: wgpu::VertexStepMode::Instance,
+                attributes: VertexBufferLayout::attributes_from_formats(
+                    2, // Start after BoxVertex attributes
+                    [
+                        wgpu::VertexFormat::Float32x3, // center
+                        wgpu::VertexFormat::Float32,   // half_size_x
+                        wgpu::VertexFormat::Float32x2, // half_size_yz
+                        wgpu::VertexFormat::Unorm8x4,  // color
+                        wgpu::VertexFormat::Uint32x2,  // picking_instance_id
+                    ]
+                    .into_iter(),
+                ),
+            }
+        }
     }
 
     /// Uniform buffer that changes for every batch of boxes.
@@ -69,14 +113,11 @@ pub mod gpu_data {
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
-
         pub flags: u32, // BoxCloudBatchFlags
         pub depth_offset: f32,
         pub _row_padding: [f32; 2],
-
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
-
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
     }
 }
@@ -85,7 +126,7 @@ pub mod gpu_data {
 #[derive(Clone)]
 struct BoxCloudBatch {
     bind_group: GpuBindGroup,
-    vertex_range: Range<u32>,
+    instance_range: Range<u32>,
     active_phases: EnumSet<DrawPhase>,
 }
 
@@ -93,8 +134,8 @@ struct BoxCloudBatch {
 /// Expected to be recreated every frame.
 #[derive(Clone)]
 pub struct BoxCloudDrawData {
-    bind_group_all_boxes: Option<GpuBindGroup>,
-    bind_group_all_boxes_outline_mask: Option<GpuBindGroup>,
+    vertex_buffer: GpuBuffer,
+    instance_buffer: Option<GpuBuffer>,
     batches: Vec<BoxCloudBatch>,
 }
 
@@ -110,7 +151,6 @@ impl DrawData for BoxCloudDrawData {
             collector.add_drawable(
                 batch.active_phases,
                 DrawDataDrawable {
-                    // TODO(andreas): Don't have distance information yet. For now just always draw boxes last.
                     distance_sort_key: f32::MAX,
                     draw_data_payload: batch_idx as _,
                 },
@@ -184,37 +224,27 @@ impl BoxCloudDrawData {
 
         let BoxCloudBuilder {
             ctx,
-            position_halfsize_buffer,
-            color_buffer,
-            picking_instance_ids_buffer,
+            instances,
             batches,
-            radius_boost_in_ui_points_for_outlines,
+            ..
         } = builder;
 
         let box_renderer = ctx.renderer::<BoxCloudRenderer>();
         let batches = batches.as_slice();
 
-        if position_halfsize_buffer.is_empty() {
+        if instances.is_empty() {
             return Ok(Self {
-                bind_group_all_boxes: None,
-                bind_group_all_boxes_outline_mask: None,
+                vertex_buffer: box_renderer.unit_cube_vertex_buffer.clone(),
+                instance_buffer: None,
                 batches: Vec::new(),
             });
         }
-
-        // position_halfsize_buffer stores 2 Vec4s per box, so divide by 2 to get box count
-        debug_assert_eq!(
-            position_halfsize_buffer.len() % 2,
-            0,
-            "position_halfsize_buffer length must be even (2 Vec4s per box)"
-        );
-        let num_boxes = position_halfsize_buffer.len() / 2;
 
         let fallback_batches = [BoxCloudBatchInfo {
             label: "fallback_batches".into(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: BoxCloudBatchFlags::empty(),
-            box_count: num_boxes as _,
+            box_count: instances.len() as _,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
             picking_object_id: Default::default(),
@@ -226,65 +256,35 @@ impl BoxCloudDrawData {
             batches
         };
 
-        let position_halfsize_texture = position_halfsize_buffer.finish(
-            wgpu::TextureFormat::Rgba32Float,
-            "BoxCloudDrawData::position_halfsize_texture",
-        )?;
-        let color_texture = color_buffer.finish(
-            wgpu::TextureFormat::Rgba8UnormSrgb,
-            "BoxCloudDrawData::color_texture",
-        )?;
-        let picking_instance_id_texture = picking_instance_ids_buffer.finish(
-            wgpu::TextureFormat::Rg32Uint,
-            "BoxCloudDrawData::picking_instance_id_texture",
-        )?;
-
-        let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
-            ctx,
-            "BoxCloudDrawData::DrawDataUniformBuffer".into(),
-            [
-                gpu_data::DrawDataUniformBuffer {
-                    edge_radius_boost_in_ui_points: 0.0.into(),
-                    end_padding: Default::default(),
-                },
-                gpu_data::DrawDataUniformBuffer {
-                    edge_radius_boost_in_ui_points: radius_boost_in_ui_points_for_outlines.into(),
-                    end_padding: Default::default(),
-                },
-            ]
-            .into_iter(),
+        // Upload instance data
+        let instance_buffer_size =
+            (std::mem::size_of::<gpu_data::BoxInstanceData>() * instances.len()) as _;
+        let instance_buffer = ctx.gpu_resources.buffers.alloc(
+            &ctx.device,
+            &BufferDesc {
+                label: "BoxCloudDrawData::instance_buffer".into(),
+                size: instance_buffer_size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
         );
-        let (draw_data_uniform_buffer_bindings_normal, draw_data_uniform_buffer_bindings_outline) =
-            draw_data_uniform_buffer_bindings
-                .into_iter()
-                .collect_tuple()
-                .unwrap();
 
-        let mk_bind_group = |label, draw_data_uniform_buffer_binding| {
-            ctx.gpu_resources.bind_groups.alloc(
-                &ctx.device,
-                &ctx.gpu_resources,
-                &BindGroupDesc {
-                    label,
-                    entries: smallvec![
-                        BindGroupEntry::DefaultTextureView(position_halfsize_texture.handle),
-                        BindGroupEntry::DefaultTextureView(color_texture.handle),
-                        BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
-                        draw_data_uniform_buffer_binding,
-                    ],
-                    layout: box_renderer.bind_group_layout_all_boxes,
-                },
-            )
-        };
+        // Write instance data
+        {
+            let instance_data: Vec<gpu_data::BoxInstanceData> = instances
+                .iter()
+                .map(|inst| gpu_data::BoxInstanceData {
+                    center: inst.center.into(),
+                    half_size_x: inst.half_size.x,
+                    half_size_yz: [inst.half_size.y, inst.half_size.z],
+                    color: inst.color,
+                    picking_instance_id: inst.picking_instance_id,
+                })
+                .collect();
 
-        let bind_group_all_boxes = mk_bind_group(
-            "BoxCloudDrawData::bind_group_all_boxes".into(),
-            draw_data_uniform_buffer_bindings_normal,
-        );
-        let bind_group_all_boxes_outline_mask = mk_bind_group(
-            "BoxCloudDrawData::bind_group_all_boxes_outline_mask".into(),
-            draw_data_uniform_buffer_bindings_outline,
-        );
+            ctx.queue
+                .write_buffer(&instance_buffer, 0, bytemuck::cast_slice(&instance_data));
+        }
 
         // Process batches
         let mut batches_internal = Vec::with_capacity(batches.len());
@@ -292,22 +292,19 @@ impl BoxCloudDrawData {
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
                 "box batch uniform buffers".into(),
-                batches
-                    .iter()
-                    .map(|batch_info| gpu_data::BatchUniformBuffer {
-                        world_from_obj: batch_info.world_from_obj.into(),
-                        flags: batch_info.flags.bits(),
-                        outline_mask_ids: batch_info
-                            .overall_outline_mask_ids
-                            .0
-                            .unwrap_or_default()
-                            .into(),
-                        picking_object_id: batch_info.picking_object_id,
-                        depth_offset: batch_info.depth_offset as f32,
-
-                        _row_padding: [0.0, 0.0],
-                        end_padding: Default::default(),
-                    }),
+                batches.iter().map(|batch_info| gpu_data::BatchUniformBuffer {
+                    world_from_obj: batch_info.world_from_obj.into(),
+                    flags: batch_info.flags.bits(),
+                    outline_mask_ids: batch_info
+                        .overall_outline_mask_ids
+                        .0
+                        .unwrap_or_default()
+                        .into(),
+                    picking_object_id: batch_info.picking_object_id,
+                    depth_offset: batch_info.depth_offset as f32,
+                    _row_padding: [0.0, 0.0],
+                    end_padding: Default::default(),
+                }),
             );
 
             // Generate additional "micro batches" for each box range that has a unique outline setting.
@@ -327,7 +324,6 @@ impl BoxCloudDrawData {
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     picking_object_id: batch_info.picking_object_id,
                                     depth_offset: batch_info.depth_offset as f32,
-
                                     _row_padding: [0.0, 0.0],
                                     end_padding: Default::default(),
                                 })
@@ -371,15 +367,15 @@ impl BoxCloudDrawData {
                 start_box_for_next_batch = box_range_end;
 
                 // Should happen only if the number of boxes was clamped.
-                if start_box_for_next_batch >= num_boxes as u32 {
+                if start_box_for_next_batch >= instances.len() as u32 {
                     break;
                 }
             }
         }
 
         Ok(Self {
-            bind_group_all_boxes: Some(bind_group_all_boxes),
-            bind_group_all_boxes_outline_mask: Some(bind_group_all_boxes_outline_mask),
+            vertex_buffer: box_renderer.unit_cube_vertex_buffer.clone(),
+            instance_buffer: Some(instance_buffer),
             batches: batches_internal,
         })
     }
@@ -389,8 +385,8 @@ pub struct BoxCloudRenderer {
     render_pipeline_color: GpuRenderPipelineHandle,
     render_pipeline_picking_layer: GpuRenderPipelineHandle,
     render_pipeline_outline_mask: GpuRenderPipelineHandle,
-    bind_group_layout_all_boxes: GpuBindGroupLayoutHandle,
-    bind_group_layout_batch: GpuBindGroupLayoutHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
+    unit_cube_vertex_buffer: GpuBuffer,
 }
 
 impl BoxCloudRenderer {
@@ -399,7 +395,7 @@ impl BoxCloudRenderer {
         ctx: &RenderContext,
         label: DebugLabel,
         uniform_buffer_binding: BindGroupEntry,
-        box_range: Range<u32>,
+        instance_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,
     ) -> BoxCloudBatch {
         let bind_group = ctx.gpu_resources.bind_groups.alloc(
@@ -408,16 +404,62 @@ impl BoxCloudRenderer {
             &BindGroupDesc {
                 label,
                 entries: smallvec![uniform_buffer_binding],
-                layout: self.bind_group_layout_batch,
+                layout: self.bind_group_layout,
             },
         );
 
         BoxCloudBatch {
             bind_group,
-            // Each box is 36 vertices (12 triangles * 3 vertices)
-            vertex_range: (box_range.start * 36)..(box_range.end * 36),
+            instance_range,
             active_phases,
         }
+    }
+
+    /// Creates vertex data for a unit cube centered at origin with extent [-0.5, 0.5]³.
+    /// Returns 36 vertices (12 triangles, 2 per face).
+    fn create_unit_cube_vertices() -> Vec<gpu_data::BoxVertex> {
+        use gpu_data::BoxVertex;
+
+        // Define 8 corners of the unit cube
+        let corners = [
+            [-0.5, -0.5, -0.5], // 0
+            [0.5, -0.5, -0.5],  // 1
+            [0.5, 0.5, -0.5],   // 2
+            [-0.5, 0.5, -0.5],  // 3
+            [-0.5, -0.5, 0.5],  // 4
+            [0.5, -0.5, 0.5],   // 5
+            [0.5, 0.5, 0.5],    // 6
+            [-0.5, 0.5, 0.5],   // 7
+        ];
+
+        // Define 6 faces with their normals and vertex indices
+        // Each face is two triangles (6 vertices)
+        let faces = [
+            // Front face (+Z)
+            ([0.0, 0.0, 1.0], [4, 5, 6, 4, 6, 7]),
+            // Back face (-Z)
+            ([0.0, 0.0, -1.0], [1, 0, 3, 1, 3, 2]),
+            // Right face (+X)
+            ([1.0, 0.0, 0.0], [5, 1, 2, 5, 2, 6]),
+            // Left face (-X)
+            ([-1.0, 0.0, 0.0], [0, 4, 7, 0, 7, 3]),
+            // Top face (+Y)
+            ([0.0, 1.0, 0.0], [7, 6, 2, 7, 2, 3]),
+            // Bottom face (-Y)
+            ([0.0, -1.0, 0.0], [0, 1, 5, 0, 5, 4]),
+        ];
+
+        let mut vertices = Vec::with_capacity(36);
+        for (normal, indices) in faces {
+            for &idx in &indices {
+                vertices.push(BoxVertex {
+                    position: corners[idx],
+                    normal,
+                });
+            }
+        }
+
+        vertices
     }
 }
 
@@ -429,72 +471,17 @@ impl Renderer for BoxCloudRenderer {
 
         let render_pipelines = &ctx.gpu_resources.render_pipelines;
 
-        let bind_group_layout_all_boxes = ctx.gpu_resources.bind_group_layouts.get_or_create(
+        let bind_group_layout = ctx.gpu_resources.bind_group_layouts.get_or_create(
             &ctx.device,
             &BindGroupLayoutDesc {
-                label: "BoxCloudRenderer::bind_group_layout_all_boxes".into(),
-                entries: vec![
-                    // Position + half-size texture
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    // Color texture
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    // Picking instance ID texture
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Uint,
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    // Draw data uniform buffer
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: NonZeroU64::new(std::mem::size_of::<
-                                gpu_data::DrawDataUniformBuffer,
-                            >() as _),
-                        },
-                        count: None,
-                    },
-                ],
-            },
-        );
-
-        let bind_group_layout_batch = ctx.gpu_resources.bind_group_layouts.get_or_create(
-            &ctx.device,
-            &BindGroupLayoutDesc {
-                label: "BoxCloudRenderer::bind_group_layout_batch".into(),
+                label: "BoxCloudRenderer::bind_group_layout".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: NonZeroU64::new(std::mem::size_of::<
+                        min_binding_size: std::num::NonZeroU64::new(std::mem::size_of::<
                             gpu_data::BatchUniformBuffer,
                         >() as _),
                     },
@@ -507,11 +494,7 @@ impl Renderer for BoxCloudRenderer {
             ctx,
             &PipelineLayoutDesc {
                 label: "BoxCloudRenderer::pipeline_layout".into(),
-                entries: vec![
-                    ctx.global_bindings.layout,
-                    bind_group_layout_all_boxes,
-                    bind_group_layout_batch,
-                ],
+                entries: vec![ctx.global_bindings.layout, bind_group_layout],
             },
         );
 
@@ -527,7 +510,10 @@ impl Renderer for BoxCloudRenderer {
             vertex_handle: shader_module,
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
-            vertex_buffers: smallvec![],
+            vertex_buffers: smallvec![
+                gpu_data::BoxVertex::vertex_buffer_layout(),
+                gpu_data::BoxInstanceData::vertex_buffer_layout(),
+            ],
             render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
@@ -545,7 +531,9 @@ impl Renderer for BoxCloudRenderer {
             &RenderPipelineDesc {
                 label: "BoxCloudRenderer::render_pipeline_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
-                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+                render_targets: smallvec![Some(
+                    PickingLayerProcessor::PICKING_LAYER_FORMAT.into()
+                )],
                 depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
@@ -563,12 +551,29 @@ impl Renderer for BoxCloudRenderer {
             },
         );
 
+        // Create static vertex buffer for unit cube
+        let cube_vertices = Self::create_unit_cube_vertices();
+        let cube_vertex_buffer = ctx.gpu_resources.buffers.alloc(
+            &ctx.device,
+            &BufferDesc {
+                label: "BoxCloudRenderer::unit_cube_vertex_buffer".into(),
+                size: (std::mem::size_of::<gpu_data::BoxVertex>() * cube_vertices.len()) as _,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        ctx.queue.write_buffer(
+            &cube_vertex_buffer,
+            0,
+            bytemuck::cast_slice(&cube_vertices),
+        );
+
         Self {
             render_pipeline_color,
             render_pipeline_picking_layer,
             render_pipeline_outline_mask,
-            bind_group_layout_all_boxes,
-            bind_group_layout_batch,
+            bind_group_layout,
+            unit_cube_vertex_buffer: cube_vertex_buffer,
         }
     }
 
@@ -602,20 +607,19 @@ impl Renderer for BoxCloudRenderer {
                 continue;
             }
 
-            let bind_group_all_boxes = match phase {
-                DrawPhase::OutlineMask => &box_cloud_draw_data.bind_group_all_boxes_outline_mask,
-                _ => &box_cloud_draw_data.bind_group_all_boxes,
-            };
-            if let Some(bind_group_all_boxes) = bind_group_all_boxes {
-                pass.set_bind_group(1, bind_group_all_boxes, &[]);
-            } else {
-                continue;
-            }
+            // Set vertex buffer (shared by all batches)
+            pass.set_vertex_buffer(0, box_cloud_draw_data.vertex_buffer.slice(..));
 
-            for drawable in instruction.drawables.iter() {
-                let batch = &box_cloud_draw_data.batches[drawable.draw_data_payload as usize];
-                pass.set_bind_group(2, &batch.bind_group, &[]);
-                pass.draw(batch.vertex_range.clone(), 0..1);
+            // Set instance buffer (if any)
+            if let Some(instance_buffer) = &box_cloud_draw_data.instance_buffer {
+                pass.set_vertex_buffer(1, instance_buffer.slice(..));
+
+                for drawable in instruction.drawables.iter() {
+                    let batch = &box_cloud_draw_data.batches[drawable.draw_data_payload as usize];
+                    pass.set_bind_group(1, &batch.bind_group, &[]);
+                    // Draw 36 vertices (unit cube) per instance
+                    pass.draw(0..36, batch.instance_range.clone());
+                }
             }
         }
 

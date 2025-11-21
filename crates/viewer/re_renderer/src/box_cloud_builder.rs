@@ -1,79 +1,39 @@
-use itertools::izip;
-
 use re_log::ResultExt as _;
 
 use crate::{
-    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
-    PickingLayerInstanceId, RenderContext,
-    allocator::DataTextureSource,
+    Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
+    RenderContext,
     draw_phases::PickingLayerObjectId,
-    renderer::{
-        BoxCloudBatchFlags, BoxCloudBatchInfo, BoxCloudDrawData, BoxCloudDrawDataError,
-    },
+    renderer::{BoxCloudBatchFlags, BoxCloudBatchInfo, BoxCloudDrawData, BoxCloudDrawDataError},
 };
+
+/// Instance data for a single box in the box cloud.
+#[derive(Clone, Copy)]
+pub struct BoxInstance {
+    pub center: glam::Vec3,
+    pub half_size: glam::Vec3,
+    pub color: Color32,
+    pub picking_instance_id: PickingLayerInstanceId,
+}
 
 /// Builder for box clouds, making it easy to create [`crate::renderer::BoxCloudDrawData`].
 ///
 /// This is a high-performance renderer for large numbers of axis-aligned boxes,
-/// inspired by the point cloud renderer. It stores box data in GPU textures and
-/// generates box geometry procedurally in the vertex shader.
+/// using GPU instancing similar to the mesh renderer. It stores box data in an
+/// instance buffer and uses a shared vertex buffer for unit cube geometry.
 pub struct BoxCloudBuilder<'ctx> {
     pub(crate) ctx: &'ctx RenderContext,
-
-    // Each box is stored as 2 Vec4s (2 texels):
-    // - Vec4 0: (center.x, center.y, center.z, half_size.x)
-    // - Vec4 1: (half_size.y, half_size.z, 0, 0)
-    pub(crate) position_halfsize_buffer: DataTextureSource<'ctx, glam::Vec4>,
-
-    pub(crate) color_buffer: DataTextureSource<'ctx, Color32>,
-    pub(crate) picking_instance_ids_buffer: DataTextureSource<'ctx, PickingLayerInstanceId>,
-
+    pub(crate) instances: Vec<BoxInstance>,
     pub(crate) batches: Vec<BoxCloudBatchInfo>,
-
-    pub(crate) radius_boost_in_ui_points_for_outlines: f32,
 }
 
 impl<'ctx> BoxCloudBuilder<'ctx> {
     pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
             ctx,
-            position_halfsize_buffer: DataTextureSource::new(ctx),
-            color_buffer: DataTextureSource::new(ctx),
-            picking_instance_ids_buffer: DataTextureSource::new(ctx),
+            instances: Vec::new(),
             batches: Vec::with_capacity(16),
-            radius_boost_in_ui_points_for_outlines: 0.0,
         }
-    }
-
-    /// Returns number of boxes that can be added without reallocation.
-    pub fn reserve(
-        &mut self,
-        expected_number_of_additional_boxes: usize,
-    ) -> Result<usize, CpuWriteGpuReadError> {
-        // Each box uses 2 Vec4s in position_halfsize_buffer
-        let position_halfsize_capacity = self
-            .position_halfsize_buffer
-            .reserve(expected_number_of_additional_boxes * 2)?;
-        let color_capacity = self
-            .color_buffer
-            .reserve(expected_number_of_additional_boxes)?;
-        let picking_capacity = self
-            .picking_instance_ids_buffer
-            .reserve(expected_number_of_additional_boxes)?;
-
-        // Return the minimum capacity across all buffers
-        // position_halfsize_capacity is in Vec4s, so divide by 2 for box count
-        Ok((position_halfsize_capacity / 2)
-            .min(color_capacity)
-            .min(picking_capacity))
-    }
-
-    /// Boosts the size of the box edges by the given amount of ui-points for the purpose of drawing outlines.
-    pub fn radius_boost_in_ui_points_for_outlines(
-        &mut self,
-        radius_boost_in_ui_points_for_outlines: f32,
-    ) {
-        self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
     }
 
     /// Start of a new batch.
@@ -83,16 +43,6 @@ impl<'ctx> BoxCloudBuilder<'ctx> {
             label: label.into(),
             ..BoxCloudBatchInfo::default()
         });
-
-        BoxCloudBatchBuilder(self)
-    }
-
-    #[inline]
-    pub fn batch_with_info(
-        &mut self,
-        info: BoxCloudBatchInfo,
-    ) -> BoxCloudBatchBuilder<'_, 'ctx> {
-        self.batches.push(info);
 
         BoxCloudBatchBuilder(self)
     }
@@ -160,105 +110,38 @@ impl BoxCloudBatchBuilder<'_, '_> {
     ) -> Self {
         re_tracing::profile_function!();
 
-        debug_assert_eq!(
-            self.0.position_halfsize_buffer.len() / 2,
-            self.0.color_buffer.len()
-        );
-        debug_assert_eq!(
-            self.0.position_halfsize_buffer.len() / 2,
-            self.0.picking_instance_ids_buffer.len()
-        );
-
-        // Do a reserve ahead of time, to check whether we're hitting the data texture limit.
-        // Each box uses 2 Vec4s in position_halfsize_buffer.
-        let Some(num_available_vec4s) = self
-            .0
-            .position_halfsize_buffer
-            .reserve(centers.len() * 2)
-            .ok_or_log_error()
-        else {
-            return self;
-        };
-
-        let num_available_boxes = num_available_vec4s / 2;
-        let num_boxes = if centers.len() > num_available_boxes {
-            re_log::error_once!(
-                "Reached maximum number of boxes for box cloud of {}. Ignoring all excess boxes.",
-                self.0.position_halfsize_buffer.len() / 2 + num_available_boxes
-            );
-            num_available_boxes
-        } else {
-            centers.len()
-        };
-
+        let num_boxes = centers.len();
         if num_boxes == 0 {
             return self;
         }
 
-        // Shorten slices if needed:
-        let centers = &centers[0..num_boxes.min(centers.len())];
-        let half_sizes = &half_sizes[0..num_boxes.min(half_sizes.len())];
-        let colors = &colors[0..num_boxes.min(colors.len())];
-        let picking_ids = &picking_ids[0..num_boxes.min(picking_ids.len())];
-
         self.batch_mut().box_count += num_boxes as u32;
 
-        {
-            re_tracing::profile_scope!("positions & half_sizes");
+        // Extend instances
+        for i in 0..num_boxes {
+            let center = centers.get(i).copied().unwrap_or(glam::Vec3::ZERO);
+            let half_size = half_sizes
+                .get(i)
+                .copied()
+                .or_else(|| half_sizes.last().copied())
+                .unwrap_or(glam::Vec3::ONE);
+            let color = colors
+                .get(i)
+                .copied()
+                .or_else(|| colors.last().copied())
+                .unwrap_or(Color32::WHITE);
+            let picking_id = picking_ids
+                .get(i)
+                .copied()
+                .or_else(|| picking_ids.last().copied())
+                .unwrap_or_default();
 
-            // Pack each box as 2 Vec4s
-            let mut box_data = Vec::with_capacity(num_boxes * 2);
-
-            if centers.len() == half_sizes.len() {
-                // Optimize common-case with simpler iterators.
-                for (center, half_size) in izip!(centers.iter().copied(), half_sizes.iter().copied()) {
-                    box_data.push(glam::Vec4::new(center.x, center.y, center.z, half_size.x));
-                    box_data.push(glam::Vec4::new(half_size.y, half_size.z, 0.0, 0.0));
-                }
-            } else {
-                for (center, half_size) in izip!(
-                    centers.iter().copied(),
-                    half_sizes
-                        .iter()
-                        .copied()
-                        .chain(std::iter::repeat(*half_sizes.last().unwrap_or(&glam::Vec3::ONE)))
-                ) {
-                    box_data.push(glam::Vec4::new(center.x, center.y, center.z, half_size.x));
-                    box_data.push(glam::Vec4::new(half_size.y, half_size.z, 0.0, 0.0));
-                }
-            }
-
-            self.0
-                .position_halfsize_buffer
-                .extend_from_slice(&box_data)
-                .ok_or_log_error();
-        }
-        {
-            re_tracing::profile_scope!("colors");
-
-            self.0
-                .color_buffer
-                .extend_from_slice(colors)
-                .ok_or_log_error();
-            self.0
-                .color_buffer
-                .add_n(Color32::WHITE, num_boxes.saturating_sub(colors.len()))
-                .ok_or_log_error();
-        }
-        {
-            re_tracing::profile_scope!("picking_ids");
-
-            self.0
-                .picking_instance_ids_buffer
-                .extend_from_slice(picking_ids)
-                .ok_or_log_error();
-            self.0
-                .picking_instance_ids_buffer
-                .add_n(
-                    PickingLayerInstanceId::default(),
-                    num_boxes.saturating_sub(picking_ids.len()),
-                )
-                .ok_or_log_error();
+            self.0.instances.push(BoxInstance {
+                center,
+                half_size,
+                color,
+                picking_instance_id: picking_id,
+            });
         }
 
         self
