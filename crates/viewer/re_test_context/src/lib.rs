@@ -5,7 +5,7 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashMapExt};
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
 
@@ -537,6 +537,7 @@ impl TestContext {
             blueprint_query: &self.blueprint_query,
             focused_item: &focused_item,
             drag_and_drop_manager: &drag_and_drop_manager,
+            recordings_context: HashMap::new(),
         };
 
         func(&ctx);
