@@ -36,6 +36,9 @@ pub fn test_boxes3d_fast_path() {
 }
 
 fn run_fast_path_test() {
+    // Reset the counter before test
+    re_view_spatial::visualizers::boxes3d::reset_fast_path_counter();
+
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     // Create 1000 solid boxes with translation-only transforms.
@@ -106,4 +109,12 @@ fn run_fast_path_test() {
 
     harness.run_steps(10);
     harness.snapshot("boxes3d_fast_path");
+
+    // Verify the fast path was actually used
+    let fast_path_count = re_view_spatial::visualizers::boxes3d::get_fast_path_count();
+    assert!(
+        fast_path_count > 0,
+        "Fast path should have been used for 1000 solid boxes with translation-only transforms, but counter is {}",
+        fast_path_count
+    );
 }

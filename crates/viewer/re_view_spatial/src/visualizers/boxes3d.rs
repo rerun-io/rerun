@@ -20,6 +20,20 @@ use super::{
     utilities::{LabeledBatch, ProcMeshBatch, ProcMeshDrawableBuilder},
 };
 
+// Test-only counter to verify fast path is actually used
+#[cfg(test)]
+static FAST_PATH_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+#[cfg(test)]
+pub fn reset_fast_path_counter() {
+    FAST_PATH_COUNTER.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub fn get_fast_path_count() -> usize {
+    FAST_PATH_COUNTER.load(std::sync::atomic::Ordering::Relaxed);
+}
+
 // ---
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -498,6 +512,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
         // Use fast path when eligible (solid boxes, no rotations, translation-only transforms)
         if can_use_fast_path {
             re_log::debug!("Boxes3D: using fast instanced box cloud renderer");
+
+            #[cfg(test)]
+            FAST_PATH_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             let mut draw_data_vec = Vec::new();
             let latest_at = view_query.latest_at;

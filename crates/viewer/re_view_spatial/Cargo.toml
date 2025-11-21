@@ -73,14 +73,9 @@ re_component_ui.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
 
-criterion = { workspace = true, features = ["html_reports"] }
 half.workspace = true
 insta.workspace = true
 ndarray.workspace = true
 
 [lib]
 bench = false
-
-[[bench]]
-name = "boxes3d_benchmark"
-harness = false
