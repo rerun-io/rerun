@@ -11,50 +11,50 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
                         x_axis: DVec3(
-                            1.0,
+                            0.002,
                             0.0,
                             0.0,
                         ),
                         y_axis: DVec3(
                             0.0,
-                            1.0,
+                            0.004,
                             0.0,
                         ),
                         z_axis: DVec3(
                             0.0,
                             0.0,
-                            1.0,
+                            0.003,
                         ),
                     },
                     translation: DVec3(
-                        0.0,
-                        0.0,
-                        0.0,
+                        49.998,
+                        100.0,
+                        -1.5,
                     ),
                 },
                 target_from_instances: [
                     DAffine3 {
                         matrix3: DMat3 {
                             x_axis: DVec3(
-                                1.0,
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
                             y_axis: DVec3(
                                 0.0,
-                                1.0,
+                                0.004,
                                 0.0,
                             ),
                             z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                1.0,
+                                0.003,
                             ),
                         },
                         translation: DVec3(
-                            0.0,
-                            0.0,
-                            0.0,
+                            49.998,
+                            100.0,
+                            -1.5,
                         ),
                     },
                 ],
@@ -69,74 +69,74 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
                         x_axis: DVec3(
-                            1.0,
+                            0.002,
                             0.0,
                             0.0,
                         ),
                         y_axis: DVec3(
                             0.0,
-                            1.0,
+                            0.004,
                             0.0,
                         ),
                         z_axis: DVec3(
                             0.0,
                             0.0,
-                            1.0,
+                            0.003,
                         ),
                     },
                     translation: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
+                        50.0,
+                        100.0,
+                        -1.5,
                     ),
                 },
                 target_from_instances: [
                     DAffine3 {
                         matrix3: DMat3 {
                             x_axis: DVec3(
-                                1.0,
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
                             y_axis: DVec3(
                                 0.0,
-                                1.0,
+                                0.004,
                                 0.0,
                             ),
                             z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                1.0,
+                                0.003,
                             ),
                         },
                         translation: DVec3(
-                            11.0,
-                            0.0,
-                            0.0,
+                            50.019999999999996,
+                            100.0,
+                            -1.5,
                         ),
                     },
                     DAffine3 {
                         matrix3: DMat3 {
                             x_axis: DVec3(
-                                1.0,
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
                             y_axis: DVec3(
                                 0.0,
-                                1.0,
+                                0.004,
                                 0.0,
                             ),
                             z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                1.0,
+                                0.003,
                             ),
                         },
                         translation: DVec3(
-                            21.0,
-                            0.0,
-                            0.0,
+                            50.04,
+                            100.0,
+                            -1.5,
                         ),
                     },
                 ],
@@ -145,59 +145,12 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
     ),
     (
         tf#/top/pinhole,
-        Ok(
-            TransformInfo {
-                root: tf#/top/pinhole,
-                target_from_source: DAffine3 {
-                    matrix3: DMat3 {
-                        x_axis: DVec3(
-                            1.0,
-                            0.0,
-                            0.0,
-                        ),
-                        y_axis: DVec3(
-                            0.0,
-                            0.5,
-                            0.0,
-                        ),
-                        z_axis: DVec3(
-                            0.0,
-                            0.0,
-                            0.6666666666666666,
-                        ),
-                    },
-                    translation: DVec3(
-                        -49.0,
-                        -49.0,
-                        1.0,
-                    ),
-                },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                1.0,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                0.5,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                0.6666666666666666,
-                            ),
-                        },
-                        translation: DVec3(
-                            -49.0,
-                            -49.0,
-                            1.0,
-                        ),
-                    },
-                ],
+        Err(
+            NoPathBetweenFrames {
+                target: tf#/top/pure_leaf_pinhole,
+                src: tf#/top/pinhole,
+                target_root: tf#/top/pure_leaf_pinhole,
+                source_root: tf#/top/pinhole,
             },
         ),
     ),
@@ -209,50 +162,50 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
                         x_axis: DVec3(
-                            1.0,
+                            0.002,
                             0.0,
                             0.0,
                         ),
                         y_axis: DVec3(
                             0.0,
-                            1.0,
+                            0.004,
                             0.0,
                         ),
                         z_axis: DVec3(
                             0.0,
                             0.0,
-                            1.0,
+                            0.003,
                         ),
                     },
                     translation: DVec3(
-                        1.0,
-                        0.0,
-                        1.0,
+                        50.0,
+                        100.0,
+                        -1.497,
                     ),
                 },
                 target_from_instances: [
                     DAffine3 {
                         matrix3: DMat3 {
                             x_axis: DVec3(
-                                1.0,
+                                0.002,
                                 0.0,
                                 0.0,
                             ),
                             y_axis: DVec3(
                                 0.0,
-                                1.0,
+                                0.004,
                                 0.0,
                             ),
                             z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                1.0,
+                                0.003,
                             ),
                         },
                         translation: DVec3(
-                            1.0,
-                            0.0,
-                            1.0,
+                            50.0,
+                            100.0,
+                            -1.497,
                         ),
                     },
                 ],
@@ -269,59 +222,12 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
     ),
     (
         tf#/top/pinhole/child2d,
-        Ok(
-            TransformInfo {
-                root: tf#/top/pinhole,
-                target_from_source: DAffine3 {
-                    matrix3: DMat3 {
-                        x_axis: DVec3(
-                            1.0,
-                            0.0,
-                            0.0,
-                        ),
-                        y_axis: DVec3(
-                            0.0,
-                            0.5,
-                            0.0,
-                        ),
-                        z_axis: DVec3(
-                            0.0,
-                            0.0,
-                            0.6666666666666666,
-                        ),
-                    },
-                    translation: DVec3(
-                        -47.0,
-                        -49.0,
-                        1.0,
-                    ),
-                },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                1.0,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                0.5,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                0.6666666666666666,
-                            ),
-                        },
-                        translation: DVec3(
-                            -47.0,
-                            -49.0,
-                            1.0,
-                        ),
-                    },
-                ],
+        Err(
+            NoPathBetweenFrames {
+                target: tf#/top/pure_leaf_pinhole,
+                src: tf#/top/pinhole/child2d,
+                target_root: tf#/top/pure_leaf_pinhole,
+                source_root: tf#/top/pinhole,
             },
         ),
     ),
@@ -339,19 +245,19 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         ),
                         y_axis: DVec3(
                             0.0,
-                            0.5,
+                            1.0,
                             0.0,
                         ),
                         z_axis: DVec3(
                             0.0,
                             0.0,
-                            0.6666666666666666,
+                            1.0,
                         ),
                     },
                     translation: DVec3(
-                        -49.0,
-                        -50.0,
-                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
                     ),
                 },
                 target_from_instances: [
@@ -364,19 +270,19 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                             ),
                             y_axis: DVec3(
                                 0.0,
-                                0.5,
+                                1.0,
                                 0.0,
                             ),
                             z_axis: DVec3(
                                 0.0,
                                 0.0,
-                                0.6666666666666666,
+                                1.0,
                             ),
                         },
                         translation: DVec3(
-                            -49.0,
-                            -50.0,
-                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
                         ),
                     },
                 ],
