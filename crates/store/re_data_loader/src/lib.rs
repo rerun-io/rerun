@@ -483,7 +483,7 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 /// 3rd party formats with built-in support.
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap"];
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "urdf"];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
@@ -516,4 +516,5 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("rrd"));
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
+    assert!(is_supported_file_extension("urdf"));
 }
