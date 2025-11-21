@@ -239,13 +239,8 @@ fn load_video_data_from_chunks(
         .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(codec_component, 0, 0))
         .ok_or(VideoStreamProcessingError::MissingCodec)?
         .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
-    let codec = match last_codec {
-        components::VideoCodec::H264 => re_video::VideoCodec::H264,
-        components::VideoCodec::H265 => re_video::VideoCodec::H265,
-        components::VideoCodec::AV1 => re_video::VideoCodec::AV1,
-        // components::VideoCodec::VP8 => re_video::VideoCodec::Vp8,
-        // components::VideoCodec::VP9 => re_video::VideoCodec::Vp9,
-    };
+
+    let codec = last_codec.into();
 
     // Extract all video samples.
     let mut video_sample_buffers = StableIndexDeque::new();

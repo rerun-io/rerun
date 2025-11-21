@@ -14,10 +14,9 @@ use anyhow::{Context as _, anyhow};
 use arrow::array::{Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use re_chunk::ArrowArray as _;
+use re_chunk::{ArrowArray as _, ChunkId};
 use re_types::archetypes::VideoStream;
-use re_types::components::VideoCodec;
-use re_video::{StableIndexDeque, VideoDataDescription};
+use re_video::{AnnexBStreamState, StableIndexDeque, VideoDataDescription};
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -77,6 +76,7 @@ pub struct LeRobotDatasetV3 {
     pub path: PathBuf,
     pub metadata: LeRobotDatasetMetadataV3,
     video_cache: parking_lot::RwLock<HashMap<PathBuf, Arc<[u8]>>>,
+    episode_data_cache: parking_lot::RwLock<HashMap<EpisodeIndex, Arc<RecordBatch>>>,
 }
 
 impl LeRobotDatasetV3 {
@@ -96,29 +96,138 @@ impl LeRobotDatasetV3 {
             path: path.to_path_buf(),
             metadata,
             video_cache: parking_lot::RwLock::new(HashMap::default()),
+            episode_data_cache: parking_lot::RwLock::new(HashMap::default()),
         })
     }
 
     /// Read the Parquet data file for the provided episode.
+    ///
+    /// This method caches episode data to avoid redundant parquet file reads and filtering.
+    /// When reading a parquet file for the first time, it caches ALL episodes contained in
+    /// that file, since multiple episodes typically share the same file in v3 datasets.
     pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
+        // Fast path: check if the episode data is already cached
+        {
+            let cache = self.episode_data_cache.read();
+            if let Some(cached_data) = cache.get(&episode) {
+                return Ok((**cached_data).clone());
+            }
+        }
+
+        // Slow path: read from parquet file and cache all episodes in the file
         let episode_data = self
             .metadata
             .get_episode_data(episode)
             .ok_or(LeRobotError::InvalidEpisodeIndex(episode))?;
 
         let episode_data_path = self.metadata.info.episode_data_path(episode_data);
+        let episode_parquet_file = self.path.join(&episode_data_path);
         re_log::trace!("Reading episode data from: {episode_data_path:?}");
-        let episode_parquet_file = self.path.join(episode_data_path);
 
-        let file = File::open(&episode_parquet_file)
-            .map_err(|err| LeRobotError::IO(err, episode_parquet_file))?;
-        let mut reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
+        let file = {
+            re_tracing::profile_scope!("open parquet file");
+            File::open(&episode_parquet_file)
+                .map_err(|err| LeRobotError::IO(err, episode_parquet_file))?
+        };
 
-        reader
-            .next()
-            .transpose()
-            .map(|batch| batch.ok_or(LeRobotError::EmptyEpisode(episode)))
-            .map_err(LeRobotError::Arrow)?
+        let reader = {
+            re_tracing::profile_scope!("build parquet reader");
+            ParquetRecordBatchReaderBuilder::try_new(file)?.build()?
+        };
+
+        // Collect all episodes that should be in this file (same chunk_index and file_index)
+        let episodes_in_file: Vec<EpisodeIndex> = self
+            .metadata
+            .episodes
+            .values()
+            .filter(|ep_data| {
+                ep_data.data_chunk_index == episode_data.data_chunk_index
+                    && ep_data.data_file_index == episode_data.data_file_index
+            })
+            .map(|ep_data| ep_data.episode_index)
+            .collect();
+
+        re_log::trace!(
+            "Caching {} episodes from file: {episode_data_path:?}",
+            episodes_in_file.len()
+        );
+
+        // Build a map to collect filtered batches for each episode
+        let mut episode_batches: HashMap<EpisodeIndex, Vec<RecordBatch>> = HashMap::default();
+        let mut schema = None;
+
+        {
+            re_tracing::profile_scope!("filter and group episode data");
+            for batch_result in reader {
+                let batch = batch_result.map_err(LeRobotError::Arrow)?;
+
+                if schema.is_none() {
+                    schema = Some(batch.schema());
+                }
+
+                // Filter for each episode in this file
+                for &ep_idx in &episodes_in_file {
+                    let mask = self.episode_mask(&batch, ep_idx);
+                    let filtered = arrow::compute::filter_record_batch(&batch, &mask)
+                        .map_err(LeRobotError::Arrow)?;
+
+                    if filtered.num_rows() > 0 {
+                        episode_batches.entry(ep_idx).or_default().push(filtered);
+                    }
+                }
+            }
+        }
+
+        let schema = schema.ok_or(LeRobotError::EmptyEpisode(episode))?;
+
+        // Concatenate batches for each episode and cache them
+        let mut cache = self.episode_data_cache.write();
+
+        // Double-check if another thread already cached this episode
+        if let Some(cached_data) = cache.get(&episode) {
+            return Ok((**cached_data).clone());
+        }
+
+        let mut result = None;
+        for ep_idx in episodes_in_file {
+            if let Some(batches) = episode_batches.remove(&ep_idx) {
+                if !batches.is_empty() {
+                    let concatenated = arrow::compute::concat_batches(&schema, &batches)
+                        .map_err(LeRobotError::Arrow)?;
+                    let arc_batch = Arc::new(concatenated);
+
+                    // Store the result for the requested episode
+                    if ep_idx == episode {
+                        result = Some(arc_batch.clone());
+                    }
+
+                    cache.insert(ep_idx, arc_batch);
+                }
+            }
+        }
+
+        result
+            .map(|batch| (*batch).clone())
+            .ok_or(LeRobotError::EmptyEpisode(episode))
+    }
+
+    fn episode_mask(
+        &self,
+        batch: &RecordBatch,
+        episode: EpisodeIndex,
+    ) -> arrow::array::BooleanArray {
+        let index = i64::try_from(episode.0).unwrap();
+
+        let episode_indices = batch
+            .column_by_name("episode_index")
+            .unwrap()
+            .downcast_array_ref::<Int64Array>()
+            .unwrap();
+
+        episode_indices
+            .iter()
+            .map(|val| Some(val == Some(index)))
+            .collect()
     }
 
     /// Read video feature for the provided episode.
@@ -823,18 +932,27 @@ fn load_episode_video(
     let mut buffers = StableIndexDeque::new();
     buffers.push_back(video_bytes); // original asset slice
 
+    let mut annexb_state = AnnexBStreamState::default();
+
     for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
         let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
             anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
         })?;
 
-        samples.push((sample_meta.clone(), chunk.data));
+        let sample_bytes = video
+            .sample_data_in_stream_format(&chunk, &mut annexb_state)
+            .with_context(|| {
+                format!(
+                    "Failed to convert sample {sample_idx} for feature '{observation}' to the expected codec stream format"
+                )
+            })?;
+
+        samples.push((sample_meta.clone(), sample_bytes));
     }
 
     let (samples_meta, samples): (Vec<_>, Vec<_>) = samples.into_iter().unzip();
 
     let samples_column = VideoStream::update_fields()
-        .with_many_codec(vec![VideoCodec::AV1; samples.len()])
         .with_many_sample(samples)
         .columns_of_unit_batches()
         .with_context(|| "Failed to create VideoStream")?;
@@ -857,12 +975,27 @@ fn load_episode_video(
         ScalarBuffer::from(uniform_times),
     );
 
+    let codec = re_types::components::VideoCodec::try_from(video.codec).map_err(|err| {
+        anyhow!(
+            "Unsupported video codec {:?} for feature: '{observation}': {err}",
+            video.codec
+        )
+    })?;
+
+    let codec_chunk = Chunk::builder(entity_path)
+        .with_archetype(
+            RowId::new(),
+            TimePoint::default(),
+            &VideoStream::update_fields().with_codec(codec),
+        )
+        .build()?;
+
     let samples_chunk = Chunk::from_auto_row_ids(
-        re_chunk::ChunkId::new(),
+        ChunkId::new(),
         entity_path.into(),
         std::iter::once((timeline.name().to_owned(), uniform_time_column)).collect(),
         samples_column.collect(),
     )?;
 
-    Ok(std::iter::once(samples_chunk))
+    Ok([samples_chunk, codec_chunk].into_iter())
 }

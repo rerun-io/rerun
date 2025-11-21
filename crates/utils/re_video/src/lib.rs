@@ -21,9 +21,9 @@ pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start
 pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
 
 pub use demux::{
-    ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
-    SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
-    VideoLoadError,
+    ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleConversionError, SampleIndex,
+    SampleMetadata, SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod,
+    VideoEncodingDetails, VideoLoadError,
 };
 
 // AnnexB conversions are useful for testing.

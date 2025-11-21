@@ -16,7 +16,12 @@ use web_time::Instant;
 
 use super::{Time, Timescale};
 
-use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
+use crate::{
+    Chunk, StableIndexDeque, TrackId, TrackKind,
+    h264::write_avc_chunk_to_nalu_stream,
+    h265::write_hevc_chunk_to_nalu_stream,
+    nalu::{AnnexBStreamState, AnnexBStreamWriteError},
+};
 
 /// Chroma subsampling mode.
 ///
@@ -347,6 +352,89 @@ impl VideoDataDescription {
 
         Ok(())
     }
+
+    /// Returns the encoded bytes for a sample in the format expected by [`VideoCodec`].
+    ///
+    /// MP4 stores H.264/H.265 samples using AVCC/HVCC length-prefixed NALs and relies on container
+    /// metadata for SPS/PPS/VPS.
+    pub fn sample_data_in_stream_format(
+        &self,
+        chunk: &crate::Chunk,
+        annexb_state: &mut AnnexBStreamState,
+    ) -> Result<Vec<u8>, SampleConversionError> {
+        match self.codec {
+            VideoCodec::AV1 => Ok(chunk.data.clone()),
+            VideoCodec::H264 => {
+                let stsd = self
+                    .encoding_details
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .stsd
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+
+                let re_mp4::StsdBoxContent::Avc1(avc1_box) = &stsd.contents else {
+                    return Err(SampleConversionError::UnexpectedStsdContent {
+                        codec: self.codec,
+                        found: format!("{:?}", stsd.contents),
+                    });
+                };
+
+                let mut output = Vec::new();
+                write_avc_chunk_to_nalu_stream(avc1_box, &mut output, chunk, annexb_state)
+                    .map_err(SampleConversionError::AnnexB)?;
+                Ok(output)
+            }
+            VideoCodec::H265 => {
+                let stsd = self
+                    .encoding_details
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .stsd
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+
+                let hvcc_box = match &stsd.contents {
+                    re_mp4::StsdBoxContent::Hvc1(hvc1_box)
+                    | re_mp4::StsdBoxContent::Hev1(hvc1_box) => hvc1_box,
+                    other => {
+                        return Err(SampleConversionError::UnexpectedStsdContent {
+                            codec: self.codec,
+                            found: format!("{other:?}"),
+                        });
+                    }
+                };
+
+                let mut output = Vec::new();
+                write_hevc_chunk_to_nalu_stream(hvcc_box, &mut output, chunk, annexb_state)
+                    .map_err(SampleConversionError::AnnexB)?;
+                Ok(output)
+            }
+            VideoCodec::VP8 | VideoCodec::VP9 => {
+                // TODO(#10186): Support VP8/VP9 for the `VideoStream` archetype
+                Err(SampleConversionError::UnsupportedCodec(self.codec))
+            }
+        }
+    }
+}
+
+/// Errors converting MP4 samples into the format expected by [`VideoStream`](crate::VideoStream).
+#[derive(thiserror::Error, Debug)]
+pub enum SampleConversionError {
+    #[error("Missing encoding details for codec {0:?}")]
+    MissingEncodingDetails(VideoCodec),
+
+    #[error("Missing stsd box for codec {0:?}")]
+    MissingStsd(VideoCodec),
+
+    #[error("Unexpected stsd contents for codec {codec:?}: {found}")]
+    UnexpectedStsdContent { codec: VideoCodec, found: String },
+
+    #[error("Failed converting sample to Annex-B: {0}")]
+    AnnexB(#[from] AnnexBStreamWriteError),
+
+    #[error("Unsupported codec {0:?}")]
+    UnsupportedCodec(VideoCodec),
 }
 
 /// Various information about how the video was encoded.
