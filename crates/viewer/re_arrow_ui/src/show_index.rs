@@ -240,7 +240,7 @@ impl ShowIndex for ShowBuiltIn<'_> {
         let dt = self.array.data_type();
 
         if self.array.is_null(idx) {
-            f.append_primitive("null");
+            f.append_null("null");
         } else if matches!(
             dt,
             DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
