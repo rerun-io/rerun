@@ -58,7 +58,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
         let transforms = context_systems.get::<TransformTreeContext>()?;
@@ -68,7 +68,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let entity_path = &data_result.entity_path;
 
-            let Some(transform_info) = transforms.transform_info_for_entity(entity_path.hash())
+            let Some(transform_info) = transforms
+                .transform_info_for_entity_or_report_visualizer_error(entity_path, &mut output)
             else {
                 continue;
             };
