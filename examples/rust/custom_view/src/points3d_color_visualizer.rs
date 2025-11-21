@@ -4,7 +4,7 @@ use rerun::external::{
     re_log_types::{EntityPath, Instance},
     re_renderer,
     re_viewer_context::{
-        IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+        IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
@@ -37,7 +37,9 @@ impl VisualizerSystem for Points3DColorVisualizer {
             // Instead, our custom query here is solely interested in Points3D's colors.
             VisualizerQueryInfo {
                 relevant_archetype: Default::default(),
-                required: std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
+                required: RequiredComponents::All(
+                    std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
+                ),
                 queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
             }
         }
