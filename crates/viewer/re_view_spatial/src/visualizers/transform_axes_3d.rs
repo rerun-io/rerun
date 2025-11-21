@@ -60,7 +60,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let output = VisualizerExecutionOutput::default();
+        let mut output = VisualizerExecutionOutput::default();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
@@ -74,12 +74,16 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
-            let Some(transform_info) =
-                transforms.transform_info_for_entity(data_result.entity_path.hash())
+            let Some(transform_info) = transforms
+                .transform_info_for_entity_or_report_visualizer_error(
+                    &data_result.entity_path,
+                    &mut output,
+                )
             else {
                 continue;
             };
+
+            // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let world_from_obj = if let Some(pinhole_tree_root_info) =
                 transforms.pinhole_tree_root_info(transform_info.tree_root())
             {

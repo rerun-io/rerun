@@ -110,13 +110,9 @@ where
     let system_identifier = System::identifier();
 
     for data_result in query.iter_visible_data_results(system_identifier) {
-        let Some(transform_info) =
-            transforms.transform_info_for_entity(data_result.entity_path.hash())
+        let Some(transform_info) = transforms
+            .transform_info_for_entity_or_report_visualizer_error(&data_result.entity_path, output)
         else {
-            output.report_error_for(
-                data_result.entity_path.clone(),
-                "No transform connecting to the view's origin found.",
-            );
             continue;
         };
 
