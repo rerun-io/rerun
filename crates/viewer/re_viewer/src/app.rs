@@ -1126,16 +1126,17 @@ impl App {
                 refresh_token,
                 email,
             } => {
-                println!("app.rs SetAuthCredentials");
-                let credentials =
-                    match re_auth::oauth::Credentials::new(access_token, refresh_token, email) {
-                        Ok(credentials) => credentials,
-                        Err(err) => {
-                            re_log::error!("Failed to create credentials: {err}");
-                            return;
-                        }
-                    };
-                // TODO(aedm): handle errors
+                let credentials = match re_auth::oauth::Credentials::try_new(
+                    access_token,
+                    refresh_token,
+                    email,
+                ) {
+                    Ok(credentials) => credentials,
+                    Err(err) => {
+                        re_log::error!("Failed to create credentials: {err}");
+                        return;
+                    }
+                };
                 if let Err(err) = credentials.ensure_stored() {
                     re_log::error!("Failed to store credentials: {err}");
                 }

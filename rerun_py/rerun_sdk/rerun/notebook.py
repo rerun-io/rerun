@@ -125,22 +125,24 @@ class Viewer:
             raise RerunMissingDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
 
-        # Auth
-        # print("AUTH:", auth.status())
-        credentials = bindings.get_credentials()
-        token = os.environ.get("REDAP_TOKEN", None)
-        if credentials is not None:
-            token = credentials.access_token
+        # Get access token from env variable
+        fallback_token = os.environ.get("REDAP_TOKEN", None)
+        if fallback_token is None:
+            # Get credentials from the SDK and pass the access token to wasm viewer
+            credentials = bindings.get_credentials()
+            if credentials is not None:
+                fallback_token = credentials.access_token
 
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
             url=url,
-            fallback_token=token,
+            fallback_token=fallback_token,
         )
 
+        # Set full credentials if we have them so the UI can show who's logged in
         if credentials is not None:
-            self._viewer.set_access_token(credentials.access_token, credentials.refresh_token, credentials.user_email)
+            self._viewer.set_credentials(credentials.access_token, credentials.refresh_token, credentials.user_email)
 
         # Viewer event handling
         self._event_callbacks: list[Callable[[ViewerEvent], None]] = []
@@ -490,5 +492,5 @@ class Viewer:
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
         self._event_callbacks.append(callback)
 
-    def set_access_token(self, access_token: str, refresh_token: str, email: str) -> None:
-        self._viewer.set_access_token(access_token, refresh_token, email)
+    def set_credentials(self, access_token: str, refresh_token: str, email: str) -> None:
+        self._viewer.set_credentials(access_token, refresh_token, email)

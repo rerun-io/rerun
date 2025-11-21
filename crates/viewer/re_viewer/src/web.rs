@@ -596,8 +596,7 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn set_access_token(&self, access_token: &str, refresh_token: &str, email: &str) {
-        println!("XX widget.ts set_access_token {}", access_token);
+    pub fn set_credentials(&self, access_token: &str, refresh_token: &str, email: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -606,27 +605,13 @@ impl WebHandle {
             egui_ctx,
             ..
         } = &mut *app;
-        println!("XX widget.ts 2");
-
-        // command_sender.send_system(SystemCommand::TimeControlCommands {
-        //     store_id: store_id.clone(),
-        //     time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
-        // });
-        command_sender.send_system(SystemCommand::ShowNotification(
-            re_ui::notifications::Notification::new(
-                re_ui::notifications::NotificationLevel::Info,
-                format!("Access token set to {}", access_token),
-            ),
-        ));
 
         command_sender.send_system(SystemCommand::SetAuthCredentials {
             access_token: access_token.to_owned(),
             refresh_token: refresh_token.to_owned(),
             email: email.to_owned(),
         });
-        println!("XX widget.ts 3");
         egui_ctx.request_repaint();
-        println!("XX widget.ts 4");
     }
 }
 

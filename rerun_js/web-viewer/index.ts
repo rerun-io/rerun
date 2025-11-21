@@ -915,8 +915,8 @@ export class WebViewer {
     }
   }
 
-  set_access_token(access_token: string, refresh_token: string, email: string) {
-    console.log("XX widget.ts set_access_token", access_token)
+  set_credentials(access_token: string, refresh_token: string, email: string) {
+    console.log("XX widget.ts set_credentials", access_token)
     if (!this.#handle) {
       console.log("XX widget.ts error")
       throw new Error(
@@ -924,7 +924,7 @@ export class WebViewer {
       );
     }
     console.log("XX widget.ts 2")
-    this.#handle.set_access_token(access_token, refresh_token, email);
+    this.#handle.set_credentials(access_token, refresh_token, email);
   }
 
 

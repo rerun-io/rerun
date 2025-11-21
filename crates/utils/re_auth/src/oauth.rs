@@ -217,12 +217,15 @@ impl Credentials {
         }))
     }
 
-    // TODO(aedm): doc
-    pub fn new(
+    /// Creates credentials from raw token strings.
+    ///
+    /// Warning: it does not check the signature of the access token.
+    pub fn try_new(
         access_token: String,
         refresh_token: String,
         email: String,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
+        // TODO(aedm): check signature of the JWT token
         let claims = Jwt(access_token.clone()).claims()?;
 
         let user = User {
