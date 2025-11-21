@@ -11,14 +11,15 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    BlueprintContext as _, DataResult, QueryContext, UiLayout, ViewContext, ViewSystemIdentifier,
-    VisualizerCollection, VisualizerSystem,
+    BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
 pub fn visualizer_ui(
     ctx: &ViewContext<'_>,
     view: &ViewBlueprint,
+    visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
     entity_path: &EntityPath,
     ui: &mut egui::Ui,
 ) {
@@ -79,7 +80,14 @@ specific to the visualizer and the current view type.";
         .with_button(button)
         .with_help_markdown(markdown)
         .show(ui, |ui| {
-            visualizer_ui_impl(ctx, ui, &data_result, &active_visualizers, &all_visualizers);
+            visualizer_ui_impl(
+                ctx,
+                ui,
+                &data_result,
+                &active_visualizers,
+                &all_visualizers,
+                visualizer_errors,
+            );
         });
 }
 
@@ -89,6 +97,7 @@ pub fn visualizer_ui_impl(
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
     all_visualizers: &VisualizerCollection,
+    visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
 ) {
     let override_path = data_result.override_path();
 
@@ -120,6 +129,14 @@ pub fn visualizer_ui_impl(
             ui.push_id(visualizer_id, |ui| {
                 // List all components that the visualizer may consume.
                 if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
+                    // Report whether this visualizer failed running.
+                    let error_string =
+                        visualizer_errors
+                            .get(&visualizer_id)
+                            .and_then(|error_state| {
+                                error_state.error_string_for(&data_result.entity_path)
+                            });
+
                     ui.list_item()
                         .with_y_offset(1.0)
                         .with_height(20.0)
@@ -140,6 +157,11 @@ pub fn visualizer_ui_impl(
                             })
                             .with_always_show_buttons(true),
                         );
+
+                    if let Some(error_string) = error_string {
+                        ui.error_label(error_string);
+                    }
+
                     visualizer_components(ctx, ui, data_result, visualizer);
                 } else {
                     ui.list_item_flat_noninteractive(

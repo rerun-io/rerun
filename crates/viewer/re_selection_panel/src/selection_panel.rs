@@ -15,9 +15,9 @@ use re_ui::{
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
-    SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId, ViewStates,
-    ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
+    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
+    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -635,8 +635,19 @@ fn entity_selection_ui(
         .cloned();
 
     if let Some(view) = viewport.view(view_id) {
-        let view_ctx = view.bundle_context_with_states(ctx, view_states);
-        visualizer_ui(&view_ctx, view, entity_path, ui);
+        let class = view.class(ctx.view_class_registry());
+        view_states.ensure_state_exists(*view_id, class);
+        let view_state = view_states
+            .get(*view_id)
+            .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
+        let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
+        let empty_errors = PerVisualizer::default();
+        let visualizer_errors = view_states
+            .visualizer_errors(*view_id)
+            .unwrap_or(&empty_errors);
+
+        visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);
     }
 
     if let Some(data_result) = &data_result {
