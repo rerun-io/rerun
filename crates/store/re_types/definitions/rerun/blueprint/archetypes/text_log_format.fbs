@@ -1,0 +1,14 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration of the text log rows.
+table TextLogFormat (
+  "attr.rerun.scope": "blueprint"
+) {
+  // --- Optional ---
+
+  /// Whether to use a monospace font for the log message body.
+  ///
+  /// Defaults to not being enabled.
+  monospace_body: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
+}

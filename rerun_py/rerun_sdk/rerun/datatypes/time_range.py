@@ -105,13 +105,17 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
     def _native_to_pa_array(data: TimeRangeArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import TimeRangeBoundaryBatch
 
+        typed_data: Sequence[TimeRange]
+
         if isinstance(data, TimeRange):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                TimeRangeBoundaryBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeRangeBoundaryBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeRangeBoundaryBatch([x.start for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeRangeBoundaryBatch([x.end for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 __all__ = ["TextLogView"]
 
 
+from .. import archetypes as blueprint_archetypes
 from ..api import View, ViewContentsLike
 
 if TYPE_CHECKING:
@@ -45,7 +46,23 @@ class TextLogView(View):
         rr.log("log/status", rr.TextLog(f"Processing item {i}.", level=rr.TextLogLevel.INFO))
 
     # Create a text view that displays all logs.
-    blueprint = rrb.Blueprint(rrb.TextLogView(origin="/log", name="Text Logs"), collapse_panels=True)
+    blueprint = rrb.Blueprint(
+        rrb.TextLogView(
+            origin="/log",
+            name="Text Logs",
+            columns=rrb.TextLogColumns(
+                timeline_columns=["time"],
+                text_log_columns=["loglevel", "entitypath", "body"],
+            ),
+            rows=rrb.TextLogRows(
+                filter_by_log_level=["INFO", "WARN", "ERROR"],
+            ),
+            format_options=rrb.TextLogFormat(
+                monospace_body=False,
+            ),
+        ),
+        collapse_panels=True,
+    )
 
     rr.send_blueprint(blueprint)
     ```
@@ -74,6 +91,9 @@ class TextLogView(View):
             AsComponents | Iterable[DescribedComponentBatch | AsComponents | Iterable[DescribedComponentBatch]],
         ]
         | None = None,
+        columns: blueprint_archetypes.TextLogColumns | None = None,
+        rows: blueprint_archetypes.TextLogRows | None = None,
+        format_options: blueprint_archetypes.TextLogFormat | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TextLogView view.
@@ -110,9 +130,31 @@ class TextLogView(View):
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
+        columns:
+            The columns to display in the view.
+        rows:
+            Filter for rows to display in the view.
+        format_options:
+            Formatting options for the text log view.
+
         """
 
         properties: dict[str, AsComponents] = {}
+        if columns is not None:
+            if not isinstance(columns, blueprint_archetypes.TextLogColumns):
+                columns = blueprint_archetypes.TextLogColumns(columns)
+            properties["TextLogColumns"] = columns
+
+        if rows is not None:
+            if not isinstance(rows, blueprint_archetypes.TextLogRows):
+                rows = blueprint_archetypes.TextLogRows(rows)
+            properties["TextLogRows"] = rows
+
+        if format_options is not None:
+            if not isinstance(format_options, blueprint_archetypes.TextLogFormat):
+                format_options = blueprint_archetypes.TextLogFormat(format_options)
+            properties["TextLogFormat"] = format_options
+
         super().__init__(
             class_identifier="TextLog",
             origin=origin,

@@ -53,12 +53,16 @@ class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
+        typed_data: Sequence[FlattenedScalar]
+
         if isinstance(data, FlattenedScalar):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                pa.array(np.asarray([x.value for x in data], dtype=np.float32)),
+                pa.array(np.asarray([x.value for x in typed_data], dtype=np.float32)),
             ],
             fields=list(data_type),
         )

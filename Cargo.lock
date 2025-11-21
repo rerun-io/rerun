@@ -8585,6 +8585,7 @@ version = "0.28.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
+ "egui_dnd",
  "egui_extras",
  "egui_kittest",
  "egui_plot",
@@ -10164,6 +10165,7 @@ dependencies = [
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
+ "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -10173,6 +10175,7 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
+ "re_viewport_blueprint",
 ]
 
 [[package]]
