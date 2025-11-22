@@ -40,6 +40,7 @@ pub mod video;
 pub mod view_builder;
 pub mod wgpu_buffer_types;
 
+mod box_cloud_builder;
 mod color;
 mod colormap;
 mod context;
@@ -75,6 +76,7 @@ pub use allocator::{
     CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
     create_and_fill_uniform_buffer_batch,
 };
+pub use box_cloud_builder::{BoxCloudBatchBuilder, BoxCloudBuilder};
 pub use color::{Rgba32Unmul, UnalignedColor32};
 pub use colormap::{
     Colormap, colormap_cyan_to_yellow_srgb, colormap_inferno_srgb, colormap_magma_srgb,

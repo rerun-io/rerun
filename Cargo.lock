@@ -10069,6 +10069,7 @@ dependencies = [
  "arrow",
  "bitflags 2.9.4",
  "bytemuck",
+ "criterion",
  "egui",
  "glam",
  "half",
