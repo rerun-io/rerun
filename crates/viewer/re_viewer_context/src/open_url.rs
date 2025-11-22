@@ -33,7 +33,7 @@ pub static EXAMPLES_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::
 /// This is the highest level way of handling arbitrary URLs inside the viewer.
 /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum ViewerOpenUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
     // TODO(andreas): Not all item types are supported right now. Many of them aren't intra recording, so we probably want a new schema for this
@@ -84,6 +84,29 @@ pub enum ViewerOpenUrl {
         /// but it's guaranteed to at least one if we hit this enum variant.
         url_parameters: vec1::Vec1<ViewerOpenUrl>,
     },
+}
+
+impl std::fmt::Debug for ViewerOpenUrl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IntraRecordingSelection(item) => write!(f, "IntraRecordingSelection{item:?}"),
+            Self::RrdHttpUrl(url) => write!(f, "RrdHttpUrl{url}"),
+            Self::FilePath(path) => write!(f, "FilePath({path:?})"),
+            Self::RedapDatasetPartition(uri) => write!(f, "RedapDatasetPartition({uri})"),
+            Self::RedapProxy(uri) => write!(f, "RedapProxy({uri})"),
+            Self::RedapCatalog(uri) => write!(f, "RedapCatalog({uri})"),
+            Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
+            Self::WebEventListener => write!(f, "WebEventListener"),
+            Self::WebViewerUrl {
+                base_url,
+                url_parameters,
+            } => f
+                .debug_struct("WebViewerUrl")
+                .field("base_url", base_url)
+                .field("url_parameters", url_parameters)
+                .finish(),
+        }
+    }
 }
 
 impl From<re_uri::RedapUri> for ViewerOpenUrl {
