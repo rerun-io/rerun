@@ -376,14 +376,27 @@ impl<'a> ServerEntriesData<'a> {
                                 .collect();
 
                             if let Some(loading_partitions) = loading_partitions
-                                && let Some(smart_channels) = loading_partitions.get(&entry.id())
+                                && let Some(sources) = loading_partitions.get(&entry.id())
                             {
-                                displayed_partitions.extend(smart_channels.iter().map(|source| {
+                                displayed_partitions.extend(sources.iter().map(|source| {
                                     PartitionData::Loading {
                                         receiver: source.clone(),
                                     }
                                 }));
                             }
+
+                            displayed_partitions.sort_by_key(|partition| match partition {
+                                PartitionData::Loading { receiver } => {
+                                    ctx.storage_context.hub.data_source_order(receiver)
+                                }
+                                PartitionData::Loaded { entity_db } => {
+                                    if let Some(data_source) = &entity_db.data_source {
+                                        ctx.storage_context.hub.data_source_order(data_source)
+                                    } else {
+                                        u64::MAX
+                                    }
+                                }
+                            });
 
                             dataset_entries.push(DatasetData {
                                 entry_data,
