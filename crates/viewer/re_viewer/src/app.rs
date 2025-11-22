@@ -484,7 +484,7 @@ impl App {
 
     #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
-        re_log::debug!("Adding new log receiver: {:?}", rx.source());
+        re_log::debug!("Adding new log receiver: {}", rx.source());
 
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
