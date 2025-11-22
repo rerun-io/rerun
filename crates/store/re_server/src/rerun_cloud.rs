@@ -61,9 +61,10 @@ impl RerunCloudHandlerBuilder {
         mut self,
         directory: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
+        on_error: crate::OnError,
     ) -> Result<Self, crate::store::Error> {
         self.store
-            .load_directory_as_dataset(directory, on_duplicate)?;
+            .load_directory_as_dataset(directory, on_duplicate, on_error)?;
 
         Ok(self)
     }

@@ -466,7 +466,7 @@ pub fn parse_f64(text: &str) -> Option<f64> {
         // Ignore whitespace (trailing, leading, and thousands separators):
         .filter(|c| !c.is_whitespace())
         // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == '−' { '-' } else { c })
+        .map(|c| if c == MINUS { '-' } else { c })
         .collect();
 
     text.parse().ok()
@@ -480,7 +480,7 @@ pub fn parse_i64(text: &str) -> Option<i64> {
         // Ignore whitespace (trailing, leading, and thousands separators):
         .filter(|c| !c.is_whitespace())
         // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == '−' { '-' } else { c })
+        .map(|c| if c == MINUS { '-' } else { c })
         .collect();
 
     text.parse().ok()
@@ -779,8 +779,18 @@ fn test_parse_duration() {
 /// Remove the custom formatting
 ///
 /// Removes the thin spaces and the special minus character. Useful when copying text.
-pub fn remove_number_formatting(copied_str: &str) -> String {
-    copied_str.replace('\u{2009}', "").replace('−', "-")
+pub fn remove_number_formatting(s: &str) -> String {
+    s.chars()
+        .filter_map(|c| {
+            if c == MINUS {
+                Some('-')
+            } else if c == THIN_SPACE {
+                None
+            } else {
+                Some(c)
+            }
+        })
+        .collect()
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum Error {
     #[error(transparent)]
     Parse(#[from] url::ParseError),

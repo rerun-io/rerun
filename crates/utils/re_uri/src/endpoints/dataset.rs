@@ -64,6 +64,7 @@ impl DatasetPartitionUri {
                     partition_id = Some(value.to_string());
                 }
                 "time_range" => {
+                    let value = value.replace(' ', ""); // Seems like "+" becomes " " when parsed by `url::Url`
                     time_range = Some(value.parse::<TimeSelection>()?);
                 }
                 _ => {

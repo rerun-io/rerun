@@ -2,7 +2,7 @@ use crate::Item;
 use re_log_types::{StoreId, TableId};
 
 /// Which display mode are we currently in?
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum DisplayMode {
     /// The settings dialog for application-wide configuration.
     Settings,
@@ -23,6 +23,20 @@ pub enum DisplayMode {
 
     /// The current recording's data store browser.
     ChunkStoreBrowser,
+}
+
+impl std::fmt::Debug for DisplayMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Settings => write!(f, "Settings"),
+            Self::Loading(source) => write!(f, "Loading({source})"),
+            Self::LocalRecordings(store_id) => write!(f, "LocalRecordings({store_id:?})"),
+            Self::LocalTable(table_id) => write!(f, "LocalTable({table_id})"),
+            Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
+            Self::RedapServer(origin) => write!(f, "RedapServer({origin})"),
+            Self::ChunkStoreBrowser => write!(f, "ChunkStoreBrowser"),
+        }
+    }
 }
 
 // TODO(grtlr,ab): This needs to be further cleaned up and split into separately handled

@@ -136,6 +136,7 @@ impl std::str::FromStr for Duration {
     type Err = jiff::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = &re_format::remove_number_formatting(s);
         let jiff_timestamp = jiff::SignedDuration::from_str(s)?;
         Ok(Self(jiff_timestamp.as_nanos() as i64))
     }

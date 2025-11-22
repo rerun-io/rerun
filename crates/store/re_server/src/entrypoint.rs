@@ -70,6 +70,7 @@ impl Args {
                 builder = builder.with_directory_as_dataset(
                     dataset,
                     re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                    crate::OnError::Continue,
                 )?;
             }
 
