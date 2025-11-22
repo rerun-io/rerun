@@ -224,6 +224,7 @@ pub struct DesignTokens {
 
     pub code_index_color: Color32,
     pub code_string_color: Color32,
+    pub code_null_color: Color32,
     pub code_primitive_color: Color32,
     pub code_keyword_color: Color32,
 
@@ -386,6 +387,7 @@ impl DesignTokens {
 
             code_index_color: get_color("code_index_color"),
             code_string_color: get_color("code_string_color"),
+            code_null_color: get_color("code_null_color"),
             code_primitive_color: get_color("code_primitive_color"),
 
             code_keyword_color: get_color("code_keyword_color"),

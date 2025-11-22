@@ -120,6 +120,8 @@ macro_rules! impl_style_fns {
 }
 
 impl SyntaxHighlightedBuilder {
+    impl_style_fns!("null", null, with_null, append_null, Null);
+
     impl_style_fns!(
         "Some primitive value, e.g. a number or bool.",
         primitive,
@@ -272,6 +274,7 @@ enum SyntaxHighlightedStyle {
     Identifier,
     Keyword,
     Index,
+    Null,
     Primitive,
     Syntax,
     Body,
@@ -288,6 +291,7 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
             Self::Identifier => write!(f, "Identifier"),
             Self::Keyword => write!(f, "Keyword"),
             Self::Index => write!(f, "Index"),
+            Self::Null => write!(f, "Null"),
             Self::Primitive => write!(f, "Primitive"),
             Self::Syntax => write!(f, "Syntax"),
             Self::Body => write!(f, "Body"),
@@ -336,6 +340,7 @@ impl SyntaxHighlightedStyle {
             // TODO(lucas): Find a better way to deal with body / monospace style
             Self::Keyword => Self::body_with_color(style, style.tokens().code_keyword_color),
             Self::Index => Self::monospace_with_color(style, style.tokens().code_index_color),
+            Self::Null => Self::monospace_with_color(style, style.tokens().code_null_color),
             Self::Primitive => {
                 Self::monospace_with_color(style, style.tokens().code_primitive_color)
             }

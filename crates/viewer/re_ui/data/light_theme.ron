@@ -295,6 +295,9 @@
     "code_index_color": {
       "color": "#894783"
     },
+    "code_null_color": {
+      "color": "#855E00"
+    },
     "code_primitive_color": {
       "color": "#007745"
     },
