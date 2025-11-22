@@ -130,10 +130,8 @@ impl std::str::FromStr for Timestamp {
     type Err = jiff::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Ignore thin spaces that we put between milliseconds and microseconds for readability:
-        let s: String = s.chars().filter(|&c| c != re_format::THIN_SPACE).collect();
-
-        let jiff_timestamp = jiff::Timestamp::from_str(&s)?;
+        let s = &re_format::remove_number_formatting(s);
+        let jiff_timestamp = jiff::Timestamp::from_str(s)?;
         Ok(Self(jiff_timestamp.as_nanosecond() as i64))
     }
 }
@@ -273,16 +271,15 @@ impl Timestamp {
     ///
     /// If it is missing a timezone specifier, the given timezone is assumed.
     pub fn parse_with_format(s: &str, timestamp_format: TimestampFormat) -> Option<Self> {
-        // Ignore thin spaces that we put between milliseconds and microseconds for readability:
-        let s: String = s.chars().filter(|&c| c != re_format::THIN_SPACE).collect();
+        let s = &re_format::remove_number_formatting(s);
 
-        if let Ok(utc) = Self::from_str(&s) {
+        if let Ok(utc) = Self::from_str(s) {
             // It has a `Z` suffix
             Some(utc)
-        } else if let Ok(zoned) = jiff::Zoned::from_str(&s) {
+        } else if let Ok(zoned) = jiff::Zoned::from_str(s) {
             // It had a timezone suffix
             Some(Self::from(zoned))
-        } else if let Ok(date_time) = jiff::civil::DateTime::from_str(&s) {
+        } else if let Ok(date_time) = jiff::civil::DateTime::from_str(s) {
             date_time
                 .to_zoned(timestamp_format.to_jiff_time_zone())
                 .ok()
