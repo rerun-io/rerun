@@ -132,29 +132,21 @@ impl std::str::FromStr for ViewerOpenUrl {
     /// * intra-recording links (typically links to an entity)
     /// * web event listeners
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        // Catalog URI.
         if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
-        }
-        // Entry URI.
-        else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
+        } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
-        }
-        // Intra-recording selection.
-        else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
+        } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
                 Err(err) => {
                     anyhow::bail!("Failed to parse selection path {selection:?}: {err}")
                 }
             }
-        }
+        } else if url.starts_with(WEB_EVENT_LISTENER_SCHEME) {
         // Web event listener (legacy notebooks).
-        else if url.starts_with(WEB_EVENT_LISTENER_SCHEME) {
             Ok(Self::WebEventListener)
-        }
-        // Log data source.
-        else if let Some(data_source) =
+        } else if let Some(data_source) =
             LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
         {
             match data_source {
@@ -177,13 +169,10 @@ impl std::str::FromStr for ViewerOpenUrl {
 
                 LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
             }
-        }
+        } else if let Ok(url) = parse_webviewer_url(url) {
         // Web viewer URL with `url` parameters.
-        else if let Ok(url) = parse_webviewer_url(url) {
             Ok(url)
-        }
-        // Failed to parse.
-        else {
+        } else {
             anyhow::bail!("Failed to parse URL: {url}")
         }
     }
@@ -500,7 +489,7 @@ impl ViewerOpenUrl {
         options: &OpenUrlOptions,
         command_sender: &CommandSender,
     ) {
-        re_log::debug!("Opening URL: {:?}", &self);
+        re_log::debug!("Opening URL: {self:?}");
 
         if options.show_loader
             && let Some(data_source) = self.get_data_source()
