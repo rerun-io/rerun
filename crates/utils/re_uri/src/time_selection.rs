@@ -1,11 +1,11 @@
-use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell, Timeline};
 
 use crate::Error;
 
 /// A time range selection as used in URIs, qualified with a timeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeSelection {
-    pub timeline: re_log_types::Timeline,
+    pub timeline: Timeline,
     pub range: AbsoluteTimeRange,
 }
 
@@ -61,9 +61,72 @@ impl std::str::FromStr for TimeSelection {
             )));
         }
 
-        let timeline = re_log_types::Timeline::new(timeline, min.typ());
+        let timeline = Timeline::new(timeline, min.typ());
         let range = AbsoluteTimeRange::new(min, max);
 
         Ok(Self { timeline, range })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr as _;
+
+    use re_log_types::TimeInt;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_format_time_selection() {
+        let test_cases = [
+            (
+                "sequence@1096..2097",
+                TimeSelection {
+                    timeline: Timeline::new_sequence("sequence"),
+                    range: AbsoluteTimeRange {
+                        min: TimeInt::from_sequence(1096.try_into().unwrap()),
+                        max: TimeInt::from_sequence(2097.try_into().unwrap()),
+                    },
+                },
+            ),
+            (
+                "duration@+1.096s..+2.097s",
+                TimeSelection {
+                    timeline: Timeline::new_duration("duration"),
+                    range: AbsoluteTimeRange {
+                        min: TimeInt::from_secs(1.096),
+                        max: TimeInt::from_secs(2.097),
+                    },
+                },
+            ),
+            (
+                "duration@-1.096s..+2.097s",
+                TimeSelection {
+                    timeline: Timeline::new_duration("duration"),
+                    range: AbsoluteTimeRange {
+                        min: TimeInt::from_secs(-1.096),
+                        max: TimeInt::from_secs(2.097),
+                    },
+                },
+            ),
+            (
+                "duration@−1.096s..+2.097s",
+                TimeSelection {
+                    timeline: Timeline::new_duration("duration"),
+                    range: AbsoluteTimeRange {
+                        min: TimeInt::from_secs(-1.096),
+                        max: TimeInt::from_secs(2.097),
+                    },
+                },
+            ),
+        ];
+
+        for (string, selection) in test_cases {
+            assert_eq!(TimeSelection::from_str(string), Ok(selection));
+            assert_eq!(
+                TimeSelection::from_str(&selection.to_string()).unwrap(),
+                selection
+            );
+        }
     }
 }
