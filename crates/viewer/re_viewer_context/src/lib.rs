@@ -98,7 +98,8 @@ pub use self::{
     },
     undo::BlueprintUndoState,
     utils::{
-        auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
+        RvlDecodeError, RvlMetadata, auto_color_egui, auto_color_for_entity_path,
+        decode_ros_rvl_f32, decode_ros_rvl_u16, level_to_rich_text, parse_ros_rvl_metadata,
         video_stream_time_from_query, video_timestamp_component_to_video_time,
     },
     view::{
