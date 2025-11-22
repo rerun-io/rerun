@@ -144,7 +144,7 @@ impl std::str::FromStr for ViewerOpenUrl {
                 }
             }
         } else if url.starts_with(WEB_EVENT_LISTENER_SCHEME) {
-        // Web event listener (legacy notebooks).
+            // Web event listener (legacy notebooks).
             Ok(Self::WebEventListener)
         } else if let Some(data_source) =
             LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
@@ -170,7 +170,7 @@ impl std::str::FromStr for ViewerOpenUrl {
                 LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
             }
         } else if let Ok(url) = parse_webviewer_url(url) {
-        // Web viewer URL with `url` parameters.
+            // Web viewer URL with `url` parameters.
             Ok(url)
         } else {
             anyhow::bail!("Failed to parse URL: {url}")
@@ -735,7 +735,7 @@ mod tests {
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_smart_channel::SmartChannelSource;
     use re_uri::{
-        Fragment,
+        CatalogUri, DatasetPartitionUri, Fragment,
         external::url::{self, Url},
     };
 
@@ -1208,5 +1208,73 @@ mod tests {
             .unwrap(),
             "https://foo.com/test?url=https%3A%2F%2Fexample.com%2Fbar.rrd&url=rerun%3A%2F%2Flocalhost%3A51234%2Fproxy",
         );
+    }
+
+    #[test]
+    fn test_query_and_fragment_uri() {
+        let uri_out = [
+            (
+                "rerun+http://localhost:51234/",
+                ViewerOpenUrl::RedapCatalog(CatalogUri {
+                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                }),
+            ),
+            // (
+            //     "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3",
+            //     ViewerOpenUrl::RedapEntry(re_uri::EntryUri {
+            //         origin: "rerun+http://localhost:51234".parse().unwrap(),
+            //         entry_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+            //     }),
+            // ),
+            (
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1",
+                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    time_range: None,
+                    fragment: Default::default(),
+                }),
+            ),
+            (
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s",
+                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
+                    fragment: Default::default(),
+                }),
+            ),
+            (
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s#when=stable_time@+3.990s",
+                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
+                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
+                    fragment: re_uri::Fragment {
+                        when: Some((
+                            "stable_time".into(),
+                            re_log_types::TimeCell::from_str("+3.990s").unwrap(),
+                        )),
+                        ..Default::default()
+                    },
+                }),
+            ),
+        ];
+
+        for (uri, expected) in uri_out {
+            eprintln!("uri: {uri}");
+            match ViewerOpenUrl::from_str(uri) {
+                Ok(got) => {
+                    assert_eq!(got, expected);
+                }
+                Err(err) => {
+                    DatasetPartitionUri::from_str(uri).unwrap();
+                    panic!("{err}");
+                }
+            }
+        }
     }
 }
