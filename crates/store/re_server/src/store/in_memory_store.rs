@@ -21,6 +21,7 @@ use re_protos::{
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
+use crate::OnError;
 use crate::entrypoint::NamedPath;
 use crate::store::table::TableType;
 use crate::store::{ChunkKey, Dataset, Error, Table};
@@ -124,6 +125,7 @@ impl InMemoryStore {
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
+        on_error: OnError,
     ) -> Result<(), Error> {
         let directory = named_path.path.canonicalize()?;
         if !directory.is_dir() {
@@ -155,7 +157,21 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    dataset.load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)?;
+                    if let Err(err) =
+                        dataset.load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
+                    {
+                        match on_error {
+                            OnError::Continue => {
+                                re_log::warn!(
+                                    "Failed loading file in {}: {err}",
+                                    directory.display()
+                                );
+                            }
+                            OnError::Abort => {
+                                return Err(err);
+                            }
+                        }
+                    }
                 }
             }
         }
