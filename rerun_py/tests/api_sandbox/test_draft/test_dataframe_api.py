@@ -23,8 +23,8 @@ def test_dataframe_api_filter_partition_id(basic_dataset: DatasetEntry) -> None:
 
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ METADATA:                                                                                                                                       │
-│ * version: 0.1.1                                                                                                                                │
+│ METADATA:          # TODO(emilk): can we skip this?                                                                                             │
+│ * version: 0.1.1   # TODO(emilk): can we skip this? Or call it `rerun_schema_version`?                                                          │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌────────────────────┬──────────────────────────────┬───────────────────────────────────┬─────────────────────────────────────────────────────┐ │
 │ │ rerun_segment_id   ┆ timeline                     ┆ /points:Points2D:colors           ┆ /points:Points2D:positions                          │ │
@@ -73,6 +73,9 @@ def test_dataframe_api_using_index_values(complex_dataset: DatasetEntry) -> None
         index="timeline",
     ).sort("rerun_segment_id", "timeline")
 
+    # Should row_id be part of this?
+    # An API like `dataset_view.select_row_ids(row_ids)` would be the fastest way to fetch those rows of data.
+
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                             │
@@ -110,6 +113,9 @@ def test_dataframe_api_using_index_values(complex_dataset: DatasetEntry) -> None
 """)
 
     # Create a view with all partitions
+    # TODO(Niko): Future API idea: "Sample the data at 20 Hz starting at this time point with latest-at"
+
+    # This is a cumbersome API. Can we do better?
     df = dataset_view.reader(
         index="timeline",
         using_index_values={
@@ -130,6 +136,24 @@ def test_dataframe_api_using_index_values(complex_dataset: DatasetEntry) -> None
         },
         fill_latest_at=True,
     ).sort("rerun_segment_id", "timeline")
+
+
+    dataset_view.where(col("image") != None).latest_at()
+
+    # df = dataset_view.reader(
+    #     segment_id="complex_recording_0",
+    #     timeline=[
+    #         datetime.datetime(1999, 12, 31, 23, 59, 59),
+    #         datetime.datetime(2000, 1, 1, 0, 0, 1, microsecond=500),
+    #     ],
+    #     fill_latest_at=True,
+    # ).concat(dataset_view.reader(
+    #     segment_id="complex_recording_2",
+    #     timeline=[
+    #         datetime.datetime(1999, 12, 31, 23, 59, 59),
+    #     ],
+    #     fill_latest_at=True,
+    # )).sort("rerun_segment_id", "timeline")
 
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
