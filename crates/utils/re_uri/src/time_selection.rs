@@ -3,7 +3,7 @@ use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell};
 use crate::Error;
 
 /// A time range selection as used in URIs, qualified with a timeline.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeSelection {
     pub timeline: re_log_types::Timeline,
     pub range: AbsoluteTimeRange,
