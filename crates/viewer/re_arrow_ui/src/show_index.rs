@@ -398,7 +398,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
-                f.append_primitive(self.null);
+                f.append_null(self.null);
             }
             return Ok(());
         }
