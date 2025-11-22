@@ -70,6 +70,8 @@ class CatalogClient:
         """Returns a DataFrame containing all table entries in the catalog."""
         return self._inner.tables()
 
+    # Why are _some_ functions prefixed with `get_` and not others?
+    # Is the logic "if it takes an argument"? Maybe this is Pythonic, IDK
     def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset entry by its ID or name."""
         return DatasetEntry(self._inner.get_dataset_entry(id=id, name=name))
@@ -210,6 +212,7 @@ class DatasetEntry(Entry):
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
         self._inner = inner
 
+    # What is this? What is it for?
     @property
     def manifest_url(self) -> str:
         return self._inner.manifest_url
@@ -217,18 +220,22 @@ class DatasetEntry(Entry):
     def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
 
-    def blueprint_dataset_id(self) -> EntryId | None:
-        return self._inner.blueprint_dataset_id()
+    # Remove these blueprint stuff, and just have
+    def set_default_blueprint(self, blueprint: Blueprint | Path) -> None:
+        pass
 
-    def blueprint_dataset(self) -> DatasetEntry | None:
-        result = self._inner.blueprint_dataset()
-        return DatasetEntry(result) if result is not None else None
+    # def blueprint_dataset_id(self) -> EntryId | None:
+    #     return self._inner.blueprint_dataset_id()
 
-    def default_blueprint_segment_id(self) -> str | None:
-        return self._inner.default_blueprint_partition_id()
+    # def blueprint_dataset(self) -> DatasetEntry | None:
+    #     result = self._inner.blueprint_dataset()
+    #     return DatasetEntry(result) if result is not None else None
 
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
-        return self._inner.set_default_blueprint_partition_id(segment_id)
+    # def default_blueprint_segment_id(self) -> str | None:
+    #     return self._inner.default_blueprint_partition_id()
+
+    # def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
+    #     return self._inner.set_default_blueprint_partition_id(segment_id)
 
     def schema(self) -> Schema:
         return Schema(self._inner.schema(), _LazyDatasetState())
@@ -242,7 +249,8 @@ class DatasetEntry(Entry):
         view = DatasetView(self._inner, _LazyDatasetState())
         return view.segment_table(join_meta=join_meta, join_key=join_key)
 
-    def manifest(self) -> Any:
+    # What is this? What is it for?
+    def manifest(self) -> DataFusionTable:
         return self._inner.manifest()
 
     def segment_url(
@@ -254,15 +262,35 @@ class DatasetEntry(Entry):
     ) -> str:
         return self._inner.partition_url(segment_id, timeline, start, end)
 
+    # wanted: def add_segments([recording])
+    # requires default_s3_bucket somewhere
+
+    # We have a bunch of potentially slow stuff here: register, create_fts_index, …
+    # What is the API we want?
+    # One option is to return a `Job` object with
+    # .block(), .id, .cancel()
+    # catalog.register(…).block(timeout=60)
+    # catalog.register(…) # non-blocking
+    # job = catalog.register(…)
+    # while not job.is_done():
+    #     …
+    # job.block_and_tqdm()
+
+    # Call these `register_segment` and `register_segments` for clarity
+    # What happens on timeout? Does the server still finish the registration?
     def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
 
+    # Do we really want/need a layer per URI?
     def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] | None = None) -> Any:
         if recording_layers is None:
             recording_layers = []
         return self._inner.register_batch(recording_uris, recording_layers=recording_layers)
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Any:
+    # I assume this registers everything in a s3 bucket?
+    # Why isn't this just the same call as `register`?
+    # Why is this `layer_name` but called `recording_laye` earlier?
+    def register_prefix(self, recordings_prefix: str, *, layer_name: str | None = None) -> Any:
         return self._inner.register_prefix(recordings_prefix, layer_name)
 
     def download_segment(self, segment_id: str) -> Any:
@@ -286,10 +314,13 @@ class DatasetEntry(Entry):
             fill_latest_at=fill_latest_at,
         )
 
+    # May be mistaking read in the imperative ("please index these ranges")
+    # No better suggestion though.
     def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         view = DatasetView(self._inner, _LazyDatasetState())
         return view.index_ranges(index)
 
+    # Not part of MVP. "Experimental - talk to sales"
     def create_fts_index(
         self,
         *,
@@ -305,6 +336,7 @@ class DatasetEntry(Entry):
             base_tokenizer=base_tokenizer,
         )
 
+    # Not part of MVP. "Experimental - talk to sales"
     def create_vector_index(
         self,
         *,
@@ -322,9 +354,11 @@ class DatasetEntry(Entry):
             distance_metric=distance_metric,
         )
 
+    # Is this only secondary indices? Should the name reflect that?
     def list_indexes(self) -> list:
         return self._inner.list_indexes()
 
+    # Do we need this for MVP?
     def delete_indexes(self, column: Any) -> list[Any]:
         return self._inner.delete_indexes(column)
 
@@ -334,6 +368,7 @@ class DatasetEntry(Entry):
     def search_vector(self, query: Any, column: Any, top_k: int) -> Any:
         return self._inner.search_vector(query, column, top_k)
 
+    # Should also return Job
     def do_maintenance(
         self,
         optimize_indexes: bool = False,
@@ -723,7 +758,7 @@ class TableEntry(Entry):
         """
         return self._inner.df()
 
-    def schema(self) -> pa.Schema:
+    def arrow_schema(self) -> pa.Schema:
         """Returns the schema of the table."""
         return self.reader().schema()
 

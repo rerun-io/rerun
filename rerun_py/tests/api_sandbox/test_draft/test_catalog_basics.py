@@ -23,7 +23,7 @@ def test_catalog_basics(tmp_path: Path) -> None:
         assert str(df.schema()) == inline_snapshot("""\
 id: fixed_size_binary[16] not null
 name: string not null
-entry_kind: int32 not null
+entry_kind: int32 not null  # Why is this int32 and not an enum? Poor py-arrow support?
 created_at: timestamp[ns] not null
 updated_at: timestamp[ns] not null
 -- schema metadata --
@@ -43,7 +43,7 @@ sorbet:version: '0.1.1'\
 │ │ ---        ┆ ---        │ │
 │ │ type: Utf8 ┆ type: i32  │ │
 │ ╞════════════╪════════════╡ │
-│ │ __entries  ┆ 3          │ │
+│ │ __entries  ┆ 3          │ │ # TODO(emilk): Can we remove __entries?
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤ │
 │ │ my_dataset ┆ 1          │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤ │
