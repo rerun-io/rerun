@@ -463,18 +463,25 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        if let Ok(url) = ViewerOpenUrl::from_str(url) {
-            url.open(
-                &self.egui_ctx,
-                &OpenUrlOptions {
-                    follow_if_http: false,
-                    select_redap_source_when_loaded: true,
-                    show_loader: true,
-                },
-                &self.command_sender,
-            );
-        } else {
-            re_log::warn!("Failed to open URL: {url}");
+        match ViewerOpenUrl::from_str(url) {
+            Ok(url) => {
+                url.open(
+                    &self.egui_ctx,
+                    &OpenUrlOptions {
+                        follow_if_http: false,
+                        select_redap_source_when_loaded: true,
+                        show_loader: true,
+                    },
+                    &self.command_sender,
+                );
+            }
+            Err(err) => {
+                if err.to_string().contains(url) {
+                    re_log::error!("{err}");
+                } else {
+                    re_log::error!("Failed to open URL {url}: {err}");
+                }
+            }
         }
     }
 
