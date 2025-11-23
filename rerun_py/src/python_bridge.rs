@@ -806,7 +806,6 @@ fn set_global_blueprint_recording(
 /// Returns the currently active blueprint recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
-    println!("get_thread_local_blueprint_recording+++"); // TODO:
     RecordingStream::thread_local(re_sdk::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
@@ -2271,8 +2270,6 @@ impl PyOauthLoginFlow {
 
 #[pyfunction]
 fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
-    println!("PyOauthLoginFlow::new");
-
     let login_flow = Runtime::new()?
         .block_on(async { OauthLoginFlow::init(false).await })
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
@@ -2285,13 +2282,6 @@ fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
             Ok(Some(PyOauthLoginFlow { login_flow }))
         }
     }
-    // let login_flow =
-    //     OauthLoginFlow::init(false).map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    // println!(
-    //     "PyOauthLoginFlow::new runtime started: {}",
-    //     login_flow.get_login_url()
-    // );
-    // Ok(Self { login_flow })
 }
 
 #[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
