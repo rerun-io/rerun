@@ -2,6 +2,7 @@ use re_log_types::AbsoluteTimeRange;
 use re_types::{
     blueprint::{archetypes::TimeAxis, components::LinkAxis},
     components::AggregationPolicy,
+    datatypes::{TimeRange, TimeRangeBoundary},
 };
 use re_viewer_context::{
     ViewContext, ViewQuery, ViewerContext, external::re_entity_db::InstancePath,
@@ -32,7 +33,34 @@ pub fn determine_time_per_pixel(
 
 pub fn determine_time_range(
     ctx: &ViewContext<'_>,
+    data_result: &re_viewer_context::DataResult,
 ) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
+    let current_time = ctx
+        .viewer_ctx
+        .time_ctrl
+        .time_int()
+        .unwrap_or(re_log_types::TimeInt::ZERO);
+
+    let query_range = data_result.query_range();
+
+    // Latest-at doesn't make sense for time series and should also never happen.
+    let visible_time_range = match query_range {
+        re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
+        re_viewer_context::QueryRange::LatestAt => {
+            re_log::error_once!(
+                "Unexpected LatestAt query for time series data result at path {:?}",
+                data_result.entity_path
+            );
+            TimeRange {
+                start: TimeRangeBoundary::AT_CURSOR,
+                end: TimeRangeBoundary::AT_CURSOR,
+            }
+        }
+    };
+
+    let data_time_range =
+        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, current_time);
+
     let time_axis = ViewProperty::from_archetype::<TimeAxis>(
         ctx.viewer_ctx.blueprint_db(),
         ctx.viewer_ctx.blueprint_query,
@@ -58,22 +86,14 @@ pub fn determine_time_range(
         .ok()
         .flatten();
 
-    let current_time = ctx
-        .viewer_ctx
-        .time_ctrl
-        .time_int()
-        .unwrap_or(re_log_types::TimeInt::ZERO)
-        .into();
+    let view_time_range = view_time_range
+        .map(|range| AbsoluteTimeRange::from_relative_time_range(&range, current_time))
+        // If we don't have an overridden time range, we want to show everything.
+        .unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
     Ok(view_time_range
-        .map(|range| {
-            AbsoluteTimeRange::new(
-                range.start.start_boundary_time(current_time),
-                range.end.end_boundary_time(current_time),
-            )
-        })
-        // If we don't have an overridden time range, we want to show everything.
-        .unwrap_or(AbsoluteTimeRange::EVERYTHING))
+        .intersection(data_time_range)
+        .unwrap_or(AbsoluteTimeRange::EMPTY))
 }
 
 // We have a bunch of raw points, and now we need to group them into individual series.

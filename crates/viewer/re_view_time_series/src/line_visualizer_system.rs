@@ -119,7 +119,7 @@ impl SeriesLinesSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
-        let time_range = util::determine_time_range(ctx)?;
+        let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
             use re_view::RangeResultsExt as _;
