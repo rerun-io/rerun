@@ -2028,29 +2028,29 @@ class _ServerInternal:
 #####################################################################################################################
 
 class OauthLoginFlow:
-    """Eeee."""
+    """
+    OAuth login flow implementation.
 
-    def __init__(self) -> None:
-        """
-        Create a new OAuth login flow.
-
-        Boo.
-        """
+    The auth flow is browser-based, and the user will be redirected to the OAuth provider.
+    """
 
     def login_url(self) -> str:
         """
         Get the URL for the OAuth login flow.
         """
 
-    def get_credentials(self) -> str:
+    def finish_login_flow(self) -> str:
         """
-        Get the credentials for the OAuth login flow.
+        Finish the OAuth login flow.
 
-        TODO.
+        Returns
+        -------
+        str
+            The access token.
         """
 
 class Credentials:
-    """Eeee."""
+    """The credentials for the OAuth login flow."""
 
     @property
     def access_token(self) -> str:
