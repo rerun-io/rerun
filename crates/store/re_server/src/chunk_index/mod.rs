@@ -1,4 +1,6 @@
+#[cfg(feature = "lance")]
 mod index;
+#[cfg(feature = "lance")]
 mod search;
 
 use crate::rerun_cloud::SearchDatasetResponseStream;
@@ -29,10 +31,15 @@ pub const FIELD_INSTANCE: &str = "instance";
 pub const FIELD_INSTANCE_ID: &str = "instance_id";
 
 /// An index for a column of a dataset's chunks
+#[cfg(feature = "lance")]
 pub struct Index {
     config: IndexConfig,
     // Mutex because we need to update the lance object after writing and checking out the latest version.
     lance_dataset: parking_lot::Mutex<lance::dataset::Dataset>,
+}
+
+#[cfg(not(feature = "lance"))]
+pub struct Index {
 }
 
 /// All indexes for a dataset's chunks
@@ -52,6 +59,7 @@ pub struct DatasetChunkIndexes {
     indexes: tokio::sync::RwLock<HashMap<EntityPath, HashMap<ComponentIdentifier, Arc<Index>>>>,
 }
 
+#[cfg(feature = "lance")]
 impl DatasetChunkIndexes {
     pub fn new(dataset_id: EntryId) -> Self {
         Self {
@@ -240,6 +248,27 @@ impl DatasetChunkIndexes {
     }
 }
 
+#[cfg(not(feature = "lance"))]
+impl DatasetChunkIndexes {
+    pub fn new(dataset_id: EntryId) -> Self {
+        Self {
+            dataset_id,
+            dir: OnceLock::new(),
+            indexes: tokio::sync::RwLock::new(HashMap::new()),
+        }
+    }
+
+    pub async fn chunks_loaded(
+        &self,
+        partition_id: PartitionId,
+        store: ChunkStoreHandle,
+        layer_name: &str,
+        _overwritten: bool,
+    ) -> Result<(), StoreError> {
+        Err(StoreError::IndexingError("Lance feature not enabled".to_owned()))
+    }
+}
+
 //---- Helper functions
 
 /// Create a non-hierarchical path for an entity component
@@ -255,6 +284,7 @@ fn entity_component_path(entity_path: &EntityPath, component: &ComponentIdentifi
     result
 }
 
+#[cfg(feature = "lance")]
 #[cfg(test)]
 mod tests {
     use super::*;

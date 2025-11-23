@@ -39,6 +39,7 @@ pub enum Error {
     #[error(transparent)]
     ArrowError(#[from] arrow::error::ArrowError),
 
+    #[cfg(feature = "lance")]
     #[error(transparent)]
     LanceError(#[from] lance::Error),
 
@@ -82,6 +83,7 @@ impl From<Error> for tonic::Status {
 
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
             Error::ArrowError(err) => Self::internal(format!("Arrow error: {err:#}")),
+            #[cfg(feature = "lance")]
             Error::LanceError(err) => Self::internal(format!("Lance error: {err:#}")),
             Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
 

@@ -4,8 +4,6 @@ mod entrypoint;
 mod rerun_cloud;
 mod server;
 mod store;
-
-#[cfg(feature = "lance")]
 mod chunk_index;
 
 pub use self::{
