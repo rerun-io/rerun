@@ -90,6 +90,8 @@ Column name: property:RecordingInfo:start_time
 	Static: true\
 """)
 
+    # assert str(ds.arrow_schema()) == inline_snapshot()
+
 
 def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:

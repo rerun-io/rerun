@@ -3,7 +3,6 @@ from __future__ import annotations
 import pyarrow as pa
 import rerun_draft as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.catalog import TableInsertMode
 
 
 def test_create_table_and_append() -> None:
@@ -62,7 +61,7 @@ def test_write_table_with_record_batches() -> None:
             pa.field("score", pa.float64()),
         ])
 
-        client.create_table("scores_table", schema)
+        table = client.create_table("scores_table", schema)
 
         # Create record batches
         batch1 = pa.RecordBatch.from_pydict(
@@ -74,7 +73,7 @@ def test_write_table_with_record_batches() -> None:
         )
 
         # Append batches to table
-        client.write_table("scores_table", [batch1, batch2], TableInsertMode.APPEND)
+        table.append([batch1, batch2])
 
         # Query the table
         df = client.get_table(name="scores_table").reader()
@@ -110,46 +109,72 @@ def test_table_overwrite_mode() -> None:
     with rr.server.Server() as server:
         client = server.client()
 
-        schema = pa.schema([pa.field("id", pa.int32()), pa.field("category", pa.string())])
+        schema = pa.schema([
+            pa.field("id", pa.int32(), metadata={"rerun:is_table_index": "true"}),
+            pa.field("category", pa.string()),
+        ])
 
-        client.create_table("data_table", schema)
+        table = client.create_table("data_table", schema)
 
         # Initial data
         batch1 = pa.RecordBatch.from_pydict({"id": [1, 2, 3], "category": ["A", "B", "C"]}, schema=schema)
 
-        client.write_table("data_table", batch1, TableInsertMode.APPEND)
+        table.append(batch1)
 
         df_after_append = client.get_table(name="data_table").reader()
         assert str(df_after_append.sort("id")) == inline_snapshot("""\
-┌────────────────────┬─────────────────────┐
-│ id                 ┆ category            │
-│ ---                ┆ ---                 │
-│ type: nullable i32 ┆ type: nullable Utf8 │
-╞════════════════════╪═════════════════════╡
-│ 1                  ┆ A                   │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 2                  ┆ B                   │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 3                  ┆ C                   │
-└────────────────────┴─────────────────────┘\
+┌──────────────────────┬─────────────────────┐
+│ id                   ┆ category            │
+│ ---                  ┆ ---                 │
+│ type: nullable i32   ┆ type: nullable Utf8 │
+│ is_table_index: true ┆                     │
+╞══════════════════════╪═════════════════════╡
+│ 1                    ┆ A                   │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 2                    ┆ B                   │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 3                    ┆ C                   │
+└──────────────────────┴─────────────────────┘\
 """)
 
         # Overwrite with new data
         batch2 = pa.RecordBatch.from_pydict({"id": [10, 20], "category": ["X", "Y"]}, schema=schema)
 
-        client.write_table("data_table", batch2, TableInsertMode.OVERWRITE)
+        table.overwrite(batch2)
 
         df_after_overwrite = client.get_table(name="data_table").reader()
         assert str(df_after_overwrite.sort("id")) == inline_snapshot("""\
-┌────────────────────┬─────────────────────┐
-│ id                 ┆ category            │
-│ ---                ┆ ---                 │
-│ type: nullable i32 ┆ type: nullable Utf8 │
-╞════════════════════╪═════════════════════╡
-│ 10                 ┆ X                   │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 20                 ┆ Y                   │
-└────────────────────┴─────────────────────┘\
+┌──────────────────────┬─────────────────────┐
+│ id                   ┆ category            │
+│ ---                  ┆ ---                 │
+│ type: nullable i32   ┆ type: nullable Utf8 │
+│ is_table_index: true ┆                     │
+╞══════════════════════╪═════════════════════╡
+│ 10                   ┆ X                   │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 20                   ┆ Y                   │
+└──────────────────────┴─────────────────────┘\
+""")
+
+        table.upsert(id=20, category="Z")
+
+        df_after_upsert = client.get_table(name="data_table").reader()
+        assert str(df_after_upsert.sort("id")) == inline_snapshot("""\
+┌────────────────────────────────────────────────┐
+│ METADATA:                                      │
+│ * version: 0.1.1                               │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────────┬─────────────────────┐ │
+│ │ id                   ┆ category            │ │
+│ │ ---                  ┆ ---                 │ │
+│ │ type: nullable i32   ┆ type: nullable Utf8 │ │
+│ │ is_table_index: true ┆                     │ │
+│ ╞══════════════════════╪═════════════════════╡ │
+│ │ 10                   ┆ X                   │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ 20                   ┆ Z                   │ │
+│ └──────────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────────┘\
 """)
 
 
@@ -160,10 +185,10 @@ def test_read_table_entry() -> None:
 
         schema = pa.schema([pa.field("product_id", pa.int32()), pa.field("price", pa.float64())])
 
-        client.create_table("products", schema)
+        table = client.create_table("products", schema)
 
         # Add some data
-        client.append_to_table("products", product_id=[101, 102, 103], price=[29.99, 49.99, 19.99])
+        table.append(product_id=[101, 102, 103], price=[29.99, 49.99, 19.99])
 
         # Method 1: get_table - returns a TableEntry and call reader() to get DataFrame
         table1 = client.get_table(name="products")
