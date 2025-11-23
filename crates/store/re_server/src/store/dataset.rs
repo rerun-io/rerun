@@ -9,6 +9,8 @@ use arrow::{
 use itertools::Either;
 use parking_lot::Mutex;
 
+use crate::chunk_index::DatasetChunkIndexes;
+use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
@@ -20,13 +22,12 @@ use re_protos::{
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
 };
 
-use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
-
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
     name: String,
     details: DatasetDetails,
     partitions: HashMap<PartitionId, Partition>,
+    indexes: DatasetChunkIndexes,
 }
 
 pub struct Dataset {
@@ -50,6 +51,7 @@ impl Dataset {
                 name,
                 details,
                 partitions: HashMap::default(),
+                indexes: DatasetChunkIndexes::new(id),
             }),
             cached_schema: Mutex::new(None),
         }
@@ -87,6 +89,14 @@ impl Dataset {
     #[inline]
     pub fn updated_at(&self) -> jiff::Timestamp {
         self.inner.updated_at()
+    }
+
+    pub fn indexes(&self) -> &DatasetChunkIndexes {
+        &self.inner.indexes
+    }
+
+    pub fn partitions(&self) -> &HashMap<PartitionId, Partition> {
+        &self.inner.partitions
     }
 
     pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
@@ -364,29 +374,33 @@ impl Dataset {
             .map(|layer| layer.store_handle())
     }
 
+    /// Adds a layer
+    ///
+    /// Result: a successful result is `true` if the layer existed and was overwritten
     pub fn add_layer(
         &mut self,
         partition_id: PartitionId,
         layer_name: String,
         store_handle: ChunkStoreHandle,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         re_log::debug!(?partition_id, ?layer_name, "add_layer");
 
-        self.inner
+        let overwritten = self
+            .inner
             .modify()
             .partitions
             .entry(partition_id)
             .or_default()
             .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
 
-        Ok(())
+        Ok(overwritten)
     }
 
     /// Load a RRD using its recording id as partition id.¨
     ///
     /// Only stores with matching kinds with be loaded.
-    pub fn load_rrd(
+    pub async fn load_rrd(
         &mut self,
         path: &Path,
         layer_name: Option<&str>,
@@ -409,14 +423,18 @@ impl Dataset {
 
             let partition_id = PartitionId::new(store_id.recording_id().to_string());
 
-            self.add_layer(
+            let overwritten = self.add_layer(
                 partition_id.clone(),
                 layer_name.to_owned(),
-                chunk_store,
+                chunk_store.clone(),
                 on_duplicate,
             )?;
 
-            new_partition_ids.insert(partition_id);
+            new_partition_ids.insert(partition_id.clone());
+
+            self.indexes()
+                .chunks_loaded(partition_id, chunk_store, layer_name, overwritten)
+                .await?;
         }
 
         Ok(new_partition_ids)

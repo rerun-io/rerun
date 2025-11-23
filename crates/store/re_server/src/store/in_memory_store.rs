@@ -121,7 +121,7 @@ impl InMemoryStore {
 
     /// Load a directory of RRDs.
     //TODO(ab): maybe we could be smart with .rbl and auto-setup a blueprint dataset?
-    pub fn load_directory_as_dataset(
+    pub async fn load_directory_as_dataset(
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
@@ -157,8 +157,9 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
-                    if let Err(err) =
-                        dataset.load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
+                    if let Err(err) = dataset
+                        .load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
+                        .await
                     {
                         match on_error {
                             OnError::Continue => {

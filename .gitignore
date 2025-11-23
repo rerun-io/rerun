@@ -93,3 +93,6 @@ justfile
 
 # Lychee link checker cache
 .lycheecache
+
+# IntelliJ/PyCharm/RustRover
+.idea

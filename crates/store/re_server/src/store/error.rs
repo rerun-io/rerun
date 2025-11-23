@@ -36,6 +36,15 @@ pub enum Error {
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
 
+    #[error(transparent)]
+    ArrowError(#[from] arrow::error::ArrowError),
+
+    #[error(transparent)]
+    LanceError(#[from] lance::Error),
+
+    #[error("Indexing error: {0}")]
+    IndexingError(String),
+
     #[error("Error loading RRD: {0}")]
     RrdLoadingError(anyhow::Error),
 
@@ -72,6 +81,8 @@ impl From<Error> for tonic::Status {
             | Error::ChunkNotFound(_) => Self::not_found(format!("{err:#}")),
 
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
+            Error::ArrowError(err) => Self::internal(format!("Arrow error: {err:#}")),
+            Error::LanceError(err) => Self::internal(format!("Lance error: {err:#}")),
             Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
 
             Error::FailedToDecodeChunkKey(_) => Self::invalid_argument(format!("{err:#}")),
@@ -82,6 +93,8 @@ impl From<Error> for tonic::Status {
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)
             | Error::LayerAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
+
+            Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
         }
     }
 }

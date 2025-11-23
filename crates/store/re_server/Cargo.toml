@@ -21,11 +21,11 @@ all-features = true
 
 
 [features]
-default = []
+default = ["lance"]
 
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
 ## Enable reading in LanceDB files.
-lance = ["dep:lance"]
+lance = ["dep:lance", "dep:lance-index", "dep:lance-linalg"]
 
 [dependencies]
 
@@ -44,6 +44,12 @@ re_sorbet.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
 
+# Main.rs dependencies (convenience binary to start the server without the viewer)
+re_error.workspace = true
+re_memory.workspace = true
+re_crash_handler.workspace = true
+mimalloc.workspace = true
+
 # External
 ahash.workspace = true
 anyhow.workspace = true
@@ -61,9 +67,11 @@ nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-stream.workspace = true
+tokio-util.workspace = true
 tonic-web.workspace = true
 tonic.workspace = true
 tower.workspace = true
@@ -76,11 +84,14 @@ url.workspace = true
 # Optional dependencies:
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
 lance = { workspace = true, optional = true }
+lance-index = { workspace = true, optional = true }
+lance-linalg = { workspace = true, optional = true }
 
 
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_redap_tests.workspace = true
+re_sdk.workspace = true
 
 
 [build-dependencies]
