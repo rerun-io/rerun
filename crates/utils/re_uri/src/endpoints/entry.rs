@@ -6,19 +6,23 @@ use crate::{Error, Origin, RedapUri};
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct EntryUri {
     pub origin: Origin,
+    pub prefix: String,
     pub entry_id: EntryId,
 }
 
 impl std::fmt::Display for EntryUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { origin, entry_id } = self;
-        write!(f, "{origin}/entry/{entry_id}")
+        write!(f, "{}{}/entry/{}", self.origin, self.prefix, self.entry_id)
     }
 }
 
 impl EntryUri {
-    pub fn new(origin: Origin, entry_id: EntryId) -> Self {
-        Self { origin, entry_id }
+    pub fn new(origin: Origin, prefix: String, entry_id: EntryId) -> Self {
+        Self {
+            origin,
+            prefix,
+            entry_id,
+        }
     }
 }
 

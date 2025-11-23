@@ -263,6 +263,7 @@ impl PyDatasetEntry {
             });
         Ok(re_uri::DatasetPartitionUri {
             origin: connection.origin().clone(),
+            prefix: Default::default(),
             dataset_id: super_.details.id.id,
             partition_id,
 

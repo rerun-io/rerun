@@ -451,8 +451,11 @@ fn dataset_entry_ui(
         list_item.show_hierarchical(ui, list_item_content)
     };
 
-    let new_display_mode =
-        DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
+    let new_display_mode = DisplayMode::RedapEntry(re_uri::EntryUri::new(
+        origin.clone(),
+        String::new(),
+        *entry_id,
+    ));
 
     item_response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_display_mode)
@@ -522,7 +525,7 @@ fn remote_table_entry_ui(
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
+                re_uri::EntryUri::new(origin.clone(), String::new(), *entry_id),
             )));
     }
 }
@@ -557,7 +560,7 @@ fn failed_entry_ui(
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
+                re_uri::EntryUri::new(origin.clone(), String::new(), *entry_id),
             )));
     }
 
