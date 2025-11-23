@@ -6,19 +6,7 @@ WorkOS Authentication Module for Jupyter Notebooks.
 This module provides OAuth/SSO authentication using WorkOS with browser cookie storage.
 """
 
-import os
-import threading
-import time
 import webbrowser
-import requests
-import urllib.parse
-import secrets
-import hashlib
-import base64
-import uuid
-from typing import Optional, Dict, Any, Tuple
-from flask import Flask, redirect, request, make_response, jsonify
-from IPython.display import display, HTML
 from rerun_bindings import OauthLoginFlow, init_login_flow
 
 def login_with_browser() -> None:
