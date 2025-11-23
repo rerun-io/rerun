@@ -6,6 +6,8 @@ import pyarrow as pa
 import rerun_draft as rr
 from inline_snapshot import snapshot as inline_snapshot
 
+from .utils import sorted_schema_str
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -90,7 +92,48 @@ Column name: property:RecordingInfo:start_time
 	Static: true\
 """)
 
-    # assert str(ds.arrow_schema()) == inline_snapshot()
+        assert sorted_schema_str(ds.arrow_schema(), with_metadata=True) == inline_snapshot("""\
+/points:Points2D:colors: list<item: uint32>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.Points2D'
+  rerun:component: 'Points2D:colors'
+  rerun:component_type: 'rerun.components.Color'
+  rerun:entity_path: '/points'
+  rerun:kind: 'data'
+/points:Points2D:positions: list<item: fixed_size_list<item: float not null>[2]>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.Points2D'
+  rerun:component: 'Points2D:positions'
+  rerun:component_type: 'rerun.components.Position2D'
+  rerun:entity_path: '/points'
+  rerun:kind: 'data'
+/text:TextLog:text: list<item: string>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.TextLog'
+  rerun:component: 'TextLog:text'
+  rerun:component_type: 'rerun.components.Text'
+  rerun:entity_path: '/text'
+  rerun:kind: 'data'
+property:RecordingInfo:start_time: list<item: int64>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.RecordingInfo'
+  rerun:component: 'RecordingInfo:start_time'
+  rerun:component_type: 'rerun.components.Timestamp'
+  rerun:entity_path: '/__properties'
+  rerun:is_static: 'true'
+  rerun:kind: 'data'
+rerun.controls.RowId: fixed_size_binary[16]
+  -- field metadata --
+  ARROW:extension:metadata: '{"namespace":"row"}'
+  ARROW:extension:name: 'rerun.datatypes.TUID'
+  rerun:kind: 'control'
+timeline: timestamp[ns]
+  -- field metadata --
+  rerun:index_name: 'timeline'
+  rerun:kind: 'index'
+-- schema metadata --
+sorbet:version: '0.1.1'\
+""")
 
 
 def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
