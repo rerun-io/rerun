@@ -13,11 +13,9 @@ use re_ui::icons;
 use super::ActionButton;
 
 pub struct State {
-    // callback_server: OauthCallbackServer,
+    callback_server: OauthCallbackServer,
 
-    // pkce: Pkce,
-    login_flow: OauthLoginFlow,
-
+    pkce: Pkce,
     pending_authentication: bool,
     credentials: Arc<Mutex<Option<Result<Credentials, String>>>>,
 
@@ -37,7 +35,7 @@ impl State {
                     .show(ui, &mut self.show_open_feedback)
                     .clicked()
                 {
-                    webbrowser::open(self.login_flow.get_login_url()).ok();
+                    webbrowser::open(self.callback_server.get_login_url()).ok();
                 }
 
                 if ActionButton::secondary(&icons::COPY, "Copy link", "Copied to clipboard!")
@@ -45,7 +43,7 @@ impl State {
                     .clicked()
                 {
                     ui.ctx()
-                        .copy_text(self.login_flow.get_login_url().to_owned());
+                        .copy_text(self.callback_server.get_login_url().to_owned());
                 }
             });
         }
@@ -63,50 +61,41 @@ impl State {
             return Ok(None);
         }
 
-        match self.login_flow.poll().await {
-            Ok(Some(credentials)) => {
-                self.pending_authentication = false;
-                return Ok(Some(credentials));
+        // We're done if we received valid credentials from the client:
+        match self.callback_server.check_for_browser_response() {
+            Ok(Some(code)) => {
+                let credentials = self.credentials.clone();
+                let on_done = move |res: Result<Credentials, String>| {
+                    *credentials.lock() = Some(res);
+                };
+                send_native(
+                    AuthenticateWithCode::new(&code, &self.pkce),
+                    move |res| match res {
+                        Ok(res) => {
+                            let credentials = match Credentials::from_auth_response(res.into())
+                                .map_err(|err| err.to_string())
+                            {
+                                Ok(c) => c,
+                                Err(err) => return on_done(Err(err)),
+                            };
+                            let credentials =
+                                match credentials.ensure_stored().map_err(|err| err.to_string()) {
+                                    Ok(c) => c,
+                                    Err(err) => return on_done(Err(err)),
+                                };
+
+                            on_done(Ok(credentials));
+                        }
+                        Err(res) => on_done(Err(res.to_string())),
+                    },
+                );
+                self.pending_authentication = true;
+
+                Ok(None)
             }
             Ok(None) => Ok(None),
             Err(err) => Err(format!("Failed to check for browser response: {err}")),
         }
-
-        // // We're done if we received valid credentials from the client:
-        // match self.callback_server.check_for_browser_response() {
-        //     Ok(Some(code)) => {
-        //         let credentials = self.credentials.clone();
-        //         let on_done = move |res: Result<Credentials, String>| {
-        //             *credentials.lock() = Some(res);
-        //         };
-        //         send_native(
-        //             AuthenticateWithCode::new(&code, &self.pkce),
-        //             move |res| match res {
-        //                 Ok(res) => {
-        //                     let credentials = match Credentials::from_auth_response(res.into())
-        //                         .map_err(|err| err.to_string())
-        //                     {
-        //                         Ok(c) => c,
-        //                         Err(err) => return on_done(Err(err)),
-        //                     };
-        //                     let credentials =
-        //                         match credentials.ensure_stored().map_err(|err| err.to_string()) {
-        //                             Ok(c) => c,
-        //                             Err(err) => return on_done(Err(err)),
-        //                         };
-
-        //                     on_done(Ok(credentials));
-        //                 }
-        //                 Err(res) => on_done(Err(res.to_string())),
-        //             },
-        //         );
-        //         self.pending_authentication = true;
-
-        //         Ok(None)
-        //     }
-        //     Ok(None) => Ok(None),
-        //     Err(err) => Err(format!("Failed to check for browser response: {err}")),
-        // }
     }
 
     pub fn open(_ui: &mut egui::Ui, login_hint: Option<&str>) -> Result<Self, String> {
