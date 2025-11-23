@@ -19,12 +19,16 @@ import uuid
 from typing import Optional, Dict, Any, Tuple
 from flask import Flask, redirect, request, make_response, jsonify
 from IPython.display import display, HTML
-from rerun_bindings import OauthLoginFlow
+from rerun_bindings import OauthLoginFlow, init_login_flow
 
 def login_with_browser() -> None:
     """Initiate OAuth flow by redirecting to WorkOS authorization URL."""
 
-    flow = OauthLoginFlow()
+    flow = init_login_flow()
+
+    if flow is None:
+        print("Already logged in, skipping login flow.")
+        return
 
     # Automatically open the login URL in the default browser
     login_url = flow.login_url()
@@ -32,5 +36,5 @@ def login_with_browser() -> None:
     webbrowser.open(login_url)
 
     # Wait for the flow to complete and store credentials
-    flow.get_credentials()
+    flow.finish_login_flow()
 

@@ -17,7 +17,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_auth::{OauthLoginFlow, oauth::Credentials};
+use re_auth::{
+    OauthLoginFlow,
+    oauth::{Credentials, login_flow::OauthLoginFlowState},
+};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -180,6 +183,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
+    m.add_function(wrap_pyfunction!(init_login_flow, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -2241,24 +2245,11 @@ struct PyOauthLoginFlow {
 
 #[pymethods]
 impl PyOauthLoginFlow {
-    #[new]
-    fn new() -> PyResult<Self> {
-        println!("PyOauthLoginFlow::new");
-
-        let login_flow =
-            OauthLoginFlow::init().map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-        println!(
-            "PyOauthLoginFlow::new runtime started: {}",
-            login_flow.server.get_login_url()
-        );
-        Ok(Self { login_flow })
-    }
-
     fn login_url(&self) -> String {
         self.login_flow.server.get_login_url().to_owned()
     }
 
-    fn get_credentials(&mut self) -> PyResult<String> {
+    fn finish_login_flow(&mut self) -> PyResult<String> {
         println!("PyOauthLoginFlow::get_credentials");
 
         let result: Result<Credentials, re_auth::callback_server::Error> = Runtime::new()?
@@ -2276,6 +2267,31 @@ impl PyOauthLoginFlow {
             .map(|credentials| credentials.access_token().as_str().to_owned())
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
+}
+
+#[pyfunction]
+fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
+    println!("PyOauthLoginFlow::new");
+
+    let login_flow = Runtime::new()?
+        .block_on(async { OauthLoginFlow::init(false).await })
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    match login_flow {
+        OauthLoginFlowState::AlreadyLoggedIn(_) => {
+            // Already logged in, no need to start a login flow.
+            Ok(None)
+        }
+        OauthLoginFlowState::LoginFlowStarted(login_flow) => {
+            Ok(Some(PyOauthLoginFlow { login_flow }))
+        }
+    }
+    // let login_flow =
+    //     OauthLoginFlow::init(false).map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    // println!(
+    //     "PyOauthLoginFlow::new runtime started: {}",
+    //     login_flow.get_login_url()
+    // );
+    // Ok(Self { login_flow })
 }
 
 #[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
