@@ -32,40 +32,30 @@ impl OauthLoginFlow {
                     login_hint = Some(credentials.user().email.clone());
                     match oauth::refresh_credentials(credentials).await {
                         Ok(credentials) => {
-                            // println!("You're already logged in as: {}", credentials.user().email);
-                            // println!("Note: We've refreshed your credentials.");
-                            // println!("Note: Run `rerun auth login --force` to login again.");
                             return Ok(OauthLoginFlowState::AlreadyLoggedIn(credentials));
                         }
                         Err(err) => {
-                            re_log::debug!("refreshing credentials failed: {err}");
                             // Credentials are bad, login again.
-                            // fallthrough
+                            re_log::debug!("refreshing credentials failed: {err}");
                         }
                     }
                 }
 
                 Ok(None) => {
                     // No credentials yet, login as usual.
-                    // fallthrough
                 }
 
                 Err(err) => {
                     re_log::debug!(
                         "validating credentials failed, logging user in again anyway. reason: {err}"
                     );
-                    // fallthrough
                 }
             }
         }
 
-        println!("OauthLoginFlow::new starting server"); // TODO:
-
         // Start web server that listens for the authorization code received from the auth server.
         let pkce = Pkce::new();
-        let server = OauthCallbackServer::new(&pkce, login_hint.as_deref())?; // TODO: login_hint
-
-        println!("OauthLoginFlow::new {}", server.get_login_url()); // TODO:
+        let server = OauthCallbackServer::new(&pkce, login_hint.as_deref())?;
 
         Ok(OauthLoginFlowState::LoginFlowStarted(Self {
             server,

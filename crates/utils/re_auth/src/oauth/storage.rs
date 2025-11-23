@@ -54,7 +54,6 @@ mod file {
 
     pub fn load() -> Result<Option<Credentials>, LoadError> {
         let path = credentials_path().ok_or(LoadError::UnknownConfigLocation)?;
-        println!("Loading credentials NATIVE: path={path:?}");
         let data = match std::fs::read_to_string(path) {
             Ok(data) => data,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
@@ -62,7 +61,6 @@ mod file {
             }
             Err(err) => return Err(err.into()),
         };
-        println!("Loaded credentials NATIVE data={data:?}");
         let credentials = serde_json::from_str(&data)?;
         Ok(Some(credentials))
     }
@@ -70,7 +68,6 @@ mod file {
     pub fn store(credentials: &Credentials) -> Result<(), StoreError> {
         let path = credentials_path().ok_or(StoreError::UnknownConfigLocation)?;
         let data = serde_json::to_string_pretty(credentials)?;
-        println!("Storing credentials NATIVE: path={path:?}, data={data:?}");
         std::fs::write(path, data)?;
         Ok(())
     }
@@ -126,7 +123,6 @@ mod web {
         let data = local_storage
             .get_item(STORAGE_KEY)
             .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
-        println!("Loading credentials WASM: key={STORAGE_KEY:?}, data={data:?}");
 
         let Some(data) = data else {
             return Ok(None);
@@ -139,7 +135,6 @@ mod web {
     pub fn store(credentials: &Credentials) -> Result<(), StoreError> {
         let local_storage = get_local_storage()?;
         let data = serde_json::to_string(credentials)?;
-        println!("Storing credentials WASM: key={STORAGE_KEY:?}, data={data:?}");
         local_storage
             .set_item(STORAGE_KEY, &data)
             .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;

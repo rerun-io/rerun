@@ -212,7 +212,7 @@ impl Credentials {
     pub fn from_auth_response(
         res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
-        let access_token = AccessToken::unverified(Jwt(res.access_token))?;
+        let access_token = AccessToken::try_from_unverified_jwt(Jwt(res.access_token))?;
         Ok(InMemoryCredentials(Self {
             user: res.user,
             refresh_token: RefreshToken(res.refresh_token),
@@ -229,7 +229,7 @@ impl Credentials {
         email: String,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         // TODO(aedm): check signature of the JWT token
-        let claims = Jwt(access_token.clone()).claims()?;
+        let claims = Jwt(access_token.clone()).unverified_claims()?;
 
         let user = User {
             id: claims.sub,
@@ -298,33 +298,14 @@ impl AccessToken {
         self.expires_at - now
     }
 
-    // TODO(aedm): document
-    pub fn new(token: String, expires_at: i64) -> Self {
-        Self { token, expires_at }
-    }
-
     /// Construct an [`AccessToken`] without verifying it.
     ///
     /// The token should come from a trusted source, like the Rerun auth API.
-    pub(crate) fn unverified(jwt: Jwt) -> Result<Self, MalformedTokenError> {
-        use base64::prelude::*;
-
-        let (_header, rest) = jwt
-            .as_str()
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
-        let (payload, _signature) = rest
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
-        let payload = BASE64_URL_SAFE_NO_PAD
-            .decode(payload)
-            .map_err(MalformedTokenError::Base64)?;
-        let payload: RerunCloudClaims =
-            serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
-
+    pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, MalformedTokenError> {
+        let claims = jwt.unverified_claims()?;
         Ok(Self {
             token: jwt.0,
-            expires_at: payload.exp,
+            expires_at: claims.exp,
         })
     }
 }

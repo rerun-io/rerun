@@ -20,8 +20,7 @@ impl Jwt {
         &self.0
     }
 
-    pub fn claims(&self) -> Result<RerunCloudClaims, MalformedTokenError> {
-        // TODO(aedm): remove code duplication
+    pub fn unverified_claims(&self) -> Result<RerunCloudClaims, MalformedTokenError> {
         let (_header, rest) = self
             .as_str()
             .split_once('.')
@@ -32,9 +31,9 @@ impl Jwt {
         let payload = BASE64_URL_SAFE_NO_PAD
             .decode(payload)
             .map_err(MalformedTokenError::Base64)?;
-        let payload: RerunCloudClaims =
+        let claims: RerunCloudClaims =
             serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
-        Ok(payload)
+        Ok(claims)
     }
 }
 
