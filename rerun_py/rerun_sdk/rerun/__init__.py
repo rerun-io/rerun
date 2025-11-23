@@ -361,13 +361,6 @@ def init(
         _spawn(default_blueprint=default_blueprint)
 
 
-# def auth() -> None:
-#     global _auth
-#     if _auth is None:
-#         _auth = Auth()
-#     return _auth
-
-
 def version() -> str:
     """
     Returns a verbose version string of the Rerun SDK.
