@@ -4,17 +4,18 @@ use crate::{Origin, RedapUri};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CatalogUri {
     pub origin: Origin,
+    pub prefix: String,
 }
 
 impl std::fmt::Display for CatalogUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/catalog", self.origin)
+        write!(f, "{}{}/catalog", self.origin, self.prefix)
     }
 }
 
 impl CatalogUri {
-    pub fn new(origin: Origin) -> Self {
-        Self { origin }
+    pub fn new(origin: Origin, prefix: String) -> Self {
+        Self { origin, prefix }
     }
 }
 

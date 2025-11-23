@@ -34,10 +34,13 @@ impl GrpcServerSink {
 
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
 
-        let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
-            re_uri::Scheme::RerunHttp,
-            grpc_server_addr,
-        ));
+        let uri = re_uri::ProxyUri::new(
+            re_uri::Origin::from_scheme_and_socket_addr(
+                re_uri::Scheme::RerunHttp,
+                grpc_server_addr,
+            ),
+            String::new(),
+        );
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
             re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
             re_smart_channel::SmartChannelSource::Sdk,

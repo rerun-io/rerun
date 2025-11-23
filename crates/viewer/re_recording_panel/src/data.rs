@@ -346,6 +346,7 @@ impl<'a> ServerEntriesData<'a> {
                         is_selected: ctx.is_selected_or_loading(&Item::RedapEntry(
                             re_uri::EntryUri {
                                 origin: origin.clone(),
+                                prefix: String::new(),
                                 entry_id: entry.id(),
                             },
                         )),
@@ -507,6 +508,7 @@ impl EntryData {
     pub fn entry_uri(&self) -> re_uri::EntryUri {
         re_uri::EntryUri {
             origin: self.origin.clone(),
+            prefix: String::new(),
             entry_id: self.entry_id,
         }
     }

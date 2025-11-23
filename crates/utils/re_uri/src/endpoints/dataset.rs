@@ -12,6 +12,7 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetPartitionUri {
     pub origin: Origin,
+    pub prefix: String,
     pub dataset_id: re_tuid::Tuid,
 
     // Query parameters: these affect what data is returned.
@@ -25,26 +26,22 @@ pub struct DatasetPartitionUri {
 
 impl std::fmt::Display for DatasetPartitionUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            origin,
-            dataset_id,
-            partition_id,
-            time_range,
-            fragment,
-        } = self;
-
-        write!(f, "{origin}/dataset/{dataset_id}")?;
+        write!(
+            f,
+            "{}{}/dataset/{}",
+            self.origin, self.prefix, self.dataset_id
+        )?;
 
         // ?query:
         {
-            write!(f, "?partition_id={partition_id}")?;
+            write!(f, "?partition_id={}", self.partition_id)?;
         }
-        if let Some(time_range) = time_range {
+        if let Some(time_range) = &self.time_range {
             write!(f, "&time_range={time_range}")?;
         }
 
         // #fragment:
-        let fragment = fragment.to_string();
+        let fragment = self.fragment.to_string();
         if !fragment.is_empty() {
             write!(f, "#{fragment}")?;
         }
@@ -54,7 +51,12 @@ impl std::fmt::Display for DatasetPartitionUri {
 }
 
 impl DatasetPartitionUri {
-    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
+    pub fn new(
+        origin: Origin,
+        prefix: String,
+        dataset_id: re_tuid::Tuid,
+        url: &url::Url,
+    ) -> Result<Self, Error> {
         let mut partition_id = None;
         let mut time_range = None;
 
@@ -86,6 +88,7 @@ impl DatasetPartitionUri {
 
         Ok(Self {
             origin,
+            prefix,
             dataset_id,
             partition_id,
             time_range,
@@ -97,6 +100,7 @@ impl DatasetPartitionUri {
     pub fn without_query_and_fragment(mut self) -> Self {
         let Self {
             origin: _,       // Mandatory
+            prefix: _,       // Mandatory
             dataset_id: _,   // Mandatory
             partition_id: _, // Mandatory
             time_range,
@@ -113,6 +117,7 @@ impl DatasetPartitionUri {
     pub fn without_fragment(mut self) -> Self {
         let Self {
             origin: _,       // Mandatory
+            prefix: _,       // Mandatory
             dataset_id: _,   // Mandatory
             partition_id: _, // Mandatory
             time_range: _,

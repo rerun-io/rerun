@@ -355,7 +355,10 @@ impl ViewerOpenUrl {
             DisplayMode::RedapServer(origin) => {
                 // `as_url` on the origin gives us an http link.
                 // We want a rerun link here instead.
-                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
+                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(
+                    origin.clone(),
+                    String::new(),
+                )))
             }
 
             DisplayMode::ChunkStoreBrowser => {
@@ -744,8 +747,51 @@ mod tests {
 
     #[test]
     fn test_viewer_open_url_from_str() {
+        // RedapProxy
+        let url = "rerun+http://localhost:51234/proxy";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapProxy(re_uri::ProxyUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun+http://localhost:51234/sub/path/proxy";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapProxy(re_uri::ProxyUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun+http://example.com/proxy";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapProxy(re_uri::ProxyUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun+http://example.com/sub/path/proxy";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapProxy(re_uri::ProxyUri::from_str(url).unwrap())
+        );
+
         // RedapCatalog
         let url = "rerun://localhost:51234/catalog";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun://localhost:51234/sub/path/catalog";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun://example.com/catalog";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun://example.com/sub/path/catalog";
         assert_eq!(
             ViewerOpenUrl::from_str(url).unwrap(),
             ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
@@ -759,8 +805,38 @@ mod tests {
             ViewerOpenUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
         );
 
+        let url = format!("rerun://localhost:51234/sub/path/entry/{entry_id}");
+        assert_eq!(
+            ViewerOpenUrl::from_str(&url).unwrap(),
+            ViewerOpenUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
+        );
+
+        let url = format!("rerun://example.com/entry/{entry_id}");
+        assert_eq!(
+            ViewerOpenUrl::from_str(&url).unwrap(),
+            ViewerOpenUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
+        );
+
+        let url = format!("rerun://example.com/sub/path/entry/{entry_id}");
+        assert_eq!(
+            ViewerOpenUrl::from_str(&url).unwrap(),
+            ViewerOpenUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
+        );
+
         // DatasetPartitionUri
         let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        assert_eq!(
+            ViewerOpenUrl::from_str(&url).unwrap(),
+            ViewerOpenUrl::RedapDatasetPartition(url.parse().unwrap())
+        );
+
+        let url = format!("rerun://example.com/dataset/{entry_id}?partition_id=pid");
+        assert_eq!(
+            ViewerOpenUrl::from_str(&url).unwrap(),
+            ViewerOpenUrl::RedapDatasetPartition(url.parse().unwrap())
+        );
+
+        let url = format!("rerun://example.com/sub/path/dataset/{entry_id}?partition_id=pid");
         assert_eq!(
             ViewerOpenUrl::from_str(&url).unwrap(),
             ViewerOpenUrl::RedapDatasetPartition(url.parse().unwrap())
@@ -880,7 +956,7 @@ mod tests {
 
         // RedapEntry
         let origin = "rerun://localhost:51234".parse().unwrap();
-        let entry_uri = re_uri::EntryUri::new(origin, EntryId::new());
+        let entry_uri = re_uri::EntryUri::new(origin, String::new(), EntryId::new());
         assert_eq!(
             ViewerOpenUrl::from_display_mode(
                 &store_hub,
