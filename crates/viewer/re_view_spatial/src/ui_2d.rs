@@ -340,8 +340,6 @@ fn setup_target_config(
     // * a perspective camera *at the origin* for 3D rendering
     // Both share the same view-builder and the same viewport transformation but are independent otherwise.
 
-    // TODO(andreas): Support anamorphic pinhole cameras properly.
-
     let pinhole = if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
@@ -370,17 +368,33 @@ fn setup_target_config(
     );
 
     let focal_length = pinhole.focal_length_in_pixels();
-    let focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
 
-    let projection_from_view = re_renderer::view_builder::Projection::Perspective {
-        vertical_fov: pinhole.fov_y(),
-        near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
-        aspect_ratio: pinhole.aspect_ratio(),
+    // Check if this is an anamorphic camera (fx ≠ fy)
+    let is_anamorphic = (focal_length.x - focal_length.y).abs() > f32::EPSILON * 100.0;
+
+    let projection_from_view = if is_anamorphic {
+        // Anamorphic camera: compute separate FOVs for x and y
+        let fov_x = 2.0 * (0.5 * pinhole.resolution.x / focal_length.x).atan();
+        let fov_y = 2.0 * (0.5 * pinhole.resolution.y / focal_length.y).atan();
+
+        re_renderer::view_builder::Projection::PerspectiveAnamorphic {
+            horizontal_fov: fov_x,
+            vertical_fov: fov_y,
+            near_plane_distance: near_clip_plane * focal_length.y / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
+        }
+    } else {
+        // Symmetric camera: use the standard perspective projection
+        re_renderer::view_builder::Projection::Perspective {
+            vertical_fov: pinhole.fov_y(),
+            near_plane_distance: near_clip_plane * focal_length.y / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
+            aspect_ratio: pinhole.aspect_ratio(),
+        }
     };
 
     // Position the camera looking straight at the principal point:
+    // Use the y focal length for the camera distance (consistent with near plane distance)
     let view_from_world = macaw::IsoTransform::look_at_rh(
-        pinhole.principal_point().extend(-focal_length),
+        pinhole.principal_point().extend(-focal_length.y),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
     )
