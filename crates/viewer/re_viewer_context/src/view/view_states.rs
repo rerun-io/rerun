@@ -16,7 +16,7 @@ use crate::{
 pub struct ViewStates {
     states: HashMap<ViewId, Box<dyn ViewState>>,
 
-    /// List of all errors that occured in visualizers of this view.
+    /// List of all errors that occurred in visualizers of this view.
     ///
     /// This is cleared out each frame of each frame and populated after all visualizers have been executed.
     // TODO(andreas): Would be nice to bundle this with `ViewState` by making `ViewState` a struct containing errors & generic data.
