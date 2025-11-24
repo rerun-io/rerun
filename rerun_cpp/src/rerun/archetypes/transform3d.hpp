@@ -257,11 +257,10 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_partial_updates");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     // Set up a 3D box and transform arrows.
+    ///     // Set up a 3D box.
     ///     rec.log(
     ///         "box",
-    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-    ///         rerun::TransformAxes3D(10.0)
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid)
     ///     );
     ///
     ///     // Update only the rotation of the box.
@@ -294,8 +293,8 @@ namespace rerun::archetypes {
     ///         );
     ///     }
     ///
-    ///     // Clear all of the box's attributes, and reset its axis length.
-    ///     rec.log("box", rerun::Transform3D::clear_fields(), rerun::TransformAxes3D(15.0));
+    ///     // Clear all of the box's attributes.
+    ///     rec.log("box", rerun::Transform3D::clear_fields());
     /// }
     /// ```
     struct Transform3D {

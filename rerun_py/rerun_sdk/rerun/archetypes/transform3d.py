@@ -234,11 +234,10 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_partial_updates", spawn=True)
 
-    # Set up a 3D box and transform arrows.
+    # Set up a 3D box.
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
-        rr.TransformAxes3D(10.0),
     )
 
     # Update only the rotation of the box.
@@ -268,11 +267,10 @@ class Transform3D(Transform3DExt, Archetype):
             ),
         )
 
-    # Clear all of the box's attributes, and reset its axis length.
+    # Clear all of the box's attributes.
     rr.log(
         "box",
         rr.Transform3D.from_fields(clear_unset=True),
-        rr.TransformAxes3D(15.0),
     )
     ```
     <center>
