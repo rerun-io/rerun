@@ -4,7 +4,6 @@ use std::sync::{
 };
 
 use ahash::HashMap;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;

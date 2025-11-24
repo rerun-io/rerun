@@ -1,3 +1,6 @@
+use smallvec::smallvec;
+
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     DrawableCollector, RectInt,
     allocator::create_and_fill_uniform_buffer,
@@ -10,10 +13,6 @@ use crate::{
         RenderPipelineDesc,
     },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
-
-use smallvec::smallvec;
 
 mod gpu_data {
     use crate::wgpu_buffer_types;

@@ -23,8 +23,10 @@ use re_ros_msg::{
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 use serde::de::DeserializeSeed as _;
 
-use crate::parsers::{MessageParser, ParserContext, dds};
-use crate::{Error, LayerIdentifier, MessageLayer};
+use crate::{
+    Error, LayerIdentifier, MessageLayer,
+    parsers::{MessageParser, ParserContext, dds},
+};
 
 pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
     // 4-byte encapsulation header

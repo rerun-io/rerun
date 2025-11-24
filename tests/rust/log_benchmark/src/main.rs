@@ -135,9 +135,7 @@ fn main() -> anyhow::Result<()> {
     // Being able to log fast isn't particularly useful if the data happens to be corrupt at the
     // other end, so make sure we can encode/decode everything that was logged.
     if check && let Some(storage) = storage {
-        use rerun::external::re_log_encoding;
-
-        use rerun::external::re_log_encoding::ToTransport as _;
+        use rerun::external::{re_log_encoding, re_log_encoding::ToTransport as _};
         let msgs: anyhow::Result<Vec<_>> = storage
             .take()
             .into_iter()

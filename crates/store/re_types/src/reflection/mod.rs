@@ -6,17 +6,17 @@
 #![allow(clippy::wildcard_imports)]
 #![allow(unused_imports)]
 
-use crate::blueprint::components::*;
-use crate::components::*;
-use re_types_core::components::*;
 use re_types_core::{
     ArchetypeName, Component, ComponentBatch as _, ComponentType, Loggable as _,
     SerializationError,
+    components::*,
     reflection::{
         ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
         ComponentReflectionMap, Reflection,
     },
 };
+
+use crate::{blueprint::components::*, components::*};
 
 /// Generates reflection about all known components.
 ///

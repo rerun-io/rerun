@@ -1,25 +1,23 @@
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
-use arrow::datatypes::{Field, Schema as ArrowSchema};
-use arrow::pyarrow::PyArrowType;
-use pyo3::types::PyAnyMethods as _;
-use pyo3::{Bound, PyErr};
-use pyo3::{
-    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
-    exceptions::PyValueError, pyclass, pymethods,
+use arrow::{
+    array::{RecordBatch, RecordBatchOptions, StringArray},
+    datatypes::{Field, Schema as ArrowSchema},
+    pyarrow::PyArrowType,
 };
-use re_protos::cloud::v1alpha1::{DeleteIndexesRequest, ListIndexesRequest};
-use tokio_stream::StreamExt as _;
-use tracing::instrument;
-
+use pyo3::{
+    Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python,
+    exceptions::{PyRuntimeError, PyValueError},
+    pyclass, pymethods,
+    types::PyAnyMethods as _,
+};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
 use re_log_types::{StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        CreateIndexRequest, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
-        SearchDatasetRequest, VectorIndexQuery,
+        CreateIndexRequest, DeleteIndexesRequest, IndexConfig, IndexQueryProperties,
+        InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
         ext::{DatasetDetails, IndexProperties},
         index_query_properties,
     },
@@ -28,14 +26,17 @@ use re_protos::{
 };
 use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
-
-use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
-use crate::utils::wait_for_future;
+use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use super::{
     PyDataFusionTable, PyEntry, PyEntryId, PyIndexConfig, PyIndexingResult,
     VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, task::PyTasks,
     to_py_err,
+};
+use crate::{
+    dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema},
+    utils::wait_for_future,
 };
 
 /// A dataset entry in the catalog.

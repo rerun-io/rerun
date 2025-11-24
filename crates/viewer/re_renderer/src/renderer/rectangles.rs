@@ -13,6 +13,7 @@
 use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerProcessor, Rgba,
     allocator::create_and_fill_uniform_buffer_batch,
@@ -28,8 +29,6 @@ use crate::{
         RenderPipelineDesc,
     },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 /// Texture filter setting for magnification (a texel covers several pixels).
 #[derive(Debug, Clone, Copy)]
@@ -251,9 +250,8 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
-
     use super::{ColorMapper, RectangleError, TexturedRect};
+    use crate::wgpu_buffer_types;
 
     // Keep in sync with mirror in rectangle.wgsl
 

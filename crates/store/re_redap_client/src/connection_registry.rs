@@ -1,18 +1,20 @@
-use std::collections::{HashMap, hash_map::Entry};
-use std::error::Error as _;
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, hash_map::Entry},
+    error::Error as _,
+    sync::Arc,
+};
 
 use itertools::Itertools as _;
-use re_auth::credentials::CredentialsProviderError;
+use re_auth::{Jwt, credentials::CredentialsProviderError};
+use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
 use tokio::sync::RwLock;
 use tonic::Code;
 
-use re_auth::Jwt;
-use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
-
-use crate::connection_client::GenericConnectionClient;
-use crate::grpc::{RedapClient, RedapClientInner};
-use crate::{ApiError, TonicStatusError};
+use crate::{
+    ApiError, TonicStatusError,
+    connection_client::GenericConnectionClient,
+    grpc::{RedapClient, RedapClientInner},
+};
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.

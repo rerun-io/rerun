@@ -14,6 +14,7 @@
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerObjectId,
     PickingLayerProcessor,
@@ -30,14 +31,11 @@ use crate::{
     },
 };
 
-use super::{DrawData, DrawError, RenderContext, Renderer};
-
 // ---
 
 mod gpu_data {
-    use crate::{PickingLayerObjectId, wgpu_buffer_types};
-
     use super::DepthCloudDrawDataError;
+    use crate::{PickingLayerObjectId, wgpu_buffer_types};
 
     // Keep in sync with mirror in `depth_cloud.wgsl.`
 

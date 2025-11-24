@@ -15,11 +15,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::SerializationResult;
-use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentType};
-use crate::{DeserializationError, DeserializationResult};
+use crate::{
+    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
+    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
+};
 
 /// **Datatype**: Left or right boundary of a time range.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
@@ -69,8 +68,9 @@ impl crate::Loggable for TimeRangeBoundary {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
+
+        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -197,8 +197,9 @@ impl crate::Loggable for TimeRangeBoundary {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
+
+        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         Ok({
             let arrow_data = arrow_data
                 .as_any()

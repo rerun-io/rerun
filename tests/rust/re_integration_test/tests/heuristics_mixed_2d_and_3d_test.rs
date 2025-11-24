@@ -1,8 +1,9 @@
 use re_integration_test::HarnessExt as _;
-use re_sdk::TimePoint;
-use re_sdk::log::RowId;
-use re_viewer::external::re_types;
-use re_viewer::viewer_test_utils::{self, HarnessOptions};
+use re_sdk::{TimePoint, log::RowId};
+use re_viewer::{
+    external::re_types,
+    viewer_test_utils::{self, HarnessOptions},
+};
 
 const IMAGE_SIZE: (usize, usize) = (20, 30);
 

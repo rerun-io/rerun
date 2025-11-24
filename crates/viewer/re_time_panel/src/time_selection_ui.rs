@@ -1,5 +1,4 @@
 use egui::{Color32, CursorIcon, Id, NumExt as _, Rangef, Rect};
-
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
 };

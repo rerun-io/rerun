@@ -2,8 +2,10 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray};
-use arrow::datatypes::Field;
+use arrow::{
+    array::{Array, ArrowPrimitiveType, FixedSizeListArray, ListArray, PrimitiveArray},
+    datatypes::Field,
+};
 
 use crate::{Error, Transform};
 

@@ -1,40 +1,49 @@
-use std::any::Any;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
-
-use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
-use arrow::compute::SortOptions;
-use arrow::datatypes::{Schema, SchemaRef};
-use datafusion::common::hash_utils::HashValue as _;
-use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
-use datafusion::config::ConfigOptions;
-use datafusion::execution::{RecordBatchStream, TaskContext};
-use datafusion::physical_expr::expressions::Column;
-use datafusion::physical_expr::{
-    EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
+use std::{
+    any::Any,
+    collections::BTreeMap,
+    fmt::Debug,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
 };
-use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
-use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
-use futures_util::{Stream, StreamExt as _};
-use tokio::runtime::Handle;
-use tokio::sync::Notify;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::task::JoinHandle;
-use tracing::Instrument as _;
 
-use re_dataframe::external::re_chunk::Chunk;
-use re_dataframe::external::re_chunk_store::ChunkStore;
+use arrow::{
+    array::{Array, RecordBatch, RecordBatchOptions, StringArray},
+    compute::SortOptions,
+    datatypes::{Schema, SchemaRef},
+};
+use datafusion::{
+    common::{exec_datafusion_err, exec_err, hash_utils::HashValue as _, plan_err},
+    config::ConfigOptions,
+    error::DataFusionError,
+    execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext},
+    physical_expr::{
+        EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
+        expressions::Column,
+    },
+    physical_plan::{
+        DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties,
+        execution_plan::{Boundedness, EmissionType},
+    },
+};
+use futures_util::{Stream, StreamExt as _};
 use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
+    external::{re_chunk::Chunk, re_chunk_store::ChunkStore},
 };
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanPartitionTableResponse};
 use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
+use tokio::{
+    runtime::Handle,
+    sync::{
+        Notify,
+        mpsc::{Receiver, Sender},
+    },
+    task::JoinHandle,
+};
+use tracing::Instrument as _;
 
 use crate::dataframe_query_common::{
     align_record_batch_to_schema, group_chunk_infos_by_partition_id, prepend_string_column_schema,

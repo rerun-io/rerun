@@ -16,8 +16,6 @@ mod task;
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::{Bound, PyResult, prelude::*};
 
-use crate::catalog::dataframe_query::PyDataframeQueryView;
-
 pub use self::{
     catalog_client::PyCatalogClientInternal,
     connection_handle::ConnectionHandle,
@@ -33,6 +31,7 @@ pub use self::{
     table_entry::{PyTableEntry, PyTableInsertMode},
     task::{PyTask, PyTasks},
 };
+use crate::catalog::dataframe_query::PyDataframeQueryView;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {

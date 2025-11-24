@@ -1,7 +1,6 @@
 use std::mem;
 
 use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
-
 use re_log_types::TimestampFormat;
 use re_ui::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 
@@ -337,15 +336,16 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::datatypes::{DataType, Field, FieldRef};
-    use egui::accesskit::Role;
-    use egui::{Key, Modifiers};
+    use egui::{Key, Modifiers, accesskit::Role};
     use egui_kittest::kittest::Queryable as _;
 
-    use super::super::{
-        ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
-        NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
+    use super::{
+        super::{
+            ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
+            NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
+        },
+        *,
     };
-    use super::*;
 
     fn test_cases() -> Vec<(TypedFilter, &'static str)> {
         // Let's remember to update this test when adding new filter types.

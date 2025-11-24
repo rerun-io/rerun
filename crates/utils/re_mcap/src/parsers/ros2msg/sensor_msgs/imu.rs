@@ -1,4 +1,3 @@
-use super::super::definitions::sensor_msgs;
 use re_chunk::{
     Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint,
     external::arrow::array::{FixedSizeListBuilder, Float64Builder},
@@ -9,7 +8,7 @@ use re_types::{
     reflection::ComponentDescriptorExt as _,
 };
 
-use super::super::Ros2MessageParser;
+use super::super::{Ros2MessageParser, definitions::sensor_msgs};
 use crate::{
     Error,
     parsers::{MessageParser, ParserContext, cdr},

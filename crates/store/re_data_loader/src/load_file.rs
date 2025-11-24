@@ -136,8 +136,9 @@ pub(crate) fn load(
             // then we don't need the overhead and noise of external data loaders:
             // See <https://github.com/rerun-io/rerun/issues/6530>.
             let loaders = {
-                use crate::DataLoader as _;
                 use rayon::iter::Either;
+
+                use crate::DataLoader as _;
 
                 let extension = crate::extension(path);
                 if crate::is_supported_file_extension(&extension) {

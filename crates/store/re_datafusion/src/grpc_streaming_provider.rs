@@ -1,15 +1,13 @@
 use std::{any::Any, pin::Pin, sync::Arc};
 
-use async_trait::async_trait;
-
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
-use datafusion::common::not_impl_err;
-use datafusion::logical_expr::TableProviderFilterPushDown;
-use datafusion::logical_expr::dml::InsertOp;
+use async_trait::async_trait;
 use datafusion::{
     catalog::{Session, TableProvider},
+    common::not_impl_err,
     error::{DataFusionError, Result as DataFusionResult},
     execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext},
+    logical_expr::{TableProviderFilterPushDown, dml::InsertOp},
     physical_plan::{
         ExecutionPlan,
         streaming::{PartitionStream, StreamingTableExec},

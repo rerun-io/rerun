@@ -2,14 +2,10 @@
 
 #![allow(clippy::allow_attributes, clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
-use std::rc::Rc;
-use std::str::FromStr as _;
+use std::{rc::Rc, str::FromStr as _};
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use serde::Deserialize;
-use wasm_bindgen::prelude::*;
-
 use re_log::ResultExt as _;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
@@ -17,9 +13,13 @@ use re_types::blueprint::components::PlayState;
 use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
+use serde::Deserialize;
+use wasm_bindgen::prelude::*;
 
-use crate::history::install_popstate_listener;
-use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
+use crate::{
+    history::install_popstate_listener,
+    web_tools::{Callback, JsResultExt as _, StringOrStringArray},
+};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -846,9 +846,12 @@ pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std
 
 #[cfg(test)]
 mod tests {
+    use arrow::{
+        ArrowError,
+        array::{RecordBatch, RecordBatchOptions},
+    };
+
     use super::*;
-    use arrow::ArrowError;
-    use arrow::array::{RecordBatch, RecordBatchOptions};
 
     /// Returns the [`TableMsg`] encoded as a record batch.
     // This is required to send bytes to a viewer running in a notebook.

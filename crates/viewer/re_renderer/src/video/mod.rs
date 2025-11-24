@@ -1,13 +1,11 @@
 mod chunk_decoder;
 mod player;
 
-pub use player::PlayerConfiguration;
-
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
-
+pub use player::PlayerConfiguration;
 use re_log::ResultExt as _;
 use re_video::{DecodeSettings, StableIndexDeque, VideoDataDescription};
 

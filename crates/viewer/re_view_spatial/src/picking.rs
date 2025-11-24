@@ -6,8 +6,7 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
 
-use crate::PickableTexturedRect;
-use crate::eye::Eye;
+use crate::{PickableTexturedRect, eye::Eye};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum PickingHitType {

@@ -1,3 +1,5 @@
+use std::iter;
+
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
 use re_types::{
     ArrowString,
@@ -11,14 +13,12 @@ use re_viewer_context::{
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
-use std::iter;
-
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 use super::{
     SpatialViewVisualizerData, filter_visualizable_3d_entities,
     utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
 };
+use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 // ---
 pub struct Cylinders3DVisualizer(SpatialViewVisualizerData);

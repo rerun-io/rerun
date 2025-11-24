@@ -3,7 +3,6 @@ use arrow::{
     buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer},
 };
 use itertools::Itertools as _;
-
 use re_log_types::TimelineName;
 
 use crate::{Chunk, TimeColumn};
@@ -311,9 +310,8 @@ mod tests {
         example_components::{MyColor, MyPoint, MyPoints},
     };
 
-    use crate::{ChunkId, RowId};
-
     use super::*;
+    use crate::{ChunkId, RowId};
 
     #[test]
     fn sort() -> anyhow::Result<()> {

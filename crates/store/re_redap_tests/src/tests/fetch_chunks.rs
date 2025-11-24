@@ -1,7 +1,7 @@
-use futures::StreamExt as _;
-use itertools::Itertools as _;
 use std::collections::HashSet;
 
+use futures::StreamExt as _;
+use itertools::Itertools as _;
 use re_protos::{
     cloud::v1alpha1::{
         FetchChunksRequest, QueryDatasetResponse, ext::QueryDatasetRequest,
@@ -14,9 +14,11 @@ use re_sdk::external::re_log_encoding::ToApplication as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
-use crate::RecordBatchExt as _;
-use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+use crate::{
+    RecordBatchExt as _,
+    tests::common::{
+        DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+    },
 };
 
 /// This test makes a snapshot of all the chunks returned for a simple dataset.

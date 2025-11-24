@@ -6,11 +6,14 @@ use re_log_types::{
     AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
     LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
-use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
-use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::{
+    cloud::v1alpha1::{
+        ext::{Query, QueryLatestAt, QueryRange},
+        rerun_cloud_service_client::RerunCloudServiceClient,
+    },
+    common::v1alpha1::ext::PartitionId,
+};
 use re_uri::{Origin, TimeSelection};
-
 use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE};

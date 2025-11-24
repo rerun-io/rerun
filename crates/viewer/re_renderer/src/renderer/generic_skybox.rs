@@ -1,5 +1,6 @@
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     DrawableCollector,
     allocator::create_and_fill_uniform_buffer,
@@ -16,8 +17,6 @@ use crate::{
         RenderPipelineDesc,
     },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 /// The type of generic skybox to render.
 ///

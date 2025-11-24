@@ -26,15 +26,14 @@ pub mod oauth;
 #[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
 pub mod callback_server;
 
-pub use service::client;
-pub use token::{Jwt, TokenError};
-
 #[cfg(not(target_arch = "wasm32"))]
 pub use error::Error;
 #[cfg(not(target_arch = "wasm32"))]
 pub use provider::{Claims, RedapProvider, SecretKey, VerificationOptions};
+pub use service::client;
 #[cfg(not(target_arch = "wasm32"))]
 pub use service::server;
+pub use token::{Jwt, TokenError};
 
 /// The error message in Tonic's gRPC status when the token is malformed or invalid in some way.
 ///

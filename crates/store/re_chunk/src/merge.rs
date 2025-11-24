@@ -1,9 +1,9 @@
-use arrow::array::FixedSizeBinaryArray;
-use arrow::array::{Array as _, ListArray as ArrowListArray};
-use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use arrow::{
+    array::{Array as _, FixedSizeBinaryArray, ListArray as ArrowListArray},
+    buffer::ScalarBuffer as ArrowScalarBuffer,
+};
 use itertools::{Itertools as _, izip};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::SerializedComponentColumn;
 
@@ -295,10 +295,9 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64, MyPoints};
 
+    use super::*;
     use crate::{Chunk, RowId, Timeline};
 
     #[test]

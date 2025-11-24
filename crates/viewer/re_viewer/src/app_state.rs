@@ -2,7 +2,6 @@ use std::{borrow::Cow, str::FromStr as _};
 
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
-
 use re_chunk::{Timeline, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
@@ -22,8 +21,7 @@ use re_viewer_context::{
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::ViewportBlueprint;
-use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
+use re_viewport_blueprint::{ViewportBlueprint, ui::add_view_or_container_modal_ui};
 
 use crate::{
     StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,

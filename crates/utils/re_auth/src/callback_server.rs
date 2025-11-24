@@ -1,10 +1,11 @@
+use std::borrow::Cow;
+
 use uuid::Uuid;
 
 use crate::oauth::{
     CredentialsStoreError, MalformedTokenError,
     api::{Pkce, authorization_url},
 };
-use std::borrow::Cow;
 
 pub struct OauthCallbackServer {
     server: tiny_http::Server,

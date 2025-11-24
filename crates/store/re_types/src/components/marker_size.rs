@@ -15,11 +15,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use ::re_types_core::SerializationResult;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
-use ::re_types_core::{ComponentDescriptor, ComponentType};
-use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{
+    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
+    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
+};
 
 /// **Component**: Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]

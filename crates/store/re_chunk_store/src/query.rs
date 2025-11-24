@@ -5,18 +5,15 @@ use std::{
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
-use saturating_cast::SaturatingCast as _;
-
 use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
-use re_log_types::AbsoluteTimeRange;
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
-
-use crate::{ChunkStore, store::ChunkIdSetPerTime};
+use saturating_cast::SaturatingCast as _;
 
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
+use crate::{ChunkStore, store::ChunkIdSetPerTime};
 
 // ---
 

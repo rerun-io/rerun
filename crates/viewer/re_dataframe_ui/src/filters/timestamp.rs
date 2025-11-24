@@ -14,22 +14,27 @@
 //! - We always consider the physical timestamp to be UTC, even with the time zone is `None`.
 //! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
 
-use std::fmt::{Display, Formatter};
-use std::hash::Hash;
-use std::str::FromStr as _;
+use std::{
+    fmt::{Display, Formatter},
+    hash::Hash,
+    str::FromStr as _,
+};
 
-use arrow::array::{ArrayRef, BooleanArray};
-use arrow::datatypes::{DataType, Field, TimeUnit};
-use datafusion::common::{Result as DataFusionResult, exec_err};
-use datafusion::logical_expr::{Expr, TypeSignature, col, not};
+use arrow::{
+    array::{ArrayRef, BooleanArray},
+    datatypes::{DataType, Field, TimeUnit},
+};
+use datafusion::{
+    common::{Result as DataFusionResult, exec_err},
+    logical_expr::{Expr, TypeSignature, col, not},
+};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
-use strum::VariantArray as _;
-
 use re_log_types::TimestampFormat;
-use re_types_core::Loggable as _;
-use re_types_core::datatypes::TimeInt;
-use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
+use re_types_core::{Loggable as _, datatypes::TimeInt};
+use re_ui::{
+    DesignTokens, SyntaxHighlighting, UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder,
+};
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
@@ -809,9 +814,9 @@ impl FilterUdf for ResolvedTimestampFilter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use jiff::civil::date;
+
+    use super::*;
 
     #[test]
     fn test_before_filter() {

@@ -4,12 +4,11 @@ use camino::Utf8PathBuf;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
+use super::util::string_from_quoted;
 use crate::{
     Object, ObjectKind, Objects, Reporter,
     codegen::{autogen_warning, common::StringExt as _},
 };
-
-use super::util::string_from_quoted;
 
 pub(crate) fn generate_blueprint_validation(
     reporter: &Reporter,

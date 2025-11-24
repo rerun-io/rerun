@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use arrow::array::ArrayRef;
 use rand::Rng as _;
-
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
 };

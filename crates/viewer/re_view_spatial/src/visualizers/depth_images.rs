@@ -1,5 +1,4 @@
 use nohash_hasher::IntMap;
-
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
@@ -16,14 +15,13 @@ use re_viewer_context::{
     VisualizerSystem, typed_fallback_for,
 };
 
+use super::{SpatialViewVisualizerData, textured_rect_from_image};
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
     contexts::{SpatialSceneEntityContext, TransformTreeContext},
     view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
 };
-
-use super::{SpatialViewVisualizerData, textured_rect_from_image};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,

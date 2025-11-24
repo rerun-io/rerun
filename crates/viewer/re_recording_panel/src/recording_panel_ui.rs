@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
-
 use re_data_ui::{
     DataUi as _,
     item_ui::{entity_db_button_ui, table_id_button_ui},
@@ -18,10 +17,12 @@ use re_viewer_context::{
     open_url::ViewerOpenUrl,
 };
 
-use crate::RecordingPanelCommand;
-use crate::data::{
-    AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
-    RemoteTableData, ServerData, ServerEntriesData,
+use crate::{
+    RecordingPanelCommand,
+    data::{
+        AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
+        RemoteTableData, ServerData, ServerEntriesData,
+    },
 };
 
 #[derive(Debug, Clone, Default)]

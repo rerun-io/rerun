@@ -11,7 +11,6 @@ use arrow::{
     datatypes::ArrowNativeType,
 };
 use itertools::{Either, Itertools as _, izip};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;

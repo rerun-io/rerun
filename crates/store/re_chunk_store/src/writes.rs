@@ -3,7 +3,6 @@ use std::{collections::BTreeSet, sync::Arc};
 use ahash::HashMap;
 use arrow::array::Array as _;
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
@@ -809,9 +808,8 @@ mod tests {
     use re_types_core::ComponentDescriptor;
     use similar_asserts::assert_eq;
 
-    use crate::ChunkStoreDiffKind;
-
     use super::*;
+    use crate::ChunkStoreDiffKind;
 
     // TODO(cmc): We could have more test coverage here, especially regarding thresholds etc.
     // For now the development and maintenance cost doesn't seem to be worth it.

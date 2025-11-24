@@ -1,10 +1,14 @@
+use std::io::Cursor;
+
+use cros_codecs::codec::h265::parser::{
+    Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
+};
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
 use re_span::Span;
 use saturating_cast::SaturatingCast as _;
 
 use super::{GroupOfPictures, SampleMetadata, VideoDataDescription, VideoLoadError};
-
 use crate::{
     StableIndexDeque, Time, Timescale,
     demux::{ChromaSubsamplingModes, SamplesStatistics, VideoDeliveryMethod, VideoEncodingDetails},
@@ -12,10 +16,6 @@ use crate::{
     h265::encoding_details_from_h265_sps,
     nalu::ANNEXB_NAL_START_CODE,
 };
-use cros_codecs::codec::h265::parser::{
-    Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
-};
-use std::io::Cursor;
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {

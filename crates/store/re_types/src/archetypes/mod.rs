@@ -67,45 +67,19 @@ mod video_stream;
 mod view_coordinates;
 mod view_coordinates_ext;
 
-pub use self::annotation_context::AnnotationContext;
-pub use self::arrows2d::Arrows2D;
-pub use self::arrows3d::Arrows3D;
-pub use self::asset_video::AssetVideo;
-pub use self::asset3d::Asset3D;
-pub use self::bar_chart::BarChart;
-pub use self::boxes2d::Boxes2D;
-pub use self::boxes3d::Boxes3D;
-pub use self::capsules3d::Capsules3D;
-pub use self::coordinate_frame::CoordinateFrame;
-pub use self::cylinders3d::Cylinders3D;
-pub use self::depth_image::DepthImage;
-pub use self::ellipsoids3d::Ellipsoids3D;
-pub use self::encoded_image::EncodedImage;
-pub use self::geo_line_strings::GeoLineStrings;
-pub use self::geo_points::GeoPoints;
-pub use self::graph_edges::GraphEdges;
-pub use self::graph_nodes::GraphNodes;
-pub use self::image::Image;
-pub use self::instance_poses3d::InstancePoses3D;
-pub use self::line_strips2d::LineStrips2D;
-pub use self::line_strips3d::LineStrips3D;
-pub use self::mcap_channel::McapChannel;
-pub use self::mcap_message::McapMessage;
-pub use self::mcap_schema::McapSchema;
-pub use self::mcap_statistics::McapStatistics;
-pub use self::mesh3d::Mesh3D;
-pub use self::pinhole::Pinhole;
-pub use self::points2d::Points2D;
-pub use self::points3d::Points3D;
-pub use self::recording_info::RecordingInfo;
-pub use self::scalars::Scalars;
-pub use self::segmentation_image::SegmentationImage;
-pub use self::series_lines::SeriesLines;
-pub use self::series_points::SeriesPoints;
-pub use self::tensor::Tensor;
-pub use self::text_document::TextDocument;
-pub use self::text_log::TextLog;
-pub use self::transform3d::Transform3D;
-pub use self::video_frame_reference::VideoFrameReference;
-pub use self::video_stream::VideoStream;
-pub use self::view_coordinates::ViewCoordinates;
+pub use self::{
+    annotation_context::AnnotationContext, arrows2d::Arrows2D, arrows3d::Arrows3D,
+    asset_video::AssetVideo, asset3d::Asset3D, bar_chart::BarChart, boxes2d::Boxes2D,
+    boxes3d::Boxes3D, capsules3d::Capsules3D, coordinate_frame::CoordinateFrame,
+    cylinders3d::Cylinders3D, depth_image::DepthImage, ellipsoids3d::Ellipsoids3D,
+    encoded_image::EncodedImage, geo_line_strings::GeoLineStrings, geo_points::GeoPoints,
+    graph_edges::GraphEdges, graph_nodes::GraphNodes, image::Image,
+    instance_poses3d::InstancePoses3D, line_strips2d::LineStrips2D, line_strips3d::LineStrips3D,
+    mcap_channel::McapChannel, mcap_message::McapMessage, mcap_schema::McapSchema,
+    mcap_statistics::McapStatistics, mesh3d::Mesh3D, pinhole::Pinhole, points2d::Points2D,
+    points3d::Points3D, recording_info::RecordingInfo, scalars::Scalars,
+    segmentation_image::SegmentationImage, series_lines::SeriesLines, series_points::SeriesPoints,
+    tensor::Tensor, text_document::TextDocument, text_log::TextLog, transform3d::Transform3D,
+    video_frame_reference::VideoFrameReference, video_stream::VideoStream,
+    view_coordinates::ViewCoordinates,
+};

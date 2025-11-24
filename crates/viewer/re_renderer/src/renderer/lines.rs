@@ -82,6 +82,7 @@ use enumset::{EnumSet, enum_set};
 use re_tracing::profile_function;
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     DebugLabel, DepthOffset, DrawableCollector, LineDrawableBuilder, OutlineMaskPreference,
     PickingLayerObjectId, PickingLayerProcessor,
@@ -97,16 +98,13 @@ use crate::{
     },
 };
 
-use super::{DrawData, DrawError, RenderContext, Renderer};
-
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
 
+    use super::LineStripFlags;
     use crate::{
         Color32, PickingLayerObjectId, UnalignedColor32, size::SizeHalf, wgpu_buffer_types,
     };
-
-    use super::LineStripFlags;
 
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -783,9 +781,8 @@ impl Renderer for LineRenderer {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Rgba, view_builder::TargetConfiguration};
-
     use super::*;
+    use crate::{Rgba, view_builder::TargetConfiguration};
 
     // Regression test for https://github.com/rerun-io/rerun/issues/8639
     #[test]

@@ -1,6 +1,7 @@
-use jiff::SignedDuration;
-use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
-
+use jiff::{
+    SignedDuration,
+    fmt::friendly::{FractionalUnit, SpanPrinter},
+};
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;

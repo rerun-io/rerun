@@ -2,8 +2,7 @@
 
 use std::num::TryFromIntError;
 
-use arrow::datatypes::DataType;
-use arrow::error::ArrowError;
+use arrow::{datatypes::DataType, error::ArrowError};
 
 /// Errors that can occur during array transformations.
 #[derive(Debug, thiserror::Error)]

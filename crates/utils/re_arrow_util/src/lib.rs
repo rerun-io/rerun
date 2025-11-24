@@ -6,22 +6,23 @@ mod compare;
 mod format;
 mod format_data_type;
 
-pub use self::arrays::*;
-pub use self::batches::*;
-pub use self::compare::*;
-pub use self::format::{
-    RecordBatchFormatOpts, format_record_batch, format_record_batch_opts,
-    format_record_batch_with_width,
-};
-pub use self::format_data_type::*;
-
 // ----------------------------------------------------------------
-
 use std::sync::Arc;
 
 use arrow::{
     array::{Array as _, AsArray as _, ListArray},
     datatypes::{DataType, Field},
+};
+
+pub use self::{
+    arrays::*,
+    batches::*,
+    compare::*,
+    format::{
+        RecordBatchFormatOpts, format_record_batch, format_record_batch_opts,
+        format_record_batch_with_width,
+    },
+    format_data_type::*,
 };
 
 /// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logivally the same
@@ -46,8 +47,9 @@ pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::array::{BinaryBuilder, ListBuilder};
+
+    use super::*;
 
     #[test]
     fn test_widen_list_binary() {

@@ -15,11 +15,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::SerializationResult;
-use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentType};
-use crate::{DeserializationError, DeserializationResult};
+use crate::{
+    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
+    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
+};
 
 /// **Datatype**: Two [`datatypes::TimeInt`][crate::datatypes::TimeInt] describing a range of time.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -50,8 +49,9 @@ impl crate::Loggable for AbsoluteTimeRange {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
+
+        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         Ok({
             let fields = Fields::from(vec![
                 Field::new("min", <crate::datatypes::TimeInt>::arrow_datatype(), false),
@@ -125,8 +125,9 @@ impl crate::Loggable for AbsoluteTimeRange {
     where
         Self: Sized,
     {
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
+
+        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         Ok({
             let arrow_data = arrow_data
                 .as_any()

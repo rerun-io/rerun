@@ -1,6 +1,6 @@
+use egui::{Frame, InnerResponse, Ui, style::StyleModifier};
+
 use crate::DesignTokens;
-use egui::style::StyleModifier;
-use egui::{Frame, InnerResponse, Ui};
 
 pub fn menu_style() -> StyleModifier {
     StyleModifier::new(|style| {

@@ -1,9 +1,8 @@
-use crate::rrd::{Decodable, Encodable, OptionsError};
-
 // --- FileHeader ---
-
 pub use re_build_info::CrateVersion; // convenience
-pub use re_protos::log_msg::v1alpha1::ext::Compression; // convenience
+pub use re_protos::log_msg::v1alpha1::ext::Compression;
+
+use crate::rrd::{Decodable, Encodable, OptionsError}; // convenience
 
 /// How we serialize the data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

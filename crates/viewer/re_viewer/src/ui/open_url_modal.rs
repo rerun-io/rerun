@@ -1,7 +1,9 @@
 use std::str::FromStr as _;
 
-use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{UICommand, UiExt as _};
+use re_ui::{
+    UICommand, UiExt as _,
+    modal::{ModalHandler, ModalWrapper},
+};
 use re_viewer_context::open_url::ViewerOpenUrl;
 
 use crate::open_url_description::ViewerOpenUrlDescription;

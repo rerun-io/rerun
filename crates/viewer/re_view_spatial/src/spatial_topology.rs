@@ -423,9 +423,8 @@ mod tests {
         components::{PinholeProjection, ViewCoordinates},
     };
 
-    use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};
-
     use super::SpatialTopology;
+    use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};
 
     #[test]
     fn no_splits() {

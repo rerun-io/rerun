@@ -6,10 +6,12 @@ use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
 
-use crate::ToTransport as _;
-use crate::rrd::{
-    CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
-    Serializer, StreamHeader,
+use crate::{
+    ToTransport as _,
+    rrd::{
+        CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
+        Serializer, StreamHeader,
+    },
 };
 
 // ----------------------------------------------------------------------------

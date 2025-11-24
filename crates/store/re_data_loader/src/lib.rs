@@ -26,14 +26,14 @@ pub mod loader_mcap;
 #[cfg(not(target_arch = "wasm32"))]
 mod loader_external;
 
-pub use self::loader_mcap::McapLoader;
-
 pub use self::{
-    load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
-    loader_directory::DirectoryLoader, loader_rrd::RrdLoader, loader_urdf::UrdfDataLoader,
-    loader_urdf::UrdfTree,
+    load_file::load_from_file_contents,
+    loader_archetype::ArchetypeLoader,
+    loader_directory::DirectoryLoader,
+    loader_mcap::McapLoader,
+    loader_rrd::RrdLoader,
+    loader_urdf::{UrdfDataLoader, UrdfTree},
 };
-
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     load_file::load_from_path,

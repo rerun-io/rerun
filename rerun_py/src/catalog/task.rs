@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use datafusion::datasource::MemTable;
 use itertools::Itertools as _;
-use pyo3::exceptions::PyIndexError;
-use pyo3::{Py, PyRef, PyResult, Python, pyclass, pymethods};
-
+use pyo3::{Py, PyRef, PyResult, Python, exceptions::PyIndexError, pyclass, pymethods};
 use re_log_types::hash::Hash64;
 use re_protos::common::v1alpha1::TaskId;
 

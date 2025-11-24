@@ -1,12 +1,12 @@
 //! Utilities to generate an arbitrary archetype to log Rerun.
 
 use nohash_hasher::IntMap;
+use re_types_core::{AsComponents, ComponentType, Loggable, try_serialize_field};
 
 use crate::{
     ArchetypeName, Component, ComponentDescriptor, ComponentIdentifier, SerializedComponentBatch,
     reflection::ComponentDescriptorExt as _,
 };
-use re_types_core::{AsComponents, ComponentType, Loggable, try_serialize_field};
 
 /// A helper for logging a dynamically defined archetype to Rerun.
 /// component names will be modified in a way similar to Rerun
@@ -107,10 +107,10 @@ mod test {
 
     use std::collections::BTreeSet;
 
-    use crate::components;
     use re_types_core::datatypes::Utf8;
 
     use super::*;
+    use crate::components;
 
     #[test]
     fn with_archetype() {

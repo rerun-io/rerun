@@ -1,7 +1,9 @@
 //! Transforms that cast arrays to different types.
 
-use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
-use arrow::compute::cast;
+use arrow::{
+    array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray},
+    compute::cast,
+};
 
 use crate::{Error, Transform};
 

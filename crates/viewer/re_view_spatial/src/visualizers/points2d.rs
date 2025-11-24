@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     Archetype as _, ArrowString,
@@ -13,15 +12,14 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
+use super::{
+    SpatialViewVisualizerData, filter_visualizable_2d_entities,
+    utilities::{LabeledBatch, process_labels_2d},
+};
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{load_keypoint_connections, process_radius_slice},
-};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_2d_entities,
-    utilities::{LabeledBatch, process_labels_2d},
 };
 
 // ---

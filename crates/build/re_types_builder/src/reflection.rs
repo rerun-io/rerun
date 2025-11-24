@@ -2,8 +2,7 @@
 
 // @generated
 
-use core::cmp::Ordering;
-use core::mem;
+use core::{cmp::Ordering, mem};
 
 extern crate flatbuffers;
 use self::flatbuffers::{EndianScalar, Follow};
@@ -11,8 +10,7 @@ use self::flatbuffers::{EndianScalar, Follow};
 #[expect(unused_imports, dead_code)]
 pub mod reflection {
 
-    use core::cmp::Ordering;
-    use core::mem;
+    use core::{cmp::Ordering, mem};
 
     extern crate flatbuffers;
     use self::flatbuffers::{EndianScalar, Follow};

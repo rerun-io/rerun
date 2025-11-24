@@ -18,25 +18,7 @@ mod transport;
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
 
-pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
-pub use self::chunk::{
-    Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
-};
-pub use self::helpers::{ChunkShared, UnitChunkShared};
-pub use self::iter::{
-    ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
-};
-pub use self::latest_at::LatestAtQuery;
-pub use self::range::{RangeQuery, RangeQueryOptions};
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::batcher::{
-    BatcherFlushError, BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
-    ChunkBatcherResult, PendingRow,
-};
-
 // Re-exports
-
 #[doc(no_inline)]
 pub use {
     arrow::array::Array as ArrowArray,
@@ -45,13 +27,25 @@ pub use {
     re_types_core::{ArchetypeName, ChunkId, ComponentIdentifier, ComponentType, RowId},
 };
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::batcher::{
+    BatcherFlushError, BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
+    ChunkBatcherResult, PendingRow,
+};
+pub use self::{
+    builder::{ChunkBuilder, TimeColumnBuilder},
+    chunk::{Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError},
+    helpers::{ChunkShared, UnitChunkShared},
+    iter::{ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter},
+    latest_at::LatestAtQuery,
+    range::{RangeQuery, RangeQueryOptions},
+};
+
 pub mod external {
     pub use arrow;
-    pub use nohash_hasher;
-
-    pub use re_byte_size;
-    pub use re_log_types;
-
     #[cfg(not(target_arch = "wasm32"))]
     pub use crossbeam;
+    pub use nohash_hasher;
+    pub use re_byte_size;
+    pub use re_log_types;
 }

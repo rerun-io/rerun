@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_renderer::{RenderContext, mesh::GpuMesh};
 use re_types::{components::MediaType, datatypes};
 use re_viewer_context::{

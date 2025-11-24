@@ -1,5 +1,4 @@
 use egui::{Label, Sense};
-
 use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{

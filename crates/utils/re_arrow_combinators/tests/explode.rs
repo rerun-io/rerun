@@ -2,9 +2,11 @@ mod util;
 
 use std::sync::Arc;
 
-use arrow::array::{Array as _, Int32Array, ListArray};
-use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field, Int32Type};
+use arrow::{
+    array::{Array as _, Int32Array, ListArray},
+    buffer::OffsetBuffer,
+    datatypes::{DataType, Field, Int32Type},
+};
 use re_arrow_combinators::{Transform as _, reshape::Explode};
 use util::DisplayRB;
 

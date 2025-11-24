@@ -1,9 +1,7 @@
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
-
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{
     AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
@@ -11,9 +9,11 @@ use re_log_types::{
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::StoreContext;
 
-use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
-use crate::chunk_ui::ChunkUi;
-use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
+use crate::{
+    chunk_list_mode::{ChunkListMode, ChunkListQueryMode},
+    chunk_ui::ChunkUi,
+    sort::{SortColumn, SortDirection, sortable_column_header_ui},
+};
 
 /// Any column that can be sorted.
 #[derive(Default, Clone, Copy, PartialEq)]

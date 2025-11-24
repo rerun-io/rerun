@@ -2,20 +2,20 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
-use re_entity_db::entity_db::EntityDbClass;
-use re_entity_db::{EntityTree, InstancePath};
+use re_entity_db::{EntityTree, InstancePath, entity_db::EntityDbClass};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, TimelineName};
 use re_types::{
     archetypes::RecordingInfo,
     components::{Name, Timestamp},
 };
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_ui::{
+    SyntaxHighlighting as _, UiExt as _, icons, list_item,
+    list_item::ListItemContentButtonsExt as _,
+};
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout,
-    ViewId, ViewerContext,
+    ViewId, ViewerContext, open_url::ViewerOpenUrl,
 };
 
 use super::DataUi as _;

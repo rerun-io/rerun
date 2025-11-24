@@ -1,7 +1,6 @@
 //! Demonstrates basic usage of the dataframe APIs.
 
 use itertools::Itertools;
-
 use rerun::{
     ChunkStoreConfig,
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},

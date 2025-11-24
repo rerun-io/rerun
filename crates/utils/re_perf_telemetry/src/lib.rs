@@ -76,7 +76,6 @@ pub mod external {
     pub use tower_http;
     pub use tracing;
     pub use tracing_opentelemetry;
-
     #[cfg(feature = "tracy")]
     pub use tracing_tracy;
 }
@@ -108,8 +107,9 @@ pub fn current_trace_id() -> Option<opentelemetry::TraceId> {
 ///
 /// Returns `None` if there is no trace *actively being sampled* in the current context.
 pub fn current_trace_headers() -> Option<TraceHeaders> {
-    use opentelemetry::propagation::text_map_propagator::TextMapPropagator as _;
-    use opentelemetry::trace::TraceContextExt as _;
+    use opentelemetry::{
+        propagation::text_map_propagator::TextMapPropagator as _, trace::TraceContextExt as _,
+    };
     use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
     let cx = tracing::Span::current().context();

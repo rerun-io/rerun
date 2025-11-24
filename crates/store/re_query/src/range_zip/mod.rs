@@ -4,7 +4,6 @@ pub use self::generated::*;
 #[cfg(test)]
 mod tests {
     use itertools::Itertools as _;
-
     use re_chunk::RowId;
     use re_log_types::TimeInt;
 

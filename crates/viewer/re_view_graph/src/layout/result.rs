@@ -3,9 +3,8 @@
 use egui::Rect;
 use re_chunk::EntityPath;
 
-use crate::graph::{EdgeId, NodeId};
-
 use super::EdgeGeometry;
+use crate::graph::{EdgeId, NodeId};
 
 #[derive(Debug)]
 pub struct Layout {

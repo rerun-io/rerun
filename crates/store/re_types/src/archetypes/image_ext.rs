@@ -1,3 +1,6 @@
+use super::{EncodedImage, Image};
+#[cfg(feature = "image")]
+use crate::image::{ImageConversionError, ImageLoadError};
 use crate::{
     components::ImageBuffer,
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData},
@@ -6,13 +9,6 @@ use crate::{
         find_non_empty_dim_indices,
     },
 };
-
-#[cfg(feature = "image")]
-use crate::image::{ImageConversionError, ImageLoadError};
-
-use super::EncodedImage;
-
-use super::Image;
 
 impl Image {
     /// Try to construct an [`Image`] from a color model (L, RGB, RGBA, …) and anything that can be converted into [`TensorData`].

@@ -1,9 +1,8 @@
+use super::SegmentationImage;
 use crate::{
     datatypes::{ImageFormat, TensorData},
     image::{ImageConstructionError, blob_and_datatype_from_tensor, find_non_empty_dim_indices},
 };
-
-use super::SegmentationImage;
 
 impl SegmentationImage {
     /// Try to construct a [`SegmentationImage`] from anything that can be converted into [`TensorData`]

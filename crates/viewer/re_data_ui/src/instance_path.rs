@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use egui::RichText;
 use itertools::Itertools as _;
 use re_capabilities::MainThreadToken;
-
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
@@ -11,8 +10,9 @@ use re_types::{
     ArchetypeName, Component as _, ComponentDescriptor, components,
     reflection::ComponentDescriptorExt as _,
 };
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
+use re_ui::{
+    UiExt as _, design_tokens_of_visuals, list_item, list_item::ListItemContentButtonsExt as _,
+};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
 use super::DataUi;

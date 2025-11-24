@@ -5,10 +5,9 @@ use std::sync::{
 
 use crossbeam::channel::{Receiver, Sender, unbounded};
 
+use super::{AsyncDecoder, Chunk, Result};
 #[cfg(with_dav1d)]
 use crate::{VideoDataDescription, decode::FrameResult};
-
-use super::{AsyncDecoder, Chunk, Result};
 
 enum Command {
     Chunk(Chunk),

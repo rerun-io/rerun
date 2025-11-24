@@ -10,8 +10,6 @@ use arrow::{
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
 use itertools::Itertools as _;
-
-use crate::{ChunkStore, ColumnMetadata};
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_sorbet::{
@@ -19,6 +17,8 @@ use re_sorbet::{
     IndexColumnDescriptor, TimeColumnSelector,
 };
 use tap::Tap as _;
+
+use crate::{ChunkStore, ColumnMetadata};
 
 // --- Queries v2 ---
 

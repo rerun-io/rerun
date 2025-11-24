@@ -1,8 +1,6 @@
+use enumset::{__internal::EnumSetTypePrivate as _, EnumSet};
+
 use super::DrawPhase;
-
-use enumset::__internal::EnumSetTypePrivate as _;
-use enumset::EnumSet;
-
 use crate::{
     GpuRenderPipelinePoolAccessor, QueueableDrawData, RenderContext, RendererTypeId,
     context::Renderers,

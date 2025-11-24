@@ -1,19 +1,22 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, SchemaRef};
-use datafusion::common::{DataFusionError, TableReference};
-use datafusion::functions::expr_fn::concat;
-use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
-use datafusion::prelude::{SessionContext, cast, encode};
+use datafusion::{
+    common::{DataFusionError, TableReference},
+    functions::expr_fn::concat,
+    logical_expr::{binary_expr, col as datafusion_col, lit},
+    prelude::{SessionContext, cast, encode},
+};
 use parking_lot::Mutex;
-
 use re_log_types::Timestamp;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
-use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
-use crate::table_selection::TableSelectionState;
-use crate::{ColumnFilter, RequestedObject};
+use crate::{
+    ColumnFilter, RequestedObject,
+    table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint},
+    table_selection::TableSelectionState,
+};
 
 /// Make sure we escape column names correctly for datafusion.
 ///

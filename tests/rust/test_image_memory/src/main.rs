@@ -4,7 +4,6 @@
 #![expect(clippy::unwrap_used)]
 
 use mimalloc::MiMalloc;
-
 use re_memory::AccountingAllocator;
 use rerun::{archetypes::Image, external::image};
 

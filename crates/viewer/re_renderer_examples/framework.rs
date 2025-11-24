@@ -5,12 +5,10 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
-use web_time::Instant;
-
 use re_renderer::{
     RenderConfig, RenderContext, device_caps::DeviceCaps, view_builder::ViewBuilder,
 };
-
+use web_time::Instant;
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,

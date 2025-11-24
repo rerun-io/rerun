@@ -8,20 +8,19 @@ use arrow::{
         Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
         ListArray as ArrowListArray,
     },
-    buffer::NullBuffer as ArrowNullBuffer,
-    buffer::ScalarBuffer as ArrowScalarBuffer,
+    buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
     datatypes::DataType as ArrowDataType,
 };
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
-use re_log_types::hash::Hash64;
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPath, TimeInt, Timeline, hash::Hash64};
 use re_sorbet::ColumnDescriptorRef;
-use re_types::ComponentDescriptor;
-use re_types::components::{Blob, MediaType};
+use re_types::{
+    ComponentDescriptor,
+    components::{Blob, MediaType},
+};
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, VariantName, ViewerContext};
@@ -140,8 +139,9 @@ impl ComponentData {
 /// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
 /// are hashed.
 fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
-    use ahash::AHasher;
     use std::hash::{Hash as _, Hasher as _};
+
+    use ahash::AHasher;
 
     re_tracing::profile_function!();
 

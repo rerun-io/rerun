@@ -1,7 +1,9 @@
 use std::{ops::Range, sync::mpsc};
 
-use crate::texture_info::Texture2DBufferInfo;
-use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
+use crate::{
+    texture_info::Texture2DBufferInfo,
+    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool},
+};
 
 /// Identifier used to identify a buffer upon retrieval of the data.
 ///

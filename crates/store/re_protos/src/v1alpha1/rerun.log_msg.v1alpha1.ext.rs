@@ -97,8 +97,7 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreSource> for re_log_types::StoreSourc
 
     #[inline]
     fn try_from(value: crate::log_msg::v1alpha1::StoreSource) -> Result<Self, Self::Error> {
-        use crate::external::prost::Message as _;
-        use crate::log_msg::v1alpha1::StoreSourceKind;
+        use crate::{external::prost::Message as _, log_msg::v1alpha1::StoreSourceKind};
 
         match value.kind() {
             StoreSourceKind::Unspecified => Ok(Self::Unknown),

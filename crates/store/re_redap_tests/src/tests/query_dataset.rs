@@ -1,5 +1,4 @@
 use futures::StreamExt as _;
-
 use re_protos::{
     cloud::v1alpha1::{
         QueryDatasetResponse, ext::QueryDatasetRequest,
@@ -8,10 +7,12 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 
-use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+use crate::{
+    FieldsExt as _, RecordBatchExt as _,
+    tests::common::{
+        DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+    },
 };
-use crate::{FieldsExt as _, RecordBatchExt as _};
 
 pub async fn query_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";

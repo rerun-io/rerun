@@ -138,10 +138,9 @@ impl TransformFrameIdHash {
 
 #[cfg(test)]
 mod tests {
-    use crate::components::TransformFrameId;
-    use crate::transform_frame_id_hash::TransformFrameIdHash;
-
     use re_log_types::EntityPath;
+
+    use crate::{components::TransformFrameId, transform_frame_id_hash::TransformFrameIdHash};
 
     #[test]
     fn test_from_entity_path() {

@@ -504,9 +504,8 @@ mod tests {
     use re_log_types::hash::Hash64;
     use re_types::{datatypes::ColorModel, image::ImageChannelType};
 
-    use crate::image_info::StoredBlobCacheKey;
-
     use super::ImageInfo;
+    use crate::image_info::StoredBlobCacheKey;
 
     fn new_2x2_image_info<T: ImageChannelType>(
         color_model: ColorModel,

@@ -25,6 +25,18 @@ mod store;
 mod subscribers;
 mod writes;
 
+pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
+// Re-exports
+#[doc(no_inline)]
+pub use {
+    re_chunk::{
+        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
+        UnitChunkShared,
+    },
+    re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
+};
+
+pub(crate) use self::store::ColumnMetadataState;
 pub use self::{
     dataframe::{
         Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
@@ -37,23 +49,9 @@ pub use self::{
     store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
     subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
 };
-pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
-
-pub(crate) use self::store::ColumnMetadataState;
-
-// Re-exports
-#[doc(no_inline)]
-pub use {
-    re_chunk::{
-        Chunk, ChunkId, ChunkShared, LatestAtQuery, RangeQuery, RangeQueryOptions, RowId, Span,
-        UnitChunkShared,
-    },
-    re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
-};
 
 pub mod external {
     pub use arrow;
-
     pub use re_chunk;
 }
 

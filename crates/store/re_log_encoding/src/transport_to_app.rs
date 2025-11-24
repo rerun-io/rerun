@@ -12,8 +12,7 @@
 use re_build_info::CrateVersion;
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
-use crate::ApplicationIdInjector;
-use crate::rrd::CodecError;
+use crate::{ApplicationIdInjector, rrd::CodecError};
 
 // TODO(cmc): I'd really like a nice centralized way of communicating this.
 //

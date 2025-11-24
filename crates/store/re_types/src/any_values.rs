@@ -1,7 +1,8 @@
 //! Utilities to log arbitrary data to Rerun.
 
-use crate::{Component, SerializedComponentBatch, dynamic_archetype::DynamicArchetype};
 use re_types_core::{AsComponents, ComponentType, Loggable};
+
+use crate::{Component, SerializedComponentBatch, dynamic_archetype::DynamicArchetype};
 
 /// A helper for logging arbitrary data to Rerun.
 pub struct AnyValues {
@@ -73,12 +74,10 @@ mod test {
 
     use std::collections::BTreeSet;
 
-    use crate::components;
-
-    use crate::ComponentDescriptor;
     use re_types_core::datatypes::Utf8;
 
     use super::*;
+    use crate::{ComponentDescriptor, components};
 
     #[test]
     fn without_archetype() {

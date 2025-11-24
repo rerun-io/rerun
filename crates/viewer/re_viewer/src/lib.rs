@@ -38,29 +38,35 @@ mod loading;
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
 
-pub(crate) use {app_state::AppState, ui::memory_panel};
-
-pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
-
 pub use app::App;
-pub use startup_options::StartupOptions;
-
+pub(crate) use app_state::AppState;
+pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 pub use re_capabilities::MainThreadToken;
-
 pub use re_viewer_context::{
     AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
     command_channel,
 };
+pub use startup_options::StartupOptions;
+pub(crate) use ui::memory_panel;
 
 pub mod external {
+    pub use eframe;
+    pub use egui;
     pub use parking_lot;
-    pub use {eframe, egui};
-    pub use {
-        re_chunk, re_chunk::external::*, re_chunk_store, re_chunk_store::external::*, re_data_ui,
-        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_smart_channel, re_types,
-        re_ui, re_view_spatial, re_viewer_context, re_viewer_context::external::*, re_viewport,
-        re_viewport::external::*,
-    };
+    pub use re_chunk::{self, external::*};
+    pub use re_chunk_store::{self, external::*};
+    pub use re_data_ui;
+    pub use re_entity_db;
+    pub use re_log;
+    pub use re_log_types;
+    pub use re_memory;
+    pub use re_renderer;
+    pub use re_smart_channel;
+    pub use re_types;
+    pub use re_ui;
+    pub use re_view_spatial;
+    pub use re_viewer_context::{self, external::*};
+    pub use re_viewport::{self, external::*};
 }
 
 // ----------------------------------------------------------------------------

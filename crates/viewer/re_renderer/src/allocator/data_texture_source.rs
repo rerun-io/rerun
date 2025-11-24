@@ -1,11 +1,10 @@
 use bytemuck::Pod;
 
+use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 use crate::{
     DebugLabel, RenderContext,
     wgpu_resources::{self, GpuTexture},
 };
-
-use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum DataTextureSourceWriteError {

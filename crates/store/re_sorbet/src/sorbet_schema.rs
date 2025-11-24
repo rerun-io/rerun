@@ -1,5 +1,4 @@
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef};
-
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 

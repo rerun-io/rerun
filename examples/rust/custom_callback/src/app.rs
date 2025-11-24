@@ -4,7 +4,6 @@ use core::f32;
 use std::f32::consts::{PI, TAU};
 
 use custom_callback::comms::{app::ControlApp, protocol::Message};
-
 use rerun::{
     RecordingStream,
     external::{glam::Vec3, re_log, tokio},

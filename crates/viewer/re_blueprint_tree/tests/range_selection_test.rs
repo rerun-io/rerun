@@ -2,7 +2,6 @@
 
 use egui::Modifiers;
 use egui_kittest::kittest::Queryable as _;
-
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::build_frame_nr;

@@ -1,5 +1,4 @@
-use egui::PointerButton;
-use egui::accesskit::Role;
+use egui::{PointerButton, accesskit::Role};
 use egui_kittest::kittest::Queryable as _;
 
 /// A section of the viewer, e.g. the "Blueprint" or "Recording" panel. Every query and action in a section

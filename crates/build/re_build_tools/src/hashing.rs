@@ -1,6 +1,8 @@
-use std::fmt::Write as _;
-use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::{
+    fmt::Write as _,
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context as _;
 use sha2::{Digest as _, Sha256};

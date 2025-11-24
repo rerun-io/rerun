@@ -1,6 +1,5 @@
-use crate::datatypes::Vec3D;
-
 use super::Position3D;
+use crate::datatypes::Vec3D;
 
 // ---
 

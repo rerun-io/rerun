@@ -1,22 +1,27 @@
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
-use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
-use re_renderer::{PickingLayerInstanceId, RenderContext};
+use re_renderer::{
+    PickingLayerInstanceId, RenderContext,
+    renderer::{GpuMeshInstance, LineStripFlags},
+};
 use re_tf::convert;
-use re_types::ComponentIdentifier;
-use re_types::components::{self, FillMode};
+use re_types::{
+    ComponentIdentifier,
+    components::{self, FillMode},
+};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
+#[cfg(doc)]
+use re_viewer_context::VisualizerSystem;
 use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::contexts::SpatialSceneEntityContext;
-use crate::proc_mesh::{self, ProcMeshKey};
-use crate::visualizers::{
-    SpatialViewVisualizerData, process_labels_3d, process_radius_slice, utilities::LabeledBatch,
+use crate::{
+    contexts::SpatialSceneEntityContext,
+    proc_mesh::{self, ProcMeshKey},
+    visualizers::{
+        SpatialViewVisualizerData, process_labels_3d, process_radius_slice, utilities::LabeledBatch,
+    },
 };
-
-#[cfg(doc)]
-use re_viewer_context::VisualizerSystem;
 
 /// To be used within the scope of a single [`VisualizerSystem::execute()`] call
 /// when the visualizer wishes to draw batches of [`ProcMeshKey`] meshes.

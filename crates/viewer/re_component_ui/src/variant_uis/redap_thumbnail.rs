@@ -1,10 +1,10 @@
+use std::error::Error;
+
 use re_log_types::TimelineName;
 use re_types::components::MediaType;
 use re_types_core::{ComponentIdentifier, Loggable as _, RowId};
 use re_ui::UiLayout;
-use re_viewer_context::ViewerContext;
-use re_viewer_context::external::re_chunk_store::LatestAtQuery;
-use std::error::Error;
+use re_viewer_context::{ViewerContext, external::re_chunk_store::LatestAtQuery};
 
 /// Display a thumbnail that takes all the available space.
 pub fn redap_thumbnail(

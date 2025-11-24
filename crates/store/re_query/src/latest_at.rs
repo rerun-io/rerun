@@ -6,7 +6,6 @@ use std::{
 use arrow::array::ArrayRef as ArrowArrayRef;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};

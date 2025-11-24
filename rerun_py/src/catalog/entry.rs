@@ -1,7 +1,6 @@
 use std::str::FromStr as _;
 
 use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
-
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
 

@@ -5,7 +5,6 @@ use arrow::{
     },
     datatypes::Fields as ArrowFields,
 };
-
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 

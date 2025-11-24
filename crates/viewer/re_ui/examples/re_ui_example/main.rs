@@ -5,12 +5,12 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::{Modifiers, os};
-use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
     IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _,
     filter_widget::{FilterState, format_matching_text},
     icons, list_item,
+    list_item::ListItemContentButtonsExt as _,
     notifications::NotificationUi,
 };
 

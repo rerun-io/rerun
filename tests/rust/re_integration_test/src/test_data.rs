@@ -1,10 +1,11 @@
-use re_protos::cloud::v1alpha1::ext::DataSource;
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
-use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_redap_client::ConnectionClient;
-use re_sdk::time::TimeType;
-use re_sdk::{RecordingStreamBuilder, TimeCell};
 use std::{error::Error, time::Duration};
+
+use re_protos::{
+    cloud::v1alpha1::{EntryFilter, EntryKind, ext::DataSource},
+    common::v1alpha1::ext::IfDuplicateBehavior,
+};
+use re_redap_client::ConnectionClient;
+use re_sdk::{RecordingStreamBuilder, TimeCell, time::TimeType};
 
 pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn Error>> {
     let path = {

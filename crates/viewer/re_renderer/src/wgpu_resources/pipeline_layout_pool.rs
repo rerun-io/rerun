@@ -1,9 +1,8 @@
-use crate::{RenderContext, debug_label::DebugLabel};
-
 use super::{
     bind_group_layout_pool::GpuBindGroupLayoutHandle,
     static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor},
 };
+use crate::{RenderContext, debug_label::DebugLabel};
 
 slotmap::new_key_type! { pub struct GpuPipelineLayoutHandle; }
 

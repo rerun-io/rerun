@@ -7,9 +7,8 @@ use re_types::{
     components,
 };
 
-use crate::Error;
-
 use super::{Layer, LayerIdentifier};
+use crate::Error;
 
 /// Extracts a static summary of channel and schema information.
 ///

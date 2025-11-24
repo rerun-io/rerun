@@ -1,5 +1,4 @@
-use re_ui::UiLayout;
-use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{UiLayout, syntax_highlighting::SyntaxHighlightedBuilder};
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 pub fn edit_or_view_image_format(

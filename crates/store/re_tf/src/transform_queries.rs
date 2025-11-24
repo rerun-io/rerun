@@ -2,19 +2,21 @@
 
 use glam::DAffine3;
 use itertools::{Either, Itertools as _};
-
-use crate::convert;
-use crate::{ResolvedPinholeProjection, transform_resolution_cache::ParentFromChildTransform};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{Chunk, LatestAtQuery, UnitChunkShared};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     ComponentIdentifier, TransformFrameIdHash,
-    archetypes::InstancePoses3D,
-    archetypes::{self},
+    archetypes::{
+        InstancePoses3D, {self},
+    },
     components,
     external::arrow::{self, array::Array as _},
+};
+
+use crate::{
+    ResolvedPinholeProjection, convert, transform_resolution_cache::ParentFromChildTransform,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -573,12 +575,15 @@ pub fn query_view_coordinates_at_closest_ancestor(
 mod tests {
     use std::sync::Arc;
 
-    use super::*;
     use re_chunk_store::{Chunk, LatestAtQuery};
     use re_entity_db::{EntityDb, EntityPath};
-    use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{TimePoint, Timeline};
+    use re_log_types::{
+        TimePoint, Timeline,
+        example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoints},
+    };
     use re_types::RowId;
+
+    use super::*;
 
     fn timeline() -> Timeline {
         Timeline::new("test_timeline", re_log_types::TimeType::Sequence)

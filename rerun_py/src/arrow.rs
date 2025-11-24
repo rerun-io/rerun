@@ -16,7 +16,6 @@ use pyo3::{
     exceptions::PyRuntimeError,
     types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
 };
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;

@@ -1,5 +1,4 @@
 use egui::NumExt as _;
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;

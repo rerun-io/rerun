@@ -117,8 +117,10 @@ impl std::borrow::Borrow<str> for ArrowString {
 
 #[test]
 fn borrow_hash_is_self_hash() {
-    use std::borrow::Borrow as _;
-    use std::hash::{Hash as _, Hasher as _};
+    use std::{
+        borrow::Borrow as _,
+        hash::{Hash as _, Hasher as _},
+    };
 
     let s = ArrowString::from("hello world");
 

@@ -8,8 +8,7 @@ use re_types::{
         AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
     },
 };
-use re_ui::UiExt as _;
-use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
 use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};
 
 use super::DataUi;

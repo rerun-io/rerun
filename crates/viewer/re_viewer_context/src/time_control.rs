@@ -1,18 +1,17 @@
 use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
-use re_types::blueprint::{
-    archetypes::TimePanelBlueprint,
-    components::{LoopMode, PlayState},
-};
-use vec1::Vec1;
-
 use re_chunk::{EntityPath, TimelineName};
 use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
 };
+use re_types::blueprint::{
+    archetypes::TimePanelBlueprint,
+    components::{LoopMode, PlayState},
+};
+use vec1::Vec1;
 
 use crate::{NeedsRepaint, blueprint_helpers::BlueprintContext};
 

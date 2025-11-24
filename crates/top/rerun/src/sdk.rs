@@ -16,22 +16,22 @@ pub use re_types::{archetypes, components, datatypes};
 mod prelude {
     // Import all archetypes into the global namespace to minimize
     // the amount of typing for our users.
-    pub use re_types::archetypes::*;
-
-    // Special utility types.
-    pub use re_types::{AnyValues, DynamicArchetype, Rotation3D};
-
     // Also import any component or datatype that has a unique name:
     pub use re_chunk::TimeColumn;
-    pub use re_types::components::{
-        AlbedoFactor, Color, FillMode, HalfSize2D, HalfSize3D, ImageFormat, LineStrip2D,
-        LineStrip3D, MediaType, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
-        TransformRelation, TriangleIndices, Vector2D, Vector3D,
-    };
-    pub use re_types::datatypes::{
-        Angle, AnnotationInfo, ChannelDatatype, ClassDescription, ColorModel, Float32,
-        KeypointPair, Mat3x3, PixelFormat, Quaternion, Rgba32, RotationAxisAngle, TensorBuffer,
-        TensorData, Vec2D, Vec3D, Vec4D,
+    // Special utility types.
+    pub use re_types::{AnyValues, DynamicArchetype, Rotation3D};
+    pub use re_types::{
+        archetypes::*,
+        components::{
+            AlbedoFactor, Color, FillMode, HalfSize2D, HalfSize3D, ImageFormat, LineStrip2D,
+            LineStrip3D, MediaType, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
+            TransformRelation, TriangleIndices, Vector2D, Vector3D,
+        },
+        datatypes::{
+            Angle, AnnotationInfo, ChannelDatatype, ClassDescription, ColorModel, Float32,
+            KeypointPair, Mat3x3, PixelFormat, Quaternion, Rgba32, RotationAxisAngle, TensorBuffer,
+            TensorData, Vec2D, Vec3D, Vec4D,
+        },
     };
 }
 pub use prelude::*;

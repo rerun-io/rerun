@@ -414,7 +414,6 @@ fn generate_search_dataset_requests() -> Vec<SearchDatasetRequest> {
         array::{Float32Array, RecordBatch, StringArray},
         datatypes::Field,
     };
-
     use re_protos::cloud::v1alpha1::{
         BTreeIndexQuery, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
         index_query_properties::Props,

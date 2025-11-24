@@ -1,5 +1,7 @@
+use smallvec::smallvec;
+
 use crate::{
-    DrawableCollector, OutlineConfig, Rgba,
+    DrawPhase, DrawableCollector, OutlineConfig, RenderContext, Rgba,
     allocator::create_and_fill_uniform_buffer,
     include_shader_module,
     renderer::{
@@ -13,10 +15,6 @@ use crate::{
         RenderPipelineDesc,
     },
 };
-
-use crate::{DrawPhase, RenderContext};
-
-use smallvec::smallvec;
 
 mod gpu_data {
     use crate::wgpu_buffer_types;

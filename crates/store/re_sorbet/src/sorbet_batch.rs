@@ -7,7 +7,6 @@ use arrow::{
     datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
     error::ArrowError,
 };
-
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 
@@ -224,9 +223,8 @@ impl SorbetBatch {
 #[cfg(test)]
 mod tests {
 
-    use crate::{RowIdColumnDescriptor, sorbet_batch};
-
     use super::*;
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
 
     /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
     ///

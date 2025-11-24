@@ -8,6 +8,12 @@ mod rrd;
 mod schema;
 mod type_aliases;
 
+use pyo3::{
+    Bound, PyResult,
+    types::{PyModule, PyModuleMethods as _},
+    wrap_pyfunction,
+};
+
 pub use self::{
     component_columns::{PyComponentColumnDescriptor, PyComponentColumnSelector},
     index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector},
@@ -16,12 +22,6 @@ pub use self::{
     rrd::{PyRRDArchive, load_archive, load_recording},
     schema::PySchema,
     type_aliases::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyIndexValuesLike},
-};
-
-use pyo3::{
-    Bound, PyResult,
-    types::{PyModule, PyModuleMethods as _},
-    wrap_pyfunction,
 };
 
 /// Register the `rerun.dataframe` module.

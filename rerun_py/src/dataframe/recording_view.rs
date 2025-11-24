@@ -1,12 +1,16 @@
 #![expect(deprecated)] // False positive due to macro
 
-use arrow::array::{RecordBatchIterator, RecordBatchReader};
-use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyValueError;
-use pyo3::prelude::{PyAnyMethods as _, PyTupleMethods as _};
-use pyo3::types::PyTuple;
-use pyo3::{Bound, PyRef, PyResult, Python, pyclass, pymethods};
-
+use arrow::{
+    array::{RecordBatchIterator, RecordBatchReader},
+    pyarrow::PyArrowType,
+};
+use pyo3::{
+    Bound, PyRef, PyResult, Python,
+    exceptions::PyValueError,
+    prelude::{PyAnyMethods as _, PyTupleMethods as _},
+    pyclass, pymethods,
+    types::PyTuple,
+};
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};

@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use arrow::{
     array::{ArrayRef, RecordBatch, RecordBatchOptions},

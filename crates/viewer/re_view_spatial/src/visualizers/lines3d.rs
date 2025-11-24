@@ -12,13 +12,12 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities, process_radius_slice};
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::utilities::{LabeledBatch, process_labels_3d},
 };
-
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities, process_radius_slice};
 
 // ---
 

@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_chunk_store::LatestAtQuery;
 use re_types::{
     Archetype as _, archetypes,

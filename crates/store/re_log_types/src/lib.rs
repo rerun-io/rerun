@@ -34,7 +34,6 @@ mod vec_deque_ext;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
@@ -54,7 +53,6 @@ pub use self::{
 
 pub mod external {
     pub use arrow;
-
     pub use re_tuid;
     pub use re_types_core;
 }

@@ -1,9 +1,12 @@
-use opentelemetry_sdk::error::OTelSdkResult;
-use opentelemetry_sdk::metrics::{
-    ManualReader, Pipeline, Temporality, data::ResourceMetrics, reader::MetricReader,
+use std::{
+    sync::{Arc, Weak},
+    time::Duration,
 };
-use std::sync::{Arc, Weak};
-use std::time::Duration;
+
+use opentelemetry_sdk::{
+    error::OTelSdkResult,
+    metrics::{ManualReader, Pipeline, Temporality, data::ResourceMetrics, reader::MetricReader},
+};
 
 /// A wrapper that allows sharing a `ManualReader`.
 ///

@@ -1,12 +1,8 @@
-use super::super::definitions::std_msgs;
 use re_chunk::{Chunk, ChunkId};
 use re_types::archetypes::TextDocument;
 
-use crate::parsers::{
-    cdr,
-    ros2msg::Ros2MessageParser,
-    {MessageParser, ParserContext},
-};
+use super::super::definitions::std_msgs;
+use crate::parsers::{MessageParser, ParserContext, cdr, ros2msg::Ros2MessageParser};
 
 /// Plugin that parses `std_msgs/msg/String` messages.
 pub struct StringMessageParser {

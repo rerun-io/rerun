@@ -5,10 +5,8 @@
 
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
-
 use re_blueprint_tree::{BlueprintTree, data::BlueprintTreeData};
-use re_chunk_store::RowId;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::{EntityPath, build_frame_nr};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;

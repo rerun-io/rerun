@@ -1,5 +1,4 @@
 use arrow::datatypes::{DataType, Field, Schema};
-
 use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{

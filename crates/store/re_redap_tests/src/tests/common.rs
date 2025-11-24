@@ -3,9 +3,6 @@ use std::collections::BTreeMap;
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
-use tonic::async_trait;
-use url::Url;
-
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
@@ -16,6 +13,8 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
 };
 use re_types_core::AsComponents;
+use tonic::async_trait;
+use url::Url;
 
 use crate::{
     RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,

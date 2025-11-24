@@ -1,5 +1,4 @@
 use ahash::HashMap;
-
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;

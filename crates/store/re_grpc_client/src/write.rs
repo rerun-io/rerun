@@ -4,13 +4,6 @@ use std::{
     time::Duration,
 };
 
-use tokio::{
-    runtime,
-    sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
-};
-use tonic::transport::Endpoint;
-use web_time::Instant;
-
 use re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_encoding::{ToTransport as _, rrd::Compression};
 use re_log_types::LogMsg;
@@ -18,6 +11,12 @@ use re_protos::sdk_comms::v1alpha1::{
     WriteMessagesRequest, message_proxy_service_client::MessageProxyServiceClient,
 };
 use re_uri::ProxyUri;
+use tokio::{
+    runtime,
+    sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
+};
+use tonic::transport::Endpoint;
+use web_time::Instant;
 
 use crate::TonicStatusError;
 

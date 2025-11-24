@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-
 use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};

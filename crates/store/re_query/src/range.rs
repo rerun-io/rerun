@@ -3,7 +3,6 @@ use std::{collections::BTreeSet, sync::Arc};
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};

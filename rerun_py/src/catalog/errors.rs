@@ -18,11 +18,13 @@
 
 use std::error::Error as _;
 
-use pyo3::PyErr;
-use pyo3::exceptions::{
-    PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
+use pyo3::{
+    PyErr,
+    exceptions::{
+        PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError,
+        PyValueError,
+    },
 };
-
 use re_redap_client::ApiErrorKind;
 
 pyo3::create_exception!(

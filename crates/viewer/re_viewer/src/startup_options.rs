@@ -1,5 +1,4 @@
-use crate::app_blueprint::PanelStateOverrides;
-use crate::event::ViewerEventCallback;
+use crate::{app_blueprint::PanelStateOverrides, event::ViewerEventCallback};
 
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
 #[derive(Clone)]

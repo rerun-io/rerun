@@ -1,6 +1,5 @@
 #![expect(clippy::disallowed_methods)] // It's just an example
 
-use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 use rerun::external::{
     egui,
     re_data_ui::{DataUi, item_ui},
@@ -17,6 +16,8 @@ use rerun::external::{
         VisualizableEntities,
     },
 };
+
+use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]

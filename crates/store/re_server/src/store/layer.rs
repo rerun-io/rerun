@@ -1,11 +1,9 @@
-use arrow::array::RecordBatch;
-use arrow::datatypes::Schema;
-use arrow::error::ArrowError;
-use sha2::Digest as _;
 use std::collections::HashMap;
 
+use arrow::{array::RecordBatch, datatypes::Schema, error::ArrowError};
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
+use sha2::Digest as _;
 
 #[derive(Clone)]
 pub struct Layer {

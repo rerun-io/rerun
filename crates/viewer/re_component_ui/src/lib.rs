@@ -37,7 +37,6 @@ use datatype_uis::{
     edit_view_enum_with_variant_available, edit_view_range1d, view_timestamp, view_uuid,
     view_view_id,
 };
-
 use re_types::{
     blueprint::components::{
         AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,

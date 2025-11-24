@@ -1,5 +1,7 @@
-use std::fmt::Formatter;
-use std::hash::{DefaultHasher, Hash as _, Hasher as _};
+use std::{
+    fmt::Formatter,
+    hash::{DefaultHasher, Hash as _, Hasher as _},
+};
 
 use egui::{Atom, Image, ImageSource};
 

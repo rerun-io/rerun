@@ -38,8 +38,9 @@ impl DesignTokensPerTheme {
 
 #[cfg(not(hot_reload_design_tokens))]
 mod design_token_access {
-    use super::DesignTokensPerTheme;
     use std::sync::OnceLock;
+
+    use super::DesignTokensPerTheme;
 
     pub fn design_tokens_per_theme() -> &'static DesignTokensPerTheme {
         static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
@@ -50,10 +51,13 @@ mod design_token_access {
 
 #[cfg(hot_reload_design_tokens)]
 mod design_token_access {
+    use std::{
+        sync::{OnceLock, mpsc},
+        thread,
+    };
+
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::{Mutex, RwLock};
-    use std::sync::{OnceLock, mpsc};
-    use std::thread;
 
     use super::DesignTokensPerTheme;
 

@@ -5,7 +5,6 @@ use std::{
 
 use anyhow::Context as _;
 use itertools::{Itertools as _, izip};
-
 use re_chunk::Chunk;
 
 // ---

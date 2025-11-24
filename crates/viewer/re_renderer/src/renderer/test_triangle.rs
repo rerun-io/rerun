@@ -1,14 +1,13 @@
 use smallvec::smallvec;
 
+use super::{
+    DrawData, DrawError, DrawPhase, GpuRenderPipelinePoolAccessor, RenderContext, Renderer,
+};
 use crate::{
     DrawableCollector, include_shader_module,
     renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
     view_builder::ViewBuilder,
     wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
-};
-
-use super::{
-    DrawData, DrawError, DrawPhase, GpuRenderPipelinePoolAccessor, RenderContext, Renderer,
 };
 
 pub struct TestTriangle {

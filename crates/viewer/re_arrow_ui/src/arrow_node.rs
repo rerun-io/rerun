@@ -1,12 +1,12 @@
 use egui::{Id, RichText, Stroke, StrokeKind, Tooltip, Ui, WidgetText};
-
 use re_format::format_uint;
-use re_ui::list_item::{LabelContent, PropertyContent, list_item_scope};
-use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_ui::{UiExt as _, UiLayout};
+use re_ui::{
+    UiExt as _, UiLayout,
+    list_item::{LabelContent, PropertyContent, list_item_scope},
+    syntax_highlighting::SyntaxHighlightedBuilder,
+};
 
-use crate::datatype_ui::DataTypeUi;
-use crate::show_index::ShowIndex;
+use crate::{datatype_ui::DataTypeUi, show_index::ShowIndex};
 
 enum NodeLabel {
     /// The index to *display*. May be different from the actual index of the value.

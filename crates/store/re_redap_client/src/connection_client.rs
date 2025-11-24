@@ -1,10 +1,9 @@
-use crate::ApiError;
-use arrow::datatypes::SchemaRef;
-use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
+use arrow::{
+    array::RecordBatch,
+    datatypes::{Schema as ArrowSchema, SchemaRef},
+};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::WriteTableRequest;
-use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, ProviderDetails, TableInsertMode};
 use re_protos::{
     TypeConversionError,
     cloud::v1alpha1::{
@@ -14,13 +13,15 @@ use re_protos::{
         QueryDatasetRequest, QueryDatasetResponse, QueryTasksOnCompletionResponse,
         QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
         RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        WriteTableRequest,
         ext::{
-            CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
-            EntryDetails, EntryDetailsUpdate, LanceTable, QueryTasksOnCompletionRequest,
-            QueryTasksRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            RegisterTableResponse, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
-            TableEntry, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
-            UpdateEntryResponse,
+            CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
+            DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable,
+            ProviderDetails, QueryTasksOnCompletionRequest, QueryTasksRequest,
+            ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
+            RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry,
+            TableInsertMode, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+            UpdateEntryRequest, UpdateEntryResponse,
         },
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
@@ -33,9 +34,13 @@ use re_protos::{
     invalid_schema, missing_column, missing_field,
 };
 use tokio_stream::{Stream, StreamExt as _};
-use tonic::codegen::{Body, StdError};
-use tonic::{IntoStreamingRequest as _, Status};
+use tonic::{
+    IntoStreamingRequest as _, Status,
+    codegen::{Body, StdError},
+};
 use url::Url;
+
+use crate::ApiError;
 
 pub type FetchChunksResponseStream = std::pin::Pin<
     Box<

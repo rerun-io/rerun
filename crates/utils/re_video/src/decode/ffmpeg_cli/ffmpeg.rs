@@ -18,6 +18,7 @@ use ffmpeg_sidecar::{
 use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
+use super::version::FFmpegVersionParseError;
 use crate::{
     PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
     decode::{
@@ -29,8 +30,6 @@ use crate::{
     h265::write_hevc_chunk_to_nalu_stream,
     nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError},
 };
-
-use super::version::FFmpegVersionParseError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

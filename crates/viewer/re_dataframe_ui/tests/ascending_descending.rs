@@ -1,14 +1,16 @@
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
-use arrow::array::{RecordBatch, StringArray};
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::{
+    array::{RecordBatch, StringArray},
+    datatypes::{DataType, Field, Schema},
+};
 use datafusion::prelude::SessionContext;
 use egui::accesskit::Role;
-use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::{Harness, kittest::Queryable as _};
 use parking_lot::Mutex;
-
 use re_dataframe_ui::{DataFusionTableWidget, SortBy, TableBlueprint, TableStatus};
 use re_test_context::TestContext;
 use re_viewer_context::AsyncRuntimeHandle;

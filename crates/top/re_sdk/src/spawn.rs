@@ -182,7 +182,6 @@ impl std::fmt::Debug for SpawnError {
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
-
     use std::{net::TcpStream, process::Command, time::Duration};
 
     // NOTE: These are indented on purpose, it just looks better and reads easier.

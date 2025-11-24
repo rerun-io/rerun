@@ -15,12 +15,11 @@ use std::sync::{Arc, OnceLock};
 
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
-use re_viewer_context::open_url;
+use re_viewer_context::{CommandSender, open_url};
 use wasm_bindgen::{JsCast as _, JsError, JsValue, closure::Closure, prelude::wasm_bindgen};
 use web_sys::{History, UrlSearchParams};
 
 use crate::web_tools::{JsResultExt as _, window};
-use re_viewer_context::CommandSender;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct HistoryEntry {

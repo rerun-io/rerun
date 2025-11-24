@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use anyhow::Context as _;
 use crossbeam::channel;
 use itertools::Itertools as _;
-
 use re_chunk::external::crossbeam;
 
 // ---

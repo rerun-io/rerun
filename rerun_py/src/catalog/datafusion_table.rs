@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
-use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyCapsule;
-use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
+use pyo3::{
+    Bound, Py, PyAny, PyRef, PyResult, Python, prelude::PyAnyMethods as _, pyclass, pymethods,
+    types::PyCapsule,
+};
 use tracing::instrument;
 
-use crate::catalog::PyCatalogClientInternal;
-use crate::utils::get_tokio_runtime;
+use crate::{catalog::PyCatalogClientInternal, utils::get_tokio_runtime};
 
 #[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
     frozen,

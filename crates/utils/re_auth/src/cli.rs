@@ -3,9 +3,13 @@ use std::time::Duration;
 use indicatif::ProgressBar;
 
 pub use crate::callback_server::Error;
-use crate::callback_server::OauthCallbackServer;
-use crate::oauth::api::{AuthenticateWithCode, Pkce, send_async};
-use crate::oauth::{self, Credentials};
+use crate::{
+    callback_server::OauthCallbackServer,
+    oauth::{
+        self, Credentials,
+        api::{AuthenticateWithCode, Pkce, send_async},
+    },
+};
 
 pub struct LoginOptions {
     pub open_browser: bool,

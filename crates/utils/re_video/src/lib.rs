@@ -15,22 +15,16 @@ pub use decode::{
     FrameContent, FrameInfo, FrameResult, PixelFormat, Result as DecodeResult,
     YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
-pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
-
-#[cfg(with_ffmpeg)]
-pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
-
 pub use demux::{
     ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
     SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
     VideoLoadError,
 };
-
+pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 // AnnexB conversions are useful for testing.
 pub use h264::write_avc_chunk_to_nalu_stream;
 pub use h265::write_hevc_chunk_to_nalu_stream;
 pub use nalu::AnnexBStreamState;
-
 // Re-export:
 #[doc(no_inline)]
 pub use {
@@ -39,6 +33,9 @@ pub use {
     stable_index_deque::StableIndexDeque,
     time::{Time, Timescale},
 };
+
+#[cfg(with_ffmpeg)]
+pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
 
 /// Returns information about this crate
 pub fn build_info() -> re_build_info::BuildInfo {

@@ -1,15 +1,16 @@
 //! General H.265 utilities.
 //!
+use cros_codecs::codec::{
+    h264::nalu::Header as _,
+    h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps},
+};
+
 use crate::{
     ChromaSubsamplingModes, Chunk, DetectGopStartError, GopStartDetection, VideoEncodingDetails,
     nalu::{
         ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
         write_length_prefixed_nalus_to_annexb_stream,
     },
-};
-use cros_codecs::codec::{
-    h264::nalu::Header as _,
-    h265::parser::{Nalu, NaluType, Parser, ProfileTierLevel, Sps},
 };
 
 /// Retrieve [`VideoEncodingDetails`] from an H.265 SPS.

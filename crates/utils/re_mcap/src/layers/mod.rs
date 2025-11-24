@@ -6,15 +6,15 @@ mod ros2_reflection;
 mod schema;
 mod stats;
 
-use re_chunk::{Chunk, EntityPath, external::nohash_hasher::IntMap};
 use std::collections::{BTreeMap, BTreeSet};
+
+use re_chunk::{Chunk, EntityPath, external::nohash_hasher::IntMap};
 
 pub use self::{
     protobuf::McapProtobufLayer, raw::McapRawLayer, recording_info::McapRecordingInfoLayer,
     ros2::McapRos2Layer, ros2_reflection::McapRos2ReflectionLayer, schema::McapSchemaLayer,
     stats::McapStatisticLayer,
 };
-
 use crate::{
     Error,
     parsers::{ChannelId, MessageParser, ParserContext},

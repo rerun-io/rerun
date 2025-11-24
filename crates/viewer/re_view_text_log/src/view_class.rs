@@ -2,14 +2,17 @@ use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::{self, timeline_button};
 use re_log_types::{EntityPath, TimelineName};
-use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
-use re_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
-use re_types::blueprint::datatypes as bp_datatypes;
-use re_types::components::TextLogLevel;
-use re_types::{View as _, datatypes};
-use re_ui::list_item::LabelContent;
-use re_ui::{DesignTokens, Help, UiExt as _};
+use re_types::{
+    View as _, ViewClassIdentifier,
+    blueprint::{
+        archetypes::{TextLogColumns, TextLogFormat, TextLogRows},
+        components::{Enabled, TextLogColumn, TimelineColumn},
+        datatypes as bp_datatypes,
+    },
+    components::TextLogLevel,
+    datatypes,
+};
+use re_ui::{DesignTokens, Help, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
     IdentifiedViewSystem as _, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
     ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,

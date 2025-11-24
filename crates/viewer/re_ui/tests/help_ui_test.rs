@@ -1,7 +1,5 @@
-use egui::os::OperatingSystem;
-use egui::{Modifiers, vec2};
-use egui_kittest::kittest::Queryable as _;
-use egui_kittest::{Harness, SnapshotResults};
+use egui::{Modifiers, os::OperatingSystem, vec2};
+use egui_kittest::{Harness, SnapshotResults, kittest::Queryable as _};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
 
 #[test]

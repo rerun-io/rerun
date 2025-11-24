@@ -1,6 +1,5 @@
 use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
-
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::{
     DataUi,
@@ -9,10 +8,9 @@ use re_data_ui::{
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::ComponentDescriptor;
-use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
     SyntaxHighlighting as _, UiExt as _, icons,
-    list_item::{self, PropertyContent},
+    list_item::{self, ListItemContentButtonsExt as _, PropertyContent},
 };
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, SystemCommand,
@@ -519,8 +517,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 ///
 /// This is not technically a visualizer, but it affects visualization, so we show it alongside.
 fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
-    use re_types::archetypes;
-    use re_types::components::TransformFrameId;
+    use re_types::{archetypes, components::TransformFrameId};
     use re_view::latest_at_with_blueprint_resolved_data;
 
     let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();

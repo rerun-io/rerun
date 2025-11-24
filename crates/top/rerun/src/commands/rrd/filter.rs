@@ -1,13 +1,11 @@
 use std::{collections::HashSet, io::IsTerminal as _};
 
 use anyhow::Context as _;
-use arrow::array::RecordBatchOptions;
 use arrow::{
-    array::RecordBatch as ArrowRecordBatch,
+    array::{RecordBatch as ArrowRecordBatch, RecordBatchOptions},
     datatypes::{Field as ArrowField, Schema as ArrowSchema},
 };
 use itertools::Either;
-
 use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
 use re_sdk::{EntityPath, external::arrow};

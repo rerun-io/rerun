@@ -6,11 +6,13 @@ use re_entity_db::InstancePath;
 use re_log_types::StoreKind;
 use re_viewer_context::{CollapseScope, ContainerId, Item, ItemContext, ViewId};
 
-use crate::collapse_expand::{
-    collapse_expand_container, collapse_expand_data_result, collapse_expand_instance_path,
-    collapse_expand_view,
+use crate::{
+    ContextMenuAction, ContextMenuContext,
+    collapse_expand::{
+        collapse_expand_container, collapse_expand_data_result, collapse_expand_instance_path,
+        collapse_expand_view,
+    },
 };
-use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Collapse or expand all items in the selection.
 ///

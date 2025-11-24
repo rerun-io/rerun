@@ -7,7 +7,6 @@ use arrow::{
     },
     datatypes::{FieldRef as ArrowFieldRef, Schema as ArrowSchema},
 };
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_log::ResultExt as _;
 

@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use smallvec::SmallVec;
 
-use crate::debug_label::DebugLabel;
-
 use super::{
     WgpuResourcePools,
     bind_group_layout_pool::GpuBindGroupLayoutHandle,
@@ -12,6 +10,7 @@ use super::{
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
     texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
 };
+use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub struct GpuBindGroupHandle; }
 

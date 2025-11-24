@@ -3,17 +3,13 @@ use std::sync::Arc;
 use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-use slotmap::SlotMap;
-use smallvec::SmallVec;
-
 use re_entity_db::{EntityDb, EntityTree, external::re_chunk_store::LatestAtQuery};
 use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
     ResolvedEntityPathRule, Timeline, path::RuleEffect,
 };
-use re_types::Loggable as _;
 use re_types::{
-    Archetype as _, ViewClassIdentifier,
+    Archetype as _, Loggable as _, ViewClassIdentifier,
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
         components::QueryExpression,
@@ -25,6 +21,8 @@ use re_viewer_context::{
     QueryRange, ViewClassRegistry, ViewId, ViewState, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities,
 };
+use slotmap::SlotMap;
+use smallvec::SmallVec;
 
 use crate::{ViewBlueprint, ViewProperty};
 

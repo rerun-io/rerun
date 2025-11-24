@@ -5,11 +5,11 @@
 
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
-use re_sdk::TimePoint;
-use re_sdk::log::RowId;
-use re_viewer::external::re_viewer_context::ViewClass as _;
-use re_viewer::external::{re_types, re_view_spatial};
-use re_viewer::viewer_test_utils::{self, HarnessOptions};
+use re_sdk::{TimePoint, log::RowId};
+use re_viewer::{
+    external::{re_types, re_view_spatial, re_viewer_context::ViewClass as _},
+    viewer_test_utils::{self, HarnessOptions},
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn make_test_image() -> re_types::archetypes::Image {

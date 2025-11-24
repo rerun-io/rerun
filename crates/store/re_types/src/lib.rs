@@ -201,8 +201,9 @@ pub mod archetypes {
     #[path = "../archetypes/mod.rs"]
     mod _archetypes;
 
-    pub use self::_archetypes::*;
     pub use re_types_core::archetypes::*;
+
+    pub use self::_archetypes::*;
 }
 
 /// Components are the basic building blocks of [`archetypes`].
@@ -221,8 +222,9 @@ pub mod components {
     #[path = "../components/mod.rs"]
     mod _components;
 
-    pub use self::_components::*;
     pub use re_types_core::components::*;
+
+    pub use self::_components::*;
 }
 
 /// The low-level datatypes that [`components`] are built from.
@@ -239,8 +241,9 @@ pub mod datatypes {
     #[path = "../datatypes/mod.rs"]
     mod _datatypes;
 
-    pub use self::_datatypes::*;
     pub use re_types_core::datatypes::*;
+
+    pub use self::_datatypes::*;
 }
 
 /// The blueprint-specific components.
@@ -258,8 +261,9 @@ pub mod reflection {
     #[path = "../reflection/mod.rs"]
     mod _reflection;
 
-    pub use self::_reflection::*;
     pub use re_types_core::reflection::*;
+
+    pub use self::_reflection::*;
 }
 
 // ---
@@ -274,21 +278,17 @@ pub use re_types_core::*;
 
 /// Re-exports of external crates that are used throughout the codebase.
 pub mod external {
-    pub use re_types_core;
-
     pub use anyhow;
     pub use arrow;
-    pub use ndarray;
-    pub use uuid;
-
     #[cfg(feature = "ecolor")]
     pub use ecolor;
-
     #[cfg(feature = "glam")]
     pub use glam;
-
     #[cfg(feature = "image")]
     pub use image;
+    pub use ndarray;
+    pub use re_types_core;
+    pub use uuid;
 }
 
 // Has to live here because otherwise we can't use it to implement `Hash` for `crate::components::TransformFrameId`.

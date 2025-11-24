@@ -5,7 +5,6 @@
 use std::sync::OnceLock;
 
 use egui::Popup;
-
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
 use re_ui::UiExt as _;

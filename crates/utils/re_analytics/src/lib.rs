@@ -445,8 +445,9 @@ impl Properties for re_build_info::BuildInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::Value;
+
+    use super::*;
 
     #[test]
     fn test_analytics_event_serialization() {

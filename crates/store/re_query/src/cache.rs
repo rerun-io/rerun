@@ -6,7 +6,6 @@ use std::{
 use ahash::HashMap;
 use nohash_hasher::IntSet;
 use parking_lot::RwLock;
-
 use re_chunk::{ChunkId, ComponentIdentifier};
 use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,

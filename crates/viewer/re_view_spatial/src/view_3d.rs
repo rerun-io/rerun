@@ -2,7 +2,6 @@ use ahash::HashSet;
 use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
@@ -30,14 +29,14 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
+    shared_fallbacks,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::register_3d_spatial_visualizers,
-};
-use crate::{
-    shared_fallbacks,
-    visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer},
+    visualizers::{
+        AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer,
+        register_3d_spatial_visualizers,
+    },
 };
 
 #[derive(Default)]

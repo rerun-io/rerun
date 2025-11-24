@@ -1,8 +1,9 @@
 use egui::Vec2;
-
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{UiExt as _, list_item};
+use re_ui::{
+    UiExt as _, list_item,
+    list_item::ListItemContentButtonsExt as _,
+    modal::{ModalHandler, ModalWrapper},
+};
 
 #[test]
 pub fn test_modal_normal_should_match_snapshot() {

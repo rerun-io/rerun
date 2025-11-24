@@ -11,6 +11,13 @@ use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
+use self::{
+    array_builder::{arrow_array_builder_type, arrow_array_builder_type_object},
+    forward_decl::{ForwardDecl, ForwardDecls},
+    includes::Includes,
+    method::{Method, MethodDeclaration},
+};
+use super::{Target, common::ExampleInfo};
 use crate::{
     ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD, Docs, ElementType,
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
@@ -18,13 +25,6 @@ use crate::{
     format_path,
     objects::{EnumIntegerType, ObjectClass},
 };
-
-use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
-use self::forward_decl::{ForwardDecl, ForwardDecls};
-use self::includes::Includes;
-use self::method::{Method, MethodDeclaration};
-
-use super::{Target, common::ExampleInfo};
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
 

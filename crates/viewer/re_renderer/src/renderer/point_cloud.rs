@@ -15,28 +15,25 @@
 
 use std::{num::NonZeroU64, ops::Range};
 
+use bitflags::bitflags;
+use enumset::{EnumSet, enum_set};
+use itertools::Itertools as _;
+use smallvec::smallvec;
+
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
     renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    wgpu_resources::GpuRenderPipelinePoolAccessor,
-};
-use bitflags::bitflags;
-use enumset::{EnumSet, enum_set};
-use itertools::Itertools as _;
-use smallvec::smallvec;
-
-use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
+        RenderPipelineDesc,
     },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 bitflags! {
     /// Property flags for a point batch

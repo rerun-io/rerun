@@ -1,5 +1,7 @@
-use crate::list_item::{ItemButtons, ListItemContentButtonsExt};
-use crate::{UiExt as _, list_item};
+use crate::{
+    UiExt as _, list_item,
+    list_item::{ItemButtons, ListItemContentButtonsExt},
+};
 
 /// A collapsible section header, with support for optional help tooltip and button.
 ///

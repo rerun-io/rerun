@@ -4,7 +4,6 @@ use re_chunk::Chunk;
 use re_log_types::StoreId;
 
 use crate::ChunkStoreGeneration;
-
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 
@@ -210,9 +209,8 @@ mod tests {
     };
     use re_types::ComponentDescriptor;
 
-    use crate::{ChunkStore, GarbageCollectionOptions};
-
     use super::*;
+    use crate::{ChunkStore, GarbageCollectionOptions};
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store at the lowest level of detail.

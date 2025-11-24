@@ -1,11 +1,10 @@
+use re_types_core::{ArrowString, Loggable as _, try_serialize_field};
+
+use super::Tensor;
 use crate::{
     components::{self},
     datatypes::TensorData,
 };
-
-use re_types_core::{ArrowString, Loggable as _, try_serialize_field};
-
-use super::Tensor;
 
 impl Tensor {
     /// Try to construct a [`Tensor`] from anything that can be converted into [`TensorData`]

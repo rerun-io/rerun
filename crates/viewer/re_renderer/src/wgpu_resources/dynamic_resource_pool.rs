@@ -7,7 +7,6 @@ use std::{
 
 use parking_lot::RwLock;
 use slotmap::{Key, SlotMap};
-
 use smallvec::SmallVec;
 
 use super::resource::PoolError;

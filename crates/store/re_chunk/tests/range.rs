@@ -1,6 +1,5 @@
 use arrow::datatypes::DataType as ArrowDatatype;
 use nohash_hasher::IntMap;
-
 use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::{
     AbsoluteTimeRange,

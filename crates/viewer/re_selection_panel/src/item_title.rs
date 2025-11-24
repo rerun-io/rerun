@@ -1,5 +1,4 @@
 use egui::WidgetText;
-
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;

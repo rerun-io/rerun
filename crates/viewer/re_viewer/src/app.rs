@@ -1,7 +1,6 @@
 use std::{str::FromStr as _, sync::Arc};
 
 use itertools::Itertools as _;
-
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
@@ -707,8 +706,10 @@ impl App {
 
         re_log::debug!("Updating navigation bar");
 
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
-        use crate::web_tools::JsResultExt as _;
+        use crate::{
+            history::{HistoryEntry, HistoryExt as _, history},
+            web_tools::JsResultExt as _,
+        };
 
         /// Returns the url without the fragment
         fn strip_fragment(url: &str) -> &str {

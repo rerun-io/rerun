@@ -638,10 +638,10 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 // TODO(cmc): might want an actual test using `RERUN_SHADER_PATH`
 #[cfg(test)]
 mod tests_file_resolver {
-    use crate::MemFileSystem;
     use unindent::unindent;
 
     use super::*;
+    use crate::MemFileSystem;
 
     #[test]
     fn acyclic_interpolation() {

@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use itertools::Itertools as _;
-
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
     AbsoluteTimeRange, ChunkStore, ChunkStoreSubscriber as _, RangeQuery, TimeInt,

@@ -1,11 +1,13 @@
-use super::{Context, DocumentData, DocumentKind};
-use crate::build_search_index::util::CommandExt as _;
-use crate::build_search_index::util::ProgressBarExt as _;
+use std::{
+    collections::{BTreeMap, HashMap},
+    process::Command,
+};
+
 use anyhow::Context as _;
 use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::process::Command;
+
+use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::{CommandExt as _, ProgressBarExt as _};
 
 const RERUN_SDK: &str = "rerun_sdk";
 

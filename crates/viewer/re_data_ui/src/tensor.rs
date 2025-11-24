@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_log_types::{EntityPath, hash::Hash64};
 use re_types::{ComponentDescriptor, RowId, datatypes::TensorData};
 use re_ui::UiExt as _;

@@ -1,6 +1,7 @@
+use std::f32::consts::PI;
+
 use egui_kittest::SnapshotResults;
 use re_ui::{UiExt as _, UiLayout};
-use std::f32::consts::PI;
 
 mod arrow_test_data;
 

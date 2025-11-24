@@ -1,11 +1,12 @@
+use std::sync::Arc;
+
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::{
     logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
 };
-use std::sync::Arc;
-use tracing_subscriber::layer::SubscriberExt as _;
-use tracing_subscriber::util::SubscriberInitExt as _;
-use tracing_subscriber::{EnvFilter, Layer as _};
+use tracing_subscriber::{
+    EnvFilter, Layer as _, layer::SubscriberExt as _, util::SubscriberInitExt as _,
+};
 
 use crate::{LogFormat, TelemetryArgs, TraceIdLayer, shared_reader::SharedManualReader};
 

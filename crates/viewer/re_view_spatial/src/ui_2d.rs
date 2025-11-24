@@ -1,6 +1,5 @@
 use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
 use macaw::IsoTransform;
-
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::{

@@ -1,7 +1,6 @@
 //! Utilities for determining if an entity can be added to a view.
 
 use nohash_hasher::IntMap;
-
 use re_entity_db::EntityTree;
 use re_log_types::EntityPath;
 use re_viewer_context::{DataQueryResult, ViewerContext};

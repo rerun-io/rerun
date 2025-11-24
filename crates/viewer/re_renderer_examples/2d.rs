@@ -7,10 +7,8 @@
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors
 
 use itertools::Itertools as _;
-use re_renderer::Hsva;
-
 use re_renderer::{
-    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
+    Color32, Hsva, LineDrawableBuilder, PointCloudBuilder, Size,
     renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
         TextureFilterMin, TexturedRect,

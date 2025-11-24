@@ -7,8 +7,7 @@ pub fn rustfmt_str(source: &str) -> Option<String> {
 }
 
 fn rustfmt_once(source: &str) -> Option<String> {
-    use std::io::Write as _;
-    use std::process::Stdio;
+    use std::{io::Write as _, process::Stdio};
 
     let rust_fmt = std::env::var_os("RUSTFMT")
         .map(|s| s.display().to_string())

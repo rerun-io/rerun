@@ -1,9 +1,7 @@
 use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
 use ndarray::Axis;
-
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::EntityPath;
-use re_log_types::hash::Hash64;
+use re_log_types::{EntityPath, hash::Hash64};
 use re_types::{
     View as _, ViewClassIdentifier,
     blueprint::{

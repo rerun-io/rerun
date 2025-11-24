@@ -1,9 +1,12 @@
 use std::collections::BTreeSet;
 
-use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyDict;
-use pyo3::{Bound, Py, PyAny, PyResult, pyclass, pymethods};
+use pyo3::{
+    Bound, Py, PyAny, PyResult,
+    exceptions::{PyTypeError, PyValueError},
+    prelude::PyAnyMethods as _,
+    pyclass, pymethods,
+    types::PyDict,
+};
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
     ChunkStoreHandle, QueryExpression, SparseFillStrategy, StaticColumnSelection,

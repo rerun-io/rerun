@@ -286,9 +286,8 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use crate::RecordingStreamBuilder;
-
     use super::*;
+    use crate::RecordingStreamBuilder;
 
     #[test]
     fn fallbacks() {

@@ -1,3 +1,4 @@
+use super::ExtensionClass;
 use crate::{
     ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter,
     codegen::{
@@ -6,8 +7,6 @@ use crate::{
         python::{quote_doc_lines, quote_obj_docs},
     },
 };
-
-use super::ExtensionClass;
 
 pub fn code_for_view(
     reporter: &Reporter,

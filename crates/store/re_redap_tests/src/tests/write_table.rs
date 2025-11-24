@@ -1,18 +1,22 @@
-use crate::RecordBatchExt as _;
-use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches};
-use crate::utils::streaming::make_streaming_request;
-use crate::utils::tables::create_simple_lance_dataset;
-use arrow::array::RecordBatch;
-use arrow::array::record_batch;
-use arrow::datatypes as arrow_schema;
+use arrow::{
+    array::{RecordBatch, record_batch},
+    datatypes as arrow_schema,
+};
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-use re_protos::cloud::v1alpha1::TableInsertMode;
-use re_protos::cloud::v1alpha1::{
-    FindEntriesRequest, ScanTableRequest, WriteTableRequest, ext::EntryDetails,
-    rerun_cloud_service_server::RerunCloudService,
+use re_protos::{
+    cloud::v1alpha1::{
+        FindEntriesRequest, ScanTableRequest, TableInsertMode, WriteTableRequest,
+        ext::EntryDetails, rerun_cloud_service_server::RerunCloudService,
+    },
+    headers::RerunHeadersInjectorExt as _,
 };
-use re_protos::headers::RerunHeadersInjectorExt as _;
+
+use crate::{
+    RecordBatchExt as _,
+    tests::common::{RerunCloudServiceExt as _, concat_record_batches},
+    utils::{streaming::make_streaming_request, tables::create_simple_lance_dataset},
+};
 
 async fn get_table_batches(
     service: &impl RerunCloudService,

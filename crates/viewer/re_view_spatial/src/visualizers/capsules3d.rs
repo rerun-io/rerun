@@ -15,12 +15,11 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
-
 use super::{
     SpatialViewVisualizerData, filter_visualizable_3d_entities,
     utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
 };
+use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 // ---
 pub struct Capsules3DVisualizer(SpatialViewVisualizerData);

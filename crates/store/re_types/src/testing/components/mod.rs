@@ -24,26 +24,13 @@ mod affix_fuzzer7;
 mod affix_fuzzer8;
 mod affix_fuzzer9;
 
-pub use self::affix_fuzzer1::AffixFuzzer1;
-pub use self::affix_fuzzer2::AffixFuzzer2;
-pub use self::affix_fuzzer3::AffixFuzzer3;
-pub use self::affix_fuzzer4::AffixFuzzer4;
-pub use self::affix_fuzzer5::AffixFuzzer5;
-pub use self::affix_fuzzer6::AffixFuzzer6;
-pub use self::affix_fuzzer7::AffixFuzzer7;
-pub use self::affix_fuzzer8::AffixFuzzer8;
-pub use self::affix_fuzzer9::AffixFuzzer9;
-pub use self::affix_fuzzer10::AffixFuzzer10;
-pub use self::affix_fuzzer11::AffixFuzzer11;
-pub use self::affix_fuzzer12::AffixFuzzer12;
-pub use self::affix_fuzzer13::AffixFuzzer13;
-pub use self::affix_fuzzer14::AffixFuzzer14;
-pub use self::affix_fuzzer15::AffixFuzzer15;
-pub use self::affix_fuzzer16::AffixFuzzer16;
-pub use self::affix_fuzzer17::AffixFuzzer17;
-pub use self::affix_fuzzer18::AffixFuzzer18;
-pub use self::affix_fuzzer19::AffixFuzzer19;
-pub use self::affix_fuzzer20::AffixFuzzer20;
-pub use self::affix_fuzzer21::AffixFuzzer21;
-pub use self::affix_fuzzer22::AffixFuzzer22;
-pub use self::affix_fuzzer23::AffixFuzzer23;
+pub use self::{
+    affix_fuzzer1::AffixFuzzer1, affix_fuzzer2::AffixFuzzer2, affix_fuzzer3::AffixFuzzer3,
+    affix_fuzzer4::AffixFuzzer4, affix_fuzzer5::AffixFuzzer5, affix_fuzzer6::AffixFuzzer6,
+    affix_fuzzer7::AffixFuzzer7, affix_fuzzer8::AffixFuzzer8, affix_fuzzer9::AffixFuzzer9,
+    affix_fuzzer10::AffixFuzzer10, affix_fuzzer11::AffixFuzzer11, affix_fuzzer12::AffixFuzzer12,
+    affix_fuzzer13::AffixFuzzer13, affix_fuzzer14::AffixFuzzer14, affix_fuzzer15::AffixFuzzer15,
+    affix_fuzzer16::AffixFuzzer16, affix_fuzzer17::AffixFuzzer17, affix_fuzzer18::AffixFuzzer18,
+    affix_fuzzer19::AffixFuzzer19, affix_fuzzer20::AffixFuzzer20, affix_fuzzer21::AffixFuzzer21,
+    affix_fuzzer22::AffixFuzzer22, affix_fuzzer23::AffixFuzzer23,
+};

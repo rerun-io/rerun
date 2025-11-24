@@ -5,8 +5,6 @@ use std::borrow::Cow;
 use anyhow::Context as _;
 use egui::{Rangef, util::hash};
 use half::f16;
-use wgpu::TextureFormat;
-
 use re_renderer::{
     RenderContext,
     device_caps::DeviceCaps,
@@ -16,16 +14,18 @@ use re_renderer::{
         ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
     },
 };
-use re_types::components::ClassId;
-use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
-use re_types::image::ImageKind;
+use re_types::{
+    components::ClassId,
+    datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
+    image::ImageKind,
+};
+use wgpu::TextureFormat;
 
+use super::get_or_create_texture;
 use crate::{
     Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
     image_info::ColormapWithRange,
 };
-
-use super::get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 

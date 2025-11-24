@@ -8,6 +8,7 @@ use std::{collections::BTreeMap, ops::Range, sync::Arc};
 use enumset::EnumSet;
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
     Color32, CpuWriteGpuReadError, DrawableCollector, OutlineMaskPreference, PickingLayerId,
     PickingLayerProcessor,
@@ -22,8 +23,6 @@ use crate::{
         RenderPipelineDesc,
     },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 mod gpu_data {
     use ecolor::Color32;

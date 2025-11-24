@@ -4,12 +4,10 @@ use re_chunk::{ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{EntityPathFilter, TimeType};
 use re_types::ComponentDescriptor;
 
-use super::LensError;
-use super::Op;
-use super::ast;
-use super::ast::OneToMany;
-use super::ast::OneToOne;
-use super::ast::Static;
+use super::{
+    LensError, Op, ast,
+    ast::{OneToMany, OneToOne, Static},
+};
 
 /// Builder for lenses with support for multiple output modes.
 #[must_use]

@@ -1,6 +1,8 @@
 use super::{Context, DocumentData, DocumentKind};
-use crate::build_examples::{Example, ExamplesManifest, Language};
-use crate::build_search_index::util::ProgressBarExt as _;
+use crate::{
+    build_examples::{Example, ExamplesManifest, Language},
+    build_search_index::util::ProgressBarExt as _,
+};
 
 const LANGUAGES: &[Language] = &[Language::Python, Language::Rust, Language::Cpp];
 

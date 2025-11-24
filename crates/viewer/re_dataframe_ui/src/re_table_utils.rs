@@ -1,7 +1,9 @@
 use ahash::HashSet;
-use egui::containers::menu::{MenuButton, MenuConfig};
-use egui::emath::GuiRounding as _;
-use egui::{Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+use egui::{
+    Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style,
+    containers::menu::{MenuButton, MenuConfig},
+    emath::GuiRounding as _,
+};
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 pub const CELL_SEPARATOR_STROKE_OFFSET: f32 = 0.5;

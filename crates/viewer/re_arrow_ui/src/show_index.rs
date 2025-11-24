@@ -3,35 +3,37 @@
 //! <https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs>
 use std::ops::Range;
 
-use arrow::array::cast::{
-    AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
+use arrow::{
+    array::{
+        Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
+        GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
+        StructArray, TimestampMicrosecondArray, TimestampMillisecondArray,
+        TimestampNanosecondArray, TimestampSecondArray, UnionArray, as_generic_binary_array,
+        cast::{
+            AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
+        },
+        downcast_dictionary_array, downcast_integer_array, downcast_run_array,
+        types::{
+            ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type,
+            Int32Type, Int64Type, RunEndIndexType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
+        },
+    },
+    datatypes::{
+        ArrowNativeType as _, DataType, Field, TimeUnit, TimestampMicrosecondType,
+        TimestampMillisecondType, TimestampNanosecondType, TimestampSecondType, UnionMode,
+    },
+    error::ArrowError,
+    util::display::{ArrayFormatter, FormatOptions},
 };
-use arrow::array::types::{
-    ArrowDictionaryKeyType, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-    Int64Type, RunEndIndexType, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
-};
-use arrow::array::{
-    Array, ArrayAccessor as _, DictionaryArray, FixedSizeBinaryArray, FixedSizeListArray,
-    GenericBinaryArray, GenericListArray, MapArray, OffsetSizeTrait, PrimitiveArray, RunArray,
-    StructArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UnionArray, as_generic_binary_array, downcast_dictionary_array,
-    downcast_integer_array, downcast_run_array,
-};
-use arrow::datatypes::{
-    ArrowNativeType as _, DataType, Field, TimeUnit, TimestampMicrosecondType,
-    TimestampMillisecondType, TimestampNanosecondType, TimestampSecondType, UnionMode,
-};
-use arrow::error::ArrowError;
-use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
-
 use re_log_types::TimestampFormat;
-use re_ui::list_item::{CustomContent, LabelContent};
-use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_ui::{UiExt as _, UiLayout};
+use re_ui::{
+    UiExt as _, UiLayout,
+    list_item::{CustomContent, LabelContent},
+    syntax_highlighting::SyntaxHighlightedBuilder,
+};
 
-use crate::arrow_node::ArrowNode;
-use crate::list_item_ranges::list_item_ranges;
+use crate::{arrow_node::ArrowNode, list_item_ranges::list_item_ranges};
 
 /// Arrow display options.
 ///

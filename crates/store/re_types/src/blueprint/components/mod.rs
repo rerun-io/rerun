@@ -65,52 +65,24 @@ mod visual_bounds2d_ext;
 mod visualizer_override;
 mod zoom_level;
 
-pub use self::absolute_time_range::AbsoluteTimeRange;
-pub use self::active_tab::ActiveTab;
-pub use self::angular_speed::AngularSpeed;
-pub use self::apply_latest_at::ApplyLatestAt;
-pub use self::auto_layout::AutoLayout;
-pub use self::auto_views::AutoViews;
-pub use self::background_kind::BackgroundKind;
-pub use self::column_share::ColumnShare;
-pub use self::component_column_selector::ComponentColumnSelector;
-pub use self::container_kind::ContainerKind;
-pub use self::corner2d::Corner2D;
-pub use self::enabled::Enabled;
-pub use self::eye3d_kind::Eye3DKind;
-pub use self::filter_by_range::FilterByRange;
-pub use self::filter_is_not_null::FilterIsNotNull;
-pub use self::force_distance::ForceDistance;
-pub use self::force_iterations::ForceIterations;
-pub use self::force_strength::ForceStrength;
-pub use self::fps::Fps;
-pub use self::grid_columns::GridColumns;
-pub use self::grid_spacing::GridSpacing;
-pub use self::included_content::IncludedContent;
-pub use self::link_axis::LinkAxis;
-pub use self::lock_range_during_zoom::LockRangeDuringZoom;
-pub use self::loop_mode::LoopMode;
-pub use self::map_provider::MapProvider;
-pub use self::near_clip_plane::NearClipPlane;
-pub use self::panel_state::PanelState;
-pub use self::play_state::PlayState;
-pub use self::playback_speed::PlaybackSpeed;
-pub use self::query_expression::QueryExpression;
-pub use self::root_container::RootContainer;
-pub use self::row_share::RowShare;
-pub use self::selected_columns::SelectedColumns;
-pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;
-pub use self::text_log_column::TextLogColumn;
-pub use self::time_int::TimeInt;
-pub use self::time_range::TimeRange;
-pub use self::timeline_column::TimelineColumn;
-pub use self::timeline_name::TimelineName;
-pub use self::view_class::ViewClass;
-pub use self::view_fit::ViewFit;
-pub use self::view_maximized::ViewMaximized;
-pub use self::view_origin::ViewOrigin;
-pub use self::viewer_recommendation_hash::ViewerRecommendationHash;
-pub use self::visible_time_range::VisibleTimeRange;
-pub use self::visual_bounds2d::VisualBounds2D;
-pub use self::visualizer_override::VisualizerOverride;
-pub use self::zoom_level::ZoomLevel;
+pub use self::{
+    absolute_time_range::AbsoluteTimeRange, active_tab::ActiveTab, angular_speed::AngularSpeed,
+    apply_latest_at::ApplyLatestAt, auto_layout::AutoLayout, auto_views::AutoViews,
+    background_kind::BackgroundKind, column_share::ColumnShare,
+    component_column_selector::ComponentColumnSelector, container_kind::ContainerKind,
+    corner2d::Corner2D, enabled::Enabled, eye3d_kind::Eye3DKind, filter_by_range::FilterByRange,
+    filter_is_not_null::FilterIsNotNull, force_distance::ForceDistance,
+    force_iterations::ForceIterations, force_strength::ForceStrength, fps::Fps,
+    grid_columns::GridColumns, grid_spacing::GridSpacing, included_content::IncludedContent,
+    link_axis::LinkAxis, lock_range_during_zoom::LockRangeDuringZoom, loop_mode::LoopMode,
+    map_provider::MapProvider, near_clip_plane::NearClipPlane, panel_state::PanelState,
+    play_state::PlayState, playback_speed::PlaybackSpeed, query_expression::QueryExpression,
+    root_container::RootContainer, row_share::RowShare, selected_columns::SelectedColumns,
+    tensor_dimension_index_slider::TensorDimensionIndexSlider, text_log_column::TextLogColumn,
+    time_int::TimeInt, time_range::TimeRange, timeline_column::TimelineColumn,
+    timeline_name::TimelineName, view_class::ViewClass, view_fit::ViewFit,
+    view_maximized::ViewMaximized, view_origin::ViewOrigin,
+    viewer_recommendation_hash::ViewerRecommendationHash, visible_time_range::VisibleTimeRange,
+    visual_bounds2d::VisualBounds2D, visualizer_override::VisualizerOverride,
+    zoom_level::ZoomLevel,
+};

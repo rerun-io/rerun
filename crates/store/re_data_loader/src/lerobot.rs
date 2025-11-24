@@ -9,18 +9,22 @@
 //!
 //! See [`LeRobotDataset`] for more information on the dataset format.
 
-use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::fmt;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    collections::BTreeMap,
+    fmt,
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use serde::de::{DeserializeOwned, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{
+    Deserialize, Deserializer, Serialize,
+    de::{DeserializeOwned, MapAccess, SeqAccess, Visitor},
+};
 
 /// Check whether the provided path contains a `LeRobot` dataset.
 pub fn is_lerobot_dataset(path: impl AsRef<Path>) -> bool {
@@ -626,8 +630,9 @@ pub struct LeRobotDatasetTask {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json;
+
+    use super::*;
 
     #[test]
     fn test_deserialize_flat_list() {

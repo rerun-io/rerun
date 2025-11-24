@@ -294,17 +294,16 @@ impl tonic::service::Interceptor for RerunVersionInterceptor {
 //     >;
 // ```
 
-use std::collections::HashSet;
-use std::future::Future;
 use std::{
+    collections::HashSet,
+    future::Future,
     pin::Pin,
     task::{Context, Poll, ready},
 };
 
 use http::{HeaderValue, Request, Response, header::HeaderName};
 use pin_project_lite::pin_project;
-use tower::Service;
-use tower::layer::Layer;
+use tower::{Service, layer::Layer};
 
 /// Layer that applies [`PropagateHeaders`] which propagates multiple headers at once from requests to responses.
 ///

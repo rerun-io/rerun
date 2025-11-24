@@ -68,8 +68,10 @@ fn hash_and_log(
     filepath: &std::path::Path,
     contents: &[u8],
 ) -> Result<(), re_data_loader::DataLoaderError> {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    };
 
     let mut h = DefaultHasher::new();
     contents.hash(&mut h);

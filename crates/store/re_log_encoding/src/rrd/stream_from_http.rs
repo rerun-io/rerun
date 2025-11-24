@@ -1,6 +1,4 @@
-use std::cell::RefCell;
-use std::ops::ControlFlow;
-use std::sync::Arc;
+use std::{cell::RefCell, ops::ControlFlow, sync::Arc};
 
 use re_log::ResultExt as _;
 use re_log_types::{DataSourceMessage, LogMsg};
@@ -132,11 +130,13 @@ pub fn stream_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
 // TODO(#3408): remove unwrap()
 #[expect(clippy::unwrap_used)]
 mod web_event_listener {
-    use super::HttpMessageCallback;
-    use js_sys::Uint8Array;
     use std::sync::Arc;
+
+    use js_sys::Uint8Array;
     use wasm_bindgen::{JsCast as _, JsValue, closure::Closure};
     use web_sys::MessageEvent;
+
+    use super::HttpMessageCallback;
 
     /// Install an event-listener on `window` which will decode the incoming event as an rrd
     ///
@@ -173,8 +173,9 @@ pub use web_event_listener::stream_rrd_from_event_listener;
 // TODO(#3408): remove unwrap()
 #[expect(clippy::unwrap_used)]
 pub mod web_decode {
-    use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
+
+    use super::{HttpMessage, HttpMessageCallback};
 
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));

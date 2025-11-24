@@ -1,11 +1,12 @@
-use std::io::{Cursor, SeekFrom};
+use std::{
+    io,
+    io::{Cursor, SeekFrom},
+};
 
 use scuffle_av1::{ObuHeader, ObuType, seq::SequenceHeaderObu};
+use scuffle_bytes_util::BitReader;
 
 use crate::{ChromaSubsamplingModes, DetectGopStartError, GopStartDetection, VideoEncodingDetails};
-
-use scuffle_bytes_util::BitReader;
-use std::io;
 
 /// Try to determine whether an AV1 frame chunk is the start of a GOP.
 ///

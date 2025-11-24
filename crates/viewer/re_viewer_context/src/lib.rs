@@ -45,6 +45,8 @@ mod viewer_context;
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
+pub use re_ui::UiLayout;
+
 pub use self::{
     annotations::{
         AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
@@ -114,14 +116,15 @@ pub use self::{
     },
     viewer_context::ViewerContext,
     visitor_flow_control::VisitorControlFlow,
-};
-
-pub use re_ui::UiLayout; // Historical reasons
+}; // Historical reasons
 
 pub mod external {
     pub use nohash_hasher;
-    pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
-
+    pub use re_chunk_store;
+    pub use re_entity_db;
+    pub use re_log_types;
+    pub use re_query;
+    pub use re_ui;
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
 }

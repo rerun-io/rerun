@@ -2,10 +2,11 @@
 
 #[cfg(debug_assertions)]
 use egui::containers::menu;
-use egui::containers::menu::{MenuButton, MenuConfig};
-use egui::{Button, NumExt as _, ScrollArea};
-use re_ui::menu::menu_style;
-use re_ui::{UICommand, UiExt as _};
+use egui::{
+    Button, NumExt as _, ScrollArea,
+    containers::menu::{MenuButton, MenuConfig},
+};
+use re_ui::{UICommand, UiExt as _, menu::menu_style};
 use re_viewer_context::StoreContext;
 
 use crate::App;

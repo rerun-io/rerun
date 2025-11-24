@@ -9,6 +9,9 @@
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
+use parking_lot::Mutex;
+use smallvec::smallvec;
+
 use crate::{
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
     allocator::create_and_fill_uniform_buffer,
@@ -24,9 +27,6 @@ use crate::{
         RenderPipelineDesc, TextureDesc,
     },
 };
-
-use parking_lot::Mutex;
-use smallvec::smallvec;
 
 /// GPU retrieved & processed picking data result.
 pub struct PickingResult {

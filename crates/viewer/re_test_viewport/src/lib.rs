@@ -3,14 +3,10 @@
 mod test_view;
 
 use ahash::HashMap;
-
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
-
-use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
-
 use re_viewport::execute_systems_for_view;
-
+use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.

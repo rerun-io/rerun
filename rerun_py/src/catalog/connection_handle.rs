@@ -1,36 +1,39 @@
-use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
-use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
-use arrow::ffi_stream::ArrowArrayStreamReader;
-use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyValueError;
-use pyo3::{PyErr, PyResult, Python};
 use std::collections::BTreeSet;
-use tracing::Instrument as _;
 
-use crate::catalog::table_entry::PyTableInsertMode;
-use crate::catalog::to_py_err;
-use crate::utils::wait_for_future;
+use arrow::{
+    array::{RecordBatch, RecordBatchIterator, RecordBatchReader},
+    datatypes::{Schema as ArrowSchema, SchemaRef},
+    ffi_stream::ArrowArrayStreamReader,
+    pyarrow::PyArrowType,
+};
+use pyo3::{PyErr, PyResult, Python, exceptions::PyValueError};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
 use re_log::external::log::warn;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::EntryKind;
-use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{
-    cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
     cloud::v1alpha1::{
-        EntryFilter,
-        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
+        EntryFilter, EntryKind, QueryDatasetRequest, QueryTasksResponse,
+        ext::{
+            DataSource, DatasetDetails, DatasetEntry, EntryDetails,
+            RegisterWithDatasetTaskDescriptor, TableEntry,
+        },
     },
-    cloud::v1alpha1::{QueryDatasetRequest, QueryTasksResponse},
     common::v1alpha1::{
         TaskId,
         ext::{IfDuplicateBehavior, ScanParameters},
     },
+    headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_field,
 };
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
+use tracing::Instrument as _;
+
+use crate::{
+    catalog::{table_entry::PyTableInsertMode, to_py_err},
+    utils::wait_for_future,
+};
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]

@@ -1,17 +1,18 @@
-use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
-use crate::table_selection::TableSelectionState;
-use egui::emath::GuiRounding as _;
-use egui::text_selection::LabelSelectionState;
+use std::{iter, sync::Arc};
+
 use egui::{
     Align, Context, Direction, FontSelection, Id, Layout, NumExt as _, Rangef, RichText,
-    TextWrapMode, Ui, UiBuilder, WidgetText,
+    TextWrapMode, Ui, UiBuilder, WidgetText, emath::GuiRounding as _,
+    text_selection::LabelSelectionState,
 };
 use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
-use re_ui::egui_ext::response_ext::ResponseExt as _;
-use re_ui::{TableStyle, UiExt as _};
-use std::iter;
-use std::sync::Arc;
+use re_ui::{TableStyle, UiExt as _, egui_ext::response_ext::ResponseExt as _};
+
+use crate::{
+    re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui},
+    table_selection::TableSelectionState,
+};
 
 /// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
 pub struct ReTable<'a> {

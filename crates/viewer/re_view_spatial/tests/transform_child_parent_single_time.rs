@@ -1,9 +1,9 @@
 use re_log_types::{TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::datatypes::Angle;
 use re_types::{
     archetypes, blueprint::archetypes::EyeControls3D, components, components::Position3D,
+    datatypes::Angle,
 };
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};

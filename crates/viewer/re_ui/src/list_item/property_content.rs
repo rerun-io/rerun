@@ -2,12 +2,11 @@ use std::{fmt::Display, sync::Arc};
 
 use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
 
-use crate::{Icon, UiExt as _};
-
 use super::{
     ContentContext, DesiredWidth, ItemButtons, LayoutInfoStack, ListItemContent,
     ListItemContentButtonsExt, ListVisuals,
 };
+use crate::{Icon, UiExt as _};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;

@@ -1,17 +1,19 @@
-use crate::view_query::Query;
-use egui::PopupCloseBehavior;
-use egui::containers::menu::{MenuButton, MenuConfig};
+use std::collections::{BTreeSet, HashSet};
+
+use egui::{
+    PopupCloseBehavior,
+    containers::menu::{MenuButton, MenuConfig},
+};
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{TimeDragValue, UiExt as _, list_item};
-use re_viewer_context::TimeControlCommand;
-use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
-use std::collections::{BTreeSet, HashSet};
+use re_ui::{TimeDragValue, UiExt as _, list_item, list_item::ListItemContentButtonsExt as _};
+use re_viewer_context::{TimeControlCommand, ViewId, ViewSystemExecutionError, ViewerContext};
+
+use crate::view_query::Query;
 
 // UI implementation
 impl Query {

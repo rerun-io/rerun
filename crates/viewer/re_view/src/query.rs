@@ -1,15 +1,14 @@
 use nohash_hasher::IntSet;
-
-use crate::{
-    HybridResults,
-    results_ext::{HybridLatestAtResults, HybridRangeResults},
-};
-
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
 use re_types_core::{Archetype, ComponentIdentifier};
 use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
+
+use crate::{
+    HybridResults,
+    results_ext::{HybridLatestAtResults, HybridRangeResults},
+};
 
 // ---
 

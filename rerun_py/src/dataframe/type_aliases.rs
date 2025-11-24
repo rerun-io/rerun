@@ -1,13 +1,16 @@
-use std::collections::BTreeSet;
-use std::str::FromStr as _;
+use std::{collections::BTreeSet, str::FromStr as _};
 
-use arrow::array::{ArrayData, Int64Array, make_array};
-use arrow::pyarrow::PyArrowType;
+use arrow::{
+    array::{ArrayData, Int64Array, make_array},
+    pyarrow::PyArrowType,
+};
 use numpy::PyArrayMethods as _;
-use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::prelude::PyAnyMethods as _;
-use pyo3::{Bound, FromPyObject, PyAny, PyResult, pyclass, pymethods};
-
+use pyo3::{
+    Bound, FromPyObject, PyAny, PyResult,
+    exceptions::{PyTypeError, PyValueError},
+    prelude::PyAnyMethods as _,
+    pyclass, pymethods,
+};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sorbet::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
 

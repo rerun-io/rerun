@@ -1,10 +1,11 @@
+use std::{cell::RefCell, rc::Rc};
+
 use re_auth::oauth::{
     Credentials,
     api::{AuthenticateWithCode, Pkce, authorization_url, send_async},
 };
 use re_log::ResultExt as _;
 use re_viewer_context::AsyncRuntimeHandle;
-use std::{cell::RefCell, rc::Rc};
 use url::Url;
 use uuid::Uuid;
 use wasm_bindgen::{JsCast as _, prelude::Closure};

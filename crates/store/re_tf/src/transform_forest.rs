@@ -1,17 +1,14 @@
 use nohash_hasher::{IntMap, IntSet};
-use vec1::smallvec_v1::SmallVec1;
-
-use crate::frame_id_registry::FrameIdRegistry;
-use crate::transform_resolution_cache::ParentFromChildTransform;
-use crate::{
-    CachedTransformsForTimeline, ResolvedPinholeProjection, TransformFrameIdHash,
-    TransformResolutionCache, image_view_coordinates,
-};
-
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
-use re_types::ArchetypeName;
-use re_types::components::TransformFrameId;
+use re_types::{ArchetypeName, components::TransformFrameId};
+use vec1::smallvec_v1::SmallVec1;
+
+use crate::{
+    CachedTransformsForTimeline, ResolvedPinholeProjection, TransformFrameIdHash,
+    TransformResolutionCache, frame_id_registry::FrameIdRegistry, image_view_coordinates,
+    transform_resolution_cache::ParentFromChildTransform,
+};
 
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
@@ -812,14 +809,12 @@ mod tests {
     use std::sync::Arc;
 
     use itertools::Itertools as _;
-
-    use super::*;
-
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
-    use re_types::components::TransformFrameId;
-    use re_types::{RowId, archetypes, components};
+    use re_types::{RowId, archetypes, components, components::TransformFrameId};
+
+    use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])

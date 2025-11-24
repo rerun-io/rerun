@@ -1,16 +1,14 @@
 use nohash_hasher::IntSet;
-
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
 
+use super::ViewContext;
 use crate::{
     IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
     SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
-
-use super::ViewContext;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum ViewClassLayoutPriority {

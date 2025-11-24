@@ -1,7 +1,6 @@
 use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-
 use re_protos::{
     cloud::v1alpha1::{
         ScanDatasetManifestRequest, ScanPartitionTableRequest, ScanPartitionTableResponse,

@@ -1,10 +1,10 @@
 use re_integration_test::HarnessExt as _;
-use re_sdk::TimePoint;
-use re_sdk::log::RowId;
+use re_sdk::{TimePoint, log::RowId};
 use re_view_text_document::TextDocumentView;
-use re_viewer::external::re_types;
-use re_viewer::external::re_viewer_context::ViewClass as _;
-use re_viewer::viewer_test_utils::{self, HarnessOptions};
+use re_viewer::{
+    external::{re_types, re_viewer_context::ViewClass as _},
+    viewer_test_utils::{self, HarnessOptions},
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[tokio::test(flavor = "multi_thread")]

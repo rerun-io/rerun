@@ -11,14 +11,13 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 use crate::{
     PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
-
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -109,8 +108,9 @@ impl ImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
-        use super::entity_iterator::{iter_component, iter_slices};
         use re_view::RangeResultsExt as _;
+
+        use super::entity_iterator::{iter_component, iter_slices};
 
         let entity_path = ctx.target_entity_path;
 

@@ -11,17 +11,15 @@
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
-use smallvec::SmallVec;
-
 use re_entity_db::InstancePath;
-use re_log_types::EntityPath;
-use re_log_types::external::re_types_core::ViewClassIdentifier;
+use re_log_types::{EntityPath, external::re_types_core::ViewClassIdentifier};
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
     ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint};
+use smallvec::SmallVec;
 
 use crate::data_result_node_or_path::DataResultNodeOrPath;
 

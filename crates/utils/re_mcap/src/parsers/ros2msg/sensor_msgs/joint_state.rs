@@ -1,11 +1,10 @@
-use super::super::definitions::sensor_msgs;
 use re_chunk::{
     Chunk, ChunkId,
     external::arrow::array::{Float64Builder, ListBuilder, StringBuilder},
 };
 use re_types::archetypes::{Scalars, SeriesLines};
 
-use super::super::Ros2MessageParser;
+use super::super::{Ros2MessageParser, definitions::sensor_msgs};
 use crate::{
     Error,
     parsers::{MessageParser, ParserContext, cdr},

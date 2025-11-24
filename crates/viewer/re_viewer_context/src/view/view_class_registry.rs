@@ -1,22 +1,20 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
+use super::{
+    view_class_placeholder::ViewClassPlaceholder,
+    visualizer_entity_subscriber::VisualizerEntitySubscriber,
+};
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
     QueryContext, ViewClass, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
     ViewerContext, VisualizerCollection, VisualizerSystem,
     component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
-};
-
-use super::{
-    view_class_placeholder::ViewClassPlaceholder,
-    visualizer_entity_subscriber::VisualizerEntitySubscriber,
 };
 
 #[derive(Debug, thiserror::Error)]

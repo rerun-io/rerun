@@ -6,7 +6,6 @@ use arrow::{array::ArrayRef, datatypes::DataType};
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
 use re_test_context::TestContext;

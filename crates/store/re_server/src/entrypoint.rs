@@ -1,6 +1,5 @@
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{net::SocketAddr, path::PathBuf, str::FromStr};
+
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 #[cfg(windows)]

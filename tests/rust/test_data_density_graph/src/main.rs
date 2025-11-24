@@ -6,9 +6,9 @@
 
 use rerun::{
     RecordingStream,
-    external::{re_chunk_store, re_log},
+    external::{re_chunk_store, re_log, re_log_types::NonMinI64},
+    time::TimeInt,
 };
-use rerun::{external::re_log_types::NonMinI64, time::TimeInt};
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();

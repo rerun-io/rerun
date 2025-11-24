@@ -3,15 +3,14 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
-
 use re_viewer_context::{
     PerSystemDataResults, SystemExecutionOutput, ViewContextCollection,
     ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
     ViewSystemIdentifier, ViewerContext, VisualizerCollection,
 };
+use re_viewport_blueprint::ViewBlueprint;
 
 use crate::view_highlights::highlights_for_view;
-use re_viewport_blueprint::ViewBlueprint;
 
 fn run_view_systems(
     ctx: &ViewerContext<'_>,

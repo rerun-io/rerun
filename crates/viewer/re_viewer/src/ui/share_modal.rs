@@ -1,5 +1,4 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
-
 use re_log_types::AbsoluteTimeRange;
 use re_redap_browser::EXAMPLES_ORIGIN;
 use re_ui::{

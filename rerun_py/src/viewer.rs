@@ -2,7 +2,6 @@
 
 use arrow::array::RecordBatch;
 use pyo3::{Bound, PyResult, prelude::*};
-
 use re_grpc_client::write_table::viewer_client;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 

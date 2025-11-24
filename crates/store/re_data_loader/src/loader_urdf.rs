@@ -6,8 +6,6 @@ use std::{
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
-use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
-
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
 use re_types::{
@@ -16,6 +14,7 @@ use re_types::{
     datatypes::Vec3D,
     external::glam,
 };
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 

@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
@@ -12,16 +11,18 @@ use re_view::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    VisualizerSystem, external::re_entity_db::InstancePath, typed_fallback_for,
 };
-use re_viewer_context::{external::re_entity_db::InstancePath, typed_fallback_for};
 use re_viewport_blueprint::ViewPropertyQueryError;
 
-use crate::series_query::{
-    allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
-    collect_series_visibility, determine_num_series,
+use crate::{
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind,
+    series_query::{
+        allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
+        collect_series_name, collect_series_visibility, determine_num_series,
+    },
+    util,
 };
-use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]

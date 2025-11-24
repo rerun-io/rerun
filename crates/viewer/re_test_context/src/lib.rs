@@ -2,13 +2,11 @@
 
 #![expect(clippy::unwrap_used)] // This is only a test
 
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, atomic::AtomicBool};
 
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
@@ -19,7 +17,6 @@ use re_log_types::{
 use re_types::{Component as _, ComponentDescriptor, archetypes::RecordingInfo};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
-
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
@@ -837,9 +834,10 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use re_entity_db::InstancePath;
     use re_viewer_context::Item;
+
+    use super::*;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.

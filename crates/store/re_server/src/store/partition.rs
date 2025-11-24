@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use itertools::Itertools as _;
-
 use re_chunk_store::ChunkStoreHandle;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 

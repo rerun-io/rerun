@@ -1,6 +1,5 @@
 use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
 use macaw::BoundingBox;
-
 use re_format::format_f32;
 use re_types::{
     blueprint::{archetypes::EyeControls3D, components::VisualBounds2D},
@@ -12,6 +11,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+use super::{eye::Eye, ui_3d::View3DState};
 use crate::{
     Pinhole,
     pickable_textured_rect::PickableRectSourceData,
@@ -20,8 +20,6 @@ use crate::{
     view_kind::SpatialViewKind,
     visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
 };
-
-use super::{eye::Eye, ui_3d::View3DState};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -340,8 +338,7 @@ pub fn paint_loading_spinners(
     eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    use glam::Vec3Swizzles as _;
-    use glam::Vec4Swizzles as _;
+    use glam::{Vec3Swizzles as _, Vec4Swizzles as _};
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 

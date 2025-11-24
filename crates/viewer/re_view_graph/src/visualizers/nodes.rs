@@ -2,11 +2,12 @@ use egui::Color32;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
-use re_types::archetypes::GraphNodes;
-use re_types::components::Color;
 use re_types::{
     self, ArrowString, archetypes,
-    components::{self},
+    archetypes::GraphNodes,
+    components::{
+        Color, {self},
+    },
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{

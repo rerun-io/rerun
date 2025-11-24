@@ -1,5 +1,6 @@
 use std::{collections::VecDeque, sync::Arc, time::Duration};
 
+use rerun::external::{re_error, re_log};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
     net::TcpStream,
@@ -8,8 +9,6 @@ use tokio::{
         mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
     },
 };
-
-use rerun::external::{re_error, re_log};
 
 use super::protocol::Message;
 

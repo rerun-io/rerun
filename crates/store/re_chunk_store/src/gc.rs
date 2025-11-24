@@ -6,19 +6,17 @@ use std::{
 use ahash::{HashMap, HashSet};
 use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
-use web_time::Instant;
-
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-
-use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreStats, store::ChunkIdSetPerTime,
-};
+use web_time::Instant;
 
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
+use crate::{
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreStats, store::ChunkIdSetPerTime,
+};
 
 // ---
 

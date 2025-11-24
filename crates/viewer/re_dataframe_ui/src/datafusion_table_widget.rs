@@ -1,34 +1,36 @@
 use std::sync::Arc;
 
 use arrow::datatypes::Field;
-use datafusion::prelude::SessionContext;
-use datafusion::sql::TableReference;
-use egui::containers::menu::MenuConfig;
-use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _};
+use datafusion::{prelude::SessionContext, sql::TableReference};
+use egui::{
+    Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _,
+    containers::menu::MenuConfig,
+};
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::egui_ext::response_ext::ResponseExt as _;
-use re_ui::menu::menu_style;
-use re_ui::{UiExt as _, icons};
+use re_ui::{UiExt as _, egui_ext::response_ext::ResponseExt as _, icons, menu::menu_style};
 use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
-use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
-use crate::display_record_batch::DisplayColumn;
-use crate::filters::{ColumnFilter, FilterState};
-use crate::header_tooltip::column_header_tooltip_ui;
-use crate::re_table::ReTable;
-use crate::re_table_utils::{ColumnConfig, TableConfig};
-use crate::table_blueprint::{
-    ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+use crate::{
+    DisplayRecordBatch,
+    datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult},
+    default_display_name_for_column,
+    display_record_batch::DisplayColumn,
+    filters::{ColumnFilter, FilterState},
+    header_tooltip::column_header_tooltip_ui,
+    re_table::ReTable,
+    re_table_utils::{ColumnConfig, TableConfig},
+    table_blueprint::{
+        ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+    },
+    table_selection::TableSelectionState,
 };
-use crate::table_selection::TableSelectionState;
-use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
     /// The ID of the column (based on it's corresponding [`re_sorbet::ColumnDescriptor`]).

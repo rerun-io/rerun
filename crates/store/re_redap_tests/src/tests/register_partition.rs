@@ -1,11 +1,11 @@
 #![expect(clippy::unwrap_used)]
 
-use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray};
-use arrow::datatypes::Schema;
+use arrow::{
+    array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray},
+    datatypes::Schema,
+};
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-use url::Url;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::{
     cloud::v1alpha1::{
@@ -16,6 +16,7 @@ use re_protos::{
     },
     headers::RerunHeadersInjectorExt as _,
 };
+use url::Url;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
 use crate::{FieldsExt as _, RecordBatchExt as _, SchemaExt as _, create_simple_recording_in};

@@ -13,8 +13,10 @@ use prost_reflect::{
 use re_chunk::{Chunk, ChunkId};
 use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
 
-use crate::parsers::{MessageParser, ParserContext};
-use crate::{Error, LayerIdentifier, MessageLayer};
+use crate::{
+    Error, LayerIdentifier, MessageLayer,
+    parsers::{MessageParser, ParserContext},
+};
 
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,

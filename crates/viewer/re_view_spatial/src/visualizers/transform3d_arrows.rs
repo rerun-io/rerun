@@ -1,5 +1,4 @@
 use nohash_hasher::IntSet;
-
 use re_log_types::{EntityPath, Instance};
 use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, components::AxisLength};
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -9,9 +8,8 @@ use re_viewer_context::{
     VisualizerSystem,
 };
 
-use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
-
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 

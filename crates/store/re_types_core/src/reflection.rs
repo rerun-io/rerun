@@ -2,8 +2,10 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array as _, ArrayRef};
-use arrow::datatypes::TimeUnit;
+use arrow::{
+    array::{Array as _, ArrayRef},
+    datatypes::TimeUnit,
+};
 
 use crate::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
 
@@ -423,9 +425,8 @@ impl ComponentDescriptorExt for ComponentDescriptor {
 
 #[cfg(test)]
 mod test {
-    use crate::ArchetypeName;
-
     use super::{ComponentDescriptor, ComponentDescriptorExt as _, with_field};
+    use crate::ArchetypeName;
 
     #[test]
     fn component_descriptor_manipulation() {

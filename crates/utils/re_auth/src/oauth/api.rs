@@ -5,9 +5,8 @@ use std::sync::LazyLock;
 use base64::{Engine as _, prelude::BASE64_URL_SAFE_NO_PAD};
 use sha2::{Digest as _, Sha256};
 
-use crate::oauth::OAUTH_CLIENT_ID;
-
 use super::RefreshToken;
+use crate::oauth::OAUTH_CLIENT_ID;
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_SERVER_URL")

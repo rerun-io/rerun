@@ -1829,8 +1829,7 @@ pub mod rerun_cloud_service_client {
         clippy::wildcard_imports,
         clippy::let_unit_value
     )]
-    use tonic::codegen::http::Uri;
-    use tonic::codegen::*;
+    use tonic::codegen::{http::Uri, *};
     /// The Rerun Cloud public API.
     ///
     /// ## Headers

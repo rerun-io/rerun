@@ -1,7 +1,6 @@
 use std::sync::OnceLock;
 
 use nohash_hasher::IntMap;
-
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{

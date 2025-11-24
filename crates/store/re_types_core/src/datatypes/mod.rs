@@ -25,16 +25,9 @@ mod utf8_ext;
 mod visible_time_range;
 mod visible_time_range_ext;
 
-pub use self::absolute_time_range::AbsoluteTimeRange;
-pub use self::bool::Bool;
-pub use self::entity_path::EntityPath;
-pub use self::float32::Float32;
-pub use self::float64::Float64;
-pub use self::time_int::TimeInt;
-pub use self::time_range::TimeRange;
-pub use self::time_range_boundary::TimeRangeBoundary;
-pub use self::uint16::UInt16;
-pub use self::uint32::UInt32;
-pub use self::uint64::UInt64;
-pub use self::utf8::Utf8;
-pub use self::visible_time_range::VisibleTimeRange;
+pub use self::{
+    absolute_time_range::AbsoluteTimeRange, bool::Bool, entity_path::EntityPath, float32::Float32,
+    float64::Float64, time_int::TimeInt, time_range::TimeRange,
+    time_range_boundary::TimeRangeBoundary, uint16::UInt16, uint32::UInt32, uint64::UInt64,
+    utf8::Utf8, visible_time_range::VisibleTimeRange,
+};

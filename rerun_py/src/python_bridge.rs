@@ -16,13 +16,13 @@ use pyo3::{
     prelude::*,
     types::{PyBytes, PyDict},
 };
-
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
-use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
-use re_log_types::{BlueprintActivationCommand, EntityPathPart};
-use re_log_types::{LogMsg, RecordingId};
+use re_log_types::{
+    BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId,
+    external::re_types_core::reflection::ComponentDescriptorExt as _,
+};
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
     external::re_log_encoding::Encoder,
@@ -1708,8 +1708,10 @@ impl PyComponentDescriptor {
     }
 
     fn __hash__(&self) -> u64 {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash as _, Hasher as _};
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash as _, Hasher as _},
+        };
 
         let mut hasher = DefaultHasher::new();
         self.0.hash(&mut hasher);
@@ -2180,8 +2182,9 @@ pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
 }
 
 fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
-    use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
+
+    use rand::{Rng as _, SeedableRng as _};
 
     // If the user uses `multiprocessing` for parallelism,
     // we still want child processes to log to the same recording.

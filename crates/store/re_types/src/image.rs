@@ -4,13 +4,12 @@ use arrow::buffer::ScalarBuffer;
 use re_types_core::{Archetype as _, ArchetypeName};
 use smallvec::{SmallVec, smallvec};
 
+#[cfg(feature = "image")]
+use crate::datatypes::ImageFormat;
 use crate::{
     archetypes,
     datatypes::{Blob, ChannelDatatype, TensorBuffer, TensorData},
 };
-
-#[cfg(feature = "image")]
-use crate::datatypes::ImageFormat;
 
 // ----------------------------------------------------------------------------
 

@@ -1,5 +1,4 @@
-use std::error::Error;
-use std::str::FromStr as _;
+use std::{error::Error, str::FromStr as _};
 
 use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentIdentifier, RowId};

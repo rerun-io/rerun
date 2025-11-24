@@ -1,7 +1,6 @@
 use egui::{InnerResponse, NumExt as _};
 
-use crate::UiExt as _;
-use crate::list_item::navigation::ListItemNavigation;
+use crate::{UiExt as _, list_item::navigation::ListItemNavigation};
 
 /// Layout statistics accumulated during the frame that are used for next frame's layout.
 ///

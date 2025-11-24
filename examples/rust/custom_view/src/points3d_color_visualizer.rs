@@ -1,8 +1,8 @@
-use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
 use rerun::external::{
     egui,
     re_log_types::{EntityPath, Instance},
     re_renderer,
+    re_view::{DataResultQuery, RangeResultsExt},
     re_viewer_context::{
         IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,

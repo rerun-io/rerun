@@ -15,7 +15,6 @@ use re_span::Span;
 use web_time::Instant;
 
 use super::{Time, Timescale};
-
 use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
 
 /// Chroma subsampling mode.

@@ -17,7 +17,7 @@ mod fbs;
 mod python;
 mod rust;
 
-pub use self::cpp::CppCodeFormatter;
-pub use self::fbs::FbsCodeFormatter;
-pub use self::python::PythonCodeFormatter;
-pub use self::rust::RustCodeFormatter;
+pub use self::{
+    cpp::CppCodeFormatter, fbs::FbsCodeFormatter, python::PythonCodeFormatter,
+    rust::RustCodeFormatter,
+};

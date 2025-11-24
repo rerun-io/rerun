@@ -30,10 +30,7 @@ const _: () = assert!(
 
 use re_build_info::CrateVersion;
 
-use crate::ApplicationIdInjector;
-use crate::MessageKind;
-use crate::ToApplication as _;
-use crate::rrd::Decodable as _;
+use crate::{ApplicationIdInjector, MessageKind, ToApplication as _, rrd::Decodable as _};
 
 /// Implemented for top-level types that can kickoff decoding.
 ///

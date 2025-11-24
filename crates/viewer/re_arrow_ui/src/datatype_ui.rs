@@ -1,8 +1,6 @@
 use arrow::datatypes::DataType;
 use egui::Id;
-
-use re_ui::UiExt as _;
-use re_ui::list_item::PropertyContent;
+use re_ui::{UiExt as _, list_item::PropertyContent};
 
 /// Show an ui describing an Arrow `DataType`.
 ///

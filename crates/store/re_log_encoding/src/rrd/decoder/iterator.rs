@@ -1,5 +1,4 @@
-use crate::rrd::decoder::state_machine::DecoderState;
-use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
+use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint, decoder::state_machine::DecoderState};
 
 // ---
 
@@ -174,11 +173,12 @@ mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-    use re_protos::log_msg::v1alpha1 as proto;
-    use re_protos::log_msg::v1alpha1::log_msg::Msg as LogMsgProto;
+    use re_protos::log_msg::{v1alpha1 as proto, v1alpha1::log_msg::Msg as LogMsgProto};
 
-    use crate::rrd::{Compression, DecoderApp, EncodingOptions, Serializer};
-    use crate::{Encoder, ToTransport as _};
+    use crate::{
+        Encoder, ToTransport as _,
+        rrd::{Compression, DecoderApp, EncodingOptions, Serializer},
+    };
 
     fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint, "test_app");

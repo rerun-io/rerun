@@ -2,16 +2,13 @@ mod depth_offsets;
 mod transform_tree_context;
 
 pub use depth_offsets::EntityDepthOffsets;
+// -----------------------------------------------------------------------------
+use re_renderer::DepthOffset;
 use re_tf::TransformInfo;
 use re_types::ViewClassIdentifier;
 use re_view::AnnotationSceneContext;
-
-pub use transform_tree_context::TransformTreeContext;
-
-// -----------------------------------------------------------------------------
-
-use re_renderer::DepthOffset;
 use re_viewer_context::{Annotations, ViewClassRegistryError};
+pub use transform_tree_context::TransformTreeContext;
 
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {

@@ -1,8 +1,7 @@
 #![cfg(feature = "testing")]
 
 use re_blueprint_tree::BlueprintTree;
-use re_chunk_store::RowId;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
 use re_log_types::build_frame_nr;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;

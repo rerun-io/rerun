@@ -2,11 +2,6 @@
 
 use std::sync::Arc;
 
-use re_arrow_combinators::{
-    Error, Transform as _,
-    semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
-};
-
 use arrow::{
     array::{
         Array as _, GenericByteBuilder, Int32Array, Int64Array, StringArray, StructArray,
@@ -14,7 +9,10 @@ use arrow::{
     },
     datatypes::{DataType, Field, GenericBinaryType},
 };
-
+use re_arrow_combinators::{
+    Error, Transform as _,
+    semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
+};
 use re_types::{components::VideoCodec, reflection::Enum as _};
 
 mod util;
@@ -116,8 +114,7 @@ fn test_binary_to_list_uint8() {
 
 #[test]
 fn test_binary_offset_overflow() {
-    use arrow::array::LargeBinaryArray;
-    use arrow::buffer::OffsetBuffer;
+    use arrow::{array::LargeBinaryArray, buffer::OffsetBuffer};
 
     // Create a LargeBinaryArray with an offset that exceeds i32::MAX
     let large_offset = i32::MAX as i64 + 1;

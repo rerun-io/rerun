@@ -1,9 +1,8 @@
+use super::Boxes2D;
 use crate::{
     components::{HalfSize2D, Position2D},
     datatypes::Vec2D,
 };
-
-use super::Boxes2D;
 
 impl Boxes2D {
     /// Creates new [`Boxes2D`] with [`Self::half_sizes`] centered around the local origin.

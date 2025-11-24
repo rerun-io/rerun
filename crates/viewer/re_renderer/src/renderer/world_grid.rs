@@ -1,5 +1,8 @@
+use smallvec::smallvec;
+
+use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::{
-    DrawableCollector, ViewBuilder,
+    DrawableCollector, Rgba, ViewBuilder,
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
@@ -10,11 +13,6 @@ use crate::{
         RenderPipelineDesc,
     },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
-use crate::Rgba;
-
-use smallvec::smallvec;
 
 /// Configuration for the world grid renderer.
 pub struct WorldGridConfiguration {

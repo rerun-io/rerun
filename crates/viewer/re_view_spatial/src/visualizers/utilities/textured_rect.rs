@@ -1,5 +1,4 @@
 use glam::Vec3;
-
 use re_log_types::EntityPath;
 use re_renderer::renderer;
 use re_types::ArchetypeName;

@@ -1,9 +1,10 @@
 use std::str::FromStr as _;
 
 use itertools::Itertools as _;
-use pyo3::exceptions::PyValueError;
-use pyo3::{IntoPyObjectExt as _, Py, PyObject, PyRef, PyRefMut, PyResult, pyclass, pymethods};
-
+use pyo3::{
+    IntoPyObjectExt as _, Py, PyObject, PyRef, PyRefMut, PyResult, exceptions::PyValueError,
+    pyclass, pymethods,
+};
 use re_log_types::EntityPath;
 use re_sorbet::{ColumnDescriptor, ComponentColumnSelector, SorbetColumnDescriptors};
 

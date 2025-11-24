@@ -120,8 +120,10 @@
 )]
 mod reflection;
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+};
 
 use anyhow::Context as _;
 use codegen::FbsCodeGenerator;
@@ -130,13 +132,12 @@ use re_build_tools::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
 };
 
-use crate::format::NoopCodeFormatter;
-
 pub use self::reflection::reflection::{
     BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal, Field as FbsField,
     KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema, Type as FbsType,
     root_as_schema,
 };
+use crate::format::NoopCodeFormatter;
 
 mod codegen;
 mod format;

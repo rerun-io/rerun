@@ -7,6 +7,10 @@ mod route;
 mod stats;
 mod verify;
 
+// ---
+use anyhow::Context as _;
+use clap::Subcommand;
+
 use self::{
     compare::CompareCommand,
     filter::FilterCommand,
@@ -17,11 +21,6 @@ use self::{
     stats::StatsCommand,
     verify::VerifyCommand,
 };
-
-// ---
-
-use anyhow::Context as _;
-use clap::Subcommand;
 
 /// Manipulate the contents of .rrd and .rbl files.
 #[derive(Debug, Clone, Subcommand)]

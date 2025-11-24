@@ -1,11 +1,12 @@
-use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
-
-use arrow::array::{ListArray as ArrowListArray, ListArray};
-use arrow::buffer::OffsetBuffer;
+use arrow::{
+    array::{ListArray as ArrowListArray, ListArray},
+    buffer::OffsetBuffer,
+};
 
 // used in docstrings:
 #[allow(clippy::allow_attributes, unused_imports, clippy::unused_trait_names)]
 use crate::Archetype;
+use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
 
 // ---
 

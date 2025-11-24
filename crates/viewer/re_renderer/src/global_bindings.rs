@@ -1,3 +1,6 @@
+use bytemuck::{Pod, Zeroable};
+use smallvec::smallvec;
+
 use crate::{
     wgpu_buffer_types,
     wgpu_resources::{
@@ -5,9 +8,6 @@ use crate::{
         GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
     },
 };
-
-use bytemuck::{Pod, Zeroable};
-use smallvec::smallvec;
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///

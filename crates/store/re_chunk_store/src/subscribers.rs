@@ -303,16 +303,14 @@ mod tests {
     use std::sync::Arc;
 
     use ahash::HashSet;
-
     use re_chunk::{Chunk, RowId};
     use re_log_types::{
         StoreId, TimePoint, Timeline,
         example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
 
-    use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
-
     use super::*;
+    use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
 
     /// A simple [`ChunkStoreSubscriber`] for test purposes that just accumulates [`ChunkStoreEvent`]s.
     #[derive(Debug)]

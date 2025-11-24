@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
-use re_log_types::example_components::MyPoints;
-use re_log_types::{AbsoluteTimeRange, example_components::MyColor};
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_log_types::{
+    AbsoluteTimeRange, EntityPath, TimePoint, Timeline,
+    example_components::{MyColor, MyPoints},
+};
 
 #[test]
 fn drop_time_range() -> anyhow::Result<()> {

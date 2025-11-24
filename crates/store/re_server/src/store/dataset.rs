@@ -1,6 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::path::Path;
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
+    path::Path,
+    sync::Arc,
+};
 
 use arrow::{
     array::{RecordBatch, RecordBatchOptions},
@@ -8,7 +10,6 @@ use arrow::{
 };
 use itertools::Either;
 use parking_lot::Mutex;
-
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};

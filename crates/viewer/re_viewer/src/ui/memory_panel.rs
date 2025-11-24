@@ -6,9 +6,8 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
 use re_viewer_context::{CacheMemoryReport, store_hub::StoreHubStats};
 
-use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
-
 use super::memory_history::MemoryHistory;
+use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
 // ----------------------------------------------------------------------------
 

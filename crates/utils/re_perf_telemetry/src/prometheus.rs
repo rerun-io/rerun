@@ -2,19 +2,21 @@
 
 #![expect(clippy::cast_possible_wrap)] // u64 -> i64
 
-use parking_lot::Mutex;
-use std::collections::HashMap;
-use std::fmt::Write as _;
-use std::sync::Arc;
+use std::{collections::HashMap, fmt::Write as _, sync::Arc};
 
 use opentelemetry::KeyValue;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
-use prometheus_client::encoding::EncodeLabelSet;
-use prometheus_client::metrics::counter::Counter;
-use prometheus_client::metrics::family::Family;
-use prometheus_client::metrics::gauge::Gauge;
-use prometheus_client::metrics::histogram::{Histogram, exponential_buckets};
-use prometheus_client::registry::Registry;
+use parking_lot::Mutex;
+use prometheus_client::{
+    encoding::EncodeLabelSet,
+    metrics::{
+        counter::Counter,
+        family::Family,
+        gauge::Gauge,
+        histogram::{Histogram, exponential_buckets},
+    },
+    registry::Registry,
+};
 
 /// Dynamic labels for metrics that support arbitrary key-value pairs
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]

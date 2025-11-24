@@ -1,9 +1,10 @@
-use std::sync::OnceLock;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, OnceLock},
+};
 
 use ahash::HashMap;
 use nohash_hasher::IntSet;
-
 use re_chunk::RowId;
 use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriberHandle, LatestAtQuery,

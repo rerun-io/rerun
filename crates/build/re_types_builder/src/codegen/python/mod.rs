@@ -13,6 +13,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use itertools::{Itertools as _, chain};
 use unindent::unindent;
 
+use self::views::code_for_view;
+use super::{Target, common::ExampleInfo};
 use crate::{
     ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
@@ -24,10 +26,6 @@ use crate::{
     format_path,
     objects::{ObjectClass, State},
 };
-
-use self::views::code_for_view;
-
-use super::{Target, common::ExampleInfo};
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";

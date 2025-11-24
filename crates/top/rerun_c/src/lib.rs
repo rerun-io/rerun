@@ -22,7 +22,7 @@ use arrow::{
     ffi::{FFI_ArrowArray, FFI_ArrowSchema},
 };
 use arrow_utils::arrow_array_from_c_ffi;
-
+use component_type_registry::COMPONENT_TYPES;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
     ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
@@ -31,8 +31,6 @@ use re_sdk::{
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
 };
-
-use component_type_registry::COMPONENT_TYPES;
 use recording_streams::{RECORDING_STREAMS, recording_stream};
 
 // ----------------------------------------------------------------------------

@@ -11,7 +11,6 @@ use std::time::Duration;
 
 use egui::{NumExt as _, Widget as _};
 use jiff::Timestamp;
-
 pub use re_log::Level;
 
 use crate::{UiExt as _, icons};

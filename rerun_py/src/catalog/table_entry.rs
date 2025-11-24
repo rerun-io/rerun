@@ -8,15 +8,14 @@ use pyo3::{
     pyclass, pymethods,
     types::{PyAnyMethods as _, PyCapsule},
 };
-use tracing::instrument;
-
-use crate::catalog::to_py_err;
-use crate::{
-    catalog::PyEntry,
-    utils::{get_tokio_runtime, wait_for_future},
-};
 use re_datafusion::TableEntryTableProvider;
 use re_protos::cloud::v1alpha1::ext::{ProviderDetails, TableEntry, TableInsertMode};
+use tracing::instrument;
+
+use crate::{
+    catalog::{PyEntry, to_py_err},
+    utils::{get_tokio_runtime, wait_for_future},
+};
 
 /// A table entry in the catalog.
 ///

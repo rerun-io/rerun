@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
 use re_types::{archetypes::RecordingInfo, components::Timestamp};

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arrow::array::ArrayRef;
-
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{

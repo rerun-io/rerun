@@ -5,10 +5,10 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
-use re_log_types::example_components::{MyIndex, MyPoint, MyPoints};
 use re_log_types::{
     Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
     build_log_time,
+    example_components::{MyIndex, MyPoint, MyPoints},
 };
 use re_types::ComponentIdentifier;
 

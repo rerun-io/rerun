@@ -1,28 +1,30 @@
-use std::str::FromStr as _;
-use std::sync::Arc;
+use std::{str::FromStr as _, sync::Arc};
 
-use arrow::array::{
-    Array, ArrayRef, BooleanArray, ListArray, ListBuilder, PrimitiveArray, PrimitiveBuilder,
-    StringArray,
+use arrow::{
+    array::{
+        Array, ArrayRef, BooleanArray, ListArray, ListBuilder, PrimitiveArray, PrimitiveBuilder,
+        StringArray,
+    },
+    buffer::{NullBuffer, OffsetBuffer},
+    compute::cast,
+    datatypes::{
+        ArrowPrimitiveType, DataType, Field, FieldRef, Float32Type, Float64Type, Int8Type,
+        Int16Type, Int32Type, Int64Type, Schema, TimeUnit, TimestampNanosecondType, UInt8Type,
+        UInt16Type, UInt32Type, UInt64Type,
+    },
+    record_batch::RecordBatch,
 };
-use arrow::buffer::{NullBuffer, OffsetBuffer};
-use arrow::compute::cast;
-use arrow::datatypes::{
-    ArrowPrimitiveType, DataType, Field, FieldRef, Float32Type, Float64Type, Int8Type, Int16Type,
-    Int32Type, Int64Type, Schema, TimeUnit, TimestampNanosecondType, UInt8Type, UInt16Type,
-    UInt32Type, UInt64Type,
+use datafusion::{
+    catalog::MemTable,
+    prelude::{DataFrame, SessionContext},
 };
-use arrow::record_batch::RecordBatch;
-use datafusion::catalog::MemTable;
-use datafusion::prelude::{DataFrame, SessionContext};
 use jiff::ToSpan as _;
-use strum::VariantArray as _;
-
 use re_dataframe_ui::{
     ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
 };
 use re_viewer_context::external::tokio;
+use strum::VariantArray as _;
 
 const COLUMN_NAME: &str = "column";
 const SOME_TIMESTAMP: &str = "2025-09-23T11:47Z";

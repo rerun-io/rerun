@@ -1,6 +1,8 @@
 use re_chunk::Chunk;
-use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-use re_log_types::{AbsoluteTimeRange, TimelineName, build_frame_nr};
+use re_log_types::{
+    AbsoluteTimeRange, TimelineName, build_frame_nr,
+    example_components::{MyColor, MyPoint, MyPoints},
+};
 
 #[test]
 fn out_of_order_timeline() {

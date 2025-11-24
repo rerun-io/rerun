@@ -2,10 +2,9 @@
 
 use std::sync::{Arc, atomic::AtomicU64};
 
+pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use re_uri::RedapUri;
 use web_time::Instant;
-
-pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
 mod receive_set;
 mod receiver;

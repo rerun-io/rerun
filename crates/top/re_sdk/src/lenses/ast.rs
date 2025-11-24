@@ -11,7 +11,6 @@ use arrow::{
 };
 use itertools::Either;
 use nohash_hasher::IntMap;
-
 use re_arrow_combinators::{
     Transform as _,
     reshape::{Explode, Flatten},

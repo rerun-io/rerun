@@ -2,17 +2,19 @@ use std::fmt::Debug;
 
 use ahash::HashMap;
 use egui_tiles::TileId;
-
 use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::Loggable as _;
-use re_types::blueprint::archetypes as blueprint_archetypes;
-use re_types::blueprint::components::{
-    ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
+use re_types::{
+    Archetype as _, Loggable as _,
+    blueprint::{
+        archetypes as blueprint_archetypes,
+        components::{
+            ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
+        },
+    },
+    components::{Name, Visible},
 };
-use re_types::components::Name;
-use re_types::{Archetype as _, components::Visible};
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, ContentsName, ViewId, ViewerContext,
 };

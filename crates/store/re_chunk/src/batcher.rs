@@ -7,7 +7,6 @@ use std::{
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
@@ -1127,7 +1126,6 @@ impl PendingTimeColumn {
 #[cfg(test)]
 mod tests {
     use crossbeam::channel::TryRecvError;
-
     use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
     use re_types_core::{ComponentDescriptor, Loggable as _};
 

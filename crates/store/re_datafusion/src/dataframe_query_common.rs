@@ -1,31 +1,34 @@
-use std::any::Any;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::str::FromStr as _;
-use std::sync::Arc;
-
-use arrow::array::{
-    ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
-    TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, new_null_array,
+use std::{
+    any::Any,
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    str::FromStr as _,
+    sync::Arc,
 };
-use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
-use arrow::record_batch::RecordBatchOptions;
-use async_trait::async_trait;
-use datafusion::catalog::{Session, TableProvider};
-use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
-use datafusion::datasource::TableType;
-use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
-use datafusion::physical_plan::ExecutionPlan;
-use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 
-use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::{Index, QueryExpression};
+use arrow::{
+    array::{
+        ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
+        TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+        TimestampSecondArray, new_null_array,
+    },
+    datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit},
+    record_batch::RecordBatchOptions,
+};
+use async_trait::async_trait;
+use datafusion::{
+    catalog::{Session, TableProvider},
+    common::{Column, DataFusionError, downcast_value, exec_datafusion_err},
+    datasource::TableType,
+    logical_expr::{Expr, Operator, TableProviderFilterPushDown},
+    physical_plan::{ExecutionPlan, coalesce_batches::CoalesceBatchesExec},
+};
+use re_dataframe::{Index, QueryExpression, external::re_chunk_store::ChunkStore};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
+        FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetRequest,
+        ScanPartitionTableResponse,
         ext::{Query, QueryLatestAt, QueryRange},
     },
     common::v1alpha1::ext::ScanParameters,

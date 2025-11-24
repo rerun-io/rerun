@@ -2,8 +2,7 @@ use std::collections::hash_map::Entry;
 
 use nohash_hasher::IntMap;
 use re_log_types::EntityPath;
-use re_types::components::TransformFrameId;
-use re_types::{TransformFrameIdHash, archetypes};
+use re_types::{TransformFrameIdHash, archetypes, components::TransformFrameId};
 
 /// Frame id registry for resolving frame id hashes back to frame ids.
 pub struct FrameIdRegistry {
@@ -125,11 +124,11 @@ impl FrameIdRegistry {
 
 #[cfg(test)]
 mod tests {
-    use crate::frame_id_registry::FrameIdRegistry;
     use re_chunk_store::Chunk;
     use re_log_types::{EntityPath, TimePoint};
-    use re_types::components::TransformFrameId;
-    use re_types::{TransformFrameIdHash, archetypes};
+    use re_types::{TransformFrameIdHash, archetypes, components::TransformFrameId};
+
+    use crate::frame_id_registry::FrameIdRegistry;
 
     #[test]
     fn test_entity_path_derived_frame_in_data() {

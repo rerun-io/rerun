@@ -1,14 +1,11 @@
 use egui::{Response, Ui, WidgetInfo, WidgetType};
-use smallvec::SmallVec;
-
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
-use re_ui::filter_widget::format_matching_text;
-use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{
-    ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
+    ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget,
+    filter_widget::format_matching_text, list_item, list_item::ListItemContentButtonsExt as _,
 };
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
@@ -16,6 +13,7 @@ use re_viewer_context::{
     ViewerContext, VisitorControlFlow, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
+use smallvec::SmallVec;
 
 use crate::data::{
     BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,

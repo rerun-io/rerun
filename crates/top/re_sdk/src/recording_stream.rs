@@ -1,15 +1,15 @@
-use std::fmt;
-use std::io::IsTerminal as _;
-use std::sync::Weak;
-use std::sync::{Arc, atomic::AtomicI64};
-use std::time::Duration;
+use std::{
+    fmt,
+    io::IsTerminal as _,
+    sync::{Arc, Weak, atomic::AtomicI64},
+    time::Duration,
+};
 
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, RecvTimeoutError, Sender};
 use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-
 use re_chunk::{
     BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
     ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
@@ -19,15 +19,17 @@ use re_log_types::{
     RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
     Timeline, TimelineName,
 };
-use re_types::archetypes::RecordingInfo;
-use re_types::components::Timestamp;
-use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
-
+use re_types::{
+    AsComponents, SerializationError, SerializedComponentColumn, archetypes::RecordingInfo,
+    components::Timestamp,
+};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
-use crate::sink::{LogSink, MemorySinkStorage};
-use crate::{binary_stream_sink::BinaryStreamStorage, sink::SinkFlushError};
+use crate::{
+    binary_stream_sink::BinaryStreamStorage,
+    sink::{LogSink, MemorySinkStorage, SinkFlushError},
+};
 
 // ---
 

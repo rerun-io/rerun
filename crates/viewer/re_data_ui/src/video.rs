@@ -1,13 +1,16 @@
+use std::sync::Arc;
+
 use egui::NumExt as _;
 use egui_extras::Column;
-
 use re_format::time::format_relative_timestamp_secs;
 use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
 };
-use re_types::components::{MediaType, VideoTimestamp};
-use re_types::{Archetype as _, archetypes};
+use re_types::{
+    Archetype as _, archetypes,
+    components::{MediaType, VideoTimestamp},
+};
 use re_types_core::{ComponentDescriptor, RowId};
 use re_ui::{
     UiExt as _,
@@ -18,7 +21,6 @@ use re_viewer_context::{
     SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
     ViewerContext, video_stream_time_from_query,
 };
-use std::sync::Arc;
 
 use crate::image::texture_preview_size;
 

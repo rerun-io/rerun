@@ -6,11 +6,10 @@ use std::{
     },
 };
 
-use arrow::array::RecordBatchOptions;
 use arrow::{
     array::{
         ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
-        PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
+        PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
     },
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::{
@@ -20,7 +19,6 @@ use arrow::{
 };
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_chunk::{
     Chunk, ComponentIdentifier, EntityPath, RangeQuery, RowId, TimeInt, TimelineName,
@@ -1319,10 +1317,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
-    use arrow::array::{StringArray, UInt32Array};
-    use arrow::compute::concat_batches;
+    use arrow::{
+        array::{StringArray, UInt32Array},
+        compute::concat_batches,
+    };
     use insta::assert_snapshot;
-
     use re_arrow_util::format_record_batch;
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
@@ -1337,9 +1336,8 @@ mod tests {
     use re_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_types_core::components;
 
-    use crate::{QueryCache, QueryEngine};
-
     use super::*;
+    use crate::{QueryCache, QueryEngine};
 
     /// Implement `Display` for `ArrowRecordBatch`
     struct DisplayRB(ArrowRecordBatch);

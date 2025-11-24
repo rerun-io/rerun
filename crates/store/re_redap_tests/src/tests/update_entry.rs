@@ -1,5 +1,4 @@
 use arrow::datatypes::{DataType, Field, Schema};
-
 use re_protos::cloud::v1alpha1::{
     ext::{
         CreateDatasetEntryRequest, CreateTableEntryRequest, CreateTableEntryResponse, DatasetEntry,

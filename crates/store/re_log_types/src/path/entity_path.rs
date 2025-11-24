@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_string_interner::InternedString;
 

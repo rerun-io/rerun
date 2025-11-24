@@ -1,7 +1,6 @@
 use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_byte_size::SizeBytes as _;
 use re_types_core::{ComponentDescriptor, SerializedComponentColumn, arrow_helpers::as_array_ref};
@@ -279,13 +278,12 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use nohash_hasher::IntMap;
-    use similar_asserts::assert_eq;
-
     use re_log_types::{
         EntityPath, Timeline,
         example_components::{MyColor, MyPoint, MyPoints},
     };
     use re_types_core::{ChunkId, Loggable as _, RowId};
+    use similar_asserts::assert_eq;
 
     use super::*;
 

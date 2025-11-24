@@ -15,11 +15,10 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::SerializationResult;
-use crate::try_serialize_field;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
-use crate::{ComponentDescriptor, ComponentType};
-use crate::{DeserializationError, DeserializationResult};
+use crate::{
+    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
+    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
+};
 
 /// **Component**: Configures how a clear operation should behave - recursive or not.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]

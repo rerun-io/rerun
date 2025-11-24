@@ -1,6 +1,7 @@
 use std::{error::Error, result::Result, sync::Arc};
 
 use parking_lot::RwLock;
+use rerun::external::{re_error, re_log};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
     net::{TcpListener, TcpSocket, TcpStream},
@@ -9,8 +10,6 @@ use tokio::{
         mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
     },
 };
-
-use rerun::external::{re_error, re_log};
 
 use super::protocol::Message;
 

@@ -1,14 +1,12 @@
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
     DeleteEntryRequest, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
     ext::EntryDetails, rerun_cloud_service_server::RerunCloudService,
 };
 
-use crate::tests::common::RerunCloudServiceExt as _;
-use crate::{RecordBatchExt as _, SchemaExt as _};
+use crate::{RecordBatchExt as _, SchemaExt as _, tests::common::RerunCloudServiceExt as _};
 
 /// We want to make sure that the "__entries" table is present and has the expected schema and data.
 pub async fn list_entries_table(service: impl RerunCloudService) {

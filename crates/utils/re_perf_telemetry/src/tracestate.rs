@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use opentelemetry::Context;
-use opentelemetry::propagation::{Extractor, Injector, TextMapPropagator};
-use opentelemetry::trace::TraceContextExt as _;
+use opentelemetry::{
+    Context,
+    propagation::{Extractor, Injector, TextMapPropagator},
+    trace::TraceContextExt as _,
+};
 
 /// A propagator that enriches `tracestate` with additional key-value pairs
 #[derive(Debug, Clone)]

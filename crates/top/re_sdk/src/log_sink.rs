@@ -1,8 +1,6 @@
-use std::sync::Arc;
-use std::{fmt, time::Duration};
+use std::{fmt, sync::Arc, time::Duration};
 
 use parking_lot::Mutex;
-
 use re_chunk::ChunkBatcherConfig;
 use re_grpc_client::write::{Client as MessageProxyClient, GrpcFlushError, Options};
 use re_log_encoding::{EncodeError, Encoder};

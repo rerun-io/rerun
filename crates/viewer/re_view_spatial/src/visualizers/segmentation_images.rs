@@ -10,13 +10,12 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
+use super::SpatialViewVisualizerData;
 use crate::{
     PickableRectSourceData, PickableTexturedRect,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
 };
-
-use super::SpatialViewVisualizerData;
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,

@@ -1,8 +1,7 @@
-use super::super::definitions::sensor_msgs;
-
 use re_chunk::{Chunk, ChunkId};
 use re_types::{archetypes::Arrows3D, datatypes::Vec3D};
 
+use super::super::definitions::sensor_msgs;
 use crate::{
     Error,
     parsers::{MessageParser, ParserContext, cdr, ros2msg::Ros2MessageParser},

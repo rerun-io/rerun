@@ -1,10 +1,17 @@
-use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
-use crate::Jwt;
-use crate::credentials::{CredentialsProvider, StaticCredentialsProvider};
+use std::{
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
+
 use http::header::InvalidHeaderValue;
-use std::task::{Context, Poll};
-use std::{pin::Pin, sync::Arc};
 use tower::{Layer, Service};
+
+use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
+use crate::{
+    Jwt,
+    credentials::{CredentialsProvider, StaticCredentialsProvider},
+};
 
 /// Client-side async auth layer (replaces `Interceptor`)
 #[derive(Clone)]

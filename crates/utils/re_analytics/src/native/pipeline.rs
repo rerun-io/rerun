@@ -8,7 +8,6 @@ use std::{
 use crossbeam::{channel, select};
 
 use super::{AbortSignal, sink::PostHogSink};
-
 use crate::{AnalyticsEvent, Config, FlushError};
 
 pub enum PipelineEvent {

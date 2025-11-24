@@ -1,11 +1,10 @@
 use itertools::{FoldWhile, Itertools as _};
-use re_types::ViewClassIdentifier;
-
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
 use re_types::{
+    ViewClassIdentifier,
     blueprint::{
         archetypes::{self as blueprint_archetypes},
         components::{self as blueprint_components, ViewOrigin},
@@ -467,9 +466,8 @@ mod tests {
         ViewClassPlaceholder, VisualizableEntities,
     };
 
-    use crate::view_contents::DataQueryPropertyResolver;
-
     use super::*;
+    use crate::view_contents::DataQueryPropertyResolver;
 
     #[test]
     fn test_component_overrides() {

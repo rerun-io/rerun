@@ -1,5 +1,6 @@
 #![expect(clippy::redundant_clone)]
 
+use half::f16;
 use re_types::{
     Archetype as _, AsComponents as _,
     testing::{
@@ -7,8 +8,6 @@ use re_types::{
         components, datatypes,
     },
 };
-
-use half::f16;
 
 #[test]
 fn roundtrip() {

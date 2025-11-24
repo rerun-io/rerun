@@ -1,8 +1,7 @@
 use egui::Ui;
+use re_ui::{UiExt as _, list_item, list_item::ListItemContentButtonsExt as _};
 
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{UiExt as _, list_item};
 
 pub struct RightPanel {
     show_hierarchical_demo: bool,

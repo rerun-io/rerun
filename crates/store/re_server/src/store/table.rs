@@ -6,7 +6,6 @@ use datafusion::{
     error::DataFusionError, execution::SessionStateBuilder, logical_expr::dml::InsertOp,
 };
 use futures::StreamExt as _;
-
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
     EntryKind,

@@ -17,17 +17,11 @@ mod primitive_component;
 mod string_component;
 mod valued_enum;
 
-pub use self::affix_fuzzer1::AffixFuzzer1;
-pub use self::affix_fuzzer2::AffixFuzzer2;
-pub use self::affix_fuzzer3::AffixFuzzer3;
-pub use self::affix_fuzzer4::AffixFuzzer4;
-pub use self::affix_fuzzer5::AffixFuzzer5;
-pub use self::affix_fuzzer20::AffixFuzzer20;
-pub use self::affix_fuzzer21::AffixFuzzer21;
-pub use self::affix_fuzzer22::AffixFuzzer22;
-pub use self::enum_test::EnumTest;
-pub use self::flattened_scalar::FlattenedScalar;
-pub use self::multi_enum::MultiEnum;
-pub use self::primitive_component::PrimitiveComponent;
-pub use self::string_component::StringComponent;
-pub use self::valued_enum::ValuedEnum;
+pub use self::{
+    affix_fuzzer1::AffixFuzzer1, affix_fuzzer2::AffixFuzzer2, affix_fuzzer3::AffixFuzzer3,
+    affix_fuzzer4::AffixFuzzer4, affix_fuzzer5::AffixFuzzer5, affix_fuzzer20::AffixFuzzer20,
+    affix_fuzzer21::AffixFuzzer21, affix_fuzzer22::AffixFuzzer22, enum_test::EnumTest,
+    flattened_scalar::FlattenedScalar, multi_enum::MultiEnum,
+    primitive_component::PrimitiveComponent, string_component::StringComponent,
+    valued_enum::ValuedEnum,
+};

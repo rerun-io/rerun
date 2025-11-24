@@ -7,7 +7,6 @@ use glam::Vec3;
 use itertools::Itertools as _;
 use macaw::IsoTransform;
 use rand::Rng as _;
-
 use re_renderer::{
     Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
     Rgba, ScreenshotProcessor, Size,

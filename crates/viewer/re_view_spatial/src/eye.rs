@@ -1,8 +1,6 @@
 use egui::{NumExt as _, Rect};
 use glam::{Mat4, Quat, Vec3, vec3};
-
 use macaw::IsoTransform;
-
 use re_log_types::EntityPath;
 use re_types::{
     blueprint::{

@@ -1,8 +1,9 @@
 #![expect(clippy::unwrap_used)] // build tool, so okay here
 
+use std::path::Path;
+
 use super::{Context, DocumentData, DocumentKind};
 use crate::build_search_index::util::ProgressBarExt as _;
-use std::path::Path;
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("docs");

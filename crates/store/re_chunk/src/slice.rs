@@ -4,7 +4,6 @@ use arrow::array::{
 };
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_log_types::TimelineName;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
@@ -832,9 +831,8 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
 
-    use crate::{Chunk, RowId, Timeline};
-
     use super::*;
+    use crate::{Chunk, RowId, Timeline};
 
     #[test]
     fn cell() -> anyhow::Result<()> {
@@ -1533,8 +1531,10 @@ mod tests {
 
     #[test]
     fn slice_memory_size_conservation() -> anyhow::Result<()> {
-        use arrow::array::{ListArray as ArrowListArray, UInt8Array as ArrowUInt8Array};
-        use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+        use arrow::{
+            array::{ListArray as ArrowListArray, UInt8Array as ArrowUInt8Array},
+            buffer::OffsetBuffer as ArrowOffsetBuffer,
+        };
         use re_byte_size::SizeBytes as _;
         use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
 

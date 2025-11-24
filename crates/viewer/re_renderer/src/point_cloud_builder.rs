@@ -1,5 +1,4 @@
 use itertools::{Itertools as _, izip};
-
 use re_log::ResultExt as _;
 
 use crate::{

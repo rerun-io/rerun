@@ -1,11 +1,10 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use egui::Modifiers;
-use egui::PointerButton;
-use egui::accesskit::Role;
-use egui::accesskit::Toggled;
-use egui_kittest::kittest::NodeT as _;
-use egui_kittest::kittest::Queryable as _;
+use egui::{
+    Modifiers, PointerButton,
+    accesskit::{Role, Toggled},
+};
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use parking_lot::Mutex;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,

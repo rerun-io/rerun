@@ -1,10 +1,11 @@
-use super::meili::SearchClient;
-use super::{DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL, ingest, meili};
+use std::{
+    io::{Write as _, stdin, stdout},
+    ops::ControlFlow,
+};
+
 use cargo_metadata::semver::Version;
-use std::io::Write as _;
-use std::io::stdin;
-use std::io::stdout;
-use std::ops::ControlFlow;
+
+use super::{DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL, ingest, meili, meili::SearchClient};
 
 /// Simple terminal search client
 #[derive(argh::FromArgs)]

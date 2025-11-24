@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use arrow::{
     array::{ArrayRef, ListArray, StringArray},
@@ -11,7 +10,6 @@ use datafusion::{
     physical_expr::{LexOrdering, PhysicalSortExpr, expressions::col},
 };
 use itertools::Itertools as _;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::ArrowArray as _;
 

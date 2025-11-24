@@ -15,5 +15,7 @@ pub mod map;
 pub mod reshape;
 pub mod semantic;
 
-pub use crate::error::Error;
-pub use crate::transform::{Compose, Transform};
+pub use crate::{
+    error::Error,
+    transform::{Compose, Transform},
+};

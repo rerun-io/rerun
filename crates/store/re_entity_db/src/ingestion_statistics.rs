@@ -1,6 +1,5 @@
 use emath::History;
 use parking_lot::Mutex;
-
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
 use re_sorbet::TimestampMetadata;
 use saturating_cast::SaturatingCast as _;

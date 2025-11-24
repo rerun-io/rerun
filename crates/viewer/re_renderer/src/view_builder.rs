@@ -1,5 +1,6 @@
-use parking_lot::RwLock;
 use std::sync::Arc;
+
+use parking_lot::RwLock;
 
 use crate::{
     DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba,

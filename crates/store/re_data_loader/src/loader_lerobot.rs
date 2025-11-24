@@ -15,7 +15,6 @@ use arrow::{
     datatypes::{DataType, Field},
 };
 use itertools::Either;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
@@ -29,12 +28,14 @@ use re_types::{
     components::VideoTimestamp,
 };
 
-use crate::lerobot::{
-    DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex, is_lerobot_dataset,
-    is_v1_lerobot_dataset,
+use crate::{
+    DataLoader, DataLoaderError, LoadedData,
+    lerobot::{
+        DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex, is_lerobot_dataset,
+        is_v1_lerobot_dataset,
+    },
+    load_file::prepare_store_info,
 };
-use crate::load_file::prepare_store_info;
-use crate::{DataLoader, DataLoaderError, LoadedData};
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
 const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =

@@ -1,11 +1,11 @@
-use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 use std::sync::Arc;
+
+use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 
 use super::{
     ContentContext, DesiredWidth, ListItemContent, ListItemContentButtonsExt, ListVisuals,
 };
-use crate::list_item::item_buttons::ItemButtons;
-use crate::{DesignTokens, Icon, LabelStyle, UiExt as _};
+use crate::{DesignTokens, Icon, LabelStyle, UiExt as _, list_item::item_buttons::ItemButtons};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[expect(clippy::type_complexity)]

@@ -1,5 +1,4 @@
 use egui::NumExt as _;
-
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, Instance, TimeInt, TimePoint};

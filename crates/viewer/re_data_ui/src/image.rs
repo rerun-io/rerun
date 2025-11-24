@@ -1,20 +1,21 @@
-use crate::find_and_deserialize_archetype_mono_component;
 use egui::{NumExt as _, Rangef, Vec2};
 use re_capabilities::MainThreadToken;
 use re_chunk_store::UnitChunkShared;
 use re_renderer::renderer::ColormappedTexture;
-use re_types::components;
-use re_types::components::MediaType;
-use re_types::datatypes::{ChannelDatatype, ColorModel};
-use re_types::image::ImageKind;
+use re_types::{
+    components,
+    components::MediaType,
+    datatypes::{ChannelDatatype, ColorModel},
+    image::ImageKind,
+};
 use re_types_core::{Component as _, ComponentDescriptor, RowId};
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{UiExt as _, icons, list_item};
-use re_viewer_context::gpu_bridge::image_data_range_heuristic;
+use re_ui::{UiExt as _, icons, list_item, list_item::ListItemContentButtonsExt as _};
 use re_viewer_context::{
     ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
-    gpu_bridge::{self, image_to_gpu},
+    gpu_bridge::{self, image_data_range_heuristic, image_to_gpu},
 };
+
+use crate::find_and_deserialize_archetype_mono_component;
 
 /// Show the given image with an appropriate size.
 ///

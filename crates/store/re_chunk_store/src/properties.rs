@@ -6,7 +6,6 @@ use arrow::{
     error::ArrowError,
 };
 use itertools::Itertools as _;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, TimeInt, TimelineName};

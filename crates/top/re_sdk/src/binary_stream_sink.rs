@@ -1,13 +1,11 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-
 use re_log::ResultExt as _;
 use re_log_encoding::Encoder;
 use re_log_types::LogMsg;
 
-use crate::sink::LogSink;
-use crate::{RecordingStream, log_sink::SinkFlushError};
+use crate::{RecordingStream, log_sink::SinkFlushError, sink::LogSink};
 
 /// The storage used by [`BinaryStreamSink`].
 ///

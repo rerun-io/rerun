@@ -8,12 +8,11 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_chunk::{Chunk, RowId};
+use re_log_encoding::rrd::EncodingOptions;
 use re_log_types::{
     LogMsg, StoreId, StoreKind, TimeInt, TimeType, Timeline, entity_path,
     example_components::{MyColor, MyPoint, MyPoints},
 };
-
-use re_log_encoding::rrd::EncodingOptions;
 const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSED;
 
 use criterion::{Criterion, criterion_group, criterion_main};

@@ -4,6 +4,20 @@ pub mod shutdown;
 
 use std::{collections::VecDeque, net::SocketAddr, pin::Pin};
 
+use re_byte_size::SizeBytes;
+use re_log_encoding::{ToApplication as _, ToTransport as _};
+use re_log_types::{DataSourceMessage, TableMsg};
+use re_protos::{
+    common::v1alpha1::{
+        DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
+    },
+    log_msg::v1alpha1::LogMsg as LogMsgProto,
+    sdk_comms::v1alpha1::{
+        ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
+        WriteMessagesRequest, WriteMessagesResponse, WriteTableRequest, WriteTableResponse,
+        message_proxy_service_server,
+    },
+};
 use tokio::{
     net::TcpListener,
     sync::{broadcast, mpsc, oneshot},
@@ -11,25 +25,6 @@ use tokio::{
 use tokio_stream::{Stream, StreamExt as _, wrappers::BroadcastStream};
 use tonic::transport::{Server, server::TcpIncoming};
 use tower_http::cors::CorsLayer;
-
-use re_byte_size::SizeBytes;
-use re_log_encoding::{ToApplication as _, ToTransport as _};
-use re_log_types::{DataSourceMessage, TableMsg};
-use re_protos::sdk_comms::v1alpha1::{
-    ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
-    WriteTableResponse,
-};
-
-use re_protos::{
-    common::v1alpha1::{
-        DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
-    },
-    log_msg::v1alpha1::LogMsg as LogMsgProto,
-    sdk_comms::v1alpha1::{
-        ReadMessagesRequest, ReadMessagesResponse, WriteMessagesResponse,
-        message_proxy_service_server,
-    },
-};
 
 use crate::priority_stream::PriorityMerge;
 
@@ -1021,18 +1016,9 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 
 #[cfg(test)]
 mod tests {
-    use std::net::SocketAddr;
-    use std::sync::Arc;
-    use std::time::Duration;
+    use std::{net::SocketAddr, sync::Arc, time::Duration};
 
     use itertools::{Itertools as _, chain};
-    use similar_asserts::assert_eq;
-    use tokio::net::TcpListener;
-    use tokio_util::sync::CancellationToken;
-    use tonic::transport::Channel;
-    use tonic::transport::Endpoint;
-    use tonic::transport::server::TcpIncoming;
-
     use re_chunk::RowId;
     use re_log_encoding::rrd::Compression;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -1040,6 +1026,10 @@ mod tests {
         message_proxy_service_client::MessageProxyServiceClient,
         message_proxy_service_server::MessageProxyServiceServer,
     };
+    use similar_asserts::assert_eq;
+    use tokio::net::TcpListener;
+    use tokio_util::sync::CancellationToken;
+    use tonic::transport::{Channel, Endpoint, server::TcpIncoming};
 
     use super::*;
 

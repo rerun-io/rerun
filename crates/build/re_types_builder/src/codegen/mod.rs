@@ -55,8 +55,10 @@ mod fbs;
 mod python;
 mod rust;
 
-pub use self::cpp::CppCodeGenerator;
-pub use self::docs::{DocsCodeGenerator, SnippetsRefCodeGenerator};
-pub use self::fbs::FbsCodeGenerator;
-pub use self::python::PythonCodeGenerator;
-pub use self::rust::RustCodeGenerator;
+pub use self::{
+    cpp::CppCodeGenerator,
+    docs::{DocsCodeGenerator, SnippetsRefCodeGenerator},
+    fbs::FbsCodeGenerator,
+    python::PythonCodeGenerator,
+    rust::RustCodeGenerator,
+};

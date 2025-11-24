@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use egui_kittest::{SnapshotResults, kittest::Queryable as _};
-
 use re_integration_test::{HarnessExt as _, TestServer};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 

@@ -9,7 +9,6 @@ use arrow::{
 };
 use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
-
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 

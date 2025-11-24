@@ -212,9 +212,8 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
-    use crate::{ObjectKind, Objects, Reporter};
-
     use super::Target;
+    use crate::{ObjectKind, Objects, Reporter};
 
     /// Convert Rerun-style doclinks to the target language.
     pub fn translate_doc_line(

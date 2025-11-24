@@ -1,11 +1,10 @@
 use re_chunk::EntityPath;
 use re_log_types::example_components::MyPoint;
 use re_ui::Help;
-use re_viewer_context::external::re_chunk_store::external::re_chunk;
-
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewState, ViewerContext,
-    VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
+    VisualizerQueryInfo, VisualizerSystem, external::re_chunk_store::external::re_chunk,
+    suggest_view_for_each_entity,
 };
 
 #[derive(Default)]

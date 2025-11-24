@@ -1,14 +1,15 @@
-use std::any::Any;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::sync::Arc;
+use std::{any::Any, fmt::Debug, hash::Hash, sync::Arc};
 
-use arrow::array::{ArrayRef, BooleanArray, ListArray, as_list_array};
-use arrow::datatypes::DataType;
-use datafusion::common::{Result as DataFusionResult, exec_err};
-use datafusion::logical_expr::{
-    ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs, ScalarUDF,
-    ScalarUDFImpl, Signature, TypeSignature, Volatility,
+use arrow::{
+    array::{ArrayRef, BooleanArray, ListArray, as_list_array},
+    datatypes::DataType,
+};
+use datafusion::{
+    common::{Result as DataFusionResult, exec_err},
+    logical_expr::{
+        ArrayFunctionArgument, ArrayFunctionSignature, ColumnarValue, ScalarFunctionArgs,
+        ScalarUDF, ScalarUDFImpl, Signature, TypeSignature, Volatility,
+    },
 };
 
 /// Helper trait to make it straightforward to implement a filter UDF.

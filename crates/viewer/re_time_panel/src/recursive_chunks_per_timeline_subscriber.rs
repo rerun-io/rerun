@@ -2,7 +2,6 @@ use std::sync::{Arc, OnceLock};
 
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
-
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,

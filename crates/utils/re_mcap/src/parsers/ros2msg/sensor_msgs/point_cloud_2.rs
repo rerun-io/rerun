@@ -1,6 +1,5 @@
-use std::io::Cursor;
+use std::{collections::HashMap, io::Cursor};
 
-use super::super::definitions::sensor_msgs::{self, PointField, PointFieldDatatype};
 use anyhow::Context as _;
 use arrow::{
     array::{
@@ -16,9 +15,11 @@ use re_types::{
     Archetype as _, AsComponents as _, Component as _, ComponentDescriptor,
     SerializedComponentColumn, archetypes, components, reflection::ComponentDescriptorExt as _,
 };
-use std::collections::HashMap;
 
-use super::super::Ros2MessageParser;
+use super::super::{
+    Ros2MessageParser,
+    definitions::sensor_msgs::{self, PointField, PointFieldDatatype},
+};
 use crate::{
     Error,
     parsers::{

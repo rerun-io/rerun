@@ -1,5 +1,4 @@
 use ahash::HashMap;
-
 use re_types::{ComponentIdentifier, components::Color};
 use re_viewer_context::{Annotations, QueryContext, ResolvedAnnotationInfos, typed_fallback_for};
 

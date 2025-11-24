@@ -1,5 +1,4 @@
 use egui::WidgetText;
-
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_log_types::ComponentPath;
 use re_ui::{Icon, SyntaxHighlighting as _, UiExt as _, icons, list_item};

@@ -1,10 +1,9 @@
+use super::DepthImage;
 use crate::{
     components::{ImageBuffer, ImageFormat},
     datatypes::{ChannelDatatype, ColorModel, TensorData},
     image::{ImageConstructionError, blob_and_datatype_from_tensor, find_non_empty_dim_indices},
 };
-
-use super::DepthImage;
 
 impl DepthImage {
     /// Try to construct a [`DepthImage`] from anything that can be converted into [`TensorData`]

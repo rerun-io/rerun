@@ -7,9 +7,10 @@ use egui::{
     pos2,
 };
 
-use crate::alert::Alert;
 use crate::{
-    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
+    ContextExt as _, DesignTokens, Icon, LabelStyle,
+    alert::Alert,
+    icons,
     list_item::{self, LabelContent},
 };
 
@@ -1237,8 +1238,9 @@ pub trait UiExt {
 
     /// Show some markdown
     fn markdown_ui(&mut self, markdown: &str) {
-        use parking_lot::Mutex;
         use std::sync::Arc;
+
+        use parking_lot::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {

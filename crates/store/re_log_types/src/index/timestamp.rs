@@ -1,7 +1,6 @@
 use std::{ops::RangeInclusive, str::FromStr as _};
 
 use super::{Duration, TimestampFormat};
-
 use crate::{TimestampFormatKind, external::re_types_core};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.

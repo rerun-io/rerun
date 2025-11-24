@@ -43,6 +43,8 @@
 //! More details can be found in the respective shader code.
 //!
 
+use smallvec::smallvec;
+
 use crate::{
     DebugLabel, RenderContext,
     allocator::create_and_fill_uniform_buffer_batch,
@@ -56,8 +58,6 @@ use crate::{
         PoolError, RenderPipelineDesc, SamplerDesc,
     },
 };
-
-use smallvec::smallvec;
 
 /// What outline (if any) should be drawn.
 ///

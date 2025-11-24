@@ -8,10 +8,12 @@
 
 //! This crate is to be used from `build.rs` build scripts.
 
-use anyhow::Context as _;
+use std::{
+    process::Command,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
-use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
+use anyhow::Context as _;
 
 mod git;
 mod hashing;
@@ -19,7 +21,6 @@ mod rebuild_detector;
 mod rustfmt;
 
 pub(crate) use self::rebuild_detector::Packages;
-
 pub use self::{
     git::{git_branch, git_commit_hash, git_commit_short_hash},
     hashing::{

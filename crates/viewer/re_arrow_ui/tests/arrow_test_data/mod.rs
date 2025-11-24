@@ -1,14 +1,17 @@
 //! This testdata was mostly written by claude just to have a large variety of types
 
-use arrow::array::{
-    Array, BinaryArray, BooleanArray, DictionaryArray, FixedSizeListArray, Float64Array,
-    GenericListArray, Int32Array, Int32Builder, Int64Array, LargeBinaryArray, MapArray, MapBuilder,
-    StringArray, StringBuilder, StructArray, UnionArray,
-};
-use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field, Fields, UnionFields};
-use re_arrow_util::concat_arrays;
 use std::sync::Arc;
+
+use arrow::{
+    array::{
+        Array, BinaryArray, BooleanArray, DictionaryArray, FixedSizeListArray, Float64Array,
+        GenericListArray, Int32Array, Int32Builder, Int64Array, LargeBinaryArray, MapArray,
+        MapBuilder, StringArray, StringBuilder, StructArray, UnionArray,
+    },
+    buffer::OffsetBuffer,
+    datatypes::{DataType, Field, Fields, UnionFields},
+};
+use re_arrow_util::concat_arrays;
 
 /// Creates a basic struct array with coordinates (x, y, z)
 pub fn create_coordinates_struct(step: i32) -> Arc<dyn Array> {

@@ -6,7 +6,6 @@ use arrow::{
 };
 use egui::vec2;
 use egui_kittest::Harness;
-
 use re_dataframe_ui::column_header_tooltip_ui;
 use re_log_types::{EntityPath, Timeline};
 use re_sorbet::{

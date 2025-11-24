@@ -13,6 +13,9 @@ mod time_histogram_per_timeline;
 mod times_per_timeline;
 mod versioned_instance_path;
 
+#[doc(no_inline)]
+pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
+
 pub use self::{
     entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
     entity_tree::EntityTree,
@@ -23,9 +26,6 @@ pub use self::{
     times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline},
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
-
-#[doc(no_inline)]
-pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 pub mod external {
     pub use re_chunk_store;

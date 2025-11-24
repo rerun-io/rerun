@@ -1,5 +1,4 @@
-use egui::collapsing_header::CollapsingState;
-use egui::{Context, Id, Modifiers};
+use egui::{Context, Id, Modifiers, collapsing_header::CollapsingState};
 
 #[derive(Debug, Clone, Default)]
 pub struct ListItemNavigation {

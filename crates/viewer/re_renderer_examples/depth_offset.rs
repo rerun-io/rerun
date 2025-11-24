@@ -7,8 +7,8 @@
 //! Press arrow up/down to increase/decrease the distance of the camera to the z==0 plane in tandem with the scale of the rectangles.
 //! Press arrow left/right to increase/decrease the near plane distance.
 
-use re_renderer::Hsva;
 use re_renderer::{
+    Hsva,
     renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
     view_builder::{self, Projection, ViewBuilder},
 };

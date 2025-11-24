@@ -1,6 +1,5 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;

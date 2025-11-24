@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::{
-    ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
+use arrow::{
+    array::{
+        ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray,
+        TimestampNanosecondArray,
+    },
+    datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit},
 };
-use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
-use datafusion::catalog::MemTable;
-use datafusion::common::DataFusionError;
+use datafusion::{catalog::MemTable, common::DataFusionError};
 use itertools::Itertools as _;
-
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
@@ -21,9 +22,10 @@ use re_protos::{
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
-use crate::entrypoint::NamedPath;
-use crate::store::table::TableType;
-use crate::store::{ChunkKey, Dataset, Error, Table};
+use crate::{
+    entrypoint::NamedPath,
+    store::{ChunkKey, Dataset, Error, Table, table::TableType},
+};
 
 const ENTRIES_TABLE_NAME: &str = "__entries";
 

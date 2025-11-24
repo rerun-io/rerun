@@ -4,9 +4,8 @@ use tonic::{
     service::Interceptor,
 };
 
-use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
-
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
+use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
 
 #[derive(Debug, Clone)]
 pub struct UserContext {

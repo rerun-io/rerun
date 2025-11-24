@@ -1,15 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use ahash::HashMap;
-use arrow::array::BinaryArray;
-use arrow::record_batch::RecordBatch;
-use datafusion::logical_expr::dml::InsertOp;
-use datafusion::prelude::SessionContext;
+use arrow::{array::BinaryArray, record_batch::RecordBatch};
+use datafusion::{logical_expr::dml::InsertOp, prelude::SessionContext};
 use nohash_hasher::IntSet;
-use tokio_stream::StreamExt as _;
-use tonic::{Code, Request, Response, Status};
-
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
@@ -38,9 +35,13 @@ use re_protos::{
     },
     headers::RerunHeadersExtractorExt as _,
 };
+use tokio_stream::StreamExt as _;
+use tonic::{Code, Request, Response, Status};
 
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
+use crate::{
+    entrypoint::NamedPath,
+    store::{ChunkKey, Dataset, InMemoryStore, Table},
+};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}

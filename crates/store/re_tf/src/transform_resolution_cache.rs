@@ -5,25 +5,23 @@ use glam::DAffine3;
 use itertools::{Either, izip};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-
-use crate::frame_id_registry::FrameIdRegistry;
-use crate::{
-    TransformFrameIdHash,
-    transform_aspect::TransformAspect,
-    transform_queries::{
-        query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
-        query_and_resolve_tree_transform_at_entity,
-    },
-};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::external::arrow;
-use re_chunk_store::{Chunk, LatestAtQuery};
+use re_chunk_store::{Chunk, LatestAtQuery, external::arrow};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{
     archetypes::{self},
     components::{self},
+};
+
+use crate::{
+    TransformFrameIdHash,
+    frame_id_registry::FrameIdRegistry,
+    transform_aspect::TransformAspect,
+    transform_queries::{
+        query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
+        query_and_resolve_tree_transform_at_entity,
+    },
 };
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
@@ -924,14 +922,15 @@ pub fn iter_child_frames_in_chunk(
 mod tests {
     use std::sync::{Arc, OnceLock};
 
-    use super::*;
-    use crate::convert;
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{StoreId, TimePoint, Timeline};
     use re_types::{ChunkId, archetypes};
+
+    use super::*;
+    use crate::convert;
 
     #[derive(Debug, Clone, Copy)]
     enum StaticTestFlavor {

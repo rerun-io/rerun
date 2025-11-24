@@ -1,8 +1,9 @@
 use re_integration_test::HarnessExt as _;
-use re_sdk::TimePoint;
-use re_sdk::log::RowId;
-use re_viewer::external::re_types;
-use re_viewer::viewer_test_utils::{self, HarnessOptions};
+use re_sdk::{TimePoint, log::RowId};
+use re_viewer::{
+    external::re_types,
+    viewer_test_utils::{self, HarnessOptions},
+};
 
 fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());

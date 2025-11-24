@@ -673,9 +673,10 @@ fn handle_web_event_listener(_egui_ctx: &egui::Context, _command_sender: &Comman
 
 #[cfg(target_arch = "wasm32")]
 fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandSender) {
+    use std::{ops::ControlFlow, sync::Arc};
+
     use re_log::ResultExt as _;
     use re_log_encoding::rrd::stream_from_http::HttpMessage;
-    use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
     let (tx, rx) = re_smart_channel::smart_channel(
@@ -718,7 +719,6 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 mod tests {
     use std::str::FromStr as _;
 
-    use crate::{DisplayMode, Item, StoreHub};
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_smart_channel::SmartChannelSource;
@@ -728,6 +728,7 @@ mod tests {
     };
 
     use super::ViewerOpenUrl;
+    use crate::{DisplayMode, Item, StoreHub};
 
     #[test]
     fn test_viewer_open_url_from_str() {

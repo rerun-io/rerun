@@ -1,11 +1,11 @@
 use arrow::{array::Array, error::ArrowError};
-
 use re_log_types::TimestampFormat;
-use re_ui::list_item::list_item_scope;
-use re_ui::{UiExt as _, UiLayout};
+use re_ui::{UiExt as _, UiLayout, list_item::list_item_scope};
 
-use crate::datatype_ui::DataTypeUi;
-use crate::show_index::{ArrayUi, DisplayOptions};
+use crate::{
+    datatype_ui::DataTypeUi,
+    show_index::{ArrayUi, DisplayOptions},
+};
 
 pub fn arrow_ui(
     ui: &mut egui::Ui,

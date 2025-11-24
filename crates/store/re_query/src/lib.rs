@@ -11,19 +11,19 @@ pub mod range_zip;
 
 use re_chunk::ComponentIdentifier;
 
-pub use self::cache::{QueryCache, QueryCacheHandle, QueryCacheKey};
-pub use self::cache_stats::{QueryCacheStats, QueryCachesStats};
-pub use self::clamped_zip::*;
-pub use self::latest_at::LatestAtResults;
-pub use self::range::RangeResults;
-pub use self::range_zip::*;
-pub use self::storage_engine::{
-    StorageEngine, StorageEngineArcReadGuard, StorageEngineLike, StorageEngineReadGuard,
-    StorageEngineWriteGuard,
+pub use self::{
+    cache::{QueryCache, QueryCacheHandle, QueryCacheKey},
+    cache_stats::{QueryCacheStats, QueryCachesStats},
+    clamped_zip::*,
+    latest_at::LatestAtResults,
+    range::RangeResults,
+    range_zip::*,
+    storage_engine::{
+        StorageEngine, StorageEngineArcReadGuard, StorageEngineLike, StorageEngineReadGuard,
+        StorageEngineWriteGuard,
+    },
 };
-
-pub(crate) use self::latest_at::LatestAtCache;
-pub(crate) use self::range::RangeCache;
+pub(crate) use self::{latest_at::LatestAtCache, range::RangeCache};
 
 pub mod external {
     pub use paste;

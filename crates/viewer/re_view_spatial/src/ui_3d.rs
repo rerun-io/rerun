@@ -1,6 +1,5 @@
 use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::Vec3;
-
 use macaw::BoundingBox;
 use re_renderer::{
     LineDrawableBuilder, Size,
@@ -25,6 +24,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+use super::eye::{Eye, EyeState};
 use crate::{
     SpatialView3D,
     eye::find_camera,
@@ -33,8 +33,6 @@ use crate::{
     view_kind::SpatialViewKind,
     visualizers::{CamerasVisualizer, collect_ui_labels},
 };
-
-use super::eye::{Eye, EyeState};
 
 // ---
 

@@ -1,34 +1,42 @@
-use arrow::datatypes::Schema;
-use async_trait::async_trait;
-use std::any::Any;
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::{
+    any::Any,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
-use datafusion::catalog::Session;
-use datafusion::common::{exec_err, not_impl_err};
-use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
-use datafusion::logical_expr::dml::InsertOp;
-use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
-use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
-use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
+use arrow::{
+    array::RecordBatch,
+    datatypes::{Schema, SchemaRef},
+};
+use async_trait::async_trait;
 use datafusion::{
-    catalog::TableProvider,
+    catalog::{Session, TableProvider},
+    common::{exec_err, not_impl_err},
     error::{DataFusionError, Result as DataFusionResult},
+    execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext},
+    logical_expr::dml::InsertOp,
+    physical_expr::{EquivalenceProperties, Partitioning},
+    physical_plan::{
+        DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties,
+        execution_plan::{Boundedness, EmissionType},
+    },
 };
 use futures::Stream;
+use re_log_types::{EntryId, EntryIdOrName};
+use re_protos::cloud::v1alpha1::{
+    EntryFilter, EntryKind, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
+    ScanTableResponse,
+    ext::{EntryDetails, TableInsertMode},
+};
+use re_redap_client::ConnectionClient;
 use tokio::runtime::Handle;
 use tracing::instrument;
 
-use re_log_types::{EntryId, EntryIdOrName};
-use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
-use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
-use re_redap_client::ConnectionClient;
-
-use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
-use crate::wasm_compat::make_future_send;
+use crate::{
+    grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable},
+    wasm_compat::make_future_send,
+};
 
 #[derive(Clone)]
 pub struct TableEntryTableProvider {

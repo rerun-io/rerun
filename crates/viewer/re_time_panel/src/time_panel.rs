@@ -1,28 +1,26 @@
 use std::sync::Arc;
 
-use egui::emath::Rangef;
 use egui::{
     Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
+    Shape, Ui, Vec2, WidgetInfo, WidgetType, emath::Rangef, pos2, scroll_area::ScrollSource,
 };
-use egui::{WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
-use re_data_ui::DataUi as _;
-use re_data_ui::item_ui::guess_instance_path_icon;
+use re_data_ui::{DataUi as _, item_ui::guess_instance_path_icon};
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
-use re_types::ComponentIdentifier;
-use re_types::blueprint::components::PanelState;
-use re_types::reflection::ComponentDescriptorExt as _;
-use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
-use re_ui::{IconText, filter_widget::format_matching_text};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_types::{
+    ComponentIdentifier, blueprint::components::PanelState, reflection::ComponentDescriptorExt as _,
+};
+use re_ui::{
+    ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget,
+    filter_widget::format_matching_text, icons, list_item,
+};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
     SystemCommandSender as _, TimeControl, TimeControlCommand, TimeView, UiLayout, ViewerContext,
-    VisitorControlFlow,
+    VisitorControlFlow, open_url::ViewerOpenUrl,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 

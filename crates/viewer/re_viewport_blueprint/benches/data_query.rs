@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;

@@ -1,10 +1,9 @@
 use std::time::Duration;
 
-use web_time::Instant;
-
 use re_video::{
     DecodeSettings, FrameInfo, GopIndex, SampleIndex, StableIndexDeque, Time, VideoDeliveryMethod,
 };
+use web_time::Instant;
 
 use super::{VideoFrameTexture, chunk_decoder::VideoSampleDecoder};
 use crate::{

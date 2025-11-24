@@ -5,7 +5,6 @@ use std::{
 };
 
 use parking_lot::Mutex;
-
 use re_log_types::LogMsg;
 
 /// An error that can occur when flushing.

@@ -1,18 +1,11 @@
 #![expect(clippy::unwrap_used)] // acceptable for code which is not user-facing
 
-use std::hint::black_box;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{hint::black_box, sync::Arc, time::Duration};
 
-use criterion::Bencher;
-use criterion::Criterion;
-use criterion::measurement::WallTime;
+use criterion::{Bencher, Criterion, measurement::WallTime};
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::AbsoluteTimeRange;
-use re_log_types::StoreId;
-use re_log_types::StoreKind;
-use re_log_types::Timeline;
+use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, Timeline};
 use re_time_panel::__bench::{
     DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi, build_density_graph,
 };

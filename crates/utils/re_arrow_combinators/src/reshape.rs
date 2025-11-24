@@ -2,9 +2,11 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray, UInt32Array};
-use arrow::buffer::{NullBuffer, OffsetBuffer};
-use arrow::datatypes::Field;
+use arrow::{
+    array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray, UInt32Array},
+    buffer::{NullBuffer, OffsetBuffer},
+    datatypes::Field,
+};
 
 use crate::{Error, Transform};
 

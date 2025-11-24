@@ -1,10 +1,12 @@
 use re_integration_test::HarnessExt as _;
-use re_sdk::TimePoint;
-use re_sdk::external::re_log_types::EntityPathFilter;
-use re_sdk::log::RowId;
-use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
-use re_viewer::external::{re_types, re_view_spatial};
-use re_viewer::viewer_test_utils::{self, HarnessOptions};
+use re_sdk::{TimePoint, external::re_log_types::EntityPathFilter, log::RowId};
+use re_viewer::{
+    external::{
+        re_types, re_view_spatial,
+        re_viewer_context::{RecommendedView, ViewClass as _},
+    },
+    viewer_test_utils::{self, HarnessOptions},
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {

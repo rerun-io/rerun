@@ -11,7 +11,6 @@ use arrow::{
 };
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{

@@ -1,7 +1,6 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::{IntMap, IntSet};
-
 use re_chunk::{ArchetypeName, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};

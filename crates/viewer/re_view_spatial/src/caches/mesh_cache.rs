@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
-
 use itertools::Either;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::{ChunkStoreEvent, RowId};

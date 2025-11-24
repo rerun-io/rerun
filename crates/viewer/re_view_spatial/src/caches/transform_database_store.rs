@@ -1,6 +1,6 @@
-use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
 use std::sync::Arc;
 
+use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_tf::TransformResolutionCache;

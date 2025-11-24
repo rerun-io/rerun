@@ -1,24 +1,21 @@
 use ahash::HashMap;
-
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::InstancePath;
-use re_entity_db::entity_db::EntityDb;
+use re_entity_db::{InstancePath, entity_db::EntityDb};
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
-use re_ui::ContextExt as _;
-use re_ui::list_item::ListItem;
+use re_ui::{ContextExt as _, list_item::ListItem};
 
-use crate::command_sender::{SelectionSource, SetSelection};
-use crate::component_fallbacks::FallbackProviderRegistry;
-use crate::drag_and_drop::DragAndDropPayload;
-use crate::time_control::TimeControlCommand;
 use crate::{
-    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
-    IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
-    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
+    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
+    DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection,
+    MaybeVisualizableEntities, PerVisualizer, StorageContext, StoreContext, StoreHub,
+    SystemCommand, SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
+    command_sender::{SelectionSource, SetSelection},
+    component_fallbacks::FallbackProviderRegistry,
+    drag_and_drop::DragAndDropPayload,
     query_context::DataQueryResult,
+    time_control::TimeControlCommand,
 };
-use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {

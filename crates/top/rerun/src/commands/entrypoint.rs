@@ -2,25 +2,20 @@ use std::{net::IpAddr, time::Duration};
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use tokio::runtime::Runtime;
-
 use re_data_source::LogDataSource;
 use re_log_types::DataSourceMessage;
-use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
-
-use crate::{CallSource, commands::RrdCommands};
-
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-
-#[cfg(feature = "data_loaders")]
-use crate::commands::McapCommands;
-
-#[cfg(feature = "analytics")]
-use crate::commands::AnalyticsCommands;
+use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
+use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
 use super::auth::AuthCommands;
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+use crate::{CallSource, commands::RrdCommands};
 
 // ---
 

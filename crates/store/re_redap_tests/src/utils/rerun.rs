@@ -5,7 +5,6 @@ use arrow::{
     datatypes::Field,
 };
 use itertools::Itertools as _;
-
 use re_log_types::{TimePoint, TimeType, Timeline};
 use re_sdk::RecordingStreamBuilder;
 use re_tuid::Tuid;

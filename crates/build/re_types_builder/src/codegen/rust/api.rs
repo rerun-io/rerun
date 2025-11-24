@@ -9,6 +9,12 @@ use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
+use super::{
+    arrow::quote_fqname_as_type_path,
+    blueprint_validation::generate_blueprint_validation,
+    reflection::generate_reflection,
+    util::{append_tokens, doc_as_lines, quote_doc_lines},
+};
 use crate::{
     ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
@@ -29,13 +35,6 @@ use crate::{
     },
     format_path,
     objects::{EnumIntegerType, ObjectClass},
-};
-
-use super::{
-    arrow::quote_fqname_as_type_path,
-    blueprint_validation::generate_blueprint_validation,
-    reflection::generate_reflection,
-    util::{append_tokens, doc_as_lines, quote_doc_lines},
 };
 
 // ---

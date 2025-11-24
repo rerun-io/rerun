@@ -13,6 +13,11 @@ mod requested_object;
 mod table_blueprint;
 mod table_selection;
 
+// for testing purposes
+pub use self::filters::{
+    ColumnFilter, ComparisonOperator, Filter, FloatFilter, IntFilter, NonNullableBooleanFilter,
+    Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
+};
 pub use self::{
     datafusion_table_widget::{DataFusionTableWidget, TableStatus},
     display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError},
@@ -21,10 +26,4 @@ pub use self::{
     table_blueprint::{
         ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
     },
-};
-
-// for testing purposes
-pub use self::filters::{
-    ColumnFilter, ComparisonOperator, Filter, FloatFilter, IntFilter, NonNullableBooleanFilter,
-    Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
 };

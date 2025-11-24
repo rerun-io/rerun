@@ -1,20 +1,17 @@
 //! Data structures describing the contents of the recording panel.
 
-use std::collections::BTreeMap;
-use std::iter;
-use std::sync::Arc;
-use std::task::Poll;
+use std::{collections::BTreeMap, iter, sync::Arc, task::Poll};
 
 use ahash::HashMap;
 use itertools::{Either, Itertools as _};
-
-use re_entity_db::EntityDb;
-use re_entity_db::entity_db::EntityDbClass;
+use re_entity_db::{EntityDb, entity_db::EntityDbClass};
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
 use re_smart_channel::SmartChannelSource;
-use re_types::archetypes::RecordingInfo;
-use re_types::components::{Name, Timestamp};
+use re_types::{
+    archetypes::RecordingInfo,
+    components::{Name, Timestamp},
+};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
 
 /// Short-lived structure containing all the data that will be displayed in the recording panel.

@@ -9,7 +9,6 @@ mod rectangles;
 mod test_triangle;
 mod world_grid;
 
-pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
@@ -24,16 +23,19 @@ pub use rectangles::{
 pub use test_triangle::TestTriangleDrawData;
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
+pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
+
 pub mod gpu_data {
-    pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
-    pub use super::point_cloud::gpu_data::PositionRadius;
+    pub use super::{
+        lines::gpu_data::{LineStripInfo, LineVertex},
+        point_cloud::gpu_data::PositionRadius,
+    };
 }
 
 pub(crate) use compositor::CompositorDrawData;
 pub(crate) use mesh_renderer::MeshRenderer;
 
 // ------------
-
 use crate::{
     Drawable, DrawableCollector, QueueableDrawData,
     context::RenderContext,

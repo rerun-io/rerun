@@ -1,32 +1,33 @@
-use prost::Name as _;
 use std::sync::Arc;
 
-use arrow::array::{
-    BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatchOptions,
-    StringBuilder, UInt8Array, UInt64Array,
-};
-use arrow::datatypes::FieldRef;
 use arrow::{
-    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
-    datatypes::{DataType, Field, Schema, TimeUnit},
+    array::{
+        Array, ArrayRef, BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder,
+        RecordBatch, RecordBatchOptions, StringArray, StringBuilder, TimestampNanosecondArray,
+        UInt8Array, UInt64Array,
+    },
+    datatypes::{DataType, Field, FieldRef, Schema, TimeUnit},
     error::ArrowError,
 };
+use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::external::re_types_core::ComponentBatch as _;
-use re_log_types::{EntityPath, EntryId, TimeInt};
+use re_log_types::{EntityPath, EntryId, TimeInt, external::re_types_core::ComponentBatch as _};
 use re_sorbet::ComponentColumnDescriptor;
 
-use crate::cloud::v1alpha1::{
-    EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
-    QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
-    ScanPartitionTableResponse, VectorDistanceMetric,
+use crate::{
+    TypeConversionError,
+    cloud::v1alpha1::{
+        EntryKind, FetchChunksRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
+        QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
+        ScanPartitionTableResponse, VectorDistanceMetric,
+    },
+    common::v1alpha1::{
+        ComponentDescriptor, DataframePart, TaskId,
+        ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+    },
+    invalid_field, missing_field,
 };
-use crate::common::v1alpha1::{
-    ComponentDescriptor, DataframePart, TaskId,
-    ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
-};
-use crate::{TypeConversionError, invalid_field, missing_field};
 
 /// Helper to simplify writing `field_XXX() -> FieldRef` methods.
 macro_rules! lazy_field_ref {
@@ -2387,8 +2388,9 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::datatypes::ToByteSlice as _;
+
+    use super::*;
 
     #[test]
     fn test_query_dataset_response_create_dataframe() {

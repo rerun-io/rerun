@@ -1,9 +1,9 @@
+use re_log_types::EntityPath;
+
 use crate::{
     IdentifiedViewSystem, MaybeVisualizableEntities, RecommendedView, ViewClass,
     ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
 };
-
-use re_log_types::EntityPath;
 
 /// Spawns a view for each single entity which is visualizable & indicator-matching for a given visualizer.
 ///

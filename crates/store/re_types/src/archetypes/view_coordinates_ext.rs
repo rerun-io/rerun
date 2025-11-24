@@ -1,8 +1,7 @@
 #![expect(non_snake_case)]
 
-use crate::{components, view_coordinates::ViewDir};
-
 use super::ViewCoordinates;
+use crate::{components, view_coordinates::ViewDir};
 
 macro_rules! define_coordinates {
     ($docstring:literal, $name:ident => ($x:ident, $y:ident, $z:ident) ) => {

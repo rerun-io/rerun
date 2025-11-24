@@ -1,5 +1,4 @@
 use nohash_hasher::{IntMap, IntSet};
-
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_types::{

@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use arrow::array::RecordBatch;
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes as _;
 use re_log_types::{LogMsg, SetStoreInfo};
 use re_sdk::EntityPath;

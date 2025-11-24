@@ -1,8 +1,10 @@
 use parking_lot::Mutex;
 
 use super::Item;
-use crate::command_sender::{SelectionSource, SetSelection};
-use crate::{ItemCollection, ItemContext};
+use crate::{
+    ItemCollection, ItemContext,
+    command_sender::{SelectionSource, SetSelection},
+};
 
 /// Selection highlight, sorted from weakest to strongest.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]

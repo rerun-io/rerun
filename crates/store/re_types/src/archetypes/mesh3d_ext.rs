@@ -1,11 +1,10 @@
 use arrow::array::{self, Array as _};
 
+use super::Mesh3D;
 use crate::{
     archetypes,
     components::{self},
 };
-
-use super::Mesh3D;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Mesh3DError {

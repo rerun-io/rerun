@@ -1,6 +1,5 @@
-use rerun::external::{eframe, re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer};
-
 use custom_callback::{comms::viewer::ControlViewer, panel::Control};
+use rerun::external::{eframe, re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.

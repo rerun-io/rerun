@@ -6,18 +6,16 @@
 use std::sync::Arc;
 
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, epaint::Vertex, lerp, pos2, remap};
-
 use re_chunk_store::{Chunk, RangeQuery};
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
+use super::time_ranges_ui::TimeRangesUi;
 use crate::{
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
     time_panel::TimePanelItem, time_ranges_ui::Segment,
 };
-
-use super::time_ranges_ui::TimeRangesUi;
 
 // ----------------------------------------------------------------------------
 

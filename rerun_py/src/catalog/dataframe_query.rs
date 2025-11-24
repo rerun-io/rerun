@@ -1,28 +1,32 @@
 #![expect(rustdoc::private_doc_tests)]
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
-use arrow::array::RecordBatchReader;
-use arrow::datatypes::Schema;
-use arrow::pyarrow::PyArrowType;
+use arrow::{array::RecordBatchReader, datatypes::Schema, pyarrow::PyArrowType};
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
-use pyo3::exceptions::{PyTypeError, PyValueError};
-use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::{PyCapsule, PyDict, PyTuple};
-use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
-use tracing::instrument;
-
+use pyo3::{
+    Bound, Py, PyAny, PyRef, PyResult, Python,
+    exceptions::{PyTypeError, PyValueError},
+    prelude::PyAnyMethods as _,
+    pyclass, pymethods,
+    types::{PyCapsule, PyDict, PyTuple},
+};
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
+use tracing::instrument;
 
-use crate::catalog::{PyDatasetEntry, to_py_err};
-use crate::utils::{get_tokio_runtime, wait_for_future};
+use crate::{
+    catalog::{PyDatasetEntry, to_py_err},
+    utils::{get_tokio_runtime, wait_for_future},
+};
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation

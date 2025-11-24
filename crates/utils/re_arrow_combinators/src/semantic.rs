@@ -1,15 +1,15 @@
 //! Semantic array transforms for concrete applications.
 
-use std::marker::PhantomData;
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
-use arrow::array::{
-    Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int64Array,
-    OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
+use arrow::{
+    array::{
+        Array as _, ArrowNativeTypeOp as _, GenericBinaryArray, GenericListArray, Int64Array,
+        OffsetSizeTrait, StringArray, StructArray, UInt32Array, UInt32Builder,
+    },
+    datatypes::{DataType, Field, Int32Type, Int64Type},
+    error::ArrowError,
 };
-use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
-use arrow::error::ArrowError;
-
 use re_types::components::VideoCodec;
 
 use crate::{Error, Transform, cast::DowncastRef, reshape::GetField};
@@ -35,8 +35,7 @@ impl<O1: OffsetSizeTrait, O2: OffsetSizeTrait> Transform for BinaryToListUInt8<O
     type Target = GenericListArray<O2>;
 
     fn transform(&self, source: &GenericBinaryArray<O1>) -> Result<Self::Target, Error> {
-        use arrow::array::UInt8Array;
-        use arrow::buffer::ScalarBuffer;
+        use arrow::{array::UInt8Array, buffer::ScalarBuffer};
 
         let scalar_buffer: ScalarBuffer<u8> = ScalarBuffer::from(source.values().clone());
         let uint8_array = UInt8Array::new(scalar_buffer, None);
