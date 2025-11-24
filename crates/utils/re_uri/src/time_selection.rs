@@ -110,7 +110,7 @@ mod tests {
                 },
             ),
             (
-                "duration@−1.096s..+2.097s",
+                "duration@−1.096s..+2.097s", // NOTE: special minus character: https://www.compart.com/en/unicode/U+2212
                 TimeSelection {
                     timeline: Timeline::new_duration("duration"),
                     range: AbsoluteTimeRange {
