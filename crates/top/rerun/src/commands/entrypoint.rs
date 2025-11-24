@@ -1232,13 +1232,13 @@ fn assert_receive_into_entity_db(
 
                             DataSourceMessage::TableMsg(_) => {
                                 anyhow::bail!(
-                                    "Received a TableMsg which can't be stored in a entity_db"
+                                    "Received a TableMsg which can't be stored in an EntityDb"
                                 );
                             }
 
                             DataSourceMessage::UiCommand(ui_command) => {
                                 anyhow::bail!(
-                                    "Received a UI command which can't be stored in a entity_db: {ui_command:?}"
+                                    "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
                                 );
                             }
                         }

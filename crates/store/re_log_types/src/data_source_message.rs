@@ -21,6 +21,7 @@ pub enum DataSourceMessage {
 }
 
 impl_into_enum!(LogMsg, DataSourceMessage, LogMsg);
+impl_into_enum!(TableMsg, DataSourceMessage, TableMsg);
 impl_into_enum!(DataSourceUiCommand, DataSourceMessage, UiCommand);
 
 impl DataSourceMessage {
