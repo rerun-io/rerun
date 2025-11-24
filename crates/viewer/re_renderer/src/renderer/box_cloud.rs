@@ -82,7 +82,8 @@ pub mod gpu_data {
         pub center: [f32; 3],
         pub half_size_x: f32,
         pub half_size_yz: [f32; 2],
-        pub color: Color32,
+        /// Linear, unpremultiplied RGBA.
+        pub color: [f32; 4],
         /// Packed [lo, hi] u32 words of PickingLayerInstanceId to avoid padding.
         pub picking_instance_id: [u32; 2],
     }
@@ -98,7 +99,7 @@ pub mod gpu_data {
                         wgpu::VertexFormat::Float32x3, // center
                         wgpu::VertexFormat::Float32,   // half_size_x
                         wgpu::VertexFormat::Float32x2, // half_size_yz
-                        wgpu::VertexFormat::Unorm8x4,  // color
+                        wgpu::VertexFormat::Float32x4, // color (linear)
                         wgpu::VertexFormat::Uint32x2,  // picking_instance_id
                     ]
                     .into_iter(),
@@ -277,7 +278,9 @@ impl BoxCloudDrawData {
                     center: inst.center.into(),
                     half_size_x: inst.half_size.x,
                     half_size_yz: [inst.half_size.y, inst.half_size.z],
-                    color: inst.color,
+                    // Color32 (sRGBA) -> linear, unpremultiplied RGBA floats
+                    color: ecolor::Rgba::from(inst.color)
+                        .to_rgba_unmultiplied(),
                     picking_instance_id: [
                         inst.picking_instance_id.0 as u32,
                         (inst.picking_instance_id.0 >> 32) as u32,
