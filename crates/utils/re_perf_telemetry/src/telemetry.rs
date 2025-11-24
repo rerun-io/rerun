@@ -231,6 +231,7 @@ impl Telemetry {
                 .add_directive_if_absent(base, "typespec_client_core", forced)?
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
+                .add_directive_if_absent(base, "lance::io::exec", "off")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
                 .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
