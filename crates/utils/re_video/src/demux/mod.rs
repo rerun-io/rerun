@@ -418,7 +418,7 @@ impl VideoDataDescription {
     }
 }
 
-/// Errors converting MP4 samples into the format expected by [`VideoStream`](crate::VideoStream).
+/// Errors converting MP4 samples into the format expected by the decoder.
 #[derive(thiserror::Error, Debug)]
 pub enum SampleConversionError {
     #[error("Missing encoding details for codec {0:?}")]
