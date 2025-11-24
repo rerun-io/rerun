@@ -7,6 +7,7 @@
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;
+pub mod ingestion_worker;
 mod instance_path;
 mod store_bundle;
 mod time_histogram_per_timeline;
@@ -17,12 +18,16 @@ pub use self::{
     entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
     entity_tree::EntityTree,
     ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats},
+    ingestion_worker::{IngestionWorker, ProcessedChunk},
     instance_path::{InstancePath, InstancePathHash},
     store_bundle::{StoreBundle, StoreLoadError},
     time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},
     times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline},
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::store_bundle::IngestionWorkerResults;
 
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};

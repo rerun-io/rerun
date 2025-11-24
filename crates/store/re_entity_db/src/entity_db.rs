@@ -61,7 +61,6 @@ impl EntityDbClass<'_> {
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
-#[derive(Clone)] // Useful for tests
 pub struct EntityDb {
     /// Store id associated with this [`EntityDb`]. Must be identical to the `storage_engine`'s
     /// store id.
@@ -114,6 +113,15 @@ pub struct EntityDb {
     storage_engine: StorageEngine,
 
     stats: IngestionStatistics,
+
+    /// Background worker for processing Arrow messages (native only).
+    ///
+    /// On native: Each `EntityDb` gets its own worker thread for parallel ingestion
+    /// On Wasm: This is a no-op (messages processed synchronously)
+    ///
+    /// Lazily initialized on first Arrow message.
+    #[cfg(not(target_arch = "wasm32"))]
+    ingestion_worker: Option<crate::ingestion_worker::IngestionWorker>,
 }
 
 impl Debug for EntityDb {
@@ -123,6 +131,28 @@ impl Debug for EntityDb {
             .field("data_source", &self.data_source)
             .field("set_store_info", &self.set_store_info)
             .finish()
+    }
+}
+
+// Custom Clone implementation that skips ingestion_worker (can't clone thread handles)
+// Useful for tests
+impl Clone for EntityDb {
+    fn clone(&self) -> Self {
+        Self {
+            store_id: self.store_id.clone(),
+            data_source: None, // Clones of an EntityDb get a None source
+            set_store_info: self.set_store_info.clone(),
+            last_modified_at: self.last_modified_at,
+            latest_row_id: self.latest_row_id,
+            entity_path_from_hash: self.entity_path_from_hash.clone(),
+            times_per_timeline: self.times_per_timeline.clone(),
+            time_histogram_per_timeline: self.time_histogram_per_timeline.clone(),
+            tree: self.tree.clone(),
+            storage_engine: self.storage_engine.clone(),
+            stats: self.stats.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            ingestion_worker: None, // Don't clone workers (thread handles can't be cloned)
+        }
     }
 }
 
@@ -151,6 +181,8 @@ impl EntityDb {
             time_histogram_per_timeline: Default::default(),
             storage_engine,
             stats: IngestionStatistics::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            ingestion_worker: None,
         }
     }
 
@@ -554,16 +586,16 @@ impl EntityDb {
             }
 
             LogMsg::ArrowMsg(_, arrow_msg) => {
-                self.last_modified_at = web_time::Instant::now();
-
+                // Convert Arrow message to chunk
                 let chunk_batch = re_sorbet::ChunkBatch::try_from(&arrow_msg.batch)
                     .map_err(re_chunk::ChunkError::from)?;
                 let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
                 chunk.sort_if_unsorted();
-                self.add_chunk_with_timestamp_metadata(
-                    &Arc::new(chunk),
-                    &chunk_batch.sorbet_schema().timestamps,
-                )?
+
+                let chunk = Arc::new(chunk);
+                let timestamps = chunk_batch.sorbet_schema().timestamps.clone();
+
+                self.add_chunk_with_timestamp_metadata(&chunk, &timestamps)?
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
@@ -579,11 +611,13 @@ impl EntityDb {
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
 
-    fn add_chunk_with_timestamp_metadata(
+    pub fn add_chunk_with_timestamp_metadata(
         &mut self,
         chunk: &Arc<Chunk>,
         timestamps: &re_sorbet::TimestampMetadata,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
+        self.last_modified_at = web_time::Instant::now();
+
         let mut engine = self.storage_engine.write();
         let store_events = engine.store().insert_chunk(chunk)?;
         engine.cache().on_events(&store_events);
@@ -627,6 +661,74 @@ impl EntityDb {
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
         self.set_store_info = Some(store_info);
+    }
+
+    /// Submit an Arrow message to the background ingestion worker (native only).
+    ///
+    /// On native: Lazily creates worker on first call, then queues message for processing
+    /// On Wasm: This method doesn't exist (compile error if called)
+    ///
+    /// The caller should periodically call [`Self::poll_worker_output`] to retrieve
+    /// processed chunks and add them to the store.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn submit_arrow_msg(
+        &mut self,
+        arrow_msg: re_log_types::ArrowMsg,
+        channel_source: Arc<re_smart_channel::SmartChannelSource>,
+        msg_will_add_new_store: bool,
+    ) {
+        re_tracing::profile_function!();
+
+        // Lazy-init worker on first use
+        let worker = self.ingestion_worker.get_or_insert_with(|| {
+            re_log::debug!("Creating ingestion worker for store {:?}", self.store_id);
+            crate::ingestion_worker::IngestionWorker::new()
+        });
+
+        worker.submit_arrow_msg_blocking(
+            self.store_id.clone(),
+            arrow_msg,
+            channel_source,
+            msg_will_add_new_store,
+        );
+    }
+
+    /// Process pending work from the background ingestion worker (native only).
+    ///
+    /// This should be called once per frame to process chunks that have been
+    /// converted by the background worker. The processed chunks are automatically
+    /// added to this `EntityDb`'s store.
+    ///
+    /// Returns a vector of (`ProcessedChunk`, `was_empty_before`, `StoreEvents`) tuples
+    /// for each chunk that was successfully added.
+    ///
+    /// On native: Polls and processes chunks from the background worker
+    /// On Wasm: This method doesn't exist (compile error if called)
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn on_frame_start(
+        &mut self,
+    ) -> Vec<(
+        crate::ingestion_worker::ProcessedChunk,
+        bool,
+        Result<Vec<ChunkStoreEvent>, Error>,
+    )> {
+        re_tracing::profile_function!();
+
+        let Some(worker) = &self.ingestion_worker else {
+            return Vec::new();
+        };
+
+        let processed_chunks = worker.poll_processed_chunks();
+        let mut results = Vec::with_capacity(processed_chunks.len());
+
+        for processed in processed_chunks {
+            let was_empty = self.is_empty();
+            let result =
+                self.add_chunk_with_timestamp_metadata(&processed.chunk, &processed.timestamps);
+            results.push((processed, was_empty, result));
+        }
+
+        results
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
