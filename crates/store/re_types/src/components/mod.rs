@@ -143,33 +143,84 @@ mod view_coordinates_ext;
 mod visible;
 mod visible_ext;
 
-pub use self::{
-    aggregation_policy::AggregationPolicy, albedo_factor::AlbedoFactor,
-    annotation_context::AnnotationContext, axis_length::AxisLength, blob::Blob,
-    channel_id::ChannelId, channel_message_counts::ChannelMessageCounts, class_id::ClassId,
-    color::Color, colormap::Colormap, count::Count, depth_meter::DepthMeter, draw_order::DrawOrder,
-    entity_path::EntityPath, fill_mode::FillMode, fill_ratio::FillRatio,
-    gamma_correction::GammaCorrection, geo_line_string::GeoLineString, graph_edge::GraphEdge,
-    graph_node::GraphNode, graph_type::GraphType, half_size2d::HalfSize2D, half_size3d::HalfSize3D,
-    image_buffer::ImageBuffer, image_format::ImageFormat, image_plane_distance::ImagePlaneDistance,
-    interactive::Interactive, key_value_pairs::KeyValuePairs, keypoint_id::KeypointId,
-    lat_lon::LatLon, length::Length, line_strip2d::LineStrip2D, line_strip3d::LineStrip3D,
-    linear_speed::LinearSpeed, magnification_filter::MagnificationFilter,
-    marker_shape::MarkerShape, marker_size::MarkerSize, media_type::MediaType, name::Name,
-    opacity::Opacity, pinhole_projection::PinholeProjection, plane3d::Plane3D,
-    pose_rotation_axis_angle::PoseRotationAxisAngle, pose_rotation_quat::PoseRotationQuat,
-    pose_scale3d::PoseScale3D, pose_transform_mat3x3::PoseTransformMat3x3,
-    pose_translation3d::PoseTranslation3D, position2d::Position2D, position3d::Position3D,
-    radius::Radius, range1d::Range1D, resolution::Resolution,
-    rotation_axis_angle::RotationAxisAngle, rotation_quat::RotationQuat, scalar::Scalar,
-    scale3d::Scale3D, schema_id::SchemaId, series_visible::SeriesVisible, show_labels::ShowLabels,
-    stroke_width::StrokeWidth, tensor_data::TensorData,
-    tensor_dimension_index_selection::TensorDimensionIndexSelection,
-    tensor_height_dimension::TensorHeightDimension, tensor_width_dimension::TensorWidthDimension,
-    texcoord2d::Texcoord2D, text::Text, text_log_level::TextLogLevel, timestamp::Timestamp,
-    transform_frame_id::TransformFrameId, transform_mat3x3::TransformMat3x3,
-    transform_relation::TransformRelation, translation3d::Translation3D,
-    triangle_indices::TriangleIndices, value_range::ValueRange, vector2d::Vector2D,
-    vector3d::Vector3D, video_codec::VideoCodec, video_sample::VideoSample,
-    video_timestamp::VideoTimestamp, view_coordinates::ViewCoordinates, visible::Visible,
-};
+pub use self::aggregation_policy::AggregationPolicy;
+pub use self::albedo_factor::AlbedoFactor;
+pub use self::annotation_context::AnnotationContext;
+pub use self::axis_length::AxisLength;
+pub use self::blob::Blob;
+pub use self::channel_id::ChannelId;
+pub use self::channel_message_counts::ChannelMessageCounts;
+pub use self::class_id::ClassId;
+pub use self::color::Color;
+pub use self::colormap::Colormap;
+pub use self::count::Count;
+pub use self::depth_meter::DepthMeter;
+pub use self::draw_order::DrawOrder;
+pub use self::entity_path::EntityPath;
+pub use self::fill_mode::FillMode;
+pub use self::fill_ratio::FillRatio;
+pub use self::gamma_correction::GammaCorrection;
+pub use self::geo_line_string::GeoLineString;
+pub use self::graph_edge::GraphEdge;
+pub use self::graph_node::GraphNode;
+pub use self::graph_type::GraphType;
+pub use self::half_size2d::HalfSize2D;
+pub use self::half_size3d::HalfSize3D;
+pub use self::image_buffer::ImageBuffer;
+pub use self::image_format::ImageFormat;
+pub use self::image_plane_distance::ImagePlaneDistance;
+pub use self::interactive::Interactive;
+pub use self::key_value_pairs::KeyValuePairs;
+pub use self::keypoint_id::KeypointId;
+pub use self::lat_lon::LatLon;
+pub use self::length::Length;
+pub use self::line_strip2d::LineStrip2D;
+pub use self::line_strip3d::LineStrip3D;
+pub use self::linear_speed::LinearSpeed;
+pub use self::magnification_filter::MagnificationFilter;
+pub use self::marker_shape::MarkerShape;
+pub use self::marker_size::MarkerSize;
+pub use self::media_type::MediaType;
+pub use self::name::Name;
+pub use self::opacity::Opacity;
+pub use self::pinhole_projection::PinholeProjection;
+pub use self::plane3d::Plane3D;
+pub use self::pose_rotation_axis_angle::PoseRotationAxisAngle;
+pub use self::pose_rotation_quat::PoseRotationQuat;
+pub use self::pose_scale3d::PoseScale3D;
+pub use self::pose_transform_mat3x3::PoseTransformMat3x3;
+pub use self::pose_translation3d::PoseTranslation3D;
+pub use self::position2d::Position2D;
+pub use self::position3d::Position3D;
+pub use self::radius::Radius;
+pub use self::range1d::Range1D;
+pub use self::resolution::Resolution;
+pub use self::rotation_axis_angle::RotationAxisAngle;
+pub use self::rotation_quat::RotationQuat;
+pub use self::scalar::Scalar;
+pub use self::scale3d::Scale3D;
+pub use self::schema_id::SchemaId;
+pub use self::series_visible::SeriesVisible;
+pub use self::show_labels::ShowLabels;
+pub use self::stroke_width::StrokeWidth;
+pub use self::tensor_data::TensorData;
+pub use self::tensor_dimension_index_selection::TensorDimensionIndexSelection;
+pub use self::tensor_height_dimension::TensorHeightDimension;
+pub use self::tensor_width_dimension::TensorWidthDimension;
+pub use self::texcoord2d::Texcoord2D;
+pub use self::text::Text;
+pub use self::text_log_level::TextLogLevel;
+pub use self::timestamp::Timestamp;
+pub use self::transform_frame_id::TransformFrameId;
+pub use self::transform_mat3x3::TransformMat3x3;
+pub use self::transform_relation::TransformRelation;
+pub use self::translation3d::Translation3D;
+pub use self::triangle_indices::TriangleIndices;
+pub use self::value_range::ValueRange;
+pub use self::vector2d::Vector2D;
+pub use self::vector3d::Vector3D;
+pub use self::video_codec::VideoCodec;
+pub use self::video_sample::VideoSample;
+pub use self::video_timestamp::VideoTimestamp;
+pub use self::view_coordinates::ViewCoordinates;
+pub use self::visible::Visible;

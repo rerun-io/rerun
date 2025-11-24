@@ -35,20 +35,37 @@ mod visible_time_ranges;
 mod visual_bounds2d;
 mod visualizer_overrides;
 
-pub use self::{
-    background::Background, container_blueprint::ContainerBlueprint,
-    dataframe_query::DataframeQuery, entity_behavior::EntityBehavior,
-    eye_controls3d::EyeControls3D, force_center::ForceCenter,
-    force_collision_radius::ForceCollisionRadius, force_link::ForceLink,
-    force_many_body::ForceManyBody, force_position::ForcePosition,
-    graph_background::GraphBackground, line_grid3d::LineGrid3D, map_background::MapBackground,
-    map_zoom::MapZoom, near_clip_plane::NearClipPlane, panel_blueprint::PanelBlueprint,
-    plot_background::PlotBackground, plot_legend::PlotLegend, scalar_axis::ScalarAxis,
-    spatial_information::SpatialInformation, tensor_scalar_mapping::TensorScalarMapping,
-    tensor_slice_selection::TensorSliceSelection, tensor_view_fit::TensorViewFit,
-    text_log_columns::TextLogColumns, text_log_format::TextLogFormat, text_log_rows::TextLogRows,
-    time_axis::TimeAxis, time_panel_blueprint::TimePanelBlueprint, view_blueprint::ViewBlueprint,
-    view_contents::ViewContents, viewport_blueprint::ViewportBlueprint,
-    visible_time_ranges::VisibleTimeRanges, visual_bounds2d::VisualBounds2D,
-    visualizer_overrides::VisualizerOverrides,
-};
+pub use self::background::Background;
+pub use self::container_blueprint::ContainerBlueprint;
+pub use self::dataframe_query::DataframeQuery;
+pub use self::entity_behavior::EntityBehavior;
+pub use self::eye_controls3d::EyeControls3D;
+pub use self::force_center::ForceCenter;
+pub use self::force_collision_radius::ForceCollisionRadius;
+pub use self::force_link::ForceLink;
+pub use self::force_many_body::ForceManyBody;
+pub use self::force_position::ForcePosition;
+pub use self::graph_background::GraphBackground;
+pub use self::line_grid3d::LineGrid3D;
+pub use self::map_background::MapBackground;
+pub use self::map_zoom::MapZoom;
+pub use self::near_clip_plane::NearClipPlane;
+pub use self::panel_blueprint::PanelBlueprint;
+pub use self::plot_background::PlotBackground;
+pub use self::plot_legend::PlotLegend;
+pub use self::scalar_axis::ScalarAxis;
+pub use self::spatial_information::SpatialInformation;
+pub use self::tensor_scalar_mapping::TensorScalarMapping;
+pub use self::tensor_slice_selection::TensorSliceSelection;
+pub use self::tensor_view_fit::TensorViewFit;
+pub use self::text_log_columns::TextLogColumns;
+pub use self::text_log_format::TextLogFormat;
+pub use self::text_log_rows::TextLogRows;
+pub use self::time_axis::TimeAxis;
+pub use self::time_panel_blueprint::TimePanelBlueprint;
+pub use self::view_blueprint::ViewBlueprint;
+pub use self::view_contents::ViewContents;
+pub use self::viewport_blueprint::ViewportBlueprint;
+pub use self::visible_time_ranges::VisibleTimeRanges;
+pub use self::visual_bounds2d::VisualBounds2D;
+pub use self::visualizer_overrides::VisualizerOverrides;

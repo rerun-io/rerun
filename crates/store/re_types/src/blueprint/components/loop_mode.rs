@@ -16,10 +16,11 @@
 #![allow(clippy::wildcard_imports)]
 #![allow(non_camel_case_types)]
 
-use ::re_types_core::{
-    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
-    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
-};
+use ::re_types_core::SerializationResult;
+use ::re_types_core::try_serialize_field;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: If playing, whether and how the playback time should loop.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]

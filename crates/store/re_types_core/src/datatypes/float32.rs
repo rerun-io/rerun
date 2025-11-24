@@ -15,10 +15,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::{
-    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
-    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
-};
+use crate::SerializationResult;
+use crate::try_serialize_field;
+use crate::{ComponentBatch as _, SerializedComponentBatch};
+use crate::{ComponentDescriptor, ComponentType};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
@@ -41,9 +42,8 @@ impl crate::Loggable for Float32 {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -75,9 +75,8 @@ impl crate::Loggable for Float32 {
     where
         Self: Sized,
     {
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<Float32Array>()
@@ -100,9 +99,8 @@ impl crate::Loggable for Float32 {
     where
         Self: Sized,
     {
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use arrow::{array::*, buffer::*, datatypes::*};
         if let Some(nulls) = arrow_data.nulls()
             && nulls.null_count() != 0
         {

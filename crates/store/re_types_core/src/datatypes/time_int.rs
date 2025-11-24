@@ -15,10 +15,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::{
-    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
-    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
-};
+use crate::SerializationResult;
+use crate::try_serialize_field;
+use crate::{ComponentBatch as _, SerializedComponentBatch};
+use crate::{ComponentDescriptor, ComponentType};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -40,9 +41,8 @@ impl crate::Loggable for TimeInt {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -74,9 +74,8 @@ impl crate::Loggable for TimeInt {
     where
         Self: Sized,
     {
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<Int64Array>()
@@ -99,9 +98,8 @@ impl crate::Loggable for TimeInt {
     where
         Self: Sized,
     {
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use arrow::{array::*, buffer::*, datatypes::*};
         if let Some(nulls) = arrow_data.nulls()
             && nulls.null_count() != 0
         {

@@ -15,10 +15,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use ::re_types_core::{
-    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
-    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
-};
+use ::re_types_core::SerializationResult;
+use ::re_types_core::try_serialize_field;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 ///

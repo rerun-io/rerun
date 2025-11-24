@@ -13,9 +13,11 @@ mod text_log_column_kind_ext;
 mod timeline_column;
 mod timeline_column_ext;
 
-pub use self::{
-    component_column_selector::ComponentColumnSelector, filter_by_range::FilterByRange,
-    filter_is_not_null::FilterIsNotNull, selected_columns::SelectedColumns,
-    tensor_dimension_index_slider::TensorDimensionIndexSlider, text_log_column::TextLogColumn,
-    text_log_column_kind::TextLogColumnKind, timeline_column::TimelineColumn,
-};
+pub use self::component_column_selector::ComponentColumnSelector;
+pub use self::filter_by_range::FilterByRange;
+pub use self::filter_is_not_null::FilterIsNotNull;
+pub use self::selected_columns::SelectedColumns;
+pub use self::tensor_dimension_index_slider::TensorDimensionIndexSlider;
+pub use self::text_log_column::TextLogColumn;
+pub use self::text_log_column_kind::TextLogColumnKind;
+pub use self::timeline_column::TimelineColumn;

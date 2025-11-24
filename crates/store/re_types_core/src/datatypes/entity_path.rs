@@ -15,10 +15,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
-use crate::{
-    ComponentBatch as _, ComponentDescriptor, ComponentType, DeserializationError,
-    DeserializationResult, SerializationResult, SerializedComponentBatch, try_serialize_field,
-};
+use crate::SerializationResult;
+use crate::try_serialize_field;
+use crate::{ComponentBatch as _, SerializedComponentBatch};
+use crate::{ComponentDescriptor, ComponentType};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A path to an entity in the `ChunkStore`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
@@ -41,9 +42,8 @@ impl crate::Loggable for EntityPath {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -86,9 +86,8 @@ impl crate::Loggable for EntityPath {
     where
         Self: Sized,
     {
-        use arrow::{array::*, buffer::*, datatypes::*};
-
         use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()

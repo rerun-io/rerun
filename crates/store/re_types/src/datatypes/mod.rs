@@ -71,17 +71,39 @@ mod video_timestamp_ext;
 mod view_coordinates;
 mod view_coordinates_ext;
 
-pub use self::{
-    angle::Angle, annotation_info::AnnotationInfo, blob::Blob,
-    channel_count_pair::ChannelCountPair, channel_datatype::ChannelDatatype,
-    class_description::ClassDescription, class_description_map_elem::ClassDescriptionMapElem,
-    class_id::ClassId, color_model::ColorModel, dvec2d::DVec2D, image_format::ImageFormat,
-    keypoint_id::KeypointId, keypoint_pair::KeypointPair, mat3x3::Mat3x3, mat4x4::Mat4x4,
-    pixel_format::PixelFormat, plane3d::Plane3D, quaternion::Quaternion, range1d::Range1D,
-    range2d::Range2D, rgba32::Rgba32, rotation_axis_angle::RotationAxisAngle,
-    tensor_buffer::TensorBuffer, tensor_data::TensorData,
-    tensor_dimension_index_selection::TensorDimensionIndexSelection,
-    tensor_dimension_selection::TensorDimensionSelection, utf8pair::Utf8Pair, uuid::Uuid,
-    uvec2d::UVec2D, uvec3d::UVec3D, uvec4d::UVec4D, vec2d::Vec2D, vec3d::Vec3D, vec4d::Vec4D,
-    video_timestamp::VideoTimestamp, view_coordinates::ViewCoordinates,
-};
+pub use self::angle::Angle;
+pub use self::annotation_info::AnnotationInfo;
+pub use self::blob::Blob;
+pub use self::channel_count_pair::ChannelCountPair;
+pub use self::channel_datatype::ChannelDatatype;
+pub use self::class_description::ClassDescription;
+pub use self::class_description_map_elem::ClassDescriptionMapElem;
+pub use self::class_id::ClassId;
+pub use self::color_model::ColorModel;
+pub use self::dvec2d::DVec2D;
+pub use self::image_format::ImageFormat;
+pub use self::keypoint_id::KeypointId;
+pub use self::keypoint_pair::KeypointPair;
+pub use self::mat3x3::Mat3x3;
+pub use self::mat4x4::Mat4x4;
+pub use self::pixel_format::PixelFormat;
+pub use self::plane3d::Plane3D;
+pub use self::quaternion::Quaternion;
+pub use self::range1d::Range1D;
+pub use self::range2d::Range2D;
+pub use self::rgba32::Rgba32;
+pub use self::rotation_axis_angle::RotationAxisAngle;
+pub use self::tensor_buffer::TensorBuffer;
+pub use self::tensor_data::TensorData;
+pub use self::tensor_dimension_index_selection::TensorDimensionIndexSelection;
+pub use self::tensor_dimension_selection::TensorDimensionSelection;
+pub use self::utf8pair::Utf8Pair;
+pub use self::uuid::Uuid;
+pub use self::uvec2d::UVec2D;
+pub use self::uvec3d::UVec3D;
+pub use self::uvec4d::UVec4D;
+pub use self::vec2d::Vec2D;
+pub use self::vec3d::Vec3D;
+pub use self::vec4d::Vec4D;
+pub use self::video_timestamp::VideoTimestamp;
+pub use self::view_coordinates::ViewCoordinates;

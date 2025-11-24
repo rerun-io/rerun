@@ -11,9 +11,13 @@ mod text_document_view;
 mod text_log_view;
 mod time_series_view;
 
-pub use self::{
-    bar_chart_view::BarChartView, dataframe_view::DataframeView, graph_view::GraphView,
-    map_view::MapView, spatial2d_view::Spatial2DView, spatial3d_view::Spatial3DView,
-    tensor_view::TensorView, text_document_view::TextDocumentView, text_log_view::TextLogView,
-    time_series_view::TimeSeriesView,
-};
+pub use self::bar_chart_view::BarChartView;
+pub use self::dataframe_view::DataframeView;
+pub use self::graph_view::GraphView;
+pub use self::map_view::MapView;
+pub use self::spatial2d_view::Spatial2DView;
+pub use self::spatial3d_view::Spatial3DView;
+pub use self::tensor_view::TensorView;
+pub use self::text_document_view::TextDocumentView;
+pub use self::text_log_view::TextLogView;
+pub use self::time_series_view::TimeSeriesView;
