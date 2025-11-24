@@ -53,13 +53,13 @@ def run_cargo(
     output_checks: Callable[[str], str | None] | None = None,
 ) -> Result:
     args = ["cargo", cargo_cmd]
-    if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
-        args.append("--quiet")
+    # if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
+    #     args.append("--quiet")
     args += cargo_args.split(" ")
 
-    if cargo_cmd == "nextest":
-        # Needs to go after `run`, so append it last.
-        args.append("--cargo-quiet")
+    # if cargo_cmd == "nextest":
+    #     # Needs to go after `run`, so append it last.
+    #     args.append("--cargo-quiet")
 
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str} ", end="", flush=True)
