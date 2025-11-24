@@ -1,6 +1,7 @@
 #import <./global_bindings.wgsl>
 #import <./types.wgsl>
 #import <./utils/depth_offset.wgsl>
+#import <./utils/srgb.wgsl>
 
 /// Uniform buffer for batch-level data.
 struct BatchUniformBuffer {
@@ -75,7 +76,8 @@ fn vs_main(vertex: VertexInput, instance: InstanceInput) -> VertexOut {
     );
     out.world_position = world_pos;
     out.world_normal = world_normal;
-    out.color = instance.color;
+    // Decode vertex color from sRGB to linear before output; keeps pure primaries unchanged.
+    out.color = linear_from_srgba(instance.color);
     out.picking_instance_id = instance.picking_instance_id;
 
     return out;

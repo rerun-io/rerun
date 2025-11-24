@@ -196,7 +196,8 @@ impl Default for BoxCloudBatchInfo {
         Self {
             label: DebugLabel::default(),
             world_from_obj: glam::Affine3A::IDENTITY,
-            flags: BoxCloudBatchFlags::FLAG_ENABLE_SHADING,
+            // Disable shading by default to match legacy unlit box colors.
+            flags: BoxCloudBatchFlags::empty(),
             box_count: 0,
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
             additional_outline_mask_ids_vertex_ranges: Vec::new(),
@@ -418,47 +419,79 @@ impl BoxCloudRenderer {
     }
 
     /// Creates vertex data for a unit cube centered at origin with extent [-0.5, 0.5]³.
-    /// Returns 36 vertices (12 triangles, 2 per face).
+    /// Returns 36 vertices (12 triangles, 2 per face) matching the legacy procedural layout
+    /// used in box_quad.wgsl to keep rasterization identical to previous snapshots.
     fn create_unit_cube_vertices() -> Vec<gpu_data::BoxVertex> {
         use gpu_data::BoxVertex;
 
-        // Define 8 corners of the unit cube
-        let corners = [
-            [-0.5, -0.5, -0.5], // 0
-            [0.5, -0.5, -0.5],  // 1
-            [0.5, 0.5, -0.5],   // 2
-            [-0.5, 0.5, -0.5],  // 3
-            [-0.5, -0.5, 0.5],  // 4
-            [0.5, -0.5, 0.5],   // 5
-            [0.5, 0.5, 0.5],    // 6
-            [-0.5, 0.5, 0.5],   // 7
-        ];
-
-        // Define 6 faces with their normals and vertex indices
-        // Each face is two triangles (6 vertices)
-        let faces = [
-            // Front face (+Z)
-            ([0.0, 0.0, 1.0], [4, 5, 6, 4, 6, 7]),
-            // Back face (-Z)
-            ([0.0, 0.0, -1.0], [1, 0, 3, 1, 3, 2]),
-            // Right face (+X)
-            ([1.0, 0.0, 0.0], [5, 1, 2, 5, 2, 6]),
-            // Left face (-X)
-            ([-1.0, 0.0, 0.0], [0, 4, 7, 0, 7, 3]),
-            // Top face (+Y)
-            ([0.0, 1.0, 0.0], [7, 6, 2, 7, 2, 3]),
-            // Bottom face (-Y)
-            ([0.0, -1.0, 0.0], [0, 1, 5, 0, 5, 4]),
-        ];
-
         let mut vertices = Vec::with_capacity(36);
-        for (normal, indices) in faces {
-            for &idx in &indices {
-                vertices.push(BoxVertex {
-                    position: corners[idx],
-                    normal,
-                });
-            }
+        for vertex_idx in 0..36 {
+            let local_idx = vertex_idx % 36;
+            let face_idx = local_idx / 6;
+            let tri_vert_idx = local_idx % 6;
+
+            // Map tri_vert_idx to quad corner index (matches box_quad.wgsl)
+            let corner_idx = match tri_vert_idx {
+                0 => 0,
+                1 => 1,
+                2 | 3 => 2,
+                4 => 3,
+                _ => 0, // 5
+            };
+
+            // Compute position for this corner on the given face
+            let pos = match face_idx {
+                // Front (+Z)
+                0 => {
+                    let x = if corner_idx == 0 || corner_idx == 3 { -0.5 } else { 0.5 };
+                    let y = if corner_idx == 0 || corner_idx == 1 { 0.5 } else { -0.5 };
+                    [x, y, 0.5]
+                }
+                // Back (-Z)
+                1 => {
+                    let x = if corner_idx == 0 || corner_idx == 3 { 0.5 } else { -0.5 };
+                    let y = if corner_idx == 0 || corner_idx == 1 { 0.5 } else { -0.5 };
+                    [x, y, -0.5]
+                }
+                // Right (+X)
+                2 => {
+                    let z = if corner_idx == 0 || corner_idx == 3 { -0.5 } else { 0.5 };
+                    let y = if corner_idx == 0 || corner_idx == 1 { 0.5 } else { -0.5 };
+                    [0.5, y, z]
+                }
+                // Left (-X)
+                3 => {
+                    let z = if corner_idx == 0 || corner_idx == 3 { 0.5 } else { -0.5 };
+                    let y = if corner_idx == 0 || corner_idx == 1 { 0.5 } else { -0.5 };
+                    [-0.5, y, z]
+                }
+                // Top (+Y)
+                4 => {
+                    let x = if corner_idx == 0 || corner_idx == 3 { -0.5 } else { 0.5 };
+                    let z = if corner_idx == 0 || corner_idx == 1 { -0.5 } else { 0.5 };
+                    [x, 0.5, z]
+                }
+                // Bottom (-Y)
+                _ => {
+                    let x = if corner_idx == 0 || corner_idx == 3 { -0.5 } else { 0.5 };
+                    let z = if corner_idx == 0 || corner_idx == 1 { 0.5 } else { -0.5 };
+                    [x, -0.5, z]
+                }
+            };
+
+            let normal = match face_idx {
+                0 => [0.0, 0.0, 1.0],
+                1 => [0.0, 0.0, -1.0],
+                2 => [1.0, 0.0, 0.0],
+                3 => [-1.0, 0.0, 0.0],
+                4 => [0.0, 1.0, 0.0],
+                _ => [0.0, -1.0, 0.0],
+            };
+
+            vertices.push(BoxVertex {
+                position: pos,
+                normal,
+            });
         }
 
         vertices
@@ -519,7 +552,8 @@ impl Renderer for BoxCloudRenderer {
             render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
-                cull_mode: Some(wgpu::Face::Back),
+                // Keep double-sided to match legacy procedural box rasterization/snapshots.
+                cull_mode: None,
                 ..Default::default()
             },
             depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE),
