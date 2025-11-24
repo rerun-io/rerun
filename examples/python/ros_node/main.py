@@ -92,7 +92,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Subscriptions
         self.info_sub = self.create_subscription(
             CameraInfo,
-            "/intel_realsense_r200_depth/camera_info",
+            "/rgbd_camera/camera_info",
             self.cam_info_callback,
             10,
             callback_group=self.callback_group,
@@ -108,7 +108,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         self.img_sub = self.create_subscription(
             Image,
-            "/intel_realsense_r200_depth/image_raw",
+            "/rgbd_camera/image_raw",
             self.image_callback,
             10,
             callback_group=self.callback_group,
@@ -116,7 +116,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         self.points_sub = self.create_subscription(
             PointCloud2,
-            "/intel_realsense_r200_depth/points",
+            "/rgbd_camera/points",
             self.points_callback,
             10,
             callback_group=self.callback_group,
@@ -258,14 +258,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         """Log a URDF using `log_scene` from `rerun_urdf`."""
         urdf = rerun_urdf.load_urdf_from_msg(urdf_msg)
 
-        # The turtlebot URDF appears to have scale set incorrectly for the camera-link
-        # Although rviz loads it properly `yourdfpy` does not.
-        orig, _ = urdf.scene.graph.get("camera_link")
-        scale = trimesh.transformations.scale_matrix(0.00254)
-        urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
-        scaled = urdf.scene.scaled(1.0)
-
-        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", static=True)
+        rerun_urdf.log_scene(scene=urdf.scene, node=urdf.base_link, path="map/robot/urdf", static=True)
 
 
 def main() -> None:
