@@ -46,40 +46,46 @@ Installing ROS is outside the scope of this example, but you will need the equiv
 sudo apt install ros-kilted-desktop ros-kilted-navigation2 ros-kilted-turtlebot3 ros-kilted-turtlebot3-gazebo
 ```
 
-Make sure you have the Rerun repository checked out and the latest SDK installed:
+Clone the Rerun repository:
 ```bash
-pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone https://github.com/rerun-io/rerun.git  # Clone the repository
 cd rerun
 git checkout latest  # Check out the commit matching the latest SDK release
 ```
-Install the necessary libraries specified in the requirements file:
+
+Make sure to use a Python virtual environment. Here, we use `venv` (`sudo apt install python3-venv`):
 ```bash
+python3 -m venv --system-site-packages rerun-ros-example
+source rerun-ros-example/bin/activate
+```
+
+Then install the latest Rerun SDK and the necessary libraries specified in the requirements file of this example:
+```bash
+pip install --upgrade rerun-sdk
 pip install -r examples/python/ros_node/requirements.txt
 ```
 
 In addition to installing the dependencies from `requirements.txt` into a venv you will also need to source the
 ROS setup script:
-```
-source venv/bin/active
+```bash
 source /opt/ros/kilted/setup.bash
 ```
 
 ### Run the code
 
 First, in one terminal launch the nav2 turtlebot demo:
-```
+```bash
 source /opt/ros/kilted/setup.bash
-export TURTLEBOT3_MODEL=waffle
-export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/kilted/share/turtlebot3_gazebo/models
 
-ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False
+ros2 launch nav2_bringup tb4_simulation_launch.py headless:=False
 ```
 
 As described in the nav demo, use the rviz window to initialize the pose estimate and set a navigation goal.
 
-You can now connect to the running ROS system by running:
+You can now connect to the running ROS system by running this in a separate terminal:
 ```bash
+source /opt/ros/kilted/setup.bash
+
 python examples/python/ros_node/main.py # run the example
 ```
 
