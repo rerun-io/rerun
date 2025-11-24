@@ -158,12 +158,6 @@ pub fn init() {
     }
 
     {
-        let virtpath = Path::new("shader/utils/box_quad.wgsl");
-        let content = include_str!("../shader/utils/box_quad.wgsl").into();
-        fs.create_file(virtpath, content).unwrap();
-    }
-
-    {
         let virtpath = Path::new("shader/utils/camera.wgsl");
         let content = include_str!("../shader/utils/camera.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
