@@ -83,10 +83,20 @@ Libraries should ideally not log `ERROR`, but instead return `Err` in a `Result`
 
 Application can "handle" `Err`ors by logging them as `ERROR` (perhaps in addition to showing a popup, if this is a GUI app).
 
+Use this log level whenever some data is lost, even if you continue processing other data.
+
+Examples: failing to write a file, failing to read parts of a file.
+
 #### `WARNING`
 This is for _recoverable_ problems. The operation completed, but couldn't do exactly what it was instructed to do.
 
 Sometimes an `Err` is handled by logging it as `WARNING` and then running some fallback code.
+
+Warnings are also used for thing that _may_ be an error, but it could be intended (e.g. dropping a sink before flushing it).
+
+Examples: usage of deprecated functions, slow paths, misuse of our APIs, lossy data conversion.
+
+If data is lost, it is an error and NOT a warning.
 
 #### `INFO`
 This is the default verbosity level. This should mostly be used _only by application code_ to write interesting and rare things to the application user. For instance, you may perhaps log that a file was saved to specific path, or where the default configuration was read from. These things lets application users understand what the application is doing, and debug their use of the application.

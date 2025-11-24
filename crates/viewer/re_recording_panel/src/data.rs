@@ -385,6 +385,19 @@ impl<'a> ServerEntriesData<'a> {
                                 }));
                             }
 
+                            displayed_partitions.sort_by_key(|partition| match partition {
+                                PartitionData::Loading { receiver } => {
+                                    ctx.storage_context.hub.data_source_order(receiver)
+                                }
+                                PartitionData::Loaded { entity_db } => {
+                                    if let Some(data_source) = &entity_db.data_source {
+                                        ctx.storage_context.hub.data_source_order(data_source)
+                                    } else {
+                                        u64::MAX
+                                    }
+                                }
+                            });
+
                             dataset_entries.push(DatasetData {
                                 entry_data,
                                 displayed_partitions,
