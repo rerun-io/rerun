@@ -10,3 +10,10 @@ pub use self::{
     rerun_cloud::{RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings},
     server::{Server, ServerBuilder, ServerError, ServerHandle},
 };
+
+/// What should we do on error?
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum OnError {
+    Continue,
+    Abort,
+}

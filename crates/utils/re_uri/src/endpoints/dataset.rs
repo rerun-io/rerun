@@ -64,6 +64,9 @@ impl DatasetPartitionUri {
                     partition_id = Some(value.to_string());
                 }
                 "time_range" => {
+                    // `+` means whitespace in URLs.
+                    // Ideally `+` should be encoded as `%2B`, but in case we missed that:
+                    let value = value.replace(' ', "");
                     time_range = Some(value.parse::<TimeSelection>()?);
                 }
                 _ => {
@@ -166,3 +169,25 @@ impl<'de> serde::Deserialize<'de> for DatasetPartitionUri {
 }
 
 // --------------------------------
+
+#[test]
+fn test_url() {
+    // Test how `+` is encoded.
+
+    let url = url::Url::parse("http://www.example.com/foo?time=+42&foo=%2B1337").unwrap();
+
+    assert_eq!(url.query(), Some("time=+42&foo=%2B1337"));
+
+    let query_pairs = url
+        .query_pairs()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        query_pairs
+            .iter()
+            .map(|(a, b)| (a.as_str(), b.as_str()))
+            .collect::<Vec<_>>(),
+        vec![("time", " 42"), ("foo", "+1337")]
+    );
+}

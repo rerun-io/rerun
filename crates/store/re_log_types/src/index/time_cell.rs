@@ -233,22 +233,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_iso_format_and_parse() {
-        assert_eq!(
-            "1234".parse::<TimeCell>().unwrap(),
-            TimeCell::from_sequence(1234)
-        );
+    fn test_time_cell_format_and_parse() {
+        let test_cases = [
+            ("1234", TimeCell::from_sequence(1234)),
+            ("10.134567s", TimeCell::from_duration_nanos(10_134_567_000)),
+            (
+                "2022-01-01T00:00:03.123456789Z",
+                TimeCell::from_timestamp_nanos_since_epoch(1_640_995_203_123_456_789),
+            ),
+        ];
 
-        assert_eq!(
-            "10.134567s".parse::<TimeCell>().unwrap(),
-            TimeCell::from_duration_nanos(10_134_567_000)
-        );
-
-        assert_eq!(
-            "2022-01-01T00:00:03.123456789Z"
-                .parse::<TimeCell>()
-                .unwrap(),
-            TimeCell::from_timestamp_nanos_since_epoch(1_640_995_203_123_456_789)
-        );
+        for (string, cell) in test_cases {
+            assert_eq!(TimeCell::from_str(string).unwrap(), cell);
+            assert_eq!(TimeCell::from_str(&cell.to_string()).unwrap(), cell);
+        }
     }
 }
