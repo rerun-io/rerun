@@ -18,7 +18,7 @@ pub struct ViewStates {
 
     /// List of all errors that occurred in visualizers of this view.
     ///
-    /// This is cleared out each frame of each frame and populated after all visualizers have been executed.
+    /// This is cleared out each frame and populated after all visualizers have been executed.
     // TODO(andreas): Would be nice to bundle this with `ViewState` by making `ViewState` a struct containing errors & generic data.
     // But at point of writing this causes too much needless churn.
     visualizer_errors: HashMap<ViewId, PerVisualizer<VisualizerExecutionErrorState>>,
