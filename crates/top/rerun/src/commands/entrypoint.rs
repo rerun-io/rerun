@@ -1008,12 +1008,12 @@ fn connect_to_existing_server(
                             sink.send(log_msg);
                         }
                         DataSourceMessage::TableMsg(_) => {
-                            re_log::warn_once!(
+                            re_log::error_once!(
                                 "Received a Table message, can't pass this on to the server"
                             );
                         }
                         DataSourceMessage::UiCommand(ui_command) => {
-                            re_log::warn_once!(
+                            re_log::error_once!(
                                 "Received a UI command, can't pass this on to the server: {ui_command:?}"
                             );
                         }
