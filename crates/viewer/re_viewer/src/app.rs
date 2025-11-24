@@ -2920,6 +2920,9 @@ impl eframe::App for App {
             .take()
             .expect("Failed to take store hub from the Viewer");
 
+        // Update data source order so it's based on opening order.
+        store_hub.update_data_source_order(&self.rx_log.sources());
+
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
             egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(
