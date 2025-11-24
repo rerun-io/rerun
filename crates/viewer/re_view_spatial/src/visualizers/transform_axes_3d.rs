@@ -37,17 +37,10 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
 
         // Make this visualizer available for any entity with Transform3D components
         query_info.required = RequiredComponents::Any(
-            [
-                Transform3D::descriptor_translation().component,
-                Transform3D::descriptor_rotation_axis_angle().component,
-                Transform3D::descriptor_quaternion().component,
-                Transform3D::descriptor_scale().component,
-                Transform3D::descriptor_mat3x3().component,
-                TransformAxes3D::descriptor_axis_length().component,
-                CoordinateFrame::descriptor_frame_id().component,
-            ]
-            .into_iter()
-            .collect(),
+            Transform3D::all_component_identifiers()
+                .chain(TransformAxes3D::all_component_identifiers())
+                .chain(CoordinateFrame::all_component_identifiers())
+                .collect(),
         );
 
         query_info

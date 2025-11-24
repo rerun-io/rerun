@@ -203,6 +203,12 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         .required_component_and_filter_bitmap_per_entity
                         .entry(entity_path.hash())
                         .or_insert_with(|| {
+                            // An empty set would mean that all entities will never be "maybe visualizable",
+                            // because `.all()` is always false for an empty set.
+                            debug_assert!(
+                                !self.required_components_indices.is_empty(),
+                                "[DEBUG ASSERT] encountered empty set of required components for `RequiredComponentMode::All`"
+                            );
                             BitVec::from_elem(self.required_components_indices.len(), false)
                         });
 

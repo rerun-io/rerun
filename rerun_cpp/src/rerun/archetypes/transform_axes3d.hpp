@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: A visual representation of a `archetypes::Transform3D` or an `archetypes::InstancePoses3D`.
+    /// **Archetype**: A visual representation of a `archetypes::Transform3D`.
     ///
     /// ## Example
     ///
