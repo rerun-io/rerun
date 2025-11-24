@@ -43,8 +43,8 @@ except ImportError:
         """
 Could not import the required ROS2 packages.
 
-Make sure you have installed ROS2 (https://docs.ros.org/en/humble/index.html)
-and sourced /opt/ros/humble/setup.bash
+Make sure you have installed ROS2 (https://docs.ros.org/en/kilted/index.html)
+and sourced /opt/ros/kilted/setup.bash
 
 See: README.md for more details.
 """,
