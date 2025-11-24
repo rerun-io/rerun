@@ -4,7 +4,10 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_types::{
+    blueprint::archetypes::EyeControls3D,
+    components::{FillMode, Position3D},
+};
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -37,7 +40,7 @@ pub fn test_boxes3d_fast_path() {
 
 fn run_fast_path_test() {
     // Reset the counter before test
-    re_view_spatial::visualizers::boxes3d::reset_fast_path_counter();
+    re_view_spatial::reset_fast_path_counter();
 
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
@@ -69,7 +72,8 @@ fn run_fast_path_test() {
             RowId::new(),
             TimePoint::default(),
             &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(centers, half_sizes)
-                .with_colors(colors),
+                .with_colors(colors)
+                .with_fill_mode(FillMode::Solid),
         )
     });
 
@@ -111,7 +115,7 @@ fn run_fast_path_test() {
     harness.snapshot("boxes3d_fast_path");
 
     // Verify the fast path was actually used
-    let fast_path_count = re_view_spatial::visualizers::boxes3d::get_fast_path_count();
+    let fast_path_count = re_view_spatial::get_fast_path_count();
     assert!(
         fast_path_count > 0,
         "Fast path should have been used for 1000 solid boxes with translation-only transforms, but counter is {}",

@@ -4,7 +4,7 @@ mod arrows2d;
 mod arrows3d;
 mod assets3d;
 mod boxes2d;
-mod boxes3d;
+pub mod boxes3d;
 mod cameras;
 mod capsules3d;
 mod cylinders3d;

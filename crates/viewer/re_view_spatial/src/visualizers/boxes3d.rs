@@ -5,12 +5,14 @@ use re_types::{
     ArrowString,
     archetypes::Boxes3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
+    datatypes::Bool,
 };
 use re_view::process_color_slice;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, ResolvedAnnotationInfos,
+    typed_fallback_for,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
@@ -33,7 +35,7 @@ pub fn reset_fast_path_counter() {
 
 #[cfg_attr(not(test), allow(dead_code))]
 pub fn get_fast_path_count() -> usize {
-    FAST_PATH_COUNTER.load(std::sync::atomic::Ordering::Relaxed);
+    FAST_PATH_COUNTER.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 // ---
@@ -53,7 +55,7 @@ struct ProcessedBoxData {
     half_sizes: Vec<glam::Vec3>,
     colors: Vec<re_renderer::Color32>,
     picking_ids: Vec<PickingLayerInstanceId>,
-    annotation_infos: Vec<re_view::AnnotationInfo>,
+    annotation_infos: ResolvedAnnotationInfos,
     labels: Vec<ArrowString>,
     show_labels: ShowLabels,
 }
@@ -96,9 +98,9 @@ impl Boxes3DVisualizer {
                 half_sizes: Vec::new(),
                 colors: Vec::new(),
                 picking_ids: Vec::new(),
-                annotation_infos: Vec::new(),
+                annotation_infos: ResolvedAnnotationInfos::Many(Vec::new()),
                 labels: Vec::new(),
-                show_labels: ShowLabels(false),
+                show_labels: ShowLabels(Bool(false)),
             };
         }
 
@@ -515,7 +517,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
         if can_use_fast_path {
             re_log::debug!("Boxes3D: using fast instanced box cloud renderer");
 
-            #[cfg(test)]
             FAST_PATH_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             let mut draw_data_vec = Vec::new();

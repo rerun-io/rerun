@@ -25,6 +25,8 @@ mod view_2d;
 mod view_3d;
 mod visualizers;
 
+pub use crate::visualizers::boxes3d::{get_fast_path_count, reset_fast_path_counter};
+
 pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
