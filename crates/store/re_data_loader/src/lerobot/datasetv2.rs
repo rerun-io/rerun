@@ -79,10 +79,6 @@ impl LeRobotDatasetV2 {
     /// Loads a `LeRobotDataset` from a directory.
     ///
     /// This method initializes a dataset by reading its metadata from the `meta/` directory.
-    ///
-    /// # Important
-    ///
-    /// Currently, this only supports v2 `LeRobot` datasets.
     pub fn load_from_directory(path: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let path = path.as_ref();
         let metadatapath = path.join("meta");

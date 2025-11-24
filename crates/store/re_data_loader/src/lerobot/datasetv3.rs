@@ -83,10 +83,6 @@ impl LeRobotDatasetV3 {
     /// Loads a `LeRobotDataset` from a directory.
     ///
     /// This method initializes a dataset by reading its metadata from the `meta/` directory.
-    ///
-    /// # Important
-    ///
-    /// Currently, this only supports v2 `LeRobot` datasets.
     pub fn load_from_directory(path: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let path = path.as_ref();
         let metadatapath = path.join("meta");
@@ -752,6 +748,7 @@ fn load_episode(
     dataset: &LeRobotDatasetV3,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
+    println!("Loading LeRobot episode {}", episode.0);
     let data = dataset
         .read_episode_data(episode)
         .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
@@ -925,6 +922,10 @@ fn load_episode_video(
     let start_video_time = re_video::Time::from_secs(start_time, timescale);
     let end_video_time = re_video::Time::from_secs(end_time, timescale);
 
+    re_log::debug!(
+        "Video '{observation}': start_time={start_time}s, end_time={end_time}s, start_video_time={start_video_time:?}, end_video_time={end_video_time:?}"
+    );
+
     // Find the GOPs (Group of Pictures) that contain our time range
     let start_gop = video
         .gop_index_containing_presentation_timestamp(start_video_time)
@@ -934,10 +935,21 @@ fn load_episode_video(
         .gop_index_containing_presentation_timestamp(end_video_time)
         .unwrap_or(video.gops.num_elements() - 1);
 
+    re_log::debug!(
+        "Video '{observation}': start_gop={start_gop}, end_gop={end_gop}, num_gops={}",
+        video.gops.num_elements()
+    );
+
     // Determine the sample range to extract from the video
     let start_sample = video.gops[start_gop].sample_range.start;
     let end_sample = video.gops[end_gop].sample_range.end;
+
     let sample_range = start_sample..end_sample;
+
+    re_log::debug!(
+        "Video '{observation}': sample_range={start_sample}..{end_sample} (length={})",
+        sample_range.len()
+    );
 
     // Extract all video samples in this range
     let mut samples = Vec::with_capacity(sample_range.len());
@@ -947,6 +959,13 @@ fn load_episode_video(
     let mut annexb_state = AnnexBStreamState::default();
 
     for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
+        // make sure we absolutely do not leak any samples from outside the requested time range
+        if sample_meta.presentation_timestamp < start_video_time
+            || sample_meta.presentation_timestamp > end_video_time
+        {
+            continue;
+        }
+
         let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
             anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
         })?;
@@ -977,6 +996,7 @@ fn load_episode_video(
     let num_samples = samples_meta.len();
     let frame_count = time_column.num_rows();
 
+    println!("num samples: {num_samples}, frame_count: {frame_count}");
     let uniform_times: Vec<i64> = (0..num_samples)
         .map(|i| i64::try_from((i * frame_count) / num_samples).unwrap_or_default())
         .collect();
