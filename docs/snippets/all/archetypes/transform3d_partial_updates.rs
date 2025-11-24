@@ -6,13 +6,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_partial_updates").spawn()?;
 
-    // Set up a 3D box and transform arrows.
+    // Set up a 3D box.
     rec.log(
         "box",
         &[
             &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
                 .with_fill_mode(rerun::FillMode::Solid) as &dyn AsComponents,
-            &rerun::TransformAxes3D::new(10.0),
         ],
     )?;
 
@@ -48,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
-    // Clear all of the box's attributes, and reset its axis length.
+    // Clear all of the box's attributes.
     rec.log("box", &rerun::Transform3D::clear_fields())?;
 
     Ok(())
