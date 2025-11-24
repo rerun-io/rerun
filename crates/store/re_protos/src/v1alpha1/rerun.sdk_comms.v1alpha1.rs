@@ -120,7 +120,8 @@ pub mod message_proxy_service_client {
         clippy::wildcard_imports,
         clippy::let_unit_value
     )]
-    use tonic::codegen::{http::Uri, *};
+    use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Simple buffer for messages between SDKs and viewers.
     ///
     /// - SDKs produce messages by calling `WriteMessages`
