@@ -882,23 +882,17 @@ fn start_native_viewer(
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
     )?;
-    #[allow(clippy::allow_attributes, unused_mut)]
-    let mut table_receivers = Vec::new();
 
     // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
     #[cfg(feature = "server")]
     if !connect {
-        let (log_server, table_server): (
-            Receiver<DataSourceMessage>,
-            crossbeam::channel::Receiver<re_log_types::TableMsg>,
-        ) = re_grpc_server::spawn_with_recv(
+        let log_receiver = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
         );
 
-        log_receivers.push(log_server);
-        table_receivers.push(table_server);
+        log_receivers.push(log_receiver);
     }
 
     let tokio_runtime_handle = tokio_runtime_handle.clone();
@@ -926,9 +920,6 @@ fn start_native_viewer(
             app.set_profiler(profiler);
             for rx in log_receivers {
                 app.add_log_receiver(rx);
-            }
-            for rx in table_receivers {
-                app.add_table_receiver(rx);
             }
             for url in urls_to_pass_on_to_viewer {
                 app.open_url_or_file(&url);
@@ -1016,8 +1007,13 @@ fn connect_to_existing_server(
                         DataSourceMessage::LogMsg(log_msg) => {
                             sink.send(log_msg);
                         }
+                        DataSourceMessage::TableMsg(_) => {
+                            re_log::warn_once!(
+                                "Received a Table message, can't pass this on to the server"
+                            );
+                        }
                         DataSourceMessage::UiCommand(ui_command) => {
-                            re_log::warn!(
+                            re_log::warn_once!(
                                 "Received a UI command, can't pass this on to the server: {ui_command:?}"
                             );
                         }
@@ -1161,17 +1157,12 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let (log_server, table_server): (
-            Receiver<DataSourceMessage>,
-            crossbeam::channel::Receiver<re_log_types::TableMsg>,
-        ) = re_grpc_server::spawn_with_recv(
+        let log_server = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
         );
 
-        // We can't store tables yet locally.
-        drop(table_server);
         log_receivers.push(log_server);
     }
 
@@ -1237,6 +1228,12 @@ fn assert_receive_into_entity_db(
                                     };
 
                                 mut_db.add(&msg)?;
+                            }
+
+                            DataSourceMessage::TableMsg(_) => {
+                                anyhow::bail!(
+                                    "Received a TableMsg which can't be stored in a entity_db"
+                                );
                             }
 
                             DataSourceMessage::UiCommand(ui_command) => {
@@ -1360,8 +1357,11 @@ fn stream_to_rrd_on_disk(
                     DataSourceMessage::LogMsg(log_msg) => {
                         encoder.append(&log_msg)?;
                     }
+                    DataSourceMessage::TableMsg(_) => {
+                        re_log::error_once!("Received a TableMsg which can't be stored in a file");
+                    }
                     DataSourceMessage::UiCommand(ui_command) => {
-                        re_log::warn!(
+                        re_log::error_once!(
                             "Received a UI command which can't be stored in a file: {ui_command:?}"
                         );
                     }
