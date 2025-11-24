@@ -427,9 +427,7 @@ fn dataset_entry_ui(
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
                 for partition in displayed_partitions {
                     match partition {
-                        PartitionData::Loading { receiver, .. } => {
-                            receiver_ui(ctx, ui, receiver, true);
-                        }
+                        PartitionData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
 
                         PartitionData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
@@ -648,8 +646,8 @@ fn loading_receivers_ui(
     ui: &mut egui::Ui,
     loading_receivers: &Vec<Arc<SmartChannelSource>>,
 ) {
-    for source in loading_receivers {
-        receiver_ui(ctx, ui, source, false);
+    for receiver in loading_receivers {
+        receiver_ui(ctx, ui, receiver, false);
     }
 }
 

@@ -376,9 +376,9 @@ impl<'a> ServerEntriesData<'a> {
                                 .collect();
 
                             if let Some(loading_partitions) = loading_partitions
-                                && let Some(sources) = loading_partitions.get(&entry.id())
+                                && let Some(smart_channels) = loading_partitions.get(&entry.id())
                             {
-                                displayed_partitions.extend(sources.iter().map(|source| {
+                                displayed_partitions.extend(smart_channels.iter().map(|source| {
                                     PartitionData::Loading {
                                         receiver: source.clone(),
                                     }

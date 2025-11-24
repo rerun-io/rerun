@@ -2913,6 +2913,7 @@ impl eframe::App for App {
             .take()
             .expect("Failed to take store hub from the Viewer");
 
+        // Update data source order so it's based on opening order.
         store_hub.update_data_source_order(&self.rx_log.sources());
 
         #[cfg(not(target_arch = "wasm32"))]
