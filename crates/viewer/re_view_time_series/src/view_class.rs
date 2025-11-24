@@ -5,12 +5,12 @@ use egui::{
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use nohash_hasher::IntSet;
 use re_viewer_context::{
-    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities,
-    PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewHighlights,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    external::re_entity_db::InstancePath,
+    BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
+    PerVisualizerInViewClass, QueryRange, RecommendedView, SmallVisualizerSet,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -327,7 +327,7 @@ impl ViewClass for TimeSeriesView {
         // Because SeriesLines is our fallback visualizer, also include any entities for which
         // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
-            .maybe_visualizable_entities_per_visualizer
+            .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
         {
             indicated_entities
@@ -387,10 +387,14 @@ impl ViewClass for TimeSeriesView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
+        debug_assert_eq!(
+            Self::identifier(),
+            visualizable_entities_per_visualizer.view_class_identifier
+        );
+
         let available_visualizers: HashSet<&ViewSystemIdentifier> =
             visualizable_entities_per_visualizer
                 .iter()

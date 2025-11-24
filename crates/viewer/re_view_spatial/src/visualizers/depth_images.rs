@@ -10,9 +10,8 @@ use re_types::{
     image::ImageKind,
 };
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
-    QueryContext, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
+    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
+    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
@@ -20,7 +19,6 @@ use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
     contexts::{SpatialSceneEntityContext, TransformTreeContext},
     view_kind::SpatialViewKind,
-    visualizers::filter_visualizable_2d_entities,
 };
 
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
@@ -220,14 +218,7 @@ impl VisualizerSystem for DepthImageVisualizer {
         VisualizerQueryInfo::from_archetype::<DepthImage>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
 
     fn execute(
         &mut self,

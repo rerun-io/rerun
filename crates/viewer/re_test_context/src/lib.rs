@@ -8,18 +8,15 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{
-    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    external::re_tuid::Tuid,
-};
-use re_types::{Component as _, ComponentDescriptor, archetypes::RecordingInfo};
+use re_log_types::external::re_tuid::Tuid;
+use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_types::archetypes::RecordingInfo;
+use re_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
-
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
@@ -486,9 +483,9 @@ impl TestContext {
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(store_context.recording.store_id());
-        let maybe_visualizable_entities_per_visualizer = self
+        let visualizable_entities_per_visualizer = self
             .view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
+            .visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
 
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
@@ -528,7 +525,7 @@ impl TestContext {
             connected_receivers: &Default::default(),
             store_context: &store_context,
             storage_context: &storage_context,
-            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
+            visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             time_ctrl: &self.time_ctrl.read(),

@@ -3,11 +3,10 @@ use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
 use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
+use super::VisualizerCollection;
 use crate::{
     DataQueryResult, DataResult, QueryContext, ViewId, blueprint_helpers::BlueprintContext as _,
 };
-
-use super::VisualizerCollection;
 
 /// The context associated with a view.
 ///
@@ -175,5 +174,19 @@ impl<'a> ViewContext<'a> {
         self.viewer_ctx
             .view_class_registry()
             .new_visualizer_collection(self.view_class_identifier)
+    }
+
+    /// Returns the view class for the currently active view.
+    pub fn view_class(&self) -> &dyn crate::ViewClass {
+        self.viewer_ctx
+            .view_class_registry()
+            .get_class_or_log_error(self.view_class_identifier)
+    }
+
+    /// Returns the view class for the currently active view.
+    pub fn view_class_entry(&self) -> &crate::view::view_class_registry::ViewClassRegistryEntry {
+        self.viewer_ctx
+            .view_class_registry()
+            .get_class_entry_or_log_error(self.view_class_identifier)
     }
 }

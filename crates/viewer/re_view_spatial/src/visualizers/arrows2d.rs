@@ -7,16 +7,12 @@ use re_types::{
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind,
-    visualizers::filter_visualizable_2d_entities,
-};
+use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind};
 
 use super::{
     SpatialViewVisualizerData,
@@ -182,14 +178,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
         VisualizerQueryInfo::from_archetype::<Arrows2D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
 
     fn execute(
         &mut self,

@@ -1,5 +1,4 @@
 use ahash::HashMap;
-
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
@@ -11,14 +10,14 @@ use re_ui::list_item::ListItem;
 use crate::command_sender::{SelectionSource, SetSelection};
 use crate::component_fallbacks::FallbackProviderRegistry;
 use crate::drag_and_drop::DragAndDropPayload;
+use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
-    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
-    IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
-    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
-    query_context::DataQueryResult,
+    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
+    DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection, PerVisualizer,
+    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl,
+    ViewClassRegistry, ViewId, VisualizableEntities,
 };
-use crate::{DisplayMode, GlobalContext, Item, StorageContext, StoreHub, SystemCommand};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -36,10 +35,9 @@ pub struct ViewerContext<'a> {
     /// Defaults for components in various contexts.
     pub component_fallback_registry: &'a FallbackProviderRegistry,
 
-    /// Mapping from class and system to entities for the store
-    ///
-    /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable entities etc.
-    pub maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
+    /// For each visualizer, the set of entities that are known to have all its required components.
+    // TODO(andreas): This could have a generation id, allowing to update heuristics entities etc. more lazily.
+    pub visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
 
     /// For each visualizer, the set of entities with relevant archetypes.
     ///

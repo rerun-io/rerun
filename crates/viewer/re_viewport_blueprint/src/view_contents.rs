@@ -3,17 +3,13 @@ use std::sync::Arc;
 use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-use slotmap::SlotMap;
-use smallvec::SmallVec;
-
 use re_entity_db::{EntityDb, EntityTree, external::re_chunk_store::LatestAtQuery};
 use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
     ResolvedEntityPathRule, Timeline, path::RuleEffect,
 };
-use re_types::Loggable as _;
 use re_types::{
-    Archetype as _, ViewClassIdentifier,
+    Archetype as _, Loggable as _, ViewClassIdentifier,
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
         components::QueryExpression,
@@ -21,10 +17,12 @@ use re_types::{
 };
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, PropertyOverrides,
+    IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass, PropertyOverrides,
     QueryRange, ViewClassRegistry, ViewId, ViewState, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities,
 };
+use slotmap::SlotMap;
+use smallvec::SmallVec;
 
 use crate::{ViewBlueprint, ViewProperty};
 
@@ -277,7 +275,9 @@ impl ViewContents {
         ctx: &re_viewer_context::StoreContext<'_>,
         view_class_registry: &re_viewer_context::ViewClassRegistry,
         blueprint_query: &LatestAtQuery,
-        visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_for_visualizer_systems: &PerVisualizerInViewClass<
+            VisualizableEntities,
+        >,
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
@@ -340,7 +340,9 @@ impl ViewContents {
     }
 
     fn visualizers_per_entity(
-        visualizable_entities_for_visualizer_systems: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_for_visualizer_systems: &PerVisualizerInViewClass<
+            VisualizableEntities,
+        >,
     ) -> IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>> {
         re_tracing::profile_function!();
 
@@ -444,8 +446,7 @@ impl QueryExpressionEvaluator<'_> {
 pub struct DataQueryPropertyResolver<'a> {
     view_class_registry: &'a re_viewer_context::ViewClassRegistry,
     view: &'a ViewBlueprint,
-    maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
-    visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+    visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
     indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 }
 
@@ -453,14 +454,12 @@ impl<'a> DataQueryPropertyResolver<'a> {
     pub fn new(
         view: &'a ViewBlueprint,
         view_class_registry: &'a re_viewer_context::ViewClassRegistry,
-        maybe_visualizable_entities_per_visualizer: &'a PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> Self {
         Self {
             view_class_registry,
             view,
-            maybe_visualizable_entities_per_visualizer,
             visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer,
         }
@@ -522,7 +521,6 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .class(self.view_class_registry)
                     .choose_default_visualizers(
                         &node.data_result.entity_path,
-                        self.maybe_visualizable_entities_per_visualizer,
                         self.visualizable_entities_per_visualizer,
                         self.indicated_entities_per_visualizer,
                     );
@@ -657,7 +655,7 @@ mod tests {
         StoreId, TimePoint, Timeline,
         example_components::{MyPoint, MyPoints},
     };
-    use re_viewer_context::{Caches, StoreContext, VisualizableEntities, blueprint_timeline};
+    use re_viewer_context::{Caches, StoreContext, blueprint_timeline};
 
     use super::*;
 
@@ -673,6 +671,7 @@ mod tests {
             re_log_types::StoreKind::Blueprint,
             "test_app",
         ));
+        let view_class_identifier = "3D".into();
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
@@ -695,10 +694,10 @@ mod tests {
         }
 
         let mut visualizable_entities_for_visualizer_systems =
-            PerVisualizer::<VisualizableEntities>::default();
+            PerVisualizerInViewClass::<VisualizableEntities>::empty(view_class_identifier);
 
         visualizable_entities_for_visualizer_systems
-            .0
+            .per_visualizer
             .entry("Points3D".into())
             .or_insert_with(|| {
                 VisualizableEntities(
@@ -807,7 +806,7 @@ mod tests {
             let view_id = ViewId::random();
             let contents = ViewContents::new(
                 view_id,
-                "3D".into(),
+                view_class_identifier,
                 EntityPathFilter::parse_forgiving(filter).resolve_forgiving(&space_env),
             );
 

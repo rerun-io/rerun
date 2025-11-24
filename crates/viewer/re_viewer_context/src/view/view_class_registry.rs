@@ -1,15 +1,14 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
-    QueryContext, ViewClass, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
-    ViewerContext, VisualizerCollection, VisualizerSystem,
+    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryContext,
+    ViewClass, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
+    VisualizableEntities, VisualizerCollection, VisualizerSystem,
     component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
 };
@@ -271,11 +270,32 @@ impl ViewClassRegistry {
         Ok(())
     }
 
+    /// Queries a View registry entry by class name, returning `None` if it is not registered.
+    pub fn class_entry(&self, name: ViewClassIdentifier) -> Option<&ViewClassRegistryEntry> {
+        self.view_classes.get(&name)
+    }
+
+    /// Queries a View registry entry type by class name and logs if it fails, returning a placeholder class.
+    pub fn get_class_entry_or_log_error(
+        &self,
+        name: ViewClassIdentifier,
+    ) -> &ViewClassRegistryEntry {
+        if let Some(result) = self.class_entry(name) {
+            result
+        } else {
+            re_log::error_once!("Unknown view class {:?}", name);
+            &self.placeholder
+        }
+    }
+
     /// Queries a View type by class name, returning `None` if it is not registered.
     pub fn class(&self, name: ViewClassIdentifier) -> Option<&dyn ViewClass> {
-        self.view_classes
-            .get(&name)
-            .map(|boxed| boxed.class.as_ref())
+        self.class_entry(name).map(|e| e.class.as_ref())
+    }
+
+    /// Queries a View type by class name and logs if it fails, returning a placeholder class.
+    pub fn get_class_or_log_error(&self, name: ViewClassIdentifier) -> &dyn ViewClass {
+        self.get_class_entry_or_log_error(name).class.as_ref()
     }
 
     /// Returns the user-facing name for the given view class.
@@ -285,16 +305,6 @@ impl ViewClassRegistry {
         self.view_classes
             .get(&name)
             .map_or("<unknown view class>", |boxed| boxed.class.display_name())
-    }
-
-    /// Queries a View type by class name and logs if it fails, returning a placeholder class.
-    pub fn get_class_or_log_error(&self, name: ViewClassIdentifier) -> &dyn ViewClass {
-        if let Some(result) = self.class(name) {
-            result
-        } else {
-            re_log::error_once!("Unknown view class {:?}", name);
-            self.placeholder.class.as_ref()
-        }
     }
 
     /// Iterates over all registered View class types, sorted by name.
@@ -307,13 +317,13 @@ impl ViewClassRegistry {
     /// For each visualizer, return the set of entities that may be visualizable with it.
     ///
     /// The list is kept up to date by store subscribers.
-    pub fn maybe_visualizable_entities_for_visualizer_systems(
+    pub fn visualizable_entities_for_visualizer_systems(
         &self,
         store_id: &re_log_types::StoreId,
-    ) -> PerVisualizer<MaybeVisualizableEntities> {
+    ) -> PerVisualizer<VisualizableEntities> {
         re_tracing::profile_function!();
 
-        PerVisualizer::<MaybeVisualizableEntities>(
+        PerVisualizer::<VisualizableEntities>(
             self.visualizers
                 .iter()
                 .map(|(id, entry)| {
@@ -321,7 +331,7 @@ impl ViewClassRegistry {
                         *id,
                         ChunkStore::with_subscriber::<VisualizerEntitySubscriber, _, _>(
                             entry.entity_subscriber_handle,
-                            |subscriber| subscriber.maybe_visualizable_entities(store_id).cloned(),
+                            |subscriber| subscriber.visualizable_entities(store_id).cloned(),
                         )
                         .flatten()
                         .unwrap_or_default(),
@@ -329,6 +339,30 @@ impl ViewClassRegistry {
                 })
                 .collect(),
         )
+    }
+
+    /// Filters out visualizers that aren't active in a given view from the result of [`Self::visualizable_entities_for_visualizer_systems`].
+    pub fn visualizable_entities_for_view(
+        &self,
+        view_class_identifier: ViewClassIdentifier,
+        visualizable_entities: &PerVisualizer<VisualizableEntities>,
+    ) -> PerVisualizerInViewClass<VisualizableEntities> {
+        let Some(view_class) = self.class_entry(view_class_identifier) else {
+            return PerVisualizerInViewClass::empty(view_class_identifier);
+        };
+
+        PerVisualizerInViewClass {
+            view_class_identifier,
+            per_visualizer: visualizable_entities
+                .iter()
+                .filter_map(|(vis, ents)| {
+                    view_class
+                        .visualizer_system_ids
+                        .contains(vis)
+                        .then_some((*vis, ents.clone()))
+                })
+                .collect(),
+        }
     }
 
     /// For each visualizer, the set of entities that have at least one component with a matching archetype name.

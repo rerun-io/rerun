@@ -6,16 +6,15 @@ use re_types::{
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 use std::iter;
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities,
+    SpatialViewVisualizerData,
     utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
 };
 
@@ -107,14 +106,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Boxes3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
 
     fn execute(
         &mut self,

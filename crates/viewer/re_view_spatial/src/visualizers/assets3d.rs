@@ -3,12 +3,11 @@ use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::renderer::GpuMeshInstance;
 use re_types::{ArrowString, archetypes::Asset3D, components::AlbedoFactor};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::SpatialViewVisualizerData;
 
 use crate::{
     caches::{AnyMesh, MeshCache, MeshCacheKey},
@@ -116,14 +115,7 @@ impl VisualizerSystem for Asset3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Asset3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
+    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
 
     fn execute(
         &mut self,
