@@ -74,7 +74,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, static: 
             except Exception:
                 pass
 
-            albedo_factor = mean_vertex_color or visual_color
+            albedo_factor = mean_vertex_color if mean_vertex_color is not None else visual_color
 
             rr.log(
                 path,
