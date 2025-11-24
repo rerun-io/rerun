@@ -1,0 +1,3 @@
+# Enable these if you want to run `cargo +nightly fmt`:
+# imports_granularity = "Crate"
+# group_imports = "StdExternalCrate"
