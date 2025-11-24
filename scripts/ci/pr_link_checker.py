@@ -27,11 +27,26 @@ def eprint(*args: Any, **kwargs: Any) -> None:
 
 
 def load_lychee_excludes(config_path: str = "lychee.toml") -> list[str]:
-    """Load exclude_path patterns from lychee config file."""
+    """Load and normalize exclude_path patterns from lychee config file."""
     try:
         with open(config_path, encoding="utf-8") as f:
             config = tomlkit.load(f)
-            return config.get("exclude_path", [])  # type: ignore[no-any-return]
+            exclude_paths = config.get("exclude_path", [])
+
+            # Validate that exclude_path is actually a list
+            if not isinstance(exclude_paths, list):
+                eprint(f"Error: 'exclude_path' in {config_path} must be a list, got {type(exclude_paths).__name__}")
+                sys.exit(1)
+
+            # Normalize patterns (strip leading ./) and validate each is a string
+            normalized = []
+            for pattern in exclude_paths:
+                if not isinstance(pattern, str):
+                    eprint(f"Error: exclude_path patterns must be strings, got {type(pattern).__name__}: {pattern}")
+                    sys.exit(1)
+                normalized.append(pattern.lstrip("./"))
+
+            return normalized
     except FileNotFoundError:
         eprint(f"Error: lychee config file '{config_path}' not found.")
         eprint("This file is required to determine which files to exclude from link checking.")
@@ -49,7 +64,6 @@ def should_exclude_file(filepath: str, exclude_patterns: list[str]) -> bool:
 
     normalized = filepath.lstrip("./")
     for pattern in exclude_patterns:
-        pattern = pattern.lstrip("./")
         # Exact match or directory prefix match
         if normalized == pattern or normalized.startswith(pattern + "/"):
             return True
