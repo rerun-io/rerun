@@ -1220,13 +1220,6 @@ mod tests {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                 }),
             ),
-            // (
-            //     "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3",
-            //     ViewerOpenUrl::RedapEntry(re_uri::EntryUri {
-            //         origin: "rerun+http://localhost:51234".parse().unwrap(),
-            //         entry_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-            //     }),
-            // ),
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1",
                 ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
