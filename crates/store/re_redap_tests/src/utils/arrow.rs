@@ -361,13 +361,13 @@ impl SchemaExt for arrow::datatypes::Schema {
                 format!(
                     "{}: {}",
                     field.name(),
-                    re_arrow_util::format_data_type(field.data_type())
+                    re_arrow_util::format_field_datatype(field),
                 )
             } else {
                 format!(
                     "{}: {} [\n    {}\n]",
                     field.name(),
-                    re_arrow_util::format_data_type(field.data_type()),
+                    re_arrow_util::format_field_datatype(field),
                     field
                         .metadata()
                         .iter()
