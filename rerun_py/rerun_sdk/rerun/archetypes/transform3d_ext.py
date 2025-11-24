@@ -33,7 +33,6 @@ class Transform3DExt:
         relation: TransformRelationLike | None = None,
         child_frame: Utf8Like | None = None,
         parent_frame: Utf8Like | None = None,
-        axis_length: Float32Like | None = None,
     ) -> None:
         """
         Create a new instance of the Transform3D archetype.
@@ -95,11 +94,6 @@ class Transform3DExt:
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
 
             To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
-        axis_length:
-            Visual length of the 3 axes.
-
-            The length is interpreted in the local coordinate system of the transform.
-            If the transform is scaled, the axes will be scaled accordingly.
 
         """
 
@@ -162,7 +156,6 @@ class Transform3DExt:
                 relation=relation,
                 child_frame=child_frame,
                 parent_frame=parent_frame,
-                axis_length=axis_length,
             )
             return
         self.__attrs_clear__()

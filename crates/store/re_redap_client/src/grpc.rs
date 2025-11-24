@@ -410,7 +410,7 @@ async fn stream_partition_from_server(
 
     // Send UI commands for recording (as opposed to blueprint) stores.
     if store_id.is_recording() {
-        let valid_range_msg = if let Some(time_range) = time_range.clone() {
+        let valid_range_msg = if let Some(time_range) = time_range {
             DataSourceUiCommand::AddValidTimeRange {
                 store_id: store_id.clone(),
                 timeline: Some(*time_range.timeline.name()),
@@ -511,11 +511,11 @@ async fn stream_partition_from_server(
             partition_id,
             exclude_static_data,
             exclude_temporal_data,
-            time_range.clone().map(|time_range| {
+            time_range.map(|time_range| {
                 Query {
                     range: Some(QueryRange {
                         index: time_range.timeline.name().to_string(),
-                        index_range: time_range.clone().into(),
+                        index_range: time_range.into(),
                     }),
                     latest_at: Some(QueryLatestAt {
                         index: Some(time_range.timeline.name().to_string()),

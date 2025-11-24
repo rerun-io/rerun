@@ -18,14 +18,14 @@ mod meshes;
 mod points2d;
 mod points3d;
 mod segmentation_images;
-mod transform3d_arrows;
+mod transform_axes_3d;
 pub mod utilities;
 mod video;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
 use re_types::{ComponentDescriptor, archetypes};
-pub use transform3d_arrows::{AxisLengthDetector, Transform3DArrowsVisualizer, add_axis_arrows};
+pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
     SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
     process_labels_3d, textured_rect_from_image,
@@ -85,8 +85,7 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
-    system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<transform_axes_3d::TransformAxes3DVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
     system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())
@@ -113,8 +112,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
-    system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
-    system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
+    system_registry.register_visualizer::<transform_axes_3d::TransformAxes3DVisualizer>()?;
     system_registry.register_visualizer::<video::VideoFrameReferenceVisualizer>()?;
     system_registry.register_visualizer::<video::VideoStreamVisualizer>()?;
     Ok(())

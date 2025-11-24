@@ -57,10 +57,6 @@ def run_cargo(
     #     args.append("--quiet")
     args += cargo_args.split(" ")
 
-    # if cargo_cmd == "nextest":
-    #     # Needs to go after `run`, so append it last.
-    #     args.append("--cargo-quiet")
-
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str} ", end="", flush=True)
     start_time = time.time()

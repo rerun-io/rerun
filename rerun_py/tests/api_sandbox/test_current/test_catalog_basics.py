@@ -27,7 +27,7 @@ entry_kind: int32 not null
 created_at: timestamp[ns] not null
 updated_at: timestamp[ns] not null
 -- schema metadata --
-sorbet:version: '0.1.1'\
+sorbet:version: '0.1.2'\
 """)
 
         assert str(
@@ -36,7 +36,7 @@ sorbet:version: '0.1.1'\
             """\
 ┌─────────────────────────────┐
 │ METADATA:                   │
-│ * version: 0.1.1            │
+│ * version: 0.1.2            │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌────────────┬────────────┐ │
 │ │ name       ┆ entry_kind │ │
