@@ -151,6 +151,7 @@ pub fn test_custom_visible_time_range() {
 }
 
 const MAX_TIME: i64 = 31;
+
 fn log_data(test_context: &mut TestContext, timeline: re_log_types::Timeline) {
     for i in 0..=MAX_TIME {
         let timepoint = TimePoint::from([(timeline, i)]);
