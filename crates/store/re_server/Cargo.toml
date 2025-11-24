@@ -44,12 +44,6 @@ re_sorbet.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
 
-# Main.rs dependencies (convenience binary to start the server without the viewer)
-re_error.workspace = true
-re_memory.workspace = true
-re_crash_handler.workspace = true
-mimalloc.workspace = true
-
 # External
 ahash.workspace = true
 anyhow.workspace = true
@@ -91,7 +85,6 @@ lance-linalg = { workspace = true, optional = true }
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_redap_tests.workspace = true
-re_sdk.workspace = true
 
 
 [build-dependencies]

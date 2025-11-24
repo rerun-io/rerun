@@ -39,8 +39,7 @@ pub struct Index {
 }
 
 #[cfg(not(feature = "lance"))]
-pub struct Index {
-}
+pub struct Index {}
 
 /// All indexes for a dataset's chunks
 ///
@@ -88,7 +87,9 @@ impl DatasetChunkIndexes {
                     .tempdir()
             })
             .as_ref()
-            .map_err(|e| StoreError::IndexingError(format!("Cannot create index directory {e}")))?;
+            .map_err(|err| {
+                StoreError::IndexingError(format!("Cannot create index directory {err}"))
+            })?;
 
         self.add_index(dataset, &config, temp_dir.path()).await?;
 
@@ -265,7 +266,9 @@ impl DatasetChunkIndexes {
         layer_name: &str,
         _overwritten: bool,
     ) -> Result<(), StoreError> {
-        Err(StoreError::IndexingError("Lance feature not enabled".to_owned()))
+        Err(StoreError::IndexingError(
+            "Lance feature not enabled".to_owned(),
+        ))
     }
 }
 

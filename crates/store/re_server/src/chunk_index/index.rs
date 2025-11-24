@@ -384,7 +384,7 @@ async fn create_lance_index(
             tracing::warn!("not enough rows to train index yet");
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(err) => Err(err),
     }?;
 
     Ok(())
