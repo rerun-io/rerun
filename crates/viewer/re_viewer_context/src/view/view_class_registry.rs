@@ -138,6 +138,17 @@ impl ViewSystemRegistrator<'_> {
             provider,
         );
     }
+
+    /// Register a fallback provider specific to the current view
+    /// and given component.
+    pub fn register_array_fallback_provider<C: re_types::Component, I: IntoIterator<Item = C>>(
+        &mut self,
+        component: ComponentIdentifier,
+        provider: impl Fn(&QueryContext<'_>) -> I + Send + Sync + 'static,
+    ) {
+        self.fallback_registry
+            .register_view_array_fallback_provider(self.identifier, component, provider);
+    }
 }
 
 /// View class entry in [`ViewClassRegistry`].

@@ -121,7 +121,7 @@ impl SeriesPointsSystem {
 
         let fallback_shape = MarkerShape::default();
 
-        let time_range = util::determine_time_range(ctx)?;
+        let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
             use re_view::RangeResultsExt as _;

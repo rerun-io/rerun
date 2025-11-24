@@ -85,7 +85,7 @@ impl DataLoader for UrdfDataLoader {
             robot,
             &filepath,
             &tx,
-            &settings.recommended_store_id(),
+            &settings.opened_store_id_or_recommended(),
             &settings.entity_path_prefix,
             &settings.timepoint.clone().unwrap_or_default(),
         )
@@ -114,7 +114,7 @@ impl DataLoader for UrdfDataLoader {
             robot,
             &filepath,
             &tx,
-            &settings.recommended_store_id(),
+            &settings.opened_store_id_or_recommended(),
             &settings.entity_path_prefix,
             &settings.timepoint.clone().unwrap_or_default(),
         )

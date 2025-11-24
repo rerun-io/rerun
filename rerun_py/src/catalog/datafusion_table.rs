@@ -71,4 +71,8 @@ impl PyDataFusionTable {
     fn name(&self) -> String {
         self.name.clone()
     }
+
+    pub fn __str__(&self) -> String {
+        format!("DataFusionTable(name='{}')", self.name)
+    }
 }

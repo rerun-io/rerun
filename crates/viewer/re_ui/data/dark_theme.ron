@@ -298,7 +298,11 @@
       "color": "#CC9CC6"
     },
 
-    //numbers, bool, null
+    // null
+    "code_null_color": {
+      "color": "#C8A973"
+    },
+    // numbers, bool
     "code_primitive_color": {
       "color": "#84BE99"
     },

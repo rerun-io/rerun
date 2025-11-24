@@ -78,13 +78,17 @@ class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):
     def _native_to_pa_array(data: FilterByRangeArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import TimeIntBatch
 
+        typed_data: Sequence[FilterByRange]
+
         if isinstance(data, FilterByRange):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                TimeIntBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                TimeIntBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeIntBatch([x.start for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeIntBatch([x.end for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )
