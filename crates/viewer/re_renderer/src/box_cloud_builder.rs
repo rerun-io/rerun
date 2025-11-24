@@ -1,5 +1,3 @@
-use re_log::ResultExt as _;
-
 use crate::{
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     RenderContext,

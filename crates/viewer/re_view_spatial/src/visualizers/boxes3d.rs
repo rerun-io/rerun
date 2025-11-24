@@ -20,16 +20,18 @@ use super::{
     utilities::{LabeledBatch, ProcMeshBatch, ProcMeshDrawableBuilder},
 };
 
-// Test-only counter to verify fast path is actually used
-#[cfg(test)]
-static FAST_PATH_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+// Test-only counter to verify fast path is actually used. Compiled in non-test
+// builds to keep integration tests linking; silence dead-code warnings there.
+#[cfg_attr(not(test), allow(dead_code))]
+static FAST_PATH_COUNTER: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
 
-#[cfg(test)]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn reset_fast_path_counter() {
     FAST_PATH_COUNTER.store(0, std::sync::atomic::Ordering::Relaxed);
 }
 
-#[cfg(test)]
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn get_fast_path_count() -> usize {
     FAST_PATH_COUNTER.load(std::sync::atomic::Ordering::Relaxed);
 }

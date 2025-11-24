@@ -13,8 +13,7 @@
 use std::ops::Range;
 
 use crate::{
-    BoxCloudBuilder, Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, DrawableCollector,
-    OutlineMaskPreference, PickingLayerInstanceId,
+    BoxCloudBuilder, Color32, DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
@@ -24,7 +23,6 @@ use crate::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, BufferDesc, GpuBindGroup,
         GpuBindGroupLayoutHandle, GpuBuffer, GpuRenderPipelineHandle,
         GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
-        VertexBufferLayout,
     },
 };
 use bitflags::bitflags;
@@ -85,7 +83,8 @@ pub mod gpu_data {
         pub half_size_x: f32,
         pub half_size_yz: [f32; 2],
         pub color: Color32,
-        pub picking_instance_id: PickingLayerInstanceId,
+        /// Packed [lo, hi] u32 words of PickingLayerInstanceId to avoid padding.
+        pub picking_instance_id: [u32; 2],
     }
 
     impl BoxInstanceData {
@@ -278,7 +277,10 @@ impl BoxCloudDrawData {
                     half_size_x: inst.half_size.x,
                     half_size_yz: [inst.half_size.y, inst.half_size.z],
                     color: inst.color,
-                    picking_instance_id: inst.picking_instance_id,
+                    picking_instance_id: [
+                        inst.picking_instance_id.0 as u32,
+                        (inst.picking_instance_id.0 >> 32) as u32,
+                    ],
                 })
                 .collect();
 
