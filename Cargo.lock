@@ -8935,7 +8935,6 @@ name = "re_grpc_server"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "anyhow",
- "crossbeam",
  "itertools 0.14.0",
  "parking_lot",
  "re_byte_size",
