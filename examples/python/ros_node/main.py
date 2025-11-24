@@ -69,11 +69,9 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         # Define a mapping for transforms
         self.path_to_frame = {
             "map": "map",
-            "map/points": "camera_depth_frame",
             "map/robot": "base_footprint",
-            "map/robot/scan": "base_scan",
-            "map/robot/camera": "camera_rgb_optical_frame",
-            "map/robot/camera/points": "camera_depth_frame",
+            "map/robot/scan": "rplidar_link",
+            "map/robot/camera": "oakd_rgb_camera_optical_frame",
         }
 
         # Assorted helpers for data conversions
@@ -108,16 +106,16 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
 
         self.img_sub = self.create_subscription(
             Image,
-            "/rgbd_camera/image_raw",
+            "/rgbd_camera/image",
             self.image_callback,
             10,
             callback_group=self.callback_group,
         )
 
         self.points_sub = self.create_subscription(
-            PointCloud2,
-            "/rgbd_camera/points",
-            self.points_callback,
+            Image,
+            "/rgbd_camera/depth_image",
+            self.depth_callback,
             10,
             callback_group=self.callback_group,
         )
@@ -197,39 +195,12 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log("map/robot/camera/img", rr.Image(self.cv_bridge.imgmsg_to_cv2(img)))
         self.log_tf_as_transform3d("map/robot/camera", time)
 
-    def points_callback(self, points: PointCloud2) -> None:
+    def depth_callback(self, img: Image) -> None:
         """Log a `PointCloud2` with `log_points`."""
-        time = Time.from_msg(points.header.stamp)
+        time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
-        pts = point_cloud2.read_points(points, field_names=["x", "y", "z"], skip_nans=True)
-
-        # The realsense driver exposes a float field called 'rgb', but the data is actually stored
-        # as bytes within the payload (not a float at all). Patch points.field to use the correct
-        # r,g,b, offsets so we can extract them with read_points.
-        points.fields = [
-            PointField(name="r", offset=16, datatype=PointField.UINT8, count=1),
-            PointField(name="g", offset=17, datatype=PointField.UINT8, count=1),
-            PointField(name="b", offset=18, datatype=PointField.UINT8, count=1),
-        ]
-
-        colors = point_cloud2.read_points(points, field_names=["r", "g", "b"], skip_nans=True)
-
-        pts = structured_to_unstructured(pts)
-        colors = colors = structured_to_unstructured(colors)
-
-        # Log points once rigidly under robot/camera/points. This is a robot-centric
-        # view of the world.
-        rr.log("map/robot/camera/points", rr.Points3D(pts, colors=colors))
-        self.log_tf_as_transform3d("map/robot/camera/points", time)
-
-        # Log points a second time after transforming to the map frame. This is a map-centric
-        # view of the world.
-        #
-        # Once Rerun supports fixed-frame aware transforms [#1522](https://github.com/rerun-io/rerun/issues/1522)
-        # this will no longer be necessary.
-        rr.log("map/points", rr.Points3D(pts, colors=colors))
-        self.log_tf_as_transform3d("map/points", time)
+        rr.log("map/robot/camera/depth", rr.DepthImage(self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"), meter=1.0, colormap="viridis"))
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
