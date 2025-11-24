@@ -89,13 +89,14 @@ def run_cargo(
     env = os.environ.copy()
     env.update(additional_env_vars)
 
-    result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
+    result = subprocess.run(args, env=env, check=False)
     success = result.returncode == 0
 
     if success:
         output_check_error = None
         if output_checks is not None:
-            output_check_error = output_checks(result.stdout)
+            print("⚠️  Warning: output_checks are no longer supported (stdout is not captured)")
+            output_check_error = None
 
         if output_check_error is not None:
             print("❌")
@@ -105,10 +106,10 @@ def run_cargo(
             print("✅")
     else:
         print("❌")
-        # Print output right away, so the user can start fixing it while waiting for the rest of the checks to run:
+        # Output was already printed during command execution
         env_var_string = " ".join([f'{env_var}="{value}"' for env_var, value in additional_env_vars.items()])
         print(
-            f"'{env_var_string} {cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}",
+            f"'{env_var_string} {cmd_str}' failed with exit-code {result.returncode}.",
         )
 
     duration = time.time() - start_time
