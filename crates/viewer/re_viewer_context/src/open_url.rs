@@ -91,6 +91,7 @@ impl std::fmt::Debug for ViewerOpenUrl {
         match self {
             Self::IntraRecordingSelection(item) => write!(f, "IntraRecordingSelection{item:?}"),
             Self::RrdHttpUrl(url) => write!(f, "RrdHttpUrl{url}"),
+            #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => write!(f, "FilePath({path:?})"),
             Self::RedapDatasetPartition(uri) => write!(f, "RedapDatasetPartition({uri})"),
             Self::RedapProxy(uri) => write!(f, "RedapProxy({uri})"),
