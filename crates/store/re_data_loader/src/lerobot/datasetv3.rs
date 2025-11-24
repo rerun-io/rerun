@@ -92,67 +92,73 @@ impl LeRobotDatasetV3 {
         let metadatapath = path.join("meta");
         let metadata = LeRobotDatasetMetadataV3::load_from_directory(&metadatapath)?;
 
-        Ok(Self {
+        let dataset = Self {
             path: path.to_path_buf(),
             metadata,
             video_cache: parking_lot::RwLock::new(HashMap::default()),
             episode_data_cache: parking_lot::RwLock::new(HashMap::default()),
-        })
+        };
+
+        dataset.load_all_episode_data_files()?;
+
+        Ok(dataset)
     }
 
-    /// Read the Parquet data file for the provided episode.
-    ///
-    /// This method caches episode data to avoid redundant parquet file reads and filtering.
-    /// When reading a parquet file for the first time, it caches ALL episodes contained in
-    /// that file, since multiple episodes typically share the same file in v3 datasets.
-    pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
-        // Fast path: check if the episode data is already cached
-        {
-            let cache = self.episode_data_cache.read();
-            if let Some(cached_data) = cache.get(&episode) {
-                return Ok((**cached_data).clone());
+    fn load_all_episode_data_files(&self) -> Result<(), LeRobotError> {
+        re_tracing::profile_scope!("load_all_episode_data_files");
+
+        let mut files_to_episodes: HashMap<(usize, usize), Vec<EpisodeIndex>> = HashMap::default();
+        for episode in self.metadata.episodes.values() {
+            files_to_episodes
+                .entry((episode.data_chunk_index, episode.data_file_index))
+                .or_default()
+                .push(episode.episode_index);
+        }
+
+        for episodes_in_file in files_to_episodes.into_values() {
+            if let Some(first_episode) = episodes_in_file.first() {
+                let episode_data = self
+                    .metadata
+                    .get_episode_data(*first_episode)
+                    .ok_or(LeRobotError::InvalidEpisodeIndex(*first_episode))?;
+                self.cache_episode_file(episode_data, &episodes_in_file)?;
             }
         }
 
-        // Slow path: read from parquet file and cache all episodes in the file
-        let episode_data = self
-            .metadata
-            .get_episode_data(episode)
-            .ok_or(LeRobotError::InvalidEpisodeIndex(episode))?;
+        Ok(())
+    }
 
-        let episode_data_path = self.metadata.info.episode_data_path(episode_data);
+    fn cache_episode_file(
+        &self,
+        file_metadata: &LeRobotEpisodeData,
+        episodes_in_file: &[EpisodeIndex],
+    ) -> Result<(), LeRobotError> {
+        if episodes_in_file.is_empty() {
+            return Ok(());
+        }
+
+        {
+            let cache = self.episode_data_cache.read();
+            if episodes_in_file
+                .iter()
+                .all(|episode| cache.contains_key(episode))
+            {
+                return Ok(());
+            }
+        }
+
+        let episode_data_path = self.metadata.info.episode_data_path(file_metadata);
         let episode_parquet_file = self.path.join(&episode_data_path);
-        re_log::trace!("Reading episode data from: {episode_data_path:?}");
-
-        let file = {
-            re_tracing::profile_scope!("open parquet file");
-            File::open(&episode_parquet_file)
-                .map_err(|err| LeRobotError::IO(err, episode_parquet_file))?
-        };
-
-        let reader = {
-            re_tracing::profile_scope!("build parquet reader");
-            ParquetRecordBatchReaderBuilder::try_new(file)?.build()?
-        };
-
-        // Collect all episodes that should be in this file (same chunk_index and file_index)
-        let episodes_in_file: Vec<EpisodeIndex> = self
-            .metadata
-            .episodes
-            .values()
-            .filter(|ep_data| {
-                ep_data.data_chunk_index == episode_data.data_chunk_index
-                    && ep_data.data_file_index == episode_data.data_file_index
-            })
-            .map(|ep_data| ep_data.episode_index)
-            .collect();
-
         re_log::trace!(
             "Caching {} episodes from file: {episode_data_path:?}",
             episodes_in_file.len()
         );
 
-        // Build a map to collect filtered batches for each episode
+        let file = File::open(&episode_parquet_file)
+            .map_err(|err| LeRobotError::IO(err, episode_parquet_file.clone()))?;
+
+        let reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
+
         let mut episode_batches: HashMap<EpisodeIndex, Vec<RecordBatch>> = HashMap::default();
         let mut schema = None;
 
@@ -165,9 +171,8 @@ impl LeRobotDatasetV3 {
                     schema = Some(batch.schema());
                 }
 
-                // Filter for each episode in this file
-                for &ep_idx in &episodes_in_file {
-                    let mask = self.episode_mask(&batch, ep_idx);
+                for &ep_idx in episodes_in_file {
+                    let mask = Self::episode_mask(&batch, ep_idx)?;
                     let filtered = arrow::compute::filter_record_batch(&batch, &mask)
                         .map_err(LeRobotError::Arrow)?;
 
@@ -178,56 +183,63 @@ impl LeRobotDatasetV3 {
             }
         }
 
-        let schema = schema.ok_or(LeRobotError::EmptyEpisode(episode))?;
+        let first_episode = episodes_in_file[0];
+        let schema = schema.ok_or(LeRobotError::EmptyEpisode(first_episode))?;
 
-        // Concatenate batches for each episode and cache them
         let mut cache = self.episode_data_cache.write();
 
-        // Double-check if another thread already cached this episode
-        if let Some(cached_data) = cache.get(&episode) {
-            return Ok((**cached_data).clone());
-        }
+        for &ep_idx in episodes_in_file {
+            if cache.contains_key(&ep_idx) {
+                continue;
+            }
 
-        let mut result = None;
-        for ep_idx in episodes_in_file {
             if let Some(batches) = episode_batches.remove(&ep_idx) {
                 if !batches.is_empty() {
                     let concatenated = arrow::compute::concat_batches(&schema, &batches)
                         .map_err(LeRobotError::Arrow)?;
-                    let arc_batch = Arc::new(concatenated);
-
-                    // Store the result for the requested episode
-                    if ep_idx == episode {
-                        result = Some(arc_batch.clone());
-                    }
-
-                    cache.insert(ep_idx, arc_batch);
+                    cache.insert(ep_idx, Arc::new(concatenated));
                 }
             }
         }
 
-        result
-            .map(|batch| (*batch).clone())
-            .ok_or(LeRobotError::EmptyEpisode(episode))
+        Ok(())
     }
 
     fn episode_mask(
-        &self,
         batch: &RecordBatch,
         episode: EpisodeIndex,
-    ) -> arrow::array::BooleanArray {
-        let index = i64::try_from(episode.0).unwrap();
+    ) -> Result<arrow::array::BooleanArray, LeRobotError> {
+        let index = i64::try_from(episode.0).unwrap_or_default();
 
         let episode_indices = batch
             .column_by_name("episode_index")
-            .unwrap()
+            .ok_or_else(|| {
+                LeRobotError::MissingDatasetInfo(
+                    "`episode_index` column missing in episode data".into(),
+                )
+            })?
             .downcast_array_ref::<Int64Array>()
-            .unwrap();
+            .ok_or_else(|| {
+                LeRobotError::MissingDatasetInfo("`episode_index` column is of wrong dtype!".into())
+            })?;
 
-        episode_indices
+        Ok(episode_indices
             .iter()
             .map(|val| Some(val == Some(index)))
-            .collect()
+            .collect())
+    }
+
+    /// Read the Parquet data file for the provided episode.
+    ///
+    /// Episode data gets cached eagerly when the dataset loads, so this method mostly returns
+    /// clones of cached [`RecordBatch`]es.
+    pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
+        let cache = self.episode_data_cache.read();
+        if let Some(cached_data) = cache.get(&episode) {
+            return Ok((**cached_data).clone());
+        }
+
+        Err(LeRobotError::EmptyEpisode(episode))
     }
 
     /// Read video feature for the provided episode.
