@@ -6,7 +6,6 @@ import itertools
 import logging
 import tempfile
 from collections import defaultdict
-from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, cast
@@ -18,7 +17,7 @@ from rerun import catalog as _catalog
 from rerun.dataframe import ComponentColumnDescriptor, IndexColumnDescriptor
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from datetime import datetime
 
     from rerun_bindings import IndexValuesLike, Schema as _Schema  # noqa: TID251

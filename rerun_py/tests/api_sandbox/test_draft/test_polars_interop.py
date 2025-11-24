@@ -3,7 +3,6 @@ from __future__ import annotations
 import pprint
 from typing import TYPE_CHECKING
 
-import polars as pl
 import pyarrow as pa
 import rerun_draft as rr
 from datafusion import col, lit
