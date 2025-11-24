@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "ROS node"
-tags = ["2D", "3D", "Mesh", "Pinhole camera", "ROS", "Time series"]
+tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "URDF"]
 thumbnail = "https://static.rerun.io/ros-node/93169b35c17f5ec02d94150efb74c7ba06372842/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
@@ -38,12 +38,12 @@ For more information on future improved ROS support, see tracking issue: [#1527]
 > NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
 
-This example was developed and tested on top of [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
+This example was developed and tested on top of [ROS2 Kilted Kaiju](https://docs.ros.org/en/kilted/index.html)
 and the [turtlebot3 navigation example](https://docs.nav2.org/getting_started/index.html).
 
 Installing ROS is outside the scope of this example, but you will need the equivalent of the following packages:
 ```
-sudo apt install ros-humble-desktop gazebo ros-humble-navigation2 ros-humble-turtlebot3 ros-humble-turtlebot3-gazebo
+sudo apt install ros-kilted-desktop ros-kilted-navigation2 ros-kilted-turtlebot3 ros-kilted-turtlebot3-gazebo
 ```
 
 Make sure you have the Rerun repository checked out and the latest SDK installed:
@@ -62,16 +62,16 @@ In addition to installing the dependencies from `requirements.txt` into a venv y
 ROS setup script:
 ```
 source venv/bin/active
-source /opt/ros/humble/setup.bash
+source /opt/ros/kilted/setup.bash
 ```
 
 ### Run the code
 
 First, in one terminal launch the nav2 turtlebot demo:
 ```
-source /opt/ros/humble/setup.bash
+source /opt/ros/kilted/setup.bash
 export TURTLEBOT3_MODEL=waffle
-export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/humble/share/turtlebot3_gazebo/models
+export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/kilted/share/turtlebot3_gazebo/models
 
 ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False
 ```
