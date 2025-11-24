@@ -25,7 +25,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
-pub struct TextLogView {}
+pub struct TextLogView {
+    /// The columns to display in the view.
+    pub columns: crate::blueprint::archetypes::TextLogColumns,
+
+    /// Filter for rows to display in the view.
+    pub rows: crate::blueprint::archetypes::TextLogRows,
+
+    /// Formatting options for the text log view.
+    pub format_options: crate::blueprint::archetypes::TextLogFormat,
+}
 
 impl ::re_types_core::View for TextLogView {
     #[inline]
@@ -37,11 +46,15 @@ impl ::re_types_core::View for TextLogView {
 impl ::re_byte_size::SizeBytes for TextLogView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        0
+        self.columns.heap_size_bytes()
+            + self.rows.heap_size_bytes()
+            + self.format_options.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        true
+        <crate::blueprint::archetypes::TextLogColumns>::is_pod()
+            && <crate::blueprint::archetypes::TextLogRows>::is_pod()
+            && <crate::blueprint::archetypes::TextLogFormat>::is_pod()
     }
 }

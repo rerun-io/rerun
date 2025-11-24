@@ -1,21 +1,23 @@
-use nohash_hasher::IntSet;
-
 use re_log_types::{EntityPath, Instance};
-use re_types::{Archetype as _, ComponentType, archetypes::Transform3D, components::AxisLength};
+use re_types::{
+    Archetype as _,
+    archetypes::{CoordinateFrame, Transform3D, TransformAxes3D},
+    components::AxisLength,
+};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
-pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
+pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
-impl Default for Transform3DArrowsVisualizer {
+impl Default for TransformAxes3DVisualizer {
     fn default() -> Self {
         Self(SpatialViewVisualizerData::new(Some(
             SpatialViewKind::ThreeD,
@@ -23,49 +25,25 @@ impl Default for Transform3DArrowsVisualizer {
     }
 }
 
-impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
+impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Transform3DArrows".into()
+        "TransformAxes3D".into()
     }
 }
 
-struct Transform3DVisualizabilityFilter {
-    visualizability_trigger_components: IntSet<ComponentType>,
-}
-
-impl re_viewer_context::DataBasedVisualizabilityFilter for Transform3DVisualizabilityFilter {
-    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        // There's no required component on `Transform3D` archetype, so by default it would always be visualizable.
-        // That's not entirely wrong, after all, the transform arrows make always sense!
-        // But today, this notion messes with a lot of things:
-        // * it means everything can be visualized in a 3D view!
-        // * if there's no indicated visualizer, we show any visualizer that is visualizable (that would be this one always then)
-        event
-            .diff
-            .chunk
-            .component_descriptors()
-            .filter_map(|c| c.component_type)
-            .any(|component_type| {
-                self.visualizability_trigger_components
-                    .contains(&component_type)
-            })
-    }
-}
-
-impl VisualizerSystem for Transform3DArrowsVisualizer {
+impl VisualizerSystem for TransformAxes3DVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Transform3D>()
-    }
+        let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
 
-    fn data_based_visualizability_filter(
-        &self,
-    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
-        Some(Box::new(Transform3DVisualizabilityFilter {
-            visualizability_trigger_components: Transform3D::all_components()
-                .iter()
-                .filter_map(|descr| descr.component_type)
+        // Make this visualizer available for any entity with Transform3D components
+        query_info.required = RequiredComponents::Any(
+            Transform3D::all_component_identifiers()
+                .chain(TransformAxes3D::all_component_identifiers())
+                .chain(CoordinateFrame::all_component_identifiers())
                 .collect(),
-        }))
+        );
+
+        query_info
     }
 
     fn filter_visualizable_entities(
@@ -131,13 +109,13 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [Transform3D::descriptor_axis_length().component],
+                [TransformAxes3D::descriptor_axis_length().component],
                 false,
             );
 
             let axis_length: f32 = results
                 .get_mono_with_fallback::<AxisLength>(
-                    Transform3D::descriptor_axis_length().component,
+                    TransformAxes3D::descriptor_axis_length().component,
                 )
                 .into();
 
@@ -221,53 +199,4 @@ pub fn add_axis_arrows(
         .color(tokens.axis_color_z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
-}
-
-/// The `AxisLengthDetector` doesn't actually visualize anything, but it allows us to detect
-/// when a transform has set the [`AxisLength`] component.
-///
-/// See the logic in [`crate::SpatialView3D`]`::choose_default_visualizers`.
-#[derive(Default)]
-pub struct AxisLengthDetector();
-
-impl IdentifiedViewSystem for AxisLengthDetector {
-    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "AxisLengthDetector".into()
-    }
-}
-
-impl VisualizerSystem for AxisLengthDetector {
-    fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
-        query_info.relevant_archetypes = Default::default();
-
-        query_info
-            .required
-            .insert(Transform3D::descriptor_axis_length().component);
-
-        query_info
-    }
-
-    fn execute(
-        &mut self,
-        _ctx: &ViewContext<'_>,
-        _query: &ViewQuery<'_>,
-        _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        Ok(vec![])
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn filter_visualizable_entities(
-        &self,
-        _entities: MaybeVisualizableEntities,
-        _context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        // Never actually visualize this detector
-        Default::default()
-    }
 }

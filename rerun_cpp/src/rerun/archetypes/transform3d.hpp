@@ -7,7 +7,6 @@
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/axis_length.hpp"
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
@@ -173,7 +172,7 @@ namespace rerun::archetypes {
     ///     rec.log(
     ///         "box",
     ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-    ///         rerun::Transform3D().with_axis_length(10.0)
+    ///         rerun::TransformAxes3D(10.0)
     ///     );
     ///
     ///     for (int t = 0; t <100; t++) {
@@ -215,7 +214,7 @@ namespace rerun::archetypes {
     ///     rec.log(
     ///         "box",
     ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-    ///         rerun::Transform3D().with_axis_length(10.0)
+    ///         rerun::TransformAxes3D(10.0)
     ///     );
     ///
     ///     std::vector<std::array<float, 3>> translations;
@@ -261,8 +260,7 @@ namespace rerun::archetypes {
     ///     // Set up a 3D box.
     ///     rec.log(
     ///         "box",
-    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid),
-    ///         rerun::Transform3D().with_axis_length(10.0)
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}).with_fill_mode(rerun::FillMode::Solid)
     ///     );
     ///
     ///     // Update only the rotation of the box.
@@ -295,8 +293,8 @@ namespace rerun::archetypes {
     ///         );
     ///     }
     ///
-    ///     // Clear all of the box's attributes, and reset its axis length.
-    ///     rec.log("box", rerun::Transform3D::clear_fields().with_axis_length(15.0));
+    ///     // Clear all of the box's attributes.
+    ///     rec.log("box", rerun::Transform3D::clear_fields());
     /// }
     /// ```
     struct Transform3D {
@@ -359,12 +357,6 @@ namespace rerun::archetypes {
         /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> parent_frame;
 
-        /// Visual length of the 3 axes.
-        ///
-        /// The length is interpreted in the local coordinate system of the transform.
-        /// If the transform is scaled, the axes will be scaled accordingly.
-        std::optional<ComponentBatch> axis_length;
-
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Transform3D";
@@ -407,11 +399,6 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_parent_frame = ComponentDescriptor(
             ArchetypeName, "Transform3D:parent_frame",
             Loggable<rerun::components::TransformFrameId>::ComponentType
-        );
-        /// `ComponentDescriptor` for the `axis_length` field.
-        static constexpr auto Descriptor_axis_length = ComponentDescriptor(
-            ArchetypeName, "Transform3D:axis_length",
-            Loggable<rerun::components::AxisLength>::ComponentType
         );
 
       public: // START of extensions from transform3d_ext.cpp:
@@ -982,28 +969,6 @@ namespace rerun::archetypes {
         ) && {
             parent_frame = ComponentBatch::from_loggable(_parent_frame, Descriptor_parent_frame)
                                .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// Visual length of the 3 axes.
-        ///
-        /// The length is interpreted in the local coordinate system of the transform.
-        /// If the transform is scaled, the axes will be scaled accordingly.
-        Transform3D with_axis_length(const rerun::components::AxisLength& _axis_length) && {
-            axis_length = ComponentBatch::from_loggable(_axis_length, Descriptor_axis_length)
-                              .value_or_throw();
-            return std::move(*this);
-        }
-
-        /// This method makes it possible to pack multiple `axis_length` in a single component batch.
-        ///
-        /// This only makes sense when used in conjunction with `columns`. `with_axis_length` should
-        /// be used when logging a single row's worth of data.
-        Transform3D with_many_axis_length(
-            const Collection<rerun::components::AxisLength>& _axis_length
-        ) && {
-            axis_length = ComponentBatch::from_loggable(_axis_length, Descriptor_axis_length)
-                              .value_or_throw();
             return std::move(*this);
         }
 

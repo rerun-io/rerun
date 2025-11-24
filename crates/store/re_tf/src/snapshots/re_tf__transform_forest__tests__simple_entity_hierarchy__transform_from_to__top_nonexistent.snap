@@ -51,4 +51,12 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
             ),
         ),
     ),
+    (
+        tf#/top/pure_leaf_pinhole,
+        Err(
+            UnknownTargetFrame(
+                TransformFrameIdHash(D01893A02DC02A5F),
+            ),
+        ),
+    ),
 ]

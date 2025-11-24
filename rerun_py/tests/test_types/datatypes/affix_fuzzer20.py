@@ -64,13 +64,17 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
     def _native_to_pa_array(data: AffixFuzzer20ArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import PrimitiveComponentBatch, StringComponentBatch
 
+        typed_data: Sequence[AffixFuzzer20]
+
         if isinstance(data, AffixFuzzer20):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                PrimitiveComponentBatch([x.p for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                StringComponentBatch([x.s for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                PrimitiveComponentBatch([x.p for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                StringComponentBatch([x.s for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )
