@@ -46,7 +46,7 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
     assert segment_stable_snapshot(simple_filt.segment_table(join_meta=complex_metadata)) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                               │
-│ * version: 0.1.1                                                                                        │
+│ * version: 0.1.2                                                                                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
@@ -67,7 +67,7 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
     assert segment_stable_snapshot(good_ds.segment_table()) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                         │
-│ * version: 0.1.1                                                                  │
+│ * version: 0.1.2                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
@@ -145,7 +145,7 @@ timeline: timestamp[ns]\
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                   │
-│ * version: 0.1.1                                                                            │
+│ * version: 0.1.2                                                                            │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬──────────────────────────────┬────────────────────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline                     ┆ /text:TextLog:text                 │ │
