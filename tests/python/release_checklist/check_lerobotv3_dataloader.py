@@ -4,6 +4,7 @@ import os
 from argparse import Namespace
 
 import rerun as rr
+from huggingface_hub import snapshot_download
 
 README = """\
 # LeRobot dataloader check
@@ -22,7 +23,10 @@ def run(args: Namespace) -> None:
     # If you don't set it, you'll end up with 4 recordings, an empty one and the 3 episodes.
     rec = rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id="episode_0")
 
-    dataset_path = os.path.dirname(__file__) + "/../../../tests/assets/lerobot/v30_apple_storage"
+    # load dataset from huggingface
+    dataset_path = os.path.dirname(__file__) + "/.datasets/v30_apple_storage"
+    snapshot_download(repo_id="rerun/v30_apple_storage", local_dir=dataset_path, repo_type="dataset")
+
     rec.log_file_from_path(dataset_path)
 
     # NOTE: This dataloader works by creating a new recording for each episode.
