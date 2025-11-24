@@ -139,6 +139,7 @@ pub mod dataframe {
 }
 
 pub use re_capabilities::MainThreadToken;
+
 /// Everything needed to build custom `ChunkStoreSubscriber`s.
 pub use re_entity_db::external::re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
