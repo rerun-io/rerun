@@ -6,14 +6,14 @@ use re_viewer::external::{re_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
-/// Test adding a custom visualizer (`TransformAxes3D`) through the UI.
+/// Test adding an additional visualizer (`TransformAxes3D`) through the UI.
 ///
 /// This test verifies that:
 /// 1. An entity with `Transform3D` (but no `TransformAxes3D`) can be visualized with boxes
 /// 2. The `TransformAxes3D` visualizer can be manually added via the UI
 /// 3. After adding the visualizer, transform axes appear in the 3D view
 #[tokio::test(flavor = "multi_thread")]
-pub async fn test_custom_visualizer_axes() {
+pub async fn test_add_visualizer_axes() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::Vec2::new(1024.0, 1024.0)),
         ..Default::default()
@@ -50,20 +50,20 @@ pub async fn test_custom_visualizer_axes() {
         blueprint.add_view_at_root(view_3d);
     });
 
-    harness.snapshot_app("custom_visualizer_axes_1");
+    harness.snapshot_app("add_visualizer_axes_1");
 
     harness.blueprint_tree().right_click_label("3D view");
     harness.click_label("Expand all");
-    harness.snapshot_app("custom_visualizer_axes_2");
+    harness.snapshot_app("add_visualizer_axes_2");
 
     harness.blueprint_tree().click_label("boxes3d");
-    harness.snapshot_app("custom_visualizer_axes_3");
+    harness.snapshot_app("add_visualizer_axes_3");
 
     harness.selection_panel().click_label("Add new visualizer…");
     harness.run();
-    harness.snapshot_app("custom_visualizer_axes_4");
+    harness.snapshot_app("add_visualizer_axes_4");
 
     harness.click_label("TransformAxes3D");
     harness.run();
-    harness.snapshot_app("custom_visualizer_axes_5");
+    harness.snapshot_app("add_visualizer_axes_5");
 }
