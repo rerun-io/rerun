@@ -293,8 +293,14 @@ impl App {
             },
         );
 
+        println!("analytics probe");
+
+        #[cfg(feature = "analytics")]
+        println!("analytics: {}", re_analytics::Analytics::global_or_init().is_some());
+
         #[cfg(feature = "analytics")]
         if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+
             use crate::viewer_analytics::event;
 
             analytics.record(event::identify(
