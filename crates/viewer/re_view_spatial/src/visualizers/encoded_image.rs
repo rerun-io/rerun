@@ -40,8 +40,6 @@ impl VisualizerSystem for EncodedImageVisualizer {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -55,6 +53,7 @@ impl VisualizerSystem for EncodedImageVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
                 Ok(())

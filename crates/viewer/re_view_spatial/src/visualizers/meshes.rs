@@ -116,8 +116,6 @@ impl VisualizerSystem for Mesh3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Mesh3D>()
     }
 
-    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -133,6 +131,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.0.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

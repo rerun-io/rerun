@@ -18,7 +18,6 @@ use re_viewer_context::{
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
     contexts::{SpatialSceneEntityContext, TransformTreeContext},
-    view_kind::SpatialViewKind,
 };
 
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
@@ -33,7 +32,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(None),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -218,8 +217,6 @@ impl VisualizerSystem for DepthImageVisualizer {
         VisualizerQueryInfo::from_archetype::<DepthImage>()
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -237,6 +234,7 @@ impl VisualizerSystem for DepthImageVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

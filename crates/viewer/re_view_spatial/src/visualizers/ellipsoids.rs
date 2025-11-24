@@ -112,14 +112,13 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Ellipsoids3D>()
     }
 
-    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut output = VisualizerExecutionOutput::default();
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
@@ -134,6 +133,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

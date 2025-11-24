@@ -24,6 +24,7 @@ pub struct TransformTreeContext {
     transform_infos:
         IntMap<EntityPathHash, Result<re_tf::TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
+    target_frame_pinhole_root: Option<TransformFrameIdHash>,
     entity_transform_id_mapping: EntityTransformIdMapping,
 }
 
@@ -33,6 +34,7 @@ impl Default for TransformTreeContext {
             transform_forest: Arc::new(re_tf::TransformForest::default()),
             transform_infos: IntMap::default(),
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
+            target_frame_pinhole_root: None,
             entity_transform_id_mapping: EntityTransformIdMapping::default(),
         }
     }
@@ -141,6 +143,15 @@ impl ViewContextSystem for TransformTreeContext {
                 .flatten()
                 .collect()
         };
+
+        self.target_frame_pinhole_root = self
+            .transform_forest
+            .root_from_frame(self.target_frame)
+            .and_then(|info| {
+                self.transform_forest
+                    .pinhole_tree_root_info(info.tree_root())
+                    .map(|_pinhole_info| info.tree_root())
+            });
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -171,6 +182,15 @@ impl TransformTreeContext {
     #[inline]
     pub fn target_frame(&self) -> TransformFrameIdHash {
         self.target_frame
+    }
+
+    /// Iff the target frame has a pinhole tree root, returns its transform frame id.
+    ///
+    /// If this is `Some`, then this is either the frame target frame itself or one of its ancestors.
+    /// `Some` implies that the view as a whole is two dimensional.
+    #[inline]
+    pub fn target_frame_pinhole_root(&self) -> Option<TransformFrameIdHash> {
+        self.target_frame_pinhole_root
     }
 
     /// Returns the transform frame id for a given entity path.

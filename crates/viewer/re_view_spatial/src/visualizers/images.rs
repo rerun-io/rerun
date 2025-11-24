@@ -46,8 +46,6 @@ impl VisualizerSystem for ImageVisualizer {
         VisualizerQueryInfo::from_archetype::<Image>()
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -61,6 +59,7 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_image(ctx, results, spatial_ctx);
                 Ok(())

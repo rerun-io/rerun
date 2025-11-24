@@ -50,8 +50,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -65,6 +63,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.

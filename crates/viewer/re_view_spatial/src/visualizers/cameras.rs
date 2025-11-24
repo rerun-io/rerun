@@ -16,7 +16,10 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use crate::{
-    contexts::TransformTreeContext, pinhole_wrapper::PinholeWrapper, visualizers::process_radius,
+    contexts::TransformTreeContext,
+    pinhole_wrapper::PinholeWrapper,
+    view_kind::SpatialViewKind,
+    visualizers::{process_radius, utilities::spatial_view_kind_from_view_class},
 };
 
 pub struct CamerasVisualizer {
@@ -58,6 +61,7 @@ impl CamerasVisualizer {
         data_result: &DataResult,
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
+        view_kind: SpatialViewKind,
     ) -> Result<(), String> {
         // Check for valid resolution.
         let w = pinhole_properties.resolution.x;
@@ -79,8 +83,8 @@ impl CamerasVisualizer {
             line_width: Some(pinhole_properties.line_width),
         };
 
-        // If the camera is the target frame, there is nothing for us to display.
-        if transforms.target_frame() == frame_id {
+        // If the camera is the target frame of a 2D view, there is nothing for us to display.
+        if transforms.target_frame() == frame_id && view_kind == SpatialViewKind::TwoD {
             self.pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -204,8 +208,6 @@ impl VisualizerSystem for CamerasVisualizer {
         VisualizerQueryInfo::from_archetype::<Pinhole>()
     }
 
-    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -215,6 +217,7 @@ impl VisualizerSystem for CamerasVisualizer {
         let mut output = VisualizerExecutionOutput::default();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
+        let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -283,6 +286,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 data_result,
                 &component_data,
                 entity_highlight,
+                view_kind,
             ) {
                 output.report_error_for(data_result.entity_path.clone(), err);
             }

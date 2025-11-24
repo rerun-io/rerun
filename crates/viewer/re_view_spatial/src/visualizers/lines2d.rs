@@ -164,8 +164,6 @@ impl VisualizerSystem for Lines2DVisualizer {
         VisualizerQueryInfo::from_archetype::<LineStrips2D>()
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -185,6 +183,7 @@ impl VisualizerSystem for Lines2DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

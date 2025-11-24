@@ -130,8 +130,6 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Cylinders3D>()
     }
 
-    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -139,6 +137,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let mut output = VisualizerExecutionOutput::default();
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
@@ -152,6 +151,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

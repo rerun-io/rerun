@@ -115,8 +115,6 @@ impl VisualizerSystem for Asset3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Asset3D>()
     }
 
-    // TODO: apply old rules of filter_visualizable_3d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -124,6 +122,7 @@ impl VisualizerSystem for Asset3DVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let mut output = VisualizerExecutionOutput::default();
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -132,6 +131,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

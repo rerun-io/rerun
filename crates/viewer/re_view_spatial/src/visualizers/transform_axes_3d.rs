@@ -49,8 +49,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         query_info
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,

@@ -181,8 +181,6 @@ impl VisualizerSystem for Boxes2DVisualizer {
         VisualizerQueryInfo::from_archetype::<Boxes2D>()
     }
 
-    // TODO: apply old rules of filter_visualizable_2d_entities to fail visualizer execution
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -201,6 +199,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
