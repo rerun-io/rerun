@@ -545,7 +545,7 @@ fn rr_recording_stream_new_impl(
                 const DEBUG_BUILD_WARNING: &str =
                     "Using a DEBUG BUILD of the Rerun SDK with Rerun crash handlers!";
                 let can_log_warning = std::env::var("RERUN_PANIC_ON_WARN")
-                    .map(|value| value != "0")
+                    .map(|value| value == "0")
                     .unwrap_or(true);
                 if can_log_warning {
                     re_log::warn!(DEBUG_BUILD_WARNING);
