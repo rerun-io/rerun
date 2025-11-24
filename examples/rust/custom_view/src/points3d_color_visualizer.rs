@@ -3,7 +3,7 @@ use rerun::external::{
     egui,
     re_log_types::{EntityPath, Instance},
     re_viewer_context::{
-        IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
+        IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
         VisualizerQueryInfo, VisualizerSystem,
     },
