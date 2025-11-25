@@ -100,5 +100,6 @@ def main() -> None:
 
     print(f"All jobs are included in {STATUS_JOB}!")
 
+
 if __name__ == "__main__":
     main()
