@@ -104,7 +104,8 @@ fn main() -> anyhow::Result<()> {
     // Name of the timestamp field in Foxglove messages, and name of the corresponding Rerun timeline.
     const TIME_NAME: &str = "timestamp";
 
-    // TODO(grtlr): This can be removed once we have proper support for Pinhole.
+    // TODO(grtlr): This can be removed once we have added other 3D primitives.
+    // Without this, our viewer heuristics would not spawn a 3D view at all.
     let transform_axes = |length| {
         TransformAxes3D::new(length)
             .columns_of_unit_batches()
