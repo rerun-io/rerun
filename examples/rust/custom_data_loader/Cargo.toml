@@ -1,6 +1,6 @@
 [package]
 name = "custom_data_loader"
-version = "0.28.0-alpha.62+dev"
+version = "0.28.0-alpha.61+dev"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"

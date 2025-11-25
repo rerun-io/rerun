@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.28.0-alpha.62+dev"
+__version__ = "0.28.0-alpha.61+dev"
 __version_info__ = (0, 28, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
