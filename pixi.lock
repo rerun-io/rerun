@@ -34459,8 +34459,8 @@ packages:
   requires_python: '>=3.9'
 - pypi: ./rerun_py
   name: rerun-sdk
-  version: 0.28.0a62+dev
-  sha256: 6be1a1ff98c014573fc003f84a4eb4ffd1fc6d2af6f5ce8522bcb59de8f2df67
+  version: 0.28.0a61+dev
+  sha256: f9b230fe85b44f683ac91d7b7f5279ddb1dd17db87ca9ce2eb539bf488f38d5b
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -34469,7 +34469,7 @@ packages:
   - typing-extensions>=4.5
   - pytest==8.4.2 ; extra == 'tests'
   - syrupy==5.0.0 ; extra == 'tests'
-  - rerun-notebook==0.28.0a62+dev ; extra == 'notebook'
+  - rerun-notebook==0.28.0a61+dev ; extra == 'notebook'
   - datafusion==50.1.0 ; extra == 'datafusion'
   - rerun-sdk[notebook] ; extra == 'all'
   - rerun-sdk[datafusion] ; extra == 'all'
