@@ -161,19 +161,20 @@ struct ViewQueryCacheEntry {
 #[derive(Clone, PartialEq, Eq)]
 struct ViewQueryCacheKey {
     recording_generation: re_chunk_store::ChunkStoreGeneration,
-    blueprint_generation: re_chunk_store::ChunkStoreGeneration,
+    // Note: blueprint_generation is intentionally excluded from the cache key.
+    // Query results depend on the blueprint_query time, not the generation counter.
+    // Including blueprint_generation would cause 0% cache hit rate during playback
+    // since the generation changes every frame with the time cursor.
     blueprint_query: LatestAtQuery,
 }
 
 impl ViewQueryCacheKey {
     fn new(
         recording_generation: re_chunk_store::ChunkStoreGeneration,
-        blueprint_generation: re_chunk_store::ChunkStoreGeneration,
         blueprint_query: &LatestAtQuery,
     ) -> Self {
         Self {
             recording_generation,
-            blueprint_generation,
             blueprint_query: blueprint_query.clone(),
         }
     }
@@ -352,7 +353,6 @@ impl AppState {
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
                 let recording_generation = recording.generation();
-                let blueprint_generation = store_context.blueprint.generation();
 
                 self.view_query_cache
                     .retain(|view_id, _| viewport_ui.blueprint.views.contains_key(view_id));
@@ -413,7 +413,6 @@ impl AppState {
 
                             let cache_key = ViewQueryCacheKey::new(
                                 recording_generation.clone(),
-                                blueprint_generation.clone(),
                                 &blueprint_query,
                             );
 
