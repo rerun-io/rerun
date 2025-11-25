@@ -241,8 +241,8 @@ pub async fn create_index(
         &config.time_index,
     )
     .ok_or_else(|| {
-        StoreError::IndexingError(format!(
-            "Column not found: {}#{}",
+        StoreError::EntryNameNotFound(format!(
+            "{}#{}",
             config.column.entity_path, config.column.descriptor.component
         ))
     })?;

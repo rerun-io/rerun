@@ -262,10 +262,9 @@ impl DatasetChunkIndexes {
         if let Some(path_indexes) = indexes.get(entity_path)
             && path_indexes.contains_key(component)
         {
-            return Err(StoreError::IndexingError(
-                "Index already exists, delete it first if you want to change its parameters"
-                    .to_owned(),
-            ));
+            return Err(StoreError::DuplicateEntryNameError(format!(
+                "{entity_path}#{component}",
+            )));
         }
 
         let index = Arc::new(index::create_index(dataset, config, path).await?);
@@ -328,7 +327,7 @@ impl DatasetChunkIndexes {
 mod tests {
     use super::*;
     use crate::chunk_index::DatasetChunkIndexes;
-    use arrow::array::{Array, record_batch};
+    use arrow::array::{Array as _, record_batch};
 
     use re_log_types::{EntryId, StoreKind, TimelineName};
     use re_protos::cloud::v1alpha1::ext::{IndexColumn, IndexProperties, IndexQueryProperties};
@@ -344,7 +343,7 @@ mod tests {
     async fn test_index_chunks() -> anyhow::Result<()> {
         let mut dataset = Dataset::new(
             EntryId::new(),
-            "test-data".to_string(),
+            "test-data".to_owned(),
             StoreKind::Recording,
             Default::default(),
         );
@@ -409,6 +408,7 @@ mod tests {
                         component_type: None,
                     },
                 },
+                #[expect(clippy::disallowed_methods)]
                 query: record_batch!(("index", Float64, [0.0]))?,
                 scan_parameters: ScanParameters {
                     columns: vec![
@@ -432,9 +432,9 @@ mod tests {
         Ok(())
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     fn dump_dataset_info(dataset: &Dataset) {
-        for (_, partition) in dataset.partitions() {
+        for partition in dataset.partitions().values() {
             for (lid, layer) in partition.layers() {
                 for chunk in layer.store_handle().read().iter_chunks() {
                     println!(
@@ -448,7 +448,7 @@ mod tests {
                         println!("    - '{tid}' {:?}", timeline.timeline().datatype());
                     }
                     println!("  - components:");
-                    for (_, component) in chunk.components().0.iter() {
+                    for component in chunk.components().0.values() {
                         println!(
                             "    - '{}' {} ({})",
                             component.descriptor.component,
