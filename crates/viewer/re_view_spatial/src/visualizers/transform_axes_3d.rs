@@ -2,13 +2,15 @@ use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _,
     archetypes::{CoordinateFrame, InstancePoses3D, Transform3D, TransformAxes3D},
-    components::AxisLength,
+    components::{AxisLength, ShowLabels},
+    datatypes::Bool,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ResolvedAnnotationInfo,
+    ResolvedAnnotationInfos, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -16,7 +18,10 @@ use crate::{
     visualizers::utilities::transform_info_for_entity_or_report_error,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::{
+    SpatialViewVisualizerData, filter_visualizable_3d_entities, process_labels_3d,
+    utilities::LabeledBatch,
+};
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -117,6 +122,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         .collect()
                 };
 
+            let axis_length_identifier = TransformAxes3D::descriptor_axis_length().component;
+            let show_frame_identifier = TransformAxes3D::descriptor_show_frame().component;
+
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
             // for a bunch of unused components. The actual transform data comes out of the context manager and can't be
             // overridden via blueprint anyways.
@@ -125,20 +133,31 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [TransformAxes3D::descriptor_axis_length().component],
+                [axis_length_identifier, show_frame_identifier],
                 false,
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(
-                    TransformAxes3D::descriptor_axis_length().component,
-                )
+                .get_mono_with_fallback::<AxisLength>(axis_length_identifier)
                 .into();
 
             if axis_length == 0.0 {
                 // Don't draw axis and don't add to the bounding box!
                 continue;
             }
+
+            let show_frame: bool = results
+                .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
+                .into();
+
+            let frame_id = if show_frame {
+                let frame_id_hash =
+                    transforms.transform_frame_id_for(data_result.entity_path.hash());
+
+                transforms.lookup_frame_id(frame_id_hash)
+            } else {
+                None
+            };
 
             // Draw axes for each instance
             for (instance_index, world_from_obj) in transforms_to_draw.iter().enumerate() {
@@ -172,6 +191,25 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     outline_mask,
                     instance_index as u64,
                 );
+
+                // Add label at the center of the transform if show_frame is enabled
+                if let Some(frame_id) = frame_id {
+                    let annotation_infos =
+                        ResolvedAnnotationInfos::Same(1, ResolvedAnnotationInfo::default());
+                    self.0.ui_labels.extend(process_labels_3d(
+                        LabeledBatch {
+                            entity_path: &data_result.entity_path,
+                            num_instances: 1,
+                            overall_position: glam::Vec3::ZERO,
+                            instance_positions: std::iter::once(glam::Vec3::ZERO),
+                            labels: &[frame_id.0.clone().into()],
+                            colors: &[egui::Color32::WHITE],
+                            show_labels: ShowLabels(Bool(true)),
+                            annotation_infos: &annotation_infos,
+                        },
+                        *world_from_obj,
+                    ));
+                }
             }
         }
 

@@ -9,6 +9,9 @@ A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/re
 ### Required
 * `axis_length`: [`AxisLength`](../components/axis_length.md)
 
+### Optional
+* `show_frame`: [`ShowLabels`](../components/show_labels.md)
+
 
 ## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)

@@ -82,6 +82,9 @@ pub struct TransformAxes3D {
     /// The length is interpreted in the local coordinate system of the transform.
     /// If the transform is scaled, the axes will be scaled accordingly.
     pub axis_length: Option<SerializedComponentBatch>,
+
+    /// Whether to show a text label with the corresponding frame.
+    pub show_frame: Option<SerializedComponentBatch>,
 }
 
 impl TransformAxes3D {
@@ -96,6 +99,18 @@ impl TransformAxes3D {
             component_type: Some("rerun.components.AxisLength".into()),
         }
     }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::show_frame`].
+    ///
+    /// The corresponding component is [`crate::components::ShowLabels`].
+    #[inline]
+    pub fn descriptor_show_frame() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+            component: "TransformAxes3D:show_frame".into(),
+            component_type: Some("rerun.components.ShowLabels".into()),
+        }
+    }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
@@ -104,15 +119,20 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
-    std::sync::LazyLock::new(|| []);
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
+    std::sync::LazyLock::new(|| [TransformAxes3D::descriptor_show_frame()]);
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [TransformAxes3D::descriptor_axis_length()]);
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+    std::sync::LazyLock::new(|| {
+        [
+            TransformAxes3D::descriptor_axis_length(),
+            TransformAxes3D::descriptor_show_frame(),
+        ]
+    });
 
 impl TransformAxes3D {
-    /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 1usize;
+    /// The total number of components in the archetype: 1 required, 0 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 impl ::re_types_core::Archetype for TransformAxes3D {
@@ -158,7 +178,15 @@ impl ::re_types_core::Archetype for TransformAxes3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_axis_length())
             });
-        Ok(Self { axis_length })
+        let show_frame = arrays_by_descr
+            .get(&Self::descriptor_show_frame())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_show_frame())
+            });
+        Ok(Self {
+            axis_length,
+            show_frame,
+        })
     }
 }
 
@@ -166,7 +194,8 @@ impl ::re_types_core::AsComponents for TransformAxes3D {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.axis_length.clone())
+        [self.axis_length.clone(), self.show_frame.clone()]
+            .into_iter()
             .flatten()
             .collect()
     }
@@ -180,6 +209,7 @@ impl TransformAxes3D {
     pub fn new(axis_length: impl Into<crate::components::AxisLength>) -> Self {
         Self {
             axis_length: try_serialize_field(Self::descriptor_axis_length(), [axis_length]),
+            show_frame: None,
         }
     }
 
@@ -197,6 +227,10 @@ impl TransformAxes3D {
             axis_length: Some(SerializedComponentBatch::new(
                 crate::components::AxisLength::arrow_empty(),
                 Self::descriptor_axis_length(),
+            )),
+            show_frame: Some(SerializedComponentBatch::new(
+                crate::components::ShowLabels::arrow_empty(),
+                Self::descriptor_show_frame(),
             )),
         }
     }
@@ -219,10 +253,14 @@ impl TransformAxes3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [self
-            .axis_length
-            .map(|axis_length| axis_length.partitioned(_lengths.clone()))
-            .transpose()?];
+        let columns = [
+            self.axis_length
+                .map(|axis_length| axis_length.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.show_frame
+                .map(|show_frame| show_frame.partitioned(_lengths.clone()))
+                .transpose()?,
+        ];
         Ok(columns.into_iter().flatten())
     }
 
@@ -235,7 +273,8 @@ impl TransformAxes3D {
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_axis_length = self.axis_length.as_ref().map(|b| b.array.len());
-        let len = None.or(len_axis_length).unwrap_or(0);
+        let len_show_frame = self.show_frame.as_ref().map(|b| b.array.len());
+        let len = None.or(len_axis_length).or(len_show_frame).unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
 
@@ -264,11 +303,31 @@ impl TransformAxes3D {
         self.axis_length = try_serialize_field(Self::descriptor_axis_length(), axis_length);
         self
     }
+
+    /// Whether to show a text label with the corresponding frame.
+    #[inline]
+    pub fn with_show_frame(mut self, show_frame: impl Into<crate::components::ShowLabels>) -> Self {
+        self.show_frame = try_serialize_field(Self::descriptor_show_frame(), [show_frame]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ShowLabels`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_show_frame`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_show_frame(
+        mut self,
+        show_frame: impl IntoIterator<Item = impl Into<crate::components::ShowLabels>>,
+    ) -> Self {
+        self.show_frame = try_serialize_field(Self::descriptor_show_frame(), show_frame);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for TransformAxes3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.axis_length.heap_size_bytes()
+        self.axis_length.heap_size_bytes() + self.show_frame.heap_size_bytes()
     }
 }

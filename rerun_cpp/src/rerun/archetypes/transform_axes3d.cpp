@@ -11,14 +11,20 @@ namespace rerun::archetypes {
         archetype.axis_length =
             ComponentBatch::empty<rerun::components::AxisLength>(Descriptor_axis_length)
                 .value_or_throw();
+        archetype.show_frame =
+            ComponentBatch::empty<rerun::components::ShowLabels>(Descriptor_show_frame)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> TransformAxes3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(1);
+        columns.reserve(2);
         if (axis_length.has_value()) {
             columns.push_back(axis_length.value().partitioned(lengths_).value_or_throw());
+        }
+        if (show_frame.has_value()) {
+            columns.push_back(show_frame.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -26,6 +32,9 @@ namespace rerun::archetypes {
     Collection<ComponentColumn> TransformAxes3D::columns() {
         if (axis_length.has_value()) {
             return columns(std::vector<uint32_t>(axis_length.value().length(), 1));
+        }
+        if (show_frame.has_value()) {
+            return columns(std::vector<uint32_t>(show_frame.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -38,10 +47,13 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(1);
+        cells.reserve(2);
 
         if (archetype.axis_length.has_value()) {
             cells.push_back(archetype.axis_length.value());
+        }
+        if (archetype.show_frame.has_value()) {
+            cells.push_back(archetype.show_frame.value());
         }
 
         return rerun::take_ownership(std::move(cells));

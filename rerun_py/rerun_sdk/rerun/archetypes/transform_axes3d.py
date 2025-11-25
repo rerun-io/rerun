@@ -72,7 +72,9 @@ class TransformAxes3D(Archetype):
 
     """
 
-    def __init__(self: Any, axis_length: datatypes.Float32Like) -> None:
+    def __init__(
+        self: Any, axis_length: datatypes.Float32Like, *, show_frame: datatypes.BoolLike | None = None
+    ) -> None:
         """
         Create a new instance of the TransformAxes3D archetype.
 
@@ -83,12 +85,14 @@ class TransformAxes3D(Archetype):
 
             The length is interpreted in the local coordinate system of the transform.
             If the transform is scaled, the axes will be scaled accordingly.
+        show_frame:
+            Whether to show a text label with the corresponding frame.
 
         """
 
         # You can define your own __init__ function as a member of TransformAxes3DExt in transform_axes3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(axis_length=axis_length)
+            self.__attrs_init__(axis_length=axis_length, show_frame=show_frame)
             return
         self.__attrs_clear__()
 
@@ -96,6 +100,7 @@ class TransformAxes3D(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             axis_length=None,
+            show_frame=None,
         )
 
     @classmethod
@@ -111,6 +116,7 @@ class TransformAxes3D(Archetype):
         *,
         clear_unset: bool = False,
         axis_length: datatypes.Float32Like | None = None,
+        show_frame: datatypes.BoolLike | None = None,
     ) -> TransformAxes3D:
         """
         Update only some specific fields of a `TransformAxes3D`.
@@ -124,6 +130,8 @@ class TransformAxes3D(Archetype):
 
             The length is interpreted in the local coordinate system of the transform.
             If the transform is scaled, the axes will be scaled accordingly.
+        show_frame:
+            Whether to show a text label with the corresponding frame.
 
         """
 
@@ -131,6 +139,7 @@ class TransformAxes3D(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "axis_length": axis_length,
+                "show_frame": show_frame,
             }
 
             if clear_unset:
@@ -152,6 +161,7 @@ class TransformAxes3D(Archetype):
         cls,
         *,
         axis_length: datatypes.Float32ArrayLike | None = None,
+        show_frame: datatypes.BoolArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -168,6 +178,8 @@ class TransformAxes3D(Archetype):
 
             The length is interpreted in the local coordinate system of the transform.
             If the transform is scaled, the axes will be scaled accordingly.
+        show_frame:
+            Whether to show a text label with the corresponding frame.
 
         """
 
@@ -175,13 +187,14 @@ class TransformAxes3D(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
                 axis_length=axis_length,
+                show_frame=show_frame,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"TransformAxes3D:axis_length": axis_length}
+        kwargs = {"TransformAxes3D:axis_length": axis_length, "TransformAxes3D:show_frame": show_frame}
         columns = []
 
         for batch in batches:
@@ -220,6 +233,15 @@ class TransformAxes3D(Archetype):
     #
     # The length is interpreted in the local coordinate system of the transform.
     # If the transform is scaled, the axes will be scaled accordingly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    show_frame: components.ShowLabelsBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ShowLabelsBatch._converter,  # type: ignore[misc]
+    )
+    # Whether to show a text label with the corresponding frame.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
