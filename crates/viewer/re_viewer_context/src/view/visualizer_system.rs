@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use re_chunk::ArchetypeName;
+use nohash_hasher::IntMap;
+
+use re_chunk::{ArchetypeName, EntityPath};
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 
 use crate::{
@@ -101,6 +103,42 @@ impl VisualizerQueryInfo {
     }
 }
 
+/// Result of running [`VisualizerSystem::execute`].
+#[derive(Default)]
+pub struct VisualizerExecutionOutput {
+    /// Draw data produced by the visualizer.
+    ///
+    /// It's the view's responsibility to queue this data for rendering.
+    pub draw_data: Vec<re_renderer::QueueableDrawData>,
+
+    /// Errors encountered during execution, mapped to the entity paths they relate to.
+    ///
+    /// Errors from last frame will be shown in the UI for the respective entities.
+    /// For errors that prevent any visualization at all, return a
+    /// [`ViewSystemExecutionError`] instead.
+    pub errors_per_entity: IntMap<EntityPath, String>,
+    //
+    // TODO(andreas): We should put other output here as well instead of passing around visualizer
+    // structs themselves which is rather surprising.
+    // Same applies to context systems.
+    // This mechanism could easily replace `VisualizerSystem::data`!
+}
+
+impl VisualizerExecutionOutput {
+    /// Marks the given entity as having encountered an error during visualization.
+    pub fn report_error_for(&mut self, entity_path: EntityPath, error: impl Into<String>) {
+        self.errors_per_entity.insert(entity_path, error.into());
+    }
+
+    pub fn with_draw_data(
+        mut self,
+        draw_data: impl IntoIterator<Item = re_renderer::QueueableDrawData>,
+    ) -> Self {
+        self.draw_data.extend(draw_data);
+        self
+    }
+}
+
 /// Element of a scene derived from a single archetype query.
 ///
 /// Is populated after scene contexts and has access to them.
@@ -132,7 +170,7 @@ pub trait VisualizerSystem: Send + Sync + 'static {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError>;
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError>;
 
     /// Optionally retrieves a chunk store reference from the scene element.
     ///

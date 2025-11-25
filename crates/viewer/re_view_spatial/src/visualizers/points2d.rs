@@ -10,7 +10,8 @@ use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -201,7 +202,9 @@ impl VisualizerSystem for Points2DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -219,6 +222,7 @@ impl VisualizerSystem for Points2DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -299,10 +303,10 @@ impl VisualizerSystem for Points2DVisualizer {
             },
         )?;
 
-        Ok(vec![
+        Ok(output.with_draw_data([
             point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
-        ])
+        ]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

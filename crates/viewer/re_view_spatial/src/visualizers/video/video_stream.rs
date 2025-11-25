@@ -3,8 +3,8 @@ use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, VideoStreamCache, VideoStreamProcessingError,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for, video_stream_time_from_query,
+    VisualizableEntities, VisualizableFilterContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for, video_stream_time_from_query,
 };
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
     view_kind::SpatialViewKind,
     visualizers::{
         SpatialViewVisualizerData, filter_visualizable_2d_entities,
+        utilities::transform_info_for_entity_or_report_error,
         video::{
             VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
             visualize_video_frame_texture,
@@ -57,8 +58,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        re_tracing::profile_function!();
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
         let transforms = context_systems.get::<TransformTreeContext>()?;
@@ -68,7 +69,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let entity_path = &data_result.entity_path;
 
-            let Some(transform_info) = transforms.transform_info_for_entity(entity_path.hash())
+            let Some(transform_info) =
+                transform_info_for_entity_or_report_error(transforms, entity_path, &mut output)
             else {
                 continue;
             };
@@ -221,10 +223,10 @@ impl VisualizerSystem for VideoStreamVisualizer {
             }
         }
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

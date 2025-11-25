@@ -8,11 +8,9 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types_core::SerializedComponentColumn;
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
-    VisualizerSystem,
+    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, RequiredComponents,
+    ViewSystemIdentifier, VisualizerSystem,
 };
-
-use super::RequiredComponents;
 
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.

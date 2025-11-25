@@ -7,7 +7,8 @@ use re_view::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -40,7 +41,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
@@ -120,7 +121,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

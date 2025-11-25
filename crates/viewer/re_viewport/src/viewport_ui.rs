@@ -80,8 +80,17 @@ impl ViewportUi {
             blueprint.tree.clone()
         };
 
+        // Reset all error states.
+        view_states.reset_visualizer_errors();
+
         let executed_systems_per_view =
             execute_systems_for_all_views(ctx, &tree, &blueprint.views, view_states);
+
+        // Memorize new error states.
+        #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
+        for (view_id, (_, system_output)) in &executed_systems_per_view {
+            view_states.report_visualizer_errors(*view_id, system_output);
+        }
 
         let contents_per_tile_id = blueprint
             .contents_iter()
