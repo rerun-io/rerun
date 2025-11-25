@@ -502,11 +502,11 @@ jobs:
 
           if [ "$REQUIRED_FAILED" = true ]; then
             echo "## 🔴 CI Status: RED" >> $GITHUB_STEP_SUMMARY
-            echo "Required tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Required tests failed"
           elif [ "$OPTIONAL_FAILED" = true ]; then
             echo "## 🟡 CI Status: YELLOW" >> $GITHUB_STEP_SUMMARY
-            echo "Required tests passed, but optional checks failed" >> $GITHUB_STEP_SUMMARY
+            echo "Required tests passed, but optional checks failed"
           else
             echo "## 🟢 CI Status: GREEN" >> $GITHUB_STEP_SUMMARY
-            echo "All checks passed!" >> $GITHUB_STEP_SUMMARY
+            echo "All checks passed!"
           fi
