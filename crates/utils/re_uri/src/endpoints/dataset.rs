@@ -1,6 +1,6 @@
 use re_log_types::StoreId;
 
-use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
+use crate::{EndpointAddr, Error, Fragment, RedapUri, TimeSelection};
 
 /// URI pointing at the data underlying a dataset.
 ///
@@ -11,7 +11,7 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
 /// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetPartitionUri {
-    pub origin: Origin,
+    pub endpoint_addr: EndpointAddr,
     pub dataset_id: re_tuid::Tuid,
 
     // Query parameters: these affect what data is returned.
@@ -26,14 +26,14 @@ pub struct DatasetPartitionUri {
 impl std::fmt::Display for DatasetPartitionUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            origin,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
             fragment,
         } = self;
 
-        write!(f, "{origin}/dataset/{dataset_id}")?;
+        write!(f, "{endpoint_addr}/dataset/{dataset_id}")?;
 
         // ?query:
         {
@@ -54,7 +54,11 @@ impl std::fmt::Display for DatasetPartitionUri {
 }
 
 impl DatasetPartitionUri {
-    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
+    pub fn new(
+        endpoint_addr: EndpointAddr,
+        dataset_id: re_tuid::Tuid,
+        url: &url::Url,
+    ) -> Result<Self, Error> {
         let mut partition_id = None;
         let mut time_range = None;
 
@@ -85,7 +89,7 @@ impl DatasetPartitionUri {
         }
 
         Ok(Self {
-            origin,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
@@ -96,9 +100,9 @@ impl DatasetPartitionUri {
     /// Returns [`Self`] without any (optional) `?query` or `#fragment`.
     pub fn without_query_and_fragment(mut self) -> Self {
         let Self {
-            origin: _,       // Mandatory
-            dataset_id: _,   // Mandatory
-            partition_id: _, // Mandatory
+            endpoint_addr: _, // Mandatory
+            dataset_id: _,    // Mandatory
+            partition_id: _,  // Mandatory
             time_range,
             fragment,
         } = &mut self;
@@ -112,9 +116,9 @@ impl DatasetPartitionUri {
     /// Returns [`Self`] without any (optional) `#fragment`.
     pub fn without_fragment(mut self) -> Self {
         let Self {
-            origin: _,       // Mandatory
-            dataset_id: _,   // Mandatory
-            partition_id: _, // Mandatory
+            endpoint_addr: _, // Mandatory
+            dataset_id: _,    // Mandatory
+            partition_id: _,  // Mandatory
             time_range: _,
             fragment,
         } = &mut self;

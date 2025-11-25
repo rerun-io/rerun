@@ -1,24 +1,30 @@
 use re_log_types::EntryId;
 
-use crate::{Error, Origin, RedapUri};
+use crate::{EndpointAddr, Error, RedapUri};
 
 /// URI for a remote entry.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub struct EntryUri {
-    pub origin: Origin,
+    pub endpoint_addr: EndpointAddr,
     pub entry_id: EntryId,
 }
 
 impl std::fmt::Display for EntryUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { origin, entry_id } = self;
-        write!(f, "{origin}/entry/{entry_id}")
+        let Self {
+            endpoint_addr,
+            entry_id,
+        } = self;
+        write!(f, "{endpoint_addr}/entry/{entry_id}")
     }
 }
 
 impl EntryUri {
-    pub fn new(origin: Origin, entry_id: EntryId) -> Self {
-        Self { origin, entry_id }
+    pub fn new(endpoint_addr: EndpointAddr, entry_id: EntryId) -> Self {
+        Self {
+            endpoint_addr,
+            entry_id,
+        }
     }
 }
 
