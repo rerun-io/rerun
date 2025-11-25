@@ -21,3 +21,5 @@ def test_removed_apis() -> None:
 
         assert "update" not in dir(ds)  # now: `set_name`
         assert "manifest_url" not in dir(ds)
+
+        assert "register_batch" not in dir(ds)  # merged with `register`
