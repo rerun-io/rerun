@@ -13,7 +13,7 @@
 use std::ops::Range;
 
 use crate::{
-    BoxCloudBuilder, Color32, DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference,
+    BoxCloudBuilder, DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
