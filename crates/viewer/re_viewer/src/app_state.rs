@@ -514,6 +514,8 @@ impl AppState {
                     view_states,
                 );
 
+                // Update cache with post-override results. Order doesn't matter here.
+                #[expect(clippy::iter_over_hash_type)]
                 for (view_id, result) in &query_results {
                     if let Some(entry) = self.view_query_cache.get_mut(view_id) {
                         entry.result = result.clone();
@@ -970,38 +972,43 @@ fn update_overrides(
         })
         .collect::<Vec<_>>();
 
-    work_items
-        .into_par_iter()
-        .map(
-            |OverridesUpdateTask {
-                 view,
-                 view_state,
-                 mut query_result,
-                 visualizable_entities,
-             }| {
-                // Now using the pre-computed visualizable_entities instead of recomputing them.
-                // This avoids the expensive determine_visualizable_entities call that was happening twice per frame.
-                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                    view,
-                    view_class_registry,
-                    maybe_visualizable_entities_per_visualizer,
-                    visualizable_entities,
-                    indicated_entities_per_visualizer,
-                );
+    // Threshold for parallel processing. For small view counts, the overhead of
+    // thread pool coordination outweighs the benefits of parallelism.
+    const PARALLEL_THRESHOLD: usize = 4;
 
-                resolver.update_overrides(
-                    store_context.blueprint,
-                    blueprint_query,
-                    active_timeline,
-                    view_class_registry,
-                    &mut query_result,
-                    view_state,
-                );
+    let process_task = |OverridesUpdateTask {
+                            view,
+                            view_state,
+                            mut query_result,
+                            visualizable_entities,
+                        }| {
+        // Now using the pre-computed visualizable_entities instead of recomputing them.
+        // This avoids the expensive determine_visualizable_entities call that was happening twice per frame.
+        let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+            view,
+            view_class_registry,
+            maybe_visualizable_entities_per_visualizer,
+            visualizable_entities,
+            indicated_entities_per_visualizer,
+        );
 
-                (view.id, query_result)
-            },
-        )
-        .collect()
+        resolver.update_overrides(
+            store_context.blueprint,
+            blueprint_query,
+            active_timeline,
+            view_class_registry,
+            &mut query_result,
+            view_state,
+        );
+
+        (view.id, query_result)
+    };
+
+    if work_items.len() >= PARALLEL_THRESHOLD {
+        work_items.into_par_iter().map(process_task).collect()
+    } else {
+        work_items.into_iter().map(process_task).collect()
+    }
 }
 
 fn table_ui(
