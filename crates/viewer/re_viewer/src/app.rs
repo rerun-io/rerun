@@ -74,7 +74,7 @@ pub struct App {
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) popstate_listener: Option<crate::history::PopstateListener>,
+    pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
 
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
@@ -449,6 +449,10 @@ impl App {
         &self.build_info
     }
 
+    pub fn startup_options(&self) -> &StartupOptions {
+        &self.startup_options
+    }
+
     pub fn app_options(&self) -> &AppOptions {
         self.state.app_options()
     }
@@ -659,15 +663,40 @@ impl App {
         }
     }
 
+    fn native_update_history(&mut self, store_hub: &StoreHub) {
+        let time_ctrl = store_hub
+            .active_recording()
+            .and_then(|db| self.state.time_control(db.store_id()));
+
+        let display_mode = self.state.navigation.current();
+        let selection = self.state.selection_state.selected_items();
+
+        let Ok(url) =
+            ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+                .map(|mut url| {
+                    // We don't want the time range in the history url, as that actually leads
+                    // to a subset of the current data!
+                    url.clear_time_range();
+                    url
+                })
+        else {
+            return;
+        };
+
+        self.state.history.update_current_url(url);
+    }
+
     /// Updates the web address on web. Noop on native.
     #[cfg(not(target_arch = "wasm32"))]
-    #[expect(clippy::unused_self)]
-    fn update_web_address_bar(&self, _store_hub: &StoreHub) {}
+    fn update_web_address_bar(&mut self, store_hub: &StoreHub) {
+        self.native_update_history(store_hub);
+    }
 
     /// Updates the web address on web. Noop on native.
     #[cfg(target_arch = "wasm32")]
-    fn update_web_address_bar(&self, store_hub: &StoreHub) {
+    fn update_web_address_bar(&mut self, store_hub: &StoreHub) {
         if !self.startup_options.web_history_enabled() {
+            self.native_update_history(store_hub);
             return;
         }
 
@@ -675,7 +704,7 @@ impl App {
             .active_recording()
             .and_then(|db| self.state.time_control(db.store_id()));
 
-        let display_mode = self.state.navigation.peek();
+        let display_mode = self.state.navigation.current();
         let selection = self.state.selection_state.selected_items();
 
         let Ok(url) =
@@ -707,7 +736,7 @@ impl App {
 
         re_log::debug!("Updating navigation bar");
 
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
+        use crate::web_history::{HistoryEntry, HistoryExt as _, history};
         use crate::web_tools::JsResultExt as _;
 
         /// Returns the url without the fragment
@@ -818,7 +847,7 @@ impl App {
                         .navigation
                         .replace(DisplayMode::LocalRecordings(recording_id.clone()));
                 } else {
-                    self.state.navigation.push_start_mode();
+                    self.state.navigation.reset();
                 }
             }
 
@@ -876,7 +905,7 @@ impl App {
             }
 
             SystemCommand::CloseAllEntries => {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -902,7 +931,7 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
-                if &display_mode == self.state.navigation.peek() {
+                if &display_mode == self.state.navigation.current() {
                     return;
                 }
 
@@ -929,7 +958,7 @@ impl App {
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
             SystemCommand::ResetDisplayMode => {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -1558,7 +1587,7 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
+            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
                 DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
@@ -1572,7 +1601,7 @@ impl App {
                 DisplayMode::Settings | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
                     re_log::debug!(
                         "Cannot toggle chunk store browser from current display mode: {:?}",
-                        self.state.navigation.peek()
+                        self.state.navigation.current()
                     );
                 }
             },
@@ -2896,10 +2925,10 @@ impl eframe::App for App {
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
-                crate::history::go_back();
+                crate::web_history::go_back();
             }
             if fwd_pressed {
-                crate::history::go_forward();
+                crate::web_history::go_forward();
             }
         }
 
@@ -3006,7 +3035,7 @@ impl eframe::App for App {
 
         // Make sure some app is active
         // Must be called before `read_context` below.
-        if let DisplayMode::Loading(source) = self.state.navigation.peek() {
+        if let DisplayMode::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
                 self.state.navigation.pop();
             }
@@ -3036,7 +3065,7 @@ impl eframe::App for App {
                     None => {}
                 }
             } else {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
@@ -3111,7 +3140,7 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            let display_mode = self.state.navigation.peek().clone();
+            let display_mode = self.state.navigation.current().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,

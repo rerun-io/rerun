@@ -18,7 +18,7 @@ use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
 
-use crate::history::install_popstate_listener;
+use crate::web_history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]

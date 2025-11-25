@@ -10293,6 +10293,7 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "url",
+ "vec1",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

@@ -577,6 +577,33 @@ impl ViewerOpenUrl {
         }
     }
 
+    pub fn without_fragment(self) -> Self {
+        match self {
+            Self::IntraRecordingSelection(..) => self,
+            Self::RrdHttpUrl(..) => self,
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(..) => self,
+            Self::RedapDatasetPartition(uri) => Self::RedapDatasetPartition(uri.without_fragment()),
+            Self::RedapProxy(..) => self,
+            Self::RedapCatalog(..) => self,
+            Self::RedapEntry(..) => self,
+            Self::WebEventListener => self,
+            Self::WebViewerUrl {
+                base_url,
+                mut url_parameters,
+            } => {
+                for url in &mut url_parameters {
+                    *url = url.clone().without_fragment();
+                }
+
+                Self::WebViewerUrl {
+                    base_url,
+                    url_parameters,
+                }
+            }
+        }
+    }
+
     /// Fragments of the URL if supported.
     pub fn fragment_mut(&mut self) -> Option<&mut re_uri::Fragment> {
         match self {
