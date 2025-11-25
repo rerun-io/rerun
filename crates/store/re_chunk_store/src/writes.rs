@@ -767,7 +767,7 @@ impl ChunkStore {
 
         let mut result = Vec::new();
         let mut start_idx = 0;
-        let mut cur_chunk_id = chunk.id();
+        let mut cur_chunk_id = ChunkId::new();
 
         while start_idx < chunk.num_rows() {
             let remaining_rows = chunk.num_rows() - start_idx;
@@ -775,6 +775,7 @@ impl ChunkStore {
 
             let split_chunk = chunk
                 .row_sliced(start_idx, chunk_size)
+                // TODO(#11971): keep track of the split chunks' lineage
                 .with_id(cur_chunk_id);
             cur_chunk_id = cur_chunk_id.next();
 
