@@ -40,7 +40,7 @@ class CatalogClient:
             [
                 Entry(e)
                 for e in self._inner.all_entries()
-                if (not e.name.startswith("__") and e.kind != 5) or include_hidden
+                if (not e.name.startswith("__") and e.kind != _catalog.EntryKind.BLUEPRINT_DATASET) or include_hidden
             ],
             key=lambda e: e.name,
         )
