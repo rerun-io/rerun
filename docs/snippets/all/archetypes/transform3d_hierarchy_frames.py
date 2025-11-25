@@ -15,14 +15,11 @@ rr.set_time("sim_time", duration=0)
 rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
 # Setup spheres, all are in the center of their own space:
-center = np.array([0, 0, 0])
-sizes = np.array([1, 1, 1])
-
 rr.log(
     "sun",
     rr.Ellipsoids3D(
-        centers=center,
-        half_sizes=sizes,
+        centers=[0, 0, 0],
+        half_sizes=[1, 1, 1],
         colors=[255, 200, 10],
         fill_mode="solid",
     ),
@@ -32,8 +29,8 @@ rr.log(
 rr.log(
     "planet",
     rr.Ellipsoids3D(
-        centers=center,
-        half_sizes=0.4 * sizes,
+        centers=[0, 0, 0],
+        half_sizes=[0.4, 0.4, 0.4],
         colors=[40, 80, 200],
         fill_mode="solid",
     ),
@@ -43,8 +40,8 @@ rr.log(
 rr.log(
     "moon",
     rr.Ellipsoids3D(
-        centers=center,
-        half_sizes=0.15 * sizes,
+        centers=[0, 0, 0],
+        half_sizes=[0.15, 0.15, 0.15],
         colors=[180, 180, 180],
         fill_mode="solid",
     ),
