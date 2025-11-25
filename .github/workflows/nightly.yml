@@ -473,9 +473,6 @@ jobs:
           ALL_RESULTS: ${{ toJSON(needs) }}
           OPTIONAL_JOBS: "optional-checks"  # Only list optional jobs
         run: |
-          # Verify self job contains all required jobs in this file
-          python scripts/ci/check_required_jobs_in_status.py .github/workflows/on_pull_request.yml
-
           # Parse the JSON to get all job results
           echo "$ALL_RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"' > /tmp/results.txt
 
