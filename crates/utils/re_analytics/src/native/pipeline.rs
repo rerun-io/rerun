@@ -36,6 +36,10 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub(crate) fn new(config: &Config, tick: Duration) -> Result<Option<Self>, PipelineError> {
+        if cfg!(feature = "testing") {
+            return Ok(None);
+        }
+
         let sink = PostHogSink::default();
 
         if !config.analytics_enabled {
