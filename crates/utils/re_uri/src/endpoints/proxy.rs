@@ -1,20 +1,20 @@
-use crate::{Origin, RedapUri};
+use crate::{EndpointAddr, RedapUri};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProxyUri {
-    pub origin: Origin,
-    pub prefix: String,
+    pub endpoint_addr: EndpointAddr,
 }
 
 impl std::fmt::Display for ProxyUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}/proxy", self.origin, self.prefix)
+        let Self { endpoint_addr } = self;
+        write!(f, "{endpoint_addr}/proxy")
     }
 }
 
 impl ProxyUri {
-    pub fn new(origin: Origin, prefix: String) -> Self {
-        Self { origin, prefix }
+    pub fn new(endpoint_addr: EndpointAddr) -> Self {
+        Self { endpoint_addr }
     }
 }
 

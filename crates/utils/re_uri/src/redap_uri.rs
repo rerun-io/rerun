@@ -1,8 +1,8 @@
 use re_log_types::StoreId;
 
 use crate::{
-    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetPartitionUri, EntryUri, Error,
-    Fragment, Origin, ProxyUri,
+    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetPartitionUri, EndpointAddr,
+    EntryUri, Error, Fragment, Origin, ProxyUri,
 };
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
@@ -24,10 +24,19 @@ pub enum RedapUri {
 impl RedapUri {
     pub fn origin(&self) -> &Origin {
         match self {
-            Self::Catalog(uri) => &uri.origin,
-            Self::Entry(uri) => &uri.origin,
-            Self::DatasetData(uri) => &uri.origin,
-            Self::Proxy(uri) => &uri.origin,
+            Self::Catalog(uri) => &uri.endpoint_addr.origin,
+            Self::Entry(uri) => &uri.endpoint_addr.origin,
+            Self::DatasetData(uri) => &uri.endpoint_addr.origin,
+            Self::Proxy(uri) => &uri.endpoint_addr.origin,
+        }
+    }
+
+    pub fn endpoint_addr(&self) -> &EndpointAddr {
+        match self {
+            Self::Catalog(uri) => &uri.endpoint_addr,
+            Self::Entry(uri) => &uri.endpoint_addr,
+            Self::DatasetData(uri) => &uri.endpoint_addr,
+            Self::Proxy(uri) => &uri.endpoint_addr,
         }
     }
 
@@ -77,26 +86,28 @@ impl std::str::FromStr for RedapUri {
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        let format_path = |segments: &[&str]| {
-            if segments.is_empty() {
-                String::new()
-            } else {
-                format!("/{}", segments.join("/"))
+        let create_endpoint_addr = |prefix_segments: &[&str]| {
+            let mut addr = EndpointAddr::new(origin.clone());
+            if !prefix_segments.is_empty() {
+                let prefix = format!("/{}", prefix_segments.join("/"));
+                addr = addr.with_path_prefix(prefix);
             }
+            addr
         };
 
         // 1. Terminal endpoints (endpoints that must be at the end of the path)
         match segments.as_slice() {
             [prefix_segments @ .., "proxy"] => {
-                let prefix = format_path(prefix_segments);
-                return Ok(Self::Proxy(ProxyUri::new(origin, prefix)));
+                let endpoint_addr = create_endpoint_addr(prefix_segments);
+                return Ok(Self::Proxy(ProxyUri::new(endpoint_addr)));
             }
             [prefix_segments @ .., "catalog"] => {
-                let prefix = format_path(prefix_segments);
-                return Ok(Self::Catalog(CatalogUri::new(origin, prefix)));
+                let endpoint_addr = create_endpoint_addr(prefix_segments);
+                return Ok(Self::Catalog(CatalogUri::new(endpoint_addr)));
             }
             [] => {
-                return Ok(Self::Catalog(CatalogUri::new(origin, String::new())));
+                let endpoint_addr = create_endpoint_addr(&[]);
+                return Ok(Self::Catalog(CatalogUri::new(endpoint_addr)));
             }
             _ => {}
         }
@@ -115,20 +126,20 @@ impl std::str::FromStr for RedapUri {
 
         if let Some((i, kind)) = found_endpoint {
             let prefix_segments = &segments[..i];
-            let prefix = format_path(prefix_segments);
+            let endpoint_addr = create_endpoint_addr(prefix_segments);
 
             match kind {
                 "entry" => {
                     let entry_id_str = &segments[i + 1];
-                    let entry_id = re_log_types::EntryId::from_str(entry_id_str)
-                        .map_err(Error::InvalidTuid)?;
-                    Ok(Self::Entry(EntryUri::new(origin, prefix, entry_id)))
+                    let entry_id =
+                        std::str::FromStr::from_str(entry_id_str).map_err(Error::InvalidTuid)?;
+                    Ok(Self::Entry(EntryUri::new(endpoint_addr, entry_id)))
                 }
                 "dataset" => {
                     let dataset_id_str = &segments[i + 1];
                     let dataset_id =
                         re_tuid::Tuid::from_str(dataset_id_str).map_err(Error::InvalidTuid)?;
-                    DatasetPartitionUri::new(origin, prefix, dataset_id, &http_url)
+                    DatasetPartitionUri::new(endpoint_addr, dataset_id, &http_url)
                         .map(Self::DatasetData)
                 }
                 _ => unreachable!(),
@@ -211,18 +222,20 @@ mod tests {
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::Entry(EntryUri {
-            origin,
-            prefix,
+            endpoint_addr,
             entry_id,
         }) = address
         else {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(prefix, "");
+        assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+        assert_eq!(
+            endpoint_addr.origin.host,
+            url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+        );
+        assert_eq!(endpoint_addr.origin.port, 1234);
+        assert_eq!(endpoint_addr.path_prefix, None);
         assert_eq!(
             entry_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
@@ -236,8 +249,7 @@ mod tests {
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
-            origin,
-            prefix,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
@@ -247,10 +259,13 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(prefix, "");
+        assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+        assert_eq!(
+            endpoint_addr.origin.host,
+            url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+        );
+        assert_eq!(endpoint_addr.origin.port, 1234);
+        assert_eq!(endpoint_addr.path_prefix, None);
         assert_eq!(
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
@@ -266,8 +281,7 @@ mod tests {
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
-            origin,
-            prefix,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
@@ -277,10 +291,13 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(prefix, "");
+        assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+        assert_eq!(
+            endpoint_addr.origin.host,
+            url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+        );
+        assert_eq!(endpoint_addr.origin.port, 1234);
+        assert_eq!(endpoint_addr.path_prefix, None);
         assert_eq!(
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
@@ -306,8 +323,7 @@ mod tests {
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
-            origin,
-            prefix,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
@@ -317,10 +333,13 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(prefix, "");
+        assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+        assert_eq!(
+            endpoint_addr.origin.host,
+            url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+        );
+        assert_eq!(endpoint_addr.origin.port, 1234);
+        assert_eq!(endpoint_addr.path_prefix, None);
         assert_eq!(
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
@@ -336,8 +355,7 @@ mod tests {
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
-            origin,
-            prefix,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
@@ -347,10 +365,13 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(prefix, "");
+        assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+        assert_eq!(
+            endpoint_addr.origin.host,
+            url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+        );
+        assert_eq!(endpoint_addr.origin.port, 1234);
+        assert_eq!(endpoint_addr.path_prefix, None);
         assert_eq!(
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap()
@@ -372,8 +393,7 @@ mod tests {
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetPartitionUri {
-            origin,
-            prefix,
+            endpoint_addr,
             dataset_id,
             partition_id,
             time_range,
@@ -383,10 +403,13 @@ mod tests {
             panic!("Expected recording");
         };
 
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(prefix, "");
+        assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+        assert_eq!(
+            endpoint_addr.origin.host,
+            url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+        );
+        assert_eq!(endpoint_addr.origin.port, 1234);
+        assert_eq!(endpoint_addr.path_prefix, None);
         assert_eq!(
             dataset_id,
             "1830B33B45B963E7774455beb91701ae".parse().unwrap()
@@ -414,8 +437,7 @@ mod tests {
             let address: RedapUri = url.parse().unwrap();
 
             let RedapUri::DatasetData(DatasetPartitionUri {
-                origin,
-                prefix,
+                endpoint_addr,
                 dataset_id,
                 partition_id,
                 time_range,
@@ -425,10 +447,13 @@ mod tests {
                 panic!("Expected recording");
             };
 
-            assert_eq!(origin.scheme, Scheme::Rerun);
-            assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-            assert_eq!(origin.port, 1234);
-            assert_eq!(prefix, "");
+            assert_eq!(endpoint_addr.origin.scheme, Scheme::Rerun);
+            assert_eq!(
+                endpoint_addr.origin.host,
+                url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST)
+            );
+            assert_eq!(endpoint_addr.origin.port, 1234);
+            assert_eq!(endpoint_addr.path_prefix, None);
             assert_eq!(
                 dataset_id,
                 "1830B33B45B963E7774455beb91701ae".parse().unwrap()
@@ -462,12 +487,14 @@ mod tests {
         assert_eq!(
             address,
             RedapUri::Catalog(CatalogUri {
-                origin: Origin {
-                    scheme: Scheme::RerunHttp,
-                    host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
-                    port: 50051
-                },
-                prefix: String::new(),
+                endpoint_addr: EndpointAddr {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+                        port: 50051
+                    },
+                    path_prefix: None,
+                }
             })
         );
     }
@@ -480,12 +507,14 @@ mod tests {
         assert_eq!(
             address,
             RedapUri::Catalog(CatalogUri {
-                origin: Origin {
-                    scheme: Scheme::RerunHttps,
-                    host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
-                    port: 50051
-                },
-                prefix: String::new(),
+                endpoint_addr: EndpointAddr {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttps,
+                        host: url::Host::Ipv4(Ipv4Addr::LOCALHOST),
+                        port: 50051
+                    },
+                    path_prefix: None,
+                }
             })
         );
     }
@@ -498,12 +527,14 @@ mod tests {
         assert_eq!(
             address,
             RedapUri::Catalog(CatalogUri {
-                origin: Origin {
-                    scheme: Scheme::RerunHttp,
-                    host: url::Host::<String>::Domain("localhost".to_owned()),
-                    port: 51234
-                },
-                prefix: String::new(),
+                endpoint_addr: EndpointAddr {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::<String>::Domain("localhost".to_owned()),
+                        port: 51234
+                    },
+                    path_prefix: None,
+                }
             })
         );
     }
@@ -533,12 +564,14 @@ mod tests {
         let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Proxy(ProxyUri {
-            origin: Origin {
-                scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 51234,
+            endpoint_addr: EndpointAddr {
+                origin: Origin {
+                    scheme: Scheme::Rerun,
+                    host: url::Host::Domain("localhost".to_owned()),
+                    port: 51234,
+                },
+                path_prefix: None,
             },
-            prefix: String::new(),
         });
 
         assert_eq!(address.unwrap(), expected);
@@ -555,89 +588,105 @@ mod tests {
             (
                 "rerun://localhost/catalog",
                 RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::Rerun,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: DEFAULT_REDAP_PORT,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: DEFAULT_REDAP_PORT,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "localhost",
                 RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: DEFAULT_REDAP_PORT,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::RerunHttp,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: DEFAULT_REDAP_PORT,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "localhost/proxy",
                 RedapUri::Proxy(ProxyUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: DEFAULT_PROXY_PORT,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::RerunHttp,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: DEFAULT_PROXY_PORT,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "127.0.0.1/proxy",
                 RedapUri::Proxy(ProxyUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
-                        port: DEFAULT_PROXY_PORT,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::RerunHttp,
+                            host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                            port: DEFAULT_PROXY_PORT,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "rerun+http://example.com",
                 RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("example.com".to_owned()),
-                        port: 80,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::RerunHttp,
+                            host: url::Host::Domain("example.com".to_owned()),
+                            port: 80,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "rerun+https://example.com",
                 RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttps,
-                        host: url::Host::Domain("example.com".to_owned()),
-                        port: 443,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::RerunHttps,
+                            host: url::Host::Domain("example.com".to_owned()),
+                            port: 443,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "rerun://example.com",
                 RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::Rerun,
-                        host: url::Host::Domain("example.com".to_owned()),
-                        port: 443,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("example.com".to_owned()),
+                            port: 443,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
             (
                 "rerun://example.com:420/catalog",
                 RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::Rerun,
-                        host: url::Host::Domain("example.com".to_owned()),
-                        port: 420,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("example.com".to_owned()),
+                            port: 420,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                 }),
             ),
         ];
@@ -658,12 +707,14 @@ mod tests {
         let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Catalog(CatalogUri {
-            origin: Origin {
-                scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 51234,
+            endpoint_addr: EndpointAddr {
+                origin: Origin {
+                    scheme: Scheme::Rerun,
+                    host: url::Host::Domain("localhost".to_owned()),
+                    port: 51234,
+                },
+                path_prefix: None,
             },
-            prefix: String::new(),
         });
 
         assert_eq!(address.unwrap(), expected);
@@ -679,12 +730,14 @@ mod tests {
         let url = "rerun://localhost:123";
 
         let expected = RedapUri::Catalog(CatalogUri {
-            origin: Origin {
-                scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 123,
+            endpoint_addr: EndpointAddr {
+                origin: Origin {
+                    scheme: Scheme::Rerun,
+                    host: url::Host::Domain("localhost".to_owned()),
+                    port: 123,
+                },
+                path_prefix: None,
             },
-            prefix: String::new(),
         });
 
         assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
@@ -696,35 +749,41 @@ mod tests {
             (
                 "rerun+http://example.com/sub/path/proxy",
                 RedapUri::Proxy(ProxyUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("example.com".to_owned()),
-                        port: 80,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::RerunHttp,
+                            host: url::Host::Domain("example.com".to_owned()),
+                            port: 80,
+                        },
+                        path_prefix: Some("/sub/path".to_owned()),
                     },
-                    prefix: "/sub/path".to_owned(),
                 }),
             ),
             (
                 "rerun://localhost:1234/entry/1830B33B45B963E7774455beb91701ae/extra/junk",
                 RedapUri::Entry(EntryUri {
-                    origin: Origin {
-                        scheme: Scheme::Rerun,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: 1234,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                     entry_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
                 }),
             ),
             (
                 "rerun://localhost:1234/dataset/1830B33B45B963E7774455beb91701ae/extra/junk?partition_id=pid",
                 RedapUri::DatasetData(DatasetPartitionUri {
-                    origin: Origin {
-                        scheme: Scheme::Rerun,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: 1234,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: None,
                     },
-                    prefix: "".to_owned(),
                     dataset_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
                     partition_id: "pid".to_owned(),
                     time_range: None,
@@ -734,13 +793,118 @@ mod tests {
             (
                 "rerun://example.com/sub/path/entry/1830B33B45B963E7774455beb91701ae",
                 RedapUri::Entry(EntryUri {
-                    origin: Origin {
-                        scheme: Scheme::Rerun,
-                        host: url::Host::Domain("example.com".to_owned()),
-                        port: 443,
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("example.com".to_owned()),
+                            port: 443,
+                        },
+                        path_prefix: Some("/sub/path".to_owned()),
                     },
-                    prefix: "/sub/path".to_owned(),
                     entry_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+                }),
+            ),
+        ];
+
+        for (url, expected) in test_cases {
+            assert_eq!(
+                url.parse::<RedapUri>()
+                    .unwrap_or_else(|err| panic!("Failed to parse url {url:}: {err}")),
+                expected,
+                "Url: {url:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_parsing_messy_slashes() {
+        let test_cases = [
+            (
+                "rerun://localhost:1234//sub//path//catalog/",
+                RedapUri::Catalog(CatalogUri {
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: Some("/sub/path".to_owned()),
+                    },
+                }),
+            ),
+            (
+                "rerun://localhost:1234/sub/path/catalog//",
+                RedapUri::Catalog(CatalogUri {
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: Some("/sub/path".to_owned()),
+                    },
+                }),
+            ),
+            (
+                "rerun://localhost:1234//entry//1830B33B45B963E7774455beb91701ae",
+                RedapUri::Entry(EntryUri {
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: None,
+                    },
+                    entry_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+                }),
+            ),
+            (
+                "rerun://localhost:1234/sub//path//dataset/1830B33B45B963E7774455beb91701ae//data?partition_id=pid",
+                RedapUri::DatasetData(DatasetPartitionUri {
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: Some("/sub/path".to_owned()),
+                    },
+                    dataset_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+                    partition_id: "pid".to_owned(),
+                    time_range: None,
+                    fragment: Fragment::default(),
+                }),
+            ),
+            (
+                "rerun://localhost:1234//entry//1830B33B45B963E7774455beb91701ae//extra//junk",
+                RedapUri::Entry(EntryUri {
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: None,
+                    },
+                    entry_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+                }),
+            ),
+            (
+                "rerun://localhost:1234//dataset//1830B33B45B963E7774455beb91701ae//extra//junk//data?partition_id=pid",
+                RedapUri::DatasetData(DatasetPartitionUri {
+                    endpoint_addr: EndpointAddr {
+                        origin: Origin {
+                            scheme: Scheme::Rerun,
+                            host: url::Host::Domain("localhost".to_owned()),
+                            port: 1234,
+                        },
+                        path_prefix: None,
+                    },
+                    dataset_id: "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+                    partition_id: "pid".to_owned(),
+                    time_range: None,
+                    fragment: Fragment::default(),
                 }),
             ),
         ];

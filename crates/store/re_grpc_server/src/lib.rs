@@ -360,10 +360,9 @@ pub fn spawn_with_recv(
     re_smart_channel::Receiver<re_log_types::DataSourceMessage>,
     crossbeam::channel::Receiver<re_log_types::TableMsg>,
 ) {
-    let uri = re_uri::ProxyUri::new(
+    let uri = re_uri::ProxyUri::new(re_uri::EndpointAddr::new(
         re_uri::Origin::from_scheme_and_socket_addr(re_uri::Scheme::RerunHttp, addr),
-        String::new(),
-    );
+    ));
     let (channel_log_tx, channel_log_rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
         re_smart_channel::SmartChannelSource::MessageProxy(uri),
