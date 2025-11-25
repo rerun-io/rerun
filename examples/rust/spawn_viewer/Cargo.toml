@@ -1,6 +1,6 @@
 [package]
 name = "spawn_viewer"
-version = "0.28.0-alpha.1+dev"
+version = "0.28.0-gabor_analytics_test"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
