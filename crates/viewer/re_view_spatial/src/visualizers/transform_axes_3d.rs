@@ -150,14 +150,36 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
                 .into();
 
-            let frame_id = if show_frame {
+            if show_frame {
                 let frame_id_hash =
                     transforms.transform_frame_id_for(data_result.entity_path.hash());
 
-                transforms.lookup_frame_id(frame_id_hash)
-            } else {
-                None
-            };
+                if let Some(frame_id) = transforms.lookup_frame_id(frame_id_hash) {
+                    // Add label at the center of each transform instance if show_frame is enabled
+                    let num_instances = transforms_to_draw.len();
+                    let labels: Vec<_> =
+                        std::iter::repeat_n(frame_id.0.clone().into(), num_instances).collect();
+                    let annotation_infos = ResolvedAnnotationInfos::Same(
+                        num_instances,
+                        ResolvedAnnotationInfo::default(),
+                    );
+                    self.0.ui_labels.extend(process_labels_3d(
+                        LabeledBatch {
+                            entity_path: &data_result.entity_path,
+                            num_instances,
+                            overall_position: glam::Vec3::ZERO,
+                            instance_positions: transforms_to_draw
+                                .iter()
+                                .map(|transform| transform.transform_point3(glam::Vec3::ZERO)),
+                            labels: &labels,
+                            colors: &[egui::Color32::WHITE],
+                            show_labels: ShowLabels(Bool(true)),
+                            annotation_infos: &annotation_infos,
+                        },
+                        glam::Affine3A::IDENTITY,
+                    ));
+                }
+            }
 
             // Draw axes for each instance
             for (instance_index, world_from_obj) in transforms_to_draw.iter().enumerate() {
@@ -191,25 +213,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     outline_mask,
                     instance_index as u64,
                 );
-
-                // Add label at the center of the transform if show_frame is enabled
-                if let Some(frame_id) = frame_id {
-                    let annotation_infos =
-                        ResolvedAnnotationInfos::Same(1, ResolvedAnnotationInfo::default());
-                    self.0.ui_labels.extend(process_labels_3d(
-                        LabeledBatch {
-                            entity_path: &data_result.entity_path,
-                            num_instances: 1,
-                            overall_position: glam::Vec3::ZERO,
-                            instance_positions: std::iter::once(glam::Vec3::ZERO),
-                            labels: &[frame_id.0.clone().into()],
-                            colors: &[egui::Color32::WHITE],
-                            show_labels: ShowLabels(Bool(true)),
-                            annotation_infos: &annotation_infos,
-                        },
-                        *world_from_obj,
-                    ));
-                }
             }
         }
 
