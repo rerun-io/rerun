@@ -2,7 +2,7 @@ use arrow::array::{Float32Array, Float64Array, ListArray};
 
 use re_log_types::TimeType;
 use rerun::{
-    EncodedImage, InstancePoses3D, Points3D, Transform3D, TransformAxes3D, VideoStream,
+    EncodedImage, InstancePoses3D, Transform3D, TransformAxes3D, VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
     lenses::{Lens, LensesSink, Op, OpError},
