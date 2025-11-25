@@ -2238,7 +2238,7 @@ impl App {
         // cache by calling `DataFusionTableWidget::clear_state`.
         let store = TableStore::default();
         if let Err(err) = store.add_record_batch(data) {
-            re_log::warn!("Failed to load table {id}: {err}");
+            re_log::error!("Failed to load table {id}: {err}");
         } else {
             if store_hub.insert_table_store(id.clone(), store).is_some() {
                 re_log::debug!("Overwritten table store with id: `{id}`");
