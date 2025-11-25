@@ -2,6 +2,7 @@ use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::Vec3;
 
 use macaw::BoundingBox;
+use re_log_types::Instance;
 use re_renderer::{
     LineDrawableBuilder, Size,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -208,6 +209,7 @@ impl SpatialView3D {
                 None,
                 axis_length,
                 re_renderer::OutlineMaskPreference::NONE,
+                Instance::ALL.get(),
             );
 
             // If we are showing the axes for the space, then add the space origin to the bounding box.

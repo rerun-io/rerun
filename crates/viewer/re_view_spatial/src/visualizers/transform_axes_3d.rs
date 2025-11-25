@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _,
-    archetypes::{CoordinateFrame, Transform3D, TransformAxes3D},
+    archetypes::{CoordinateFrame, InstancePoses3D, Transform3D, TransformAxes3D},
     components::AxisLength,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -42,6 +42,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         query_info.required = RequiredComponents::Any(
             Transform3D::all_component_identifiers()
                 .chain(TransformAxes3D::all_component_identifiers())
+                .chain(InstancePoses3D::all_component_identifiers())
                 .chain(CoordinateFrame::all_component_identifiers())
                 .collect(),
         );
@@ -85,29 +86,36 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 continue;
             };
 
-            // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
-            let world_from_obj = if let Some(pinhole_tree_root_info) =
-                transforms.pinhole_tree_root_info(transform_info.tree_root())
-            {
-                if transform_info.tree_root()
-                    == re_tf::TransformFrameIdHash::from_entity_path(&data_result.entity_path)
+            // Determine which transforms to draw axes at.
+            // For pinhole cameras, we draw at the pinhole location only.
+            // For normal entities, we iterate over all instance poses.
+            let transforms_to_draw: smallvec::SmallVec<[glam::Affine3A; 1]> =
+                if let Some(pinhole_tree_root_info) =
+                    transforms.pinhole_tree_root_info(transform_info.tree_root())
                 {
-                    // We're _at_ that pinhole.
-                    // Don't apply the from-2D transform, stick with the last known 3D.
-                    pinhole_tree_root_info.parent_root_from_pinhole_root
+                    if transform_info.tree_root()
+                        == re_tf::TransformFrameIdHash::from_entity_path(&data_result.entity_path)
+                    {
+                        // We're _at_ that pinhole.
+                        // Don't apply the from-2D transform, stick with the last known 3D.
+                        smallvec::smallvec![
+                            pinhole_tree_root_info
+                                .parent_root_from_pinhole_root
+                                .as_affine3a()
+                        ]
+                    } else {
+                        // We're inside a 2D space. But this is a 3D transform.
+                        // Something is wrong here and this is not the right place to report it.
+                        // Better just don't draw the axis!
+                        continue;
+                    }
                 } else {
-                    // We're inside a 2D space. But this is a 3D transform.
-                    // Something is wrong here and this is not the right place to report it.
-                    // Better just don't draw the axis!
-                    continue;
-                }
-            } else {
-                transform_info.single_transform_required_for_entity(
-                    &data_result.entity_path,
-                    Transform3D::name(),
-                )
-            }
-            .as_affine3a();
+                    transform_info
+                        .target_from_instances()
+                        .iter()
+                        .map(|t| t.as_affine3a())
+                        .collect()
+                };
 
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
             // for a bunch of unused components. The actual transform data comes out of the context manager and can't be
@@ -132,24 +140,39 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 continue;
             }
 
-            // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-            self.0.add_bounding_box(
-                data_result.entity_path.hash(),
-                macaw::BoundingBox::ZERO,
-                world_from_obj,
-            );
+            // Draw axes for each instance
+            for (instance_index, world_from_obj) in transforms_to_draw.iter().enumerate() {
+                // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
+                self.0.add_bounding_box(
+                    data_result.entity_path.hash(),
+                    macaw::BoundingBox::ZERO,
+                    *world_from_obj,
+                );
 
-            add_axis_arrows(
-                ctx.tokens(),
-                &mut line_builder,
-                world_from_obj,
-                Some(&data_result.entity_path),
-                axis_length,
-                query
+                // Check for per-instance highlighting, fall back to overall entity highlighting
+                let outline_mask = query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash())
-                    .overall,
-            );
+                    .instances
+                    .get(&Instance::from(instance_index as u64))
+                    .copied()
+                    .unwrap_or(
+                        query
+                            .highlights
+                            .entity_outline_mask(data_result.entity_path.hash())
+                            .overall,
+                    );
+
+                add_axis_arrows(
+                    ctx.tokens(),
+                    &mut line_builder,
+                    *world_from_obj,
+                    Some(&data_result.entity_path),
+                    axis_length,
+                    outline_mask,
+                    instance_index as u64,
+                );
+            }
         }
 
         Ok(output.with_draw_data([line_builder.into_draw_data()?.into()]))
@@ -171,6 +194,7 @@ pub fn add_axis_arrows(
     ent_path: Option<&EntityPath>,
     axis_length: f32,
     outline_mask_ids: re_renderer::OutlineMaskPreference,
+    instance_index: u64,
 ) {
     use re_renderer::renderer::LineStripFlags;
 
@@ -187,7 +211,7 @@ pub fn add_axis_arrows(
         .picking_object_id(re_renderer::PickingLayerObjectId(
             ent_path.map_or(0, |p| p.hash64()),
         ));
-    let picking_instance_id = re_renderer::PickingLayerInstanceId(Instance::ALL.get());
+    let picking_instance_id = re_renderer::PickingLayerInstanceId(instance_index);
 
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
