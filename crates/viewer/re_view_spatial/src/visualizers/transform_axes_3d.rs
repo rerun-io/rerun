@@ -8,10 +8,13 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
+use crate::{
+    contexts::TransformTreeContext, view_kind::SpatialViewKind,
+    visualizers::utilities::transform_info_for_entity_or_report_error,
+};
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
@@ -59,7 +62,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
         let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -72,12 +77,15 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
-            let Some(transform_info) =
-                transforms.transform_info_for_entity(data_result.entity_path.hash())
-            else {
+            let Some(transform_info) = transform_info_for_entity_or_report_error(
+                transforms,
+                &data_result.entity_path,
+                &mut output,
+            ) else {
                 continue;
             };
+
+            // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let world_from_obj = if let Some(pinhole_tree_root_info) =
                 transforms.pinhole_tree_root_info(transform_info.tree_root())
             {
@@ -144,7 +152,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             );
         }
 
-        Ok(vec![line_builder.into_draw_data()?.into()])
+        Ok(output.with_draw_data([line_builder.into_draw_data()?.into()]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -142,7 +142,7 @@ impl SpatialView2D {
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
-        system_output: re_viewer_context::SystemExecutionOutput,
+        mut system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -258,7 +258,7 @@ impl SpatialView2D {
 
         let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
 
-        for draw_data in system_output.draw_data {
+        for draw_data in system_output.drain_draw_data() {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 

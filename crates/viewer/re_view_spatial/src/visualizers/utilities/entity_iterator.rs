@@ -3,10 +3,13 @@ use re_types::Archetype;
 use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError,
+    ViewSystemExecutionError, VisualizerExecutionOutput,
 };
 
-use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
+use crate::{
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext},
+    visualizers::utilities::transform_info_for_entity_or_report_error,
+};
 
 // ---
 
@@ -90,6 +93,7 @@ pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
     context_systems: &ViewContextCollection,
+    output: &mut VisualizerExecutionOutput,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
 where
@@ -110,7 +114,7 @@ where
 
     for data_result in query.iter_visible_data_results(system_identifier) {
         let Some(transform_info) =
-            transforms.transform_info_for_entity(data_result.entity_path.hash())
+            transform_info_for_entity_or_report_error(transforms, &data_result.entity_path, output)
         else {
             continue;
         };

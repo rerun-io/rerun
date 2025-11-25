@@ -7,7 +7,8 @@ use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -56,11 +57,14 @@ impl VisualizerSystem for EncodedImageVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, EncodedImage, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 self.process_encoded_image(ctx, results, spatial_ctx);
                 Ok(())
@@ -81,10 +85,10 @@ impl VisualizerSystem for EncodedImageVisualizer {
             )
         });
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

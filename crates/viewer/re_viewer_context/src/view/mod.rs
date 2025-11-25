@@ -23,7 +23,7 @@ pub use highlights::{
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
-pub use system_execution_output::SystemExecutionOutput;
+pub use system_execution_output::{SystemExecutionOutput, VisualizerExecutionErrorState};
 pub use view_class::{
     ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState, ViewStateExt,
     VisualizableFilterContext,
@@ -40,11 +40,16 @@ pub use view_query::{
 };
 pub use view_states::ViewStates;
 pub use visualizer_system::{
-    RequiredComponents, VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
+    RequiredComponents, VisualizerCollection, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 // ---------------------------------------------------------------------------
 
+/// A "catastrophic" view system execution error, making it impossible to produce any results at all.
+///
+/// Whenever possible, prefer [`VisualizerExecutionOutput::errors_per_entity`] to report failures with
+/// individual entities rather than stopping visualization entirely.
 #[derive(Debug, thiserror::Error)]
 pub enum ViewSystemExecutionError {
     #[error("View context system {0} not found")]
@@ -60,7 +65,7 @@ pub enum ViewSystemExecutionError {
     DeserializationError(Box<re_types::DeserializationError>),
 
     #[error("Failed to create draw data: {0}")]
-    DrawDataCreationError(Box<dyn std::error::Error>),
+    DrawDataCreationError(Box<dyn std::error::Error + Send + Sync>),
 
     #[error("Error accessing map view tiles.")]
     MapTilesError,
