@@ -313,4 +313,5 @@ jobs:
       - name: Verify CI Status job
         id: status
         run: |
+          pip install yaml
           python scripts/ci/check_required_jobs_in_status.py .github/workflows/on_pull_request.yml
