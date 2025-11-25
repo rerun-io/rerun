@@ -285,7 +285,7 @@ class DatasetEntry(Entry):
         view = DatasetView(self._inner, _LazyDatasetState())
         return view.index_ranges(index)
 
-    def create_fts_index(
+    def create_fts_search_index(
         self,
         *,
         column: Any,
@@ -300,7 +300,7 @@ class DatasetEntry(Entry):
             base_tokenizer=base_tokenizer,
         )
 
-    def create_vector_index(
+    def create_vector_search_index(
         self,
         *,
         column: Any,
@@ -317,10 +317,10 @@ class DatasetEntry(Entry):
             distance_metric=distance_metric,
         )
 
-    def list_indexes(self) -> list:
+    def list_search_indexes(self) -> list:
         return self._inner.list_indexes()
 
-    def delete_indexes(self, column: Any) -> list[Any]:
+    def delete_search_indexes(self, column: Any) -> list[Any]:
         return self._inner.delete_indexes(column)
 
     def search_fts(self, query: str, column: Any) -> Any:

@@ -22,4 +22,10 @@ def test_removed_apis() -> None:
         assert "update" not in dir(ds)  # now: `set_name`
         assert "manifest_url" not in dir(ds)
 
-        assert "register_batch" not in dir(ds)  # merged with `register`
+        assert "register_batch" not in dir(ds)  # me
+
+        # These were renamed with `_index` -> `_search_index`
+        assert "create_fts_index" not in dir(ds)
+        assert "create_vector_index" not in dir(ds)
+        assert "list_indexes" not in dir(ds)
+        assert "delete_indexes" not in dir(ds)
