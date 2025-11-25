@@ -1,6 +1,6 @@
 [package]
 name = "dataframe_query"
-version = "0.28.0-gabor_analytics_test"
+version = "0.1.9000-alpha.1000+dev"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
