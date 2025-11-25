@@ -13,6 +13,7 @@ use crate::{
     view_kind::SpatialViewKind,
     visualizers::{
         SpatialViewVisualizerData, filter_visualizable_2d_entities,
+        utilities::transform_info_for_entity_or_report_error,
         video::{
             VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
             visualize_video_frame_texture,
@@ -68,8 +69,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let entity_path = &data_result.entity_path;
 
-            let Some(transform_info) = transforms
-                .transform_info_for_entity_or_report_visualizer_error(entity_path, &mut output)
+            let Some(transform_info) =
+                transform_info_for_entity_or_report_error(transforms, entity_path, &mut output)
             else {
                 continue;
             };

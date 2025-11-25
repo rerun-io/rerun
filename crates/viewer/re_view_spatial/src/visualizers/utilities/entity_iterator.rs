@@ -6,7 +6,10 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput,
 };
 
-use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
+use crate::{
+    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext},
+    visualizers::utilities::transform_info_for_entity_or_report_error,
+};
 
 // ---
 
@@ -110,8 +113,8 @@ where
     let system_identifier = System::identifier();
 
     for data_result in query.iter_visible_data_results(system_identifier) {
-        let Some(transform_info) = transforms
-            .transform_info_for_entity_or_report_visualizer_error(&data_result.entity_path, output)
+        let Some(transform_info) =
+            transform_info_for_entity_or_report_error(transforms, &data_result.entity_path, output)
         else {
             continue;
         };

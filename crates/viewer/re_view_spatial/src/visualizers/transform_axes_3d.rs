@@ -11,7 +11,10 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
+use crate::{
+    contexts::TransformTreeContext, view_kind::SpatialViewKind,
+    visualizers::utilities::transform_info_for_entity_or_report_error,
+};
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
@@ -74,12 +77,11 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            let Some(transform_info) = transforms
-                .transform_info_for_entity_or_report_visualizer_error(
-                    &data_result.entity_path,
-                    &mut output,
-                )
-            else {
+            let Some(transform_info) = transform_info_for_entity_or_report_error(
+                transforms,
+                &data_result.entity_path,
+                &mut output,
+            ) else {
                 continue;
             };
 
