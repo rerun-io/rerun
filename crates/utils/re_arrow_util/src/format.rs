@@ -165,6 +165,9 @@ pub struct RecordBatchFormatOpts {
     /// Defaults to the terminal width if left unspecified.
     pub width: Option<usize>,
 
+    /// Don't print more rows than this.
+    pub max_rows: usize,
+
     /// If `true`, displays the dataframe's metadata too.
     pub include_metadata: bool,
 
@@ -189,6 +192,7 @@ impl Default for RecordBatchFormatOpts {
         Self {
             transposed: false,
             width: None,
+            max_rows: usize::MAX,
             include_metadata: true,
             include_column_metadata: true,
             trim_field_names: true,
@@ -196,6 +200,13 @@ impl Default for RecordBatchFormatOpts {
             trim_metadata_values: true,
             redact_non_deterministic: false,
         }
+    }
+}
+
+impl RecordBatchFormatOpts {
+    /// Nicely format this record batch using the specified options.
+    pub fn format(&self, batch: &arrow::array::RecordBatch) -> Table {
+        format_record_batch_opts(batch, self)
     }
 }
 
@@ -247,6 +258,7 @@ fn format_dataframe_with_metadata(
     let &RecordBatchFormatOpts {
         transposed: _,
         width,
+        max_rows: _,
         include_metadata,
         include_column_metadata: _,
         trim_field_names: _, // passed as part of `opts` below
@@ -303,6 +315,7 @@ fn format_dataframe_without_metadata(
     let &RecordBatchFormatOpts {
         transposed,
         width,
+        max_rows,
         include_metadata: _,
         include_column_metadata,
         trim_field_names,
@@ -324,6 +337,10 @@ fn format_dataframe_without_metadata(
     let formatters = itertools::izip!(fields.iter(), columns.iter())
         .map(|(field, array)| custom_array_formatter(field, &**array, redact_non_deterministic))
         .collect_vec();
+
+    let total_rows = columns.first().map_or(0, |list_array| list_array.len());
+    let num_rows_shown = usize::min(total_rows, max_rows);
+    let hidden_rows = total_rows - num_rows_shown;
 
     let num_columns = if transposed {
         // Turns:
@@ -360,16 +377,15 @@ fn format_dataframe_without_metadata(
         for formatter in formatters {
             let mut cells = headers.pop().into_iter().collect_vec();
 
-            let Some(col) = columns.pop() else {
-                break;
-            };
-
-            for i in 0..col.len() {
+            for i in 0..num_rows_shown {
                 let cell = match formatter(i) {
                     Ok(string) => format_cell(string),
                     Err(err) => Cell::new(err),
                 };
                 cells.push(cell);
+            }
+            if 0 < hidden_rows {
+                cells.push(Cell::new(format!("… + {hidden_rows} more")));
             }
 
             table.add_row(cells);
@@ -421,9 +437,7 @@ fn format_dataframe_without_metadata(
 
         table.set_header(header);
 
-        let num_rows = columns.first().map_or(0, |list_array| list_array.len());
-
-        for row in 0..num_rows {
+        for row in 0..num_rows_shown {
             let cells: Vec<_> = formatters
                 .iter()
                 .map(|formatter| match formatter(row) {
@@ -432,6 +446,10 @@ fn format_dataframe_without_metadata(
                 })
                 .collect();
             table.add_row(cells);
+        }
+
+        if 0 < hidden_rows {
+            table.add_row([format!("…+ {hidden_rows} more row(s)")]);
         }
 
         columns.len()
