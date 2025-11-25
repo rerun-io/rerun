@@ -416,26 +416,30 @@ impl AppState {
                                 &blueprint_query,
                             );
 
-                            let result = if let Some(entry) = self.view_query_cache.get(&view.id)
+                            let (result, cache_miss) = if let Some(entry) = self.view_query_cache.get(&view.id)
                                 && entry.key == cache_key
                             {
-                                entry.result.clone()
+                                (entry.result.clone(), false)
                             } else {
-                                view.contents.execute_query(
+                                (view.contents.execute_query(
                                     store_context,
                                     view_class_registry,
                                     &blueprint_query,
                                     visualizable_entities,
-                                )
+                                ), true)
                             };
 
-                            self.view_query_cache.insert(
-                                view.id,
-                                ViewQueryCacheEntry {
-                                    key: cache_key,
-                                    result: result.clone(),
-                                },
-                            );
+                            // Only insert on cache miss; the result will be updated after
+                            // update_overrides with the post-override value.
+                            if cache_miss {
+                                self.view_query_cache.insert(
+                                    view.id,
+                                    ViewQueryCacheEntry {
+                                        key: cache_key,
+                                        result: DataQueryResult::default(),
+                                    },
+                                );
+                            }
 
                             (view.id, result)
                         })
