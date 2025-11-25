@@ -205,7 +205,7 @@ pub fn base_url(url: &Url) -> Url {
     base_url
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct OpenUrlOptions {
     pub follow_if_http: bool,
     pub select_redap_source_when_loaded: bool,
