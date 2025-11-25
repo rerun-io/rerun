@@ -465,6 +465,9 @@ jobs:
 #      upload-js,
     ]
     if: always()
+    outputs:
+      status: ${{ steps.determine.outputs.status }}
+      color: ${{ steps.determine.outputs.color }}
     steps:
       - name: Determine CI Status
         id: status
@@ -501,12 +504,56 @@ jobs:
           done < /tmp/results.txt
 
           if [ "$REQUIRED_FAILED" = true ]; then
-            echo "## 🔴 CI Status: RED" >> $GITHUB_STEP_SUMMARY
+            echo "status=red" >> $GITHUB_OUTPUT
+            echo "color=critical" >> $GITHUB_OUTPUT
             echo "Required tests failed"
+            exit 1
           elif [ "$OPTIONAL_FAILED" = true ]; then
-            echo "## 🟡 CI Status: YELLOW" >> $GITHUB_STEP_SUMMARY
+            echo "status=yellow" >> $GITHUB_OUTPUT
+            echo "color=warning" >> $GITHUB_OUTPUT
             echo "Required tests passed, but optional checks failed"
+            exit 0
           else
-            echo "## 🟢 CI Status: GREEN" >> $GITHUB_STEP_SUMMARY
+            echo "status=green" >> $GITHUB_OUTPUT
+            echo "color=success" >> $GITHUB_OUTPUT
             echo "All checks passed!"
+            exit 0
           fi
+
+      - name: Report traffic light status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.determine.outputs.status }}';
+            const emoji = status === 'green' ? '🟢' : status === 'yellow' ? '🟡' : '🔴';
+            const state = status === 'red' ? 'failure' : 'success';
+
+            // Commit status
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: state,
+              description: `${emoji} ${status.toUpperCase()}`,
+              context: 'ci-traffic-light'
+            });
+
+            // Check run with structured data
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'CI Traffic Light',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: state,
+              output: {
+                title: `${emoji} CI Status: ${status.toUpperCase()}`,
+                summary: 'Traffic light CI status',
+                text: JSON.stringify({
+                  status: status,
+                  color: status,
+                  timestamp: new Date().toISOString()
+                }, null, 2)
+              }
+            });
