@@ -180,12 +180,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                                 (-1.0, 1.0, 0.0),
                                 (1.0, 1.0, 0.0),
                             ])
-                            .with_scales([
-                                (1.75, 1.75, 1.75),
-                                (1.5, 1.5, 1.5),
-                                (1.0, 1.0, 1.0),
-                                (0.5, 0.5, 0.5),
-                            ]),
+                            .with_scales([(1.75, 1.75, 1.75), (0.5, 0.5, 0.5)]),
                     )
             },
         );
@@ -424,8 +419,8 @@ fn run_view_ui_and_save_snapshot(
             });
 
         // You should see:
-        // * 4 sets of coordinate axes at three distinct positions (translated by instance poses)
-        // * All should vary in length
+        // * 4 sets of coordinate axes at distinct positions (translated by instance poses)
+        // * 1 should be larger then the others
 
         let name = format!("{name}_transform_axes");
         test_context.with_blueprint_ctx(|ctx, _| {
