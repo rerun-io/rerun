@@ -663,7 +663,7 @@ impl App {
         }
     }
 
-    fn native_update_history(&mut self, store_hub: &StoreHub) {
+    fn update_viewer_history(&mut self, store_hub: &StoreHub) {
         let time_ctrl = store_hub
             .active_recording()
             .and_then(|db| self.state.time_control(db.store_id()));
@@ -687,19 +687,32 @@ impl App {
     }
 
     /// Updates the web address on web. Noop on native.
-    #[cfg(not(target_arch = "wasm32"))]
-    fn update_web_address_bar(&mut self, store_hub: &StoreHub) {
-        self.native_update_history(store_hub);
+    fn update_history(&mut self, store_hub: &StoreHub) {
+        if !self.startup_options().web_history_enabled() {
+            self.update_viewer_history(store_hub);
+        } else {
+            // We don't want to spam the web history API with changes, because
+            // otherwise it will start complaining about it being an insecure
+            // operation.
+            //
+            // This is a kind of hacky way to fix that: If there are currently any
+            // inputs, don't update the web address bar. This works for most cases
+            // because you need to hold down pointer to aggressively scrub, need to
+            // hold down key inputs to quickly step through the timeline.
+            #[cfg(target_arch = "wasm32")]
+            if !self.egui_ctx.is_using_pointer()
+                && self
+                    .egui_ctx
+                    .input(|input| !input.any_touches() && input.keys_down.is_empty())
+            {
+                self.update_web_history(store_hub)
+            }
+        }
     }
 
     /// Updates the web address on web. Noop on native.
     #[cfg(target_arch = "wasm32")]
-    fn update_web_address_bar(&mut self, store_hub: &StoreHub) {
-        if !self.startup_options.web_history_enabled() {
-            self.native_update_history(store_hub);
-            return;
-        }
-
+    fn update_web_history(&self, store_hub: &StoreHub) {
         let time_ctrl = store_hub
             .active_recording()
             .and_then(|db| self.state.time_control(db.store_id()));
@@ -3151,20 +3164,7 @@ impl eframe::App for App {
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        // We don't want to spam the web history API with changes, because
-        // otherwise it will start complaining about it being an insecure
-        // operation.
-        //
-        // This is a kind of hacky way to fix that: If there are currently any
-        // inputs, don't update the web address bar. This works for most cases
-        // because you need to hold down pointer to aggressively scrub, need to
-        // hold down key inputs to quickly step through the timeline.
-        if !egui_ctx.is_using_pointer()
-            && egui_ctx.input(|input| !input.any_touches() && input.keys_down.is_empty())
-        {
-            // Update web address after commands have been applied.
-            self.update_web_address_bar(&store_hub);
-        }
+        self.update_history(&store_hub);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
