@@ -296,9 +296,9 @@ class DatasetEntry(Entry):
             fill_latest_at=fill_latest_at,
         )
 
-    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         view = DatasetView(self._inner, _LazyDatasetState())
-        return view.index_ranges(index)
+        return view.get_index_ranges(index)
 
     def create_fts_search_index(
         self,
@@ -650,7 +650,7 @@ class DatasetView:
 
             return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
-    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         import datafusion.functions as F
         from datafusion import col
 
