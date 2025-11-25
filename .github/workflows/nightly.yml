@@ -66,7 +66,7 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - run: cargo build -p rerun # Intentionally NOT using pixi, becasue we wanna check that we can build outside of pixi
+      - run: cargo build -p rerun # Intentionally NOT using pixi, because we want to check that we can build outside of pixi
 
   build-web:
     name: "Build web viewer"
@@ -99,6 +99,13 @@ jobs:
     with:
       CONCURRENCY: nightly
       NIGHTLY: true
+    secrets: inherit
+
+  optional-checks:
+    name: "Optional checks"
+    uses: ./.github/workflows/reusable_optional_checks.yml
+    with:
+      CONCURRENCY: nightly
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
@@ -437,3 +444,91 @@ jobs:
       CONCURRENCY: nightly
       RELEASE_VERSION: prerelease
     secrets: inherit
+
+
+  fail-early-check-status:
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Determine CI Status
+        id: status
+        env:
+          # Pass all results as JSON via environment variable
+          ALL_RESULTS: ${{ toJSON(needs) }}
+          OPTIONAL_JOBS: "checks,benchmarks"  # Only list optional jobs
+        run: |
+          # Verify self job contains all required jobs in this file
+          python scripts/ci/check_required_jobs_in_status.py .github/workflows/on_pull_request.yml
+
+
+  # Status summary. All other jobs must complete before this one.
+  ci-status:
+    runs-on: ubuntu-latest
+    needs: [
+      benches,
+      checks-cpp,
+      checks-python,
+      checks-rust,
+      clean-build,
+      optional-checks,
+      sync-release-assets,
+      test-wheel-linux-arm64,
+      test-wheel-linux-x64,
+      test-wheel-macos-arm64,
+      test-wheel-windows-x64,
+      upload-examples,
+      upload-js,
+    ]
+    if: always()
+    steps:
+      - name: Determine CI Status
+        id: status
+        env:
+          # Pass all results as JSON via environment variable
+          ALL_RESULTS: ${{ toJSON(needs) }}
+          OPTIONAL_JOBS: "optional-checks"  # Only list optional jobs
+        run: |
+          # Verify self job contains all required jobs in this file
+          python scripts/ci/check_required_jobs_in_status.py .github/workflows/on_pull_request.yml
+
+          # Parse the JSON to get all job results
+          echo "$ALL_RESULTS" | jq -r 'to_entries[] | "\(.key)=\(.value.result)"' > /tmp/results.txt
+
+          OPTIONAL_JOBS="${OPTIONAL_JOBS}"
+          REQUIRED_FAILED=false
+          OPTIONAL_FAILED=false
+
+          while IFS='=' read -r job result; do
+            # Skip if skipped or cancelled
+            if [ "$result" = "skipped" ] || [ "$result" = "cancelled" ]; then
+              continue
+            fi
+
+          # Check if optional
+            if echo ",$OPTIONAL_JOBS," | grep -q ",$job,"; then
+              if [ "$result" != "success" ]; then
+                echo "⚠️  Optional job '$job' failed with status: $result"
+                OPTIONAL_FAILED=true
+              fi
+            else
+              if [ "$result" != "success" ]; then
+                echo "❌ Required job '$job' failed with status: $result"
+                REQUIRED_FAILED=true
+              fi
+            fi
+          done < /tmp/results.txt
+
+          # Determine overall status
+          if [ "$REQUIRED_FAILED" = true ]; then
+            echo "status=red" >> $GITHUB_OUTPUT
+            echo "🔴 RED: Required tests failed"
+            exit 1
+          elif [ "$OPTIONAL_FAILED" = true ]; then
+            echo "status=yellow" >> $GITHUB_OUTPUT
+            echo "🟡 YELLOW: Optional checks failed"
+            exit 0
+          else
+            echo "status=green" >> $GITHUB_OUTPUT
+            echo "🟢 GREEN: All checks passed"
+            exit 0
+          fi
