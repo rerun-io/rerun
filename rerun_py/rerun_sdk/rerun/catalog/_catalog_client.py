@@ -15,6 +15,7 @@ from rerun_bindings import (
     TableEntry as TableEntry,
     TableInsertMode as TableInsertMode,
 )
+
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
 
 if TYPE_CHECKING:
