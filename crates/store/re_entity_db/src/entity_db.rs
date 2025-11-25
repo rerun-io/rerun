@@ -668,7 +668,7 @@ impl EntityDb {
     /// On native: Lazily creates worker on first call, then queues message for processing
     /// On Wasm: This method doesn't exist (compile error if called)
     ///
-    /// The caller should periodically call [`Self::poll_worker_output`] to retrieve
+    /// The caller should periodically call [`Self::on_frame_start`] to retrieve
     /// processed chunks and add them to the store.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn submit_arrow_msg(
