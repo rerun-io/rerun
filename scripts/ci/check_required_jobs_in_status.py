@@ -98,6 +98,7 @@ def main() -> None:
         print(f"The following jobs are not included in the {STATUS_JOB}:\n{jobs}")
         sys.exit(1)
 
+    print(f"All jobs are included in {STATUS_JOB}!")
 
 if __name__ == "__main__":
     main()
