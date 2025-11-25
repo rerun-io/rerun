@@ -37,12 +37,13 @@ use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
 use url::Url;
 
-pub type FetchChunksResponseStream = std::pin::Pin<
-    Box<
-        dyn Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>
-            + Send,
-    >,
->;
+pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = Result<T, tonic::Status>> + Send>>;
+
+pub type FetchChunksResponseStream =
+    ResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;
+
+pub type QueryDatasetResponseStream =
+    ResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
 /// Expose an ergonomic API over the gRPC redap client.
 ///
@@ -375,16 +376,18 @@ where
             })
     }
 
-    /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
-    /// TODO(zehiko) We should also expose query and fetch separately
-    pub async fn fetch_partition_chunks(
+    /// Fetches all chunks ids for a specified partition.
+    ///
+    /// You can include/exclude static/temporal chunks,
+    /// and limit the query to a time range.
+    pub async fn query_dataset(
         &mut self,
         dataset_id: EntryId,
         partition_id: PartitionId,
         exclude_static_data: bool,
         exclude_temporal_data: bool,
         query: Option<re_protos::cloud::v1alpha1::Query>,
-    ) -> Result<FetchChunksResponseStream, ApiError> {
+    ) -> Result<QueryDatasetResponseStream, ApiError> {
         let query_request = QueryDatasetRequest {
             partition_ids: vec![partition_id.into()],
             chunk_ids: vec![],
@@ -400,18 +403,39 @@ where
             }),
         };
 
-        let response_stream = self
-            .inner()
-            .query_dataset(
-                tonic::Request::new(query_request)
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?
-            .into_inner();
+        Ok(Box::pin(
+            self.inner()
+                .query_dataset(
+                    tonic::Request::new(query_request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| {
+                            ApiError::tonic(err, "failed building /QueryDataset request")
+                        })?,
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?
+                .into_inner(),
+        ))
+    }
 
-        let chunk_info_batches = response_stream
+    /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
+    pub async fn fetch_partition_chunks(
+        &mut self,
+        dataset_id: EntryId,
+        partition_id: PartitionId,
+        exclude_static_data: bool,
+        exclude_temporal_data: bool,
+        query: Option<re_protos::cloud::v1alpha1::Query>,
+    ) -> Result<FetchChunksResponseStream, ApiError> {
+        let chunk_info_batches = self
+            .query_dataset(
+                dataset_id,
+                partition_id,
+                exclude_static_data,
+                exclude_temporal_data,
+                query,
+            )
+            .await?
             .collect::<Vec<_>>()
             .await
             .into_iter()
