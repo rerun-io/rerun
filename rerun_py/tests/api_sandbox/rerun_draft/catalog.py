@@ -204,18 +204,33 @@ class DatasetEntry(Entry):
     def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
 
-    def blueprint_dataset_id(self) -> EntryId | None:
-        return self._inner.blueprint_dataset_id()
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server.
 
-    def blueprint_dataset(self) -> DatasetEntry | None:
-        result = self._inner.blueprint_dataset()
-        return DatasetEntry(result) if result is not None else None
+        By default, also set this blueprint as default.
+        """
 
-    def default_blueprint_segment_id(self) -> str | None:
+        blueprint_dataset = self._inner.blueprint_dataset()
+        segment_id = blueprint_dataset.register(uri)
+
+        if set_default:
+            self._inner.set_default_blueprint_partition_id(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """Lists all blueprints currently registered with this dataset."""
+
+        return self._inner.blueprint_dataset().partition_ids()
+
+    def set_default_blueprint(self, blueprint_name: str) -> None:
+        """Set an already-registered blueprint as default for this dataset."""
+
+        self._inner.set_default_blueprint_partition_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """Return the name currently set blueprint."""
+
         return self._inner.default_blueprint_partition_id()
-
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
-        return self._inner.set_default_blueprint_partition_id(segment_id)
 
     def schema(self) -> Schema:
         return Schema(self._inner.schema(), _LazyDatasetState())

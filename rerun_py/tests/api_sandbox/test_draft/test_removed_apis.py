@@ -29,3 +29,10 @@ def test_removed_apis() -> None:
         assert "create_vector_index" not in dir(ds)
         assert "list_indexes" not in dir(ds)
         assert "delete_indexes" not in dir(ds)
+
+        # Replaced by a better, simpler API outline in
+        # https://linear.app/rerun/issue/RR-3018/improve-the-dataset-blueprint-apis-in-the-python-sdk
+        assert "blueprint_dataset_id" not in dir(ds)
+        assert "blueprint_dataset" not in dir(ds)
+        assert "default_blueprint_segment_id" not in dir(ds)
+        assert "set_default_blueprint_segment_id" not in dir(ds)
