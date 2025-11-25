@@ -74,7 +74,7 @@ impl<'a> RecordingPanelData<'a> {
 
                 SmartChannelSource::RedapGrpcStream { uri, .. } => {
                     loading_partitions
-                        .entry(uri.origin.clone())
+                        .entry(uri.endpoint_addr.origin.clone())
                         .or_default()
                         .entry(EntryId::from(uri.dataset_id))
                         .or_default()
@@ -344,11 +344,10 @@ impl<'a> ServerEntriesData<'a> {
                         name: entry.name().to_owned(),
                         icon: entry.icon(),
                         is_selected: ctx.is_selected_or_loading(&Item::RedapEntry(
-                            re_uri::EntryUri {
-                                origin: origin.clone(),
-                                prefix: String::new(),
-                                entry_id: entry.id(),
-                            },
+                            re_uri::EntryUri::new(
+                                re_uri::EndpointAddr::new(origin.clone()),
+                                entry.id(),
+                            ),
                         )),
                         is_active: ctx.active_redap_entry() == Some(entry.id()),
                     };
@@ -363,7 +362,7 @@ impl<'a> ServerEntriesData<'a> {
                                     if let EntityDbClass::DatasetPartition(uri) =
                                         entity_db.store_class()
                                     {
-                                        if &uri.origin == origin
+                                        if &uri.endpoint_addr.origin == origin
                                             && EntryId::from(uri.dataset_id) == entry.id()
                                         {
                                             Some(PartitionData::Loaded { entity_db })
@@ -506,14 +505,12 @@ impl EntryData {
     }
 
     pub fn entry_uri(&self) -> re_uri::EntryUri {
-        re_uri::EntryUri {
-            origin: self.origin.clone(),
-            prefix: String::new(),
-            entry_id: self.entry_id,
-        }
+        re_uri::EntryUri::new(
+            re_uri::EndpointAddr::new(self.origin.clone()),
+            self.entry_id,
+        )
     }
 }
-
 // ---
 
 #[derive(Debug)]

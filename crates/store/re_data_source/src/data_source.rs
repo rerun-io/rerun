@@ -252,7 +252,7 @@ impl LogDataSource {
                 let uri_clone = uri.clone();
                 let stream_partition = async move {
                     let client = connection_registry
-                        .client(uri_clone.origin.clone())
+                        .client(uri_clone.endpoint_addr.origin.clone())
                         .await
                         .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
                     re_redap_client::stream_blueprint_and_partition_from_server(

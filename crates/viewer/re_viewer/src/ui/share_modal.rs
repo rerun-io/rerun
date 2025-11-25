@@ -422,7 +422,7 @@ mod tests {
 
         modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
             re_uri::DatasetPartitionUri {
-                origin: origin.clone(),
+                endpoint_addr: re_uri::EndpointAddr::new(origin.clone()),
                 dataset_id,
                 partition_id: "partition_id".to_owned(),
                 time_range: None,
@@ -446,7 +446,7 @@ mod tests {
 
         modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
             re_uri::DatasetPartitionUri {
-                origin: origin.clone(),
+                endpoint_addr: re_uri::EndpointAddr::new(origin.clone()),
                 dataset_id,
                 partition_id: "partition_id".to_owned(),
                 time_range: Some(re_uri::TimeSelection {

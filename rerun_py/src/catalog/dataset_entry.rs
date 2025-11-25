@@ -262,8 +262,7 @@ impl PyDatasetEntry {
                 ),
             });
         Ok(re_uri::DatasetPartitionUri {
-            origin: connection.origin().clone(),
-            prefix: Default::default(),
+            endpoint_addr: re_uri::EndpointAddr::new(connection.origin().clone()),
             dataset_id: super_.details.id.id,
             partition_id,
 

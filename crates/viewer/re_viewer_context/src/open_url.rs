@@ -356,8 +356,7 @@ impl ViewerOpenUrl {
                 // `as_url` on the origin gives us an http link.
                 // We want a rerun link here instead.
                 Ok(Self::RedapCatalog(re_uri::CatalogUri::new(
-                    origin.clone(),
-                    String::new(),
+                    re_uri::EndpointAddr::new(origin.clone()),
                 )))
             }
 
@@ -406,7 +405,7 @@ impl ViewerOpenUrl {
             Self::RedapCatalog(catalog_uri) => {
                 // The welcome page is a fake catalog right now.
                 // If we dont'have a base url we'll just roll with it. It looks ugly but it's sharable.
-                if catalog_uri.origin == *EXAMPLES_ORIGIN
+                if catalog_uri.endpoint_addr.origin == *EXAMPLES_ORIGIN
                     && let Some(base_url) = web_viewer_base_url
                 {
                     return Ok(base_url.to_string());
@@ -539,16 +538,21 @@ impl ViewerOpenUrl {
                     LogDataSource::RedapProxy(proxy_uri.clone()),
                 ));
                 command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(
-                    proxy_uri.origin,
+                    proxy_uri.endpoint_addr.origin.clone(),
                 )));
             }
             Self::RedapCatalog(uri) => {
-                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender
-                    .send_system(SystemCommand::set_selection(Item::RedapServer(uri.origin)));
+                command_sender.send_system(SystemCommand::AddRedapServer(
+                    uri.endpoint_addr.origin.clone(),
+                ));
+                command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(
+                    uri.endpoint_addr.origin.clone(),
+                )));
             }
             Self::RedapEntry(uri) => {
-                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::AddRedapServer(
+                    uri.endpoint_addr.origin.clone(),
+                ));
                 command_sender.send_system(SystemCommand::set_selection(Item::RedapEntry(uri)));
             }
             Self::WebEventListener => {
@@ -942,7 +946,9 @@ mod tests {
                 &DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap()),
             )
             .unwrap(),
-            ViewerOpenUrl::RedapCatalog("rerun://localhost:51234".parse().unwrap())
+            ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::new(re_uri::EndpointAddr::new(
+                "rerun://localhost:51234".parse().unwrap()
+            )))
         );
 
         // LocalTable
@@ -956,7 +962,7 @@ mod tests {
 
         // RedapEntry
         let origin = "rerun://localhost:51234".parse().unwrap();
-        let entry_uri = re_uri::EntryUri::new(origin, String::new(), EntryId::new());
+        let entry_uri = re_uri::EntryUri::new(re_uri::EndpointAddr::new(origin), EntryId::new());
         assert_eq!(
             ViewerOpenUrl::from_display_mode(
                 &store_hub,
@@ -1292,14 +1298,16 @@ mod tests {
         let uri_out = [
             (
                 "rerun+http://localhost:51234/",
-                ViewerOpenUrl::RedapCatalog(CatalogUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
-                }),
+                ViewerOpenUrl::RedapCatalog(CatalogUri::new(re_uri::EndpointAddr::new(
+                    "rerun+http://localhost:51234".parse().unwrap(),
+                ))),
             ),
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1",
                 ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    endpoint_addr: re_uri::EndpointAddr::new(
+                        "rerun+http://localhost:51234".parse().unwrap(),
+                    ),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: None,
@@ -1309,7 +1317,9 @@ mod tests {
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s",
                 ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    endpoint_addr: re_uri::EndpointAddr::new(
+                        "rerun+http://localhost:51234".parse().unwrap(),
+                    ),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
@@ -1319,7 +1329,9 @@ mod tests {
             (
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s#when=stable_time@+3.990s",
                 ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    endpoint_addr: re_uri::EndpointAddr::new(
+                        "rerun+http://localhost:51234".parse().unwrap(),
+                    ),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
@@ -1336,7 +1348,9 @@ mod tests {
                 // Test missing `+`, and percent-endoded `+` (%2B):
                 "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@1.096s..%2B2.097s#when=stable_time@3.990s",
                 ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
+                    endpoint_addr: re_uri::EndpointAddr::new(
+                        "rerun+http://localhost:51234".parse().unwrap(),
+                    ),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),

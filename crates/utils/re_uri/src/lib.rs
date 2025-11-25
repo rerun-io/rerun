@@ -33,6 +33,7 @@
 //!
 //! ```
 
+mod endpoint_addr;
 mod endpoints;
 mod error;
 mod fragment;
@@ -42,6 +43,7 @@ mod scheme;
 mod time_selection;
 
 pub use self::{
+    endpoint_addr::EndpointAddr,
     endpoints::{
         catalog::CatalogUri, dataset::DatasetPartitionUri, entry::EntryUri, proxy::ProxyUri,
     },

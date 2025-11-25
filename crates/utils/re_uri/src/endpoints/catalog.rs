@@ -1,21 +1,21 @@
-use crate::{Origin, RedapUri};
+use crate::{EndpointAddr, RedapUri};
 
 /// `scheme://hostname:port/catalog`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CatalogUri {
-    pub origin: Origin,
-    pub prefix: String,
+    pub endpoint_addr: EndpointAddr,
 }
 
 impl std::fmt::Display for CatalogUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}/catalog", self.origin, self.prefix)
+        let Self { endpoint_addr } = self;
+        write!(f, "{endpoint_addr}/catalog")
     }
 }
 
 impl CatalogUri {
-    pub fn new(origin: Origin, prefix: String) -> Self {
-        Self { origin, prefix }
+    pub fn new(endpoint_addr: EndpointAddr) -> Self {
+        Self { endpoint_addr }
     }
 }
 

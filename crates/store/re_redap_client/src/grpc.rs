@@ -350,8 +350,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     }
 
     let re_uri::DatasetPartitionUri {
-        origin: _,
-        prefix: _,
+        endpoint_addr: _,
         dataset_id,
         partition_id,
         time_range,

@@ -58,7 +58,7 @@ impl ViewerOpenUrlDescription {
 
             ViewerOpenUrl::RedapCatalog(uri) => Self {
                 category: "Catalog",
-                target_short: Some(uri.origin.host.to_string()),
+                target_short: Some(uri.endpoint_addr.origin.host.to_string()),
             },
 
             ViewerOpenUrl::RedapEntry(uri) => Self {

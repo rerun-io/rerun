@@ -503,7 +503,9 @@ impl App {
         // which is unnecessary and can get us into a strange ui state.
         if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.command_sender
-                .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                .send_system(SystemCommand::AddRedapServer(
+                    uri.endpoint_addr.origin.clone(),
+                ));
         }
 
         self.rx_log.add(rx);

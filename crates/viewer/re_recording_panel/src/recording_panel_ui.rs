@@ -452,8 +452,7 @@ fn dataset_entry_ui(
     };
 
     let new_display_mode = DisplayMode::RedapEntry(re_uri::EntryUri::new(
-        origin.clone(),
-        String::new(),
+        re_uri::EndpointAddr::new(origin.clone()),
         *entry_id,
     ));
 
@@ -525,7 +524,7 @@ fn remote_table_entry_ui(
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), String::new(), *entry_id),
+                re_uri::EntryUri::new(re_uri::EndpointAddr::new(origin.clone()), *entry_id),
             )));
     }
 }
@@ -560,7 +559,7 @@ fn failed_entry_ui(
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), String::new(), *entry_id),
+                re_uri::EntryUri::new(re_uri::EndpointAddr::new(origin.clone()), *entry_id),
             )));
     }
 
