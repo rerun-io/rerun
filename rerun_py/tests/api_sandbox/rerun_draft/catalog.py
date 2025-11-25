@@ -229,8 +229,8 @@ class DatasetEntry(Entry):
         view = DatasetView(self._inner, _LazyDatasetState())
         return view.segment_table(join_meta=join_meta, join_key=join_key)
 
-    def manifest(self) -> Any:
-        return self._inner.manifest()
+    def manifest(self) -> datafusion.DataFrame:
+        return self._inner.manifest().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def segment_url(
         self,
