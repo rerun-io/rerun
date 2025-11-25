@@ -231,14 +231,9 @@ pub fn format_record_batch_with_width(
         &batch.schema_ref().fields,
         batch.columns(),
         &RecordBatchFormatOpts {
-            transposed: false,
             width,
-            include_metadata: true,
-            include_column_metadata: true,
-            trim_field_names: true,
-            trim_metadata_keys: true,
-            trim_metadata_values: true,
             redact_non_deterministic,
+            ..Default::default()
         },
     )
 }
