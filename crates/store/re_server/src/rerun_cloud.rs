@@ -41,6 +41,7 @@ use re_protos::{
         ext::{IfDuplicateBehavior, PartitionId},
     },
     headers::RerunHeadersExtractorExt as _,
+    missing_field,
 };
 
 #[derive(Debug, Default)]
@@ -938,25 +939,48 @@ impl RerunCloudService for RerunCloudHandler {
 
                 dataset.indexes().create_index(dataset, request.into_inner().try_into()?).await
             } else {
-                Err(tonic::Status::unimplemented("create_index not implemented"))
+                Err(tonic::Status::unimplemented("create_index requires the `lance` feature"))
             }
         }
     }
 
     async fn list_indexes(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>> {
-        Err(tonic::Status::unimplemented("list_indexes not implemented"))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                dataset.indexes().list_indexes(request.into_inner()).await
+            } else {
+                Err(tonic::Status::unimplemented("list_indexes requires the `lance` feature"))
+            }
+        }
     }
 
     async fn delete_indexes(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>> {
-        Err(tonic::Status::unimplemented(
-            "delete_indexes not implemented",
-        ))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                let request = request.into_inner();
+                let column = request.column.ok_or_else(|| {
+                    missing_field!(re_protos::cloud::v1alpha1::IndexConfig, "time_index")
+                })?;
+
+                dataset.indexes().delete_indexes(column.try_into()?).await
+            } else {
+                Err(tonic::Status::unimplemented("delete_indexes requires the `lance` feature"))
+            }
+        }
     }
 
     /* Queries */
@@ -975,7 +999,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 Ok(DatasetChunkIndexes::search_dataset(dataset, request.into_inner().try_into()?).await?)
             } else {
-                Err(tonic::Status::unimplemented("search_dataset not implemented"))
+                Err(tonic::Status::unimplemented("search_dataset requires the `lance` feature"))
             }
         }
     }

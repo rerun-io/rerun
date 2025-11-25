@@ -10,9 +10,15 @@ use ahash::{HashMap, HashMapExt as _};
 use futures::StreamExt as _;
 use re_chunk_store::ChunkStoreHandle;
 use re_log_types::{EntityPath, EntryId};
-use re_protos::cloud::v1alpha1::ext::{CreateIndexRequest, IndexConfig, SearchDatasetRequest};
-use re_protos::cloud::v1alpha1::{CreateIndexResponse, SearchDatasetResponse};
+use re_protos::cloud::v1alpha1::ext::{
+    CreateIndexRequest, IndexColumn, IndexConfig, SearchDatasetRequest,
+};
+use re_protos::cloud::v1alpha1::{
+    CreateIndexResponse, DeleteIndexesResponse, ListIndexesRequest, ListIndexesResponse,
+    SearchDatasetResponse,
+};
 use re_protos::common::v1alpha1::ext::PartitionId;
+use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -97,6 +103,47 @@ impl DatasetChunkIndexes {
             index: Some(config.into()),
             statistics_json: Default::default(),
             debug_info: None,
+        }))
+    }
+
+    pub async fn list_indexes(
+        &self,
+        _request: ListIndexesRequest,
+    ) -> tonic::Result<tonic::Response<ListIndexesResponse>> {
+        let mut result = Vec::new();
+        for path_indexes in self.indexes.read().await.values() {
+            for component_indexes in path_indexes.values() {
+                result.push(component_indexes.config.clone().into());
+            }
+        }
+
+        Ok(tonic::Response::new(ListIndexesResponse {
+            indexes: result,
+            statistics_json: Vec::new(),
+        }))
+    }
+
+    pub async fn delete_indexes(
+        &self,
+        column: IndexColumn,
+    ) -> tonic::Result<tonic::Response<DeleteIndexesResponse>> {
+        // We just remove the index from the dataset's indexes but don't delete the underlying
+        // storage directory intact. This avoids any race condition if the Lance table is still in
+        // use after having been cloned. Cleanup will happen when the process exists, deleting
+        // the temp directory holding all indexes.
+
+        let mut indexes = self.indexes.write().await;
+
+        let result = if let Some(path_indexes) = indexes.get_mut(&column.entity_path)
+            && let Some(component_index) = path_indexes.remove(&column.descriptor.component)
+        {
+            vec![component_index.config.clone().into()]
+        } else {
+            Vec::new()
+        };
+
+        Ok(tonic::Response::new(DeleteIndexesResponse {
+            indexes: result,
         }))
     }
 
@@ -203,9 +250,11 @@ impl DatasetChunkIndexes {
         let entity_path = &config.column.entity_path.clone();
         let component = &config.column.descriptor.component.clone();
 
-        let path: PathBuf = dir
-            .into()
-            .join(entity_component_path(entity_path, component));
+        // Use a random string to name the index directory. Using entity path and component would
+        // be more user-friendly, but users should never have to look at this temporary directory,
+        // and this can create potential collisions if an index is deleted and recreated in rapid
+        // succession.
+        let path: PathBuf = dir.into().join(Tuid::new().to_string());
 
         let mut indexes = self.indexes.write().await;
 
@@ -273,19 +322,6 @@ impl DatasetChunkIndexes {
 }
 
 //---- Helper functions
-
-/// Create a non-hierarchical path for an entity component
-fn entity_component_path(entity_path: &EntityPath, component: &ComponentIdentifier) -> String {
-    let mut result = String::new();
-
-    for segment in entity_path.iter() {
-        result.push_str(&segment.escaped_string()); // avoid non-alphanumeric characters in path
-        result.push_str("--");
-    }
-    result.push_str(component.as_str());
-
-    result
-}
 
 #[cfg(feature = "lance")]
 #[cfg(test)]
