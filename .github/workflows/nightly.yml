@@ -446,21 +446,6 @@ jobs:
     secrets: inherit
 
 
-  fail-early-check-status:
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Determine CI Status
-        id: status
-        env:
-          # Pass all results as JSON via environment variable
-          ALL_RESULTS: ${{ toJSON(needs) }}
-          OPTIONAL_JOBS: "checks,benchmarks"  # Only list optional jobs
-        run: |
-          # Verify self job contains all required jobs in this file
-          python scripts/ci/check_required_jobs_in_status.py .github/workflows/on_pull_request.yml
-
-
   # Status summary. All other jobs must complete before this one.
   ci-status:
     runs-on: ubuntu-latest
