@@ -160,6 +160,30 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                     ]),
                 )
         });
+
+        test_context.log_entity(
+            "base/transform_axes/more_transforms_than_axis_lengths",
+            |builder| {
+                builder
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &re_types::archetypes::TransformAxes3D::new(1.0),
+                    )
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &re_types::archetypes::InstancePoses3D::new()
+                            .with_translations([
+                                (-1.0, -1.0, 0.0),
+                                (1.0, -1.0, 0.0),
+                                (-1.0, 1.0, 0.0),
+                                (1.0, 1.0, 0.0),
+                            ])
+                            .with_scales([(1.75, 1.75, 1.75), (0.5, 0.5, 0.5)]),
+                    )
+            },
+        );
     }
 
     match base_transform {
@@ -237,7 +261,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
 }
 
 #[expect(clippy::unwrap_used)]
-fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId, ViewId) {
+fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId, ViewId, ViewId) {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         let view_blueprint_boxes = ViewBlueprint::new(
             re_view_spatial::SpatialView3D::identifier(),
@@ -263,28 +287,48 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId, ViewId) {
             },
         );
 
+        let view_blueprint_transform_axes = ViewBlueprint::new(
+            re_view_spatial::SpatialView3D::identifier(),
+            RecommendedView {
+                origin: EntityPath::root(),
+                query_filter: "+ /base/transform_axes/**".parse().unwrap(),
+            },
+        );
+
         let view_id_boxes = view_blueprint_boxes.id;
         let view_id_spheres = view_blueprint_spheres.id;
         let view_id_points = view_blueprint_points.id;
+        let view_id_transform_axes = view_blueprint_transform_axes.id;
 
         blueprint.add_views(
             [
                 view_blueprint_boxes,
                 view_blueprint_spheres,
                 view_blueprint_points,
+                view_blueprint_transform_axes,
             ]
             .into_iter(),
             None,
             None,
         );
 
-        (view_id_boxes, view_id_spheres, view_id_points)
+        (
+            view_id_boxes,
+            view_id_spheres,
+            view_id_points,
+            view_id_transform_axes,
+        )
     })
 }
 
 fn run_view_ui_and_save_snapshot(
     test_context: &TestContext,
-    (view_id_boxes, view_id_spheres, view_id_points): (ViewId, ViewId, ViewId),
+    (view_id_boxes, view_id_spheres, view_id_points, view_id_transform_axes): (
+        ViewId,
+        ViewId,
+        ViewId,
+        ViewId,
+    ),
     name: &str,
     size: egui::Vec2,
 ) {
@@ -359,6 +403,41 @@ fn run_view_ui_and_save_snapshot(
                 &ctx,
                 &EyeControls3D::descriptor_look_target(),
                 &Position3D::new(0.0, 0.0, 0.0),
+            );
+        });
+        harness.run_steps(10);
+
+        harness.snapshot(&name);
+    }
+
+    // Transform axes with instance poses.
+    {
+        let mut harness = test_context
+            .setup_kittest_for_rendering_3d(size)
+            .build_ui(|ui| {
+                test_context.run_with_single_view(ui, view_id_transform_axes);
+            });
+
+        // You should see:
+        // * 4 sets of coordinate axes at distinct positions (translated by instance poses)
+        // * 1 should be larger then the others
+
+        let name = format!("{name}_transform_axes");
+        test_context.with_blueprint_ctx(|ctx, _| {
+            let property = ViewProperty::from_archetype::<EyeControls3D>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                view_id_transform_axes,
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::new(6.0, 6.0, 6.0),
+            );
+            property.save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_look_target(),
+                &Position3D::new(2.0, 2.0, 2.0),
             );
         });
         harness.run_steps(10);
