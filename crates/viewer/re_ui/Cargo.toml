@@ -33,7 +33,7 @@ default = []
 analytics = ["dep:re_analytics"]
 
 ## Enable helpers for testing
-testing = ["dep:egui_kittest", "dep:re_analytics/testing"]
+testing = ["dep:egui_kittest", "re_analytics/testing"]
 
 [dependencies]
 re_analytics = { workspace = true, optional = true }
