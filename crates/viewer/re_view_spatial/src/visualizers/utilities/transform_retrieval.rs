@@ -147,7 +147,7 @@ fn is_valid_space_for_content(
                     } else {
                         output.report_error_for(
                             entity_path.clone(),
-                            "2D visualizers require a pinhole ancestor to be shown in a 3D view",
+                            "2D visualizers require a pinhole ancestor to be shown in a 3D view.",
                         );
                         false
                     }
@@ -179,7 +179,7 @@ fn is_valid_space_for_content(
                     } else {
                         output.report_error_for(
                             entity_path.clone(),
-                            "3D visualizers require a pinhole at the origin of the 2D view",
+                            "3D visualizers require a pinhole at the origin of the 2D view.",
                         );
                         false
                     }

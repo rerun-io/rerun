@@ -41,6 +41,7 @@ impl SystemExecutionOutput {
 ///
 /// For convenience, the actual execution method of visualizer is using a `Result` type,
 /// but this enum is more suited for storing errors throughout a frame.
+#[derive(Clone, Debug)]
 pub enum VisualizerExecutionErrorState {
     /// The entire visualizer failed to execute.
     Overall(std::sync::Arc<ViewSystemExecutionError>),

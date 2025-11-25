@@ -57,6 +57,12 @@ impl<T> std::ops::Deref for PerVisualizer<T> {
     }
 }
 
+impl<T: Clone> Clone for PerVisualizer<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
 // Manual default impl, otherwise T: Default would be required.
 impl<T> Default for PerVisualizer<T> {
     fn default() -> Self {
