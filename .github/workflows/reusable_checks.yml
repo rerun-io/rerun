@@ -314,4 +314,4 @@ jobs:
         id: status
         run: |
           pip install pyyaml
-          python scripts/ci/check_required_jobs_in_status.py .github/workflows/on_pull_request.yml
+          python scripts/ci/check_required_jobs_in_status.py .github/workflows/nightly.yml
