@@ -23,7 +23,6 @@ try:
     import laser_geometry
     import rclpy
     import rerun_urdf
-    import trimesh
     from image_geometry import PinholeCameraModel
     from nav_msgs.msg import Odometry
     from numpy.lib.recfunctions import structured_to_unstructured
@@ -31,7 +30,7 @@ try:
     from rclpy.node import Node
     from rclpy.qos import QoSDurabilityPolicy, QoSProfile
     from rclpy.time import Duration, Time
-    from sensor_msgs.msg import CameraInfo, Image, LaserScan, PointCloud2, PointField
+    from sensor_msgs.msg import CameraInfo, Image, LaserScan
     from sensor_msgs_py import point_cloud2
     from std_msgs.msg import String
     from tf2_ros import TransformException
@@ -200,7 +199,10 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         time = Time.from_msg(img.header.stamp)
         rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 
-        rr.log("map/robot/camera/img/depth", rr.DepthImage(self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"), meter=1.0, colormap="viridis"))
+        rr.log(
+            "map/robot/camera/img/depth",
+            rr.DepthImage(self.cv_bridge.imgmsg_to_cv2(img, desired_encoding="32FC1"), meter=1.0, colormap="viridis"),
+        )
 
     def scan_callback(self, scan: LaserScan) -> None:
         """
