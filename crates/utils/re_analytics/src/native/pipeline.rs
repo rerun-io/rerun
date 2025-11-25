@@ -36,7 +36,16 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub(crate) fn new(config: &Config, tick: Duration) -> Result<Option<Self>, PipelineError> {
+        if std::env::var("CI").is_ok() {
+            re_log::debug_once!("Analytics disabled on CI");
+            return Ok(None);
+        }
         if cfg!(feature = "testing") {
+            re_log::debug_once!("Analytics disabled in tests");
+            return Ok(None);
+        }
+        if cfg!(debug_assertions) {
+            re_log::debug_once!("Analytics disabled in debug builds");
             return Ok(None);
         }
 
