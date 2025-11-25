@@ -267,7 +267,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::now(),
+                    &re_types::components::Timestamp::from(0),
                 )
                 .expect("Failed to set recording start time");
         }

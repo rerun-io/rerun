@@ -42,7 +42,7 @@ impl VisualizerSystem for SeriesLinesSystem {
             .queried
             .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.relevant_archetypes = std::iter::once(archetypes::SeriesLines::name()).collect();
+        query_info.relevant_archetype = archetypes::SeriesLines::name().into();
 
         query_info
     }
@@ -119,7 +119,7 @@ impl SeriesLinesSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
-        let time_range = util::determine_time_range(ctx)?;
+        let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
             use re_view::RangeResultsExt as _;
