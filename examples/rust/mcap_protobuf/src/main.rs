@@ -2,7 +2,7 @@ use arrow::array::{Float32Array, Float64Array, ListArray};
 
 use re_log_types::TimeType;
 use rerun::{
-    EncodedImage, InstancePoses3D, Points3D, Transform3D, VideoStream,
+    EncodedImage, InstancePoses3D, Points3D, Transform3D, TransformAxes3D, VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
     lenses::{Lens, LensesSink, Op, OpError},
@@ -72,6 +72,15 @@ pub fn list_xyz_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArray
     Ok(pipeline.transform(list_array)?)
 }
 
+/// Converts a list of structs with `x`, `y`, `z`, `w` fields to a list of fixed-size lists with 4 f32 values (quaternions).
+pub fn list_xyzw_struct_to_list_fixed(list_array: &ListArray) -> Result<ListArray, OpError> {
+    // Arrow transformations can work on any Arrow-level.
+    let pipeline = MapList::new(StructToFixedList::new(["x", "y", "z", "w"]).then(
+        MapFixedSizeList::new(PrimitiveCast::<Float64Array, Float32Array>::new()),
+    ));
+    Ok(pipeline.transform(list_array)?)
+}
+
 /// Converts a list of video codec strings to Rerun `VideoCodec` values (as u32).
 pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListArray, OpError> {
     let pipeline = MapList::new(StringToVideoCodecUInt32::default());
@@ -95,12 +104,14 @@ fn main() -> anyhow::Result<()> {
     // Name of the timestamp field in Foxglove messages, and name of the corresponding Rerun timeline.
     const TIME_NAME: &str = "timestamp";
 
-    // The following could be improved with columnar archetype APIs.
-    let dummy_point = Points3D::new([[0.0f32, 0.0, 0.0]])
-        .columns_of_unit_batches()
-        .unwrap()
-        .next()
-        .unwrap();
+    // TODO(grtlr): This can be removed once we have proper support for Pinhole.
+    let transform_axes = |length| {
+        TransformAxes3D::new(length)
+            .columns_of_unit_batches()
+            .unwrap()
+            .next()
+            .unwrap()
+    };
 
     // plural
     let instance_poses_lens =
@@ -124,12 +135,19 @@ fn main() -> anyhow::Result<()> {
                         Op::func(list_xyz_struct_to_list_fixed),
                     ],
                 )
+                .component(
+                    InstancePoses3D::descriptor_quaternions(),
+                    [
+                        Op::access_field("poses"),
+                        Op::flatten(),
+                        Op::access_field("orientation"),
+                        Op::func(list_xyzw_struct_to_list_fixed),
+                    ],
+                )
             })?
             .output_static_columns(|out| {
-                out.component(
-                    dummy_point.descriptor.clone(),
-                    [Op::constant(dummy_point.list_array.clone())],
-                )
+                let axes = transform_axes(0.1);
+                out.component(axes.descriptor, [Op::constant(axes.list_array)])
             })?
             .build();
 
@@ -154,12 +172,18 @@ fn main() -> anyhow::Result<()> {
                         Op::func(list_xyz_struct_to_list_fixed),
                     ],
                 )
+                .component(
+                    InstancePoses3D::descriptor_quaternions(),
+                    [
+                        Op::access_field("pose"),
+                        Op::access_field("orientation"),
+                        Op::func(list_xyzw_struct_to_list_fixed),
+                    ],
+                )
             })?
             .output_static_columns(|out| {
-                out.component(
-                    dummy_point.descriptor,
-                    [Op::constant(dummy_point.list_array)],
-                )
+                let axes = transform_axes(1.0);
+                out.component(axes.descriptor, [Op::constant(axes.list_array)])
             })?
             .build();
 
@@ -244,6 +268,15 @@ fn main() -> anyhow::Result<()> {
                         Op::flatten(),
                         Op::access_field("translation"),
                         Op::func(list_xyz_struct_to_list_fixed),
+                    ],
+                )
+                .component(
+                    Transform3D::descriptor_quaternion(),
+                    [
+                        Op::access_field("transforms"),
+                        Op::flatten(),
+                        Op::access_field("rotation"),
+                        Op::func(list_xyzw_struct_to_list_fixed),
                     ],
                 )
             })?
