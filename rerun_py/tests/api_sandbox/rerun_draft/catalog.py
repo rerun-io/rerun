@@ -201,10 +201,6 @@ class DatasetEntry(Entry):
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
         self._inner: _catalog.DatasetEntry = inner
 
-    @property
-    def manifest_url(self) -> str:
-        return self._inner.manifest_url
-
     def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
 

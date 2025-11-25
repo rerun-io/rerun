@@ -20,3 +20,4 @@ def test_removed_apis() -> None:
         ds = client.create_dataset("my_dataset")
 
         assert "update" not in dir(ds)  # now: `set_name`
+        assert "manifest_url" not in dir(ds)
