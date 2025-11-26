@@ -51,6 +51,7 @@ document-features.workspace = true
 half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+ouroboros.workspace = true
 thiserror.workspace = true
 
 
