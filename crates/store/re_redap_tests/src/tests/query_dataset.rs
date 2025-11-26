@@ -1,8 +1,10 @@
 use futures::StreamExt as _;
 
+use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::{
     cloud::v1alpha1::{
-        QueryDatasetResponse, ext::QueryDatasetRequest,
+        QueryDatasetResponse,
+        ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
         rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
@@ -63,6 +65,69 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
             "single_entity",
         ),
         //TODO(RR-2613): add more test cases here when they are supported by OSS server
+        // Test fuzzy_descriptors filtering - should match chunks containing "MyPoint" in descriptors
+        (
+            QueryDatasetRequest {
+                fuzzy_descriptors: vec!["MyPoint".to_owned()],
+                ..Default::default()
+            },
+            "fuzzy_descriptors_mypoint",
+        ),
+        // Test fuzzy_descriptors with no matches
+        (
+            QueryDatasetRequest {
+                fuzzy_descriptors: vec!["NonExistentComponent".to_owned()],
+                ..Default::default()
+            },
+            "fuzzy_descriptors_no_match",
+        ),
+        // Test query with range filter - frames 10-30 (simple recordings have frames 10, 20, 30, 40)
+        (
+            QueryDatasetRequest {
+                query: Some(Query {
+                    range: Some(QueryRange {
+                        index: "frame_nr".to_owned(),
+                        index_range: AbsoluteTimeRange::new(
+                            TimeInt::new_temporal(15),
+                            TimeInt::new_temporal(25),
+                        ),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            "query_range_15_25",
+        ),
+        // Test query with latest_at filter - should include chunks with min time <= 25
+        (
+            QueryDatasetRequest {
+                query: Some(Query {
+                    latest_at: Some(QueryLatestAt {
+                        index: Some("frame_nr".to_owned()),
+                        at: TimeInt::new_temporal(25),
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            "query_latest_at_25",
+        ),
+        // Test exclude_static_data
+        (
+            QueryDatasetRequest {
+                exclude_static_data: true,
+                ..Default::default()
+            },
+            "exclude_static",
+        ),
+        // Test exclude_temporal_data
+        (
+            QueryDatasetRequest {
+                exclude_temporal_data: true,
+                ..Default::default()
+            },
+            "exclude_temporal",
+        ),
     ];
 
     for (request, snapshot_name) in requests {
