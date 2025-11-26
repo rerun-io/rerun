@@ -104,11 +104,6 @@ Set the displayed dimensions in a selection panel.",
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
-        debug_assert_eq!(
-            Self::identifier(),
-            visualizable_entities_per_visualizer.view_class_identifier
-        );
-
         // Default implementation would not suggest the Tensor visualizer for images,
         // since they're not indicated with a Tensor indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)

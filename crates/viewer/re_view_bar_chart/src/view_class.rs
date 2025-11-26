@@ -110,11 +110,6 @@ impl ViewClass for BarChartView {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
-        debug_assert_eq!(
-            Self::identifier(),
-            visualizable_entities_per_visualizer.view_class_identifier
-        );
-
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
         // since they're not indicated with a BarChart indicator.
         // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)

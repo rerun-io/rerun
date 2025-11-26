@@ -325,11 +325,6 @@ impl ViewClass for SpatialView3D {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        debug_assert_eq!(
-            Self::identifier(),
-            visualizable_entities_per_visualizer.view_class_identifier
-        );
-
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 

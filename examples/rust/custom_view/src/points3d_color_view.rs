@@ -137,11 +137,6 @@ impl ViewClass for ColorCoordinatesView {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        debug_assert_eq!(
-            Self::identifier(),
-            visualizable_entities_per_visualizer.view_class_identifier
-        );
-
         if visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
             .is_some_and(|entities| entities.contains(entity_path))

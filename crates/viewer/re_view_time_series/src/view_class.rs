@@ -390,11 +390,6 @@ impl ViewClass for TimeSeriesView {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
-        debug_assert_eq!(
-            Self::identifier(),
-            visualizable_entities_per_visualizer.view_class_identifier
-        );
-
         let available_visualizers: HashSet<&ViewSystemIdentifier> =
             visualizable_entities_per_visualizer
                 .iter()

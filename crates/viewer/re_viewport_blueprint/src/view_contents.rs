@@ -457,6 +457,11 @@ impl<'a> DataQueryPropertyResolver<'a> {
         visualizable_entities_per_visualizer: &'a PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> Self {
+        debug_assert_eq!(
+            view.class_identifier(),
+            visualizable_entities_per_visualizer.view_class_identifier
+        );
+
         Self {
             view_class_registry,
             view,
