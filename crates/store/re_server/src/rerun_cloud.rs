@@ -1033,9 +1033,8 @@ impl RerunCloudService for RerunCloudHandler {
                         continue;
                     }
 
-                    if !requested_chunk_ids.is_empty()
-                        && !requested_chunk_ids.contains(&chunk.id().as_tuid().into())
-                    {
+                    let tuid = chunk.id().as_tuid().into();
+                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&tuid) {
                         continue;
                     }
 
