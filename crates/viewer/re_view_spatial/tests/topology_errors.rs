@@ -7,18 +7,10 @@ use re_types::{ViewClassIdentifier, archetypes};
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
-#[derive(Debug, Clone, Copy)]
-struct ExpectedError {
-    visualizer: &'static str,
-    entity_path: &'static str,
-    message_substring: &'static str,
-}
-
 struct TestScenario {
-    description: &'static str,
+    name: &'static str,
     space_origin: &'static str,
     view_class: ViewClassIdentifier,
-    expected_errors: Vec<ExpectedError>,
 }
 
 fn setup_scene(test_context: &mut TestContext) {
@@ -129,77 +121,28 @@ fn test_topology_errors() {
 
     setup_scene(&mut test_context);
 
-    // Most scenarios run into the unreachable & misplaced 3D entities not being visualizable!
-    let disconnected_entity_error = ExpectedError {
-        visualizer: "Ellipsoids3D",
-        entity_path: "disconnected_entity",
-        message_substring: "No transform path to the view's origin frame.",
-    };
-    let misplaced_boxes = ExpectedError {
-        visualizer: "Boxes3D",
-        entity_path: "misplaced_boxes3d_entity",
-        message_substring: "Can't visualize 3D content that is under a pinhole projection.",
-    };
-
     let scenarios = [
         TestScenario {
-            description: "3D view with 3D content under world including a Pinhole with 2D content",
+            name: "3d_view_at_root",
             space_origin: "world_entity",
             view_class: re_view_spatial::SpatialView3D::identifier(),
-            expected_errors: vec![disconnected_entity_error, misplaced_boxes],
         },
         TestScenario {
-            description: "2D view with 2D content under world and 3D projected content",
-            space_origin: "pinhole_workaround/pinhole_entity",
-            view_class: re_view_spatial::SpatialView2D::identifier(),
-            expected_errors: vec![disconnected_entity_error, misplaced_boxes],
-        },
-        TestScenario {
-            description: "3D view at a Pinhole",
-            space_origin: "pinhole_workaround/pinhole_entity",
-            view_class: re_view_spatial::SpatialView3D::identifier(),
-            expected_errors: vec![
-                disconnected_entity_error,
-                ExpectedError {
-                    visualizer: "Boxes3D",
-                    entity_path: "misplaced_boxes3d_entity",
-                    message_substring: "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
-                },
-                ExpectedError {
-                    visualizer: "Points2D",
-                    entity_path: "points2d_entity",
-                    message_substring: "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
-                },
-                ExpectedError {
-                    visualizer: "Points3D",
-                    entity_path: "points3d_entity",
-                    message_substring: "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
-                },
-            ],
-        },
-        TestScenario {
-            description: "pinhole inside 2D view",
+            name: "2d_view_at_root",
             space_origin: "world_entity",
             view_class: re_view_spatial::SpatialView2D::identifier(),
-            expected_errors: vec![
-                disconnected_entity_error,
-                misplaced_boxes,
-                ExpectedError {
-                    visualizer: "Points2D",
-                    entity_path: "points2d_entity",
-                    message_substring: "Can't visualize 2D content with a pinhole ancestor that's embedded within the 2D view.",
-                },
-                ExpectedError {
-                    visualizer: "Points3D",
-                    entity_path: "points3d_entity",
-                    message_substring: "3D visualizers require a pinhole at the origin of the 2D view.",
-                },
-            ],
+        },
+        TestScenario {
+            name: "2d_view_at_pinhole",
+            space_origin: "pinhole_workaround/pinhole_entity",
+            view_class: re_view_spatial::SpatialView2D::identifier(),
+        },
+        TestScenario {
+            name: "3d_view_at_pinhole",
+            space_origin: "pinhole_workaround/pinhole_entity",
+            view_class: re_view_spatial::SpatialView3D::identifier(),
         },
     ];
-
-    // Want to run all scenarios even if some fail.
-    let mut test_failed = false;
 
     for scenario in scenarios {
         let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -222,84 +165,13 @@ fn test_topology_errors() {
             });
         harness.run();
 
-        let mut visualizer_errors = test_context
+        let visualizer_errors = test_context
             .view_states
             .lock()
             .visualizer_errors(view_id)
             .cloned()
             .unwrap_or_default();
 
-        for expected_error in scenario.expected_errors {
-            let ExpectedError {
-                visualizer,
-                entity_path,
-                message_substring,
-            } = expected_error;
-            let visualizer = visualizer.into();
-            let entity_path = entity_path.into();
-
-            let std::collections::hash_map::Entry::Occupied(mut errors_for_visualizer) =
-                visualizer_errors.0.entry(visualizer)
-            else {
-                println!(
-                    "In scenario {:?}, expected visualizer errors not found: {expected_error:?}",
-                    scenario.description
-                );
-                test_failed = true;
-                continue;
-            };
-
-            let actual_error = errors_for_visualizer.get().error_string_for(&entity_path);
-
-            match actual_error {
-                Some(actual_error) if actual_error.contains(message_substring) => {
-                    // All good. Remove error from list so we can later check for unexpected errors.
-                    match errors_for_visualizer.get_mut() {
-                        re_viewer_context::VisualizerExecutionErrorState::Overall(_) => {
-                            // Not handled right now.
-                            println!(
-                                "In scenario {:?}, for visualizer={visualizer:?} entity_path={entity_path:?}: but got overall error instead of expected per-entity error {message_substring:?}.",
-                                scenario.description,
-                            );
-                            test_failed = true;
-                        }
-                        re_viewer_context::VisualizerExecutionErrorState::PerEntity(per_entity) => {
-                            per_entity.remove(&entity_path);
-                            if per_entity.is_empty() {
-                                errors_for_visualizer.remove();
-                            }
-                        }
-                    }
-                }
-                Some(actual_error) => {
-                    println!(
-                        "In scenario {:?}, for visualizer={visualizer:?} entity_path={entity_path:?}: expected to contain {message_substring:?}, got {actual_error:?}",
-                        scenario.description,
-                    );
-                    test_failed = true;
-                }
-                None => {
-                    println!(
-                        "In scenario {:?}, for visualizer={visualizer:?} entity_path={entity_path:?}: expected error {message_substring:?}",
-                        scenario.description,
-                    );
-                    test_failed = true;
-                }
-            }
-        }
-
-        // Check for unexpected errors.
-        for (visualizer, errors) in visualizer_errors.0 {
-            println!(
-                "In scenario {:?}, unexpected errors for visualizer {visualizer:?}: {errors:?}",
-                scenario.description
-            );
-            test_failed = true;
-        }
+        insta::assert_debug_snapshot!(scenario.name, visualizer_errors);
     }
-
-    assert!(
-        !test_failed,
-        "One or more test scenarios failed. See previous log messages."
-    );
 }
