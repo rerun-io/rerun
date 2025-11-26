@@ -70,6 +70,7 @@ pub struct EncodedDepthImage {
     pub media_type: Option<SerializedComponentBatch>,
 
     /// Conversion from native units to meters (e.g. `0.001` for millimeters).
+    /// If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
     pub meter: Option<SerializedComponentBatch>,
 
     /// Optional colormap for visualization of decoded depth.
@@ -542,6 +543,7 @@ impl EncodedDepthImage {
     }
 
     /// Conversion from native units to meters (e.g. `0.001` for millimeters).
+    /// If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
     #[inline]
     pub fn with_meter(mut self, meter: impl Into<crate::components::DepthMeter>) -> Self {
         self.meter = try_serialize_field(Self::descriptor_meter(), [meter]);

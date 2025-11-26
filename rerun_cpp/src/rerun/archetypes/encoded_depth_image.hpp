@@ -94,6 +94,7 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> media_type;
 
         /// Conversion from native units to meters (e.g. `0.001` for millimeters).
+        /// If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
         std::optional<ComponentBatch> meter;
 
         /// Optional colormap for visualization of decoded depth.
@@ -226,6 +227,7 @@ namespace rerun::archetypes {
         }
 
         /// Conversion from native units to meters (e.g. `0.001` for millimeters).
+        /// If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
         EncodedDepthImage with_meter(const rerun::components::DepthMeter& _meter) && {
             meter = ComponentBatch::from_loggable(_meter, Descriptor_meter).value_or_throw();
             return std::move(*this);

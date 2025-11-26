@@ -1952,7 +1952,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "meter",
                         display_name: "Meter",
                         component_type: "rerun.components.DepthMeter".into(),
-                        docstring_md: "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
+                        docstring_md: "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nIf omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
@@ -2100,7 +2100,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "meter",
                         display_name: "Meter",
                         component_type: "rerun.components.DepthMeter".into(),
-                        docstring_md: "Conversion from native units to meters (e.g. `0.001` for millimeters).",
+                        docstring_md: "Conversion from native units to meters (e.g. `0.001` for millimeters).\nIf omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).",
                         is_required: false,
                     },
                     ArchetypeFieldReflection {
