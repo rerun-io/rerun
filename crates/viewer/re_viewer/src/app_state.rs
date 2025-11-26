@@ -24,7 +24,7 @@ use re_viewport::ViewportUi;
 use re_viewport_blueprint::{ViewportBlueprint, ui::add_view_or_container_modal_ui};
 
 use crate::{
-    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,
+    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx, history,
     navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
@@ -82,6 +82,13 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) navigation: Navigation,
 
+    /// A history of urls the viewer has visited.
+    ///
+    /// This is not updated if this is a web viewer with control over
+    /// web history.
+    #[serde(skip)]
+    pub(crate) history: history::History,
+
     /// Storage for the state of each `View`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
@@ -125,6 +132,7 @@ impl Default for AppState {
             open_url_modal: Default::default(),
             share_modal: Default::default(),
             navigation: Default::default(),
+            history: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -196,21 +204,21 @@ impl AppState {
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
-        match self.navigation.peek() {
-            DisplayMode::Settings => {
+        match self.navigation.current() {
+            DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
-            DisplayMode::ChunkStoreBrowser => {
+            DisplayMode::ChunkStoreBrowser(prior_mode) => {
                 let should_datastore_ui_remain_active =
                     self.datastore_ui
                         .ui(store_context, ui, self.app_options.timestamp_format);
                 if !should_datastore_ui_remain_active {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
@@ -346,7 +354,7 @@ impl AppState {
                 let blueprint_query = app_blueprint_ctx.blueprint_query;
 
                 let egui_ctx = ui.ctx().clone();
-                let display_mode = self.navigation.peek();
+                let display_mode = self.navigation.current();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
                         is_test: app_env.is_test(),
@@ -588,7 +596,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // handled above
                         }
                     },
                 );
@@ -661,7 +669,7 @@ impl AppState {
                                 ui.loading_screen("Loading data source:", &*source);
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // Handled above
                         }
                     });
 
