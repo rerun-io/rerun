@@ -110,7 +110,7 @@ pub fn parse_ros_rvl_metadata(data: &[u8]) -> Result<RvlMetadata, RvlDecodeError
 
 pub fn decode_ros_rvl_u16(data: &[u8], metadata: &RvlMetadata) -> Result<Vec<u16>, RvlDecodeError> {
     let payload = metadata.payload(data)?;
-    let mut disparity = vec![0u16; metadata.num_pixels()];
+    let mut disparity = Vec::with_capacity(metadata.num_pixels());
     let mut decoder = RvlDecoder::new(payload);
     decoder.decode_into(&mut disparity)?;
     Ok(disparity)
