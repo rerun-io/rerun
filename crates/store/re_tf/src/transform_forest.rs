@@ -461,6 +461,12 @@ impl TransformForest {
         }
     }
 
+    /// Returns the transform information of how to get from a given frame to its tree root.
+    #[inline]
+    pub fn root_from_frame(&self, frame: TransformFrameIdHash) -> Option<&TransformInfo> {
+        self.root_from_frame.get(&frame)
+    }
+
     /// Computes the transform from one frame to another if there is a path between them.
     ///
     /// This function computes all T, such that for each source `p_target = T * p_source`

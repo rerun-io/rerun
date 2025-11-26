@@ -1529,7 +1529,7 @@ mod tests {
         let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
             blueprint.add_view_at_root(ViewBlueprint::new(
                 TestView::identifier(),
-                RecommendedView::new_single_entity("does_not_exist".into()),
+                RecommendedView::new_single_entity("does_not_exist"),
             ))
         });
 

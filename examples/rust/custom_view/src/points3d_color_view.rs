@@ -1,6 +1,5 @@
 #![expect(clippy::disallowed_methods)] // It's just an example
 
-use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 use rerun::external::{
     egui,
     re_data_ui::{DataUi, item_ui},
@@ -9,14 +8,15 @@ use rerun::external::{
     re_types::ViewClassIdentifier,
     re_ui::{self, Help},
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item,
-        MaybeVisualizableEntities, PerVisualizer, SelectionHighlight, SmallVisualizerSet,
-        SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority,
-        ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-        ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
-        VisualizableEntities,
+        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
+        PerVisualizerInViewClass, SelectionHighlight, SmallVisualizerSet, SystemExecutionOutput,
+        UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+        ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+        ViewSystemRegistrator, ViewerContext, VisualizableEntities,
     },
 };
+
+use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -116,7 +116,7 @@ impl ViewClass for ColorCoordinatesView {
     ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
-            .maybe_visualizable_entities_per_visualizer
+            .visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
             .is_some_and(|entities| entities.iter().any(include_entity))
         {
@@ -134,8 +134,7 @@ impl ViewClass for ColorCoordinatesView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
         if visualizable_entities_per_visualizer

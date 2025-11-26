@@ -3,12 +3,11 @@ use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::{RenderContext, renderer::GpuMeshInstance};
 use re_types::{archetypes::Mesh3D, components::ImageFormat};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::SpatialViewVisualizerData;
 
 use crate::{
     caches::{AnyMesh, MeshCache, MeshCacheKey},
@@ -117,15 +116,6 @@ impl VisualizerSystem for Mesh3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Mesh3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -141,6 +131,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.0.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

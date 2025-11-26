@@ -1,12 +1,11 @@
 use itertools::Itertools as _;
-
 use re_chunk::RowId;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
-use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::reflection::ComponentDescriptorExt as _;
-use re_types_core::{ComponentDescriptor, external::arrow::array::ArrayRef};
+use re_types_core::ComponentDescriptor;
+use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -34,14 +33,8 @@ pub fn visualizer_ui(
     };
     let all_visualizers = ctx.new_visualizer_collection();
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
-    let available_inactive_visualizers = available_inactive_visualizers(
-        ctx,
-        ctx.recording(),
-        view,
-        &data_result,
-        &active_visualizers,
-        &all_visualizers,
-    );
+    let available_inactive_visualizers =
+        available_inactive_visualizers(ctx, &data_result, &active_visualizers);
 
     let button = ui
         .small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
@@ -612,34 +605,17 @@ fn menu_add_new_visualizer(
 /// Lists all visualizers that are _not_ active for the given entity but could be.
 fn available_inactive_visualizers(
     ctx: &ViewContext<'_>,
-    entity_db: &EntityDb,
-    view: &ViewBlueprint,
     data_result: &DataResult,
     active_visualizers: &[ViewSystemIdentifier],
-    all_visualizers: &VisualizerCollection,
 ) -> Vec<ViewSystemIdentifier> {
-    // TODO(jleibs): This has already been computed for the View this frame. Maybe We
-    // should do this earlier and store it with the View?
-    let maybe_visualizable_entities = ctx
-        .viewer_ctx
-        .view_class_registry()
-        .maybe_visualizable_entities_for_visualizer_systems(entity_db.store_id());
+    let view_class = ctx.view_class_entry();
 
-    let visualizable_entities = view
-        .class(ctx.viewer_ctx.view_class_registry())
-        .determine_visualizable_entities(
-            &maybe_visualizable_entities,
-            entity_db,
-            all_visualizers,
-            &view.space_origin,
-        );
-
-    visualizable_entities
-        .iter()
-        .filter(|&(vis, ents)| {
+    ctx.viewer_ctx
+        .iter_visualizable_entities_for_view_class(view_class.identifier)
+        .filter(|(vis, ents)| {
             ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
         })
-        .map(|(vis, _)| *vis)
+        .map(|(vis, _)| vis)
         .sorted()
         .collect::<Vec<_>>()
 }

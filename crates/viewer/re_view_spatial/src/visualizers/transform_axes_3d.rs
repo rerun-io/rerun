@@ -7,9 +7,8 @@ use re_types::{
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -17,10 +16,7 @@ use crate::{
     visualizers::utilities::transform_info_for_entity_or_report_error,
 };
 
-use super::{
-    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
-    filter_visualizable_3d_entities,
-};
+use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -52,14 +48,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         );
 
         query_info
-    }
-
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        filter_visualizable_3d_entities(entities, context)
     }
 
     fn execute(

@@ -1,16 +1,13 @@
 use nohash_hasher::IntSet;
-
-use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
 
+use super::ViewContext;
 use crate::{
-    IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
+    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, SmallVisualizerSet,
     SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
     ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
-
-use super::ViewContext;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum ViewClassLayoutPriority {
@@ -25,17 +22,6 @@ pub enum ViewClassLayoutPriority {
     /// Give this view lots of space.
     /// Used for spatial views (2D/3D).
     High,
-}
-
-/// Context object returned by [`crate::ViewClass::visualizable_filter_context`].
-pub trait VisualizableFilterContext {
-    fn as_any(&self) -> &dyn std::any::Any;
-}
-
-impl VisualizableFilterContext for () {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 /// Defines a class of view without any concrete types making it suitable for storage and interfacing.
@@ -101,7 +87,7 @@ pub trait ViewClass: Send + Sync {
     /// Determines a suitable origin given the provided set of entities.
     ///
     /// This function only considers the transform topology, disregarding the actual visualizability
-    /// of the entities (for this, use [`Self::visualizable_filter_context`]).
+    /// of the entities.
     fn recommended_origin_for_entities(
         &self,
         entities: &IntSet<EntityPath>,
@@ -111,18 +97,6 @@ pub trait ViewClass: Send + Sync {
         // entity to be the origin of the view.
         // If we select two sibling entities, we want their parent to be the origin.
         Some(EntityPath::common_ancestor_of(entities.iter()))
-    }
-
-    /// Create context object that is passed to all of this classes visualizers
-    /// to determine whether they can be visualized
-    ///
-    /// See [`crate::VisualizerSystem::filter_visualizable_entities`].
-    fn visualizable_filter_context(
-        &self,
-        _space_origin: &EntityPath,
-        _entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn VisualizableFilterContext> {
-        Box::new(())
     }
 
     /// Choose the default visualizers to enable for this entity.
@@ -138,8 +112,7 @@ pub trait ViewClass: Send + Sync {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
         let available_visualizers =
@@ -219,41 +192,6 @@ pub trait ViewClass: Send + Sync {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError>;
-
-    /// Determines the set of visible entities for a given view.
-    // TODO(andreas): This should be part of the View's (non-blueprint) state.
-    // Updated whenever `maybe_visualizable_entities_per_visualizer` or the view blueprint changes.
-    fn determine_visualizable_entities(
-        &self,
-        maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        entity_db: &EntityDb,
-        visualizers: &crate::VisualizerCollection,
-        space_origin: &EntityPath,
-    ) -> PerVisualizer<VisualizableEntities> {
-        re_tracing::profile_function!();
-
-        let filter_ctx = self.visualizable_filter_context(space_origin, entity_db);
-
-        PerVisualizer::<VisualizableEntities>(
-            visualizers
-                .iter_with_identifiers()
-                .map(|(visualizer_identifier, visualizer_system)| {
-                    let entities = if let Some(maybe_visualizable_entities) =
-                        maybe_visualizable_entities_per_visualizer.get(&visualizer_identifier)
-                    {
-                        visualizer_system.filter_visualizable_entities(
-                            maybe_visualizable_entities.clone(),
-                            filter_ctx.as_ref(),
-                        )
-                    } else {
-                        VisualizableEntities::default()
-                    };
-
-                    (visualizer_identifier, entities)
-                })
-                .collect(),
-        )
-    }
 }
 
 pub trait ViewClassExt<'a>: ViewClass + 'a {

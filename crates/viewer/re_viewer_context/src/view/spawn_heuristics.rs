@@ -48,17 +48,17 @@ impl ViewSpawnHeuristics {
 
 impl RecommendedView {
     #[inline]
-    pub fn new_subtree(origin: EntityPath) -> Self {
+    pub fn new_subtree(origin: impl Into<EntityPath>) -> Self {
         Self {
-            origin,
+            origin: origin.into(),
             query_filter: EntityPathFilter::subtree_filter("$origin"),
         }
     }
 
     #[inline]
-    pub fn new_single_entity(origin: EntityPath) -> Self {
+    pub fn new_single_entity(origin: impl Into<EntityPath>) -> Self {
         Self {
-            origin,
+            origin: origin.into(),
             query_filter: EntityPathFilter::single_filter("$origin"),
         }
     }
