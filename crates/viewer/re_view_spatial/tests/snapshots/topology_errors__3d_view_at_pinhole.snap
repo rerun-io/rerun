@@ -6,22 +6,22 @@ PerVisualizer(
     {
         "Points3D": PerEntity(
             {
-                /points3d_entity: "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
+                /points3d_entity: "The origin of the 3D view (\"tf#/pinhole_workaround/pinhole_entity\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
         "Ellipsoids3D": PerEntity(
             {
-                /disconnected_entity: "No transform path to the view's origin frame.",
+                /disconnected_entity: "No transform path from \"disconnected\" to the view's origin frame (\"tf#/pinhole_workaround/pinhole_entity\").",
             },
         ),
         "Boxes3D": PerEntity(
             {
-                /misplaced_boxes3d_entity: "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
+                /misplaced_boxes3d_entity: "The origin of the 3D view (\"tf#/pinhole_workaround/pinhole_entity\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
         "Points2D": PerEntity(
             {
-                /points2d_entity: "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
+                /points2d_entity: "The origin of the 3D view (\"tf#/pinhole_workaround/pinhole_entity\") is under pinhole projection which is not supported by most 3D visualizations.",
             },
         ),
     },

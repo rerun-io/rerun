@@ -59,7 +59,7 @@ pub fn transform_info_for_entity_or_report_error<'a>(
             let target = transform_context.format_frame(*target);
             output.report_error_for(
                 entity_path.clone(),
-                format!("No transform path from {src} to the view's origin frame ({target})."),
+                format!("No transform path from {src:?} to the view's origin frame ({target:?})."),
             );
             None
         }
@@ -70,7 +70,7 @@ pub fn transform_info_for_entity_or_report_error<'a>(
             let target = transform_context.format_frame(*target);
             output.report_error_for(
                 entity_path.clone(),
-                format!("The view's origin frame {target} is unknown."),
+                format!("The view's origin frame {target:?} is unknown."),
             );
             None
         }
@@ -81,7 +81,7 @@ pub fn transform_info_for_entity_or_report_error<'a>(
             let src = transform_context.format_frame(*src);
             output.report_error_for(
                 entity_path.clone(),
-                format!("The entity's coordinate frame {src} is unknown."),
+                format!("The entity's coordinate frame {src:?} is unknown."),
             );
             None
         }
@@ -111,10 +111,13 @@ fn is_valid_space_for_content(
     //
     // Everything in this 3D view is technically 2D already, but we still have the 3D controls etc.
     // (We can however, still show some "agnostic" content like the Pinhole itself)
-    if view_kind == SpatialViewKind::ThreeD && target_frame_pinhole_root.is_some() {
+    if view_kind == SpatialViewKind::ThreeD
+        && let Some(target_frame_pinhole_root) = target_frame_pinhole_root
+    {
+        let origin = transform_context.format_frame(target_frame_pinhole_root);
         output.report_error_for(
             entity_path.clone(),
-            "The origin of the 3D view is under pinhole projection which is not supported by most 3D visualizations.",
+            format!("The origin of the 3D view ({origin:?}) is under pinhole projection which is not supported by most 3D visualizations."),
         );
         return false;
     }

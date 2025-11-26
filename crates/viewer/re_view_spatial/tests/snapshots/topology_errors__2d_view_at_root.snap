@@ -11,7 +11,7 @@ PerVisualizer(
         ),
         "Ellipsoids3D": PerEntity(
             {
-                /disconnected_entity: "No transform path to the view's origin frame.",
+                /disconnected_entity: "No transform path from \"disconnected\" to the view's origin frame (\"world\").",
             },
         ),
         "Boxes3D": PerEntity(
