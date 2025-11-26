@@ -1,6 +1,6 @@
-use std::{str::FromStr as _, sync::Arc};
-
+use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
+use std::{str::FromStr as _, sync::Arc};
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
@@ -343,9 +343,9 @@ impl App {
         );
 
         {
-            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
-            // as the play/pause shortcut. Egui's built in behavior is to trigger clicks on the
-            // focused item, and we don't want that. Users can use `Enter` instead.
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space/Arrow keys so we can
+            // use them as timeline shortcuts. Egui's built in behavior is to interact with focus,
+            // and we don't want that.
             // But of course text edits should still get it so we use this ugly hack to check if
             // a text edit is focused.
             let command_sender = command_sender.clone();
@@ -364,15 +364,29 @@ impl App {
                         ];
 
                         let os = ctx.os();
+                        let mut reset_focus_direction = false;
                         ctx.input_mut(|i| {
                             for command in conflicting_commands {
                                 for shortcut in command.kb_shortcuts(os) {
                                     if i.consume_shortcut(&shortcut) {
+                                        if shortcut.logical_key == Key::ArrowLeft
+                                            || shortcut.logical_key == Key::ArrowRight
+                                        {
+                                            reset_focus_direction = true;
+                                        }
                                         command_sender.send_ui(command);
                                     }
                                 }
                             }
                         });
+
+                        if reset_focus_direction {
+                            // Additionally, we need to revert the focus direction on ArrowLeft/Right
+                            // keys to prevent the focus change for timeline shortcuts
+                            ctx.memory_mut(|mem| {
+                                mem.move_focus(FocusDirection::None);
+                            });
+                        }
                     }
                 }),
             );

@@ -11,6 +11,7 @@ pub trait UICommandSender {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SetPlaybackSpeed(pub egui::emath::OrderedFloat<f32>);
+
 impl Default for SetPlaybackSpeed {
     fn default() -> Self {
         Self(egui::emath::OrderedFloat(1.0))
