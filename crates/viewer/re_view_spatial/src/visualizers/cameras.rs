@@ -258,7 +258,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .is_none()
             {
                 continue;
-            };
+            }
 
             let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
                 Pinhole::descriptor_camera_xyz().component,
