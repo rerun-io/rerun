@@ -178,11 +178,15 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         glam::Affine3A::IDENTITY,
                     ));
                 } else {
-                    // It should not be possible to hit this path, but we keep the debug assert for good measure.
-                    re_log::warn_once!("Could not resolve frame id hash {frame_id_hash:?}");
+                    // It should not be possible to hit this path and frame id hashes are not something that
+                    // we should ever expose to our users, so let's add a debug assert for good measure.
                     debug_assert!(
                         false,
                         "[DEBUG ASSERT] unable to resolve frame id hash {frame_id_hash:?}"
+                    );
+                    output.report_error_for(
+                        data_result.entity_path.clone(),
+                        format!("Could not resolve frame id hash {frame_id_hash:?}"),
                     );
                 }
             }
