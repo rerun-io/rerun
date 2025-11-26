@@ -90,7 +90,7 @@ impl TestContextExt for TestContext {
                             let class_identifier = view_blueprint.class_identifier();
                             let class = class_registry.class(class_identifier).unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"));
 
-                            let visualizable_entities_for_view = class_registry.visualizable_entities_for_view(class_identifier, ctx.visualizable_entities_per_visualizer);
+                            let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
 
                             let mut data_query_result = view_blueprint.contents.execute_query(
                                 ctx.store_context,

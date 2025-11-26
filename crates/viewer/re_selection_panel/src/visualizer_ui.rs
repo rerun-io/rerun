@@ -611,14 +611,11 @@ fn available_inactive_visualizers(
     let view_class = ctx.view_class_entry();
 
     ctx.viewer_ctx
-        .visualizable_entities_per_visualizer
-        .iter()
-        .filter(|&(vis, ents)| {
-            view_class.visualizer_system_ids.contains(vis)
-                && ents.contains(&data_result.entity_path)
-                && !active_visualizers.contains(vis)
+        .iter_visualizable_entities_for_view_class(view_class.identifier)
+        .filter(|(vis, ents)| {
+            ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
         })
-        .map(|(vis, _)| *vis)
+        .map(|(vis, _)| vis)
         .sorted()
         .collect::<Vec<_>>()
 }

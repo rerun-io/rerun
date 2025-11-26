@@ -6,8 +6,8 @@ use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryContext,
-    ViewClass, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
+    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryContext, ViewClass,
+    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizerCollection, VisualizerSystem,
     component_fallbacks::FallbackProviderRegistry,
     view::view_context_system::ViewContextSystemOncePerFrameResult,
@@ -339,30 +339,6 @@ impl ViewClassRegistry {
                 })
                 .collect(),
         )
-    }
-
-    /// Filters out visualizers that aren't active in a given view from the result of [`Self::visualizable_entities_for_visualizer_systems`].
-    pub fn visualizable_entities_for_view(
-        &self,
-        view_class_identifier: ViewClassIdentifier,
-        visualizable_entities: &PerVisualizer<VisualizableEntities>,
-    ) -> PerVisualizerInViewClass<VisualizableEntities> {
-        let Some(view_class) = self.class_entry(view_class_identifier) else {
-            return PerVisualizerInViewClass::empty(view_class_identifier);
-        };
-
-        PerVisualizerInViewClass {
-            view_class_identifier,
-            per_visualizer: visualizable_entities
-                .iter()
-                .filter_map(|(vis, ents)| {
-                    view_class
-                        .visualizer_system_ids
-                        .contains(vis)
-                        .then_some((*vis, ents.clone()))
-                })
-                .collect(),
-        }
     }
 
     /// For each visualizer, the set of entities that have at least one component with a matching archetype name.

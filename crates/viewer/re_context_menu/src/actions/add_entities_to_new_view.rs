@@ -87,9 +87,6 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
     let mut output: IntSet<ViewClassIdentifier> = IntSet::default();
 
     let view_class_registry = ctx.viewer_context.view_class_registry();
-    let recording = ctx.viewer_context.recording();
-    let visualizable_entities =
-        view_class_registry.visualizable_entities_for_visualizer_systems(recording.store_id());
 
     for entry in view_class_registry.iter_registry() {
         // We consider a view class to be recommended if all selected entities are
@@ -97,13 +94,14 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
         // of its sub-entities, are visualizable.
 
         let covered = entities_of_interest.iter().all(|entity| {
-            visualizable_entities.iter().any(|(visualizer, entities)| {
-                entry.visualizer_system_ids.contains(visualizer)
-                    && entities
+            ctx.viewer_context
+                .iter_visualizable_entities_for_view_class(entry.identifier)
+                .any(|(_visualizer, entities)| {
+                    entities
                         .0
                         .iter()
                         .any(|visualizable_entity| visualizable_entity.starts_with(entity))
-            })
+                })
         });
 
         if covered {

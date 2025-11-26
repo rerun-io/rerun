@@ -4,6 +4,7 @@ use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
+use re_types::ViewClassIdentifier;
 use re_ui::ContextExt as _;
 use re_ui::list_item::ListItem;
 
@@ -15,8 +16,8 @@ use crate::time_control::TimeControlCommand;
 use crate::{
     AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DisplayMode,
     DragAndDropManager, GlobalContext, IndicatedEntities, Item, ItemCollection, PerVisualizer,
-    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl,
-    ViewClassRegistry, ViewId, VisualizableEntities,
+    PerVisualizerInViewClass, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId, VisualizableEntities,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -461,5 +462,41 @@ impl ViewerContext<'_> {
     pub fn revert_to_default_display_mode(&self) {
         self.command_sender()
             .send_system(SystemCommand::ResetDisplayMode);
+    }
+
+    /// Iterates over all entities that are visualizeable for a given view class.
+    ///
+    /// This is a subset of [`Self::visualizable_entities_per_visualizer`], filtered to only include entities
+    /// that are relevant for the visualizers used in the given view class.
+    pub fn iter_visualizable_entities_for_view_class(
+        &self,
+        class: ViewClassIdentifier,
+    ) -> impl Iterator<Item = (crate::ViewSystemIdentifier, &VisualizableEntities)> {
+        let Some(view_class_entry) = self.view_class_registry().class_entry(class) else {
+            return itertools::Either::Left(std::iter::empty());
+        };
+
+        itertools::Either::Right(
+            self.visualizable_entities_per_visualizer
+                .iter()
+                .filter(|(viz_id, _entities)| {
+                    view_class_entry.visualizer_system_ids.contains(viz_id)
+                })
+                .map(|(viz_id, entities)| (*viz_id, entities)),
+        )
+    }
+
+    /// Like [`Self::iter_visualizable_entities_for_view_class`], but collects into a [`PerVisualizerInViewClass`].
+    pub fn collect_visualizable_entities_for_view_class(
+        &self,
+        view_class_identifier: ViewClassIdentifier,
+    ) -> PerVisualizerInViewClass<VisualizableEntities> {
+        PerVisualizerInViewClass {
+            view_class_identifier,
+            per_visualizer: self
+                .iter_visualizable_entities_for_view_class(view_class_identifier)
+                .map(|(viz_id, entities)| (viz_id, entities.clone()))
+                .collect(),
+        }
     }
 }

@@ -70,13 +70,9 @@ pub fn create_entity_add_info(
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
-    let class = ctx
-        .view_class_registry()
-        .get_class_entry_or_log_error(view.class_identifier());
-
     tree.visit_children_recursively(|entity_path| {
         let can_add: CanAddToView =
-            if ctx.visualizable_entities_per_visualizer.iter().any(|(vis, entities)| class.visualizer_system_ids.contains(vis) && entities.contains(entity_path)) {
+            if ctx.iter_visualizable_entities_for_view_class(view.class_identifier()).any(|(_vis, entities)| entities.contains(entity_path)) {
                 CanAddToView::Compatible {
                     already_added: query_result.result_for_entity(entity_path).is_some(),
                 }

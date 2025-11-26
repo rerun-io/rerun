@@ -2,7 +2,7 @@ use std::{borrow::Cow, str::FromStr as _};
 
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
-use re_chunk::{Timeline, TimelineName};
+use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
@@ -14,10 +14,10 @@ use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
-    DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
-    PerVisualizer, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    DragAndDropManager, FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
-    ViewId, ViewStates, ViewerContext, VisualizableEntities, blueprint_timeline,
+    ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -301,11 +301,26 @@ impl AppState {
                         .views
                         .values()
                         .map(|view| {
-                            let visualizable_entities = view_class_registry
-                                .visualizable_entities_for_view(
-                                    view.class_identifier(),
-                                    &visualizable_entities_per_visualizer,
-                                );
+                            // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
+                            // but we don't have access to `ViewerContext` just yet.
+                            let visualizable_entities = if let Some(view_class) =
+                                view_class_registry.class_entry(view.class_identifier())
+                            {
+                                PerVisualizerInViewClass {
+                                    view_class_identifier: view.class_identifier(),
+                                    per_visualizer: visualizable_entities_per_visualizer
+                                        .iter()
+                                        .filter_map(|(vis, ents)| {
+                                            view_class
+                                                .visualizer_system_ids
+                                                .contains(vis)
+                                                .then_some((*vis, ents.clone()))
+                                        })
+                                        .collect(),
+                                }
+                            } else {
+                                PerVisualizerInViewClass::empty(view.class_identifier())
+                            };
 
                             (
                                 view.id,
@@ -373,17 +388,7 @@ impl AppState {
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
-                let query_results = update_overrides(
-                    store_context,
-                    query_results,
-                    view_class_registry,
-                    &viewport_ui.blueprint,
-                    &blueprint_query,
-                    time_ctrl.timeline(),
-                    &visualizable_entities_per_visualizer,
-                    &indicated_entities_per_visualizer,
-                    view_states,
-                );
+                let query_results = update_overrides(&ctx, &viewport_ui.blueprint, view_states);
 
                 // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
                 // it's just a bunch of refs so not really that big of a deal in practice.
@@ -788,16 +793,9 @@ impl AppState {
 /// Updates the query results for the given viewport UI.
 ///
 /// Returns query results derived from the previous one.
-#[expect(clippy::too_many_arguments)]
 fn update_overrides(
-    store_context: &StoreContext<'_>,
-    mut query_results: HashMap<ViewId, DataQueryResult>,
-    view_class_registry: &ViewClassRegistry,
+    ctx: &ViewerContext<'_>,
     viewport_blueprint: &ViewportBlueprint,
-    blueprint_query: &LatestAtQuery,
-    active_timeline: &Timeline,
-    visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
-    indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, DataQueryResult> {
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
@@ -809,8 +807,10 @@ fn update_overrides(
     }
 
     for view in viewport_blueprint.views.values() {
-        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+        view_states.ensure_state_exists(view.id, view.class(ctx.view_class_registry));
     }
+
+    let mut query_results = ctx.query_results.clone();
 
     let work_items = viewport_blueprint
         .views
@@ -837,23 +837,21 @@ fn update_overrides(
                  view_state,
                  mut query_result,
              }| {
-                let visualizable_entities = view_class_registry.visualizable_entities_for_view(
-                    view.class_identifier(),
-                    visualizable_entities_per_visualizer,
-                );
+                let visualizable_entities =
+                    ctx.collect_visualizable_entities_for_view_class(view.class_identifier());
 
                 let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
                     view,
-                    view_class_registry,
+                    ctx.view_class_registry,
                     &visualizable_entities,
-                    indicated_entities_per_visualizer,
+                    ctx.indicated_entities_per_visualizer,
                 );
 
                 resolver.update_overrides(
-                    store_context.blueprint,
-                    blueprint_query,
-                    active_timeline,
-                    view_class_registry,
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                    ctx.time_ctrl.timeline(),
+                    ctx.view_class_registry,
                     &mut query_result,
                     view_state,
                 );
