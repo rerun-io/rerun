@@ -48,13 +48,12 @@ impl FrameIdRegistry {
     pub fn register_all_frames_in_chunk(&mut self, chunk: &re_chunk_store::Chunk) {
         self.register_frame_id_from_entity_path(chunk.entity_path());
 
-        // TODO(RR-2627): Custom source is not supported yet for Poses.
         let frame_components = [
             archetypes::Transform3D::descriptor_child_frame().component,
             archetypes::Transform3D::descriptor_parent_frame().component,
             archetypes::Pinhole::descriptor_child_frame().component,
             archetypes::Pinhole::descriptor_parent_frame().component,
-            archetypes::CoordinateFrame::descriptor_frame_id().component,
+            archetypes::CoordinateFrame::descriptor_frame().component,
         ];
 
         for frame_id_strings in frame_components

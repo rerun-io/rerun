@@ -12,6 +12,12 @@ This new archetype also works with the `CoordinateFrame` archetype.
 
 Existing `.rrd` recordings will be automatically migrated when opened (the migration converts `Transform3D:axis_length` components to `TransformAxes3D:axis_length`).
 
+## `CoordinateFrame::frame_id` has been renamed to `CoordinateFrame::frame`
+
+The `frame_id` component of `CoordinateFrame` has been renamed to just `frame`, because the component type `TransformFrameId` already conveys the information that this is an id.
+
+Existing `.rrd` recordings will be automatically migrated when opened (the migration renames the `frame_id` component).
+
 ## Changes to `Transform3D`/`InstancePose3D` and `Pinhole`'s transform properties are now treated transactionally by the Viewer
 
 If you previously updated only certain components of `Transform3D`/`InstancePose3D` and relied on previously logged

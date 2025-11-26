@@ -92,6 +92,11 @@ fn top_bar_ui(
     ui.add_space(12.0);
     website_link_ui(ui);
 
+    if !app.startup_options().web_history_enabled() {
+        ui.add_space(12.0);
+        app.navigation_buttons(ui);
+    }
+
     if !app.is_screenshotting() {
         show_warnings(frame, ui, app.app_env()); // Fixed width: put first
 
@@ -369,7 +374,7 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
-    let display_mode = app.state.navigation.peek();
+    let display_mode = app.state.navigation.current();
 
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
@@ -451,7 +456,7 @@ fn panel_buttons_r2l(
     app.state.share_modal.button_ui(
         ui,
         store_hub,
-        app.state.navigation.peek(),
+        app.state.navigation.current(),
         rec_cfg,
         selection,
     );

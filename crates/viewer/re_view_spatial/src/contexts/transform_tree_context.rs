@@ -304,7 +304,7 @@ impl EntityTransformIdMapping {
         let latest_at_query = ctx.current_query();
 
         let transform_frame_id_component =
-            archetypes::CoordinateFrame::descriptor_frame_id().component;
+            archetypes::CoordinateFrame::descriptor_frame().component;
 
         let query_shadowed_components = false;
         let results = latest_at_with_blueprint_resolved_data(

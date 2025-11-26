@@ -62,7 +62,7 @@ table Pinhole (
   /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
   /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
   // TODO(#2641): This should specify a default-value of `RDF`
-  // TODO(andreas): this isn't part of the "atomic set" right now because we may also source this from `ViewCoordiantes` and things get confusing quickly
+  // TODO(andreas): this isn't part of the "atomic set" right now because we may also source this from `ViewCoordinates` and things get confusing quickly
   // Should it be reset when other transform properties are changed?
   camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", nullable, order: 3000);
 
