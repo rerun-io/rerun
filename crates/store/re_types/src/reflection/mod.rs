@@ -2086,7 +2086,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "format",
                         display_name: "Format",
                         component_type: "rerun.components.ImageFormat".into(),
-                        docstring_md: "Image format (width, height, datatype).\n\nUnlike generic [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image), most depth codecs do not carry full headers,\nso width/height/datatype must be logged explicitly.",
+                        docstring_md: "Image format (width, height, datatype).\n\nStandard image formats like PNG or JPEG include this metadata in their headers,\nallowing [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image) to be self-describing. Depth images, however,\ntypically use headerless codecs, so this information must be provided explicitly.",
                         is_required: true,
                     },
                     ArchetypeFieldReflection {

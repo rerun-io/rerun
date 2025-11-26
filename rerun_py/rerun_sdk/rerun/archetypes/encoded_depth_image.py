@@ -84,8 +84,9 @@ class EncodedDepthImage(Archetype):
         format:
             Image format (width, height, datatype).
 
-            Unlike generic [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage], most depth codecs do not carry full headers,
-            so width/height/datatype must be logged explicitly.
+            Standard image formats like PNG or JPEG include this metadata in their headers,
+            allowing [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage] to be self-describing. Depth images, however,
+            typically use headerless codecs, so this information must be provided explicitly.
         media_type:
             Media type of the blob, e.g.:
 
@@ -165,8 +166,9 @@ class EncodedDepthImage(Archetype):
         format:
             Image format (width, height, datatype).
 
-            Unlike generic [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage], most depth codecs do not carry full headers,
-            so width/height/datatype must be logged explicitly.
+            Standard image formats like PNG or JPEG include this metadata in their headers,
+            allowing [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage] to be self-describing. Depth images, however,
+            typically use headerless codecs, so this information must be provided explicitly.
         media_type:
             Media type of the blob, e.g.:
 
@@ -240,8 +242,9 @@ class EncodedDepthImage(Archetype):
         format:
             Image format (width, height, datatype).
 
-            Unlike generic [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage], most depth codecs do not carry full headers,
-            so width/height/datatype must be logged explicitly.
+            Standard image formats like PNG or JPEG include this metadata in their headers,
+            allowing [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage] to be self-describing. Depth images, however,
+            typically use headerless codecs, so this information must be provided explicitly.
         media_type:
             Media type of the blob, e.g.:
 
@@ -332,8 +335,9 @@ class EncodedDepthImage(Archetype):
     )
     # Image format (width, height, datatype).
     #
-    # Unlike generic [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage], most depth codecs do not carry full headers,
-    # so width/height/datatype must be logged explicitly.
+    # Standard image formats like PNG or JPEG include this metadata in their headers,
+    # allowing [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage] to be self-describing. Depth images, however,
+    # typically use headerless codecs, so this information must be provided explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

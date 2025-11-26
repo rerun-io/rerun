@@ -58,8 +58,9 @@ pub struct EncodedDepthImage {
 
     /// Image format (width, height, datatype).
     ///
-    /// Unlike generic [`archetypes::EncodedImage`][crate::archetypes::EncodedImage], most depth codecs do not carry full headers,
-    /// so width/height/datatype must be logged explicitly.
+    /// Standard image formats like PNG or JPEG include this metadata in their headers,
+    /// allowing [`archetypes::EncodedImage`][crate::archetypes::EncodedImage] to be self-describing. Depth images, however,
+    /// typically use headerless codecs, so this information must be provided explicitly.
     pub format: Option<SerializedComponentBatch>,
 
     /// Media type of the blob, e.g.:
@@ -495,8 +496,9 @@ impl EncodedDepthImage {
 
     /// Image format (width, height, datatype).
     ///
-    /// Unlike generic [`archetypes::EncodedImage`][crate::archetypes::EncodedImage], most depth codecs do not carry full headers,
-    /// so width/height/datatype must be logged explicitly.
+    /// Standard image formats like PNG or JPEG include this metadata in their headers,
+    /// allowing [`archetypes::EncodedImage`][crate::archetypes::EncodedImage] to be self-describing. Depth images, however,
+    /// typically use headerless codecs, so this information must be provided explicitly.
     #[inline]
     pub fn with_format(mut self, format: impl Into<crate::components::ImageFormat>) -> Self {
         self.format = try_serialize_field(Self::descriptor_format(), [format]);

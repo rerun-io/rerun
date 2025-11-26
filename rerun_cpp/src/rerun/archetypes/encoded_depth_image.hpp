@@ -82,8 +82,9 @@ namespace rerun::archetypes {
 
         /// Image format (width, height, datatype).
         ///
-        /// Unlike generic `archetypes::EncodedImage`, most depth codecs do not carry full headers,
-        /// so width/height/datatype must be logged explicitly.
+        /// Standard image formats like PNG or JPEG include this metadata in their headers,
+        /// allowing `archetypes::EncodedImage` to be self-describing. Depth images, however,
+        /// typically use headerless codecs, so this information must be provided explicitly.
         std::optional<ComponentBatch> format;
 
         /// Media type of the blob, e.g.:
@@ -184,8 +185,9 @@ namespace rerun::archetypes {
 
         /// Image format (width, height, datatype).
         ///
-        /// Unlike generic `archetypes::EncodedImage`, most depth codecs do not carry full headers,
-        /// so width/height/datatype must be logged explicitly.
+        /// Standard image formats like PNG or JPEG include this metadata in their headers,
+        /// allowing `archetypes::EncodedImage` to be self-describing. Depth images, however,
+        /// typically use headerless codecs, so this information must be provided explicitly.
         EncodedDepthImage with_format(const rerun::components::ImageFormat& _format) && {
             format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
             return std::move(*this);
