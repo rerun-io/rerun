@@ -40,7 +40,7 @@ class CatalogClient:
             [
                 Entry(e)
                 for e in self._inner.all_entries()
-                if (not e.name.startswith("__") and e.kind != 5) or include_hidden
+                if (not e.name.startswith("__") and e.kind != _catalog.EntryKind.BLUEPRINT_DATASET) or include_hidden
             ],
             key=lambda e: e.name,
         )
@@ -201,25 +201,36 @@ class DatasetEntry(Entry):
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
         self._inner: _catalog.DatasetEntry = inner
 
-    @property
-    def manifest_url(self) -> str:
-        return self._inner.manifest_url
-
     def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
 
-    def blueprint_dataset_id(self) -> EntryId | None:
-        return self._inner.blueprint_dataset_id()
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server.
 
-    def blueprint_dataset(self) -> DatasetEntry | None:
-        result = self._inner.blueprint_dataset()
-        return DatasetEntry(result) if result is not None else None
+        By default, also set this blueprint as default.
+        """
 
-    def default_blueprint_segment_id(self) -> str | None:
+        blueprint_dataset = self._inner.blueprint_dataset()
+        segment_id = blueprint_dataset.register(uri)
+
+        if set_default:
+            self._inner.set_default_blueprint_partition_id(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """Lists all blueprints currently registered with this dataset."""
+
+        return self._inner.blueprint_dataset().partition_ids()
+
+    def set_default_blueprint(self, blueprint_name: str) -> None:
+        """Set an already-registered blueprint as default for this dataset."""
+
+        self._inner.set_default_blueprint_partition_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """Return the name currently set blueprint."""
+
         return self._inner.default_blueprint_partition_id()
-
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
-        return self._inner.set_default_blueprint_partition_id(segment_id)
 
     def schema(self) -> Schema:
         return Schema(self._inner.schema(), _LazyDatasetState())
@@ -233,8 +244,8 @@ class DatasetEntry(Entry):
         view = DatasetView(self._inner, _LazyDatasetState())
         return view.segment_table(join_meta=join_meta, join_key=join_key)
 
-    def manifest(self) -> Any:
-        return self._inner.manifest()
+    def manifest(self) -> datafusion.DataFrame:
+        return self._inner.manifest().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def segment_url(
         self,
@@ -245,16 +256,24 @@ class DatasetEntry(Entry):
     ) -> str:
         return self._inner.partition_url(segment_id, timeline, start, end)
 
-    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
-        return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
+    def register(self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base") -> Tasks:
+        if isinstance(recording_uri, str):
+            recording_uri = [recording_uri]
+        else:
+            recording_uri = list(recording_uri)
 
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] | None = None) -> Any:
-        if recording_layers is None:
-            recording_layers = []
-        return self._inner.register_batch(recording_uris, recording_layers=recording_layers)
+        if isinstance(layer_name, str):
+            layer_name = [layer_name] * len(recording_uri)
+        else:
+            layer_name = list(layer_name)
+            if len(layer_name) != len(recording_uri):
+                raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Any:
-        return self._inner.register_prefix(recordings_prefix, layer_name)
+        return Tasks(self._inner.register_batch(recording_uri, recording_layers=layer_name))
+
+    # TODO(ab): are we merging this into `register` as well?
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks:
+        return Tasks(self._inner.register_prefix(recordings_prefix, layer_name))
 
     def download_segment(self, segment_id: str) -> Any:
         return self._inner.download_partition(segment_id)
@@ -277,11 +296,11 @@ class DatasetEntry(Entry):
             fill_latest_at=fill_latest_at,
         )
 
-    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         view = DatasetView(self._inner, _LazyDatasetState())
-        return view.index_ranges(index)
+        return view.get_index_ranges(index)
 
-    def create_fts_index(
+    def create_fts_search_index(
         self,
         *,
         column: Any,
@@ -296,7 +315,7 @@ class DatasetEntry(Entry):
             base_tokenizer=base_tokenizer,
         )
 
-    def create_vector_index(
+    def create_vector_search_index(
         self,
         *,
         column: Any,
@@ -313,10 +332,10 @@ class DatasetEntry(Entry):
             distance_metric=distance_metric,
         )
 
-    def list_indexes(self) -> list:
+    def list_search_indexes(self) -> list:
         return self._inner.list_indexes()
 
-    def delete_indexes(self, column: Any) -> list[Any]:
+    def delete_search_indexes(self, column: Any) -> list[Any]:
         return self._inner.delete_indexes(column)
 
     def search_fts(self, query: str, column: Any) -> Any:
@@ -631,7 +650,7 @@ class DatasetView:
 
             return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
-    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         import datafusion.functions as F
         from datafusion import col
 
@@ -857,6 +876,23 @@ class TableEntry(Entry):
     def to_polars(self) -> Any:
         """Returns the table as a Polars DataFrame."""
         return self.reader().to_polars()
+
+
+class Tasks:
+    def __init__(self, inner: _catalog.Tasks) -> None:
+        self._inner: _catalog.Tasks = inner
+
+    def wait(self, timeout_secs: int = 60) -> None:
+        self._inner.wait(timeout_secs)
+
+    def status_table(self) -> datafusion.DataFrame:
+        return self._inner.status_table().df()
+
+    def __len__(self) -> int:
+        return self._inner.__len__()
+
+    def __getitem__(self, index: int) -> Task:
+        return self._inner.__getitem__(index)
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError

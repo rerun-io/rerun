@@ -3,13 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 import rerun_draft as rr
 from inline_snapshot import snapshot as inline_snapshot
 
 from .utils import sorted_schema_str
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
+
+
+@pytest.fixture
+def rrd_paths(complex_dataset_prefix: Path) -> Generator[list[Path], None, None]:
+    """Paths to some rrd files."""
+
+    yield sorted(complex_dataset_prefix.glob("*.rrd"), key=lambda p: p.stem)
 
 
 def test_dataset_basics(complex_dataset_prefix: Path) -> None:
@@ -59,6 +68,63 @@ sorbet:version: '0.1.2'\
 │ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
 └───────────────────────────────────────────────────────────────────────────────────┘\
 """)
+
+
+def test_dataset_register(rrd_paths: list[Path]) -> None:
+    with rr.server.Server() as server:
+        client = server.client()
+
+        ds = client.create_dataset("dataset")
+
+        # Single RRD, default layer name
+        ds.register(rrd_paths[0].as_uri()).wait()
+
+        # Single RRD, override layer name
+        ds.register(rrd_paths[1].as_uri(), layer_name="extra").wait()
+
+        # Multiple RRDs, multiple layer names
+        ds.register([p.as_uri() for p in rrd_paths[2:4]], layer_name=["fiz", "fuz"]).wait()
+
+        # Multiple RRDs, single layer name
+        ds.register([p.as_uri() for p in rrd_paths], layer_name="more").wait()
+
+        with pytest.raises(ValueError):
+            ds.register([p.as_uri() for p in rrd_paths], layer_name=["not", "enough"]).wait()
+
+        assert str(
+            ds.manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
+        ) == inline_snapshot(
+            """\
+┌────────────────────────────────────────────┐
+│ METADATA:                                  │
+│ * version: 0.1.2                           │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────┬─────────────────────┐ │
+│ │ rerun_layer_name ┆ rerun_segment_id    │ │
+│ │ ---              ┆ ---                 │ │
+│ │ type: Utf8       ┆ type: Utf8          │ │
+│ ╞══════════════════╪═════════════════════╡ │
+│ │ base             ┆ complex_recording_0 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ extra            ┆ complex_recording_1 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ fiz              ┆ complex_recording_2 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ fuz              ┆ complex_recording_3 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_0 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_1 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_2 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_3 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_4 │ │
+│ └──────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────┘\
+"""
+        )
 
 
 def test_dataset_schema(complex_dataset_prefix: Path) -> None:
