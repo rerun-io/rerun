@@ -384,8 +384,8 @@ impl UICommand {
             Self::NextRecording => smallvec![cmd_alt(Key::ArrowDown)],
             Self::PreviousRecording => smallvec![cmd_alt(Key::ArrowUp)],
 
-            Self::NavigateBack => smallvec![cmd_alt(Key::ArrowLeft)],
-            Self::NavigateForward => smallvec![cmd_alt(Key::ArrowRight)],
+            Self::NavigateBack => smallvec![cmd(Key::OpenBracket)],
+            Self::NavigateForward => smallvec![cmd(Key::CloseBracket)],
 
             Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {
