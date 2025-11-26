@@ -18,7 +18,7 @@ if RERUN_DRAFT_PATH not in sys.path:
 import rerun_draft as rr  # noqa: E402
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def populated_client(simple_dataset_prefix: Path) -> Iterator[rr.catalog.CatalogClient]:
     """Create a temporary dataset prefix with a few simple recordings."""
 
@@ -46,7 +46,7 @@ def populated_client(simple_dataset_prefix: Path) -> Iterator[rr.catalog.Catalog
         yield client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalog.CatalogClient]:
     """Create a temporary dataset prefix with a few simple recordings."""
 
@@ -74,21 +74,21 @@ def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalo
         yield client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def basic_dataset(populated_client: rr.catalog.CatalogClient) -> Iterator[rr.catalog.DatasetEntry]:
     yield populated_client.get_dataset(name="basic_dataset")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def basic_metadata(populated_client: rr.catalog.CatalogClient) -> Iterator[rr.catalog.TableEntry]:
     yield populated_client.get_table(name="basic_dataset_metadata")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def complex_dataset(populated_client_complex: rr.catalog.CatalogClient) -> Iterator[rr.catalog.DatasetEntry]:
     yield populated_client_complex.get_dataset(name="complex_dataset")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def complex_metadata(populated_client_complex: rr.catalog.CatalogClient) -> Iterator[rr.catalog.TableEntry]:
     yield populated_client_complex.get_table(name="complex_dataset_metadata")

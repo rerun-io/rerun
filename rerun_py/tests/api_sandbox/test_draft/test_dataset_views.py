@@ -2,40 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import datafusion
 from datafusion import col
 from inline_snapshot import snapshot as inline_snapshot
 
+from .utils import segment_stable_snapshot, sorted_schema_str
+
 if TYPE_CHECKING:
-    import pyarrow as pa
     from rerun_draft.catalog import DatasetEntry, TableEntry
-
-
-def segment_stable_snapshot(df: datafusion.DataFrame) -> str:
-    """Create a stable snapshot of a segment DataFrame by sorting and dropping unstable columns."""
-    return str(df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id"))
-
-
-def sorted_schema_str(schema: pa.Schema, with_metadata: bool = False) -> str:
-    """A version of pa.Schema.__str__ that has stable field / metadata order."""
-
-    # Iterate through every field in order. Print the field name and type,
-    # then print its metadata in sorted order.
-    lines = []
-    for field in sorted(schema, key=lambda f: f.name):
-        lines.append(f"{field.name}: {field.type}")
-        if with_metadata and field.metadata:
-            lines.append("  -- field metadata --")
-            for key, value in sorted(field.metadata.items(), key=lambda kv: kv[0]):
-                lines.append(f"  {key.decode('utf-8')}: '{value.decode('utf-8')}'")
-
-    # Finally print the top-level schema metadata in sorted order.
-    if with_metadata and schema.metadata:
-        lines.append("-- schema metadata --")
-        for key, value in sorted(schema.metadata.items(), key=lambda kv: kv[0]):
-            lines.append(f"{key.decode('utf-8')}: '{value.decode('utf-8')}'")
-
-    return "\n".join(lines)
 
 
 def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_metadata: TableEntry) -> None:
@@ -46,7 +19,7 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
     assert segment_stable_snapshot(simple_filt.segment_table(join_meta=complex_metadata)) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                               │
-│ * version: 0.1.1                                                                                        │
+│ * version: 0.1.2                                                                                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┬─────────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes ┆ success             │ │
@@ -67,7 +40,7 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
     assert segment_stable_snapshot(good_ds.segment_table()) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                         │
-│ * version: 0.1.1                                                                  │
+│ * version: 0.1.2                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
@@ -145,7 +118,7 @@ timeline: timestamp[ns]\
     assert str(df) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                   │
-│ * version: 0.1.1                                                                            │
+│ * version: 0.1.2                                                                            │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬──────────────────────────────┬────────────────────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline                     ┆ /text:TextLog:text                 │ │

@@ -57,8 +57,6 @@ struct PendingFilePromise {
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
 
-type ReceiveSetTable = parking_lot::Mutex<Vec<crossbeam::channel::Receiver<TableMsg>>>;
-
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     #[allow(clippy::allow_attributes, dead_code)] // Unused on wasm32
@@ -86,7 +84,6 @@ pub struct App {
     component_fallback_registry: FallbackProviderRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
-    rx_table: ReceiveSetTable,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -393,9 +390,10 @@ impl App {
             component_ui_registry,
             component_fallback_registry,
             rx_log: Default::default(),
-            rx_table: Default::default(),
+
             #[cfg(target_arch = "wasm32")]
             open_files_promise: Default::default(),
+
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new(
@@ -467,18 +465,25 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        if let Ok(url) = ViewerOpenUrl::from_str(url) {
-            url.open(
-                &self.egui_ctx,
-                &OpenUrlOptions {
-                    follow_if_http: false,
-                    select_redap_source_when_loaded: true,
-                    show_loader: true,
-                },
-                &self.command_sender,
-            );
-        } else {
-            re_log::warn!("Failed to open URL: {url}");
+        match ViewerOpenUrl::from_str(url) {
+            Ok(url) => {
+                url.open(
+                    &self.egui_ctx,
+                    &OpenUrlOptions {
+                        follow_if_http: false,
+                        select_redap_source_when_loaded: true,
+                        show_loader: true,
+                    },
+                    &self.command_sender,
+                );
+            }
+            Err(err) => {
+                if err.to_string().contains(url) {
+                    re_log::error!("{err}");
+                } else {
+                    re_log::error!("Failed to open URL {url}: {err}");
+                }
+            }
         }
     }
 
@@ -488,7 +493,7 @@ impl App {
 
     #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
-        re_log::debug!("Adding new log receiver: {:?}", rx.source());
+        re_log::debug!("Adding new log receiver: {}", rx.source());
 
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
@@ -596,15 +601,6 @@ impl App {
                 }
             }
         }
-    }
-
-    #[expect(clippy::needless_pass_by_ref_mut)]
-    pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
-        // Make sure we wake up when a message is sent.
-        #[cfg(not(target_arch = "wasm32"))]
-        let rx = crate::wake_up_ui_thread_on_each_msg_crossbeam(rx, self.egui_ctx.clone());
-
-        self.rx_table.lock().push(rx);
     }
 
     pub fn msg_receive_set(&self) -> &ReceiveSet<DataSourceMessage> {
@@ -2170,41 +2166,6 @@ impl App {
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
-        // TODO(grtlr): Should we bring back analytics for this too?
-        self.rx_table.lock().retain(|rx| match rx.try_recv() {
-            Ok(table) => {
-                // TODO(grtlr): For now we don't append anything to existing stores and always replace.
-                // TODO(ab): When we actually append to existing table, we will have to clear the UI
-                // cache by calling `DataFusionTableWidget::clear_state`.
-                let store = TableStore::default();
-                if let Err(err) = store.add_record_batch(table.data.clone()) {
-                    re_log::warn!("Failed to load table {}: {err}", table.id);
-                } else {
-                    if store_hub
-                        .insert_table_store(table.id.clone(), store)
-                        .is_some()
-                    {
-                        re_log::debug!("Overwritten table store with id: `{}`", table.id);
-                    } else {
-                        re_log::debug!("Inserted table store with id: `{}`", table.id);
-                    }
-                    self.command_sender
-                        .send_system(SystemCommand::set_selection(
-                            re_viewer_context::Item::TableId(table.id.clone()),
-                        ));
-
-                    // If the viewer is in the background, tell the user that it has received something new.
-                    egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
-                        egui::UserAttentionType::Informational,
-                    ));
-                }
-
-                true
-            }
-            Err(crossbeam::channel::TryRecvError::Empty) => true,
-            Err(_) => false,
-        });
-
         let start = web_time::Instant::now();
 
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
@@ -2231,6 +2192,10 @@ impl App {
             match msg {
                 DataSourceMessage::LogMsg(msg) => {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
+                }
+
+                DataSourceMessage::TableMsg(table) => {
+                    self.receive_table_msg(store_hub, egui_ctx, table);
                 }
 
                 DataSourceMessage::UiCommand(ui_command) => {
@@ -2361,6 +2326,38 @@ impl App {
         // Handle any action that is triggered by a new store _after_ processing the message that caused it.
         if msg_will_add_new_store {
             self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
+        }
+    }
+
+    fn receive_table_msg(
+        &self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        table: TableMsg,
+    ) {
+        let TableMsg { id, data } = table;
+
+        // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+        // TODO(ab): When we actually append to existing table, we will have to clear the UI
+        // cache by calling `DataFusionTableWidget::clear_state`.
+        let store = TableStore::default();
+        if let Err(err) = store.add_record_batch(data) {
+            re_log::error!("Failed to load table {id}: {err}");
+        } else {
+            if store_hub.insert_table_store(id.clone(), store).is_some() {
+                re_log::debug!("Overwritten table store with id: `{id}`");
+            } else {
+                re_log::debug!("Inserted table store with id: `{id}`");
+            }
+            self.command_sender
+                .send_system(SystemCommand::set_selection(
+                    re_viewer_context::Item::TableId(id),
+                ));
+
+            // If the viewer is in the background, tell the user that it has received something new.
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+                egui::UserAttentionType::Informational,
+            ));
         }
     }
 
@@ -3016,6 +3013,9 @@ impl eframe::App for App {
             .store_hub
             .take()
             .expect("Failed to take store hub from the Viewer");
+
+        // Update data source order so it's based on opening order.
+        store_hub.update_data_source_order(&self.rx_log.sources());
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {

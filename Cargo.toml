@@ -160,24 +160,24 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # core egui-crates:
-ecolor = "0.33.0"
-eframe = { version = "0.33.0", default-features = false, features = [
+ecolor = "0.33.2"
+eframe = { version = "0.33.2", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.33.0", features = ["callstack", "color-hex", "rayon"] }
-egui_extras = { version = "0.33.0", features = ["http", "image", "serde", "svg"] }
-egui_kittest = { version = "0.33.1", features = ["wgpu", "snapshot", "eframe"] }
-egui-wgpu = "0.33.0"
-emath = "0.33.0"
+egui = { version = "0.33.2", features = ["callstack", "color-hex", "rayon"] }
+egui_extras = { version = "0.33.2", features = ["http", "image", "serde", "svg"] }
+egui_kittest = { version = "0.33.2", features = ["wgpu", "snapshot", "eframe"] }
+egui-wgpu = "0.33.2"
+emath = "0.33.2"
 
 # other egui crates:
 egui_commonmark = { version = "0.22.0", default-features = false }
 egui_dnd = { version = "0.14.0" }
 egui_plot = "0.34.0" # https://github.com/emilk/egui_plot
-egui_table = "0.5.0" # https://github.com/rerun-io/egui_table
+egui_table = "0.6.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.14.0" # https://github.com/rerun-io/egui_tiles
 walkers = "0.47.0"
 
@@ -291,7 +291,7 @@ objc2-app-kit = "0.3.2"
 opentelemetry = { version = "0.31.0", features = ["metrics"] }
 opentelemetry-appender-tracing = "0.31.0"
 opentelemetry-http = "0.31.0"
-opentelemetry-otlp = "0.31.0"
+opentelemetry-otlp = { version = "0.31.0", features = ["gzip-tonic"] }
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 ordered-float = "5.1.0"
 parking_lot = "0.12.5"
@@ -847,7 +847,7 @@ unnecessary_debug_formatting = "allow"
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-egui_table = { git = "https://github.com/rerun-io/egui_table", branch = "main" }
+# egui_table = { git = "https://github.com/rerun-io/egui_table", branch = "main" }
 # egui_table = { path = "../egui_table" }
 
 # egui_dnd = { git = "https://github.com/rerun-io/hello_egui.git", branch = "emilk/egui-0.33.0" }

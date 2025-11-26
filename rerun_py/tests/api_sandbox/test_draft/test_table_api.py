@@ -18,11 +18,11 @@ def test_table_api() -> None:
             ]),
         )
 
-        assert str(table.schema()) == inline_snapshot("""\
+        assert str(table.arrow_schema()) == inline_snapshot("""\
 rerun_segment_id: string
 operator: string
 -- schema metadata --
-sorbet:version: '0.1.1'\
+sorbet:version: '0.1.2'\
 """)
         reader = table.reader()
 
@@ -48,14 +48,14 @@ sorbet:version: '0.1.1'\
 """)
 
         table.append(
-            rerun_segment_id=["segment_003"],
-            operator=["carol"],
+            rerun_segment_id="segment_003",
+            operator="carol",
         )
 
         assert str(reader.sort("rerun_segment_id")) == inline_snapshot("""\
 ┌───────────────────────────────────────────────┐
 │ METADATA:                                     │
-│ * version: 0.1.1                              │
+│ * version: 0.1.2                              │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬─────────────────────┐ │
 │ │ rerun_segment_id    ┆ operator            │ │
@@ -72,3 +72,10 @@ sorbet:version: '0.1.1'\
 """)
 
         assert str(reader) == str(client.ctx.table("my_table"))
+
+        batches = [
+            pa.RecordBatch.from_pydict({"rerun_segment_id": ["segment_004"], "operator": ["dan"]}),
+            pa.RecordBatch.from_pydict({"rerun_segment_id": ["segment_005"], "operator": ["erin"]}),
+        ]
+
+        table.append(batches)

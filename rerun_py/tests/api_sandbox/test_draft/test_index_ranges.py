@@ -9,12 +9,12 @@ if TYPE_CHECKING:
 
 
 def test_index_ranges(complex_dataset: DatasetEntry) -> None:
-    df = complex_dataset.index_ranges("timeline").sort("rerun_segment_id")
+    df = complex_dataset.get_index_ranges("timeline").sort("rerun_segment_id")
 
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                             │
-│ * version: 0.1.1                                                                      │
+│ * version: 0.1.2                                                                      │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬──────────────────────────────┬──────────────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline:min                 ┆ timeline:max                 │ │
@@ -38,12 +38,12 @@ def test_index_ranges(complex_dataset: DatasetEntry) -> None:
 def test_index_ranges_dataset_view(complex_dataset: DatasetEntry) -> None:
     view = complex_dataset.filter_segments(["complex_recording_0", "complex_recording_1"])
 
-    df = view.index_ranges("timeline").sort("rerun_segment_id")
+    df = view.get_index_ranges("timeline").sort("rerun_segment_id")
 
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                             │
-│ * version: 0.1.1                                                                      │
+│ * version: 0.1.2                                                                      │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬──────────────────────────────┬──────────────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline:min                 ┆ timeline:max                 │ │
@@ -60,12 +60,12 @@ def test_index_ranges_dataset_view(complex_dataset: DatasetEntry) -> None:
     # Note: the ranges are relative to the actual data being filtered, see how the ranges differ here
 
     view = view.filter_contents(["/points"])
-    df = view.index_ranges("timeline").sort("rerun_segment_id")
+    df = view.get_index_ranges("timeline").sort("rerun_segment_id")
 
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                             │
-│ * version: 0.1.1                                                                      │
+│ * version: 0.1.2                                                                      │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬──────────────────────────────┬──────────────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline:min                 ┆ timeline:max                 │ │

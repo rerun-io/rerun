@@ -1,4 +1,5 @@
 use glam::vec3;
+
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
@@ -10,7 +11,8 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
     ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VisualizableEntities, VisualizableFilterContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
@@ -57,14 +59,14 @@ impl CamerasVisualizer {
         data_result: &DataResult,
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
-    ) {
+    ) -> Result<(), String> {
         // Check for valid resolution.
         let w = pinhole_properties.resolution.x;
         let h = pinhole_properties.resolution.y;
         let z = pinhole_properties.image_plane_distance;
         let color = pinhole_properties.color;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
-            return;
+            return Err("Invalid resolution".to_owned());
         }
 
         let instance = Instance::from(0);
@@ -87,16 +89,11 @@ impl CamerasVisualizer {
                 pinhole,
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
-            return;
+            return Err("Can't visualize pinholes at the view's origin".to_owned());
         }
 
         let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(frame_id) else {
-            // This implies that the transform context didn't see the pinhole transform.
-            // Should be impossible!
-            re_log::error_once!(
-                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!",
-            );
-            return;
+            return Err("No valid pinhole present".to_owned());
         };
         let world_from_camera = pinhole_tree_root_info
             .parent_root_from_pinhole_root
@@ -106,7 +103,7 @@ impl CamerasVisualizer {
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
-            return;
+            return Err("Can only visualize pinhole under isometric transforms".to_owned());
         };
 
         debug_assert!(world_from_camera_iso.is_finite());
@@ -198,6 +195,8 @@ impl CamerasVisualizer {
             std::iter::once(glam::Vec3::ZERO),
             world_from_camera,
         );
+
+        Ok(())
     }
 }
 
@@ -220,7 +219,9 @@ impl VisualizerSystem for CamerasVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
@@ -284,16 +285,18 @@ impl VisualizerSystem for CamerasVisualizer {
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash());
 
-            self.visit_instance(
+            if let Err(err) = self.visit_instance(
                 &mut line_builder,
                 transforms,
                 data_result,
                 &component_data,
                 entity_highlight,
-            );
+            ) {
+                output.report_error_for(data_result.entity_path.clone(), err);
+            }
         }
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

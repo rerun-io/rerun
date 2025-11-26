@@ -8,7 +8,7 @@ import tempfile
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import datafusion
 import numpy as np
@@ -34,17 +34,32 @@ class CatalogClient:
     def __repr__(self) -> str:
         return repr(self._inner)
 
-    def all_entries(self) -> list[Entry]:
+    def entries(self, *, include_hidden=False) -> list[Entry]:
         """Returns a list of all entries in the catalog."""
-        return [Entry(e) for e in self._inner.all_entries()]
+        return sorted(
+            [
+                Entry(e)
+                for e in self._inner.all_entries()
+                if (not e.name.startswith("__") and e.kind != _catalog.EntryKind.BLUEPRINT_DATASET) or include_hidden
+            ],
+            key=lambda e: e.name,
+        )
 
-    def dataset_entries(self) -> list[DatasetEntry]:
+    def datasets(self, *, include_hidden=False) -> list[DatasetEntry]:
         """Returns a list of all dataset entries in the catalog."""
-        return [DatasetEntry(e) for e in self._inner.dataset_entries()]
+        return [
+            DatasetEntry(cast("_catalog.DatasetEntry", e._inner))
+            for e in self.entries(include_hidden=include_hidden)
+            if e.kind == _catalog.EntryKind.DATASET
+        ]
 
-    def table_entries(self) -> list[TableEntry]:
+    def tables(self, *, include_hidden=False) -> list[TableEntry]:
         """Returns a list of all table entries in the catalog."""
-        return [TableEntry(e) for e in self._inner.table_entries()]
+        return [
+            TableEntry(cast("_catalog.TableEntry", e._inner))
+            for e in self.entries(include_hidden=include_hidden)
+            if e.kind == _catalog.EntryKind.TABLE
+        ]
 
     def entry_names(self) -> list[str]:
         """Returns a list of all entry names in the catalog."""
@@ -57,22 +72,6 @@ class CatalogClient:
     def table_names(self) -> list[str]:
         """Returns a list of all table names in the catalog."""
         return self._inner.table_names()
-
-    def entries(self) -> datafusion.DataFrame:
-        """Returns a DataFrame containing all entries in the catalog."""
-        return self._inner.entries()
-
-    def datasets(self) -> datafusion.DataFrame:
-        """Returns a DataFrame containing all dataset entries in the catalog."""
-        return self._inner.datasets()
-
-    def tables(self) -> datafusion.DataFrame:
-        """Returns a DataFrame containing all table entries in the catalog."""
-        return self._inner.tables()
-
-    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
-        """Returns a dataset entry by its ID or name."""
-        return DatasetEntry(self._inner.get_dataset_entry(id=id, name=name))
 
     def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table entry by its ID or name."""
@@ -97,14 +96,6 @@ class CatalogClient:
             self.tmpdirs.append(tmpdir)
             url = Path(tmpdir.name).as_uri()
         return TableEntry(self._inner.create_table_entry(name, schema, url))
-
-    def write_table(self, name: str, batches, insert_mode) -> None:
-        """Writes record batches into an existing table."""
-        return self._inner.write_table(name, batches, insert_mode)
-
-    def append_to_table(self, table_name: str, **named_params: Any) -> None:
-        """Convert Python objects into columns of data and append them to a table."""
-        return self._inner.append_to_table(table_name, **named_params)
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""
@@ -156,7 +147,7 @@ class Entry:
     def delete(self) -> None:
         return self._inner.delete()
 
-    def update(self, *, name: str | None = None) -> None:
+    def set_name(self, name: str) -> None:
         return self._inner.update(name=name)
 
 
@@ -208,27 +199,38 @@ class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
 
     def __init__(self, inner: _catalog.DatasetEntry) -> None:
-        self._inner = inner
-
-    @property
-    def manifest_url(self) -> str:
-        return self._inner.manifest_url
+        self._inner: _catalog.DatasetEntry = inner
 
     def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
 
-    def blueprint_dataset_id(self) -> EntryId | None:
-        return self._inner.blueprint_dataset_id()
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server.
 
-    def blueprint_dataset(self) -> DatasetEntry | None:
-        result = self._inner.blueprint_dataset()
-        return DatasetEntry(result) if result is not None else None
+        By default, also set this blueprint as default.
+        """
 
-    def default_blueprint_segment_id(self) -> str | None:
+        blueprint_dataset = self._inner.blueprint_dataset()
+        segment_id = blueprint_dataset.register(uri)
+
+        if set_default:
+            self._inner.set_default_blueprint_partition_id(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """Lists all blueprints currently registered with this dataset."""
+
+        return self._inner.blueprint_dataset().partition_ids()
+
+    def set_default_blueprint(self, blueprint_name: str) -> None:
+        """Set an already-registered blueprint as default for this dataset."""
+
+        self._inner.set_default_blueprint_partition_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """Return the name currently set blueprint."""
+
         return self._inner.default_blueprint_partition_id()
-
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
-        return self._inner.set_default_blueprint_partition_id(segment_id)
 
     def schema(self) -> Schema:
         return Schema(self._inner.schema(), _LazyDatasetState())
@@ -242,8 +244,8 @@ class DatasetEntry(Entry):
         view = DatasetView(self._inner, _LazyDatasetState())
         return view.segment_table(join_meta=join_meta, join_key=join_key)
 
-    def manifest(self) -> Any:
-        return self._inner.manifest()
+    def manifest(self) -> datafusion.DataFrame:
+        return self._inner.manifest().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
     def segment_url(
         self,
@@ -254,16 +256,24 @@ class DatasetEntry(Entry):
     ) -> str:
         return self._inner.partition_url(segment_id, timeline, start, end)
 
-    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
-        return self._inner.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
+    def register(self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base") -> Tasks:
+        if isinstance(recording_uri, str):
+            recording_uri = [recording_uri]
+        else:
+            recording_uri = list(recording_uri)
 
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] | None = None) -> Any:
-        if recording_layers is None:
-            recording_layers = []
-        return self._inner.register_batch(recording_uris, recording_layers=recording_layers)
+        if isinstance(layer_name, str):
+            layer_name = [layer_name] * len(recording_uri)
+        else:
+            layer_name = list(layer_name)
+            if len(layer_name) != len(recording_uri):
+                raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Any:
-        return self._inner.register_prefix(recordings_prefix, layer_name)
+        return Tasks(self._inner.register_batch(recording_uri, recording_layers=layer_name))
+
+    # TODO(ab): are we merging this into `register` as well?
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks:
+        return Tasks(self._inner.register_prefix(recordings_prefix, layer_name))
 
     def download_segment(self, segment_id: str) -> Any:
         return self._inner.download_partition(segment_id)
@@ -286,11 +296,11 @@ class DatasetEntry(Entry):
             fill_latest_at=fill_latest_at,
         )
 
-    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         view = DatasetView(self._inner, _LazyDatasetState())
-        return view.index_ranges(index)
+        return view.get_index_ranges(index)
 
-    def create_fts_index(
+    def create_fts_search_index(
         self,
         *,
         column: Any,
@@ -305,7 +315,7 @@ class DatasetEntry(Entry):
             base_tokenizer=base_tokenizer,
         )
 
-    def create_vector_index(
+    def create_vector_search_index(
         self,
         *,
         column: Any,
@@ -322,10 +332,10 @@ class DatasetEntry(Entry):
             distance_metric=distance_metric,
         )
 
-    def list_indexes(self) -> list:
+    def list_search_indexes(self) -> list:
         return self._inner.list_indexes()
 
-    def delete_indexes(self, column: Any) -> list[Any]:
+    def delete_search_indexes(self, column: Any) -> list[Any]:
         return self._inner.delete_indexes(column)
 
     def search_fts(self, query: str, column: Any) -> Any:
@@ -640,7 +650,7 @@ class DatasetView:
 
             return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
 
-    def index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         import datafusion.functions as F
         from datafusion import col
 
@@ -694,7 +704,7 @@ class TableEntry(Entry):
 
     def __init__(self, inner: _catalog.TableEntry) -> None:
         super().__init__(inner)
-        self._inner = inner
+        self._inner: _catalog.TableEntry = inner
 
     def client(self) -> CatalogClient:
         """Returns the CatalogClient associated with this table."""
@@ -705,12 +715,148 @@ class TableEntry(Entry):
 
         return outer_catalog
 
-    def append(self, **named_params: Any) -> None:
-        """Convert Python objects into columns of data and append them to a table."""
-        self.client().append_to_table(self._inner.name, **named_params)
+    def _python_objects_to_record_batch(self, schema: pa.Schema, named_params: dict[str, Any]) -> pa.RecordBatch:
+        cast_params = {}
+        expected_len = None
 
-    def update(self, *, name: str | None = None) -> None:
-        return self._inner.update(name=name)
+        for name, value in named_params.items():
+            field = schema.field(name)
+            if field is None:
+                raise ValueError(f"Column {name} does not exist in table")
+
+            if isinstance(value, str):
+                value = [value]
+
+            try:
+                cast_value = pa.array(value, type=field.type)
+            except TypeError:
+                cast_value = pa.array([value], type=field.type)
+
+            cast_params[name] = cast_value
+
+            if expected_len is None:
+                expected_len = len(cast_value)
+            else:
+                if len(cast_value) != expected_len:
+                    raise ValueError("Columns have mismatched number of rows")
+
+        if expected_len is None or expected_len == 0:
+            return
+
+        columns = []
+        for field in schema:
+            if field.name in cast_params:
+                columns.append(cast_params[field.name])
+            else:
+                columns.append(pa.array([None] * expected_len, type=field.type))
+
+        return pa.RecordBatch.from_arrays(columns, schema=schema)
+
+    def _write_batches(
+        self,
+        batches: pa.RecordBatch | Iterator[pa.RecordBatch] | Iterator[Iterator[pa.RecordBatch]],
+        insert_mode: TableInsertMode,
+    ) -> None:
+        """Internal helper to write batches to the table."""
+        if isinstance(batches, pa.RecordBatch):
+            batches = [batches]
+        self.client()._inner.write_table(self._inner.name, batches, insert_mode=insert_mode)
+
+    def _write_named_params(
+        self,
+        named_params: dict[str, Any],
+        insert_mode: TableInsertMode,
+    ) -> None:
+        """Internal helper to write named parameters to the table."""
+        batches = self._python_objects_to_record_batch(self.arrow_schema(), named_params)
+        if batches is not None:
+            self.client()._inner.write_table(self._inner.name, [batches], insert_mode=insert_mode)
+
+    def append(
+        self,
+        batches: pa.RecordBatch | Iterator[pa.RecordBatch] | Iterator[Iterator[pa.RecordBatch]] | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Append to the Table.
+
+        Parameters
+        ----------
+        batches
+            A sequence of Arrow RecordBatches to append to the table.
+        **named_params
+            Each named parameter corresponds to a column in the table.
+
+        """
+        if batches is not None and len(named_params) > 0:
+            raise TypeError(
+                "TableEntry.append can take a sequence of RecordBatches or a named set of columns, but not both"
+            )
+
+        if batches is not None:
+            self._write_batches(batches, insert_mode=TableInsertMode.APPEND)
+        else:
+            self._write_named_params(named_params, insert_mode=TableInsertMode.APPEND)
+
+    def overwrite(
+        self,
+        batches: pa.RecordBatch | Iterator[pa.RecordBatch] | Iterator[Iterator[pa.RecordBatch]] | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Overwrite the Table with new data.
+
+        Parameters
+        ----------
+        batches
+            A sequence of Arrow RecordBatches to overwrite the table with.
+        **named_params
+            Each named parameter corresponds to a column in the table.
+
+        """
+        if batches is not None and len(named_params) > 0:
+            raise TypeError(
+                "TableEntry.overwrite can take a sequence of RecordBatches or a named set of columns, but not both"
+            )
+
+        if batches is not None:
+            self._write_batches(batches, insert_mode=TableInsertMode.OVERWRITE)
+        else:
+            self._write_named_params(named_params, insert_mode=TableInsertMode.OVERWRITE)
+
+    def upsert(
+        self,
+        batches: pa.RecordBatch | Iterator[pa.RecordBatch] | Iterator[Iterator[pa.RecordBatch]] | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Upsert data into the Table.
+
+        To use upsert, the table must contain a column with the metadata:
+        ```
+            {"rerun:is_table_index" = "true"}
+        ```
+
+        Any row with a matching index value will have the new data inserted.
+        Any row without a matching index value will be appended as a new row.
+
+        Parameters
+        ----------
+        batches
+            A sequence of Arrow RecordBatches to upsert into the table.
+        **named_params
+            Each named parameter corresponds to a column in the table
+
+        """
+        if batches is not None and len(named_params) > 0:
+            raise TypeError(
+                "TableEntry.upsert can take a sequence of RecordBatches or a named set of columns, but not both"
+            )
+
+        if batches is not None:
+            self._write_batches(batches, insert_mode=TableInsertMode.REPLACE)
+        else:
+            self._write_named_params(named_params, insert_mode=TableInsertMode.REPLACE)
 
     def reader(self) -> datafusion.DataFrame:
         """
@@ -723,13 +869,30 @@ class TableEntry(Entry):
         """
         return self._inner.df()
 
-    def schema(self) -> pa.Schema:
+    def arrow_schema(self) -> pa.Schema:
         """Returns the schema of the table."""
         return self.reader().schema()
 
     def to_polars(self) -> Any:
         """Returns the table as a Polars DataFrame."""
         return self.reader().to_polars()
+
+
+class Tasks:
+    def __init__(self, inner: _catalog.Tasks) -> None:
+        self._inner: _catalog.Tasks = inner
+
+    def wait(self, timeout_secs: int = 60) -> None:
+        self._inner.wait(timeout_secs)
+
+    def status_table(self) -> datafusion.DataFrame:
+        return self._inner.status_table().df()
+
+    def __len__(self) -> int:
+        return self._inner.__len__()
+
+    def __getitem__(self, index: int) -> Task:
+        return self._inner.__getitem__(index)
 
 
 AlreadyExistsError = _catalog.AlreadyExistsError

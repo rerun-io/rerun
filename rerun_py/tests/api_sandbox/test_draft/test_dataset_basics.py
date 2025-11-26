@@ -3,11 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 import rerun_draft as rr
 from inline_snapshot import snapshot as inline_snapshot
 
+from .utils import sorted_schema_str
+
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
+
+
+@pytest.fixture
+def rrd_paths(complex_dataset_prefix: Path) -> Generator[list[Path], None, None]:
+    """Paths to some rrd files."""
+
+    yield sorted(complex_dataset_prefix.glob("*.rrd"), key=lambda p: p.stem)
 
 
 def test_dataset_basics(complex_dataset_prefix: Path) -> None:
@@ -30,7 +41,7 @@ rerun_last_updated_at: timestamp[ns] not null
 rerun_num_chunks: uint64 not null
 rerun_size_bytes: uint64 not null
 -- schema metadata --
-sorbet:version: '0.1.1'\
+sorbet:version: '0.1.2'\
 """)
 
         assert str(
@@ -38,7 +49,7 @@ sorbet:version: '0.1.1'\
         ) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                         │
-│ * version: 0.1.1                                                                  │
+│ * version: 0.1.2                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │ │
@@ -57,6 +68,63 @@ sorbet:version: '0.1.1'\
 │ └─────────────────────┴───────────────────┴──────────────────┴──────────────────┘ │
 └───────────────────────────────────────────────────────────────────────────────────┘\
 """)
+
+
+def test_dataset_register(rrd_paths: list[Path]) -> None:
+    with rr.server.Server() as server:
+        client = server.client()
+
+        ds = client.create_dataset("dataset")
+
+        # Single RRD, default layer name
+        ds.register(rrd_paths[0].as_uri()).wait()
+
+        # Single RRD, override layer name
+        ds.register(rrd_paths[1].as_uri(), layer_name="extra").wait()
+
+        # Multiple RRDs, multiple layer names
+        ds.register([p.as_uri() for p in rrd_paths[2:4]], layer_name=["fiz", "fuz"]).wait()
+
+        # Multiple RRDs, single layer name
+        ds.register([p.as_uri() for p in rrd_paths], layer_name="more").wait()
+
+        with pytest.raises(ValueError):
+            ds.register([p.as_uri() for p in rrd_paths], layer_name=["not", "enough"]).wait()
+
+        assert str(
+            ds.manifest().select("rerun_layer_name", "rerun_segment_id").sort("rerun_layer_name", "rerun_segment_id")
+        ) == inline_snapshot(
+            """\
+┌────────────────────────────────────────────┐
+│ METADATA:                                  │
+│ * version: 0.1.2                           │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────┬─────────────────────┐ │
+│ │ rerun_layer_name ┆ rerun_segment_id    │ │
+│ │ ---              ┆ ---                 │ │
+│ │ type: Utf8       ┆ type: Utf8          │ │
+│ ╞══════════════════╪═════════════════════╡ │
+│ │ base             ┆ complex_recording_0 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ extra            ┆ complex_recording_1 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ fiz              ┆ complex_recording_2 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ fuz              ┆ complex_recording_3 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_0 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_1 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_2 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_3 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ more             ┆ complex_recording_4 │ │
+│ └──────────────────┴─────────────────────┘ │
+└────────────────────────────────────────────┘\
+"""
+        )
 
 
 def test_dataset_schema(complex_dataset_prefix: Path) -> None:
@@ -88,6 +156,49 @@ Column name: property:RecordingInfo:start_time
 	Component type: rerun.components.Timestamp
 	Component: RecordingInfo:start_time
 	Static: true\
+""")
+
+        assert sorted_schema_str(ds.arrow_schema(), with_metadata=True) == inline_snapshot("""\
+/points:Points2D:colors: list<item: uint32>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.Points2D'
+  rerun:component: 'Points2D:colors'
+  rerun:component_type: 'rerun.components.Color'
+  rerun:entity_path: '/points'
+  rerun:kind: 'data'
+/points:Points2D:positions: list<item: fixed_size_list<item: float not null>[2]>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.Points2D'
+  rerun:component: 'Points2D:positions'
+  rerun:component_type: 'rerun.components.Position2D'
+  rerun:entity_path: '/points'
+  rerun:kind: 'data'
+/text:TextLog:text: list<item: string>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.TextLog'
+  rerun:component: 'TextLog:text'
+  rerun:component_type: 'rerun.components.Text'
+  rerun:entity_path: '/text'
+  rerun:kind: 'data'
+property:RecordingInfo:start_time: list<item: int64>
+  -- field metadata --
+  rerun:archetype: 'rerun.archetypes.RecordingInfo'
+  rerun:component: 'RecordingInfo:start_time'
+  rerun:component_type: 'rerun.components.Timestamp'
+  rerun:entity_path: '/__properties'
+  rerun:is_static: 'true'
+  rerun:kind: 'data'
+rerun.controls.RowId: fixed_size_binary[16]
+  -- field metadata --
+  ARROW:extension:metadata: '{"namespace":"row"}'
+  ARROW:extension:name: 'rerun.datatypes.TUID'
+  rerun:kind: 'control'
+timeline: timestamp[ns]
+  -- field metadata --
+  rerun:index_name: 'timeline'
+  rerun:kind: 'index'
+-- schema metadata --
+sorbet:version: '0.1.2'\
 """)
 
 

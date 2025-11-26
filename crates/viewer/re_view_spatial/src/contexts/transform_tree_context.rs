@@ -149,13 +149,13 @@ impl ViewContextSystem for TransformTreeContext {
 }
 
 impl TransformTreeContext {
-    /// Transform info to get from the entity's transform to the origin transform frame.
+    /// Returns a transform info describing how to get to the view's target frame for the given entity.
     #[inline]
-    pub fn transform_info_for_entity(
+    pub fn target_from_entity_path(
         &self,
-        entity_path: EntityPathHash,
-    ) -> Option<&re_tf::TransformInfo> {
-        self.transform_infos.get(&entity_path)?.as_ref().ok()
+        entity_path_hash: EntityPathHash,
+    ) -> Option<&Result<re_tf::TransformInfo, re_tf::TransformFromToError>> {
+        self.transform_infos.get(&entity_path_hash)
     }
 
     /// Returns the properties of the pinhole tree root at given frame if the entity's root is a pinhole tree root.

@@ -63,7 +63,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
     // Axis length
     system_registry.register_fallback_provider(
-        archetypes::Transform3D::descriptor_axis_length().component,
+        archetypes::TransformAxes3D::descriptor_axis_length().component,
         |ctx| {
             let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 

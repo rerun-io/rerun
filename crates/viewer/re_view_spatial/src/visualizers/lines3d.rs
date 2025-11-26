@@ -9,7 +9,8 @@ use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -189,7 +190,9 @@ impl VisualizerSystem for Lines3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -200,6 +203,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -269,7 +273,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

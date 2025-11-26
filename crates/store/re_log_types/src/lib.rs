@@ -870,6 +870,12 @@ pub struct TableMsg {
     pub data: ArrowRecordBatch,
 }
 
+impl TableMsg {
+    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+        self.data.schema_metadata_mut().insert(key, value);
+    }
+}
+
 // ---
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].

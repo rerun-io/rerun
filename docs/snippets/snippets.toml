@@ -211,11 +211,6 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"archetypes/transform3d_hierarchy_frames" = [
-  # TODO(RR-2685): Sample is incomplete. Implement cross language once we can have flat entity path hierarchy.
-  "cpp",
-  "rust",
-]
 "archetypes/video_stream_synthetic" = [
   "cpp", # Not implemented
   "rust", # Not implemented

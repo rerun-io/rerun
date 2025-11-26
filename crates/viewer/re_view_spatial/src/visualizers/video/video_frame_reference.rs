@@ -10,8 +10,8 @@ use re_types::{
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, VideoAssetCache, ViewContext,
     ViewContextCollection, ViewId, ViewQuery, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    VisualizableEntities, VisualizableFilterContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -66,11 +66,14 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
@@ -129,10 +132,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             },
         )?;
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

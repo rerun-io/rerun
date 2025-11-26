@@ -11,8 +11,8 @@ use re_view::{
     range_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 use re_viewer_context::{external::re_entity_db::InstancePath, typed_fallback_for};
 use re_viewport_blueprint::ViewPropertyQueryError;
@@ -42,7 +42,7 @@ impl VisualizerSystem for SeriesLinesSystem {
             .queried
             .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.relevant_archetypes = std::iter::once(archetypes::SeriesLines::name()).collect();
+        query_info.relevant_archetype = archetypes::SeriesLines::name().into();
 
         query_info
     }
@@ -52,11 +52,11 @@ impl VisualizerSystem for SeriesLinesSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         self.load_scalars(ctx, query)?;
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -119,7 +119,7 @@ impl SeriesLinesSystem {
         let current_query = ctx.current_query();
         let query_ctx = ctx.query_context(data_result, &current_query);
 
-        let time_range = util::determine_time_range(ctx)?;
+        let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
             use re_view::RangeResultsExt as _;

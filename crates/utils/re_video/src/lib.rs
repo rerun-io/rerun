@@ -27,8 +27,8 @@ pub use demux::{
 };
 
 // AnnexB conversions are useful for testing.
-pub use h264::write_avc_chunk_to_nalu_stream;
-pub use h265::write_hevc_chunk_to_nalu_stream;
+pub use h264::{write_avc_chunk_to_annexb, write_avc_chunk_to_nalu_stream};
+pub use h265::{write_hevc_chunk_to_annexb, write_hevc_chunk_to_nalu_stream};
 pub use nalu::AnnexBStreamState;
 
 // Re-export:

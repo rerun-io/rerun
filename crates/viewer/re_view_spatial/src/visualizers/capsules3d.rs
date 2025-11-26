@@ -12,7 +12,7 @@ use re_view::clamped_or_nothing;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
@@ -156,7 +156,8 @@ impl VisualizerSystem for Capsules3DVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
@@ -169,6 +170,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -281,7 +283,7 @@ impl VisualizerSystem for Capsules3DVisualizer {
             },
         )?;
 
-        builder.into_draw_data()
+        Ok(output.with_draw_data(builder.into_draw_data()?))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
