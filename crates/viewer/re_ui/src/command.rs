@@ -575,7 +575,7 @@ impl UICommand {
 
         #[derive(Default, Clone)]
         struct PlaybackChordState {
-            last_key_time: Option<std::time::Instant>,
+            last_key_time: Option<web_time::Instant>,
             accumulated: String,
         }
 
