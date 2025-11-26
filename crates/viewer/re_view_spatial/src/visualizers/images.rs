@@ -6,17 +6,14 @@ use re_types::{
 };
 use re_view::HybridResults;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
 use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableRectSourceData, PickableTexturedRect, contexts::SpatialSceneEntityContext,
+    view_kind::SpatialViewKind, visualizers::textured_rect_from_image,
 };
 
 use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
@@ -49,15 +46,6 @@ impl VisualizerSystem for ImageVisualizer {
         VisualizerQueryInfo::from_archetype::<Image>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -71,6 +59,7 @@ impl VisualizerSystem for ImageVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 self.process_image(ctx, results, spatial_ctx);
                 Ok(())

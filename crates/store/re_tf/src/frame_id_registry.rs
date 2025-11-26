@@ -51,8 +51,7 @@ impl FrameIdRegistry {
         // TODO(RR-2627, RR-2680): Custom source is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
         let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
         let parent_frame_component = archetypes::Transform3D::descriptor_parent_frame().component;
-        let coordinate_frame_component =
-            archetypes::CoordinateFrame::descriptor_frame_id().component;
+        let coordinate_frame_component = archetypes::CoordinateFrame::descriptor_frame().component;
 
         for frame_id_strings in chunk
             .iter_slices::<String>(child_frame_component)

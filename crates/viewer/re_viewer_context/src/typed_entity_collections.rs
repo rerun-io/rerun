@@ -6,17 +6,17 @@ use re_types_core::ViewClassIdentifier;
 
 use crate::ViewSystemIdentifier;
 
-/// List of entities that are *maybe* visualizable with a given visualizer.
+/// List of entities that are visualizable with a given visualizer.
 ///
 /// Note that this filter latches:
-/// An entity is "maybe visualizable" if it at any point in time on any timeline has all required components.
+/// An entity is marked visualizable if it at any point in time on any timeline has all required components.
 ///
 /// We evaluate this filtering step entirely by store subscriber.
 /// This in turn implies that this can *not* be influenced by individual view setups.
 #[derive(Default, Clone, Debug)]
-pub struct MaybeVisualizableEntities(pub IntSet<EntityPath>);
+pub struct VisualizableEntities(pub IntSet<EntityPath>);
 
-impl std::ops::Deref for MaybeVisualizableEntities {
+impl std::ops::Deref for VisualizableEntities {
     type Target = IntSet<EntityPath>;
 
     #[inline]
@@ -41,30 +41,10 @@ impl std::ops::Deref for IndicatedEntities {
     }
 }
 
-/// List of entities that can be visualized at some point in time on any timeline
-/// by a concrete visualizer in the context of a specific instantiated view.
-///
-/// It gets invalidated whenever any properties of the respective view instance
-/// change, e.g. its origin.
-/// TODO(andreas): Unclear if any of the view's configuring blueprint entities are included in this.
-///
-/// This is a subset of [`MaybeVisualizableEntities`] and may differs on a per view instance base!
-#[derive(Default, Clone, Debug)]
-pub struct VisualizableEntities(pub IntSet<EntityPath>);
-
-impl std::ops::Deref for VisualizableEntities {
-    type Target = IntSet<EntityPath>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 /// List of elements per visualizer system.
 ///
-/// Careful, if you're in the context of a view, this *may* contain visualizers that aren't relevant to the current view.
-/// Refer to [`PerVisualizerInViewClass`] for a collection that is limited to visualizers active for a given view class.
+/// Careful, if you're in the context of a view, this may contain visualizers that aren't relevant to the current view.
+/// Refer to [`PerVisualizerInViewClass`] for a collection that is limited to visualizers active for a given view.
 #[derive(Debug)]
 pub struct PerVisualizer<T>(pub IntMap<ViewSystemIdentifier, T>);
 
@@ -74,6 +54,12 @@ impl<T> std::ops::Deref for PerVisualizer<T> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T: Clone> Clone for PerVisualizer<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 

@@ -5,15 +5,14 @@ use re_types::{
     image::ImageKind,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    view_kind::SpatialViewKind,
-    visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
+    PickableRectSourceData, PickableTexturedRect, view_kind::SpatialViewKind,
+    visualizers::textured_rect_from_image,
 };
 
 use super::SpatialViewVisualizerData;
@@ -46,15 +45,6 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         VisualizerQueryInfo::from_archetype::<SegmentationImage>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -69,6 +59,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

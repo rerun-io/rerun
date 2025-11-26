@@ -8,9 +8,8 @@ use re_types::{
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
@@ -20,10 +19,7 @@ use crate::{
     visualizers::{load_keypoint_connections, process_radius_slice},
 };
 
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities, process_labels_3d,
-    utilities::LabeledBatch,
-};
+use super::{SpatialViewVisualizerData, process_labels_3d, utilities::LabeledBatch};
 
 // ---
 
@@ -186,15 +182,6 @@ impl VisualizerSystem for Points3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -221,6 +208,7 @@ impl VisualizerSystem for Points3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

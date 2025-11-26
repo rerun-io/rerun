@@ -1,11 +1,10 @@
 use itertools::{FoldWhile, Itertools as _};
-use re_types::ViewClassIdentifier;
-
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
 use re_types::{
+    ViewClassIdentifier,
     blueprint::{
         archetypes::{self as blueprint_archetypes},
         components::{self as blueprint_components, ViewOrigin},
@@ -463,13 +462,12 @@ mod tests {
     use re_test_context::TestContext;
     use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{
-        IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
+        IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass,
         ViewClassPlaceholder, VisualizableEntities,
     };
 
-    use crate::view_contents::DataQueryPropertyResolver;
-
     use super::*;
+    use crate::view_contents::DataQueryPropertyResolver;
 
     #[test]
     fn test_component_overrides() {
@@ -503,18 +501,19 @@ mod tests {
                 .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
         }
 
-        let maybe_visualizable_entities = PerVisualizer::<MaybeVisualizableEntities>(
-            visualizable_entities
+        let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
+            view_class_identifier: ViewClassPlaceholder::identifier(),
+            per_visualizer: visualizable_entities
                 .0
                 .iter()
                 .map(|(id, entities)| {
                     (
                         *id,
-                        MaybeVisualizableEntities(entities.iter().cloned().collect()),
+                        VisualizableEntities(entities.iter().cloned().collect()),
                     )
                 })
                 .collect(),
-        );
+        };
 
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
@@ -695,7 +694,6 @@ mod tests {
             let resolver = DataQueryPropertyResolver::new(
                 &view,
                 &test_ctx.view_class_registry,
-                &maybe_visualizable_entities,
                 &visualizable_entities,
                 &indicated_entities_per_visualizer,
             );
@@ -755,7 +753,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerInViewClass<VisualizableEntities>,
         resolver: &DataQueryPropertyResolver<'_>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;

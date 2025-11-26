@@ -10,17 +10,14 @@ use re_types::{
     image::ImageKind,
 };
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
-    QueryContext, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
+    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
+    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
     contexts::{SpatialSceneEntityContext, TransformTreeContext},
-    view_kind::SpatialViewKind,
-    visualizers::filter_visualizable_2d_entities,
 };
 
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
@@ -35,7 +32,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(None),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -220,15 +217,6 @@ impl VisualizerSystem for DepthImageVisualizer {
         VisualizerQueryInfo::from_archetype::<DepthImage>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -246,6 +234,7 @@ impl VisualizerSystem for DepthImageVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
