@@ -1169,16 +1169,16 @@ impl TimeControl {
                 .loop_selection()
                 .or_else(|| self.full_valid_range(times_per_timeline).map(|r| r.into()));
             if let Some(range) = range {
-                if new_time < TimeReal::from(range.min) {
-                    new_time = TimeReal::from(range.max);
-                } else if new_time > TimeReal::from(range.max) {
-                    new_time = TimeReal::from(range.min);
+                if new_time < range.min {
+                    new_time = range.max;
+                } else if new_time > range.max {
+                    new_time = range.min;
                 }
-            };
+            }
 
             // if we're outside of a valid time range, move forward/back to the nearest valid range
             let forward = seconds >= 0.0;
-            let mut valid_ranges = self.valid_time_ranges_for(self.timeline().name().clone());
+            let mut valid_ranges = self.valid_time_ranges_for(*self.timeline().name());
             if !forward {
                 valid_ranges.reverse();
             }

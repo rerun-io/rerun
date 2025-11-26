@@ -2,7 +2,7 @@ use egui::{Id, Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;
-use crate::egui_ext::context_ext::ContextExt;
+use crate::egui_ext::context_ext::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -568,10 +568,8 @@ impl UICommand {
         ];
 
         fn key_to_digit(key: Key) -> Option<char> {
-            NUMBER_KEYS
-                .iter()
-                .position(|&k| k == key)
-                .and_then(|i| char::from_digit(i as u32, 10))
+            let i = NUMBER_KEYS.iter().position(|&k| k == key)?;
+            char::from_digit(i as u32, 10)
         }
 
         #[derive(Default, Clone)]
