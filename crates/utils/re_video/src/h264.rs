@@ -184,6 +184,10 @@ pub fn write_avc_chunk_to_nalu_stream(
 ) -> Result<(), AnnexBStreamWriteError> {
     re_tracing::profile_function!();
 
+    // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
+    // just as it is the case with MP4 data.
+    // In order to have every IDR frame be able to be fully re-entrant, we need to prepend the SPS & PPS NAL units.
+    // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
     let emit_parameter_sets = chunk.is_sync && !state.previous_frame_was_idr;
 
     write_avc_chunk_to_annexb(avcc, nalu_stream, emit_parameter_sets, chunk)?;
