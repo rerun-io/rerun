@@ -54,6 +54,7 @@ fn setup_scene(test_context: &mut TestContext) {
                     .with_child_frame("pinhole")
                     .with_parent_frame("world"),
             )
+            // TODO(RR-2997): Space origin can only be an entity, so we rely on pinhole having a coordinate frame that we can pick up.
             .with_archetype_auto_row(
                 TimePoint::STATIC,
                 &archetypes::CoordinateFrame::new("pinhole"),

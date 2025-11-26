@@ -9,9 +9,9 @@ use re_types::{
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks,
-    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -45,6 +45,8 @@ impl IdentifiedViewSystem for CamerasVisualizer {
 }
 
 struct CameraComponentDataWithFallbacks {
+    child_frame: components::TransformFrameId,
+
     color: egui::Color32,
     line_width: re_renderer::Size,
     camera_xyz: components::ViewCoordinates,
@@ -54,20 +56,28 @@ struct CameraComponentDataWithFallbacks {
 impl CamerasVisualizer {
     fn visit_instance(
         &mut self,
+        ctx: &re_viewer_context::QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
-        data_result: &DataResult,
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
         view_kind: SpatialViewKind,
     ) -> Result<(), String> {
         let instance = Instance::from(0);
-        let ent_path = &data_result.entity_path;
+        let ent_path = ctx.target_entity_path;
 
-        // Note that this is NOT the child/target frame of the pinhole transform itself, but rather the frame we're on.
-        // TODO: so.. I have to log the pinhole on a given entity, set its child/parent correctly and then on top also set the CoordinateFrame to its child frame?
-        let pinhole_frame_id = transforms.transform_frame_id_for(ent_path.hash()); // TODO: consider renaming `transform_frame_id_for` to `coordinate_frame_for`
+        // We're currently NOT using `CoordinateFrame` component for this visualization but instead `Pinhole::child_frame`.
+        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum which can be unintuitive.
+        //
+        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set it doesn't make a difference.
+        //
+        // In theory `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree making it unclear what to show.
+        // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
+        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases which is arguably
+        // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
+        let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
 
+        // Query the pinhole from the transform tree since it uses atomic-latest-at.
         let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
         else {
             // This implies that the transform context didn't see the pinhole transform.
@@ -79,7 +89,9 @@ impl CamerasVisualizer {
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
 
         // Check for valid resolution.
-        let resolution = resolved_pinhole.resolution.unwrap_or_default(); // TODO: use fallback!!
+        let resolution = resolved_pinhole
+            .resolution
+            .unwrap_or_else(|| typed_fallback_for(ctx, Pinhole::descriptor_resolution().component));
         let w = resolution.x();
         let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
@@ -263,7 +275,7 @@ impl VisualizerSystem for CamerasVisualizer {
             let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
                 Pinhole::descriptor_camera_xyz().component,
             );
-            let child_frame = query_results.get_mono::<components::TransformFrameId>(
+            let child_frame = query_results.get_mono_with_fallback::<components::TransformFrameId>(
                 Pinhole::descriptor_child_frame().component,
             );
             let image_plane_distance = query_results
@@ -280,9 +292,8 @@ impl VisualizerSystem for CamerasVisualizer {
                 ),
             );
 
-            // TODO: use child_frame
-            let _asdf = child_frame;
             let component_data = CameraComponentDataWithFallbacks {
+                child_frame,
                 color,
                 line_width,
                 camera_xyz,
@@ -294,9 +305,9 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             if let Err(err) = self.visit_instance(
+                &ctx.query_context(data_result, &query.latest_at_query()),
                 &mut line_builder,
                 transforms,
-                data_result,
                 &component_data,
                 entity_highlight,
                 view_kind,

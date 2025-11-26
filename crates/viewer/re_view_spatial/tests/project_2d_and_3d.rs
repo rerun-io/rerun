@@ -53,7 +53,6 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
                 .with_archetype_auto_row(TimePoint::STATIC, &points2d)
                 .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new("2d"))
         });
-        // TODO: Image does not yet show.
         test_context.log_entity("image", |builder| {
             builder
                 .with_archetype_auto_row(TimePoint::STATIC, &camera_image)
@@ -73,7 +72,7 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
                         .with_parent_frame("camera")
                         .with_child_frame("2d"),
                 )
-                // TODO: explain. or .. remove somehow?
+                // TODO(RR-2997): The pinhole should show without this just fine. But space origin can only be an entity, so we rely on pinhole having a coordinate frame that we can pick up.
                 .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new("2d"))
         });
     } else {
