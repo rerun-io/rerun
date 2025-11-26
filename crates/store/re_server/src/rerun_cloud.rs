@@ -987,10 +987,10 @@ impl RerunCloudService for RerunCloudHandler {
             select_all_entity_paths,
 
             //TODO(RR-2613): we must do a much better job at handling these
-            chunk_ids: _,
+            chunk_ids,
             fuzzy_descriptors: _,
-            exclude_static_data: _,
-            exclude_temporal_data: _,
+            exclude_static_data,
+            exclude_temporal_data,
             scan_parameters: _,
             query: _,
         } = request.into_inner().try_into()?;
@@ -1030,6 +1030,18 @@ impl RerunCloudService for RerunCloudHandler {
 
                 for chunk in store_handle.read().iter_chunks() {
                     if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
+                        continue;
+                    }
+
+                    if !chunk_ids.is_empty() && !chunk_ids.contains(&chunk.id()) {
+                        continue;
+                    }
+
+                    // Filter by static/temporal data
+                    if exclude_static_data && chunk.is_static() {
+                        continue;
+                    }
+                    if exclude_temporal_data && !chunk.is_static() {
                         continue;
                     }
 
