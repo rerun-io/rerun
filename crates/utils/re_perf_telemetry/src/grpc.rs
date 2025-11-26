@@ -98,12 +98,6 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             otel.name = %endpoint,
             url,
             method = %request.method(),
-            http_version = ?request.version(),
-            client_version,
-            server_version,
-            headers = ?safe_headers,
-            email,
-            entry_id,
             // Record trace_id and benchmark_id as top level span fields.
             //
             // At this stage we may not know yet the actual trace_id (depending on whether
