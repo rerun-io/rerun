@@ -20,10 +20,9 @@ fn setup_scene(test_context: &mut TestContext) {
     // Transform frame forest:
     // world
     //  ├─ points3d
-    //  └─ tf#/pinhole_workaround  # TODO(RR-2680): use explicit frames instead.
-    //      └─ tf#/pinhole_workaround/pinhole_entity
-    //          └─ points2d
-    //          └─ misplaced_boxes3d
+    //  └─ pinhole
+    //     ├─ points2d
+    //     └─ misplaced_boxes3d
     // disconnected
 
     test_context.log_entity("transforms", |builder| {
@@ -38,29 +37,27 @@ fn setup_scene(test_context: &mut TestContext) {
                 TimePoint::STATIC,
                 &archetypes::Transform3D::new()
                     .with_child_frame("points2d")
-                    .with_parent_frame("tf#/pinhole_workaround/pinhole_entity"), // TODO(RR-2680): use explicit frames instead.
+                    .with_parent_frame("pinhole"),
             )
             .with_archetype_auto_row(
                 TimePoint::STATIC,
                 &archetypes::Transform3D::new()
                     .with_child_frame("misplaced_boxes3d")
-                    .with_parent_frame("tf#/pinhole_workaround/pinhole_entity"), // TODO(RR-2680): use explicit frames instead.
+                    .with_parent_frame("pinhole"),
+            )
+    });
+    test_context.log_entity("pinhole_entity", |builder| {
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                    .with_child_frame("pinhole")
+                    .with_parent_frame("world"),
             )
             .with_archetype_auto_row(
                 TimePoint::STATIC,
-                // TODO(RR-2680): use explicit frames instead, removing this connection.
-                &archetypes::Transform3D::new()
-                    .with_child_frame("tf#/pinhole_workaround")
-                    .with_parent_frame("world"),
+                &archetypes::CoordinateFrame::new("pinhole"),
             )
-    });
-
-    test_context.log_entity("pinhole_workaround/pinhole_entity", |builder| {
-        builder.with_archetype_auto_row(
-            TimePoint::STATIC,
-            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0]),
-            // TODO(RR-2680): set child/parent frames.
-        )
     });
 
     // TODO(RR-2997): If we could set the view's origin directly to a frame, we would set it to `world`. As there's nothing to be visualized on `world_entity` this would make this log call redundant.
@@ -134,12 +131,12 @@ fn test_topology_errors() {
         },
         TestScenario {
             name: "2d_view_at_pinhole",
-            space_origin: "pinhole_workaround/pinhole_entity",
+            space_origin: "pinhole_entity",
             view_class: re_view_spatial::SpatialView2D::identifier(),
         },
         TestScenario {
             name: "3d_view_at_pinhole",
-            space_origin: "pinhole_workaround/pinhole_entity",
+            space_origin: "pinhole_entity",
             view_class: re_view_spatial::SpatialView3D::identifier(),
         },
     ];
