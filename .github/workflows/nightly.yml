@@ -466,8 +466,8 @@ jobs:
     ]
     if: always()
     outputs:
-      status: ${{ steps.determine.outputs.status }}
-      color: ${{ steps.determine.outputs.color }}
+      workflow_status: ${{ steps.status.outputs.status }}
+      workflow_color: ${{ steps.status.outputs.color }}
     steps:
       - name: Determine CI Status
         id: status
@@ -520,40 +520,6 @@ jobs:
             exit 0
           fi
 
-      - name: Report traffic light status
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const status = '${{ steps.determine.outputs.status }}';
-            const emoji = status === 'green' ? '🟢' : status === 'yellow' ? '🟡' : '🔴';
-            const state = status === 'red' ? 'failure' : 'success';
-
-            // Commit status
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.sha,
-              state: state,
-              description: `${emoji} ${status.toUpperCase()}`,
-              context: 'ci-traffic-light'
-            });
-
-            // Check run with structured data
-            await github.rest.checks.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'CI Traffic Light',
-              head_sha: context.sha,
-              status: 'completed',
-              conclusion: state,
-              output: {
-                title: `${emoji} CI Status: ${status.toUpperCase()}`,
-                summary: 'Traffic light CI status',
-                text: JSON.stringify({
-                  status: status,
-                  color: status,
-                  timestamp: new Date().toISOString()
-                }, null, 2)
-              }
-            });
+outputs:
+  workflow_status: ${{ jobs.ci-status.outputs.status }}
+  workflow_color: ${{ steps.ci-status.outputs.color }}
