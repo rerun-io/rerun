@@ -7,15 +7,18 @@ use re_renderer::{
     ViewPickingConfiguration,
     view_builder::{TargetConfiguration, ViewBuilder},
 };
-use re_types::blueprint::{
-    archetypes::{Background, NearClipPlane, VisualBounds2D},
-    components as blueprint_components,
+use re_types::{
+    Archetype as _, archetypes,
+    blueprint::{
+        archetypes::{Background, NearClipPlane, VisualBounds2D},
+        components as blueprint_components,
+    },
 };
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
-    ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
-    ViewerContext, gpu_bridge,
+    ItemContext, QueryContext, ViewClass, ViewClassExt as _, ViewContext, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, gpu_bridge, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -150,6 +153,15 @@ impl SpatialView2D {
             return Ok(());
         }
 
+        // TODO(andreas): Why don't we have this already?
+        let view_ctx = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.view_id,
+            view_class_identifier: Self::identifier(),
+            view_state: state,
+            query_result: ctx.lookup_query_result(query.view_id),
+        };
+
         // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
         let transforms = system_output
             .context_systems
@@ -158,9 +170,24 @@ impl SpatialView2D {
             .pinhole_tree_root_info(transforms.target_frame())
             .map(|pinhole_at_root| {
                 let pinhole = &pinhole_at_root.pinhole_projection;
+
+                let query_ctx = QueryContext {
+                    view_ctx: &view_ctx,
+                    target_entity_path: query.space_origin,
+                    archetype_name: Some(archetypes::Pinhole::name()),
+                    query: &query.latest_at_query(),
+                };
                 Pinhole {
                     image_from_camera: pinhole.image_from_camera.0.into(),
-                    resolution: pinhole.resolution.unwrap_or_default().into(), // TODO: use fallback.
+                    resolution: pinhole
+                        .resolution
+                        .unwrap_or_else(|| {
+                            typed_fallback_for(
+                                &query_ctx,
+                                archetypes::Pinhole::descriptor_resolution().component,
+                            )
+                        })
+                        .into(),
                 }
             });
 
