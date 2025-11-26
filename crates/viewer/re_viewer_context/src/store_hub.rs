@@ -164,7 +164,13 @@ impl StoreHub {
         Self {
             persistence,
             active_recording_or_table: None,
-            active_application_id: None,
+
+            // No active app is only ever transitional and we react by it to go back to the
+            // welcome/start screen.
+            // During application startup we may decide early to switch to a different screen,
+            // so make sure we start out with the welcome screen app already set, so we won't
+            // don't override this in the first frame.
+            active_application_id: Some(Self::welcome_screen_app_id()),
 
             default_blueprint_by_app_id,
             active_blueprint_by_app_id: Default::default(),
