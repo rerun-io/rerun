@@ -607,10 +607,10 @@ impl ViewerOpenUrl {
                 }
             }
             Self::Settings => {
-                command_sender.send_system(SystemCommand::Settings);
+                command_sender.send_system(SystemCommand::OpenSettings);
             }
             Self::ChunkStoreBrowser => {
-                command_sender.send_system(SystemCommand::ChunkStoreBrowser);
+                command_sender.send_system(SystemCommand::OpenChunkStoreBrowser);
             }
         }
     }

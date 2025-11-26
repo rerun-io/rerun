@@ -659,6 +659,34 @@ impl App {
         }
     }
 
+    /// If we're on web and use web history this updates the
+    /// web address bar and updates history.
+    ///
+    /// Otherwise this updates the viewer tracked history.
+    fn update_history(&mut self, store_hub: &StoreHub) {
+        if !self.startup_options().web_history_enabled() {
+            self.update_viewer_history(store_hub);
+        } else {
+            // We don't want to spam the web history API with changes, because
+            // otherwise it will start complaining about it being an insecure
+            // operation.
+            //
+            // This is a kind of hacky way to fix that: If there are currently any
+            // inputs, don't update the web address bar. This works for most cases
+            // because you need to hold down pointer to aggressively scrub, need to
+            // hold down key inputs to quickly step through the timeline.
+            #[cfg(target_arch = "wasm32")]
+            if !self.egui_ctx.is_using_pointer()
+                && self
+                    .egui_ctx
+                    .input(|input| !input.any_touches() && input.keys_down.is_empty())
+            {
+                self.update_web_history(store_hub);
+            }
+        }
+    }
+
+    /// Updates the viewer tracked history
     fn update_viewer_history(&mut self, store_hub: &StoreHub) {
         let time_ctrl = store_hub
             .active_recording()
@@ -682,31 +710,7 @@ impl App {
         self.state.history.update_current_url(url);
     }
 
-    /// Updates the web address on web. Noop on native.
-    fn update_history(&mut self, store_hub: &StoreHub) {
-        if !self.startup_options().web_history_enabled() {
-            self.update_viewer_history(store_hub);
-        } else {
-            // We don't want to spam the web history API with changes, because
-            // otherwise it will start complaining about it being an insecure
-            // operation.
-            //
-            // This is a kind of hacky way to fix that: If there are currently any
-            // inputs, don't update the web address bar. This works for most cases
-            // because you need to hold down pointer to aggressively scrub, need to
-            // hold down key inputs to quickly step through the timeline.
-            #[cfg(target_arch = "wasm32")]
-            if !self.egui_ctx.is_using_pointer()
-                && self
-                    .egui_ctx
-                    .input(|input| !input.any_touches() && input.keys_down.is_empty())
-            {
-                self.update_web_history(store_hub)
-            }
-        }
-    }
-
-    /// Updates the web address on web. Noop on native.
+    /// Updates the web address and web history.
     #[cfg(target_arch = "wasm32")]
     fn update_web_history(&self, store_hub: &StoreHub) {
         let time_ctrl = store_hub
@@ -967,7 +971,7 @@ impl App {
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
-            SystemCommand::Settings => {
+            SystemCommand::OpenSettings => {
                 self.state
                     .navigation
                     .replace(DisplayMode::Settings(Box::new(
@@ -980,7 +984,7 @@ impl App {
                 }
             }
 
-            SystemCommand::ChunkStoreBrowser => match self.state.navigation.current() {
+            SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {
                 DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
@@ -1697,7 +1701,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.command_sender.send_system(SystemCommand::Settings);
+                self.command_sender.send_system(SystemCommand::OpenSettings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
