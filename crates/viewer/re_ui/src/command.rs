@@ -630,11 +630,7 @@ impl UICommand {
                 .take_while(|&c| c == '0')
                 .count();
 
-            let factor = if leading_zeros > 0 {
-                10usize.pow(leading_zeros as u32)
-            } else {
-                1
-            };
+            let factor = 10usize.pow(leading_zeros as u32);
 
             if let Ok(speed) = chord_state.accumulated.parse::<f32>() {
                 if speed > 0.0 {
