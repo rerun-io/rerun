@@ -14,6 +14,8 @@ use vec1::smallvec_v1::SmallVec1;
 
 use crate::caches::TransformDatabaseStoreCache;
 
+type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
+
 /// Provides a transform tree for the view & time it operates on.
 ///
 /// Will do the necessary bulk processing of transform information and make it available
@@ -26,6 +28,7 @@ pub struct TransformTreeContext {
     target_frame: TransformFrameIdHash,
     target_frame_pinhole_root: Option<TransformFrameIdHash>,
     entity_transform_id_mapping: EntityTransformIdMapping,
+    frame_id_mapping: Arc<FrameIdMapping>,
 }
 
 impl Default for TransformTreeContext {
@@ -36,6 +39,7 @@ impl Default for TransformTreeContext {
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
             target_frame_pinhole_root: None,
             entity_transform_id_mapping: EntityTransformIdMapping::default(),
+            frame_id_mapping: Arc::new(FrameIdMapping::default()),
         }
     }
 }
@@ -62,6 +66,7 @@ impl IdentifiedViewSystem for TransformTreeContext {
 
 struct TransformTreeContextOncePerFrameResult {
     transform_forest: Arc<re_tf::TransformForest>,
+    frame_id_mapping: Arc<FrameIdMapping>,
 }
 
 impl ViewContextSystem for TransformTreeContext {
@@ -75,8 +80,14 @@ impl ViewContextSystem for TransformTreeContext {
         let transform_forest =
             re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
 
+        let frame_ids = transform_cache
+            .frame_id_registry()
+            .iter_frame_ids()
+            .map(|(k, v)| (*k, v.clone()));
+
         Box::new(TransformTreeContextOncePerFrameResult {
             transform_forest: Arc::new(transform_forest),
+            frame_id_mapping: Arc::new(frame_ids.collect()),
         })
     }
 
@@ -86,11 +97,12 @@ impl ViewContextSystem for TransformTreeContext {
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
-        self.transform_forest = static_execution_result
+        let static_execution_result = static_execution_result
             .downcast_ref::<TransformTreeContextOncePerFrameResult>()
-            .expect("Unexpected static execution result type")
-            .transform_forest
-            .clone();
+            .expect("Unexpected static execution result type");
+
+        self.transform_forest = static_execution_result.transform_forest.clone();
+        self.frame_id_mapping = static_execution_result.frame_id_mapping.clone();
 
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
@@ -201,6 +213,17 @@ impl TransformTreeContext {
             .get(&entity_path)
             .copied()
             .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
+    }
+
+    /// Looks up a frame ID by its hash.
+    ///
+    /// Returns `None` if the frame id hash was never encountered.
+    #[inline]
+    pub fn lookup_frame_id(
+        &self,
+        frame_id_hash: TransformFrameIdHash,
+    ) -> Option<&TransformFrameId> {
+        self.frame_id_mapping.get(&frame_id_hash)
     }
 }
 

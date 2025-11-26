@@ -7,6 +7,7 @@
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/axis_length.hpp"
+#include "../components/show_labels.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -60,6 +61,9 @@ namespace rerun::archetypes {
         /// If the transform is scaled, the axes will be scaled accordingly.
         std::optional<ComponentBatch> axis_length;
 
+        /// Whether to show a text label with the corresponding frame.
+        std::optional<ComponentBatch> show_frame;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.TransformAxes3D";
@@ -68,6 +72,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_axis_length = ComponentDescriptor(
             ArchetypeName, "TransformAxes3D:axis_length",
             Loggable<rerun::components::AxisLength>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `show_frame` field.
+        static constexpr auto Descriptor_show_frame = ComponentDescriptor(
+            ArchetypeName, "TransformAxes3D:show_frame",
+            Loggable<rerun::components::ShowLabels>::ComponentType
         );
 
       public:
@@ -110,6 +119,25 @@ namespace rerun::archetypes {
         ) && {
             axis_length = ComponentBatch::from_loggable(_axis_length, Descriptor_axis_length)
                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Whether to show a text label with the corresponding frame.
+        TransformAxes3D with_show_frame(const rerun::components::ShowLabels& _show_frame) && {
+            show_frame =
+                ComponentBatch::from_loggable(_show_frame, Descriptor_show_frame).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `show_frame` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_show_frame` should
+        /// be used when logging a single row's worth of data.
+        TransformAxes3D with_many_show_frame(
+            const Collection<rerun::components::ShowLabels>& _show_frame
+        ) && {
+            show_frame =
+                ComponentBatch::from_loggable(_show_frame, Descriptor_show_frame).value_or_throw();
             return std::move(*this);
         }
 

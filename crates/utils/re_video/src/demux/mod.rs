@@ -17,10 +17,8 @@ use web_time::Instant;
 use super::{Time, Timescale};
 
 use crate::{
-    Chunk, StableIndexDeque, TrackId, TrackKind,
-    h264::write_avc_chunk_to_nalu_stream,
-    h265::write_hevc_chunk_to_nalu_stream,
-    nalu::{AnnexBStreamState, AnnexBStreamWriteError},
+    Chunk, StableIndexDeque, TrackId, TrackKind, nalu::AnnexBStreamWriteError,
+    write_avc_chunk_to_annexb, write_hevc_chunk_to_annexb,
 };
 
 /// Chroma subsampling mode.
@@ -381,9 +379,8 @@ impl VideoDataDescription {
                     });
                 };
 
-                let mut annexb_state = AnnexBStreamState::default();
                 let mut output = Vec::new();
-                write_avc_chunk_to_nalu_stream(avc1_box, &mut output, chunk, &mut annexb_state)
+                write_avc_chunk_to_annexb(avc1_box, &mut output, chunk.is_sync, chunk)
                     .map_err(SampleConversionError::AnnexB)?;
                 Ok(output)
             }
@@ -407,9 +404,8 @@ impl VideoDataDescription {
                     }
                 };
 
-                let mut annexb_state = AnnexBStreamState::default();
                 let mut output = Vec::new();
-                write_hevc_chunk_to_nalu_stream(hvcc_box, &mut output, chunk, &mut annexb_state)
+                write_hevc_chunk_to_annexb(hvcc_box, &mut output, chunk.is_sync, chunk)
                     .map_err(SampleConversionError::AnnexB)?;
                 Ok(output)
             }
@@ -984,6 +980,7 @@ impl std::fmt::Debug for VideoDataDescription {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nalu::ANNEXB_NAL_START_CODE;
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
@@ -1085,7 +1082,6 @@ mod tests {
 
     /// Helper function to check if data contains Annex B start codes
     fn has_annexb_start_codes(data: &[u8]) -> bool {
-        const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
         data.windows(4).any(|w| w == ANNEXB_NAL_START_CODE)
     }
 
@@ -1134,8 +1130,6 @@ mod tests {
 
         let mut idr_count = 0;
         let mut non_idr_count = 0;
-
-        const ANNEXB_NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
         for (sample_idx, sample) in video_data.samples.iter_indexed() {
             let chunk = sample.get(&buffers, sample_idx).unwrap();

@@ -8380,7 +8380,6 @@ dependencies = [
  "re_log",
  "re_tracing",
  "re_tuid",
- "re_types_core",
  "serde_json",
 ]
 
