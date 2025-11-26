@@ -199,9 +199,6 @@ pub async fn test_origin_camera_2d() {
     harness.hover_label_contains("Add to new view");
     harness.click_label("2D");
     harness.snapshot_app("origin_camera_2d");
-
-    harness.save_recording_to_file("test.rrd");
-    harness.save_blueprint_to_file("test.rrb");
 }
 
 #[tokio::test(flavor = "multi_thread")]
