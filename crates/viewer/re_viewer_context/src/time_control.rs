@@ -1170,12 +1170,16 @@ impl TimeControl {
                 .or_else(|| self.full_valid_range(times_per_timeline).map(|r| r.into()));
             if let Some(range) = range {
                 if time == range.min && new_time < range.min {
+                    // jump right to the end
                     new_time = range.max;
                 } else if new_time < range.min {
+                    // we are right at the end, wrap to the start
                     new_time = range.min;
                 } else if time == range.max && new_time > range.max {
+                    // jump right to the start
                     new_time = range.min;
                 } else if new_time > range.max {
+                    // we are right at the start, wrap to the end
                     new_time = range.max;
                 }
             }
