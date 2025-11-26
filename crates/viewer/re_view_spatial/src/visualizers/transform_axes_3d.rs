@@ -1,16 +1,15 @@
+use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _,
     archetypes::{CoordinateFrame, InstancePoses3D, Transform3D, TransformAxes3D},
     components::{AxisLength, ShowLabels},
-    datatypes::Bool,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ResolvedAnnotationInfo,
-    ResolvedAnnotationInfos, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, RequiredComponents, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -19,8 +18,8 @@ use crate::{
 };
 
 use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities, process_labels_3d,
-    utilities::LabeledBatch,
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+    filter_visualizable_3d_entities,
 };
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
@@ -151,32 +150,23 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 .into();
 
             if show_frame {
+                // Add label at the center of each transform instance if `show_frame` is enabled.
                 let frame_id_hash =
                     transforms.transform_frame_id_for(data_result.entity_path.hash());
 
                 if let Some(frame_id) = transforms.lookup_frame_id(frame_id_hash) {
-                    // Add label at the center of each transform instance if show_frame is enabled
-                    let num_instances = transforms_to_draw.len();
-                    let labels = vec![frame_id.0.clone().into(); num_instances];
-                    let annotation_infos = ResolvedAnnotationInfos::Same(
-                        num_instances,
-                        ResolvedAnnotationInfo::default(),
-                    );
-                    self.0.ui_labels.extend(process_labels_3d(
-                        LabeledBatch {
-                            entity_path: &data_result.entity_path,
-                            num_instances,
-                            overall_position: glam::Vec3::ZERO,
-                            instance_positions: transforms_to_draw
-                                .iter()
-                                .map(|transform| transform.transform_point3(glam::Vec3::ZERO)),
-                            labels: &labels,
-                            colors: &[egui::Color32::WHITE],
-                            show_labels: ShowLabels(Bool(true)),
-                            annotation_infos: &annotation_infos,
-                        },
-                        glam::Affine3A::IDENTITY,
-                    ));
+                    self.0
+                        .ui_labels
+                        .extend(transforms_to_draw.iter().map(|transform| UiLabel {
+                            text: frame_id.0.clone().into(),
+                            style: UiLabelStyle::Default,
+                            target: UiLabelTarget::Position3D(
+                                transform.transform_point3(glam::Vec3::ZERO),
+                            ),
+                            labeled_instance: InstancePathHash::entity_all(
+                                &data_result.entity_path,
+                            ),
+                        }));
                 } else {
                     // It should not be possible to hit this path and frame id hashes are not something that
                     // we should ever expose to our users, so let's add a debug assert for good measure.
