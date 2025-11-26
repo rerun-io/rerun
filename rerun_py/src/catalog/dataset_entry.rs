@@ -392,7 +392,7 @@ impl PyDatasetEntry {
         *,
         recording_layers = vec![],
     ))]
-    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers = [])")]
+    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
     // TODO(ab): it might be useful to return partition ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
