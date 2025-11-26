@@ -56,6 +56,9 @@ pub enum RvlDecodeError {
     #[error("RVL stream encodes more non-zero pixels than expected")]
     TooManyNonZeros,
 
+    #[error("RVL stream encoded an empty run (zero zeros and zero non-zeros)")]
+    NoProgress,
+
     #[error("RVL decoded value {value} does not fit into u16")]
     ValueOutOfRange { value: i32 },
 
@@ -164,6 +167,9 @@ impl<'a> RvlDecoder<'a> {
             let nonzeros = self.decode_vle()? as usize;
             if nonzeros > remaining {
                 return Err(RvlDecodeError::TooManyNonZeros);
+            }
+            if zeros == 0 && nonzeros == 0 {
+                return Err(RvlDecodeError::NoProgress);
             }
             for value in output.iter_mut().skip(write_index).take(nonzeros) {
                 let positive = self.decode_vle()? as i32;
