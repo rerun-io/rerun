@@ -146,7 +146,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     self.0
                         .ui_labels
                         .extend(transforms_to_draw.iter().map(|transform| UiLabel {
-                            text: frame_id.0.clone().into(),
+                            text: frame_id.to_string(),
                             style: UiLabelStyle::Default,
                             target: UiLabelTarget::Position3D(
                                 transform.transform_point3(glam::Vec3::ZERO),

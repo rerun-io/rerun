@@ -225,6 +225,15 @@ impl TransformTreeContext {
     ) -> Option<&TransformFrameId> {
         self.frame_id_mapping.get(&frame_id_hash)
     }
+
+    /// Formats a frame ID hash as a human-readable string.
+    ///
+    /// Returns the frame name if known, otherwise returns a debug representation of the hash.
+    #[inline]
+    pub fn format_frame(&self, frame_id_hash: TransformFrameIdHash) -> String {
+        self.lookup_frame_id(frame_id_hash)
+            .map_or_else(|| format!("{frame_id_hash:?}"), ToString::to_string)
+    }
 }
 
 fn lookup_image_plane_distance(
