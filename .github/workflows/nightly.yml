@@ -465,9 +465,6 @@ jobs:
 #      upload-js,
     ]
     if: always()
-    outputs:
-      workflow_status: ${{ steps.status.outputs.status }}
-      workflow_color: ${{ steps.status.outputs.color }}
     steps:
       - name: Determine CI Status
         id: status
@@ -504,22 +501,33 @@ jobs:
           done < /tmp/results.txt
 
           if [ "$REQUIRED_FAILED" = true ]; then
-            echo "status=red" >> $GITHUB_OUTPUT
-            echo "color=critical" >> $GITHUB_OUTPUT
+            echo "STATUS=red" >> $GITHUB_OUTPUT
+            echo "STATUS_COLOR=critical" >> $GITHUB_OUTPUT
             echo "Required tests failed"
             exit 1
           elif [ "$OPTIONAL_FAILED" = true ]; then
-            echo "status=yellow" >> $GITHUB_OUTPUT
-            echo "color=warning" >> $GITHUB_OUTPUT
+            echo "STATUS=yellow" >> $GITHUB_OUTPUT
+            echo "STATUS_COLOR=warning" >> $GITHUB_OUTPUT
             echo "Required tests passed, but optional checks failed"
             exit 0
           else
-            echo "status=green" >> $GITHUB_OUTPUT
-            echo "color=success" >> $GITHUB_OUTPUT
+            echo "STATUS=green" >> $GITHUB_OUTPUT
+            echo "STATUS_COLOR=success" >> $GITHUB_OUTPUT
             echo "All checks passed!"
             exit 0
           fi
-
-outputs:
-  workflow_status: ${{ jobs.ci-status.outputs.status }}
-  workflow_color: ${{ steps.ci-status.outputs.color }}
+      - name: Send workflow result to CI Fire Alert
+        if: always()
+        run: |
+          curl -X POST "${{ secrets.CI_FIRE_ALERT_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "workflow_run_id": "${{ github.run_id }}",
+              "workflow_name": "${{ github.workflow }}",
+              "repository": "${{ github.repository }}",
+              "custom_data": {
+                "workflow_status": "${{ steps.status.outputs.STATUS }}",
+                "wworkflow_color": "${{ steps.status.outputs.STATUS_COLOR }}",
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+              }
+            }'
