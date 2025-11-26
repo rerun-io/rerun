@@ -1,4 +1,7 @@
-use std::{borrow::Cow, str::FromStr as _};
+use std::{
+    borrow::Cow,
+    str::FromStr as _,
+};
 
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
@@ -6,7 +9,7 @@ use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 use re_chunk::{Timeline, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, EntityPath, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_smart_channel::ReceiveSet;
@@ -18,7 +21,7 @@ use re_viewer_context::{
     DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
     StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
-    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext, VisualizableEntities, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
@@ -73,6 +76,12 @@ pub struct AppState {
     pub(crate) open_url_modal: crate::ui::OpenUrlModal,
     #[serde(skip)]
     pub(crate) share_modal: crate::ui::ShareModal,
+
+    #[serde(skip)]
+    view_query_cache: HashMap<ViewId, ViewQueryCacheEntry>,
+
+    #[serde(skip)]
+    visualizable_entities_cache: HashMap<ViewId, VisualizableEntitiesCacheEntry>,
 
     /// Test-only: single-shot callback to run at the end of the frame. Used in integration tests
     /// to interact with the `ViewerContext`.
@@ -130,6 +139,8 @@ impl Default for AppState {
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+            view_query_cache: Default::default(),
+            visualizable_entities_cache: Default::default(),
 
             #[cfg(feature = "testing")]
             test_hook: None,
@@ -143,6 +154,56 @@ pub(crate) struct WelcomeScreenState {
 
     /// The opacity of the welcome screen during fade-in.
     pub opacity: f32,
+}
+
+struct ViewQueryCacheEntry {
+    key: ViewQueryCacheKey,
+    result: DataQueryResult,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+struct ViewQueryCacheKey {
+    recording_generation: re_chunk_store::ChunkStoreGeneration,
+    // Note: blueprint_generation is intentionally excluded from the cache key.
+    // Query results depend on the blueprint_query time, not the generation counter.
+    // Including blueprint_generation would cause 0% cache hit rate during playback
+    // since the generation changes every frame with the time cursor.
+    blueprint_query: LatestAtQuery,
+}
+
+impl ViewQueryCacheKey {
+    fn new(
+        recording_generation: re_chunk_store::ChunkStoreGeneration,
+        blueprint_query: &LatestAtQuery,
+    ) -> Self {
+        Self {
+            recording_generation,
+            blueprint_query: blueprint_query.clone(),
+        }
+    }
+}
+
+struct VisualizableEntitiesCacheEntry {
+    key: VisualizableEntitiesCacheKey,
+    result: PerVisualizer<VisualizableEntities>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct VisualizableEntitiesCacheKey {
+    recording_generation: re_chunk_store::ChunkStoreGeneration,
+    space_origin: EntityPath,
+}
+
+impl VisualizableEntitiesCacheKey {
+    fn new(
+        recording_generation: re_chunk_store::ChunkStoreGeneration,
+        space_origin: &EntityPath,
+    ) -> Self {
+        Self {
+            recording_generation,
+            space_origin: space_origin.clone(),
+        }
+    }
 }
 
 impl AppState {
@@ -294,39 +355,98 @@ impl AppState {
                     .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
+                let recording_generation = recording.generation();
+
+                self.view_query_cache
+                    .retain(|view_id, _| viewport_ui.blueprint.views.contains_key(view_id));
+                self.visualizable_entities_cache
+                    .retain(|view_id, _| viewport_ui.blueprint.views.contains_key(view_id));
+
+                // Determine visualizable entities for each view (cached)
+                let visualizable_entities_per_view: HashMap<ViewId, PerVisualizer<VisualizableEntities>> = {
+                    re_tracing::profile_scope!("visualizable_entities_per_view");
+                    viewport_ui
+                        .blueprint
+                        .views
+                        .values()
+                        .map(|view| {
+                            let cache_key = VisualizableEntitiesCacheKey::new(
+                                recording_generation.clone(),
+                                &view.space_origin,
+                            );
+
+                            let visualizable_entities = if let Some(entry) = self.visualizable_entities_cache.get(&view.id)
+                                && entry.key == cache_key
+                            {
+                                PerVisualizer(entry.result.0.clone())
+                            } else {
+                                // This is the expensive operation we're caching
+                                view.class(view_class_registry)
+                                    .determine_visualizable_entities(
+                                        &maybe_visualizable_entities_per_visualizer,
+                                        recording,
+                                        &view_class_registry
+                                            .new_visualizer_collection(view.class_identifier()),
+                                        &view.space_origin,
+                                    )
+                            };
+
+                            self.visualizable_entities_cache.insert(
+                                view.id,
+                                VisualizableEntitiesCacheEntry {
+                                    key: cache_key,
+                                    result: PerVisualizer(visualizable_entities.0.clone()),
+                                },
+                            );
+
+                            (view.id, visualizable_entities)
+                        })
+                        .collect()
+                };
 
                 // Execute the queries for every `View`
-                let query_results = {
+                let query_results: HashMap<_, _> = {
                     re_tracing::profile_scope!("query_results");
                     viewport_ui
                         .blueprint
                         .views
                         .values()
                         .map(|view| {
-                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                            let visualizable_entities = view
-                                .class(view_class_registry)
-                                .determine_visualizable_entities(
-                                    &maybe_visualizable_entities_per_visualizer,
-                                    recording,
-                                    &view_class_registry
-                                        .new_visualizer_collection(view.class_identifier()),
-                                    &view.space_origin,
-                                );
+                            let visualizable_entities = &visualizable_entities_per_view[&view.id];
 
-                            (
-                                view.id,
-                                view.contents.execute_query(
+                            let cache_key = ViewQueryCacheKey::new(
+                                recording_generation.clone(),
+                                &blueprint_query,
+                            );
+
+                            let (result, cache_miss) = if let Some(entry) = self.view_query_cache.get(&view.id)
+                                && entry.key == cache_key
+                            {
+                                (entry.result.clone(), false)
+                            } else {
+                                (view.contents.execute_query(
                                     store_context,
                                     view_class_registry,
                                     &blueprint_query,
-                                    &visualizable_entities,
-                                ),
-                            )
+                                    visualizable_entities,
+                                ), true)
+                            };
+
+                            // Only insert on cache miss; the result will be updated after
+                            // update_overrides with the post-override value.
+                            if cache_miss {
+                                self.view_query_cache.insert(
+                                    view.id,
+                                    ViewQueryCacheEntry {
+                                        key: cache_key,
+                                        result: DataQueryResult::default(),
+                                    },
+                                );
+                            }
+
+                            (view.id, result)
                         })
-                        .collect::<_>()
+                        .collect()
                 };
 
                 let app_blueprint_ctx = AppBlueprintCtx {
@@ -364,6 +484,7 @@ impl AppState {
                     maybe_visualizable_entities_per_visualizer:
                         &maybe_visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
+                    visualizable_entities_per_view: &visualizable_entities_per_view,
                     query_results: &query_results,
                     time_ctrl,
                     blueprint_time_ctrl: blueprint_time_control,
@@ -392,8 +513,17 @@ impl AppState {
                     time_ctrl.timeline(),
                     &maybe_visualizable_entities_per_visualizer,
                     &indicated_entities_per_visualizer,
+                    &visualizable_entities_per_view,
                     view_states,
                 );
+
+                // Update cache with post-override results. Order doesn't matter here.
+                #[expect(clippy::iter_over_hash_type)]
+                for (view_id, result) in &query_results {
+                    if let Some(entry) = self.view_query_cache.get_mut(view_id) {
+                        entry.result = result.clone();
+                    }
+                }
 
                 // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
                 // it's just a bunch of refs so not really that big of a deal in practice.
@@ -420,6 +550,7 @@ impl AppState {
                     maybe_visualizable_entities_per_visualizer:
                         &maybe_visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
+                    visualizable_entities_per_view: &visualizable_entities_per_view,
                     query_results: &query_results,
                     time_ctrl,
                     blueprint_time_ctrl: blueprint_time_control,
@@ -809,6 +940,7 @@ fn update_overrides(
     active_timeline: &Timeline,
     maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
     indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    visualizable_entities_per_view: &HashMap<ViewId, PerVisualizer<VisualizableEntities>>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, DataQueryResult> {
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
@@ -817,6 +949,7 @@ fn update_overrides(
         view: &'a re_viewport_blueprint::ViewBlueprint,
         view_state: &'a dyn re_viewer_context::ViewState,
         query_result: DataQueryResult,
+        visualizable_entities: &'a PerVisualizer<VisualizableEntities>,
     }
 
     for view in viewport_blueprint.views.values() {
@@ -831,56 +964,54 @@ fn update_overrides(
                 let view_state = view_states
                     .get(view.id)
                     .expect("View state should exist, we just called ensure_state_exists on it.");
+                let visualizable_entities = &visualizable_entities_per_view[&view.id];
                 OverridesUpdateTask {
                     view,
                     view_state,
                     query_result,
+                    visualizable_entities,
                 }
             })
         })
         .collect::<Vec<_>>();
 
-    work_items
-        .into_par_iter()
-        .map(
-            |OverridesUpdateTask {
-                 view,
-                 view_state,
-                 mut query_result,
-             }| {
-                // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                let visualizable_entities = view
-                    .class(view_class_registry)
-                    .determine_visualizable_entities(
-                        maybe_visualizable_entities_per_visualizer,
-                        store_context.recording,
-                        &view_class_registry.new_visualizer_collection(view.class_identifier()),
-                        &view.space_origin,
-                    );
+    // Threshold for parallel processing. For small view counts, the overhead of
+    // thread pool coordination outweighs the benefits of parallelism.
+    const PARALLEL_THRESHOLD: usize = 4;
 
-                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                    view,
-                    view_class_registry,
-                    maybe_visualizable_entities_per_visualizer,
-                    &visualizable_entities,
-                    indicated_entities_per_visualizer,
-                );
+    let process_task = |OverridesUpdateTask {
+                            view,
+                            view_state,
+                            mut query_result,
+                            visualizable_entities,
+                        }| {
+        // Now using the pre-computed visualizable_entities instead of recomputing them.
+        // This avoids the expensive determine_visualizable_entities call that was happening twice per frame.
+        let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+            view,
+            view_class_registry,
+            maybe_visualizable_entities_per_visualizer,
+            visualizable_entities,
+            indicated_entities_per_visualizer,
+        );
 
-                resolver.update_overrides(
-                    store_context.blueprint,
-                    blueprint_query,
-                    active_timeline,
-                    view_class_registry,
-                    &mut query_result,
-                    view_state,
-                );
+        resolver.update_overrides(
+            store_context.blueprint,
+            blueprint_query,
+            active_timeline,
+            view_class_registry,
+            &mut query_result,
+            view_state,
+        );
 
-                (view.id, query_result)
-            },
-        )
-        .collect()
+        (view.id, query_result)
+    };
+
+    if work_items.len() >= PARALLEL_THRESHOLD {
+        work_items.into_par_iter().map(process_task).collect()
+    } else {
+        work_items.into_iter().map(process_task).collect()
+    }
 }
 
 fn table_ui(
