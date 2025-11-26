@@ -19,30 +19,34 @@ pub fn transform_info_for_entity_or_report_error<'a>(
             None
         }
 
-        Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { .. })) => {
-            // TODO(RR-2997): Pretty print out the frames involved.
+        Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
+            let src = transform_context.format_frame(*src);
+            let target = transform_context.format_frame(*target);
             output.report_error_for(
                 entity_path.clone(),
-                "No transform path to the view's origin frame.",
+                format!("No transform path from {src} to the view's origin frame ({target})."),
             );
             None
         }
 
-        Some(Err(re_tf::TransformFromToError::UnknownTargetFrame { .. })) => {
+        Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
             // The target frame is the view's origin.
             // This means this could be hit if the view's origin frame doesn't show up in any data.
-            // TODO(RR-2997): Pretty print out the frames involved.
-            output.report_error_for(entity_path.clone(), "The view's origin frame is unknown.");
+            let target = transform_context.format_frame(*target);
+            output.report_error_for(
+                entity_path.clone(),
+                format!("The view's origin frame {target} is unknown."),
+            );
             None
         }
 
-        Some(Err(re_tf::TransformFromToError::UnknownSourceFrame { .. })) => {
+        Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
             // Unclear how we'd hit this. This means that when processing transforms we encountered a coordinate frame that the transform cache didn't know about.
             // That would imply that the cache is lagging behind.
-            // TODO(RR-2997): Pretty print out the frames involved.
+            let src = transform_context.format_frame(*src);
             output.report_error_for(
                 entity_path.clone(),
-                "The entity's coordinate frame is unknown.",
+                format!("The entity's coordinate frame {src} is unknown."),
             );
             None
         }
