@@ -3223,13 +3223,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 deprecation_summary: None,
                 scope: None,
                 view_types: &["Spatial3DView"],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "axis_length",
-                    display_name: "Axis length",
-                    component_type: "rerun.components.AxisLength".into(),
-                    docstring_md: "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
-                    is_required: true,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "axis_length",
+                        display_name: "Axis length",
+                        component_type: "rerun.components.AxisLength".into(),
+                        docstring_md: "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
+                        is_required: true,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_frame",
+                        display_name: "Show frame",
+                        component_type: "rerun.components.ShowLabels".into(),
+                        docstring_md: "Whether to show a text label with the corresponding frame.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
         (

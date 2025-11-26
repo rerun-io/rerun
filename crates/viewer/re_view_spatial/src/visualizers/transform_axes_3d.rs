@@ -1,8 +1,9 @@
+use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _,
     archetypes::{CoordinateFrame, InstancePoses3D, Transform3D, TransformAxes3D},
-    components::AxisLength,
+    components::{AxisLength, ShowLabels},
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -16,7 +17,10 @@ use crate::{
     visualizers::utilities::transform_info_for_entity_or_report_error,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::{
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+    filter_visualizable_3d_entities,
+};
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -117,6 +121,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         .collect()
                 };
 
+            let axis_length_identifier = TransformAxes3D::descriptor_axis_length().component;
+            let show_frame_identifier = TransformAxes3D::descriptor_show_frame().component;
+
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying
             // for a bunch of unused components. The actual transform data comes out of the context manager and can't be
             // overridden via blueprint anyways.
@@ -125,19 +132,53 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                [TransformAxes3D::descriptor_axis_length().component],
+                [axis_length_identifier, show_frame_identifier],
                 false,
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(
-                    TransformAxes3D::descriptor_axis_length().component,
-                )
+                .get_mono_with_fallback::<AxisLength>(axis_length_identifier)
                 .into();
 
             if axis_length == 0.0 {
                 // Don't draw axis and don't add to the bounding box!
                 continue;
+            }
+
+            let show_frame: bool = results
+                .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
+                .into();
+
+            if show_frame {
+                // Add label at the center of each transform instance if `show_frame` is enabled.
+                let frame_id_hash =
+                    transforms.transform_frame_id_for(data_result.entity_path.hash());
+
+                if let Some(frame_id) = transforms.lookup_frame_id(frame_id_hash) {
+                    self.0
+                        .ui_labels
+                        .extend(transforms_to_draw.iter().map(|transform| UiLabel {
+                            text: frame_id.0.clone().into(),
+                            style: UiLabelStyle::Default,
+                            target: UiLabelTarget::Position3D(
+                                transform.transform_point3(glam::Vec3::ZERO),
+                            ),
+                            labeled_instance: InstancePathHash::entity_all(
+                                &data_result.entity_path,
+                            ),
+                        }));
+                } else {
+                    // It should not be possible to hit this path and frame id hashes are not something that
+                    // we should ever expose to our users, so let's add a debug assert for good measure.
+                    debug_assert!(
+                        false,
+                        "[DEBUG ASSERT] unable to resolve frame id hash {frame_id_hash:?}"
+                    );
+                    output.report_error_for(
+                        data_result.entity_path.clone(),
+                        format!("Could not resolve frame id hash {frame_id_hash:?}"),
+                    );
+                }
             }
 
             // Draw axes for each instance
