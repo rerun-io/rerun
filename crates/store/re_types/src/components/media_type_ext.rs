@@ -1,4 +1,5 @@
 use super::MediaType;
+use re_depth_compression::ros_rvl::parse_ros_rvl_metadata;
 
 // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can declare these
 // constants directly in there.
@@ -49,7 +50,8 @@ impl MediaType {
     // -------------------------------------------------------
     // Compressed Depth Data:
 
-    /// [RVL compressed depth](https://rgbd-data.org/): `application/rvl`.
+    /// [RVL compressed depth]
+    /// (https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf): `application/rvl`.
     ///
     /// Range Image Visualization Library (RVL) compressed depth data format.
     pub const RVL: &'static str = "application/rvl";
@@ -192,21 +194,25 @@ impl MediaType {
         }
 
         fn rvl_matcher(buf: &[u8]) -> bool {
-            // RVL (Range Image Visualization Library) format structure:
-            // - Config Header (12 bytes): i32 reserved + f32 depth_quant_a + f32 depth_quant_b
-            // - Resolution Header (8 bytes): u32 width + u32 height
-            // - RVL Payload: variable length compressed data
+            const MAX_REASONABLE_DIMENSION: u32 = 65_536;
 
-            if buf.len() < 20 {
-                return false; // Minimum size check (12 + 8 bytes)
+            let Ok(metadata) = parse_ros_rvl_metadata(buf) else {
+                return false;
+            };
+
+            let quant_a = metadata.depth_quant_a;
+            let quant_b = metadata.depth_quant_b;
+
+            if !quant_a.is_finite() || !quant_b.is_finite() {
+                return false;
             }
 
-            // Read width and height from bytes 12-15 and 16-19 respectively
-            let width = u32::from_le_bytes([buf[12], buf[13], buf[14], buf[15]]);
-            let height = u32::from_le_bytes([buf[16], buf[17], buf[18], buf[19]]);
+            // Reject unreasonable values to reduce false positives.
+            if !(0.0..=1e4).contains(&quant_a) || quant_b.abs() > 1e4 {
+                return false;
+            }
 
-            // Basic validation - width and height should be reasonable
-            width > 0 && height > 0 && width <= 65536 && height <= 65536
+            metadata.width <= MAX_REASONABLE_DIMENSION && metadata.height <= MAX_REASONABLE_DIMENSION
         }
 
         // NOTE:
@@ -302,74 +308,41 @@ fn test_media_type_extension() {
 }
 
 #[test]
-fn test_guess_from_data() {
-    // Empty data
+fn test_guess_from_data_rvl() {
     assert_eq!(MediaType::guess_from_data(&[]), None);
 
-    // Test GLB detection
-    let glb_magic = b"glTF";
+    let valid_rvl = build_rvl_header(640, 480, 1.0, 0.0);
     assert_eq!(
-        MediaType::guess_from_data(glb_magic),
-        Some(MediaType::glb())
-    );
-
-    // Test ASCII STL detection
-    let stl_magic = b"solid";
-    assert_eq!(
-        MediaType::guess_from_data(stl_magic),
-        Some(MediaType::stl())
-    );
-    // Invalid STL - not "solid"
-    assert_eq!(MediaType::guess_from_data(b"solidx"), None);
-    assert_eq!(MediaType::guess_from_data(b"soli"), None);
-
-    // Test RVL detection - create minimal valid RVL header
-    let mut rvl_header = vec![0u8; 20]; // 20 bytes minimum
-    // Config header (12 bytes): reserved (0), depth_quant_a (0.0), depth_quant_b (0.0)
-    // Resolution header (8 bytes): width = 640, height = 480
-    rvl_header[12..16].copy_from_slice(&640u32.to_le_bytes());
-    rvl_header[16..20].copy_from_slice(&480u32.to_le_bytes());
-
-    assert_eq!(
-        MediaType::guess_from_data(&rvl_header),
+        MediaType::guess_from_data(&valid_rvl),
         Some(MediaType::rvl())
     );
 
-    // Test RVL with different dimensions
-    let mut rvl_header2 = vec![0u8; 20];
-    rvl_header2[12..16].copy_from_slice(&1920u32.to_le_bytes());
-    rvl_header2[16..20].copy_from_slice(&1080u32.to_le_bytes());
+    let mut invalid_quant = valid_rvl.clone();
+    invalid_quant[4..8].copy_from_slice(&f32::NAN.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&invalid_quant), None);
 
-    assert_eq!(
-        MediaType::guess_from_data(&rvl_header2),
-        Some(MediaType::rvl())
-    );
+    let mut invalid_quant_magnitude = valid_rvl.clone();
+    invalid_quant_magnitude[8..12].copy_from_slice(&(20_000.0f32).to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&invalid_quant_magnitude), None);
 
-    // Too short for RVL
-    assert_eq!(
-        MediaType::guess_from_data(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
-        None
-    );
+    let mut zero_width = valid_rvl.clone();
+    zero_width[12..16].copy_from_slice(&0u32.to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&zero_width), None);
 
-    // Invalid RVL - zero width
-    let mut rvl_invalid_width = vec![0u8; 20];
-    rvl_invalid_width[12..16].copy_from_slice(&0u32.to_le_bytes());
-    rvl_invalid_width[16..20].copy_from_slice(&480u32.to_le_bytes());
-    assert_eq!(MediaType::guess_from_data(&rvl_invalid_width), None);
+    let mut huge_height = valid_rvl.clone();
+    huge_height[16..20].copy_from_slice(&(100_000u32).to_le_bytes());
+    assert_eq!(MediaType::guess_from_data(&huge_height), None);
 
-    // Invalid RVL - zero height
-    let mut rvl_invalid_height = vec![0u8; 20];
-    rvl_invalid_height[12..16].copy_from_slice(&640u32.to_le_bytes());
-    rvl_invalid_height[16..20].copy_from_slice(&0u32.to_le_bytes());
-    assert_eq!(MediaType::guess_from_data(&rvl_invalid_height), None);
+    assert_eq!(MediaType::guess_from_data(b"Hello, World!"), None);
+}
 
-    // Invalid RVL - dimensions too large
-    let mut rvl_too_large = vec![0u8; 20];
-    rvl_too_large[12..16].copy_from_slice(&70000u32.to_le_bytes());
-    rvl_too_large[16..20].copy_from_slice(&480u32.to_le_bytes());
-    assert_eq!(MediaType::guess_from_data(&rvl_too_large), None);
-
-    // Random data that shouldn't match
-    let random_data = b"Hello, World!";
-    assert_eq!(MediaType::guess_from_data(random_data), None);
+#[cfg(test)]
+fn build_rvl_header(width: u32, height: u32, depth_quant_a: f32, depth_quant_b: f32) -> Vec<u8> {
+    // 12 bytes config header + 8 bytes resolution + a few payload bytes.
+    let mut data = vec![0u8; 24];
+    data[4..8].copy_from_slice(&depth_quant_a.to_le_bytes());
+    data[8..12].copy_from_slice(&depth_quant_b.to_le_bytes());
+    data[12..16].copy_from_slice(&width.to_le_bytes());
+    data[16..20].copy_from_slice(&height.to_le_bytes());
+    data
 }

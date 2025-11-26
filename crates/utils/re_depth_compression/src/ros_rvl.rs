@@ -1,4 +1,4 @@
-//! Utilities for decoding depth compression formats.
+//! RVL (Range Image Visualization Library) codec helpers.
 
 use std::mem::size_of;
 

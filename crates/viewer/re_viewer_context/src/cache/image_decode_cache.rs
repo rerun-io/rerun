@@ -8,7 +8,7 @@ use re_log_types::hash::Hash64;
 use re_types::{
     ComponentIdentifier,
     components::{ImageBuffer, ImageFormat as ImageFormatComponent, MediaType},
-    datatypes::{Blob, ChannelDatatype},
+    datatypes::{Blob, ChannelDatatype, ColorModel},
     image::{ImageKind, ImageLoadError},
 };
 
@@ -205,6 +205,13 @@ fn decode_png_depth(
 
     let (buffer, decoded_format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
 
+    if decoded_format.color_model != Some(ColorModel::L) {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG must be single-channel (L); got {:?}",
+            decoded_format.color_model
+        )));
+    }
+
     if decoded_format.datatype() != format.datatype() {
         return Err(ImageLoadError::DecodeError(format!(
             "Encoded depth PNG datatype mismatch: blob is {:?}, expected {:?}",
@@ -243,13 +250,13 @@ fn decode_rvl_depth(
 
     let expected_pixels = (format.width as usize) * (format.height as usize);
     if metadata.num_pixels() != expected_pixels {
-        re_log::warn_once!(
+        return Err(ImageLoadError::DecodeError(format!(
             "RVL encoded depth metadata {metadata_width}x{metadata_height} disagrees with ImageFormat {}x{}",
             format.width,
             format.height,
             metadata_width = metadata.width,
             metadata_height = metadata.height
-        );
+        )));
     }
 
     let buffer: Vec<u8> = match format.datatype() {
@@ -265,6 +272,15 @@ fn decode_rvl_depth(
             )));
         }
     };
+
+    let expected_num_bytes = format.num_bytes();
+    let actual_num_bytes = buffer.len();
+    if actual_num_bytes != expected_num_bytes {
+        return Err(ImageLoadError::DecodeError(format!(
+            "RVL payload decoded to {actual_num_bytes} B, but {} requires {expected_num_bytes} B",
+            format.0
+        )));
+    }
 
     Ok(ImageInfo::from_stored_blob(
         blob_row_id,
