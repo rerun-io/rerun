@@ -1169,10 +1169,14 @@ impl TimeControl {
                 .loop_selection()
                 .or_else(|| self.full_valid_range(times_per_timeline).map(|r| r.into()));
             if let Some(range) = range {
-                if new_time < range.min {
+                if time == range.min && new_time < range.min {
                     new_time = range.max;
-                } else if new_time > range.max {
+                } else if new_time < range.min {
                     new_time = range.min;
+                } else if time == range.max && new_time > range.max {
+                    new_time = range.min;
+                } else if new_time > range.max {
+                    new_time = range.max;
                 }
             }
 
