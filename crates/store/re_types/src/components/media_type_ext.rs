@@ -212,7 +212,8 @@ impl MediaType {
                 return false;
             }
 
-            metadata.width <= MAX_REASONABLE_DIMENSION && metadata.height <= MAX_REASONABLE_DIMENSION
+            metadata.width <= MAX_REASONABLE_DIMENSION
+                && metadata.height <= MAX_REASONABLE_DIMENSION
         }
 
         // NOTE:

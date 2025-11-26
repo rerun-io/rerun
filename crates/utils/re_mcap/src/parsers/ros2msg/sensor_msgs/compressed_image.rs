@@ -1,12 +1,12 @@
 use super::super::definitions::sensor_msgs;
 use anyhow::{Context as _, bail};
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+use re_depth_compression::ros_rvl::parse_ros_rvl_metadata;
 use re_types::{
     archetypes::{EncodedDepthImage, EncodedImage, VideoStream},
     components::{MediaType, VideoCodec},
     datatypes::{ChannelDatatype, ImageFormat},
 };
-use re_depth_compression::ros_rvl::parse_ros_rvl_metadata;
 
 use super::super::Ros2MessageParser;
 use crate::parsers::{
