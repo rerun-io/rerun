@@ -63,7 +63,7 @@ fn setup_scene(test_context: &mut TestContext) {
         )
     });
 
-    // TODO(RR-2997): If we could set the view's origin directly to a frame, we woudl set it to `world`. As there's nothing to be visualized on `world_entity` this would make this log call redundant.
+    // TODO(RR-2997): If we could set the view's origin directly to a frame, we would set it to `world`. As there's nothing to be visualized on `world_entity` this would make this log call redundant.
     test_context.log_entity("world_entity", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
