@@ -1264,6 +1264,7 @@ class EntryKind:
     DATASET_VIEW: EntryKind
     TABLE: EntryKind
     TABLE_VIEW: EntryKind
+    BLUEPRINT_DATASET: EntryKind
 
     def __str__(self, /) -> str:
         """Return str(self)."""

@@ -18,6 +18,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         window_size: Some(egui::vec2(1024.0, 768.0)),
         max_steps: Some(200),      // Allow animations to finish.
         step_dt: Some(1.0 / 60.0), // Allow double clicks to go through.
+        ..Default::default()
     });
     harness.init_recording();
     harness.set_selection_panel_opened(false);

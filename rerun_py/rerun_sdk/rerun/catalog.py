@@ -18,6 +18,7 @@ from rerun_bindings import (
     TableEntry as TableEntry,
     TableInsertMode as TableInsertMode,
     Task as Task,
+    Tasks as Tasks,
     VectorDistanceMetric as VectorDistanceMetric,
 )
 from rerun_bindings.types import (

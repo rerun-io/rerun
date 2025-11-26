@@ -68,7 +68,7 @@ impl Loggable for Tuid {
 
         // NOTE: We don't even look at the validity, our datatype says we don't care.
 
-        let uuids: &[Self] = bytemuck::try_cast_slice(array.value_data()).map_err(|err| {
+        let uuids: &[Self] = Self::slice_from_bytes(array.value_data()).map_err(|err| {
             DeserializationError::ValidationError(format!("Bad length of Tuid array: {err}"))
         })?;
 
