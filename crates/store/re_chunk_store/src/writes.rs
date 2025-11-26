@@ -24,6 +24,10 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.is_empty() {
+            return Ok(vec![]); // nothing to do
+        }
+
         if chunk.components().is_empty() {
             // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
             // chunk that went through the Sorbet migration process, and ended up with zero
@@ -53,21 +57,14 @@ impl ChunkStore {
         }
 
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
-            // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::debug_once!(
-                "Chunk #{} was inserted more than once (this has no effect)",
-                chunk.id()
-            );
+            // We assume that chunk IDs are unique, and that reinserting a
+            re_log::warn_once!("Chunk was inserted more than once (this has no effect)");
             return Ok(Vec::new());
         }
 
         if !chunk.is_sorted() {
             return Err(ChunkStoreError::UnsortedChunk);
         }
-
-        let Some(row_id_range) = chunk.row_id_range() else {
-            return Ok(Vec::new());
-        };
 
         re_tracing::profile_function!();
 
@@ -366,9 +363,7 @@ impl ChunkStore {
                 .insert(min_row_id, chunk.id())
                 .is_some()
         {
-            re_log::warn!(
-                chunk_id = %chunk.id(),
-                row_id = %row_id_range.0,
+            re_log::warn_once!(
                 "detected duplicated RowId in the data, this will lead to undefined behavior"
             );
         }
