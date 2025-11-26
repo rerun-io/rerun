@@ -66,3 +66,29 @@ pub async fn dataset_ui_test() {
     );
     snapshot_results.add(harness.try_snapshot("dataset_ui_table"));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn start_with_dataset_url() {
+    let server = TestServer::spawn().await.with_test_data().await;
+
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        startup_url: Some(format!(
+            "rerun+http://localhost:{}/entry/187b552b95a5c2f73f37894708825ba5",
+            server.port()
+        )),
+        ..Default::default()
+    });
+
+    viewer_test_utils::step_until(
+        "Redap recording id appears",
+        &mut harness,
+        |harness| {
+            harness
+                .query_by_label_contains("new_recording_id")
+                .is_some()
+        },
+        Duration::from_millis(100),
+        Duration::from_secs(5),
+    );
+    harness.snapshot("start_with_dataset_url");
+}
