@@ -531,6 +531,7 @@ impl App {
             };
 
             let dt = self.egui_ctx.input(|i| i.stable_dt);
+
             if let Some(recording) = store_hub.active_recording() {
                 // Are we still connected to the data source for the current store?
                 let more_data_is_coming =
@@ -1088,6 +1089,10 @@ impl App {
             }
 
             SystemCommand::SetSelection(set) => {
+
+
+                let current_store_id = self.store_hub.unwrap().active_store_id();
+
                 if let Some(item) = set.selection.single_item() {
                     // If the selected item has its own page, switch to it.
                     if let Some(display_mode) = DisplayMode::from_item(item) {
@@ -2899,6 +2904,7 @@ impl eframe::App for App {
                 crate::history::go_forward();
             }
         }
+
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.

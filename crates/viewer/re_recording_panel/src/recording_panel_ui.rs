@@ -96,6 +96,7 @@ fn shift_through_recordings(
         // TODO(#11792): this whole feature would be massively more useful if we left the selection
         // alone and tried to maintain viewer state when switching recording (including current
         // timeline, time point, selection, etc.)
+
         ctx.command_sender()
             .send_system(SystemCommand::SetSelection(
                 Item::StoreId(store_collection[new_idx].store_id().clone()).into(),
