@@ -523,7 +523,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     use re_types::components::TransformFrameId;
     use re_view::latest_at_with_blueprint_resolved_data;
 
-    let component_descr = archetypes::CoordinateFrame::descriptor_frame_id();
+    let component_descr = archetypes::CoordinateFrame::descriptor_frame();
     let component = component_descr.component;
     let query_shadowed_components = true;
     let query_result = latest_at_with_blueprint_resolved_data(

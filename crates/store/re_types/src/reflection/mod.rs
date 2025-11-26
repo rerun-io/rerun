@@ -1850,8 +1850,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![ArchetypeFieldReflection {
-                    name: "frame_id",
-                    display_name: "Frame id",
+                    name: "frame",
+                    display_name: "Frame",
                     component_type: "rerun.components.TransformFrameId".into(),
                     docstring_md: "The coordinate frame to use for the current entity.",
                     is_required: true,

@@ -77,27 +77,27 @@ class CoordinateFrame(Archetype):
 
     """
 
-    def __init__(self: Any, frame_id: datatypes.Utf8Like) -> None:
+    def __init__(self: Any, frame: datatypes.Utf8Like) -> None:
         """
         Create a new instance of the CoordinateFrame archetype.
 
         Parameters
         ----------
-        frame_id:
+        frame:
             The coordinate frame to use for the current entity.
 
         """
 
         # You can define your own __init__ function as a member of CoordinateFrameExt in coordinate_frame_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(frame_id=frame_id)
+            self.__attrs_init__(frame=frame)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            frame_id=None,
+            frame=None,
         )
 
     @classmethod
@@ -112,7 +112,7 @@ class CoordinateFrame(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        frame_id: datatypes.Utf8Like | None = None,
+        frame: datatypes.Utf8Like | None = None,
     ) -> CoordinateFrame:
         """
         Update only some specific fields of a `CoordinateFrame`.
@@ -121,7 +121,7 @@ class CoordinateFrame(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        frame_id:
+        frame:
             The coordinate frame to use for the current entity.
 
         """
@@ -129,7 +129,7 @@ class CoordinateFrame(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "frame_id": frame_id,
+                "frame": frame,
             }
 
             if clear_unset:
@@ -150,7 +150,7 @@ class CoordinateFrame(Archetype):
     def columns(
         cls,
         *,
-        frame_id: datatypes.Utf8ArrayLike | None = None,
+        frame: datatypes.Utf8ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -162,7 +162,7 @@ class CoordinateFrame(Archetype):
 
         Parameters
         ----------
-        frame_id:
+        frame:
             The coordinate frame to use for the current entity.
 
         """
@@ -170,14 +170,14 @@ class CoordinateFrame(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                frame_id=frame_id,
+                frame=frame,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"CoordinateFrame:frame_id": frame_id}
+        kwargs = {"CoordinateFrame:frame": frame}
         columns = []
 
         for batch in batches:
@@ -207,7 +207,7 @@ class CoordinateFrame(Archetype):
 
         return ComponentColumnList(columns)
 
-    frame_id: components.TransformFrameIdBatch | None = field(
+    frame: components.TransformFrameIdBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
