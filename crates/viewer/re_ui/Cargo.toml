@@ -62,6 +62,7 @@ strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
 url.workspace = true
+web-time.workspace = true
 
 
 egui_kittest = { workspace = true, optional = true }

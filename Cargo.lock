@@ -9881,6 +9881,7 @@ dependencies = [
  "strum_macros",
  "sublime_fuzzy",
  "url",
+ "web-time",
 ]
 
 [[package]]

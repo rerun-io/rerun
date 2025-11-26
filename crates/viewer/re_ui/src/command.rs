@@ -588,7 +588,7 @@ impl UICommand {
                 .clone()
         });
 
-        let now = std::time::Instant::now();
+        let now = web_time::Instant::now();
 
         let pressed_number = ctx.input(|i| {
             let mut pressed_number = NUMBER_KEYS.iter().find(|&&k| i.key_pressed(k)).copied();
