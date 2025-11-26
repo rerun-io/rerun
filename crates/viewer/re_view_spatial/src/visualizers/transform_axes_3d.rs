@@ -157,8 +157,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 if let Some(frame_id) = transforms.lookup_frame_id(frame_id_hash) {
                     // Add label at the center of each transform instance if show_frame is enabled
                     let num_instances = transforms_to_draw.len();
-                    let labels: Vec<_> =
-                        std::iter::repeat_n(frame_id.0.clone().into(), num_instances).collect();
+                    let labels = vec![frame_id.0.clone().into(); num_instances];
                     let annotation_infos = ResolvedAnnotationInfos::Same(
                         num_instances,
                         ResolvedAnnotationInfo::default(),
@@ -178,6 +177,13 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         },
                         glam::Affine3A::IDENTITY,
                     ));
+                } else {
+                    // It should not be possible to hit this path, but we keep the debug assert for good measure.
+                    re_log::warn_once!("Could not resolve frame id hash {frame_id_hash:?}");
+                    debug_assert!(
+                        false,
+                        "[DEBUG ASSERT] unable to resolve frame id hash {frame_id_hash:?}"
+                    );
                 }
             }
 
