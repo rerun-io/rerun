@@ -5,8 +5,8 @@ use crate::{
 };
 
 impl EncodedDepthImage {
-    /// Construct from encoded bytes with explicit format metadata.
-    pub fn from_encoded_bytes(bytes: impl Into<Vec<u8>>, format: impl Into<ImageFormat>) -> Self {
+    /// Construct from encoded file contents with explicit format metadata.
+    pub fn from_file_contents(bytes: impl Into<Vec<u8>>, format: impl Into<ImageFormat>) -> Self {
         Self::new(Blob::from(bytes.into()), format)
     }
 
@@ -18,6 +18,6 @@ impl EncodedDepthImage {
         datatype: ChannelDatatype,
     ) -> Self {
         let format = ImageFormat::depth([width, height], datatype);
-        Self::from_encoded_bytes(bytes, format).with_media_type(MediaType::rvl())
+        Self::from_file_contents(bytes, format).with_media_type(MediaType::rvl())
     }
 }
