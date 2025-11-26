@@ -19,14 +19,14 @@ int main() {
     rec.log(
         "sun",
         rerun::Ellipsoids3D::from_centers_and_half_sizes({{0.0f, 0.0f, 0.0f}}, {{1.0f, 1.0f, 1.0f}})
-            .with_colors({rerun::Color(255, 200, 10)})
+            .with_colors(rerun::Color(255, 200, 10))
             .with_fill_mode(rerun::components::FillMode::Solid)
     );
 
     rec.log(
         "sun/planet",
         rerun::Ellipsoids3D::from_centers_and_half_sizes({{0.0f, 0.0f, 0.0f}}, {{0.4f, 0.4f, 0.4f}})
-            .with_colors({rerun::Color(40, 80, 200)})
+            .with_colors(rerun::Color(40, 80, 200))
             .with_fill_mode(rerun::components::FillMode::Solid)
     );
 
@@ -36,7 +36,7 @@ int main() {
             {{0.0f, 0.0f, 0.0f}},
             {{0.15f, 0.15f, 0.15f}}
         )
-            .with_colors({rerun::Color(180, 180, 180)})
+            .with_colors(rerun::Color(180, 180, 180))
             .with_fill_mode(rerun::components::FillMode::Solid)
     );
 
