@@ -32,6 +32,7 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_column, missing_field,
 };
+use re_types_core::ChunkIndex;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
@@ -380,7 +381,9 @@ where
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
-    pub async fn query_dataset(
+    ///
+    /// The result is compatible with [`ChunkIndex`].
+    pub async fn query_dataset_raw(
         &mut self,
         dataset_id: EntryId,
         partition_id: PartitionId,
@@ -418,6 +421,53 @@ where
         ))
     }
 
+    /// Fetches all chunks ids for a specified partition.
+    ///
+    /// You can include/exclude static/temporal chunks,
+    /// and limit the query to a time range.
+    pub async fn query_dataset_chunk_index(
+        &mut self,
+        dataset_id: EntryId,
+        partition_id: PartitionId,
+        exclude_static_data: bool,
+        exclude_temporal_data: bool,
+        query: Option<re_protos::cloud::v1alpha1::Query>,
+    ) -> anyhow::Result<Vec<ChunkIndex>> {
+        self.query_dataset_raw(
+            dataset_id,
+            partition_id,
+            exclude_static_data,
+            exclude_temporal_data,
+            query,
+        )
+        .await?
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|err| {
+            ApiError::tonic(
+                err,
+                "failed receiving items in /QueryDataset response stream",
+            )
+        })?
+        .into_iter()
+        .map(|resp| {
+            resp.data.ok_or_else(|| {
+                let err = missing_field!(QueryDatasetResponse, "data");
+                ApiError::serialization(
+                    err,
+                    "missing field in item in /QueryDataset response stream",
+                )
+            })
+        })
+        .map(|batch| {
+            let rb = arrow::array::RecordBatch::try_from(batch?)?;
+            ChunkIndex::from_record_batch(rb)
+        })
+        .collect()
+    }
+
     /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
     pub async fn fetch_partition_chunks(
         &mut self,
@@ -428,7 +478,7 @@ where
         query: Option<re_protos::cloud::v1alpha1::Query>,
     ) -> Result<FetchChunksResponseStream, ApiError> {
         let chunk_info_batches = self
-            .query_dataset(
+            .query_dataset_raw(
                 dataset_id,
                 partition_id,
                 exclude_static_data,
