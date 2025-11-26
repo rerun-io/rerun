@@ -987,7 +987,7 @@ impl RerunCloudService for RerunCloudHandler {
             select_all_entity_paths,
 
             //TODO(RR-2613): we must do a much better job at handling these
-            chunk_ids,
+            chunk_ids: requested_chunk_ids,
             fuzzy_descriptors: _,
             exclude_static_data,
             exclude_temporal_data,
@@ -1033,7 +1033,9 @@ impl RerunCloudService for RerunCloudHandler {
                         continue;
                     }
 
-                    if !chunk_ids.is_empty() && !chunk_ids.contains(&chunk.id()) {
+                    if !requested_chunk_ids.is_empty()
+                        && !requested_chunk_ids.contains(&chunk.id().as_tuid().into())
+                    {
                         continue;
                     }
 
