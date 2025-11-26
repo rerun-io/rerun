@@ -141,7 +141,6 @@ thiserror.workspace = true
 url.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
-vec1.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

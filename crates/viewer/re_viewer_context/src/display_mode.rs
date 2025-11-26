@@ -5,7 +5,9 @@ use re_log_types::{StoreId, TableId};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DisplayMode {
     /// The settings dialog for application-wide configuration.
-    Settings,
+    ///
+    /// The inner display mode is the one to return to when exiting this mode.
+    Settings(Box<DisplayMode>),
 
     // TODO(isse): It would be nice to only switch to newly loaded items if we
     // are on the loading screen for that specific item.
@@ -22,14 +24,16 @@ pub enum DisplayMode {
     RedapServer(re_uri::Origin),
 
     /// The current recording's data store browser.
-    ChunkStoreBrowser,
+    ///
+    /// The inner display mode is the one to return to when exiting this mode.
+    ChunkStoreBrowser(Box<DisplayMode>),
 }
 
 // TODO(grtlr,ab): This needs to be further cleaned up and split into separately handled
 // display modes. See https://www.notion.so/rerunio/Major-refactor-of-re_viewer-1d8b24554b198085a02dfe441db330b4
 impl DisplayMode {
     pub fn has_blueprint_panel(&self) -> bool {
-        !matches!(self, Self::Settings | Self::ChunkStoreBrowser)
+        !matches!(self, Self::Settings(_) | Self::ChunkStoreBrowser(_))
     }
 
     pub fn has_selection_panel(&self) -> bool {
@@ -46,7 +50,8 @@ impl DisplayMode {
             Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
             Self::RedapEntry(entry_uri) => Some(Item::RedapEntry(entry_uri.clone())),
             Self::RedapServer(origin) => Some(Item::RedapServer(origin.clone())),
-            Self::Settings | Self::Loading(_) | Self::ChunkStoreBrowser => None,
+            Self::ChunkStoreBrowser(mode) => mode.item(),
+            Self::Settings(_) | Self::Loading(_) => None,
         }
     }
 

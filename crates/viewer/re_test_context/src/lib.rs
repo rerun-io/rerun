@@ -746,6 +746,8 @@ impl TestContext {
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::ChangeDisplayMode(_)
+                | SystemCommand::Settings
+                | SystemCommand::ChunkStoreBrowser
                 | SystemCommand::ResetDisplayMode
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics

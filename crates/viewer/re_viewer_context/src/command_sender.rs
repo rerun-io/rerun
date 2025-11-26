@@ -31,6 +31,12 @@ pub enum SystemCommand {
 
     ChangeDisplayMode(crate::DisplayMode),
 
+    /// Activates the setting display mode.
+    Settings,
+
+    /// Activates the chunk store display mode.
+    ChunkStoreBrowser,
+
     /// Sets the display mode to what it is at startup.
     ResetDisplayMode,
 

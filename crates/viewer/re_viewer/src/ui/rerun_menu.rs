@@ -5,9 +5,8 @@ use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
-use re_ui::{UICommand, UiExt as _};
+use re_ui::{UICommand, UICommandSender as _, UiExt as _};
 use re_viewer_context::StoreContext;
-use re_viewer_context::open_url::OpenUrlOptions;
 
 use crate::App;
 
@@ -50,40 +49,27 @@ impl App {
 
     pub fn navigation_buttons(&mut self, ui: &mut egui::Ui) {
         let history = &mut self.state.history;
-        let back_response = ui.add_enabled(
-            history.has_back(),
-            ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
-        );
-        let forward_response = ui.add_enabled(
-            history.has_forward(),
-            ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
-        );
 
-        if back_response.clicked()
-            && let Some(url) = history.go_back()
+        if ui
+            .add_enabled(
+                history.has_back(),
+                ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
+            )
+            .on_hover_ui(|ui| UICommand::NavigateBack.tooltip_ui(ui))
+            .clicked()
         {
-            url.clone().open(
-                ui.ctx(),
-                &OpenUrlOptions {
-                    follow_if_http: true,
-                    select_redap_source_when_loaded: true,
-                    show_loader: true,
-                },
-                &self.command_sender,
-            );
+            self.command_sender.send_ui(UICommand::NavigateBack);
         }
-        if forward_response.clicked()
-            && let Some(url) = history.go_forward()
+
+        if ui
+            .add_enabled(
+                history.has_forward(),
+                ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
+            )
+            .on_hover_ui(|ui| UICommand::NavigateForward.tooltip_ui(ui))
+            .clicked()
         {
-            url.clone().open(
-                ui.ctx(),
-                &OpenUrlOptions {
-                    follow_if_http: true,
-                    select_redap_source_when_loaded: true,
-                    show_loader: true,
-                },
-                &self.command_sender,
-            );
+            self.command_sender.send_ui(UICommand::NavigateForward);
         }
     }
 

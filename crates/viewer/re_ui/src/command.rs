@@ -30,6 +30,9 @@ pub enum UICommand {
     NextRecording,
     PreviousRecording,
 
+    NavigateBack,
+    NavigateForward,
+
     Undo,
     Redo,
 
@@ -163,6 +166,9 @@ impl UICommand {
                 "Previous recording",
                 "Switch to the previous open recording",
             ),
+
+            Self::NavigateBack => ("Back in history", "Go back in history"),
+            Self::NavigateForward => ("Forward in history", "Go forward in history"),
 
             Self::Undo => (
                 "Undo",
@@ -377,6 +383,9 @@ impl UICommand {
 
             Self::NextRecording => smallvec![cmd_alt(Key::ArrowDown)],
             Self::PreviousRecording => smallvec![cmd_alt(Key::ArrowUp)],
+
+            Self::NavigateBack => smallvec![cmd_alt(Key::ArrowLeft)],
+            Self::NavigateForward => smallvec![cmd_alt(Key::ArrowRight)],
 
             Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {

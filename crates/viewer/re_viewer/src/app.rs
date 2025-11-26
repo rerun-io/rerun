@@ -963,13 +963,49 @@ impl App {
                     self.state
                         .selection_state
                         .set_selection(re_viewer_context::ItemCollection::default());
-                    self.state.navigation.push(display_mode);
+                    self.state.navigation.replace(display_mode);
                 } else {
                     self.state.navigation.replace(display_mode);
                 }
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
+
+            SystemCommand::Settings => {
+                self.state
+                    .navigation
+                    .replace(DisplayMode::Settings(Box::new(
+                        self.state.navigation.current().clone(),
+                    )));
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
+            }
+
+            SystemCommand::ChunkStoreBrowser => match self.state.navigation.current() {
+                DisplayMode::LocalRecordings(_)
+                | DisplayMode::RedapEntry(_)
+                | DisplayMode::RedapServer(_) => {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
+                            self.state.navigation.current().clone(),
+                        )));
+                }
+
+                DisplayMode::ChunkStoreBrowser(_)
+                | DisplayMode::Settings(_)
+                | DisplayMode::Loading(_)
+                | DisplayMode::LocalTable(_) => {
+                    re_log::debug!(
+                        "Cannot activate chunk store browser from current display mode: {:?}",
+                        self.state.navigation.current()
+                    );
+                }
+            },
+
             SystemCommand::ResetDisplayMode => {
                 self.state.navigation.reset();
 
@@ -1528,6 +1564,33 @@ impl App {
                 );
             }
 
+            UICommand::NavigateBack => {
+                if let Some(url) = self.state.history.go_back() {
+                    url.clone().open(
+                        egui_ctx,
+                        &OpenUrlOptions {
+                            follow_if_http: true,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &self.command_sender,
+                    );
+                }
+            }
+            UICommand::NavigateForward => {
+                if let Some(url) = self.state.history.go_forward() {
+                    url.clone().open(
+                        egui_ctx,
+                        &OpenUrlOptions {
+                            follow_if_http: true,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &self.command_sender,
+                    );
+                }
+            }
+
             UICommand::Undo => {
                 if let Some(store_context) = store_context {
                     let blueprint_id = store_context.blueprint.store_id().clone();
@@ -1604,14 +1667,18 @@ impl App {
                 DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
-                    self.state.navigation.push(DisplayMode::ChunkStoreBrowser);
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
+                            self.state.navigation.current().clone(),
+                        )));
                 }
 
-                DisplayMode::ChunkStoreBrowser => {
-                    self.state.navigation.pop();
+                DisplayMode::ChunkStoreBrowser(mode) => {
+                    self.state.navigation.replace((**mode).clone());
                 }
 
-                DisplayMode::Settings | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
+                DisplayMode::Settings(_) | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
                     re_log::debug!(
                         "Cannot toggle chunk store browser from current display mode: {:?}",
                         self.state.navigation.current()
@@ -1634,12 +1701,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.state.navigation.push(DisplayMode::Settings);
-
-                #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::SettingsOpened {});
-                }
+                self.command_sender.send_system(SystemCommand::Settings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -3050,7 +3112,7 @@ impl eframe::App for App {
         // Must be called before `read_context` below.
         if let DisplayMode::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
-                self.state.navigation.pop();
+                self.state.navigation.reset();
             }
         } else if store_hub.active_app().is_none() {
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub

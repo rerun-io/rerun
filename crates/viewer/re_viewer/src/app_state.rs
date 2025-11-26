@@ -207,20 +207,20 @@ impl AppState {
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
         match self.navigation.current() {
-            DisplayMode::Settings => {
+            DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
-            DisplayMode::ChunkStoreBrowser => {
+            DisplayMode::ChunkStoreBrowser(prior_mode) => {
                 let should_datastore_ui_remain_active =
                     self.datastore_ui
                         .ui(store_context, ui, self.app_options.timestamp_format);
                 if !should_datastore_ui_remain_active {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
@@ -602,7 +602,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // handled above
                         }
                     },
                 );
@@ -675,7 +675,7 @@ impl AppState {
                                 ui.loading_screen("Loading data source:", &*source);
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // Handled above
                         }
                     });
 

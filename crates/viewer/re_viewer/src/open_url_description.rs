@@ -81,6 +81,16 @@ impl ViewerOpenUrlDescription {
                     }
                 }
             }
+
+            ViewerOpenUrl::Settings => Self {
+                category: "Settings",
+                target_short: None,
+            },
+
+            ViewerOpenUrl::ChunkStoreBrowser => Self {
+                category: "Chunk store browser",
+                target_short: None,
+            },
         }
     }
 }
