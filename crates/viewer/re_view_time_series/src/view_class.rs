@@ -463,7 +463,7 @@ impl ViewClass for TimeSeriesView {
         // Get the minimum time/X value for the entire plot…
         let min_time = all_plot_series
             .iter()
-            .map(|line| line.min_time)
+            .filter_map(|line| line.points.first().map(|(t, _)| *t))
             .min()
             .unwrap_or(0);
 
@@ -482,7 +482,7 @@ impl ViewClass for TimeSeriesView {
         // Get the maximum time/X value for the entire plot
         let max_time = all_plot_series
             .iter()
-            .map(|line| line.points.last().map(|(t, _)| *t).unwrap_or(line.min_time))
+            .filter_map(|line| line.points.last().map(|(t, _)| *t))
             .max()
             .unwrap_or(0);
 
