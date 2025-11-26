@@ -1687,7 +1687,7 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(-1.0)],
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-0.1)],
                         });
                 }
             }
@@ -1696,7 +1696,7 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(1.0)],
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(0.1)],
                         });
                 }
             }
@@ -1705,7 +1705,7 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(-10.0)],
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-1.0)],
                         });
                 }
             }
@@ -1714,7 +1714,7 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBySeconds(10.0)],
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(1.0)],
                         });
                 }
             }

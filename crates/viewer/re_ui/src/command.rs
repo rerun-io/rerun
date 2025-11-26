@@ -290,14 +290,17 @@ impl UICommand {
                 "Move backwards",
                 "Move the time marker backward by 1 second",
             ),
-            Self::PlaybackForward => ("Move forwards", "Move the time marker forward by 1 second"),
+            Self::PlaybackForward => (
+                "Move forwards",
+                "Move the time marker forward by 0.1 seconds",
+            ),
             Self::PlaybackBackFast => (
                 "Move backwards fast",
-                "Move the time marker backwards by 10 seconds",
+                "Move the time marker backwards by 1 second",
             ),
             Self::PlaybackForwardFast => (
                 "Move forwards fast",
-                "Move the time marker forwards by 10 seconds",
+                "Move the time marker forwards by 0.1 seconds",
             ),
             Self::PlaybackBeginning => ("Go to beginning", "Go to beginning of timeline"),
             Self::PlaybackEnd => ("Go to end", "Go to end of timeline"),
