@@ -3,7 +3,7 @@
 use std::fmt::Formatter;
 
 use arrow::{
-    array::{Array, ArrayRef, ListArray},
+    array::{Array, ArrayRef, AsArray as _, ListArray},
     datatypes::{DataType, Field, Fields},
     util::display::{ArrayFormatter, FormatOptions},
 };
@@ -11,7 +11,6 @@ use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
 
 use re_tuid::Tuid;
-use re_types_core::Loggable as _;
 
 use crate::{ArrowArrayDowncastRef as _, format_field_datatype};
 
@@ -78,7 +77,8 @@ fn custom_array_formatter<'a>(
 // TODO(#1775): This should be defined and registered by the `re_tuid` crate.
 fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
     fn parse_inner(array: &dyn Array, index: usize) -> Option<Tuid> {
-        let tuids = Tuid::from_arrow(array).ok()?;
+        let array = array.as_fixed_size_binary_opt()?;
+        let tuids = Tuid::slice_from_bytes(array.value_data()).ok()?;
         tuids.get(index).copied()
     }
 
