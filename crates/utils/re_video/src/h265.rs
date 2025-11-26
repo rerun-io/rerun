@@ -195,7 +195,7 @@ pub fn write_hevc_chunk_to_nalu_stream(
     let emit_parameter_sets = chunk.is_sync && !state.previous_frame_was_idr;
 
     write_hevc_chunk_to_annexb(hvcc, nalu_stream, emit_parameter_sets, chunk)?;
-    state.previous_frame_was_idr = chunk.is_sync;
+    state.previous_frame_was_idr = emit_parameter_sets;
 
     Ok(())
 }
