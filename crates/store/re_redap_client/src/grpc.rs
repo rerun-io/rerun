@@ -13,7 +13,7 @@ use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE};
+use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, PartitionQueryParams};
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ApiError> {
@@ -479,16 +479,14 @@ async fn stream_partition_from_server(
         Ok(true)
     };
 
-    let exclude_static_data = false;
-    let exclude_temporal_data = true;
     let static_chunk_stream = client
-        .fetch_partition_chunks(
+        .fetch_partition_chunks(PartitionQueryParams {
             dataset_id,
-            partition_id.clone(),
-            exclude_static_data,
-            exclude_temporal_data,
-            None,
-        )
+            partition_id: partition_id.clone(),
+            include_static_data: true,
+            include_temporal_data: false,
+            query: None,
+        })
         .await?;
     let mut static_chunk_stream =
         fetch_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
@@ -503,15 +501,13 @@ async fn stream_partition_from_server(
         }
     }
 
-    let exclude_static_data = true;
-    let exclude_temporal_data = false;
     let temporal_chunk_stream = client
-        .fetch_partition_chunks(
+        .fetch_partition_chunks(PartitionQueryParams {
             dataset_id,
             partition_id,
-            exclude_static_data,
-            exclude_temporal_data,
-            time_range.map(|time_range| {
+            include_static_data: false,
+            include_temporal_data: true,
+            query: time_range.map(|time_range| {
                 Query {
                     range: Some(QueryRange {
                         index: time_range.timeline.name().to_string(),
@@ -531,7 +527,7 @@ async fn stream_partition_from_server(
                 }
                 .into()
             }),
-        )
+        })
         .await?;
     let mut temporal_chunk_stream =
         fetch_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);

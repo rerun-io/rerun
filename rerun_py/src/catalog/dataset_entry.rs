@@ -428,16 +428,14 @@ impl PyDatasetEntry {
 
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let mut client = connection.client().await?;
-            let exclude_static_data = false;
-            let exclude_temporal_data = false;
             let response_stream = client
-                .fetch_partition_chunks(
+                .fetch_partition_chunks(re_redap_client::PartitionQueryParams {
                     dataset_id,
-                    partition_id.clone().into(),
-                    exclude_static_data,
-                    exclude_temporal_data,
-                    None,
-                )
+                    partition_id: partition_id.clone().into(),
+                    include_static_data: true,
+                    include_temporal_data: true,
+                    query: None,
+                })
                 .await
                 .map_err(to_py_err)?;
 
