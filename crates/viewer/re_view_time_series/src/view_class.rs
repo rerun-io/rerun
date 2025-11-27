@@ -463,7 +463,7 @@ impl ViewClass for TimeSeriesView {
         // Get the minimum time/X value for the entire plot…
         let min_time = all_plot_series
             .iter()
-            .filter_map(|line| line.points.first().map(|(t, _)| *t))
+            .map(|line| line.min_time)
             .min()
             .unwrap_or(0);
 
@@ -479,8 +479,13 @@ impl ViewClass for TimeSeriesView {
         };
         state.time_offset = time_offset;
 
-        // Get the maximum time/X value for the entire plot
-        let max_time = all_plot_series
+        // Get the min and max time/X value for the visible plot.
+        let min_view_time = all_plot_series
+            .iter()
+            .filter_map(|line| line.points.first().map(|(t, _)| *t))
+            .min()
+            .unwrap_or(0);
+        let max_view_time = all_plot_series
             .iter()
             .filter_map(|line| line.points.last().map(|(t, _)| *t))
             .max()
@@ -499,8 +504,8 @@ impl ViewClass for TimeSeriesView {
             .unwrap_or_default();
 
         state.max_time_view_range = AbsoluteTimeRange::new(
-            TimeInt::saturated_temporal_i64(min_time),
-            TimeInt::saturated_temporal_i64(max_time),
+            TimeInt::saturated_temporal_i64(min_view_time),
+            TimeInt::saturated_temporal_i64(max_view_time),
         );
 
         let blueprint_db = ctx.blueprint_db();
@@ -620,18 +625,6 @@ impl ViewClass for TimeSeriesView {
             .first()
             .map(|line| line.aggregator)
             .unwrap_or_default();
-
-        // …then use that as an offset to avoid nasty precision issues with
-        // large times (nanos since epoch does not fit into a f64).
-        let time_offset = match timeline.typ() {
-            TimeType::Sequence => min_time,
-            TimeType::TimestampNs | TimeType::DurationNs => {
-                // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
-                // we need to round to a whole day:
-                round_nanos_to_start_of_day(min_time)
-            }
-        };
-        state.time_offset = time_offset;
 
         // TODO(#5075): Boxed-zoom should be fixed to accommodate the locked range.
         let timestamp_format = ctx.app_options().timestamp_format;
