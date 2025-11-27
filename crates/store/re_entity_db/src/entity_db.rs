@@ -643,8 +643,11 @@ impl EntityDb {
             .map(|event| event.chunk.entity_path().clone())
             .collect();
 
-        self.tree
-            .on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
+        {
+            re_tracing::profile_scope!("on_store_deletions");
+            self.tree
+                .on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
+        }
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
