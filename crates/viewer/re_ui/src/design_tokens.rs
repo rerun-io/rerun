@@ -202,7 +202,7 @@ pub struct DesignTokens {
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
 
-    /// This is the color of time rangres that has only been partially loaded.
+    /// This is the color of time ranges that has only been partially loaded.
     pub density_graph_outside_valid_ranges: Color32,
 
     // Spatial view colors:
