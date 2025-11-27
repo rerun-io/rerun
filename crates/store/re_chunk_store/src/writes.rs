@@ -43,7 +43,7 @@ impl ChunkStore {
         }
 
         let split_chunks = Chunk::split_chunk_if_needed(
-            chunk,
+            chunk.clone(),
             &re_chunk::ChunkSplitConfig {
                 chunk_max_bytes: self.config.chunk_max_bytes,
                 chunk_max_rows: self.config.chunk_max_rows,

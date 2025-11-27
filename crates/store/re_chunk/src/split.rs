@@ -26,19 +26,19 @@ pub struct ChunkSplitConfig {
 
 impl Chunk {
     /// Naively splits a chunk if it exceeds the configured thresholds.
-    pub fn split_chunk_if_needed(chunk: &Arc<Self>, cfg: &ChunkSplitConfig) -> Vec<Arc<Self>> {
+    pub fn split_chunk_if_needed(chunk: Arc<Self>, cfg: &ChunkSplitConfig) -> Vec<Arc<Self>> {
         let ChunkSplitConfig {
             chunk_max_bytes,
             chunk_max_rows,
             chunk_max_rows_if_unsorted,
         } = *cfg;
 
-        let chunk_size_bytes = <Self as SizeBytes>::total_size_bytes(chunk);
+        let chunk_size_bytes = <Self as SizeBytes>::total_size_bytes(chunk.as_ref());
         let chunk_num_rows = chunk.num_rows() as u64;
 
         if chunk_num_rows <= 1 {
             // Can't split even if we wanted to.
-            return vec![chunk.clone()];
+            return vec![chunk];
         }
 
         // Check if we need to split based on size or row count
@@ -49,7 +49,7 @@ impl Chunk {
             && !chunk.is_time_sorted();
 
         if !needs_split_bytes && !needs_split_rows && !needs_split_unsorted {
-            return vec![chunk.clone()];
+            return vec![chunk];
         }
 
         re_tracing::profile_scope!("split_chunk");
