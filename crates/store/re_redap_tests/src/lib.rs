@@ -24,10 +24,10 @@ pub use self::utils::{
     arrow::{FieldsExt, RecordBatchExt, SchemaExt},
     path::TempPath,
     rerun::{
-        TuidPrefix, create_nasty_recording, create_recording_with_embeddings,
-        create_recording_with_properties, create_recording_with_scalars,
-        create_recording_with_text, create_simple_blueprint, create_simple_recording,
-        create_simple_recording_in,
+        TuidPrefix, create_minimal_binary_recording_in, create_nasty_recording,
+        create_recording_with_embeddings, create_recording_with_properties,
+        create_recording_with_scalars, create_recording_with_text, create_simple_blueprint,
+        create_simple_recording, create_simple_recording_in,
     },
 };
 
