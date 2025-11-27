@@ -636,15 +636,16 @@ impl TreeTransformsForChildFrame {
 /// All instance poses for a given entity over time.
 ///
 /// Similar to [`TreeTransformsForChildFrame`], but for poses associated with an entity path.
+#[derive(Debug)]
 pub struct PoseTransformForEntity {
-    associated_entity_path: EntityPath,
+    entity_path: EntityPath,
     poses_per_time: Mutex<BTreeMap<TimeInt, CachedTransformValue<Vec<DAffine3>>>>,
 }
 
 impl Clone for PoseTransformForEntity {
     fn clone(&self) -> Self {
         Self {
-            associated_entity_path: self.associated_entity_path.clone(),
+            entity_path: self.entity_path.clone(),
             poses_per_time: Mutex::new(self.poses_per_time.lock().clone()),
         }
     }
@@ -652,12 +653,12 @@ impl Clone for PoseTransformForEntity {
 
 impl PoseTransformForEntity {
     fn new(
-        associated_entity_path: EntityPath,
+        entity_path: EntityPath,
         static_timeline: &mut CachedTransformsForTimeline,
         non_recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
         recursive_clears: &IntMap<EntityPath, BTreeSet<TimeInt>>,
     ) -> Self {
-        let mut poses = Self::new_empty(associated_entity_path);
+        let mut poses = Self::new_empty(entity_path);
 
         // Take over static events.
         if let Some(static_transforms) = static_timeline
@@ -668,14 +669,11 @@ impl PoseTransformForEntity {
         }
 
         // Take over clear events.
-        if let Some(cleared_times) = non_recursive_clears.get(&poses.associated_entity_path) {
+        if let Some(cleared_times) = non_recursive_clears.get(&poses.entity_path) {
             poses.insert_clears(cleared_times);
         }
         for (recursively_cleared_path, times) in recursive_clears {
-            if poses
-                .associated_entity_path
-                .starts_with(recursively_cleared_path)
-            {
+            if poses.entity_path.starts_with(recursively_cleared_path) {
                 poses.insert_clears(times);
             }
         }
@@ -683,9 +681,9 @@ impl PoseTransformForEntity {
         poses
     }
 
-    fn new_empty(associated_entity_path: EntityPath) -> Self {
+    fn new_empty(entity_path: EntityPath) -> Self {
         Self {
-            associated_entity_path,
+            entity_path,
             poses_per_time: Mutex::new(BTreeMap::new()),
         }
     }
@@ -704,12 +702,9 @@ impl PoseTransformForEntity {
 
         // Separate check to work around borrow checker issues.
         if pose_transform == &CachedTransformValue::Invalidated {
-            *pose_transform =
-                CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
-                    &self.associated_entity_path,
-                    entity_db,
-                    query,
-                ));
+            *pose_transform = CachedTransformValue::Resident(
+                query_and_resolve_instance_poses_at_entity(&self.entity_path, entity_db, query),
+            );
         }
 
         match pose_transform {

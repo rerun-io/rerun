@@ -13,7 +13,7 @@ use re_types::components::TransformFrameId;
 
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
-pub struct TransformInfo {
+pub struct TreeTransform {
     /// Root frame this transform belongs to.
     ///
     /// ⚠️ This is the root of the tree this transform belongs to,
@@ -31,7 +31,7 @@ pub struct TransformInfo {
     pub target_from_source: glam::DAffine3,
 }
 
-impl TransformInfo {
+impl TreeTransform {
     fn new_root(root: TransformFrameIdHash) -> Self {
         Self {
             root,
@@ -100,7 +100,7 @@ struct TargetInfo {
 struct SourceInfo<'a> {
     id: TransformFrameIdHash,
     root: TransformFrameIdHash,
-    root_from_source: &'a TransformInfo,
+    root_from_source: &'a TreeTransform,
 }
 
 /// Properties of a pinhole transform tree root.
@@ -146,7 +146,7 @@ pub struct TransformForest {
     ///
     /// Roots are also contained, targeting themselves with identity.
     /// This simplifies lookups.
-    root_from_frame: IntMap<TransformFrameIdHash, TransformInfo>,
+    root_from_frame: IntMap<TransformFrameIdHash, TreeTransform>,
     //
     // TODO(RR-2667): Store errors that occur during the graph walk
 }
@@ -247,7 +247,7 @@ impl TransformForest {
                 // That parent apparently won't show up in any transform stack (we didn't walk there because there was no information about it!)
                 // So if we don't add this root now to our `root_from_frame` map, we'd never fill out the required self-reference!
                 self.root_from_frame
-                    .insert(parent_frame, TransformInfo::new_root(parent_frame));
+                    .insert(parent_frame, TreeTransform::new_root(parent_frame));
 
                 (parent_frame, glam::DAffine3::IDENTITY)
             }
@@ -303,7 +303,7 @@ impl TransformForest {
                 root_from_current_frame = glam::DAffine3::IDENTITY;
             }
 
-            let transform_root_from_current = TransformInfo {
+            let transform_root_from_current = TreeTransform {
                 root: root_frame,
                 target_from_source: root_from_current_frame,
             };
@@ -405,7 +405,7 @@ impl TransformForest {
 
     /// Returns the transform information of how to get from a given frame to its tree root.
     #[inline]
-    pub fn root_from_frame(&self, frame: TransformFrameIdHash) -> Option<&TransformInfo> {
+    pub fn root_from_frame(&self, frame: TransformFrameIdHash) -> Option<&TreeTransform> {
         self.root_from_frame.get(&frame)
     }
 
@@ -429,7 +429,7 @@ impl TransformForest {
     ) -> impl Iterator<
         Item = (
             TransformFrameIdHash,
-            Result<TransformInfo, TransformFromToError>,
+            Result<TreeTransform, TransformFromToError>,
         ),
     > {
         // We're looking for a common root between source and target.
@@ -446,7 +446,7 @@ impl TransformForest {
 
         // Invert `root_from_target` to get `target.from_root`.
         let target = {
-            let TransformInfo {
+            let TreeTransform {
                 root: target_root,
                 target_from_source: root_from_entity,
             } = &root_from_target;
@@ -528,7 +528,7 @@ fn from_2d_source_to_3d_target(
     source_pinhole_tree_root: &PinholeTreeRoot,
     lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f64,
     target_from_image_plane_cache: &mut IntMap<TransformFrameIdHash, glam::DAffine3>,
-) -> Result<TransformInfo, TransformFromToError> {
+) -> Result<TreeTransform, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
         pinhole_projection,
@@ -564,7 +564,7 @@ fn from_3d_source_to_2d_target(
     source: &SourceInfo<'_>,
     target_pinhole_tree_root: &PinholeTreeRoot,
     target_from_source_root_cache: &mut IntMap<TransformFrameIdHash, glam::DAffine3>,
-) -> Result<TransformInfo, TransformFromToError> {
+) -> Result<TreeTransform, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
         pinhole_projection,
@@ -1293,7 +1293,7 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("new_top"),
-                    Ok(TransformInfo {
+                    Ok(TreeTransform {
                         root: TransformFrameIdHash::from_str("new_top"),
                         target_from_source: glam::DAffine3::from_translation(glam::dvec3(
                             -5.0, 0.0, 0.0

@@ -44,6 +44,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 .chain(TransformAxes3D::all_component_identifiers())
                 .chain(InstancePoses3D::all_component_identifiers())
                 .chain(CoordinateFrame::all_component_identifiers())
+                //.chain(Pinhole::all_component_identifiers()) // TODO: separate PR.
                 .collect(),
         );
 

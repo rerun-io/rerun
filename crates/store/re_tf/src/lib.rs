@@ -146,7 +146,7 @@ mod transform_resolution_cache;
 
 pub mod convert;
 
-pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TransformInfo};
+pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TreeTransform};
 pub use transform_queries::{query_view_coordinates, query_view_coordinates_at_closest_ancestor};
 pub use transform_resolution_cache::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,

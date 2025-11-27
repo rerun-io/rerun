@@ -54,5 +54,5 @@ table InstancePoses3D (
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   mat3x3: [rerun.components.PoseTransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
 
-  // TODO(RR-2627): Make frame id configurable.
+  // TODO: Clarify interaction with frames.
 }

@@ -3,7 +3,7 @@ source: crates/store/re_tf/src/transform_forest.rs
 expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_frame,\n&transform_cache)"
 ---
 {
-    tf#/transforms1: TransformInfo {
+    tf#/transforms1: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -30,7 +30,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    top: TransformInfo {
+    top: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -57,7 +57,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    tf#/: TransformInfo {
+    tf#/: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -84,7 +84,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    tf#/transforms4: TransformInfo {
+    tf#/transforms4: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -111,7 +111,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    root: TransformInfo {
+    root: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -138,7 +138,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    child0: TransformInfo {
+    child0: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -165,7 +165,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    child2d: TransformInfo {
+    child2d: TreeTransform {
         root: pinhole,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -192,7 +192,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    tf#/transforms0: TransformInfo {
+    tf#/transforms0: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -219,7 +219,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    child1: TransformInfo {
+    child1: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -246,7 +246,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    pinhole: TransformInfo {
+    pinhole: TreeTransform {
         root: pinhole,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -273,7 +273,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    tf#/transforms3: TransformInfo {
+    tf#/transforms3: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -300,7 +300,7 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
             ),
         },
     },
-    tf#/transforms2: TransformInfo {
+    tf#/transforms2: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {

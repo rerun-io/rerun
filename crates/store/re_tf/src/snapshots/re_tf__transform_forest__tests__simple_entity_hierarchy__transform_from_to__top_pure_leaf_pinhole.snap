@@ -6,7 +6,7 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
     (
         tf#/,
         Ok(
-            TransformInfo {
+            TreeTransform {
                 root: tf#/,
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
@@ -38,7 +38,7 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
     (
         tf#/top,
         Ok(
-            TransformInfo {
+            TreeTransform {
                 root: tf#/,
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
@@ -81,7 +81,7 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
     (
         tf#/top/child3d,
         Ok(
-            TransformInfo {
+            TreeTransform {
                 root: tf#/,
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
@@ -132,7 +132,7 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
     (
         tf#/top/pure_leaf_pinhole,
         Ok(
-            TransformInfo {
+            TreeTransform {
                 root: tf#/top/pure_leaf_pinhole,
                 target_from_source: DAffine3 {
                     matrix3: DMat3 {
