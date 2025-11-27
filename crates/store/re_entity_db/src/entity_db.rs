@@ -17,7 +17,6 @@ use re_log_types::{
 };
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
-    StorageEngineWriteGuard,
 };
 use re_smart_channel::SmartChannelSource;
 
@@ -584,45 +583,49 @@ impl EntityDb {
         chunk: &Arc<Chunk>,
         timestamps: &re_sorbet::TimestampMetadata,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
-        let mut engine = self.storage_engine.write();
-        let store_events = engine.store().insert_chunk(chunk)?;
-        engine.cache().on_events(&store_events);
+        let store_events = self.storage_engine.write().store().insert_chunk(chunk)?;
 
         self.entity_path_from_hash
             .entry(chunk.entity_path().hash())
             .or_insert_with(|| chunk.entity_path().clone());
 
-        let engine = engine.downgrade();
-
         if self.latest_row_id < chunk.row_id_range().map(|(_, row_id_max)| row_id_max) {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        {
-            // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-            self.times_per_timeline.on_events(&store_events);
-            self.time_histogram_per_timeline.on_events(&store_events);
-            self.tree.on_store_additions(&store_events);
+        self.on_store_events(&store_events);
 
-            // It is possible for writes to trigger deletions: specifically in the case of
-            // overwritten static data leading to dangling chunks.
-            let entity_paths_with_deletions = store_events
-                .iter()
-                .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
-                .map(|event| event.chunk.entity_path().clone())
-                .collect();
-
-            {
-                re_tracing::profile_scope!("on_store_deletions");
-                self.tree
-                    .on_store_deletions(&engine, &entity_paths_with_deletions, &store_events);
-            }
-
-            // We inform the stats last, since it measures e2e latency.
-            self.stats.on_events(timestamps, &store_events);
-        }
+        // We inform the stats last, since it measures e2e latency.
+        self.stats.on_events(timestamps, &store_events);
 
         Ok(store_events)
+    }
+
+    /// We call this on any changes, before returning the store events to the outsider caller.
+    fn on_store_events(&mut self, store_events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        let mut engine = self.storage_engine.write();
+
+        engine.cache().on_events(store_events);
+
+        let engine = engine.downgrade();
+
+        // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
+        self.times_per_timeline.on_events(store_events);
+        self.time_histogram_per_timeline.on_events(store_events);
+        self.tree.on_store_additions(store_events);
+
+        // It is possible for writes to trigger deletions: specifically in the case of
+        // overwritten static data leading to dangling chunks.
+        let entity_paths_with_deletions = store_events
+            .iter()
+            .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
+            .map(|event| event.chunk.entity_path().clone())
+            .collect();
+
+        self.tree
+            .on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -657,6 +660,8 @@ impl EntityDb {
                 .write()
                 .cache()
                 .purge_fraction_of_ram(fraction_to_purge);
+        } else {
+            self.on_store_events(&store_events);
         }
 
         store_events
@@ -665,8 +670,7 @@ impl EntityDb {
     pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
-        let mut engine = self.storage_engine.write();
-        let (store_events, stats_diff) = engine.store().gc(gc_options);
+        let (store_events, stats_diff) = self.storage_engine.write().store().gc(gc_options);
 
         re_log::trace!(
             num_row_ids_dropped = store_events.len(),
@@ -674,13 +678,7 @@ impl EntityDb {
             "purged datastore"
         );
 
-        Self::on_store_deletions(
-            &mut self.times_per_timeline,
-            &mut self.time_histogram_per_timeline,
-            &mut self.tree,
-            engine,
-            &store_events,
-        );
+        self.on_store_events(&store_events);
 
         store_events
     }
@@ -695,16 +693,13 @@ impl EntityDb {
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
-        let mut engine = self.storage_engine.write();
+        let store_events = self
+            .storage_engine
+            .write()
+            .store()
+            .drop_time_range(timeline, drop_range);
 
-        let store_events = engine.store().drop_time_range(timeline, drop_range);
-        Self::on_store_deletions(
-            &mut self.times_per_timeline,
-            &mut self.time_histogram_per_timeline,
-            &mut self.tree,
-            engine,
-            &store_events,
-        );
+        self.on_store_events(&store_events);
 
         store_events
     }
@@ -717,16 +712,13 @@ impl EntityDb {
     pub fn drop_entity_path(&mut self, entity_path: &EntityPath) {
         re_tracing::profile_function!();
 
-        let mut engine = self.storage_engine.write();
+        let store_events = self
+            .storage_engine
+            .write()
+            .store()
+            .drop_entity_path(entity_path);
 
-        let store_events = engine.store().drop_entity_path(entity_path);
-        Self::on_store_deletions(
-            &mut self.times_per_timeline,
-            &mut self.time_histogram_per_timeline,
-            &mut self.tree,
-            engine,
-            &store_events,
-        );
+        self.on_store_events(&store_events);
     }
 
     /// Unconditionally drops all the data for a given [`EntityPath`] and all its children.
@@ -744,28 +736,6 @@ impl EntityDb {
         for entity_path in to_drop {
             self.drop_entity_path(&entity_path);
         }
-    }
-
-    // NOTE: Parameters deconstructed instead of taking `self`, because borrowck cannot understand
-    // partial borrows on methods.
-    fn on_store_deletions(
-        times_per_timeline: &mut TimesPerTimeline,
-        time_histogram_per_timeline: &mut crate::TimeHistogramPerTimeline,
-        tree: &mut crate::EntityTree,
-        mut engine: StorageEngineWriteGuard<'_>,
-        store_events: &[ChunkStoreEvent],
-    ) {
-        engine.cache().on_events(store_events);
-        times_per_timeline.on_events(store_events);
-        time_histogram_per_timeline.on_events(store_events);
-
-        let engine = engine.downgrade();
-        let entity_paths_with_deletions = store_events
-            .iter()
-            .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
-            .map(|event| event.chunk.entity_path().clone())
-            .collect();
-        tree.on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
     }
 
     /// Export the contents of the current database to a sequence of messages.
