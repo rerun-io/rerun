@@ -32,33 +32,62 @@ impl TransformFramesUi {
         transform_frame_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
-        let is_frame_id = transform_frame_descr.component
-            == archetypes::CoordinateFrame::descriptor_frame_id().component;
+        // All frame descriptor components, sorted by pirority.
+        //
+        // The bool indicates if we should use the entity path as
+        // the current frame.
+        let frame_components = [
+            (
+                archetypes::Transform3D::descriptor_child_frame().component,
+                false,
+            ),
+            (
+                archetypes::Pinhole::descriptor_child_frame().component,
+                false,
+            ),
+            (
+                archetypes::CoordinateFrame::descriptor_frame().component,
+                false,
+            ),
+            (
+                archetypes::Pinhole::descriptor_parent_frame().component,
+                true,
+            ),
+            (
+                archetypes::Transform3D::descriptor_parent_frame().component,
+                true,
+            ),
+        ];
 
-        let is_child_frame = transform_frame_descr.component
-            == archetypes::Transform3D::descriptor_child_frame().component;
+        let find_frame_component = |other_component| {
+            frame_components
+                .iter()
+                .enumerate()
+                .map(|(priority, (component, use_entity_path))| {
+                    (priority, *component, *use_entity_path)
+                })
+                .find(|(_, component, _)| *component == other_component)
+        };
 
-        let is_parent_frame = transform_frame_descr.component
-            == archetypes::Transform3D::descriptor_parent_frame().component;
+        let (priority, component, use_entity_path) =
+            find_frame_component(transform_frame_descr.component)?;
 
-        let has_frame_id = entity_components.iter().any(|(c, _)| {
-            c.component == archetypes::CoordinateFrame::descriptor_frame_id().component
-        });
-
-        let has_child_frame = entity_components.iter().any(|(c, _)| {
-            c.component == archetypes::Transform3D::descriptor_child_frame().component
-        });
-
-        let mut frame_id_hash = if is_child_frame || (is_frame_id && !has_child_frame) {
+        if entity_components
+            .iter()
+            .filter(|(desc, _)| desc.component != component)
+            .filter_map(|(desc, _)| find_frame_component(desc.component))
+            .any(|(p, ..)| p < priority)
+        {
+            return None;
+        }
+        let mut frame_id_hash = if use_entity_path {
+            TransformFrameIdHash::from_entity_path(entity_path)
+        } else {
             let frame_id = transform_frame_chunk
                 .component_mono::<components::TransformFrameId>(transform_frame_descr.component)?
                 .ok()?;
 
             TransformFrameIdHash::new(&frame_id)
-        } else if is_parent_frame && !has_frame_id && !has_child_frame {
-            TransformFrameIdHash::from_entity_path(entity_path)
-        } else {
-            return None;
         };
 
         let caches = ctx.store_context.caches;
