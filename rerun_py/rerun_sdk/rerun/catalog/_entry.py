@@ -23,44 +23,43 @@ class Entry(ABC, Generic[InternalT]):
         self._internal = inner
 
     def __repr__(self) -> str:
-        return self._internal.__repr__()
+        return f"Entry({self.kind}, '{self.name}'"
 
     @property
     def id(self) -> EntryId:
         """The entry's id."""
-        return self._internal.id
+        return self._internal.entry_details().id
 
     @property
     def name(self) -> str:
         """The entry's name."""
-        return self._internal.name
+        return self._internal.entry_details().name
 
-    # TODO(RR-2938): this should return `CatalogClient`
+    @property
+    def kind(self) -> EntryKind:
+        """The entry's kind."""
+
+        return self._internal.entry_details().kind
+
+    @property
+    def created_at(self) -> datetime:
+        """The entry's creation date and time."""
+
+        return self._internal.entry_details().created_at
+
+    @property
+    def updated_at(self) -> datetime:
+        """The entry's last updated date and time."""
+
+        return self._internal.entry_details().updated_at
+
     @property
     def catalog(self) -> CatalogClient:
         """The catalog client that this entry belongs to."""
 
         from . import CatalogClient
 
-        return CatalogClient._from_internal(self._internal.catalog)
-
-    @property
-    def kind(self) -> EntryKind:
-        """The entry's kind."""
-
-        return self._internal.kind
-
-    @property
-    def created_at(self) -> datetime:
-        """The entry's creation date and time."""
-
-        return self._internal.created_at
-
-    @property
-    def updated_at(self) -> datetime:
-        """The entry's last updated date and time."""
-
-        return self._internal.updated_at
+        return CatalogClient._from_internal(self._internal.catalog())
 
     def delete(self) -> None:
         """Delete this entry from the catalog."""

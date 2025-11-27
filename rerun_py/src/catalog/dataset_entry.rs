@@ -9,7 +9,6 @@ use pyo3::{
     Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
     exceptions::PyValueError, pyclass, pymethods,
 };
-use re_protos::cloud::v1alpha1::{DeleteIndexesRequest, ListIndexesRequest};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
@@ -18,9 +17,9 @@ use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResul
 use re_log_types::{StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        CreateIndexRequest, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
-        SearchDatasetRequest, VectorIndexQuery,
-        ext::{DatasetDetails, IndexProperties},
+        CreateIndexRequest, DeleteIndexesRequest, IndexConfig, IndexQueryProperties,
+        InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
+        ext::{DatasetDetails, DatasetEntry, IndexProperties},
         index_query_properties,
     },
     common::v1alpha1::ext::DatasetHandle,
@@ -29,24 +28,68 @@ use re_protos::{
 use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
+use super::{
+    PyCatalogClientInternal, PyDataFusionTable, PyEntry, PyEntryDetails, PyEntryId, PyIndexConfig,
+    PyIndexingResult, VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView,
+    task::PyTasks, to_py_err,
+};
+use crate::catalog::entry::update_entry;
 use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
 use crate::utils::wait_for_future;
-
-use super::{
-    PyDataFusionTable, PyEntry, PyEntryId, PyIndexConfig, PyIndexingResult,
-    VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, task::PyTasks,
-    to_py_err,
-};
 
 /// A dataset entry in the catalog.
 #[pyclass(name = "DatasetEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDatasetEntry {
-    pub dataset_details: DatasetDetails,
-    pub dataset_handle: DatasetHandle,
+    client: Py<PyCatalogClientInternal>,
+    entry_details: Py<PyEntryDetails>,
+    dataset_details: DatasetDetails,
+    dataset_handle: DatasetHandle,
+}
+
+impl PyDatasetEntry {
+    pub fn new(
+        py: Python<'_>,
+        client: Py<PyCatalogClientInternal>,
+        dataset_entry: DatasetEntry,
+    ) -> PyResult<Self> {
+        Ok(Self {
+            client,
+            entry_details: Py::new(py, PyEntryDetails(dataset_entry.details))?,
+            dataset_details: dataset_entry.dataset_details,
+            dataset_handle: dataset_entry.handle,
+        })
+    }
 }
 
 #[pymethods]
 impl PyDatasetEntry {
+    //
+    // Entry methods
+    //
+
+    fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
+        self.client.clone_ref(py)
+    }
+
+    fn entry_details(&self, py: Python<'_>) -> Py<PyEntryDetails> {
+        self.entry_details.clone_ref(py)
+    }
+
+    /// Delete this entry from the catalog.
+    fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
+        let entry_id = self.entry_details.borrow(py).0.id;
+        let connection = self.client.borrow_mut(py).connection().clone();
+        connection.delete_entry(py, entry_id)
+    }
+
+    fn update(&self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
+        update_entry(py, name, &self.entry_details, &self.client)
+    }
+
+    //
+    // Dataset entry methods
+    //
+
     /// Return the dataset manifest URL.
     //TODO(ab): not sure we want this to be public
     #[getter]
@@ -81,20 +124,17 @@ impl PyDatasetEntry {
         let dataset_entry = connection.read_dataset(py, blueprint_dataset_entry_id)?;
 
         let entry = PyEntry {
-            client,
+            client: client.clone_ref(py),
             id: Py::new(
                 py,
                 PyEntryId {
                     id: blueprint_dataset_entry_id,
                 },
             )?,
-            details: dataset_entry.details,
+            details: dataset_entry.details.clone(),
         };
 
-        let dataset = Self {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
+        let dataset = Self::new(py, client, dataset_entry)?;
 
         Some(Py::new(py, (dataset, entry))).transpose()
     }

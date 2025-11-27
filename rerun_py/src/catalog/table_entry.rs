@@ -3,20 +3,20 @@ use std::sync::Arc;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::{
-    Bound, PyAny, PyRef, PyRefMut, PyResult, Python,
+    Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python,
     exceptions::PyRuntimeError,
     pyclass, pymethods,
     types::{PyAnyMethods as _, PyCapsule},
 };
 use tracing::instrument;
 
-use crate::catalog::to_py_err;
-use crate::{
-    catalog::PyEntry,
-    utils::{get_tokio_runtime, wait_for_future},
-};
 use re_datafusion::TableEntryTableProvider;
 use re_protos::cloud::v1alpha1::ext::{ProviderDetails, TableEntry, TableInsertMode};
+
+use crate::{
+    catalog::{PyCatalogClientInternal, PyEntry, PyEntryDetails, entry::update_entry, to_py_err},
+    utils::{get_tokio_runtime, wait_for_future},
+};
 
 /// A table entry in the catalog.
 ///
@@ -24,12 +24,41 @@ use re_protos::cloud::v1alpha1::ext::{ProviderDetails, TableEntry, TableInsertMo
 //TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
 #[pyclass(name = "TableEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyTableEntry {
+    client: Py<PyCatalogClientInternal>,
+    entry_details: Py<PyEntryDetails>,
     lazy_provider: Option<Arc<dyn TableProvider + Send>>,
     url: Option<String>,
 }
 
 #[pymethods]
 impl PyTableEntry {
+    //
+    // Entry methods
+    //
+
+    fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
+        self.client.clone_ref(py)
+    }
+
+    fn entry_details(&self, py: Python<'_>) -> Py<PyEntryDetails> {
+        self.entry_details.clone_ref(py)
+    }
+
+    /// Delete this entry from the catalog.
+    fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
+        let entry_id = self.entry_details.borrow(py).0.id;
+        let connection = self.client.borrow_mut(py).connection().clone();
+        connection.delete_entry(py, entry_id)
+    }
+
+    fn update(&self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
+        update_entry(py, name, &self.entry_details, &self.client)
+    }
+
+    //
+    // Table entry methods
+    //
+
     /// Returns a DataFusion table provider capsule.
     #[instrument(skip_all)]
     fn __datafusion_table_provider__<'py>(
@@ -90,15 +119,22 @@ impl PyTableEntry {
 }
 
 impl PyTableEntry {
-    pub fn new(table_entry: &TableEntry) -> Self {
+    pub fn new(
+        py: Python<'_>,
+        client: Py<PyCatalogClientInternal>,
+        table_entry: &TableEntry,
+    ) -> PyResult<Self> {
         let url = match &table_entry.provider_details {
             ProviderDetails::LanceTable(p) => Some(p.table_url.to_string()),
             ProviderDetails::SystemTable(_) => None,
         };
-        Self {
+
+        Ok(Self {
+            client,
+            entry_details: Py::new(py, PyEntryDetails(table_entry.details.clone()))?,
             lazy_provider: None,
             url,
-        }
+        })
     }
 
     fn table_provider(mut self_: PyRefMut<'_, Self>) -> PyResult<Arc<dyn TableProvider + Send>> {

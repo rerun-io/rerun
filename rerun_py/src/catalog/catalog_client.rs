@@ -175,10 +175,7 @@ impl PyCatalogClientInternal {
                     details,
                 };
 
-                let dataset = PyDatasetEntry {
-                    dataset_details: dataset_entry.dataset_details,
-                    dataset_handle: dataset_entry.handle,
-                };
+                let dataset = PyDatasetEntry::new(py, self_.clone_ref(py), dataset_entry)?;
 
                 Py::new(py, (dataset, entry))
             })
@@ -198,7 +195,7 @@ impl PyCatalogClientInternal {
                 let id = Py::new(py, PyEntryId::from(details.id))?;
 
                 let table_entry = connection.read_table(py, details.id)?;
-                let table = PyTableEntry::new(&table_entry);
+                let table = PyTableEntry::new(py, self_.clone_ref(py), &table_entry)?;
 
                 let entry = PyEntry {
                     client: self_.clone_ref(py),
@@ -265,13 +262,10 @@ impl PyCatalogClientInternal {
         let entry = PyEntry {
             client,
             id,
-            details: dataset_entry.details,
+            details: dataset_entry.details.clone(),
         };
 
-        let dataset = PyDatasetEntry {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
+        let dataset = PyDatasetEntry::new(py, self_.clone_ref(py), dataset_entry)?;
 
         Py::new(py, (dataset, entry))
     }
@@ -289,7 +283,7 @@ impl PyCatalogClientInternal {
         let client = self_.clone_ref(py);
 
         let table_entry = connection.read_table(py, id.borrow(py).id)?;
-        let table = PyTableEntry::new(&table_entry);
+        let table = PyTableEntry::new(py, self_.clone_ref(py), &table_entry)?;
 
         let entry = PyEntry {
             client,
@@ -313,13 +307,10 @@ impl PyCatalogClientInternal {
         let entry = PyEntry {
             client: self_.clone_ref(py),
             id: entry_id,
-            details: dataset_entry.details,
+            details: dataset_entry.details.clone(),
         };
 
-        let dataset = PyDatasetEntry {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
+        let dataset = PyDatasetEntry::new(py, self_.clone_ref(py), dataset_entry)?;
 
         Py::new(py, (dataset, entry))
     }
@@ -337,7 +328,7 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let table_entry = connection.register_table(py, name, url)?;
-        let table = PyTableEntry::new(&table_entry);
+        let table = PyTableEntry::new(py, self_.clone_ref(py), &table_entry)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 
@@ -365,7 +356,7 @@ impl PyCatalogClientInternal {
 
         let schema = Arc::new(schema.0);
         let table_entry = connection.create_table_entry(py, name, schema, &url)?;
-        let table = PyTableEntry::new(&table_entry);
+        let table = PyTableEntry::new(py, self_.clone_ref(py), &table_entry)?;
 
         let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
 

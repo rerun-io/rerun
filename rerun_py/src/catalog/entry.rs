@@ -109,6 +109,74 @@ impl From<PyEntryKind> for EntryKind {
 
 // ---
 
+#[pyclass(
+    name = "EntryDetailsInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyEntryDetails(pub EntryDetails);
+
+#[pymethods]
+impl PyEntryDetails {
+    #[getter]
+    fn id(&self) -> String {
+        self.0.id.to_string()
+    }
+
+    #[getter]
+    fn name(&self) -> &str {
+        &self.0.name
+    }
+
+    /// The entry's kind.
+    #[getter]
+    pub fn kind(&self) -> PyResult<PyEntryKind> {
+        self.0.kind.try_into()
+    }
+
+    /// The entry's creation date and time.
+    #[getter]
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
+    pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
+        let ts = self.0.created_at;
+        // If the `prost::Timestamp` was legal, then this is also legal.
+        #[expect(clippy::unwrap_used)]
+        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
+    }
+
+    /// The entry's last updated date and time.
+    #[getter]
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
+    pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
+        let ts = self.0.updated_at;
+        // If the `prost::Timestamp` was legal, then this is also legal.
+        #[expect(clippy::unwrap_used)]
+        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
+    }
+}
+
+// ---
+
+pub fn update_entry(
+    py: Python<'_>,
+    name: Option<String>,
+    entry_details: &Py<PyEntryDetails>,
+    client: &Py<PyCatalogClientInternal>,
+) -> PyResult<()> {
+    let mut entry_details = entry_details.borrow_mut(py);
+    let entry_id = entry_details.0.id;
+    let connection = client.borrow_mut(py).connection().clone();
+
+    let entry_details_update =
+        re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
+
+    let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
+    entry_details.0 = updated_entry_details;
+
+    Ok(())
+}
+
+// ---
+
 /// An entry in the catalog.
 #[pyclass(name = "Entry", subclass, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyEntry {

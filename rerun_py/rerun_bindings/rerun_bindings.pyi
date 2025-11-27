@@ -1283,11 +1283,6 @@ class Entry:
     def name(self) -> str:
         """The entry's name."""
 
-    # TODO(RR-2938): this should return `CatalogClient`
-    @property
-    def catalog(self) -> CatalogClientInternal:
-        """The catalog client that this entry belongs to."""
-
     @property
     def kind(self) -> EntryKind:
         """The entry's kind."""
@@ -1299,6 +1294,10 @@ class Entry:
     @property
     def updated_at(self) -> datetime:
         """The entry's last updated date and time."""
+
+    @property
+    def catalog(self) -> CatalogClientInternal:
+        """The catalog client that this entry belongs to."""
 
     def delete(self) -> None:
         """Delete this entry from the catalog."""
@@ -1314,8 +1313,40 @@ class Entry:
 
         """
 
+class EntryDetailsInternal:
+    @property
+    def id(self) -> EntryId: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def kind(self) -> EntryKind: ...
+    @property
+    def created_at(self) -> datetime: ...
+    @property
+    def updated_at(self) -> datetime: ...
+
 class DatasetEntry(Entry):
     """A dataset entry in the catalog."""
+
+    def catalog(self) -> CatalogClientInternal:
+        """The catalog client that this entry belongs to."""
+
+    def delete(self) -> None:
+        """Delete this entry from the catalog."""
+
+    def update(self, *, name: str | None = None) -> None:
+        """
+        Update this entry's properties.
+
+        Parameters
+        ----------
+        name : str | None
+            New name for the entry
+
+        """
+
+    def entry_details(self) -> EntryDetailsInternal:
+        """Return details about this entry."""
 
     @property
     def manifest_url(self) -> str:
@@ -1609,6 +1640,26 @@ class TableEntry(Entry):
     Note: this object acts as a table provider for DataFusion.
     """
 
+    def catalog(self) -> CatalogClientInternal:
+        """The catalog client that this entry belongs to."""
+
+    def delete(self) -> None:
+        """Delete this entry from the catalog."""
+
+    def update(self, *, name: str | None = None) -> None:
+        """
+        Update this entry's properties.
+
+        Parameters
+        ----------
+        name : str | None
+            New name for the entry
+
+        """
+
+    def entry_details(self) -> EntryDetailsInternal:
+        """Return details about this entry."""
+
     def __datafusion_table_provider__(self) -> Any:
         """Returns a DataFusion table provider capsule."""
 
@@ -1861,7 +1912,6 @@ class IndexingResult:
 
         """
 
-# TODO(ab): internal object, we need auto-gen stubs for these.
 class CatalogClientInternal:
     def __init__(self, addr: str, token: str | None = None) -> None: ...
 
