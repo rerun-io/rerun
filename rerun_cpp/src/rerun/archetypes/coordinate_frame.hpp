@@ -66,15 +66,15 @@ namespace rerun::archetypes {
     ///
     struct CoordinateFrame {
         /// The coordinate frame to use for the current entity.
-        std::optional<ComponentBatch> frame_id;
+        std::optional<ComponentBatch> frame;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.CoordinateFrame";
 
-        /// `ComponentDescriptor` for the `frame_id` field.
-        static constexpr auto Descriptor_frame_id = ComponentDescriptor(
-            ArchetypeName, "CoordinateFrame:frame_id",
+        /// `ComponentDescriptor` for the `frame` field.
+        static constexpr auto Descriptor_frame = ComponentDescriptor(
+            ArchetypeName, "CoordinateFrame:frame",
             Loggable<rerun::components::TransformFrameId>::ComponentType
         );
 
@@ -85,9 +85,9 @@ namespace rerun::archetypes {
         CoordinateFrame& operator=(const CoordinateFrame& other) = default;
         CoordinateFrame& operator=(CoordinateFrame&& other) = default;
 
-        explicit CoordinateFrame(rerun::components::TransformFrameId _frame_id)
-            : frame_id(ComponentBatch::from_loggable(std::move(_frame_id), Descriptor_frame_id)
-                           .value_or_throw()) {}
+        explicit CoordinateFrame(rerun::components::TransformFrameId _frame)
+            : frame(ComponentBatch::from_loggable(std::move(_frame), Descriptor_frame)
+                        .value_or_throw()) {}
 
         /// Update only some specific fields of a `CoordinateFrame`.
         static CoordinateFrame update_fields() {
@@ -98,21 +98,19 @@ namespace rerun::archetypes {
         static CoordinateFrame clear_fields();
 
         /// The coordinate frame to use for the current entity.
-        CoordinateFrame with_frame_id(const rerun::components::TransformFrameId& _frame_id) && {
-            frame_id =
-                ComponentBatch::from_loggable(_frame_id, Descriptor_frame_id).value_or_throw();
+        CoordinateFrame with_frame(const rerun::components::TransformFrameId& _frame) && {
+            frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `frame_id` in a single component batch.
+        /// This method makes it possible to pack multiple `frame` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_frame_id` should
+        /// This only makes sense when used in conjunction with `columns`. `with_frame` should
         /// be used when logging a single row's worth of data.
-        CoordinateFrame with_many_frame_id(
-            const Collection<rerun::components::TransformFrameId>& _frame_id
+        CoordinateFrame with_many_frame(
+            const Collection<rerun::components::TransformFrameId>& _frame
         ) && {
-            frame_id =
-                ComponentBatch::from_loggable(_frame_id, Descriptor_frame_id).value_or_throw();
+            frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
             return std::move(*this);
         }
 

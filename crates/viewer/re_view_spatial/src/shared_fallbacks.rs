@@ -114,4 +114,13 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             components::AxisLength::from(0.3)
         },
     );
+
+    // Show frame
+    system_registry.register_fallback_provider(
+        archetypes::TransformAxes3D::descriptor_show_frame().component,
+        |_ctx| {
+            // We don't show the label with the frame id by default.
+            components::ShowLabels(false.into())
+        },
+    );
 }

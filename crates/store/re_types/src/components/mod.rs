@@ -135,6 +135,7 @@ mod vector2d_ext;
 mod vector3d;
 mod vector3d_ext;
 mod video_codec;
+mod video_codec_ext;
 mod video_sample;
 mod video_timestamp;
 mod video_timestamp_ext;

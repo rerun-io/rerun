@@ -86,25 +86,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct CoordinateFrame {
     /// The coordinate frame to use for the current entity.
-    pub frame_id: Option<SerializedComponentBatch>,
+    pub frame: Option<SerializedComponentBatch>,
 }
 
 impl CoordinateFrame {
-    /// Returns the [`ComponentDescriptor`] for [`Self::frame_id`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::frame`].
     ///
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
-    pub fn descriptor_frame_id() -> ComponentDescriptor {
+    pub fn descriptor_frame() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.CoordinateFrame".into()),
-            component: "CoordinateFrame:frame_id".into(),
+            component: "CoordinateFrame:frame".into(),
             component_type: Some("rerun.components.TransformFrameId".into()),
         }
     }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [CoordinateFrame::descriptor_frame_id()]);
+    std::sync::LazyLock::new(|| [CoordinateFrame::descriptor_frame()]);
 
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
@@ -113,7 +113,7 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [CoordinateFrame::descriptor_frame_id()]);
+    std::sync::LazyLock::new(|| [CoordinateFrame::descriptor_frame()]);
 
 impl CoordinateFrame {
     /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
@@ -158,10 +158,10 @@ impl ::re_types_core::Archetype for CoordinateFrame {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let frame_id = arrays_by_descr
-            .get(&Self::descriptor_frame_id())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_frame_id()));
-        Ok(Self { frame_id })
+        let frame = arrays_by_descr
+            .get(&Self::descriptor_frame())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_frame()));
+        Ok(Self { frame })
     }
 }
 
@@ -169,7 +169,7 @@ impl ::re_types_core::AsComponents for CoordinateFrame {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.frame_id.clone()).flatten().collect()
+        std::iter::once(self.frame.clone()).flatten().collect()
     }
 }
 
@@ -178,9 +178,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for CoordinateFrame {}
 impl CoordinateFrame {
     /// Create a new `CoordinateFrame`.
     #[inline]
-    pub fn new(frame_id: impl Into<crate::components::TransformFrameId>) -> Self {
+    pub fn new(frame: impl Into<crate::components::TransformFrameId>) -> Self {
         Self {
-            frame_id: try_serialize_field(Self::descriptor_frame_id(), [frame_id]),
+            frame: try_serialize_field(Self::descriptor_frame(), [frame]),
         }
     }
 
@@ -195,9 +195,9 @@ impl CoordinateFrame {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            frame_id: Some(SerializedComponentBatch::new(
+            frame: Some(SerializedComponentBatch::new(
                 crate::components::TransformFrameId::arrow_empty(),
-                Self::descriptor_frame_id(),
+                Self::descriptor_frame(),
             )),
         }
     }
@@ -221,8 +221,8 @@ impl CoordinateFrame {
         I: IntoIterator<Item = usize> + Clone,
     {
         let columns = [self
-            .frame_id
-            .map(|frame_id| frame_id.partitioned(_lengths.clone()))
+            .frame
+            .map(|frame| frame.partitioned(_lengths.clone()))
             .transpose()?];
         Ok(columns.into_iter().flatten())
     }
@@ -235,31 +235,28 @@ impl CoordinateFrame {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_frame_id = self.frame_id.as_ref().map(|b| b.array.len());
-        let len = None.or(len_frame_id).unwrap_or(0);
+        let len_frame = self.frame.as_ref().map(|b| b.array.len());
+        let len = None.or(len_frame).unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
 
     /// The coordinate frame to use for the current entity.
     #[inline]
-    pub fn with_frame_id(
-        mut self,
-        frame_id: impl Into<crate::components::TransformFrameId>,
-    ) -> Self {
-        self.frame_id = try_serialize_field(Self::descriptor_frame_id(), [frame_id]);
+    pub fn with_frame(mut self, frame: impl Into<crate::components::TransformFrameId>) -> Self {
+        self.frame = try_serialize_field(Self::descriptor_frame(), [frame]);
         self
     }
 
     /// This method makes it possible to pack multiple [`crate::components::TransformFrameId`] in a single component batch.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_frame_id`] should
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_frame`] should
     /// be used when logging a single row's worth of data.
     #[inline]
-    pub fn with_many_frame_id(
+    pub fn with_many_frame(
         mut self,
-        frame_id: impl IntoIterator<Item = impl Into<crate::components::TransformFrameId>>,
+        frame: impl IntoIterator<Item = impl Into<crate::components::TransformFrameId>>,
     ) -> Self {
-        self.frame_id = try_serialize_field(Self::descriptor_frame_id(), frame_id);
+        self.frame = try_serialize_field(Self::descriptor_frame(), frame);
         self
     }
 }
@@ -267,6 +264,6 @@ impl CoordinateFrame {
 impl ::re_byte_size::SizeBytes for CoordinateFrame {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.frame_id.heap_size_bytes()
+        self.frame.heap_size_bytes()
     }
 }

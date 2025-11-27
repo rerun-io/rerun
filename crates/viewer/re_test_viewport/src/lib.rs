@@ -3,14 +3,10 @@
 mod test_view;
 
 use ahash::HashMap;
-
 use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
-
-use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
-
 use re_viewport::execute_systems_for_view;
-
+use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
 pub use test_view::TestView;
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
@@ -94,32 +90,20 @@ impl TestContextExt for TestContext {
                             let class_identifier = view_blueprint.class_identifier();
                             let class = class_registry.class(class_identifier).unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"));
 
-                            let visualizable_entities = class
-                                .determine_visualizable_entities(
-                                    ctx.maybe_visualizable_entities_per_visualizer,
-                                    ctx.recording(),
-                                    &class_registry
-                                        .new_visualizer_collection(class_identifier),
-                                    &view_blueprint.space_origin,
-                                );
-
-                            let indicated_entities_per_visualizer = ctx
-                                .view_class_registry()
-                                .indicated_entities_per_visualizer(ctx.recording().store_id());
+                            let visualizable_entities_for_view = ctx.collect_visualizable_entities_for_view_class(class_identifier);
 
                             let mut data_query_result = view_blueprint.contents.execute_query(
                                 ctx.store_context,
                                 class_registry,
                                 ctx.blueprint_query,
-                                &visualizable_entities,
+                                &visualizable_entities_for_view,
                             );
 
                             let resolver = DataQueryPropertyResolver::new(
                                 view_blueprint,
                                 class_registry,
-                                ctx.maybe_visualizable_entities_per_visualizer,
-                                &visualizable_entities,
-                                &indicated_entities_per_visualizer,
+                                &visualizable_entities_for_view,
+                                ctx.indicated_entities_per_visualizer,
                             );
 
                             resolver.update_overrides(
@@ -156,6 +140,7 @@ impl TestContextExt for TestContext {
         let view_class = class_registry.get_class_or_log_error(class_identifier);
 
         let mut view_states = self.view_states.lock();
+        view_states.reset_visualizer_errors();
         let view_state = view_states.get_mut_or_create(view_id, view_class);
 
         let context_system_once_per_frame_results = class_registry
@@ -166,7 +151,9 @@ impl TestContextExt for TestContext {
             view_state,
             &context_system_once_per_frame_results,
         );
+        view_states.report_visualizer_errors(view_id, &system_execution_output);
 
+        let view_state = view_states.get_mut_or_create(view_id, view_class);
         view_class
             .ui(ctx, ui, view_state, &view_query, system_execution_output)
             .expect("failed to run view ui");

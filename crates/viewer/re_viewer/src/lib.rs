@@ -14,6 +14,7 @@ mod default_views;
 mod docker_detection;
 pub mod env_vars;
 pub mod event;
+mod history;
 mod navigation;
 mod open_url_description;
 mod saving;
@@ -81,7 +82,7 @@ mod web;
 mod web_tools;
 
 #[cfg(target_arch = "wasm32")]
-mod history;
+mod web_history;
 
 // ---------------------------------------------------------------------------
 

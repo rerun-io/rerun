@@ -21,10 +21,7 @@ use re_chunk_store::external::arrow;
 use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
-use re_types::{
-    archetypes::{self},
-    components::{self},
-};
+use re_types::{ComponentIdentifier, archetypes, components};
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
@@ -111,6 +108,37 @@ impl CachedTransformsForTimeline {
             non_recursive_clears: IntMap::default(),
             recursive_clears: IntMap::default(),
         }
+    }
+
+    fn get_or_create_transforms_temporal(
+        &mut self,
+        entity_path: &EntityPath,
+        child_frame: TransformFrameIdHash,
+        timeline: TimelineName,
+        static_timeline: &mut Self,
+    ) -> &mut TransformsForChildFrame {
+        self.per_child_frame_transforms
+            .entry(child_frame)
+            .or_insert_with(|| {
+                TransformsForChildFrame::new(
+                    entity_path.clone(),
+                    child_frame,
+                    timeline,
+                    static_timeline,
+                    &self.non_recursive_clears,
+                    &self.recursive_clears,
+                )
+            })
+    }
+
+    fn get_or_create_transforms_static(
+        &mut self,
+        entity_path: &EntityPath,
+        child_frame: TransformFrameIdHash,
+    ) -> &mut TransformsForChildFrame {
+        self.per_child_frame_transforms
+            .entry(child_frame)
+            .or_insert_with(|| TransformsForChildFrame::new_empty(entity_path.clone(), child_frame))
     }
 
     fn add_clear(&mut self, cleared_path: &EntityPath, cleared_time: TimeInt) {
@@ -298,6 +326,22 @@ impl TransformsForChildFrameEvents {
             pinhole_projections.remove(&time);
         }
     }
+
+    fn is_empty(&self) -> bool {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        frame_transforms.is_empty()
+            && pose_transforms
+                .as_ref()
+                .is_none_or(|poses| poses.is_empty())
+            && pinhole_projections
+                .as_ref()
+                .is_none_or(|pinholes| pinholes.is_empty())
+    }
 }
 
 /// Cached transforms from a single child frame to a (potentially changing) parent frame over time.
@@ -360,33 +404,6 @@ fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
         && occupied_entry.get() == &CachedTransformValue::Cleared
     {
         occupied_entry.insert(CachedTransformValue::Invalidated);
-    }
-}
-
-impl TransformsForChildFrame {
-    /// Invalidates all transforms for the given aspects for the given times.
-    ///
-    /// [`TransformAspect::Clear`] causes all types of transforms to be invalidated and being added to.
-    pub fn insert_invalidated_transform_event(&mut self, aspects: TransformAspect, time: TimeInt) {
-        let TransformsForChildFrameEvents {
-            frame_transforms,
-            pose_transforms,
-            pinhole_projections,
-        } = self.events.get_mut();
-
-        if aspects.intersects(TransformAspect::Frame) {
-            add_invalidated_entry_if_not_already_cleared(frame_transforms, time);
-        }
-
-        if aspects.intersects(TransformAspect::Pose) {
-            let pose_transforms = pose_transforms.get_or_insert_with(Box::default);
-            add_invalidated_entry_if_not_already_cleared(pose_transforms, time);
-        }
-
-        if aspects.intersects(TransformAspect::PinholeOrViewCoordinates) {
-            let pinhole_projections = pinhole_projections.get_or_insert_with(Box::default);
-            add_invalidated_entry_if_not_already_cleared(pinhole_projections, time);
-        }
     }
 }
 
@@ -461,6 +478,26 @@ impl TransformsForChildFrame {
             child_frame,
             events: Mutex::new(TransformsForChildFrameEvents::new_empty()),
         }
+    }
+
+    /// Inserts an invalidation point for transforms.
+    fn invalidate_transform_at(&mut self, time: TimeInt) {
+        let events = self.events.get_mut();
+        add_invalidated_entry_if_not_already_cleared(&mut events.frame_transforms, time);
+    }
+
+    /// Inserts an invalidation point for pose transforms.
+    fn invalidate_pose_transforms_at(&mut self, time: TimeInt) {
+        let events = self.events.get_mut();
+        let poses = events.pose_transforms.get_or_insert_default();
+        add_invalidated_entry_if_not_already_cleared(poses, time);
+    }
+
+    /// Inserts an invalidation point for pinhole projections.
+    fn invalidate_pinhole_projection_at(&mut self, time: TimeInt) {
+        let events = self.events.get_mut();
+        let pinhole_projections = events.pinhole_projections.get_or_insert_default();
+        add_invalidated_entry_if_not_already_cleared(pinhole_projections, time);
     }
 
     #[inline]
@@ -571,13 +608,23 @@ impl TransformsForChildFrame {
         if pinhole_projection == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_pinhole_projection_at_entity(
                 &self.associated_entity_path,
+                self.child_frame,
                 entity_db,
                 query,
             );
 
             *pinhole_projection = match &transform {
-                Some(transform) => CachedTransformValue::Resident(transform.clone()),
-                None => CachedTransformValue::Cleared,
+                Ok(transform) => CachedTransformValue::Resident(transform.clone()),
+
+                Err(crate::transform_queries::TransformError::MissingTransform { .. }) => {
+                    // This can happen if we conservatively added a timepoint before any transform event happened.
+                    CachedTransformValue::Cleared
+                }
+
+                Err(err) => {
+                    re_log::error_once!("Failed to query transformations: {err}");
+                    CachedTransformValue::Cleared
+                }
             };
         }
 
@@ -685,28 +732,64 @@ impl TransformResolutionCache {
 
         let entity_path = chunk.entity_path();
 
+        let transform_child_frame_component =
+            archetypes::Transform3D::descriptor_child_frame().component;
+        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
+
+        let static_timeline = &mut self.static_timeline;
+
         for timeline in chunk.timelines().keys() {
-            let per_timeline = self.per_timeline.entry(*timeline).or_insert_with(|| {
-                CachedTransformsForTimeline::new(timeline, &self.static_timeline)
-            });
+            let per_timeline = self
+                .per_timeline
+                .entry(*timeline)
+                .or_insert_with(|| CachedTransformsForTimeline::new(timeline, static_timeline));
 
-            for (time, child_frame) in iter_child_frames_in_chunk(chunk, *timeline) {
-                // TODO(andreas): most of the time it's the same child frame in a row. can we speed this lookup up?
-                let frame_transforms = per_timeline
-                    .per_child_frame_transforms
-                    .entry(child_frame)
-                    .or_insert_with(|| {
-                        TransformsForChildFrame::new(
-                            entity_path.clone(),
-                            child_frame,
+            if aspects.contains(TransformAspect::Frame) {
+                for (time, frame) in
+                    iter_child_frames_in_chunk(chunk, *timeline, transform_child_frame_component)
+                {
+                    per_timeline
+                        .get_or_create_transforms_temporal(
+                            entity_path,
+                            frame,
                             *timeline,
-                            &mut self.static_timeline,
-                            &per_timeline.non_recursive_clears,
-                            &per_timeline.recursive_clears,
+                            static_timeline,
                         )
-                    });
-
-                frame_transforms.insert_invalidated_transform_event(aspects, time);
+                        .invalidate_transform_at(time);
+                }
+            }
+            if aspects.contains(TransformAspect::Pose) {
+                for (time, frame) in
+                    // TODO(RR-2627): piggy backs on transform3d right now, shouldn't do that.
+                    iter_child_frames_in_chunk(
+                        chunk,
+                        *timeline,
+                        transform_child_frame_component,
+                    )
+                {
+                    per_timeline
+                        .get_or_create_transforms_temporal(
+                            entity_path,
+                            frame,
+                            *timeline,
+                            static_timeline,
+                        )
+                        .invalidate_pose_transforms_at(time);
+                }
+            }
+            if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                for (time, frame) in
+                    iter_child_frames_in_chunk(chunk, *timeline, pinhole_child_frame_component)
+                {
+                    per_timeline
+                        .get_or_create_transforms_temporal(
+                            entity_path,
+                            frame,
+                            *timeline,
+                            static_timeline,
+                        )
+                        .invalidate_pinhole_projection_at(time);
+                }
             }
 
             // Keep track of clears.
@@ -735,43 +818,89 @@ impl TransformResolutionCache {
         debug_assert!(chunk.is_static());
 
         let entity_path = chunk.entity_path();
+        let place_holder_timeline = TimelineName::new("ignored for static chunk");
+
+        let transform_child_frame_component =
+            archetypes::Transform3D::descriptor_child_frame().component;
+        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
+
+        let static_timeline = &mut self.static_timeline;
 
         // Add a static transform invalidation to affected child frames on ALL timelines.
-        for (time, child_frame) in
-            iter_child_frames_in_chunk(chunk, TimelineName::new("ignored for static chunk"))
-        {
-            debug_assert_eq!(time, TimeInt::STATIC);
 
-            // TODO(andreas): most of the time it's the same child frame in a row. can we speed this lookup up?
-            let frame_transforms = self
-                .static_timeline
-                .per_child_frame_transforms
-                .entry(child_frame)
-                .or_insert_with(|| {
-                    TransformsForChildFrame::new_empty(entity_path.clone(), child_frame)
-                });
-            frame_transforms.insert_invalidated_transform_event(aspects, time);
+        if aspects.contains(TransformAspect::Frame) {
+            for (time, frame) in iter_child_frames_in_chunk(
+                chunk,
+                place_holder_timeline,
+                transform_child_frame_component,
+            ) {
+                debug_assert_eq!(time, TimeInt::STATIC);
 
-            for (timeline, per_timeline) in &mut self.per_timeline {
-                let entity_transforms = per_timeline
-                    .per_child_frame_transforms
-                    .entry(child_frame)
-                    .or_insert_with(|| {
-                        // Need to add an entry now if there wasn't one before.
-                        // Also note that the static transforms we use to construct this might touch on aspects that aren't invalidated, so it's still important to pass that in.
-                        TransformsForChildFrame::new(
-                            entity_path.clone(),
-                            child_frame,
+                let frame_transforms =
+                    static_timeline.get_or_create_transforms_static(entity_path, frame);
+                frame_transforms.invalidate_transform_at(TimeInt::STATIC);
+
+                for (timeline, per_timeline) in &mut self.per_timeline {
+                    per_timeline
+                        .get_or_create_transforms_temporal(
+                            entity_path,
+                            frame,
                             *timeline,
-                            &mut self.static_timeline,
-                            &per_timeline.non_recursive_clears,
-                            &per_timeline.recursive_clears,
+                            static_timeline,
                         )
-                    });
+                        .invalidate_transform_at(TimeInt::STATIC);
+                }
+            }
+        }
+        if aspects.contains(TransformAspect::Pose) {
+            for (time, frame) in
+                // TODO(RR-2627): piggy backs on transform3d right now, shouldn't do that.
+                iter_child_frames_in_chunk(
+                    chunk,
+                    place_holder_timeline,
+                    transform_child_frame_component,
+                )
+            {
+                debug_assert_eq!(time, TimeInt::STATIC);
 
-                // Due to atomic latest-at, we only have to add a static transform timepoint and do **not** need to invalidate all times going forward
-                // as they would fully shadow the static transform!
-                entity_transforms.insert_invalidated_transform_event(aspects, TimeInt::STATIC);
+                let frame_transforms =
+                    static_timeline.get_or_create_transforms_static(entity_path, frame);
+                frame_transforms.invalidate_pose_transforms_at(TimeInt::STATIC);
+
+                for (timeline, per_timeline) in &mut self.per_timeline {
+                    per_timeline
+                        .get_or_create_transforms_temporal(
+                            entity_path,
+                            frame,
+                            *timeline,
+                            static_timeline,
+                        )
+                        .invalidate_pose_transforms_at(TimeInt::STATIC);
+                }
+            }
+        }
+        if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+            for (time, frame) in iter_child_frames_in_chunk(
+                chunk,
+                place_holder_timeline,
+                pinhole_child_frame_component,
+            ) {
+                debug_assert_eq!(time, TimeInt::STATIC);
+
+                let frame_transforms =
+                    static_timeline.get_or_create_transforms_static(entity_path, frame);
+                frame_transforms.invalidate_pinhole_projection_at(TimeInt::STATIC);
+
+                for (timeline, per_timeline) in &mut self.per_timeline {
+                    per_timeline
+                        .get_or_create_transforms_temporal(
+                            entity_path,
+                            frame,
+                            *timeline,
+                            static_timeline,
+                        )
+                        .invalidate_pinhole_projection_at(TimeInt::STATIC);
+                }
             }
         }
 
@@ -782,6 +911,10 @@ impl TransformResolutionCache {
         re_tracing::profile_function!();
 
         let entity_path = chunk.entity_path();
+
+        let transform_child_frame_component =
+            archetypes::Transform3D::descriptor_child_frame().component;
+        let pinhole_child_frame_component = archetypes::Pinhole::descriptor_child_frame().component;
 
         // TODO(andreas): handle removal of static chunks?
         for timeline in chunk.timelines().keys() {
@@ -810,47 +943,56 @@ impl TransformResolutionCache {
             }
 
             // Remove existing data.
-            for (time, child_frame) in iter_child_frames_in_chunk(chunk, *timeline) {
-                let Some(transforms) = per_timeline
-                    .per_child_frame_transforms
-                    .get_mut(&child_frame)
-                else {
-                    debug_panic_missing_child_frame_transforms_for_update_on_entity(
-                        entity_path,
-                        child_frame,
-                    );
-                    continue;
-                };
-                let transforms = transforms.events.get_mut();
-
-                if aspects.contains(TransformAspect::Frame) {
-                    transforms.frame_transforms.remove(&time);
-                }
-                if aspects.contains(TransformAspect::Pose)
-                    && let Some(pose_transforms) = &mut transforms.pose_transforms
+            if aspects.contains(TransformAspect::Frame) {
+                for (time, frame) in
+                    iter_child_frames_in_chunk(chunk, *timeline, transform_child_frame_component)
                 {
-                    pose_transforms.remove(&time);
-                }
-                if aspects.contains(TransformAspect::PinholeOrViewCoordinates)
-                    && let Some(pinhole_projections) = &mut transforms.pinhole_projections
-                {
-                    pinhole_projections.remove(&time);
-                }
-
-                // Remove child frame entry if it's empty.
-                if transforms.frame_transforms.is_empty()
-                    && transforms
-                        .pose_transforms
-                        .as_ref()
-                        .is_none_or(|pose_transforms| pose_transforms.is_empty())
-                    && transforms
-                        .pinhole_projections
-                        .as_ref()
-                        .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
-                {
-                    per_timeline.per_child_frame_transforms.remove(&child_frame);
+                    if let Some(transforms) =
+                        per_timeline.per_child_frame_transforms.get_mut(&frame)
+                    {
+                        let events = transforms.events.get_mut();
+                        events.frame_transforms.remove(&time);
+                    }
                 }
             }
+            if aspects.contains(TransformAspect::Pose) {
+                for (time, frame) in
+                    // TODO(RR-2627): piggy backs on transform3d right now, shouldn't do that.
+                    iter_child_frames_in_chunk(
+                        chunk,
+                        *timeline,
+                        transform_child_frame_component,
+                    )
+                {
+                    if let Some(transforms) =
+                        per_timeline.per_child_frame_transforms.get_mut(&frame)
+                    {
+                        let events = transforms.events.get_mut();
+                        if let Some(pose_transforms) = events.pose_transforms.as_mut() {
+                            pose_transforms.remove(&time);
+                        }
+                    }
+                }
+            }
+            if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
+                for (time, frame) in
+                    iter_child_frames_in_chunk(chunk, *timeline, pinhole_child_frame_component)
+                {
+                    if let Some(transforms) =
+                        per_timeline.per_child_frame_transforms.get_mut(&frame)
+                    {
+                        let events = transforms.events.get_mut();
+                        if let Some(pinhole_projections) = events.pinhole_projections.as_mut() {
+                            pinhole_projections.remove(&time);
+                        }
+                    }
+                }
+            }
+
+            // Remove any empty transform collection.
+            per_timeline
+                .per_child_frame_transforms
+                .retain(|_frame, transforms| !transforms.events.get_mut().is_empty());
 
             // Remove the entire timeline if it's empty.
             if per_timeline.per_child_frame_transforms.is_empty() {
@@ -860,17 +1002,7 @@ impl TransformResolutionCache {
     }
 }
 
-fn debug_panic_missing_child_frame_transforms_for_update_on_entity(
-    entity_path: &EntityPath,
-    child_frame: TransformFrameIdHash,
-) {
-    assert!(
-        !cfg!(debug_assertions),
-        "DEBUG ASSERTION: Internally inconsistent state: entity {entity_path:?} had updates for child frame {child_frame:?} but no transforms for that child frame were found. Please report this as a bug."
-    );
-}
-
-/// Iterates over all child frames that are in a chunk.
+/// Iterates over all frames of a given component type that are in a chunk.
 ///
 /// If the chunk is static, `timeline` will be ignored.
 ///
@@ -879,22 +1011,20 @@ fn debug_panic_missing_child_frame_transforms_for_update_on_entity(
 pub fn iter_child_frames_in_chunk(
     chunk: &Chunk,
     timeline: TimelineName,
+    frame_component: ComponentIdentifier,
 ) -> impl Iterator<Item = (TimeInt, TransformFrameIdHash)> {
-    // TODO(RR-2627, RR-2680): Custom child frame is not supported yet for Pinhole & Poses, we instead use whatever is on `Transform3D`.
-    let child_frame_component = archetypes::Transform3D::descriptor_child_frame().component;
-
     let implicit_frame = TransformFrameIdHash::from_entity_path(chunk.entity_path());
 
     // This is similar to `iter_slices` but it also yields elements for rows where the component is null.
     let frame_ids_per_row =
-    chunk.components().get_array(child_frame_component).map_or_else(
+    chunk.components().get_array(frame_component).map_or_else(
         || Either::Left(std::iter::repeat(implicit_frame)),
         |list_array| {
             let values_raw = list_array.values();
             let Some(values) =
                 values_raw.downcast_array_ref::<arrow::array::StringArray>()
             else {
-                re_log::error_once!("Expected at {child_frame_component:?} @ {:?} to be a string array, but its type is instead {:?}",
+                re_log::error_once!("Expected at {frame_component:?} @ {:?} to be a string array, but its type is instead {:?}",
                                          chunk.entity_path(), values_raw.data_type());
                 return Either::Left(std::iter::repeat(implicit_frame));
             };
@@ -1897,17 +2027,11 @@ mod tests {
                 // Warm the cache with this situation.
                 apply_store_subscriber_events(&mut cache, &entity_db);
                 let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
-                let transforms = transforms_per_timeline
-                    .frame_transforms(TransformFrameIdHash::from_entity_path(&path))
-                    .unwrap();
-                for t in [0, 1, 2] {
-                    assert_eq!(
-                        transforms
-                            .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
-                        None,
-                        "Expected no transform at time {t}."
-                    );
-                }
+                assert_eq!(
+                    transforms_per_timeline
+                        .frame_transforms(TransformFrameIdHash::from_entity_path(&path)),
+                    None
+                );
 
                 // And only now add the data chunk.
                 entity_db.add_chunk(&Arc::new(data_chunk))?;
@@ -2324,6 +2448,144 @@ mod tests {
                     transform: DAffine3::from_scale(glam::DVec3::splat(2.0)),
                 })
             );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+
+        let image_from_camera =
+            components::PinholeProjection::from_focal_length_and_principal_point(
+                [1.0, 2.0],
+                [1.0, 2.0],
+            );
+
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            // Add pinhole with explicit child and parent frames
+            .with_archetype_auto_row(
+                [(timeline, 0)],
+                &archetypes::Pinhole::new(image_from_camera)
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            // Add a 3D transform on top.
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0])
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            // Add a 3D transform to a different child frame.
+            .with_archetype_auto_row(
+                [(timeline, 2)],
+                &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0])
+                    .with_child_frame("other_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            // Add a pinhole to that same relation, this time with an explicit resolution.
+            .with_archetype_auto_row(
+                [(timeline, 3)],
+                &archetypes::Pinhole::new(image_from_camera)
+                    .with_resolution([1.0, 2.0])
+                    .with_child_frame("other_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(chunk))?;
+
+        apply_store_subscriber_events(&mut cache, &entity_db);
+
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+
+        // Check transforms going out from child_frame
+        let transforms = transforms_per_timeline
+            .frame_transforms(TransformFrameIdHash::from_str("child_frame"))
+            .unwrap();
+        for t in [0, 1, 2, 3] {
+            // Pinhole from child_frame->X exists at all times unchanged.
+            assert_eq!(
+                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                Some(ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    image_from_camera,
+                    resolution: None,
+                    view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+                }),
+                "Unexpected pinhole for child_frame at time t={t}"
+            );
+
+            // After time 1 we have a transform on top
+            if t == 0 {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    None,
+                    "Unexpected transform for child_frame at time t={t}"
+                );
+            } else {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    }),
+                    "Unexpected transform for child_frame at time t={t}"
+                );
+            }
+        }
+
+        // Check transforms going out from other_frame
+        let transforms = transforms_per_timeline
+            .frame_transforms(TransformFrameIdHash::from_str("other_frame"))
+            .unwrap();
+        for t in [0, 1, 2, 3] {
+            // Pinhole from other_frame->X exists only at time t==3
+            if t < 3 {
+                assert_eq!(
+                    transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    None,
+                    "Unexpected pinhole for other_frame at time t={t}"
+                );
+            } else {
+                assert_eq!(
+                    transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    Some(ResolvedPinholeProjection {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        image_from_camera,
+                        resolution: Some([1.0, 2.0].into()),
+                        view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
+                    }),
+                    "Unexpected pinhole for other_frame at time t={t}"
+                );
+            }
+
+            // After time 2 we have a transform.
+            if t < 2 {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    None,
+                    "Unexpected transform for other_frame at time t={t}"
+                );
+            } else {
+                assert_eq!(
+                    transforms
+                        .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::from_str("parent_frame"),
+                        transform: DAffine3::from_translation(glam::dvec3(3.0, 4.0, 5.0)),
+                    }),
+                    "Unexpected transform for other_frame at time t={t}"
+                );
+            }
         }
 
         Ok(())

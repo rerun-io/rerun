@@ -94,7 +94,7 @@ impl ViewClass for TestView {
         ctx: &ViewerContext<'_>,
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
-        suggest_view_for_each_entity::<TestSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TestSystem>(ctx, include_entity)
     }
 
     fn ui(

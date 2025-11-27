@@ -3,12 +3,11 @@ use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::renderer::GpuMeshInstance;
 use re_types::{ArrowString, archetypes::Asset3D, components::AlbedoFactor};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::SpatialViewVisualizerData;
 
 use crate::{
     caches::{AnyMesh, MeshCache, MeshCacheKey},
@@ -116,15 +115,6 @@ impl VisualizerSystem for Asset3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Asset3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -132,6 +122,7 @@ impl VisualizerSystem for Asset3DVisualizer {
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let mut output = VisualizerExecutionOutput::default();
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -140,6 +131,7 @@ impl VisualizerSystem for Asset3DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 

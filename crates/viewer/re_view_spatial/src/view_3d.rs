@@ -2,7 +2,6 @@ use ahash::HashSet;
 use glam::Vec3;
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
@@ -19,11 +18,11 @@ use re_types::{
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
     QueryContext, RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext,
+    VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -39,19 +38,6 @@ use crate::{
     shared_fallbacks,
     visualizers::{CamerasVisualizer, TransformAxes3DVisualizer},
 };
-
-#[derive(Default)]
-pub struct VisualizableFilterContext3D {
-    // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
-    pub entities_in_main_3d_space: IntSet<EntityPath>,
-    pub entities_under_pinholes: IntSet<EntityPath>,
-}
-
-impl VisualizableFilterContext for VisualizableFilterContext3D {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 #[derive(Default)]
 pub struct SpatialView3D;
@@ -332,65 +318,11 @@ impl ViewClass for SpatialView3D {
         .flatten()
     }
 
-    fn visualizable_filter_context(
-        &self,
-        space_origin: &EntityPath,
-        entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn VisualizableFilterContext> {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
-        // If the topology hasn't changed, we don't need to recompute any of this.
-        // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
-
-        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
-            let primary_space = topo.subspace_for_entity(space_origin);
-            if !primary_space.supports_3d_content() {
-                // If this is strict 2D space, only display the origin entity itself.
-                // Everything else we have to assume requires some form of transformation.
-                return VisualizableFilterContext3D {
-                    entities_in_main_3d_space: std::iter::once(space_origin.clone()).collect(),
-                    entities_under_pinholes: Default::default(),
-                };
-            }
-
-            // All entities in the 3D space are visualizable + everything under pinholes.
-            let mut entities_in_main_3d_space = primary_space.entities.clone();
-            let mut entities_under_pinholes = IntSet::<EntityPath>::default();
-
-            for child_origin in &primary_space.child_spaces {
-                let Some(child_space) = topo.subspace_for_subspace_origin(child_origin.hash())
-                else {
-                    // Should never happen, implies that a child space is not in the list of subspaces.
-                    continue;
-                };
-
-                if child_space
-                    .connection_to_parent
-                    .contains(SubSpaceConnectionFlags::Pinhole)
-                {
-                    // Note that for this the connection to the parent is allowed to contain the disconnected flag.
-                    // Entities _at_ pinholes are a special case: we display both 3D and 2D visualizers for them.
-                    entities_in_main_3d_space.insert(child_space.origin.clone());
-                    entities_under_pinholes.extend(child_space.entities.iter().cloned());
-                }
-            }
-
-            VisualizableFilterContext3D {
-                entities_in_main_3d_space,
-                entities_under_pinholes,
-            }
-        });
-
-        Box::new(context.unwrap_or_default())
-    }
-
     /// Choose the default visualizers to enable for this entity.
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
         let axes_viz = TransformAxes3DVisualizer::identifier();

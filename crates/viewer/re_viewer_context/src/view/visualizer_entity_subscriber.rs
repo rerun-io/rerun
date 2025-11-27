@@ -8,18 +8,18 @@ use re_log_types::{EntityPathHash, StoreId};
 use re_types_core::SerializedComponentColumn;
 
 use crate::{
-    IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, RequiredComponents,
-    ViewSystemIdentifier, VisualizerSystem,
+    IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
+    VisualizableEntities, VisualizerSystem,
 };
 
 /// A store subscriber that keep track which entities in a store can be
 /// processed by a single given visualizer type.
 ///
 /// The list of entities is additive:
-/// If an entity was at any point in time passes the "maybe visualizable" filter for the visualizer, it will be
+/// If an entity was at any point in time passes the "visualizable" filter for the visualizer, it will be
 /// kept in the list of entities.
 ///
-/// "maybe visualizable" is determined by the set of required components
+/// "visualizable" is determined by the set of required components
 ///
 /// There's only a single entity subscriber per visualizer *type*.
 /// This means that if the same visualizer is used in multiple views, only a single
@@ -66,13 +66,12 @@ struct VisualizerEntityMapping {
     /// Last bit is used for the data-based-visualizability filter.
     ///
     /// In order of `required_components`.
-    /// If all bits are set, the entity is "maybe visualizable" to the visualizer.
     // TODO(andreas): We could just limit the number of required components to 32 or 64 and
     // then use a single u32/u64 as a bitmap.
     required_component_and_filter_bitmap_per_entity: IntMap<EntityPathHash, BitVec>,
 
     /// Which entities the visualizer can be applied to.
-    maybe_visualizable_entities: MaybeVisualizableEntities,
+    visualizable_entities: VisualizableEntities,
 
     /// List of all entities in this store that at some point in time had any of the relevant archetypes.
     ///
@@ -104,21 +103,18 @@ impl VisualizerEntitySubscriber {
         }
     }
 
-    /// List of entities that are may be visualizable by the visualizer.
+    /// List of entities that are visualizable by the visualizer.
     #[inline]
-    pub fn maybe_visualizable_entities(
-        &self,
-        store: &StoreId,
-    ) -> Option<&MaybeVisualizableEntities> {
+    pub fn visualizable_entities(&self, store: &StoreId) -> Option<&VisualizableEntities> {
         self.per_store_mapping
             .get(store)
-            .map(|mapping| &mapping.maybe_visualizable_entities)
+            .map(|mapping| &mapping.visualizable_entities)
     }
 
     /// List of entities that at some point in time had a component of an archetypes matching the visualizer's query.
     ///
     /// Useful for quickly evaluating basic "should this visualizer apply by default"-heuristic.
-    /// Does *not* imply that any of the given entities is also in the (maybe-)visualizable-set!
+    /// Does *not* imply that any of the given entities is also in the visualizable-set!
     ///
     /// If the visualizer has no archetypes, this list will contain all entities in the store.
     pub fn indicated_entities(&self, store: &StoreId) -> Option<&IndicatedEntities> {
@@ -191,7 +187,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     );
 
                     store_mapping
-                        .maybe_visualizable_entities
+                        .visualizable_entities
                         .0
                         .insert(entity_path.clone());
                 }
@@ -201,7 +197,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         .required_component_and_filter_bitmap_per_entity
                         .entry(entity_path.hash())
                         .or_insert_with(|| {
-                            // An empty set would mean that all entities will never be "maybe visualizable",
+                            // An empty set would mean that all entities will never be "visualizable",
                             // because `.all()` is always false for an empty set.
                             debug_assert!(
                                 !self.required_components_indices.is_empty(),
@@ -211,7 +207,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         });
 
                     // Early-out: if all required components are already present, we already
-                    // marked this entity as maybe-visualizable in a previous event.
+                    // marked this entity as visualizable in a previous event.
                     if required_components_bitmap.all() {
                         continue;
                     }
@@ -243,7 +239,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         );
 
                         store_mapping
-                            .maybe_visualizable_entities
+                            .visualizable_entities
                             .0
                             .insert(entity_path.clone());
                     }
@@ -279,7 +275,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         );
 
                         store_mapping
-                            .maybe_visualizable_entities
+                            .visualizable_entities
                             .0
                             .insert(entity_path.clone());
                     }

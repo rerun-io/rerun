@@ -38,7 +38,7 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity() {
                 )
                 .with_archetype_auto_row(
                     time.clone(),
-                    &archetypes::TransformAxes3D::new(half_size * 2.2),
+                    &archetypes::TransformAxes3D::new(half_size * 2.2).with_show_frame(true),
                 )
         });
     }

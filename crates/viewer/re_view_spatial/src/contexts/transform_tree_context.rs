@@ -14,6 +14,8 @@ use vec1::smallvec_v1::SmallVec1;
 
 use crate::caches::TransformDatabaseStoreCache;
 
+type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
+
 /// Provides a transform tree for the view & time it operates on.
 ///
 /// Will do the necessary bulk processing of transform information and make it available
@@ -24,7 +26,9 @@ pub struct TransformTreeContext {
     transform_infos:
         IntMap<EntityPathHash, Result<re_tf::TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
+    target_frame_pinhole_root: Option<TransformFrameIdHash>,
     entity_transform_id_mapping: EntityTransformIdMapping,
+    frame_id_mapping: Arc<FrameIdMapping>,
 }
 
 impl Default for TransformTreeContext {
@@ -33,7 +37,9 @@ impl Default for TransformTreeContext {
             transform_forest: Arc::new(re_tf::TransformForest::default()),
             transform_infos: IntMap::default(),
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
+            target_frame_pinhole_root: None,
             entity_transform_id_mapping: EntityTransformIdMapping::default(),
+            frame_id_mapping: Arc::new(FrameIdMapping::default()),
         }
     }
 }
@@ -60,6 +66,7 @@ impl IdentifiedViewSystem for TransformTreeContext {
 
 struct TransformTreeContextOncePerFrameResult {
     transform_forest: Arc<re_tf::TransformForest>,
+    frame_id_mapping: Arc<FrameIdMapping>,
 }
 
 impl ViewContextSystem for TransformTreeContext {
@@ -73,8 +80,14 @@ impl ViewContextSystem for TransformTreeContext {
         let transform_forest =
             re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
 
+        let frame_ids = transform_cache
+            .frame_id_registry()
+            .iter_frame_ids()
+            .map(|(k, v)| (*k, v.clone()));
+
         Box::new(TransformTreeContextOncePerFrameResult {
             transform_forest: Arc::new(transform_forest),
+            frame_id_mapping: Arc::new(frame_ids.collect()),
         })
     }
 
@@ -84,11 +97,12 @@ impl ViewContextSystem for TransformTreeContext {
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
-        self.transform_forest = static_execution_result
+        let static_execution_result = static_execution_result
             .downcast_ref::<TransformTreeContextOncePerFrameResult>()
-            .expect("Unexpected static execution result type")
-            .transform_forest
-            .clone();
+            .expect("Unexpected static execution result type");
+
+        self.transform_forest = static_execution_result.transform_forest.clone();
+        self.frame_id_mapping = static_execution_result.frame_id_mapping.clone();
 
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
@@ -141,6 +155,15 @@ impl ViewContextSystem for TransformTreeContext {
                 .flatten()
                 .collect()
         };
+
+        self.target_frame_pinhole_root = self
+            .transform_forest
+            .root_from_frame(self.target_frame)
+            .and_then(|info| {
+                self.transform_forest
+                    .pinhole_tree_root_info(info.tree_root())
+                    .map(|_pinhole_info| info.tree_root())
+            });
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -173,6 +196,15 @@ impl TransformTreeContext {
         self.target_frame
     }
 
+    /// Iff the target frame has a pinhole tree root, returns its transform frame id.
+    ///
+    /// If this is `Some`, then this is either the frame target frame itself or one of its ancestors.
+    /// `Some` implies that the view as a whole is two dimensional.
+    #[inline]
+    pub fn target_frame_pinhole_root(&self) -> Option<TransformFrameIdHash> {
+        self.target_frame_pinhole_root
+    }
+
     /// Returns the transform frame id for a given entity path.
     #[inline]
     pub fn transform_frame_id_for(&self, entity_path: EntityPathHash) -> TransformFrameIdHash {
@@ -181,6 +213,26 @@ impl TransformTreeContext {
             .get(&entity_path)
             .copied()
             .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
+    }
+
+    /// Looks up a frame ID by its hash.
+    ///
+    /// Returns `None` if the frame id hash was never encountered.
+    #[inline]
+    pub fn lookup_frame_id(
+        &self,
+        frame_id_hash: TransformFrameIdHash,
+    ) -> Option<&TransformFrameId> {
+        self.frame_id_mapping.get(&frame_id_hash)
+    }
+
+    /// Formats a frame ID hash as a human-readable string.
+    ///
+    /// Returns the frame name if known, otherwise returns a debug representation of the hash.
+    #[inline]
+    pub fn format_frame(&self, frame_id_hash: TransformFrameIdHash) -> String {
+        self.lookup_frame_id(frame_id_hash)
+            .map_or_else(|| format!("{frame_id_hash:?}"), ToString::to_string)
     }
 }
 
@@ -252,7 +304,7 @@ impl EntityTransformIdMapping {
         let latest_at_query = ctx.current_query();
 
         let transform_frame_id_component =
-            archetypes::CoordinateFrame::descriptor_frame_id().component;
+            archetypes::CoordinateFrame::descriptor_frame().component;
 
         let query_shadowed_components = false;
         let results = latest_at_with_blueprint_resolved_data(

@@ -8,9 +8,8 @@ use re_types::{
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
@@ -21,7 +20,7 @@ use crate::{
 };
 
 use super::{
-    SpatialViewVisualizerData, filter_visualizable_2d_entities,
+    SpatialViewVisualizerData,
     utilities::{LabeledBatch, process_labels_2d},
 };
 
@@ -188,15 +187,6 @@ impl VisualizerSystem for Points2DVisualizer {
         VisualizerQueryInfo::from_archetype::<Points2D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -223,6 +213,7 @@ impl VisualizerSystem for Points2DVisualizer {
             view_query,
             context_systems,
             &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
