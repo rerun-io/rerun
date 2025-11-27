@@ -1,10 +1,10 @@
 ---
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
 half_sizes: [[1.0, 1.0]]
 centers: [[0.0, 0.0]]
-colors: [2428259839]
+colors: [3161148927]
 radii: [-1.5]
 labels: []
 show_labels: [true]

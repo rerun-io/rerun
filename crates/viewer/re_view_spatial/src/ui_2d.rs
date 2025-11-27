@@ -7,24 +7,27 @@ use re_renderer::{
     ViewPickingConfiguration,
     view_builder::{TargetConfiguration, ViewBuilder},
 };
-use re_types::blueprint::{
-    archetypes::{Background, NearClipPlane, VisualBounds2D},
-    components as blueprint_components,
+use re_types::{
+    Archetype as _, archetypes,
+    blueprint::{
+        archetypes::{Background, NearClipPlane, VisualBounds2D},
+        components as blueprint_components,
+    },
 };
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
-    ItemContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
-    ViewerContext, gpu_bridge,
+    ItemContext, QueryContext, ViewClass as _, ViewClassExt as _, ViewContext, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, gpu_bridge, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use super::{eye::Eye, ui::create_labels};
+use crate::contexts::TransformTreeContext;
 use crate::{
     Pinhole, SpatialView2D, ui::SpatialViewState, view_kind::SpatialViewKind,
     visualizers::collect_ui_labels,
 };
-
 // ---
 
 /// Pan and zoom, and return the current transform.
@@ -150,18 +153,43 @@ impl SpatialView2D {
             return Ok(());
         }
 
-        // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
+        // TODO(andreas): Why don't we have this already?
+        let view_ctx = ViewContext {
+            viewer_ctx: ctx,
+            view_id: query.view_id,
+            view_class_identifier: Self::identifier(),
+            view_state: state,
+            query_result: ctx.lookup_query_result(query.view_id),
+        };
 
-        // Note that we can't rely on the camera being part of scene.space_cameras since that requires
-        // the camera to be added to the scene!
-        //
-        // TODO(#6743): We don't have a data-result or the other pieces
-        // necessary to properly handle overrides, defaults, or fallbacks.
-        state.pinhole_at_origin = crate::pinhole::query_pinhole_from_store_without_blueprint(
-            ctx,
-            &ctx.current_query(),
-            query.space_origin,
-        );
+        // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
+        let transforms = system_output
+            .context_systems
+            .get::<TransformTreeContext>()?;
+        state.pinhole_at_origin = transforms
+            .pinhole_tree_root_info(transforms.target_frame())
+            .map(|pinhole_at_root| {
+                let pinhole = &pinhole_at_root.pinhole_projection;
+
+                let query_ctx = QueryContext {
+                    view_ctx: &view_ctx,
+                    target_entity_path: query.space_origin,
+                    archetype_name: Some(archetypes::Pinhole::name()),
+                    query: &query.latest_at_query(),
+                };
+                Pinhole {
+                    image_from_camera: pinhole.image_from_camera.0.into(),
+                    resolution: pinhole
+                        .resolution
+                        .unwrap_or_else(|| {
+                            typed_fallback_for(
+                                &query_ctx,
+                                archetypes::Pinhole::descriptor_resolution().component,
+                            )
+                        })
+                        .into(),
+                }
+            });
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
@@ -360,8 +388,6 @@ fn setup_target_config(
                 principal_point.extend(1.0),
             ),
             resolution,
-            color: None,
-            line_width: None,
         }
     };
     let pinhole_rect = Rect::from_min_size(
