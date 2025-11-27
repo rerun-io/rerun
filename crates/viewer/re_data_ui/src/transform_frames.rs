@@ -17,13 +17,13 @@ struct TransformFrameInfo {
     source_entity: Option<EntityPath>,
 }
 
-pub struct TransformHierarchyUi {
+pub struct TransformFramesUi {
     frames: Vec<TransformFrameInfo>,
     /// True if there are more transform frames than the ones shown here.
     more: bool,
 }
 
-impl TransformHierarchyUi {
+impl TransformFramesUi {
     pub fn from_components(
         ctx: &ViewerContext<'_>,
         query: &re_chunk_store::LatestAtQuery,

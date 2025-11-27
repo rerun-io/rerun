@@ -1,4 +1,4 @@
-use crate::{blob, image, transform_hierarchy, video};
+use crate::{blob, image, transform_frames, video};
 use re_chunk_store::UnitChunkShared;
 use re_types_core::ComponentDescriptor;
 use re_ui::{UiLayout, list_item};
@@ -8,7 +8,7 @@ pub enum ExtraDataUi {
     Video(video::VideoUi),
     Image(image::ImageUi),
     Blob(blob::BlobUi),
-    TransformHierarchy(transform_hierarchy::TransformHierarchyUi),
+    TransformHierarchy(transform_frames::TransformFramesUi),
 }
 
 impl ExtraDataUi {
@@ -31,7 +31,7 @@ impl ExtraDataUi {
                     .map(ExtraDataUi::Video)
             })
             .or_else(|| {
-                transform_hierarchy::TransformHierarchyUi::from_components(
+                transform_frames::TransformFramesUi::from_components(
                     ctx,
                     query,
                     entity_path,
