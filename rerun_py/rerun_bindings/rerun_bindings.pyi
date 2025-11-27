@@ -2048,6 +2048,17 @@ class OauthLoginFlow:
 
         """
 
+def init_login_flow() -> OauthLoginFlow | None:
+    """
+    Initialize an OAuth login flow.
+
+    Returns
+    -------
+    OauthLoginFlow | None
+        The login flow, or `None` if the user is already logged in.
+
+    """
+
 class Credentials:
     """The credentials for the OAuth login flow."""
 
