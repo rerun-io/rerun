@@ -193,7 +193,7 @@ pub struct Credentials {
     user: User,
 
     // Refresh token is optional because it may not be available in some cases,
-    // like the Jupyter notebook WASM viewer. In that case, the SDK handles
+    // like the Jupyter notebook Wasm viewer. In that case, the SDK handles
     // token refreshes.
     refresh_token: Option<RefreshToken>,
 

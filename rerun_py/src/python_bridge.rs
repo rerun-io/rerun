@@ -2233,11 +2233,7 @@ authkey = multiprocessing.current_process().authkey
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
 }
 
-#[pyclass(
-    // frozen,
-    name = "OauthLoginFlow",
-    module = "rerun_bindings.rerun_bindings"
-)]
+#[pyclass(name = "OauthLoginFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 struct PyOauthLoginFlow {
     login_flow: OauthLoginFlow,
 }
@@ -2284,7 +2280,12 @@ fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
     }
 }
 
-#[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    frozen,
+    eq,
+    name = "Credentials",
+    module = "rerun_bindings.rerun_bindings"
+)]
 struct PyCredentials(Credentials);
 
 #[pymethods]
@@ -2297,6 +2298,12 @@ impl PyCredentials {
     #[getter]
     fn user_email(&self) -> String {
         self.0.user().email.clone()
+    }
+}
+
+impl std::cmp::PartialEq for PyCredentials {
+    fn eq(&self, other: &Self) -> bool {
+        self.access_token() == other.access_token()
     }
 }
 
