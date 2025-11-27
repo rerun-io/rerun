@@ -5,7 +5,7 @@ use re_types_core::ChunkId;
 
 use crate::Chunk;
 
-/// See [`Chunk::split`].
+/// See [`Chunk::split_chunk_if_needed`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChunkSplitConfig {
     /// Split chunks larger than this.
@@ -27,7 +27,7 @@ pub struct ChunkSplitConfig {
 impl Chunk {
     /// Naively splits a chunk if it exceeds the configured thresholds.
     ///
-    /// The resulting pieces may still be larger than [`Self::chunk_max_bytes`].
+    /// The resulting pieces may still be larger than [`ChunkSplitConfig::chunk_max_bytes`].
     pub fn split_chunk_if_needed(chunk: Arc<Self>, cfg: &ChunkSplitConfig) -> Vec<Arc<Self>> {
         let ChunkSplitConfig {
             chunk_max_bytes,
