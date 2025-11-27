@@ -915,13 +915,13 @@ export class WebViewer {
     }
   }
 
-  set_credentials(access_token: string, refresh_token: string, email: string) {
+  set_credentials(access_token: string, email: string) {
     if (!this.#handle) {
       throw new Error(
         `attempted to set credentials in a stopped web viewer`,
       );
     }
-    this.#handle.set_credentials(access_token, refresh_token, email);
+    this.#handle.set_credentials(access_token, email);
   }
 
 

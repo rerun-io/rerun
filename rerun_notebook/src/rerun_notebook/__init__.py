@@ -269,11 +269,10 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     def close_url(self, url: str) -> None:
         self.send({"type": "close_url", "url": url})
 
-    def set_credentials(self, access_token: str, refresh_token: str, email: str) -> None:
+    def set_credentials(self, access_token: str, email: str) -> None:
         self.send({
             "type": "set_credentials",
             "access_token": access_token,
-            "refresh_token": refresh_token,
             "email": email,
         })
 

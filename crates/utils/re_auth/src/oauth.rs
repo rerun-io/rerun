@@ -56,6 +56,9 @@ pub enum CredentialsRefreshError {
 
     #[error("failed to deserialize credentials: {0}")]
     MalformedToken(#[from] MalformedTokenError),
+
+    #[error("no refresh token available")]
+    NoRefreshToken,
 }
 
 /// Refresh credentials if they are expired.
@@ -76,7 +79,11 @@ pub async fn refresh_credentials(
         -credentials.access_token().remaining_duration_secs()
     );
 
-    let response = api::refresh(&credentials.refresh_token).await?;
+    let Some(refresh_token) = &credentials.refresh_token else {
+        return Err(CredentialsRefreshError::NoRefreshToken);
+    };
+
+    let response = api::refresh(refresh_token).await?;
     let credentials = Credentials::from_auth_response(response)?
         .ensure_stored()
         .map_err(|err| CredentialsRefreshError::Store(err.0))?;
@@ -184,7 +191,12 @@ pub enum VerifyError {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Credentials {
     user: User,
-    refresh_token: RefreshToken,
+
+    // Refresh token is optional because it may not be available in some cases,
+    // like the Jupyter notebook WASM viewer. In that case, the SDK handles
+    // token refreshes.
+    refresh_token: Option<RefreshToken>,
+
     access_token: AccessToken,
 }
 
@@ -215,7 +227,7 @@ impl Credentials {
         let access_token = AccessToken::try_from_unverified_jwt(Jwt(res.access_token))?;
         Ok(InMemoryCredentials(Self {
             user: res.user,
-            refresh_token: RefreshToken(res.refresh_token),
+            refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
         }))
     }
@@ -225,7 +237,7 @@ impl Credentials {
     /// Warning: it does not check the signature of the access token.
     pub fn try_new(
         access_token: String,
-        refresh_token: String,
+        refresh_token: Option<String>,
         email: String,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         // TODO(aedm): check signature of the JWT token
@@ -239,7 +251,7 @@ impl Credentials {
             token: access_token,
             expires_at: claims.exp,
         };
-        let refresh_token = RefreshToken(refresh_token);
+        let refresh_token = refresh_token.map(RefreshToken);
 
         Ok(InMemoryCredentials(Self {
             user,
@@ -250,10 +262,6 @@ impl Credentials {
 
     pub fn access_token(&self) -> &AccessToken {
         &self.access_token
-    }
-
-    pub fn refresh_token(&self) -> String {
-        self.refresh_token.0.clone()
     }
 
     /// The currently authenticated user.

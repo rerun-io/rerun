@@ -2284,39 +2284,26 @@ fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
     }
 }
 
+// TODO(aedm): don't rename
 #[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
-struct PyCredentials {
-    access_token: String,
-    refresh_token: String,
-    user_email: String,
-}
+struct PyCredentials(Credentials);
 
 #[pymethods]
 impl PyCredentials {
     #[getter]
     fn access_token(&self) -> String {
-        self.access_token.clone()
-    }
-
-    #[getter]
-    fn refresh_token(&self) -> String {
-        self.refresh_token.clone()
+        self.0.access_token().as_str().to_owned()
     }
 
     #[getter]
     fn user_email(&self) -> String {
-        self.user_email.clone()
+        self.0.user().email.clone()
     }
 }
 
 #[pyfunction]
 fn get_credentials() -> PyResult<Option<PyCredentials>> {
-    let cred = re_auth::oauth::load_credentials()
+    let credentials = re_auth::oauth::load_credentials()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-    Ok(cred.map(|credentials| PyCredentials {
-        access_token: credentials.access_token().as_str().to_owned(),
-        refresh_token: credentials.refresh_token(),
-        user_email: credentials.user().email.clone(),
-    }))
+    Ok(credentials.map(PyCredentials))
 }

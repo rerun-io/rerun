@@ -142,7 +142,7 @@ class Viewer:
 
         # Set full credentials if we have them so the UI can show who's logged in
         if credentials is not None:
-            self._viewer.set_credentials(credentials.access_token, credentials.refresh_token, credentials.user_email)
+            self._viewer.set_credentials(credentials.access_token, credentials.user_email)
 
         # Viewer event handling
         self._event_callbacks: list[Callable[[ViewerEvent], None]] = []
@@ -492,5 +492,5 @@ class Viewer:
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
         self._event_callbacks.append(callback)
 
-    def set_credentials(self, access_token: str, refresh_token: str, email: str) -> None:
-        self._viewer.set_credentials(access_token, refresh_token, email)
+    def set_credentials(self, access_token: str, email: str) -> None:
+        self._viewer.set_credentials(access_token, email)

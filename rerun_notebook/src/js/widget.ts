@@ -138,8 +138,7 @@ class ViewerWidget {
         break;
       }
       case "set_credentials": {
-        console.log("XX widget.ts set_credentials", msg)
-        this.viewer.set_credentials(msg.access_token, msg.refresh_token, msg.email)
+        this.viewer.set_credentials(msg.access_token, msg.email)
         break;
       }
       default: {

@@ -1123,20 +1123,16 @@ impl App {
 
             SystemCommand::SetAuthCredentials {
                 access_token,
-                refresh_token,
                 email,
             } => {
-                let credentials = match re_auth::oauth::Credentials::try_new(
-                    access_token,
-                    refresh_token,
-                    email,
-                ) {
-                    Ok(credentials) => credentials,
-                    Err(err) => {
-                        re_log::error!("Failed to create credentials: {err}");
-                        return;
-                    }
-                };
+                let credentials =
+                    match re_auth::oauth::Credentials::try_new(access_token, None, email) {
+                        Ok(credentials) => credentials,
+                        Err(err) => {
+                            re_log::error!("Failed to create credentials: {err}");
+                            return;
+                        }
+                    };
                 if let Err(err) = credentials.ensure_stored() {
                     re_log::error!("Failed to store credentials: {err}");
                 }
