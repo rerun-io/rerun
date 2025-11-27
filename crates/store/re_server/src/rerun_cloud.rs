@@ -719,12 +719,14 @@ impl RerunCloudService for RerunCloudHandler {
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
-            dataset.add_layer(
-                entity_path,
-                DataSource::DEFAULT_LAYER.to_owned(),
-                ChunkStoreHandle::new(chunk_store),
-                IfDuplicateBehavior::Error,
-            )?;
+            dataset
+                .add_layer(
+                    entity_path,
+                    DataSource::DEFAULT_LAYER.to_owned(),
+                    ChunkStoreHandle::new(chunk_store),
+                    IfDuplicateBehavior::Error,
+                )
+                .await?;
         }
 
         Ok(tonic::Response::new(

@@ -1,6 +1,6 @@
 use crate::chunk_index::{FIELD_INSTANCE, Index};
 use crate::store::Error as StoreError;
-use arrow::array::{Float32Array, RecordBatch, StringArray};
+use arrow::array::{RecordBatch, StringArray};
 use datafusion::common::ScalarValue;
 use futures::{Stream, StreamExt as _};
 use itertools::Itertools as _;
@@ -42,10 +42,8 @@ pub async fn search_index(
         }
 
         IndexQueryProperties::Vector { top_k } => {
-            let q = query_data.try_downcast_array_ref::<Float32Array>()?;
-
             let mut scanner = &mut lance_dataset.scan();
-            scanner = scanner.nearest(FIELD_INSTANCE, q, top_k as usize)?;
+            scanner = scanner.nearest(FIELD_INSTANCE, query_data, top_k as usize)?;
             apply_parameters(scanner, request.scan_parameters, lance_dataset).await?;
 
             scanner.try_into_stream().await?

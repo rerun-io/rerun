@@ -327,12 +327,21 @@ impl DatasetChunkIndexes {
 mod tests {
     use super::*;
     use crate::chunk_index::DatasetChunkIndexes;
-    use arrow::array::{Array as _, record_batch};
-
-    use re_log_types::{EntryId, StoreKind, TimelineName};
+    use arrow::array::{
+        Array as _, ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder,
+        Float32Array, Float32Builder, ListBuilder, RecordBatch, record_batch,
+    };
+    use arrow::buffer::ScalarBuffer;
+    use nohash_hasher::IntMap;
+    use re_arrow_util::ArrowArrayDowncastRef as _;
+    use re_chunk_store::external::re_chunk;
+    use re_chunk_store::external::re_chunk::{ChunkComponents, TimeColumn};
+    use re_chunk_store::{ChunkStore, ChunkStoreConfig};
+    use re_log_types::{EntryId, StoreId, StoreKind, TimeType, Timeline, TimelineName};
+    use re_protos::cloud::v1alpha1::VectorDistanceMetric;
     use re_protos::cloud::v1alpha1::ext::{IndexColumn, IndexProperties, IndexQueryProperties};
     use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
-    use re_types_core::ComponentDescriptor;
+    use re_types_core::{ChunkId, ComponentDescriptor, Loggable as _, SerializedComponentColumn};
 
     const RRD: &str = "../../../tests/assets/rrd/snippets/views/timeseries.rrd";
     const ENTITY_PATH: &str = "/trig/sin";
@@ -427,6 +436,155 @@ mod tests {
             let next = next?;
             assert_eq!(next.column(0).len(), 1);
             //println!("{:?}", next);
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_vector_search() -> anyhow::Result<()> {
+        //---- Create a 3-rows dataset with a vector column
+
+        let mut dataset = Dataset::new(
+            EntryId::new(),
+            "test-data".to_owned(),
+            StoreKind::Recording,
+            Default::default(),
+        );
+
+        let partition_id = PartitionId::new("test-partition".to_owned());
+        let layer_name = "test-layer".to_owned();
+
+        let row_ids: FixedSizeBinaryArray = {
+            let row_ids = Tuid::to_arrow(vec![Tuid::new(), Tuid::new(), Tuid::new()])?;
+
+            row_ids
+                .downcast_array_ref::<FixedSizeBinaryArray>()
+                .unwrap()
+                .clone()
+        };
+
+        let timelines: IntMap<TimelineName, TimeColumn> = {
+            let times: ScalarBuffer<i64> = ScalarBuffer::from(vec![1, 2, 3]);
+            let time_column =
+                TimeColumn::new(Some(true), Timeline::new("tick", TimeType::Sequence), times);
+            IntMap::from_iter([(*time_column.timeline().name(), time_column)])
+        };
+
+        let components: ChunkComponents = {
+            let descriptor = ComponentDescriptor::partial("embedding");
+            let mut components = ChunkComponents::default();
+
+            let mut list_builder =
+                ListBuilder::new(FixedSizeListBuilder::new(Float32Builder::new(), 256));
+            for value in [1.0, 2.0, 3.0] {
+                let list_values = list_builder.values();
+                let coord_values = list_values.values();
+                for _ in 0..256 {
+                    coord_values.append_value(value);
+                }
+                list_values.append(true);
+                list_builder.append(true);
+            }
+
+            let serialized_column =
+                SerializedComponentColumn::new(list_builder.finish(), descriptor);
+
+            components.insert(serialized_column);
+
+            components
+        };
+
+        let chunk = re_chunk::Chunk::new(
+            ChunkId::new(),
+            EntityPath::from("/some/vectors"),
+            Some(true), // is_sorted
+            row_ids,
+            timelines,
+            components,
+        )?;
+
+        let mut store = ChunkStore::new(
+            StoreId::new(StoreKind::Recording, "app", "recording"),
+            ChunkStoreConfig::default(),
+        );
+        store.insert_chunk(&Arc::new(chunk))?;
+        let handle = ChunkStoreHandle::new(store);
+
+        dataset
+            .add_layer(partition_id, layer_name, handle, IfDuplicateBehavior::Error)
+            .await?;
+
+        //----- Create the index
+        let dir = tempfile::TempDir::new()?;
+        let column = IndexColumn {
+            entity_path: EntityPath::from("/some/vectors"),
+            descriptor: ComponentDescriptor {
+                component: ComponentIdentifier::new("embedding"),
+                archetype: None,
+                component_type: None,
+            },
+        };
+
+        let config = IndexConfig {
+            time_index: TimelineName::new("tick"),
+            column: column.clone(),
+            properties: IndexProperties::VectorIvfPq {
+                target_partition_num_rows: None,
+                metric: VectorDistanceMetric::Cosine,
+                num_sub_vectors: 32,
+            },
+        };
+        let index = dataset
+            .indexes()
+            .add_index(&dataset, &config, dir.path())
+            .await?;
+
+        //----- Query the index
+
+        // We search for [3.0 ... 3.0], that should come back with a distance of 0.0
+        let query = {
+            let mut values = Float32Builder::new();
+            for _ in 0..256 {
+                values.append_value(3.0);
+            }
+            let values: ArrayRef = Arc::new(values.finish());
+            RecordBatch::try_from_iter([("item", values)])?
+        };
+
+        let mut result = search::search_index(
+            index,
+            SearchDatasetRequest {
+                column: column.clone(),
+                query,
+                properties: IndexQueryProperties::Vector { top_k: 2 },
+                scan_parameters: ScanParameters {
+                    columns: vec![FIELD_TIMEPOINT.to_owned(), FIELD_INSTANCE.to_owned()],
+                    ..Default::default()
+                },
+            },
+        )
+        .await?;
+
+        while let Some(next) = result.next().await {
+            let next = next?;
+            let distances = next
+                .column_by_name("_distance")
+                .unwrap()
+                .downcast_array_ref::<Float32Array>()
+                .unwrap();
+            let instances = next
+                .column_by_name("instance")
+                .unwrap()
+                .downcast_array_ref::<FixedSizeListArray>()
+                .unwrap()
+                .values()
+                .downcast_array_ref::<Float32Array>()
+                .unwrap();
+
+            assert_eq!(distances.value(0), 0.0);
+            assert!(distances.value(1) > 0.0);
+            assert_eq!(instances.value(0), 3.0);
         }
 
         Ok(())

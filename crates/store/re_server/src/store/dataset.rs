@@ -375,26 +375,32 @@ impl Dataset {
     }
 
     /// Adds a layer
-    ///
-    /// Result: a successful result is `true` if the layer existed and was overwritten
-    pub fn add_layer(
+    pub async fn add_layer(
         &mut self,
         partition_id: PartitionId,
         layer_name: String,
         store_handle: ChunkStoreHandle,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<bool, Error> {
+    ) -> Result<(), Error> {
         re_log::debug!(?partition_id, ?layer_name, "add_layer");
 
         let overwritten = self
             .inner
             .modify()
             .partitions
-            .entry(partition_id)
+            .entry(partition_id.clone())
             .or_default()
-            .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
+            .insert_layer(
+                layer_name.clone(),
+                Layer::new(store_handle.clone()),
+                on_duplicate,
+            )?;
 
-        Ok(overwritten)
+        self.indexes()
+            .chunks_loaded(partition_id, store_handle, &layer_name, overwritten)
+            .await?;
+
+        Ok(())
     }
 
     /// Load a RRD using its recording id as partition id.¨
@@ -423,18 +429,15 @@ impl Dataset {
 
             let partition_id = PartitionId::new(store_id.recording_id().to_string());
 
-            let overwritten = self.add_layer(
+            self.add_layer(
                 partition_id.clone(),
                 layer_name.to_owned(),
                 chunk_store.clone(),
                 on_duplicate,
-            )?;
+            )
+            .await?;
 
             new_partition_ids.insert(partition_id.clone());
-
-            self.indexes()
-                .chunks_loaded(partition_id, chunk_store, layer_name, overwritten)
-                .await?;
         }
 
         Ok(new_partition_ids)
