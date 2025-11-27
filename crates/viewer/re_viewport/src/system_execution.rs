@@ -1,13 +1,14 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
 
 use re_viewer_context::{
-    PerSystemDataResults, SystemExecutionOutput, ViewContextCollection,
+    PerSystemDataResults, PerVisualizerInViewClass, SystemExecutionOutput, ViewContextCollection,
     ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
-    ViewSystemIdentifier, ViewerContext, VisualizerCollection,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
+    VisualizerExecutionOutput,
 };
 
 use crate::view_highlights::highlights_for_view;
@@ -24,7 +25,7 @@ fn run_view_systems(
     >,
     context_systems: &mut ViewContextCollection,
     view_systems: &mut VisualizerCollection,
-) -> Vec<re_renderer::QueueableDrawData> {
+) -> PerVisualizerInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>> {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
     let view_ctx = view.bundle_context_with_state(ctx, view_state);
@@ -44,21 +45,20 @@ fn run_view_systems(
     };
 
     re_tracing::profile_wait!("VisualizerSystem::execute");
-    view_systems
+    let per_visualizer_results = view_systems
         .systems
         .par_iter_mut()
         .map(|(name, part)| {
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            match part.execute(&view_ctx, query, context_systems) {
-                Ok(part_draw_data) => part_draw_data,
-                Err(err) => {
-                    re_log::error_once!("Error executing visualizer {name:?}: {err}");
-                    Vec::new()
-                }
-            }
+            let result = part.execute(&view_ctx, query, context_systems);
+            (*name, result.map_err(Arc::new))
         })
-        .flatten()
-        .collect()
+        .collect();
+
+    PerVisualizerInViewClass {
+        view_class_identifier: view.class_identifier(),
+        per_visualizer: per_visualizer_results,
+    }
 }
 
 pub fn execute_systems_for_view<'a>(
@@ -108,7 +108,7 @@ pub fn execute_systems_for_view<'a>(
         .view_class_registry()
         .new_visualizer_collection(view.class_identifier());
 
-    let draw_data = run_view_systems(
+    let visualizer_execution_output = run_view_systems(
         ctx,
         view,
         &query,
@@ -123,7 +123,7 @@ pub fn execute_systems_for_view<'a>(
         SystemExecutionOutput {
             view_systems,
             context_systems,
-            draw_data,
+            visualizer_execution_output,
         },
     )
 }

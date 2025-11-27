@@ -1,4 +1,3 @@
-use re_log_types::EntityPath;
 use re_test_context::TestContext;
 use re_types::{
     ViewClassIdentifier,
@@ -24,7 +23,7 @@ fn test_all_component_fallbacks() {
         for (arch_name, arch) in &test_context.reflection.archetypes {
             let ctx = QueryContext {
                 view_ctx: &view_context,
-                target_entity_path: &EntityPath::root(),
+                target_entity_path: &"/stockholm/södermalm/slussen".into(),
                 archetype_name: Some(*arch_name),
                 query: &test_context.blueprint_query,
             };

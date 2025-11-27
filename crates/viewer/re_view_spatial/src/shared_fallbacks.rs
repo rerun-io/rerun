@@ -63,7 +63,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
     // Axis length
     system_registry.register_fallback_provider(
-        archetypes::Transform3D::descriptor_axis_length().component,
+        archetypes::TransformAxes3D::descriptor_axis_length().component,
         |ctx| {
             let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 
@@ -112,6 +112,15 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             // the heuristic will change it or it will be user edited. In the case of non-defined bounds
             // this value works better with the default camera setup.
             components::AxisLength::from(0.3)
+        },
+    );
+
+    // Show frame
+    system_registry.register_fallback_provider(
+        archetypes::TransformAxes3D::descriptor_show_frame().component,
+        |_ctx| {
+            // We don't show the label with the frame id by default.
+            components::ShowLabels(false.into())
         },
     );
 }

@@ -32,18 +32,20 @@ def test_table_api(tmp_path_factory: pytest.TempPathFactory) -> None:
 rerun_segment_id: string
 operator: string
 -- schema metadata --
-sorbet:version: '0.1.1'\
+sorbet:version: '0.1.2'\
 """)
+
+        df = table.df()
 
         assert str(table.df().collect()) == inline_snapshot("[]")
 
         client.append_to_table(
             "my_table",
-            rerun_segment_id=["segment_001", "segment_002", "segment_003"],
-            operator=["alice", "bob", "carol"],
+            rerun_segment_id=["segment_001", "segment_002"],
+            operator=["alice", "bob"],
         )
 
-        assert str(table.df().select("rerun_segment_id", "operator")) == inline_snapshot("""\
+        assert str(df.sort("rerun_segment_id")) == inline_snapshot("""\
 ┌─────────────────────┬─────────────────────┐
 │ rerun_segment_id    ┆ operator            │
 │ ---                 ┆ ---                 │
@@ -52,9 +54,32 @@ sorbet:version: '0.1.1'\
 │ segment_001         ┆ alice               │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ segment_002         ┆ bob                 │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ segment_003         ┆ carol               │
 └─────────────────────┴─────────────────────┘\
 """)
 
-        assert str(table.df()) == str(client.ctx.table("my_table"))
+        client.append_to_table(
+            "my_table",
+            rerun_segment_id=["segment_003"],
+            operator=["carol"],
+        )
+
+        assert str(df.sort("rerun_segment_id")) == inline_snapshot("""\
+┌───────────────────────────────────────────────┐
+│ METADATA:                                     │
+│ * version: 0.1.2                              │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬─────────────────────┐ │
+│ │ rerun_segment_id    ┆ operator            │ │
+│ │ ---                 ┆ ---                 │ │
+│ │ type: nullable Utf8 ┆ type: nullable Utf8 │ │
+│ ╞═════════════════════╪═════════════════════╡ │
+│ │ segment_001         ┆ alice               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ segment_002         ┆ bob                 │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ segment_003         ┆ carol               │ │
+│ └─────────────────────┴─────────────────────┘ │
+└───────────────────────────────────────────────┘\
+""")
+
+        assert str(df) == str(client.ctx.table("my_table"))

@@ -537,9 +537,21 @@ fn rr_recording_stream_new_impl(
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             re_log::setup_logging();
-            re_crash_handler::install_crash_handlers(re_build_info::build_info!());
             if cfg!(debug_assertions) {
-                re_log::info!("Using a DEBUG BUILD of the Rerun SDK!");
+                re_crash_handler::install_crash_handlers(re_build_info::build_info!());
+
+                // Log a clear warning to inform users that (accidentally) use a debug build of the SDK.
+                // This should however _never_ cause a panic if RERUN_PANIC_ON_WARN is set, e.g. in test environments.
+                const DEBUG_BUILD_WARNING: &str =
+                    "Using a DEBUG BUILD of the Rerun SDK with Rerun crash handlers!";
+                let can_log_warning = std::env::var("RERUN_PANIC_ON_WARN")
+                    .map(|value| value == "0")
+                    .unwrap_or(true);
+                if can_log_warning {
+                    re_log::warn!(DEBUG_BUILD_WARNING);
+                } else {
+                    re_log::info!(DEBUG_BUILD_WARNING);
+                }
             }
         });
     }

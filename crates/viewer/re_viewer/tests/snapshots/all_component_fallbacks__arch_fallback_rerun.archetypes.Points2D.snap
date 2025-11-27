@@ -1,10 +1,10 @@
 ---
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
 positions: [[0.0, 0.0]]
 radii: [-1.5]
-colors: [2428259839]
+colors: [3161148927]
 labels: []
 show_labels: [true]
 draw_order: [20.0]

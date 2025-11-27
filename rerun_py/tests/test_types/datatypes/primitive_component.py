@@ -53,12 +53,16 @@ class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
+        typed_data: Sequence[PrimitiveComponent]
+
         if isinstance(data, PrimitiveComponent):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                pa.array(np.asarray([x.value for x in data], dtype=np.uint32)),
+                pa.array(np.asarray([x.value for x in typed_data], dtype=np.uint32)),
             ],
             fields=list(data_type),
         )

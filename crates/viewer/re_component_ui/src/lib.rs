@@ -19,11 +19,14 @@ mod plane3d;
 mod radius;
 mod resolution;
 mod response_utils;
+mod text_log_columns;
 mod time_range;
+mod timeline_columns;
 mod transforms;
 mod variant_uis;
 mod video_timestamp;
 mod view_coordinates;
+mod visible_dnd;
 mod visual_bounds2d;
 mod zoom_level;
 
@@ -206,6 +209,12 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(plane3d::edit_or_view_plane3d);
     registry.add_multiline_edit_or_view(plane3d::multiline_edit_or_view_plane3d);
+
+    registry.add_singleline_array_edit_or_view(timeline_columns::edit_or_view_columns_singleline);
+    registry.add_multiline_array_edit_or_view(timeline_columns::edit_or_view_columns_multiline);
+
+    registry.add_singleline_array_edit_or_view(text_log_columns::edit_or_view_columns_singleline);
+    registry.add_multiline_array_edit_or_view(text_log_columns::edit_or_view_columns_multiline);
 
     // --------------------------------------------------------------------------------
     // All variant UIs:

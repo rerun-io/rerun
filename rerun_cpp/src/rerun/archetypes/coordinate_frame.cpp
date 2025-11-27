@@ -8,8 +8,8 @@
 namespace rerun::archetypes {
     CoordinateFrame CoordinateFrame::clear_fields() {
         auto archetype = CoordinateFrame();
-        archetype.frame_id =
-            ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_frame_id)
+        archetype.frame =
+            ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_frame)
                 .value_or_throw();
         return archetype;
     }
@@ -17,15 +17,15 @@ namespace rerun::archetypes {
     Collection<ComponentColumn> CoordinateFrame::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(1);
-        if (frame_id.has_value()) {
-            columns.push_back(frame_id.value().partitioned(lengths_).value_or_throw());
+        if (frame.has_value()) {
+            columns.push_back(frame.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
 
     Collection<ComponentColumn> CoordinateFrame::columns() {
-        if (frame_id.has_value()) {
-            return columns(std::vector<uint32_t>(frame_id.value().length(), 1));
+        if (frame.has_value()) {
+            return columns(std::vector<uint32_t>(frame.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -40,8 +40,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(1);
 
-        if (archetype.frame_id.has_value()) {
-            cells.push_back(archetype.frame_id.value());
+        if (archetype.frame.has_value()) {
+            cells.push_back(archetype.frame.value());
         }
 
         return rerun::take_ownership(std::move(cells));

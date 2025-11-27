@@ -1,0 +1,6 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+timeline_columns: [{visible: true, timeline: log_time}]
+text_log_columns: [{visible: true, kind: 1}]

@@ -9,8 +9,9 @@ use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem, external::re_entity_db::InstancePath, typed_fallback_for,
+    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    external::re_entity_db::InstancePath, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewPropertyQueryError;
 
@@ -42,8 +43,7 @@ impl VisualizerSystem for SeriesPointsSystem {
             .queried
             .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
-        query_info.relevant_archetypes =
-            std::iter::once(archetypes::SeriesPoints::name()).collect();
+        query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
 
         query_info
     }
@@ -53,11 +53,11 @@ impl VisualizerSystem for SeriesPointsSystem {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         self.load_scalars(ctx, query)?;
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -122,7 +122,7 @@ impl SeriesPointsSystem {
 
         let fallback_shape = MarkerShape::default();
 
-        let time_range = util::determine_time_range(ctx)?;
+        let time_range = util::determine_time_range(ctx, data_result)?;
 
         {
             use re_view::RangeResultsExt as _;

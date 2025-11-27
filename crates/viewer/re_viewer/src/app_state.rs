@@ -2,8 +2,7 @@ use std::{borrow::Cow, str::FromStr as _};
 
 use ahash::HashMap;
 use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
-
-use re_chunk::{Timeline, TimelineName};
+use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
@@ -15,18 +14,17 @@ use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
-    DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, SelectionChange, StorageContext, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
-    ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
+    DragAndDropManager, FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext, blueprint_timeline,
     open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::ViewportBlueprint;
-use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
+use re_viewport_blueprint::{ViewportBlueprint, ui::add_view_or_container_modal_ui};
 
 use crate::{
-    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,
+    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx, history,
     navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
 };
 
@@ -84,6 +82,13 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) navigation: Navigation,
 
+    /// A history of urls the viewer has visited.
+    ///
+    /// This is not updated if this is a web viewer with control over
+    /// web history.
+    #[serde(skip)]
+    pub(crate) history: history::History,
+
     /// Storage for the state of each `View`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
@@ -127,6 +132,7 @@ impl Default for AppState {
             open_url_modal: Default::default(),
             share_modal: Default::default(),
             navigation: Default::default(),
+            history: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -198,21 +204,21 @@ impl AppState {
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
-        match self.navigation.peek() {
-            DisplayMode::Settings => {
+        match self.navigation.current() {
+            DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
-            DisplayMode::ChunkStoreBrowser => {
+            DisplayMode::ChunkStoreBrowser(prior_mode) => {
                 let should_datastore_ui_remain_active =
                     self.datastore_ui
                         .ui(store_context, ui, self.app_options.timestamp_format);
                 if !should_datastore_ui_remain_active {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
@@ -290,8 +296,8 @@ impl AppState {
 
                 let recording = store_context.recording;
 
-                let maybe_visualizable_entities_per_visualizer = view_class_registry
-                    .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
+                let visualizable_entities_per_visualizer = view_class_registry
+                    .visualizable_entities_for_visualizer_systems(recording.store_id());
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
@@ -303,18 +309,26 @@ impl AppState {
                         .views
                         .values()
                         .map(|view| {
-                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                            let visualizable_entities = view
-                                .class(view_class_registry)
-                                .determine_visualizable_entities(
-                                    &maybe_visualizable_entities_per_visualizer,
-                                    recording,
-                                    &view_class_registry
-                                        .new_visualizer_collection(view.class_identifier()),
-                                    &view.space_origin,
-                                );
+                            // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
+                            // but we don't have access to `ViewerContext` just yet.
+                            let visualizable_entities = if let Some(view_class) =
+                                view_class_registry.class_entry(view.class_identifier())
+                            {
+                                PerVisualizerInViewClass {
+                                    view_class_identifier: view.class_identifier(),
+                                    per_visualizer: visualizable_entities_per_visualizer
+                                        .iter()
+                                        .filter_map(|(vis, ents)| {
+                                            view_class
+                                                .visualizer_system_ids
+                                                .contains(vis)
+                                                .then_some((*vis, ents.clone()))
+                                        })
+                                        .collect(),
+                                }
+                            } else {
+                                PerVisualizerInViewClass::empty(view.class_identifier())
+                            };
 
                             (
                                 view.id,
@@ -340,7 +354,7 @@ impl AppState {
                 let blueprint_query = app_blueprint_ctx.blueprint_query;
 
                 let egui_ctx = ui.ctx().clone();
-                let display_mode = self.navigation.peek();
+                let display_mode = self.navigation.current();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
                         is_test: app_env.is_test(),
@@ -361,8 +375,7 @@ impl AppState {
                     connected_receivers: rx_log,
                     store_context,
                     storage_context,
-                    maybe_visualizable_entities_per_visualizer:
-                        &maybe_visualizable_entities_per_visualizer,
+                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
                     time_ctrl,
@@ -383,17 +396,7 @@ impl AppState {
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
-                let query_results = update_overrides(
-                    store_context,
-                    query_results,
-                    view_class_registry,
-                    &viewport_ui.blueprint,
-                    &blueprint_query,
-                    time_ctrl.timeline(),
-                    &maybe_visualizable_entities_per_visualizer,
-                    &indicated_entities_per_visualizer,
-                    view_states,
-                );
+                let query_results = update_overrides(&ctx, &viewport_ui.blueprint, view_states);
 
                 // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
                 // it's just a bunch of refs so not really that big of a deal in practice.
@@ -417,8 +420,7 @@ impl AppState {
                     connected_receivers: rx_log,
                     store_context,
                     storage_context,
-                    maybe_visualizable_entities_per_visualizer:
-                        &maybe_visualizable_entities_per_visualizer,
+                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
                     time_ctrl,
@@ -594,7 +596,7 @@ impl AppState {
                                 }
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // handled above
                         }
                     },
                 );
@@ -667,7 +669,7 @@ impl AppState {
                                 ui.loading_screen("Loading data source:", &*source);
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // Handled above
                         }
                     });
 
@@ -799,16 +801,9 @@ impl AppState {
 /// Updates the query results for the given viewport UI.
 ///
 /// Returns query results derived from the previous one.
-#[expect(clippy::too_many_arguments)]
 fn update_overrides(
-    store_context: &StoreContext<'_>,
-    mut query_results: HashMap<ViewId, DataQueryResult>,
-    view_class_registry: &ViewClassRegistry,
+    ctx: &ViewerContext<'_>,
     viewport_blueprint: &ViewportBlueprint,
-    blueprint_query: &LatestAtQuery,
-    active_timeline: &Timeline,
-    maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-    indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, DataQueryResult> {
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
@@ -820,8 +815,10 @@ fn update_overrides(
     }
 
     for view in viewport_blueprint.views.values() {
-        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+        view_states.ensure_state_exists(view.id, view.class(ctx.view_class_registry));
     }
+
+    let mut query_results = ctx.query_results.clone();
 
     let work_items = viewport_blueprint
         .views
@@ -848,31 +845,21 @@ fn update_overrides(
                  view_state,
                  mut query_result,
              }| {
-                // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                let visualizable_entities = view
-                    .class(view_class_registry)
-                    .determine_visualizable_entities(
-                        maybe_visualizable_entities_per_visualizer,
-                        store_context.recording,
-                        &view_class_registry.new_visualizer_collection(view.class_identifier()),
-                        &view.space_origin,
-                    );
+                let visualizable_entities =
+                    ctx.collect_visualizable_entities_for_view_class(view.class_identifier());
 
                 let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
                     view,
-                    view_class_registry,
-                    maybe_visualizable_entities_per_visualizer,
+                    ctx.view_class_registry,
                     &visualizable_entities,
-                    indicated_entities_per_visualizer,
+                    ctx.indicated_entities_per_visualizer,
                 );
 
                 resolver.update_overrides(
-                    store_context.blueprint,
-                    blueprint_query,
-                    active_timeline,
-                    view_class_registry,
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                    ctx.time_ctrl.timeline(),
+                    ctx.view_class_registry,
                     &mut query_result,
                     view_state,
                 );

@@ -57,8 +57,6 @@ struct PendingFilePromise {
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
 
-type ReceiveSetTable = parking_lot::Mutex<Vec<crossbeam::channel::Receiver<TableMsg>>>;
-
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     #[allow(clippy::allow_attributes, dead_code)] // Unused on wasm32
@@ -74,7 +72,7 @@ pub struct App {
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) popstate_listener: Option<crate::history::PopstateListener>,
+    pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
 
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
@@ -86,7 +84,6 @@ pub struct App {
     component_fallback_registry: FallbackProviderRegistry,
 
     rx_log: ReceiveSet<DataSourceMessage>,
-    rx_table: ReceiveSetTable,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -393,9 +390,10 @@ impl App {
             component_ui_registry,
             component_fallback_registry,
             rx_log: Default::default(),
-            rx_table: Default::default(),
+
             #[cfg(target_arch = "wasm32")]
             open_files_promise: Default::default(),
+
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new(
@@ -449,6 +447,10 @@ impl App {
         &self.build_info
     }
 
+    pub fn startup_options(&self) -> &StartupOptions {
+        &self.startup_options
+    }
+
     pub fn app_options(&self) -> &AppOptions {
         self.state.app_options()
     }
@@ -463,18 +465,25 @@ impl App {
 
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
-        if let Ok(url) = ViewerOpenUrl::from_str(url) {
-            url.open(
-                &self.egui_ctx,
-                &OpenUrlOptions {
-                    follow_if_http: false,
-                    select_redap_source_when_loaded: true,
-                    show_loader: true,
-                },
-                &self.command_sender,
-            );
-        } else {
-            re_log::warn!("Failed to open URL: {url}");
+        match ViewerOpenUrl::from_str(url) {
+            Ok(url) => {
+                url.open(
+                    &self.egui_ctx,
+                    &OpenUrlOptions {
+                        follow_if_http: false,
+                        select_redap_source_when_loaded: true,
+                        show_loader: true,
+                    },
+                    &self.command_sender,
+                );
+            }
+            Err(err) => {
+                if err.to_string().contains(url) {
+                    re_log::error!("{err}");
+                } else {
+                    re_log::error!("Failed to open URL {url}: {err}");
+                }
+            }
         }
     }
 
@@ -484,7 +493,7 @@ impl App {
 
     #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
-        re_log::debug!("Adding new log receiver: {:?}", rx.source());
+        re_log::debug!("Adding new log receiver: {}", rx.source());
 
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
@@ -594,15 +603,6 @@ impl App {
         }
     }
 
-    #[expect(clippy::needless_pass_by_ref_mut)]
-    pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
-        // Make sure we wake up when a message is sent.
-        #[cfg(not(target_arch = "wasm32"))]
-        let rx = crate::wake_up_ui_thread_on_each_msg_crossbeam(rx, self.egui_ctx.clone());
-
-        self.rx_table.lock().push(rx);
-    }
-
     pub fn msg_receive_set(&self) -> &ReceiveSet<DataSourceMessage> {
         &self.rx_log
     }
@@ -659,23 +659,65 @@ impl App {
         }
     }
 
-    /// Updates the web address on web. Noop on native.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[expect(clippy::unused_self)]
-    fn update_web_address_bar(&self, _store_hub: &StoreHub) {}
-
-    /// Updates the web address on web. Noop on native.
-    #[cfg(target_arch = "wasm32")]
-    fn update_web_address_bar(&self, store_hub: &StoreHub) {
-        if !self.startup_options.web_history_enabled() {
-            return;
+    /// If we're on web and use web history this updates the
+    /// web address bar and updates history.
+    ///
+    /// Otherwise this updates the viewer tracked history.
+    fn update_history(&mut self, store_hub: &StoreHub) {
+        if !self.startup_options().web_history_enabled() {
+            self.update_viewer_history(store_hub);
+        } else {
+            // We don't want to spam the web history API with changes, because
+            // otherwise it will start complaining about it being an insecure
+            // operation.
+            //
+            // This is a kind of hacky way to fix that: If there are currently any
+            // inputs, don't update the web address bar. This works for most cases
+            // because you need to hold down pointer to aggressively scrub, need to
+            // hold down key inputs to quickly step through the timeline.
+            #[cfg(target_arch = "wasm32")]
+            if !self.egui_ctx.is_using_pointer()
+                && self
+                    .egui_ctx
+                    .input(|input| !input.any_touches() && input.keys_down.is_empty())
+            {
+                self.update_web_history(store_hub);
+            }
         }
+    }
 
+    /// Updates the viewer tracked history
+    fn update_viewer_history(&mut self, store_hub: &StoreHub) {
         let time_ctrl = store_hub
             .active_recording()
             .and_then(|db| self.state.time_control(db.store_id()));
 
-        let display_mode = self.state.navigation.peek();
+        let display_mode = self.state.navigation.current();
+        let selection = self.state.selection_state.selected_items();
+
+        let Ok(url) =
+            ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+                .map(|mut url| {
+                    // We don't want the time range in the history url, as that actually leads
+                    // to a subset of the current data!
+                    url.clear_time_range();
+                    url
+                })
+        else {
+            return;
+        };
+
+        self.state.history.update_current_url(url);
+    }
+
+    /// Updates the web address and web history.
+    #[cfg(target_arch = "wasm32")]
+    fn update_web_history(&self, store_hub: &StoreHub) {
+        let time_ctrl = store_hub
+            .active_recording()
+            .and_then(|db| self.state.time_control(db.store_id()));
+
+        let display_mode = self.state.navigation.current();
         let selection = self.state.selection_state.selected_items();
 
         let Ok(url) =
@@ -707,7 +749,7 @@ impl App {
 
         re_log::debug!("Updating navigation bar");
 
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
+        use crate::web_history::{HistoryEntry, HistoryExt as _, history};
         use crate::web_tools::JsResultExt as _;
 
         /// Returns the url without the fragment
@@ -818,7 +860,7 @@ impl App {
                         .navigation
                         .replace(DisplayMode::LocalRecordings(recording_id.clone()));
                 } else {
-                    self.state.navigation.push_start_mode();
+                    self.state.navigation.reset();
                 }
             }
 
@@ -876,7 +918,7 @@ impl App {
             }
 
             SystemCommand::CloseAllEntries => {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -902,7 +944,7 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
-                if &display_mode == self.state.navigation.peek() {
+                if &display_mode == self.state.navigation.current() {
                     return;
                 }
 
@@ -921,15 +963,51 @@ impl App {
                     self.state
                         .selection_state
                         .set_selection(re_viewer_context::ItemCollection::default());
-                    self.state.navigation.push(display_mode);
+                    self.state.navigation.replace(display_mode);
                 } else {
                     self.state.navigation.replace(display_mode);
                 }
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
+
+            SystemCommand::OpenSettings => {
+                self.state
+                    .navigation
+                    .replace(DisplayMode::Settings(Box::new(
+                        self.state.navigation.current().clone(),
+                    )));
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
+            }
+
+            SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {
+                DisplayMode::LocalRecordings(_)
+                | DisplayMode::RedapEntry(_)
+                | DisplayMode::RedapServer(_) => {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
+                            self.state.navigation.current().clone(),
+                        )));
+                }
+
+                DisplayMode::ChunkStoreBrowser(_)
+                | DisplayMode::Settings(_)
+                | DisplayMode::Loading(_)
+                | DisplayMode::LocalTable(_) => {
+                    re_log::debug!(
+                        "Cannot activate chunk store browser from current display mode: {:?}",
+                        self.state.navigation.current()
+                    );
+                }
+            },
+
             SystemCommand::ResetDisplayMode => {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -1503,6 +1581,33 @@ impl App {
                 );
             }
 
+            UICommand::NavigateBack => {
+                if let Some(url) = self.state.history.go_back() {
+                    url.clone().open(
+                        egui_ctx,
+                        &OpenUrlOptions {
+                            follow_if_http: true,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &self.command_sender,
+                    );
+                }
+            }
+            UICommand::NavigateForward => {
+                if let Some(url) = self.state.history.go_forward() {
+                    url.clone().open(
+                        egui_ctx,
+                        &OpenUrlOptions {
+                            follow_if_http: true,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &self.command_sender,
+                    );
+                }
+            }
+
             UICommand::Undo => {
                 if let Some(store_context) = store_context {
                     let blueprint_id = store_context.blueprint.store_id().clone();
@@ -1575,21 +1680,25 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
+            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
                 DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
-                    self.state.navigation.push(DisplayMode::ChunkStoreBrowser);
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
+                            self.state.navigation.current().clone(),
+                        )));
                 }
 
-                DisplayMode::ChunkStoreBrowser => {
-                    self.state.navigation.pop();
+                DisplayMode::ChunkStoreBrowser(mode) => {
+                    self.state.navigation.replace((**mode).clone());
                 }
 
-                DisplayMode::Settings | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
+                DisplayMode::Settings(_) | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
                     re_log::debug!(
                         "Cannot toggle chunk store browser from current display mode: {:?}",
-                        self.state.navigation.peek()
+                        self.state.navigation.current()
                     );
                 }
             },
@@ -1609,12 +1718,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.state.navigation.push(DisplayMode::Settings);
-
-                #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::SettingsOpened {});
-                }
+                self.command_sender.send_system(SystemCommand::OpenSettings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -2083,41 +2187,6 @@ impl App {
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
-        // TODO(grtlr): Should we bring back analytics for this too?
-        self.rx_table.lock().retain(|rx| match rx.try_recv() {
-            Ok(table) => {
-                // TODO(grtlr): For now we don't append anything to existing stores and always replace.
-                // TODO(ab): When we actually append to existing table, we will have to clear the UI
-                // cache by calling `DataFusionTableWidget::clear_state`.
-                let store = TableStore::default();
-                if let Err(err) = store.add_record_batch(table.data.clone()) {
-                    re_log::warn!("Failed to load table {}: {err}", table.id);
-                } else {
-                    if store_hub
-                        .insert_table_store(table.id.clone(), store)
-                        .is_some()
-                    {
-                        re_log::debug!("Overwritten table store with id: `{}`", table.id);
-                    } else {
-                        re_log::debug!("Inserted table store with id: `{}`", table.id);
-                    }
-                    self.command_sender
-                        .send_system(SystemCommand::set_selection(
-                            re_viewer_context::Item::TableId(table.id.clone()),
-                        ));
-
-                    // If the viewer is in the background, tell the user that it has received something new.
-                    egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
-                        egui::UserAttentionType::Informational,
-                    ));
-                }
-
-                true
-            }
-            Err(crossbeam::channel::TryRecvError::Empty) => true,
-            Err(_) => false,
-        });
-
         let start = web_time::Instant::now();
 
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
@@ -2144,6 +2213,10 @@ impl App {
             match msg {
                 DataSourceMessage::LogMsg(msg) => {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
+                }
+
+                DataSourceMessage::TableMsg(table) => {
+                    self.receive_table_msg(store_hub, egui_ctx, table);
                 }
 
                 DataSourceMessage::UiCommand(ui_command) => {
@@ -2274,6 +2347,38 @@ impl App {
         // Handle any action that is triggered by a new store _after_ processing the message that caused it.
         if msg_will_add_new_store {
             self.on_new_store(egui_ctx, store_id, channel_source, store_hub);
+        }
+    }
+
+    fn receive_table_msg(
+        &self,
+        store_hub: &mut StoreHub,
+        egui_ctx: &egui::Context,
+        table: TableMsg,
+    ) {
+        let TableMsg { id, data } = table;
+
+        // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+        // TODO(ab): When we actually append to existing table, we will have to clear the UI
+        // cache by calling `DataFusionTableWidget::clear_state`.
+        let store = TableStore::default();
+        if let Err(err) = store.add_record_batch(data) {
+            re_log::error!("Failed to load table {id}: {err}");
+        } else {
+            if store_hub.insert_table_store(id.clone(), store).is_some() {
+                re_log::debug!("Overwritten table store with id: `{id}`");
+            } else {
+                re_log::debug!("Inserted table store with id: `{id}`");
+            }
+            self.command_sender
+                .send_system(SystemCommand::set_selection(
+                    re_viewer_context::Item::TableId(id),
+                ));
+
+            // If the viewer is in the background, tell the user that it has received something new.
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+                egui::UserAttentionType::Informational,
+            ));
         }
     }
 
@@ -2913,10 +3018,10 @@ impl eframe::App for App {
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
-                crate::history::go_back();
+                crate::web_history::go_back();
             }
             if fwd_pressed {
-                crate::history::go_forward();
+                crate::web_history::go_forward();
             }
         }
 
@@ -2929,6 +3034,9 @@ impl eframe::App for App {
             .store_hub
             .take()
             .expect("Failed to take store hub from the Viewer");
+
+        // Update data source order so it's based on opening order.
+        store_hub.update_data_source_order(&self.rx_log.sources());
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
@@ -3023,9 +3131,9 @@ impl eframe::App for App {
 
         // Make sure some app is active
         // Must be called before `read_context` below.
-        if let DisplayMode::Loading(source) = self.state.navigation.peek() {
+        if let DisplayMode::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
-                self.state.navigation.pop();
+                self.state.navigation.reset();
             }
         } else if store_hub.active_app().is_none() {
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
@@ -3053,7 +3161,7 @@ impl eframe::App for App {
                     None => {}
                 }
             } else {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
@@ -3128,7 +3236,7 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            let display_mode = self.state.navigation.peek().clone();
+            let display_mode = self.state.navigation.current().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,
@@ -3139,20 +3247,7 @@ impl eframe::App for App {
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        // We don't want to spam the web history API with changes, because
-        // otherwise it will start complaining about it being an insecure
-        // operation.
-        //
-        // This is a kind of hacky way to fix that: If there are currently any
-        // inputs, don't update the web address bar. This works for most cases
-        // because you need to hold down pointer to aggressively scrub, need to
-        // hold down key inputs to quickly step through the timeline.
-        if !egui_ctx.is_using_pointer()
-            && egui_ctx.input(|input| !input.any_touches() && input.keys_down.is_empty())
-        {
-            // Update web address after commands have been applied.
-            self.update_web_address_bar(&store_hub);
-        }
+        self.update_history(&store_hub);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);

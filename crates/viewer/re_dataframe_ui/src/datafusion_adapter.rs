@@ -12,6 +12,7 @@ use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
+use crate::table_selection::TableSelectionState;
 use crate::{ColumnFilter, RequestedObject};
 
 /// Make sure we escape column names correctly for datafusion.
@@ -346,6 +347,8 @@ impl DataFusionAdapter {
                 ui.ctx().clone(),
                 self.query.clone().execute(),
             );
+
+            TableSelectionState::clear(ui.ctx(), self.id);
         }
 
         ui.data_mut(|data| {

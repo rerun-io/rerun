@@ -18,7 +18,7 @@ use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
 
-use crate::history::install_popstate_listener;
+use crate::web_history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
@@ -27,7 +27,6 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
 
 struct Channel {
     log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
-    table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
 }
 
 #[wasm_bindgen]
@@ -261,12 +260,9 @@ impl WebHandle {
                 channel_name: channel_name.to_owned(),
             },
         );
-        let (table_tx, table_rx) = crossbeam::channel::unbounded();
 
         app.add_log_receiver(log_rx);
-        app.add_table_receiver(table_rx);
-        self.tx_channels
-            .insert(id.to_owned(), Channel { log_tx, table_tx });
+        self.tx_channels.insert(id.to_owned(), Channel { log_tx });
     }
 
     /// Close an existing channel for streaming data.
@@ -278,11 +274,10 @@ impl WebHandle {
             return;
         };
 
-        if let Some(Channel { log_tx, table_tx }) = self.tx_channels.remove(id) {
+        if let Some(Channel { log_tx }) = self.tx_channels.remove(id) {
             log_tx
                 .quit(None)
                 .warn_on_err_once("Failed to send quit marker");
-            drop(table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
@@ -346,7 +341,7 @@ impl WebHandle {
         };
 
         if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.table_tx.clone();
+            let tx = channel.log_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
             let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
@@ -372,7 +367,7 @@ impl WebHandle {
 
             let record_batch = batches.remove(0);
 
-            let msg = match from_arrow_encoded(record_batch) {
+            let msg = match table_msg_from_record_batch(record_batch) {
                 Ok(msg) => msg,
                 Err(err) => {
                     re_log::error_once!("Failed to decode Arrow message: {err}");
@@ -382,7 +377,7 @@ impl WebHandle {
 
             let egui_ctx = app.egui_ctx.clone();
 
-            match tx.send(msg) {
+            match tx.send(msg.into()) {
                 Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");
@@ -850,7 +845,9 @@ pub fn set_email(email: String) {
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(mut data: RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
+fn table_msg_from_record_batch(
+    mut data: RecordBatch,
+) -> Result<TableMsg, Box<dyn std::error::Error>> {
     let id = data
         .schema_metadata_mut()
         .remove("__table_id")
@@ -935,7 +932,7 @@ mod tests {
         };
 
         let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
-        let decoded = from_arrow_encoded(encoded).expect("from concatenated failed");
+        let decoded = table_msg_from_record_batch(encoded).expect("from concatenated failed");
 
         assert_eq!(msg, decoded);
     }

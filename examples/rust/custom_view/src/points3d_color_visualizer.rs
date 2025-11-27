@@ -2,10 +2,10 @@ use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
 use rerun::external::{
     egui,
     re_log_types::{EntityPath, Instance},
-    re_renderer,
     re_viewer_context::{
-        IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
-        ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
+        IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
+        ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
+        VisualizerQueryInfo, VisualizerSystem,
     },
 };
 
@@ -36,8 +36,10 @@ impl VisualizerSystem for Points3DColorVisualizer {
         } else {
             // Instead, our custom query here is solely interested in Points3D's colors.
             VisualizerQueryInfo {
-                relevant_archetypes: Default::default(),
-                required: std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
+                relevant_archetype: Default::default(),
+                required: RequiredComponents::All(
+                    std::iter::once(rerun::Points3D::descriptor_colors().component).collect(),
+                ),
                 queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
             }
         }
@@ -49,7 +51,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
             // Query components while taking into account blueprint overrides
@@ -91,7 +93,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly,
         // but your custom view's `ui` implementation has to set up an re_renderer output for this.
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

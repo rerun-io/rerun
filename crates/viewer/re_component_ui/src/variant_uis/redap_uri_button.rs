@@ -70,7 +70,7 @@ pub fn redap_uri_button(
                     ui.scope_builder(
                         UiBuilder::new().max_rect(ui.max_rect()).layout(
                             Layout::left_to_right(Align::Center)
-                                .with_main_justify(true)
+                                .with_main_justify(false)
                                 .with_cross_justify(true)
                                 .with_main_align(Align::Min),
                         ),

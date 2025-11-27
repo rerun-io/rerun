@@ -753,3 +753,62 @@ pub fn create_recording_with_properties(
 
     Ok(tmp_path)
 }
+
+/// Create a minimal rerun recording with one entity and one component.
+///
+/// Depending on the `is_binary` argument, the component will have underlying
+/// arrow type of either `List[u8]` or `Binary`.
+pub fn create_minimal_binary_recording_in(
+    tuid_prefix: TuidPrefix,
+    partition_id: &str,
+    entity_path: &str,
+    is_binary: bool,
+    in_dir: &std::path::Path,
+) -> anyhow::Result<PathBuf> {
+    use re_chunk::Chunk;
+    use re_log_types::{TimeInt, build_log_time};
+    use re_sdk::{ComponentDescriptor, SerializedComponentBatch};
+
+    if !std::fs::metadata(in_dir)?.is_dir() {
+        return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
+    }
+
+    let tmp_path = in_dir.join(format!("{partition_id}.rrd"));
+
+    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
+        .recording_id(partition_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let data: Vec<&[u8]> = vec![b"hello", b"rerun"];
+
+    let array: ArrayRef = if is_binary {
+        Arc::new(arrow::array::BinaryArray::from(data))
+    } else {
+        let list_array =
+            arrow::array::ListArray::from_iter_primitive::<arrow::datatypes::UInt8Type, _, _>(
+                data.iter()
+                    .map(|slice| Some(slice.iter().copied().map(Some))),
+            );
+        Arc::new(list_array)
+    };
+
+    let frame = TimeInt::new_temporal(10);
+
+    let chunk = Chunk::builder_with_id(next_chunk_id(), entity_path)
+        .with_serialized_batch(
+            next_row_id(),
+            [build_log_time(frame.into())],
+            SerializedComponentBatch::new(array, ComponentDescriptor::partial("data")),
+        )
+        .build()?;
+
+    rec.send_chunk(chunk);
+
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}

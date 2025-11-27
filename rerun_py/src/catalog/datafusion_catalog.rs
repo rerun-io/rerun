@@ -34,7 +34,7 @@ impl PyDataFusionCatalogProvider {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyDataFusionCatalogProvider {
     /// Returns a DataFusion catalog provider capsule.
     fn __datafusion_catalog_provider__<'py>(

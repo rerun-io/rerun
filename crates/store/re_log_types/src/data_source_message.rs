@@ -1,7 +1,7 @@
 // TODO(andreas): Conceptually these should go to `re_data_source`.
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
-use crate::{AbsoluteTimeRange, LogMsg, StoreId, TimelineName, impl_into_enum};
+use crate::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
 
 /// Message from a data source.
 ///
@@ -11,6 +11,9 @@ pub enum DataSourceMessage {
     /// See [`LogMsg`].
     LogMsg(LogMsg),
 
+    /// See [`TableMsg`].
+    TableMsg(TableMsg),
+
     /// A UI command that has to be ordered relative to [`LogMsg`]s.
     ///
     /// Non-ui receivers can safely ignore these.
@@ -18,7 +21,20 @@ pub enum DataSourceMessage {
 }
 
 impl_into_enum!(LogMsg, DataSourceMessage, LogMsg);
+impl_into_enum!(TableMsg, DataSourceMessage, TableMsg);
 impl_into_enum!(DataSourceUiCommand, DataSourceMessage, UiCommand);
+
+impl DataSourceMessage {
+    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+        match self {
+            Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
+            Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
+            Self::UiCommand(_) => {
+                // Ui commands doesn't have meta-data yet
+            }
+        }
+    }
+}
 
 /// UI commands issued when streaming in datasets.
 ///

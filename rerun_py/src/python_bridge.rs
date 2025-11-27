@@ -478,6 +478,10 @@ impl PyChunkBatcherConfig {
     fn NEVER() -> Self {
         Self(ChunkBatcherConfig::NEVER)
     }
+
+    pub fn __str__(&self) -> String {
+        format!("{:#?}", self.0)
+    }
 }
 
 /// Create a new recording stream.
@@ -646,6 +650,10 @@ impl PyRecordingStream {
     /// Calling operations such as flush or set_sink will result in an error.
     fn is_forked_child(&self) -> bool {
         self.0.is_forked_child()
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("RecordingStream({:#?})", self.0.store_info())
     }
 }
 
@@ -935,6 +943,10 @@ impl PyGrpcSink {
 
         Ok(Self { uri })
     }
+
+    pub fn __repr__(&self) -> String {
+        format!("GrpcSink({:#?})", self.uri)
+    }
 }
 
 #[pyclass(
@@ -956,6 +968,10 @@ impl PyFileSink {
     #[pyo3(text_signature = "(self, path)")]
     fn new(path: PathBuf) -> Self {
         Self { path }
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!("FileSink({:#?})", self.path)
     }
 }
 
@@ -1377,6 +1393,10 @@ impl PyMemorySinkStorage {
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
+
+    pub fn __repr__(&self) -> String {
+        format!("MemorySinkStorage({:#?})", self.inner.store_id())
+    }
 }
 
 #[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
@@ -1385,7 +1405,7 @@ struct PyBinarySinkStorage {
     inner: BinaryStreamStorage,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///

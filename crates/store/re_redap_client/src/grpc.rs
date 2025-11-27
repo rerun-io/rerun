@@ -13,7 +13,7 @@ use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE};
+use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, PartitionQueryParams};
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ApiError> {
@@ -392,49 +392,6 @@ async fn stream_partition_from_server(
     fragment: re_uri::Fragment,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), ApiError> {
-    let exclude_static_data = false;
-    let exclude_temporal_data = true;
-    let static_chunk_stream = client
-        .fetch_partition_chunks(
-            dataset_id,
-            partition_id.clone(),
-            exclude_static_data,
-            exclude_temporal_data,
-            None,
-        )
-        .await?;
-
-    let exclude_static_data = true;
-    let exclude_temporal_data = false;
-    let temporal_chunk_stream = client
-        .fetch_partition_chunks(
-            dataset_id,
-            partition_id,
-            exclude_static_data,
-            exclude_temporal_data,
-            time_range.clone().map(|time_range| {
-                Query {
-                    range: Some(QueryRange {
-                        index: time_range.timeline.name().to_string(),
-                        index_range: time_range.clone().into(),
-                    }),
-                    latest_at: Some(QueryLatestAt {
-                        index: Some(time_range.timeline.name().to_string()),
-                        at: time_range.range.min(),
-                    }),
-                    columns_always_include_everything: false,
-                    columns_always_include_chunk_ids: false,
-                    columns_always_include_byte_offsets: false,
-                    columns_always_include_entity_paths: false,
-                    columns_always_include_static_indexes: false,
-                    columns_always_include_global_indexes: false,
-                    columns_always_include_component_indexes: false,
-                }
-                .into()
-            }),
-        )
-        .await?;
-
     let store_id = store_info.store_id.clone();
 
     if tx
@@ -490,39 +447,97 @@ async fn stream_partition_from_server(
         }
     }
 
+    // TODO(RR-2976): Do not, under any circumstances, try to chain the static and temporal streams
+    // together. Interlaced streams are a giant footgun that will invariably lead to the exhaustion
+    // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
+    // See the attached issues for more information.
+
+    let forward_chunk = |chunk: Chunk| {
+        if tx
+            .send(
+                LogMsg::ArrowMsg(
+                    store_id.clone(),
+                    chunk.to_arrow_msg().map_err(|err| {
+                        ApiError::serialization(
+                            err,
+                            "failed to parse chunk in /FetchChunks response stream",
+                        )
+                    })?,
+                )
+                .into(),
+            )
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok::<_, ApiError>(false);
+        }
+
+        if let Some(on_msg) = &on_msg {
+            on_msg();
+        }
+
+        Ok(true)
+    };
+
+    let static_chunk_stream = client
+        .fetch_partition_chunks(PartitionQueryParams {
+            dataset_id,
+            partition_id: partition_id.clone(),
+            include_static_data: true,
+            include_temporal_data: false,
+            query: None,
+        })
+        .await?;
+    let mut static_chunk_stream =
+        fetch_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
+
     // TODO(#10229): this looks to be converting back and forth?
-
-    let static_chunk_stream = fetch_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
-    let temporal_chunk_stream =
-        fetch_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
-
-    let mut chunk_stream = static_chunk_stream.chain(temporal_chunk_stream);
-
-    while let Some(chunks) = chunk_stream.next().await {
+    while let Some(chunks) = static_chunk_stream.next().await {
         for chunk in chunks? {
             let (chunk, _partition_id) = chunk;
-
-            if tx
-                .send(
-                    LogMsg::ArrowMsg(
-                        store_id.clone(),
-                        chunk.to_arrow_msg().map_err(|err| {
-                            ApiError::serialization(
-                                err,
-                                "failed to parse chunk in /FetchChunks response stream",
-                            )
-                        })?,
-                    )
-                    .into(),
-                )
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(());
+            if !forward_chunk(chunk)? {
+                return Ok(()); // cancelled
             }
+        }
+    }
 
-            if let Some(on_msg) = &on_msg {
-                on_msg();
+    let temporal_chunk_stream = client
+        .fetch_partition_chunks(PartitionQueryParams {
+            dataset_id,
+            partition_id,
+            include_static_data: false,
+            include_temporal_data: true,
+            query: time_range.map(|time_range| {
+                Query {
+                    range: Some(QueryRange {
+                        index: time_range.timeline.name().to_string(),
+                        index_range: time_range.into(),
+                    }),
+                    latest_at: Some(QueryLatestAt {
+                        index: Some(time_range.timeline.name().to_string()),
+                        at: time_range.range.min(),
+                    }),
+                    columns_always_include_everything: false,
+                    columns_always_include_chunk_ids: false,
+                    columns_always_include_byte_offsets: false,
+                    columns_always_include_entity_paths: false,
+                    columns_always_include_static_indexes: false,
+                    columns_always_include_global_indexes: false,
+                    columns_always_include_component_indexes: false,
+                }
+                .into()
+            }),
+        })
+        .await?;
+    let mut temporal_chunk_stream =
+        fetch_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
+
+    // TODO(#10229): this looks to be converting back and forth?
+    while let Some(chunks) = temporal_chunk_stream.next().await {
+        for chunk in chunks? {
+            let (chunk, _partition_id) = chunk;
+            if !forward_chunk(chunk)? {
+                return Ok(()); // cancelled
             }
         }
     }

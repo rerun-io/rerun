@@ -30,20 +30,29 @@ table InstancePoses3D (
   "attr.rust.derive": " PartialEq"
 ) {
   /// Translation vectors.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   translations: [rerun.components.PoseTranslation3D] ("attr.rerun.component_optional", nullable, order: 1100);
 
   /// Rotations via axis + angle.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 1200);
 
   /// Rotations via quaternion.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 1300);
 
   /// Scaling factors.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   scales: [rerun.components.PoseScale3D] ("attr.rerun.component_optional", nullable, order: 1400);
 
   /// 3x3 transformation matrices.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   mat3x3: [rerun.components.PoseTransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
 
   // TODO(RR-2627): Make frame id configurable.
-  // TODO(andreas): Support axis_length?
 }

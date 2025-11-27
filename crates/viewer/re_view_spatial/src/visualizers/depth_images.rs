@@ -10,17 +10,14 @@ use re_types::{
     image::ImageKind,
 };
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, MaybeVisualizableEntities,
-    QueryContext, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem, typed_fallback_for,
+    ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
+    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpatialView3D,
     contexts::{SpatialSceneEntityContext, TransformTreeContext},
-    view_kind::SpatialViewKind,
-    visualizers::filter_visualizable_2d_entities,
 };
 
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
@@ -35,7 +32,7 @@ pub struct DepthImageVisualizer {
 impl Default for DepthImageVisualizer {
     fn default() -> Self {
         Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
+            data: SpatialViewVisualizerData::new(None),
             depth_cloud_entities: IntMap::default(),
         }
     }
@@ -220,21 +217,13 @@ impl VisualizerSystem for DepthImageVisualizer {
         VisualizerQueryInfo::from_archetype::<DepthImage>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
 
         let transforms = context_systems.get::<TransformTreeContext>()?;
@@ -244,6 +233,8 @@ impl VisualizerSystem for DepthImageVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -321,32 +312,23 @@ impl VisualizerSystem for DepthImageVisualizer {
             },
         )?;
 
-        let mut draw_data_list = Vec::new();
-
-        match re_renderer::renderer::DepthCloudDrawData::new(
+        let depth_cloud = re_renderer::renderer::DepthCloudDrawData::new(
             ctx.viewer_ctx.render_ctx(),
             &DepthClouds {
                 clouds: depth_clouds,
                 radius_boost_in_ui_points_for_outlines:
                     re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
             },
-        ) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!(
-                    "Failed to create depth cloud draw data from depth images: {err}"
-                );
-            }
-        }
+        )
+        .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
+        output.draw_data.push(depth_cloud.into());
 
-        draw_data_list.push(PickableTexturedRect::to_draw_data(
+        output.draw_data.push(PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
         )?);
 
-        Ok(draw_data_list)
+        Ok(output)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
