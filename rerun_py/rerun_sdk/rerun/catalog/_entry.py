@@ -3,8 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import TYPE_CHECKING, Generic, TypeVar
 
-# TODO: rename
-from rerun_bindings import DatasetEntry as DatasetEntryInternal, TableEntry as TableEntryInternal
+from rerun_bindings import DatasetEntryInternal, TableEntryInternal
 
 if TYPE_CHECKING:
     from datetime import datetime

@@ -21,13 +21,13 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
-use crate::catalog::{PyDatasetEntry, to_py_err};
+use crate::catalog::{PyDatasetEntryInternal, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDataframeQueryView {
-    dataset: Py<PyDatasetEntry>,
+    dataset: Py<PyDatasetEntryInternal>,
 
     query_expression: QueryExpression,
 
@@ -40,7 +40,7 @@ pub struct PyDataframeQueryView {
 impl PyDataframeQueryView {
     #[instrument(skip(dataset, contents, py))]
     pub fn new(
-        dataset: Py<PyDatasetEntry>,
+        dataset: Py<PyDatasetEntryInternal>,
         index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
@@ -54,7 +54,7 @@ impl PyDataframeQueryView {
 
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
-        let schema = PyDatasetEntry::fetch_arrow_schema(&dataset.borrow(py))?;
+        let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset.borrow(py))?;
 
         // TODO(jleibs): Check schema for the index name
 
@@ -439,7 +439,7 @@ impl PyDataframeQueryView {
     }
 
     pub fn __str__(&self, py: Python<'_>) -> String {
-        let dataset_str = PyDatasetEntry::__str__(self.dataset.borrow(py));
+        let dataset_str = PyDatasetEntryInternal::__str__(self.dataset.borrow(py));
         let query_expr_str = format!("{:#?}", self.query_expression);
 
         let dataset_line = indent::indent_all_by(1, format!("dataset={dataset_str},"));

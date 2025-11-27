@@ -38,15 +38,18 @@ use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, P
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
-#[pyclass(name = "DatasetEntry", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyDatasetEntry {
+#[pyclass(
+    name = "DatasetEntryInternal",
+    module = "rerun_bindings.rerun_bindings"
+)] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+pub struct PyDatasetEntryInternal {
     client: Py<PyCatalogClientInternal>,
     entry_details: EntryDetails,
     dataset_details: DatasetDetails,
     dataset_handle: DatasetHandle,
 }
 
-impl PyDatasetEntry {
+impl PyDatasetEntryInternal {
     pub fn new(client: Py<PyCatalogClientInternal>, dataset_entry: DatasetEntry) -> Self {
         Self {
             client,
@@ -66,7 +69,7 @@ impl PyDatasetEntry {
 }
 
 #[pymethods]
-impl PyDatasetEntry {
+impl PyDatasetEntryInternal {
     //
     // Entry methods
     //
@@ -955,7 +958,7 @@ impl PyDatasetEntry {
     }
 }
 
-impl PyDatasetEntry {
+impl PyDatasetEntryInternal {
     pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
         let connection = self_.client.borrow_mut(self_.py()).connection().clone();
 

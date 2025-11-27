@@ -22,8 +22,8 @@ use crate::{
 ///
 /// Note: this object acts as a table provider for DataFusion.
 //TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
-#[pyclass(name = "TableEntry", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyTableEntry {
+#[pyclass(name = "TableEntryInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+pub struct PyTableEntryInternal {
     client: Py<PyCatalogClientInternal>,
     entry_details: EntryDetails,
     lazy_provider: Option<Arc<dyn TableProvider + Send>>,
@@ -31,7 +31,7 @@ pub struct PyTableEntry {
 }
 
 #[pymethods]
-impl PyTableEntry {
+impl PyTableEntryInternal {
     //
     // Entry methods
     //
@@ -116,7 +116,7 @@ impl PyTableEntry {
     }
 }
 
-impl PyTableEntry {
+impl PyTableEntryInternal {
     pub fn new(client: Py<PyCatalogClientInternal>, table_entry: TableEntry) -> Self {
         let url = match &table_entry.provider_details {
             ProviderDetails::LanceTable(p) => Some(p.table_url.to_string()),

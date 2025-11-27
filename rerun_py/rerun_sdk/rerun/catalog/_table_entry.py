@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-# TODO: rename
-from rerun_bindings import TableEntry as TableEntryInternal
+from rerun_bindings import TableEntryInternal
 
 from . import (
     Entry,

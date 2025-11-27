@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-# TODO: rename
-from rerun_bindings import DatasetEntry as DatasetEntryInternal
+from rerun_bindings import DatasetEntryInternal
 
 from . import (
     DataframeQueryView,
