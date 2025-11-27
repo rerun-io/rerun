@@ -159,113 +159,19 @@ impl PyEntryDetails {
 pub fn update_entry(
     py: Python<'_>,
     name: Option<String>,
-    entry_details: &Py<PyEntryDetails>,
+    entry_details: &mut EntryDetails,
     client: &Py<PyCatalogClientInternal>,
 ) -> PyResult<()> {
-    let mut entry_details = entry_details.borrow_mut(py);
-    let entry_id = entry_details.0.id;
+    let entry_id = entry_details.id;
     let connection = client.borrow_mut(py).connection().clone();
 
     let entry_details_update =
         re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
 
     let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
-    entry_details.0 = updated_entry_details;
+    *entry_details = updated_entry_details;
 
     Ok(())
-}
-
-// ---
-
-/// An entry in the catalog.
-#[pyclass(name = "Entry", subclass, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyEntry {
-    pub client: Py<PyCatalogClientInternal>,
-
-    pub id: Py<PyEntryId>,
-
-    pub details: EntryDetails,
-}
-
-#[pymethods]
-impl PyEntry {
-    /// The entry's id.
-    #[getter]
-    pub fn id(&self, py: Python<'_>) -> Py<PyEntryId> {
-        self.id.clone_ref(py)
-    }
-
-    /// The entry's name.
-    #[getter]
-    pub fn name(&self) -> String {
-        self.details.name.clone()
-    }
-
-    /// The catalog client that this entry belongs to.
-    #[getter]
-    pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
-        self.client.clone_ref(py)
-    }
-
-    /// The entry's kind.
-    #[getter]
-    pub fn kind(&self) -> PyResult<PyEntryKind> {
-        self.details.kind.try_into()
-    }
-
-    /// The entry's creation date and time.
-    #[getter]
-    //TODO(ab): use jiff when updating to pyo3 0.24.0
-    pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
-        let ts = self.details.created_at;
-        // If the `prost::Timestamp` was legal, then this is also legal.
-        #[expect(clippy::unwrap_used)]
-        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
-    }
-
-    /// The entry's last updated date and time.
-    #[getter]
-    //TODO(ab): use jiff when updating to pyo3 0.24.0
-    pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
-        let ts = self.details.updated_at;
-        // If the `prost::Timestamp` was legal, then this is also legal.
-        #[expect(clippy::unwrap_used)]
-        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
-    }
-
-    // ---
-
-    /// Delete this entry from the catalog.
-    fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
-        let entry_id = self.id.borrow(py).id;
-        let connection = self.client.borrow_mut(py).connection().clone();
-
-        connection.delete_entry(py, entry_id)
-    }
-
-    /// Update this entry's properties.
-    ///
-    /// Parameters
-    /// ----------
-    /// name : str | None
-    ///     New name for the entry
-    #[pyo3(signature = (*, name=None))]
-    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
-        let entry_id = self.id.borrow(py).id;
-        let connection = self.client.borrow_mut(py).connection().clone();
-
-        let entry_details_update =
-            re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate { name: name.clone() };
-
-        let updated_entry_details = connection.update_entry(py, entry_id, entry_details_update)?;
-        self.details = updated_entry_details;
-
-        Ok(())
-    }
-
-    fn __repr__(&self) -> String {
-        format!("Entry({:?}, '{}')", self.details.kind, self.details.name)
-    }
 }
 
 #[cfg(test)]

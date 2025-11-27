@@ -407,8 +407,7 @@ impl PyDataframeQueryView {
         let py = self_.py();
 
         let dataset = self_.dataset.borrow(py);
-        let super_ = dataset.as_super();
-        let client = super_.client.borrow(py);
+        let client = dataset.client().borrow(py);
         let ctx = client.ctx(py)?;
         let ctx = ctx.bind(py);
 
@@ -427,9 +426,8 @@ impl PyDataframeQueryView {
         py: Python<'py>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let dataset = self_.dataset.borrow(py);
-        let entry = dataset.as_super();
-        let dataset_id = entry.details.id;
-        let connection = entry.client.borrow(py).connection().clone();
+        let dataset_id = dataset.entry_id();
+        let connection = dataset.client().borrow(py).connection().clone();
 
         // Fetch relevant chunks
         connection.get_chunk_ids_for_dataframe_query(
@@ -456,9 +454,8 @@ impl PyDataframeQueryView {
 impl PyDataframeQueryView {
     fn as_table_provider(&self, py: Python<'_>) -> PyResult<Arc<dyn TableProvider>> {
         let dataset = self.dataset.borrow(py);
-        let entry = dataset.as_super();
-        let dataset_id = entry.details.id;
-        let connection = entry.client.borrow(py).connection().clone();
+        let dataset_id = dataset.entry_id();
+        let connection = dataset.client().borrow(py).connection().clone();
 
         wait_for_future(py, async {
             DataframeQueryTableProvider::new(

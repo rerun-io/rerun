@@ -1272,47 +1272,6 @@ class EntryKind:
     def __int__(self) -> int:
         """int(self)"""  # noqa: D400
 
-class Entry:
-    """An entry in the catalog."""
-
-    @property
-    def id(self) -> EntryId:
-        """The entry's id."""
-
-    @property
-    def name(self) -> str:
-        """The entry's name."""
-
-    @property
-    def kind(self) -> EntryKind:
-        """The entry's kind."""
-
-    @property
-    def created_at(self) -> datetime:
-        """The entry's creation date and time."""
-
-    @property
-    def updated_at(self) -> datetime:
-        """The entry's last updated date and time."""
-
-    @property
-    def catalog(self) -> CatalogClientInternal:
-        """The catalog client that this entry belongs to."""
-
-    def delete(self) -> None:
-        """Delete this entry from the catalog."""
-
-    def update(self, *, name: str | None = None) -> None:
-        """
-        Update this entry's properties.
-
-        Parameters
-        ----------
-        name : str | None
-            New name for the entry
-
-        """
-
 class EntryDetailsInternal:
     @property
     def id(self) -> EntryId: ...
@@ -1927,7 +1886,6 @@ class CatalogClientInternal:
 
     # ---
 
-    def all_entries(self) -> list[Entry]: ...
     def dataset_entries(self) -> list[DatasetEntry]: ...
     def table_entries(self) -> list[TableEntry]: ...
 

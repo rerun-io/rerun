@@ -11,10 +11,10 @@ use pyo3::{
 use tracing::instrument;
 
 use re_datafusion::TableEntryTableProvider;
-use re_protos::cloud::v1alpha1::ext::{ProviderDetails, TableEntry, TableInsertMode};
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry, TableInsertMode};
 
 use crate::{
-    catalog::{PyCatalogClientInternal, PyEntry, PyEntryDetails, entry::update_entry, to_py_err},
+    catalog::{PyCatalogClientInternal, PyEntryDetails, entry::update_entry, to_py_err},
     utils::{get_tokio_runtime, wait_for_future},
 };
 
@@ -22,10 +22,10 @@ use crate::{
 ///
 /// Note: this object acts as a table provider for DataFusion.
 //TODO(ab): expose metadata about the table (e.g. stuff found in `provider_details`).
-#[pyclass(name = "TableEntry", extends=PyEntry, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(name = "TableEntry", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyTableEntry {
     client: Py<PyCatalogClientInternal>,
-    entry_details: Py<PyEntryDetails>,
+    entry_details: EntryDetails,
     lazy_provider: Option<Arc<dyn TableProvider + Send>>,
     url: Option<String>,
 }
@@ -40,19 +40,18 @@ impl PyTableEntry {
         self.client.clone_ref(py)
     }
 
-    fn entry_details(&self, py: Python<'_>) -> Py<PyEntryDetails> {
-        self.entry_details.clone_ref(py)
+    fn entry_details(&self, py: Python<'_>) -> PyResult<Py<PyEntryDetails>> {
+        Py::new(py, PyEntryDetails(self.entry_details.clone()))
     }
 
     /// Delete this entry from the catalog.
     fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
-        let entry_id = self.entry_details.borrow(py).0.id;
         let connection = self.client.borrow_mut(py).connection().clone();
-        connection.delete_entry(py, entry_id)
+        connection.delete_entry(py, self.entry_details.id)
     }
 
-    fn update(&self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
-        update_entry(py, name, &self.entry_details, &self.client)
+    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
+        update_entry(py, name, &mut self.entry_details, &self.client)
     }
 
     //
@@ -80,9 +79,8 @@ impl PyTableEntry {
     pub fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
-        let super_ = self_.as_super();
-        let client = super_.client.borrow(py);
-        let table_name = super_.name().clone();
+        let client = self_.client.borrow(py);
+        let table_name = self_.entry_details.name.clone();
         let ctx = client.ctx(py)?;
         let ctx = ctx.bind(py);
 
@@ -119,38 +117,31 @@ impl PyTableEntry {
 }
 
 impl PyTableEntry {
-    pub fn new(
-        py: Python<'_>,
-        client: Py<PyCatalogClientInternal>,
-        table_entry: &TableEntry,
-    ) -> PyResult<Self> {
+    pub fn new(client: Py<PyCatalogClientInternal>, table_entry: TableEntry) -> Self {
         let url = match &table_entry.provider_details {
             ProviderDetails::LanceTable(p) => Some(p.table_url.to_string()),
             ProviderDetails::SystemTable(_) => None,
         };
 
-        Ok(Self {
+        Self {
             client,
-            entry_details: Py::new(py, PyEntryDetails(table_entry.details.clone()))?,
+            entry_details: table_entry.details,
             lazy_provider: None,
             url,
-        })
+        }
     }
 
     fn table_provider(mut self_: PyRefMut<'_, Self>) -> PyResult<Arc<dyn TableProvider + Send>> {
         let py = self_.py();
         if self_.lazy_provider.is_none() {
-            let super_ = self_.as_mut();
-
-            let id = super_.id.borrow(py).id;
-
-            let connection = super_.client.borrow_mut(py).connection().clone();
+            let table_id = self_.entry_details.id;
+            let connection = self_.client.borrow_mut(py).connection().clone();
 
             self_.lazy_provider = Some(
                 wait_for_future(py, async {
                     TableEntryTableProvider::new(
                         connection.client().await?,
-                        id,
+                        table_id,
                         Some(get_tokio_runtime().handle().clone()),
                     )
                     .into_provider()
