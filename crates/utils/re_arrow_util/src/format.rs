@@ -449,7 +449,7 @@ fn format_dataframe_without_metadata(
         }
 
         if 0 < hidden_rows {
-            table.add_row([format!("…+ {hidden_rows} more row(s)")]);
+            table.add_row([format!("… + {hidden_rows} more row(s)")]);
         }
 
         columns.len()
