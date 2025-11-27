@@ -25,6 +25,7 @@ mod instance_path;
 mod store_id;
 mod tensor;
 mod video;
+mod transform_hierarchy;
 
 mod extra_data_ui;
 pub mod item_ui;

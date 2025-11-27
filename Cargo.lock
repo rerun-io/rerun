@@ -10394,6 +10394,7 @@ dependencies = [
  "re_renderer",
  "re_smart_channel",
  "re_string_interner",
+ "re_tf",
  "re_tracing",
  "re_types",
  "re_types_core",

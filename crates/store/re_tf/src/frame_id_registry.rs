@@ -8,6 +8,7 @@ use re_types::{TransformFrameIdHash, archetypes};
 /// Frame id registry for resolving frame id hashes back to frame ids.
 pub struct FrameIdRegistry {
     frame_id_lookup_table: IntMap<TransformFrameIdHash, TransformFrameId>,
+    source_entity_lookup_table: IntMap<TransformFrameIdHash, EntityPath>,
 }
 
 impl Default for FrameIdRegistry {
@@ -19,6 +20,11 @@ impl Default for FrameIdRegistry {
             frame_id_lookup_table: std::iter::once((
                 TransformFrameIdHash::entity_path_hierarchy_root(),
                 TransformFrameId::from_entity_path(&EntityPath::root()),
+            ))
+            .collect(),
+            source_entity_lookup_table: std::iter::once((
+                TransformFrameIdHash::entity_path_hierarchy_root(),
+                EntityPath::root(),
             ))
             .collect(),
         }
@@ -35,6 +41,17 @@ impl FrameIdRegistry {
         frame_id_hash: TransformFrameIdHash,
     ) -> Option<&TransformFrameId> {
         self.frame_id_lookup_table.get(&frame_id_hash)
+    }
+
+    /// Looks up a frame ID by its hash.
+    ///
+    /// Returns `None` if the frame id hash was never encountered.
+    #[inline]
+    pub fn lookup_source_entity(&self, frame_id_hash: TransformFrameIdHash) -> Option<EntityPath> {
+        self.source_entity_lookup_table
+            .get(&frame_id_hash)
+            .cloned()
+            .or_else(|| self.lookup_frame_id(frame_id_hash)?.as_entity_path())
     }
 
     /// Registers all frame ids mentioned in a chunk, including frames implied by the chunk's entity and its parents.
