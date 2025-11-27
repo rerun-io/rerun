@@ -263,7 +263,7 @@ pub enum TimeControlCommand {
     /// showing all received data.
     ResetTimeView,
 
-    /// Mark up a time range as valid.
+    /// Mark up a time range as valid (fully loaded).
     ///
     /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
     /// Visually, it is outside of the normal time range and shown greyed out.

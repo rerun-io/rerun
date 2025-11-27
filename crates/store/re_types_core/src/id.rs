@@ -1,4 +1,5 @@
 use arrow::array::Array as _;
+use re_arrow_util::WrongDatatypeError;
 
 use crate::Loggable as _;
 
@@ -34,7 +35,19 @@ use crate::Loggable as _;
 ///
 /// This has very important implications when inserting data far into the past or into the future:
 /// think carefully about your `RowId`s in these cases.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C, align(1))]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    bytemuck::AnyBitPattern,
+    bytemuck::NoUninit,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ChunkId(pub(crate) re_tuid::Tuid);
 
@@ -117,6 +130,20 @@ impl ChunkId {
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self(re_tuid::Tuid::from_u128(id))
+    }
+
+    /// None if it is the wrong datatype
+    pub fn try_slice_from_arrow(
+        array: &arrow::array::FixedSizeBinaryArray,
+    ) -> Result<&[Self], WrongDatatypeError> {
+        if array.data_type() == &Self::arrow_datatype() {
+            Ok(bytemuck::cast_slice(array.value_data()))
+        } else {
+            Err(WrongDatatypeError {
+                expected: Self::arrow_datatype(),
+                actual: array.data_type().clone(),
+            })
+        }
     }
 }
 
