@@ -36,6 +36,11 @@ impl Chunk {
         let chunk_size_bytes = <Self as SizeBytes>::total_size_bytes(chunk);
         let chunk_num_rows = chunk.num_rows() as u64;
 
+        if chunk_num_rows <= 1 {
+            // Can't split even if we wanted to.
+            return vec![chunk.clone()];
+        }
+
         // Check if we need to split based on size or row count
         let needs_split_bytes = chunk_max_bytes > 0 && chunk_size_bytes > chunk_max_bytes;
         let needs_split_rows = chunk_max_rows > 0 && chunk_num_rows > chunk_max_rows;
