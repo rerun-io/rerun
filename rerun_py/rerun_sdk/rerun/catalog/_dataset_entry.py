@@ -293,7 +293,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         time_index: IndexColumnSelector,
         target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = ...,
+        distance_metric: VectorDistanceMetric | str = "Cosine",
     ) -> IndexingResult:
         """
         Create a vector index on the given column.
