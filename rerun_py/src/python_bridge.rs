@@ -2240,13 +2240,18 @@ struct PyOauthLoginFlow {
 
 #[pymethods]
 impl PyOauthLoginFlow {
+    /// Get the URL for the OAuth login flow.
     fn login_url(&self) -> String {
         self.login_flow.server.get_login_url().to_owned()
     }
 
+    /// Finish the OAuth login flow.
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     The access token.
     fn finish_login_flow(&mut self) -> PyResult<String> {
-        println!("PyOauthLoginFlow::get_credentials");
-
         let result: Result<Credentials, re_auth::callback_server::Error> = Runtime::new()?
             .block_on(async {
                 loop {
@@ -2265,6 +2270,12 @@ impl PyOauthLoginFlow {
 }
 
 #[pyfunction]
+/// Initialize an OAuth login flow.
+///
+/// Returns
+/// -------
+/// OauthLoginFlow | None
+///     The login flow, or `None` if the user is already logged in.
 fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
     let login_flow = Runtime::new()?
         .block_on(async { OauthLoginFlow::init(false).await })
@@ -2286,16 +2297,19 @@ fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
     name = "Credentials",
     module = "rerun_bindings.rerun_bindings"
 )]
+/// The credentials for the OAuth login flow.
 struct PyCredentials(Credentials);
 
 #[pymethods]
 impl PyCredentials {
     #[getter]
+    /// The access token.
     fn access_token(&self) -> String {
         self.0.access_token().as_str().to_owned()
     }
 
     #[getter]
+    /// The user email.
     fn user_email(&self) -> String {
         self.0.user().email.clone()
     }
@@ -2308,8 +2322,18 @@ impl std::cmp::PartialEq for PyCredentials {
 }
 
 #[pyfunction]
+/// Returns the credentials for the current user.
 fn get_credentials() -> PyResult<Option<PyCredentials>> {
-    let credentials = re_auth::oauth::load_credentials()
+    let Some(credentials) = re_auth::oauth::load_credentials()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+    else {
+        // No credentials found.
+        return Ok(None);
+    };
+
+    // Refresh credentials if they are expired.
+    let credentials = Runtime::new()?
+        .block_on(async { re_auth::oauth::refresh_credentials(credentials).await })
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    Ok(credentials.map(PyCredentials))
+    Ok(Some(PyCredentials(credentials)))
 }

@@ -2071,4 +2071,4 @@ class Credentials:
         """The user email."""
 
 def get_credentials() -> Credentials | None:
-    """Returns the access token for the current user."""
+    """Returns the credentials for the current user."""
