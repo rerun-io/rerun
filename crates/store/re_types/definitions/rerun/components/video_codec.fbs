@@ -52,7 +52,7 @@ enum VideoCodec: uint (
     /// VP9
     ///
     /// See <https://en.wikipedia.org/wiki/VP9>
-    // TODO(#10186): Add support for VP8.
+    // TODO(#10186): Add support for VP9.
     ///
     /// Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian.
     //VP9 = 0x76703039, // b'vp09'.hex()

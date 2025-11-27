@@ -7,7 +7,7 @@ mod grpc;
 use connection_registry::ClientCredentialsError;
 
 pub use self::{
-    connection_client::GenericConnectionClient,
+    connection_client::{GenericConnectionClient, PartitionQueryParams},
     connection_registry::{
         ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle, Credentials,
     },

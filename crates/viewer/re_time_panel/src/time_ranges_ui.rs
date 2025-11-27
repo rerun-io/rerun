@@ -103,6 +103,7 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
+    /// "valid" means "fully loaded", as opposed to "partially loaded"
     pub fn new(
         time_x_range: Rangef,
         time_view: TimeView,

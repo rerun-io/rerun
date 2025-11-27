@@ -16,7 +16,10 @@ use web_time::Instant;
 
 use super::{Time, Timescale};
 
-use crate::{Chunk, StableIndexDeque, TrackId, TrackKind};
+use crate::{
+    Chunk, StableIndexDeque, TrackId, TrackKind, nalu::AnnexBStreamWriteError,
+    write_avc_chunk_to_annexb, write_hevc_chunk_to_annexb,
+};
 
 /// Chroma subsampling mode.
 ///
@@ -347,6 +350,90 @@ impl VideoDataDescription {
 
         Ok(())
     }
+
+    /// Returns the encoded bytes for a sample in the format expected by [`VideoCodec`].
+    ///
+    /// * H.264/H.265: MP4 stores samples using AVCC/HVCC length-prefixed NALs and relies on container
+    ///   metadata for SPS/PPS/VPS. This method makes sure to unpack this.
+    /// * AV1 samples are stored as-is.
+    /// * VP8/VP9: Not yet supported
+    pub fn sample_data_in_stream_format(
+        &self,
+        chunk: &crate::Chunk,
+    ) -> Result<Vec<u8>, SampleConversionError> {
+        match self.codec {
+            VideoCodec::AV1 => Ok(chunk.data.clone()),
+            VideoCodec::H264 => {
+                let stsd = self
+                    .encoding_details
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .stsd
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+
+                let re_mp4::StsdBoxContent::Avc1(avc1_box) = &stsd.contents else {
+                    return Err(SampleConversionError::UnexpectedStsdContent {
+                        codec: self.codec,
+                        found: format!("{:?}", stsd.contents),
+                    });
+                };
+
+                let mut output = Vec::new();
+                write_avc_chunk_to_annexb(avc1_box, &mut output, chunk.is_sync, chunk)
+                    .map_err(SampleConversionError::AnnexB)?;
+                Ok(output)
+            }
+            VideoCodec::H265 => {
+                let stsd = self
+                    .encoding_details
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingEncodingDetails(self.codec))?
+                    .stsd
+                    .as_ref()
+                    .ok_or(SampleConversionError::MissingStsd(self.codec))?;
+
+                let hvcc_box = match &stsd.contents {
+                    re_mp4::StsdBoxContent::Hvc1(hvc1_box)
+                    | re_mp4::StsdBoxContent::Hev1(hvc1_box) => hvc1_box,
+                    other => {
+                        return Err(SampleConversionError::UnexpectedStsdContent {
+                            codec: self.codec,
+                            found: format!("{other:?}"),
+                        });
+                    }
+                };
+
+                let mut output = Vec::new();
+                write_hevc_chunk_to_annexb(hvcc_box, &mut output, chunk.is_sync, chunk)
+                    .map_err(SampleConversionError::AnnexB)?;
+                Ok(output)
+            }
+            VideoCodec::VP8 | VideoCodec::VP9 => {
+                // TODO(#10186): Support VP8/VP9 for the `VideoStream` archetype
+                Err(SampleConversionError::UnsupportedCodec(self.codec))
+            }
+        }
+    }
+}
+
+/// Errors converting [`VideoDataDescription`] samples into the format expected by the decoder.
+#[derive(thiserror::Error, Debug)]
+pub enum SampleConversionError {
+    #[error("Missing encoding details for codec {0:?}")]
+    MissingEncodingDetails(VideoCodec),
+
+    #[error("Missing stsd box for codec {0:?}")]
+    MissingStsd(VideoCodec),
+
+    #[error("Unexpected stsd contents for codec {codec:?}: {found}")]
+    UnexpectedStsdContent { codec: VideoCodec, found: String },
+
+    #[error("Failed converting sample to Annex-B: {0}")]
+    AnnexB(#[from] AnnexBStreamWriteError),
+
+    #[error("Unsupported codec {0:?}")]
+    UnsupportedCodec(VideoCodec),
 }
 
 /// Various information about how the video was encoded.
@@ -893,6 +980,7 @@ impl std::fmt::Debug for VideoDataDescription {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::nalu::ANNEXB_NAL_START_CODE;
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
@@ -990,5 +1078,95 @@ mod tests {
         // Test way outside of the range.
         // (this is not the last element in the list since that one doesn't have the highest PTS)
         assert_eq!(Some(48), query_pts(Time(123123123123123123)));
+    }
+
+    /// Helper function to check if data contains Annex B start codes
+    fn has_annexb_start_codes(data: &[u8]) -> bool {
+        data.windows(4).any(|w| w == ANNEXB_NAL_START_CODE)
+    }
+
+    fn video_test_file_mp4(codec: VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
+        let workspace_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
+            .unwrap()
+            .to_path_buf();
+
+        let codec_str = match codec {
+            VideoCodec::H264 => "h264",
+            VideoCodec::H265 => "h265",
+            VideoCodec::VP9 => "vp9",
+            VideoCodec::VP8 => {
+                panic!("We don't have test data for vp8, because Mp4 doesn't support vp8.")
+            }
+            VideoCodec::AV1 => "av1",
+        };
+
+        if need_dts_equal_pts && (codec == VideoCodec::H264 || codec == VideoCodec::H265) {
+            // Only H264 and H265 have DTS != PTS when b-frames are present.
+            workspace_dir.join(format!(
+                "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}_nobframes.mp4",
+            ))
+        } else {
+            workspace_dir.join(format!(
+                "tests/assets/video/Big_Buck_Bunny_1080_1s_{codec_str}.mp4",
+            ))
+        }
+    }
+
+    /// Helper function to test video sampling for a specific codec
+    fn test_video_codec_sampling(codec: VideoCodec, need_dts_equal_pts: bool) {
+        let video_path = video_test_file_mp4(codec, need_dts_equal_pts);
+        let data = std::fs::read(&video_path).unwrap();
+        let video_data = VideoDataDescription::load_from_bytes(
+            &data,
+            "video/mp4",
+            &format!("test_{codec:?}_video_sampling"),
+        )
+        .unwrap();
+
+        let buffers: crate::StableIndexDeque<&[u8]> = std::iter::once(data.as_slice()).collect();
+
+        let mut idr_count = 0;
+        let mut non_idr_count = 0;
+
+        for (sample_idx, sample) in video_data.samples.iter_indexed() {
+            let chunk = sample.get(&buffers, sample_idx).unwrap();
+            let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
+
+            if chunk.is_sync {
+                idr_count += 1;
+
+                // IDR frame should have SPS/PPS (only for H.264)
+                if codec == VideoCodec::H264 {
+                    let has_sps = converted
+                        .windows(5)
+                        .any(|w| w[0..4] == *ANNEXB_NAL_START_CODE && (w[4] & 0x1F) == 7);
+                    assert!(has_sps, "IDR frame at index {sample_idx} should have SPS");
+                }
+            } else {
+                non_idr_count += 1;
+            }
+
+            // All frames should have Annex B start codes (only for H.264/H.265)
+            if codec == VideoCodec::H264 || codec == VideoCodec::H265 {
+                assert!(
+                    has_annexb_start_codes(&converted),
+                    "Frame at index {sample_idx} should have Annex B start codes",
+                );
+            }
+        }
+
+        assert!(idr_count > 0, "Should have at least one IDR frame");
+        assert!(non_idr_count > 0, "Should have at least one non-IDR frame");
+    }
+
+    #[test]
+    fn test_full_video_sampling_all_codecs() {
+        // TODO(#10186): Add VP9 once we have it.
+        for codec in [VideoCodec::H264, VideoCodec::H265, VideoCodec::AV1] {
+            test_video_codec_sampling(codec, false);
+        }
     }
 }

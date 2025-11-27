@@ -12,7 +12,13 @@ This new archetype also works with the `CoordinateFrame` archetype.
 
 Existing `.rrd` recordings will be automatically migrated when opened (the migration converts `Transform3D:axis_length` components to `TransformAxes3D:axis_length`).
 
-## Changes to `Transform3D`/`InstancePose3D` are now treated transactionally by the Viewer
+## `CoordinateFrame::frame_id` has been renamed to `CoordinateFrame::frame`
+
+The `frame_id` component of `CoordinateFrame` has been renamed to just `frame`, because the component type `TransformFrameId` already conveys the information that this is an id.
+
+Existing `.rrd` recordings will be automatically migrated when opened (the migration renames the `frame_id` component).
+
+## Changes to `Transform3D`/`InstancePose3D` and `Pinhole`'s transform properties are now treated transactionally by the Viewer
 
 If you previously updated only certain components of `Transform3D`/`InstancePose3D` and relied on previously logged
 values remaining present,
@@ -23,15 +29,20 @@ If you always logged the same transform components on every log/send call or use
 
 snippet: migration/transactional_transforms
 
+`Pinhole`'s transform properties, `resolution` & `image_from_plane` as well its new `parent_frame` & `child_frame`,
+fields are also affected by this change.
+Again, this means that any change to any of `Pinhole`'s `resolution`/`image_from_plane`/`parent_frame`/`child_frame`,
+will reset all of these fields.
+
 ### Details & motivation
 
-We changed the way `Transform3D` and `InstancePose3D` are queried under the hood!
+We changed the way `Transform3D`, `InstancePose3D` & `Pinhole` are queried under the hood!
 
 Usually, when querying any collection of components with latest-at semantics, we look for the latest update of each
 individual component.
 This is useful, for example, when you log a mesh and only change its texture over time:
 a latest-at query at any point in time gets all the same vertex information, but the texture that is active at any given
-point in time may changes.
+point in time may change.
 
 However, for `Transform3D`, this behavior can be very surprising,
 as the typical expectation is that logging a `Transform3D` with only a rotation will not inherit previously logged

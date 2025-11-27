@@ -90,24 +90,26 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Planetary motion is typically in the XY plane.
 ///     rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?;
 ///
-///     // Setup points, all are in the center of their own space:
+///     // Setup spheres, all are in the center of their own space:
 ///     rec.log(
 ///         "sun",
-///         &rerun::Points3D::new([[0.0, 0.0, 0.0]])
-///             .with_radii([1.0])
-///             .with_colors([rerun::Color::from_rgb(255, 200, 10)]),
+///         &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[1.0, 1.0, 1.0]])
+///             .with_colors([rerun::Color::from_rgb(255, 200, 10)])
+///             .with_fill_mode(rerun::components::FillMode::Solid),
 ///     )?;
+///
 ///     rec.log(
 ///         "sun/planet",
-///         &rerun::Points3D::new([[0.0, 0.0, 0.0]])
-///             .with_radii([0.4])
-///             .with_colors([rerun::Color::from_rgb(40, 80, 200)]),
+///         &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.4, 0.4, 0.4]])
+///             .with_colors([rerun::Color::from_rgb(40, 80, 200)])
+///             .with_fill_mode(rerun::components::FillMode::Solid),
 ///     )?;
+///
 ///     rec.log(
 ///         "sun/planet/moon",
-///         &rerun::Points3D::new([[0.0, 0.0, 0.0]])
-///             .with_radii([0.15])
-///             .with_colors([rerun::Color::from_rgb(180, 180, 180)]),
+///         &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.15, 0.15, 0.15]])
+///             .with_colors([rerun::Color::from_rgb(180, 180, 180)])
+///             .with_fill_mode(rerun::components::FillMode::Solid),
 ///     )?;
 ///
 ///     // Draw fixed paths where the planet & moon move.
@@ -371,7 +373,6 @@ pub struct Transform3D {
     /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
     ///
-    /// ⚠ This currently also affects the child frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
@@ -385,8 +386,6 @@ pub struct Transform3D {
     pub child_frame: Option<SerializedComponentBatch>,
 
     /// The parent frame this transform transforms into.
-    ///
-    /// ⚠ This currently also affects the parent frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -935,7 +934,6 @@ impl Transform3D {
     /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
     ///
-    /// ⚠ This currently also affects the child frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
@@ -969,8 +967,6 @@ impl Transform3D {
     }
 
     /// The parent frame this transform transforms into.
-    ///
-    /// ⚠ This currently also affects the parent frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

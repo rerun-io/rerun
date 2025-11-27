@@ -19,7 +19,6 @@ pub struct GrpcMakeSpan {
 }
 
 impl GrpcMakeSpan {
-    #[expect(clippy::new_without_default)] // future-proofing
     pub fn new() -> Self {
         let meter = opentelemetry::global::meter("grpc");
         let gauge = meter
@@ -27,6 +26,12 @@ impl GrpcMakeSpan {
             .with_description("Size of the SpanMetadata state")
             .build();
         Self { gauge }
+    }
+}
+
+impl Default for GrpcMakeSpan {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -98,12 +103,6 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             otel.name = %endpoint,
             url,
             method = %request.method(),
-            http_version = ?request.version(),
-            client_version,
-            server_version,
-            headers = ?safe_headers,
-            email,
-            entry_id,
             // Record trace_id and benchmark_id as top level span fields.
             //
             // At this stage we may not know yet the actual trace_id (depending on whether
@@ -317,9 +316,13 @@ pub struct GrpcOnResponse {
     eos_counter: opentelemetry::metrics::Counter<u64>,
 }
 
+#[derive(Default)]
+pub struct GrpcOnResponseOptions {
+    pub fully_qualified_route_names: Option<Vec<String>>,
+}
+
 impl GrpcOnResponse {
-    #[expect(clippy::new_without_default)] // future-proofing
-    pub fn new() -> Self {
+    pub fn new(options: GrpcOnResponseOptions) -> Self {
         let meter = opentelemetry::global::meter("grpc");
         let histogram = meter
             .f64_histogram("grpc_on_response_ms")
@@ -332,10 +335,67 @@ impl GrpcOnResponse {
             .u64_counter("grpc_on_eos")
             .with_description("End-of-stream counter for all gRPC endpoints")
             .build();
+
+        if let Some(fully_qualified_rout_names) = options.fully_qualified_route_names {
+            for endpoint in &fully_qualified_rout_names {
+                eos_counter.add(
+                    0,
+                    &GrpcEosMetadata {
+                        endpoint: endpoint.clone(),
+                        grpc_status: String::new(),
+                        client_version: None,
+                        server_version: None,
+                        email: None,
+                        dataset_id: None,
+                    }
+                    .otel_kvs(),
+                );
+            }
+        }
         Self {
             histogram,
             eos_counter,
         }
+    }
+}
+
+struct GrpcEosMetadata {
+    endpoint: String,
+    grpc_status: String,
+    client_version: Option<String>,
+    server_version: Option<String>,
+    email: Option<String>,
+    dataset_id: Option<String>,
+}
+
+impl GrpcEosMetadata {
+    fn otel_kvs(self) -> Vec<opentelemetry::KeyValue> {
+        vec![
+            opentelemetry::KeyValue::new("endpoint", self.endpoint),
+            opentelemetry::KeyValue::new("grpc_status", self.grpc_status),
+            opentelemetry::KeyValue::new(
+                "client_version",
+                self.client_version
+                    .as_deref()
+                    .unwrap_or("undefined")
+                    .to_owned(),
+            ),
+            opentelemetry::KeyValue::new(
+                "server_version",
+                self.server_version
+                    .as_deref()
+                    .unwrap_or("undefined")
+                    .to_owned(),
+            ),
+            opentelemetry::KeyValue::new(
+                "email",
+                self.email.as_deref().unwrap_or("undefined").to_owned(),
+            ),
+            opentelemetry::KeyValue::new(
+                "dataset_id",
+                self.dataset_id.as_deref().unwrap_or("undefined").to_owned(),
+            ),
+        ]
     }
 }
 
@@ -408,21 +468,18 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
 
                 // For immediate errors, emit grpc_on_eos counter here since on_eos won't be called
                 let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
-                let client_version = client_version.as_deref().unwrap_or("undefined");
-                let server_version = server_version.as_deref().unwrap_or("undefined");
-                let email = email.as_deref().unwrap_or("undefined");
-                let dataset_id = dataset_id.as_deref().unwrap_or("undefined");
 
                 self.eos_counter.add(
                     1,
-                    &[
-                        opentelemetry::KeyValue::new("endpoint", endpoint.clone()),
-                        opentelemetry::KeyValue::new("grpc_status", grpc_status),
-                        opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
-                        opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
-                        opentelemetry::KeyValue::new("email", email.to_owned()),
-                        opentelemetry::KeyValue::new("dataset_id", dataset_id.to_owned()),
-                    ],
+                    &GrpcEosMetadata {
+                        endpoint: endpoint.clone(),
+                        grpc_status,
+                        client_version,
+                        server_version,
+                        email,
+                        dataset_id,
+                    }
+                    .otel_kvs(),
                 );
 
                 // Remove metadata since on_eos won't be called for immediate errors
@@ -625,6 +682,11 @@ pub type ServerTelemetryLayer = tower_http::trace::TraceLayer<
     GrpcOnEos,
 >;
 
+#[derive(Default)]
+pub struct TelemetryLayerOptions {
+    pub fully_qualified_route_names: Option<Vec<String>>,
+}
+
 /// Creates a new [`tower::Layer`] middleware that automatically:
 /// * Traces gRPC requests and responses.
 /// * Logs all gRPC responses (status, latency, etc).
@@ -637,11 +699,13 @@ pub type ServerTelemetryLayer = tower_http::trace::TraceLayer<
 /// * streaming endpoint immediate error (no stream started)  - `on_response` (error handling path) called and `on_failure` (again, not implemented)
 /// * streaming endpoint mid stream error - `on_response` called (but only initially with OK code, no error detected here), `on_eos` called (and existing error handling logic executed).
 ///   `on_failure` is not called here and from code inspection it seems that is only called for immediate failures and polling frame errors (transport errors, although not verified with testing)
-pub fn new_server_telemetry_layer() -> ServerTelemetryLayer {
+pub fn new_server_telemetry_layer(options: TelemetryLayerOptions) -> ServerTelemetryLayer {
     tower_http::trace::TraceLayer::new_for_grpc()
         .make_span_with(GrpcMakeSpan::new())
         .on_request(GrpcOnRequest::new())
-        .on_response(GrpcOnResponse::new())
+        .on_response(GrpcOnResponse::new(GrpcOnResponseOptions {
+            fully_qualified_route_names: options.fully_qualified_route_names,
+        }))
         .on_body_chunk(GrpcOnFirstBodyChunk::new())
         .on_eos(GrpcOnEos::new())
 }

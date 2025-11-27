@@ -90,24 +90,29 @@ namespace rerun::archetypes {
     ///     // Planetary motion is typically in the XY plane.
     ///     rec.log_static("/", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
     ///
-    ///     // Setup points, all are in the center of their own space:
+    ///     // Setup spheres, all are in the center of their own space:
     ///     rec.log(
     ///         "sun",
-    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}})
-    ///             .with_radii({1.0f})
-    ///             .with_colors({rerun::Color(255, 200, 10)})
+    ///         rerun::Ellipsoids3D::from_centers_and_half_sizes({{0.0f, 0.0f, 0.0f}}, {{1.0f, 1.0f, 1.0f}})
+    ///             .with_colors(rerun::Color(255, 200, 10))
+    ///             .with_fill_mode(rerun::components::FillMode::Solid)
     ///     );
+    ///
     ///     rec.log(
     ///         "sun/planet",
-    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}})
-    ///             .with_radii({0.4f})
-    ///             .with_colors({rerun::Color(40, 80, 200)})
+    ///         rerun::Ellipsoids3D::from_centers_and_half_sizes({{0.0f, 0.0f, 0.0f}}, {{0.4f, 0.4f, 0.4f}})
+    ///             .with_colors(rerun::Color(40, 80, 200))
+    ///             .with_fill_mode(rerun::components::FillMode::Solid)
     ///     );
+    ///
     ///     rec.log(
     ///         "sun/planet/moon",
-    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}})
-    ///             .with_radii({0.15f})
-    ///             .with_colors({rerun::Color(180, 180, 180)})
+    ///         rerun::Ellipsoids3D::from_centers_and_half_sizes(
+    ///             {{0.0f, 0.0f, 0.0f}},
+    ///             {{0.15f, 0.15f, 0.15f}}
+    ///         )
+    ///             .with_colors(rerun::Color(180, 180, 180))
+    ///             .with_fill_mode(rerun::components::FillMode::Solid)
     ///     );
     ///
     ///     // Draw fixed paths where the planet & moon move.
@@ -334,7 +339,6 @@ namespace rerun::archetypes {
         /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
         /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
         ///
-        /// ⚠ This currently also affects the child frame of `archetypes::Pinhole`.
         /// ⚠ This currently is also used as the frame id of `archetypes::InstancePoses3D`.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
@@ -346,8 +350,6 @@ namespace rerun::archetypes {
         std::optional<ComponentBatch> child_frame;
 
         /// The parent frame this transform transforms into.
-        ///
-        /// ⚠ This currently also affects the parent frame of `archetypes::Pinhole`.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -917,7 +919,6 @@ namespace rerun::archetypes {
         /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
         /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
         ///
-        /// ⚠ This currently also affects the child frame of `archetypes::Pinhole`.
         /// ⚠ This currently is also used as the frame id of `archetypes::InstancePoses3D`.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
@@ -945,8 +946,6 @@ namespace rerun::archetypes {
         }
 
         /// The parent frame this transform transforms into.
-        ///
-        /// ⚠ This currently also affects the parent frame of `archetypes::Pinhole`.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

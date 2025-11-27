@@ -94,11 +94,36 @@ class Transform3D(Transform3DExt, Archetype):
     # Planetary motion is typically in the XY plane.
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
-    # Setup points, all are in the center of their own space:
-    # TODO(#1361): Should use spheres instead of points.
-    rr.log("sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]))
-    rr.log("sun/planet", rr.Points3D([0.0, 0.0, 0.0], radii=0.4, colors=[40, 80, 200]))
-    rr.log("sun/planet/moon", rr.Points3D([0.0, 0.0, 0.0], radii=0.15, colors=[180, 180, 180]))
+    # Setup spheres, all are in the center of their own space:
+    rr.log(
+        "sun",
+        rr.Ellipsoids3D(
+            centers=[0, 0, 0],
+            half_sizes=[1, 1, 1],
+            colors=[255, 200, 10],
+            fill_mode="solid",
+        ),
+    )
+
+    rr.log(
+        "sun/planet",
+        rr.Ellipsoids3D(
+            centers=[0, 0, 0],
+            half_sizes=[0.4, 0.4, 0.4],
+            colors=[40, 80, 200],
+            fill_mode="solid",
+        ),
+    )
+
+    rr.log(
+        "sun/planet/moon",
+        rr.Ellipsoids3D(
+            centers=[0, 0, 0],
+            half_sizes=[0.15, 0.15, 0.15],
+            colors=[180, 180, 180],
+            fill_mode="solid",
+        ),
+    )
 
     # Draw fixed paths where the planet & moon move.
     d_planet = 6.0
@@ -359,7 +384,6 @@ class Transform3D(Transform3DExt, Archetype):
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
             with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
 
-            ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
             ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
 
             If not specified, this is set to the implicit transform frame of the current entity path.
@@ -370,8 +394,6 @@ class Transform3D(Transform3DExt, Archetype):
             Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         parent_frame:
             The parent frame this transform transforms into.
-
-            ⚠ This currently also affects the parent frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
 
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -463,7 +485,6 @@ class Transform3D(Transform3DExt, Archetype):
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
             with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
 
-            ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
             ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
 
             If not specified, this is set to the implicit transform frame of the current entity path.
@@ -474,8 +495,6 @@ class Transform3D(Transform3DExt, Archetype):
             Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         parent_frame:
             The parent frame this transform transforms into.
-
-            ⚠ This currently also affects the parent frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
 
             If not specified, this is set to the implicit transform frame of the current entity path's parent.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -619,7 +638,6 @@ class Transform3D(Transform3DExt, Archetype):
     # E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     # with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
     #
-    # ⚠ This currently also affects the child frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
     # ⚠ This currently is also used as the frame id of [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # If not specified, this is set to the implicit transform frame of the current entity path.
@@ -639,8 +657,6 @@ class Transform3D(Transform3DExt, Archetype):
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
     # The parent frame this transform transforms into.
-    #
-    # ⚠ This currently also affects the parent frame of [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
     #
     # If not specified, this is set to the implicit transform frame of the current entity path's parent.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

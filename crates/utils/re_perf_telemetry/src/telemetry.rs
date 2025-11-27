@@ -1,4 +1,6 @@
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithTonicConfig as _;
+use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor};
 use opentelemetry_sdk::{
     logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
 };
@@ -204,6 +206,7 @@ impl Telemetry {
                 .add_directive_if_absent(base, "h2", forced)?
                 .add_directive_if_absent(base, "hyper", forced)?
                 .add_directive_if_absent(base, "hyper_util", forced)?
+                .add_directive_if_absent(base, "lance", forced)?
                 .add_directive_if_absent(base, "lance-arrow", forced)?
                 .add_directive_if_absent(base, "lance-core", forced)?
                 .add_directive_if_absent(base, "lance-datafusion", forced)?
@@ -227,7 +230,9 @@ impl Telemetry {
                 .add_directive_if_absent(base, "typespec_client_core", forced)?
                 //
                 .add_directive_if_absent(base, "lance::index", "off")?
+                .add_directive_if_absent(base, "lance::io::exec", "off")?
                 .add_directive_if_absent(base, "lance::dataset::scanner", "off")?
+                .add_directive_if_absent(base, "lance_index", "off")?
                 .add_directive_if_absent(base, "lance::dataset::builder", "off")?
                 .add_directive_if_absent(base, "lance_encoding", "off")
         };
@@ -321,10 +326,24 @@ impl Telemetry {
         let (tracer_provider, layer_traces_otlp) = if otel_enabled {
             let exporter = opentelemetry_otlp::SpanExporter::builder()
                 .with_tonic() // There's no good reason to use HTTP for traces (at the moment, that is)
+                .with_compression(opentelemetry_otlp::Compression::Gzip) // use gzip compression to reduce bandwidth
                 .build()?;
 
+            // we customize batch exporter config to ensure more optimal span exporting
+            let batch_config = BatchConfigBuilder::default()
+                // increase max queue size from default 2048 to ensure we don't drop spans during high throughput
+                .with_max_queue_size(8192)
+                // export more spans per batch to reduce number of requests (default is 512)
+                // together with queue size this help ensure more robust exporting under high throughput
+                .with_max_export_batch_size(2048)
+                .build();
+
+            let batch_processor = BatchSpanProcessor::builder(exporter)
+                .with_batch_config(batch_config)
+                .build();
+
             let provider = SdkTracerProvider::builder()
-                .with_batch_exporter(exporter)
+                .with_span_processor(batch_processor)
                 .build();
 
             // This will be used by the `TracingInjectorInterceptor` to encode the trace information into the request headers.

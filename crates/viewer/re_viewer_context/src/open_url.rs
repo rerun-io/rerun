@@ -16,6 +16,10 @@ use crate::{
 /// A URL that points to a selection (typically an entity) within the currently active recording.
 pub const INTRA_RECORDING_URL_SCHEME: &str = "recording://";
 
+pub const SETTINGS_URL: &str = "about:settings";
+
+pub const CHUNK_STORE_BROWSER_URL: &str = "about:chunk_store";
+
 /// An eventListener for rrd posted from containing html
 pub const WEB_EVENT_LISTENER_SCHEME: &str = "web_event:";
 
@@ -84,6 +88,12 @@ pub enum ViewerOpenUrl {
         /// but it's guaranteed to at least one if we hit this enum variant.
         url_parameters: vec1::Vec1<ViewerOpenUrl>,
     },
+
+    /// The url to the settings screen.
+    Settings,
+
+    /// A url to the chunk store browser.
+    ChunkStoreBrowser,
 }
 
 impl std::fmt::Debug for ViewerOpenUrl {
@@ -106,6 +116,8 @@ impl std::fmt::Debug for ViewerOpenUrl {
                 .field("base_url", base_url)
                 .field("url_parameters", url_parameters)
                 .finish(),
+            Self::Settings => write!(f, "Settings"),
+            Self::ChunkStoreBrowser => write!(f, "ChunkStoreBrowser"),
         }
     }
 }
@@ -133,7 +145,11 @@ impl std::str::FromStr for ViewerOpenUrl {
     /// * intra-recording links (typically links to an entity)
     /// * web event listeners
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
+        if url == SETTINGS_URL {
+            Ok(Self::Settings)
+        } else if url == CHUNK_STORE_BROWSER_URL {
+            Ok(Self::ChunkStoreBrowser)
+        } else if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
         } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
@@ -205,7 +221,7 @@ pub fn base_url(url: &Url) -> Url {
     base_url
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct OpenUrlOptions {
     pub follow_if_http: bool,
     pub select_redap_source_when_loaded: bool,
@@ -321,10 +337,7 @@ impl ViewerOpenUrl {
         display_mode: &DisplayMode,
     ) -> anyhow::Result<Self> {
         match display_mode {
-            DisplayMode::Settings => {
-                // Not much point in updating address for the settings screen.
-                Err(anyhow::anyhow!("Can't share links to the settings screen."))
-            }
+            DisplayMode::Settings(_) => Ok(Self::Settings),
 
             DisplayMode::Loading(source) => Self::from_data_source(source),
 
@@ -358,12 +371,7 @@ impl ViewerOpenUrl {
                 Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
             }
 
-            DisplayMode::ChunkStoreBrowser => {
-                // As of writing the store browser is more of a debugging feature.
-                Err(anyhow::anyhow!(
-                    "Can't share links to the chunk store browser."
-                ))
-            }
+            DisplayMode::ChunkStoreBrowser(_) => Ok(Self::ChunkStoreBrowser),
         }
     }
 
@@ -435,6 +443,13 @@ impl ViewerOpenUrl {
                 )
                 .expect("converted from a vec1")
             }
+
+            Self::Settings => {
+                vec1![SETTINGS_URL.to_owned()]
+            }
+            Self::ChunkStoreBrowser => {
+                vec1![CHUNK_STORE_BROWSER_URL.to_owned()]
+            }
         };
 
         combine_with_base_url(web_viewer_base_url, urls)
@@ -452,7 +467,11 @@ impl ViewerOpenUrl {
     /// Get the data source related to this link, if any.
     pub fn get_data_source(&self) -> Option<SmartChannelSource> {
         match &self {
-            Self::RedapCatalog(_) | Self::RedapEntry(_) | Self::IntraRecordingSelection(_) => None,
+            Self::RedapCatalog(_)
+            | Self::RedapEntry(_)
+            | Self::IntraRecordingSelection(_)
+            | Self::Settings
+            | Self::ChunkStoreBrowser => None,
 
             Self::RrdHttpUrl(url) => Some(SmartChannelSource::RrdHttpStream {
                 url: url.to_string(),
@@ -587,6 +606,43 @@ impl ViewerOpenUrl {
                     );
                 }
             }
+            Self::Settings => {
+                command_sender.send_system(SystemCommand::OpenSettings);
+            }
+            Self::ChunkStoreBrowser => {
+                command_sender.send_system(SystemCommand::OpenChunkStoreBrowser);
+            }
+        }
+    }
+
+    pub fn without_fragment(self) -> Self {
+        match self {
+            Self::Settings
+            | Self::ChunkStoreBrowser
+            | Self::IntraRecordingSelection(..)
+            | Self::RrdHttpUrl(..)
+            | Self::RedapProxy(..)
+            | Self::RedapCatalog(..)
+            | Self::RedapEntry(..)
+            | Self::WebEventListener => self,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(..) => self,
+
+            Self::RedapDatasetPartition(uri) => Self::RedapDatasetPartition(uri.without_fragment()),
+            Self::WebViewerUrl {
+                base_url,
+                mut url_parameters,
+            } => {
+                for url in &mut url_parameters {
+                    *url = url.clone().without_fragment();
+                }
+
+                Self::WebViewerUrl {
+                    base_url,
+                    url_parameters,
+                }
+            }
         }
     }
 
@@ -612,6 +668,8 @@ impl ViewerOpenUrl {
                     None
                 }
             }
+            Self::Settings => None,
+            Self::ChunkStoreBrowser => None,
         }
     }
 
@@ -637,6 +695,8 @@ impl ViewerOpenUrl {
                     None
                 }
             }
+            Self::Settings => None,
+            Self::ChunkStoreBrowser => None,
         }
     }
 
@@ -856,9 +916,6 @@ mod tests {
     fn test_viewer_open_url_from_display_mode() {
         let store_hub = StoreHub::test_hub();
 
-        // Settings
-        assert!(ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::Settings).is_err());
-
         // RedapServer
         assert_eq!(
             ViewerOpenUrl::from_display_mode(
@@ -887,13 +944,27 @@ mod tests {
                 &DisplayMode::RedapEntry(entry_uri.clone()),
             )
             .unwrap(),
-            ViewerOpenUrl::RedapEntry(entry_uri)
+            ViewerOpenUrl::RedapEntry(entry_uri.clone())
         );
 
-        // ChunkStoreBrowser
-        assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::ChunkStoreBrowser).is_err(),
-            "ChunkStoreBrowser should not be convertible to ViewerOpenUrl"
+        let dummy_mode = DisplayMode::RedapEntry(entry_uri);
+
+        assert_eq!(
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                &DisplayMode::Settings(Box::new(dummy_mode.clone()))
+            )
+            .unwrap(),
+            ViewerOpenUrl::Settings
+        );
+
+        assert_eq!(
+            ViewerOpenUrl::from_display_mode(
+                &store_hub,
+                &DisplayMode::ChunkStoreBrowser(Box::new(dummy_mode))
+            )
+            .unwrap(),
+            ViewerOpenUrl::ChunkStoreBrowser
         );
 
         // Local recordings is handled in `test_viewer_open_url_from_local_recordings_display_mode`

@@ -13,7 +13,7 @@ use re_types::{
 use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
     ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities,
     suggest_view_for_each_entity,
@@ -107,8 +107,7 @@ impl ViewClass for BarChartView {
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
         // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
@@ -132,7 +131,7 @@ impl ViewClass for BarChartView {
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, include_entity)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
