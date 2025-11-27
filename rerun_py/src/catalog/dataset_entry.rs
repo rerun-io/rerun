@@ -88,6 +88,7 @@ impl PyDatasetEntryInternal {
         connection.delete_entry(py, self.entry_details.id)
     }
 
+    #[pyo3(signature = (*, name=None))]
     fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
         update_entry(py, name, &mut self.entry_details, &self.client)
     }
