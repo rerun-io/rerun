@@ -26,6 +26,8 @@ pub struct ChunkSplitConfig {
 
 impl Chunk {
     /// Naively splits a chunk if it exceeds the configured thresholds.
+    ///
+    /// The resulting pieces may still be larger than [`Self::chunk_max_bytes`].
     pub fn split_chunk_if_needed(chunk: Arc<Self>, cfg: &ChunkSplitConfig) -> Vec<Arc<Self>> {
         let ChunkSplitConfig {
             chunk_max_bytes,
@@ -69,17 +71,15 @@ impl Chunk {
 
         let mut result = Vec::with_capacity(chunk.num_rows().div_ceil(target_rows));
         let mut start_idx = 0;
-        let mut cur_chunk_id = ChunkId::new();
 
         while start_idx < chunk.num_rows() {
             let remaining_rows = chunk.num_rows() - start_idx;
             let chunk_size = remaining_rows.min(target_rows);
 
+            // TODO(#11971): keep track of the split chunks' lineage
             let split_chunk = chunk
                 .row_sliced(start_idx, chunk_size)
-                // TODO(#11971): keep track of the split chunks' lineage
-                .with_id(cur_chunk_id);
-            cur_chunk_id = cur_chunk_id.next();
+                .with_id(ChunkId::new());
 
             result.push(Arc::new(split_chunk));
 
