@@ -399,7 +399,7 @@ where
             dataset_id,
             partition_id,
             include_static_data,
-            include_temporal_data: incclude_temporal_data,
+            include_temporal_data,
             query,
         } = params;
 
@@ -410,7 +410,7 @@ where
             select_all_entity_paths: true,
             fuzzy_descriptors: vec![],
             exclude_static_data: !include_static_data,
-            exclude_temporal_data: !incclude_temporal_data,
+            exclude_temporal_data: !include_temporal_data,
             query,
             scan_parameters: Some(ScanParameters {
                 columns: FetchChunksRequest::required_column_names(),
