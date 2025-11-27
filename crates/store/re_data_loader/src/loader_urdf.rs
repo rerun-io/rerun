@@ -287,6 +287,14 @@ fn log_robot(
         timepoint,
         &CoordinateFrame::update_fields().with_frame(urdf_tree.root.name.clone()),
     )?;
+    // TODO: Do we always need to do that?
+    send_archetype(
+        tx,
+        store_id,
+        entity_path.clone(),
+        timepoint,
+        &Transform3D::update_fields().with_child_frame(urdf_tree.root.name.clone()),
+    )?;
 
     walk_tree(
         &urdf_tree,
