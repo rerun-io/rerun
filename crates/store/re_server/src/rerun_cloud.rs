@@ -975,7 +975,7 @@ impl RerunCloudService for RerunCloudHandler {
 
                 let request = request.into_inner();
                 let column = request.column.ok_or_else(|| {
-                    missing_field!(re_protos::cloud::v1alpha1::IndexConfig, "time_index")
+                    missing_field!(re_protos::cloud::v1alpha1::DeleteIndexesRequest, "column")
                 })?;
 
                 dataset.indexes().delete_indexes(column.try_into()?).await
