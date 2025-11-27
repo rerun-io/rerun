@@ -42,9 +42,9 @@ impl ChunkStore {
             return Ok(vec![]);
         }
 
-        let split_chunks = self.decompact_chunk_if_needed(chunk);
+        let split_chunks = Self::split_chunk_if_needed(chunk, &self.config);
         if split_chunks.len() > 1 {
-            re_tracing::profile_scope!("decompact");
+            re_tracing::profile_scope!("add-splits");
 
             let mut all_events = Vec::new();
 
@@ -727,35 +727,36 @@ impl ChunkStore {
     }
 
     /// Naively splits a chunk if it exceeds the configured thresholds.
-    fn decompact_chunk_if_needed(
-        &self,
-        chunk: &std::sync::Arc<re_chunk::Chunk>,
-    ) -> Vec<std::sync::Arc<re_chunk::Chunk>> {
+    fn split_chunk_if_needed(
+        chunk: &Arc<re_chunk::Chunk>,
+        config: &ChunkStoreConfig,
+    ) -> Vec<Arc<re_chunk::Chunk>> {
         let chunk_size_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
         let chunk_num_rows = chunk.num_rows() as u64;
 
         // Check if we need to split based on size or row count
         let needs_split_bytes =
-            self.config.chunk_max_bytes > 0 && chunk_size_bytes > self.config.chunk_max_bytes;
-        let needs_split_rows =
-            self.config.chunk_max_rows > 0 && chunk_num_rows > self.config.chunk_max_rows;
-        let needs_split_unsorted = self.config.chunk_max_rows_if_unsorted > 0
-            && chunk_num_rows > self.config.chunk_max_rows_if_unsorted
+            config.chunk_max_bytes > 0 && chunk_size_bytes > config.chunk_max_bytes;
+        let needs_split_rows = config.chunk_max_rows > 0 && chunk_num_rows > config.chunk_max_rows;
+        let needs_split_unsorted = config.chunk_max_rows_if_unsorted > 0
+            && chunk_num_rows > config.chunk_max_rows_if_unsorted
             && !chunk.is_time_sorted();
 
         if !needs_split_bytes && !needs_split_rows && !needs_split_unsorted {
             return vec![chunk.clone()];
         }
 
+        re_tracing::profile_scope!("split_chunk");
+
         // Determine the target number of rows per split chunk
         let target_rows = if needs_split_unsorted {
-            self.config.chunk_max_rows_if_unsorted
+            config.chunk_max_rows_if_unsorted
         } else if needs_split_rows {
-            self.config.chunk_max_rows
+            config.chunk_max_rows
         } else {
             // For byte-based splitting, estimate rows per split chunk based on current density
             let bytes_per_row = chunk_size_bytes / chunk_num_rows.max(1);
-            self.config.chunk_max_bytes / bytes_per_row.max(1)
+            config.chunk_max_bytes / bytes_per_row.max(1)
         };
 
         let target_rows = target_rows.max(1) as usize; // Ensure at least 1 row per chunk
@@ -774,7 +775,7 @@ impl ChunkStore {
                 .with_id(cur_chunk_id);
             cur_chunk_id = cur_chunk_id.next();
 
-            result.push(std::sync::Arc::new(split_chunk));
+            result.push(Arc::new(split_chunk));
 
             start_idx += chunk_size;
         }
