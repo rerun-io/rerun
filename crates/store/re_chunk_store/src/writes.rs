@@ -57,7 +57,7 @@ impl ChunkStore {
         }
 
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
-            // We assume that chunk IDs are unique, and that reinserting a
+            // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
             re_log::warn_once!("Chunk was inserted more than once (this has no effect)");
             return Ok(Vec::new());
         }
