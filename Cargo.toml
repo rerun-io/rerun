@@ -179,7 +179,7 @@ egui_dnd = { version = "0.14.0" }
 egui_plot = "0.34.0" # https://github.com/emilk/egui_plot
 egui_table = "0.6.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.14.0" # https://github.com/rerun-io/egui_tiles
-walkers = "0.50.0"
+walkers = "0.47.0"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -212,12 +212,12 @@ chrono = { version = "0.4.42", default-features = false } # Needed for datafusio
 clang-format = "0.3"
 clap = "4.5"
 clean-path = "0.2.0"
-colored = "3.0" # Old b/c of dify
+colored = "2.2" # Old b/c of dify
 comfy-table = { version = "7.2", default-features = false }
 console_error_panic_hook = "0.1.7"
 const_format = "0.2.35"
 convert_case = "0.10.0"
-criterion = "0.7.0"
+criterion = "0.5.0"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.0"
 datafusion = { version = "50.1.0", default-features = false, features = [
