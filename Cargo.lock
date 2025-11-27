@@ -9369,7 +9369,6 @@ dependencies = [
 name = "re_redap_client"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "arrow",
  "itertools 0.14.0",
  "jiff",

@@ -440,7 +440,7 @@ where
     pub async fn query_dataset_chunk_index(
         &mut self,
         params: PartitionQueryParams,
-    ) -> anyhow::Result<Vec<ChunkIndex>> {
+    ) -> Result<Vec<ChunkIndex>, ApiError> {
         self.query_dataset_raw(params)
             .await?
             .collect::<Vec<_>>()
@@ -464,8 +464,11 @@ where
                 })
             })
             .map(|batch| {
-                let rb = arrow::array::RecordBatch::try_from(batch?)?;
+                let rb = arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
+                    ApiError::serialization(err, "failed converting to RecordBatch")
+                })?;
                 ChunkIndex::from_record_batch(rb)
+                    .map_err(|err| ApiError::serialization(err, "failed creating ChunkIndex"))
             })
             .collect()
     }
