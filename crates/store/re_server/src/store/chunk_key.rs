@@ -4,7 +4,6 @@ use re_log_types::EntryId;
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_types_core::ChunkId;
 use serde::{Deserialize, Serialize};
-use std::io::{self, ErrorKind};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ChunkKey {

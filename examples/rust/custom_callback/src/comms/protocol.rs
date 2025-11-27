@@ -23,18 +23,18 @@ pub enum Message {
 
 impl Message {
     pub fn encode(&self) -> io::Result<Vec<u8>> {
-        bincode::serde::encode_to_vec(self, config::standard())
+        bincode::serde::encode_to_vec(self, bincode::config::standard())
             .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
     }
 
     pub fn encode_into(&self, buffer: &mut [u8]) -> io::Result<()> {
-        bincode::serde::encode_into_slice(self, buffer, config::standard())
+        bincode::serde::encode_into_slice(self, buffer, bincode::config::standard())
             .map(|_bytes_written| ()) // Discard the usize return value
             .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
     }
 
     pub fn decode(data: &[u8]) -> io::Result<Self> {
-        bincode::serde::decode_from_slice(data, config::standard())
+        bincode::serde::decode_from_slice(data, bincode::config::standard())
             .map(|(message, _bytes_read)| message)
             .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
     }
