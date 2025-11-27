@@ -359,6 +359,8 @@ impl App {
                             UICommand::PlaybackEnd,
                             UICommand::PlaybackForwardFast,
                             UICommand::PlaybackBackFast,
+                            UICommand::PlaybackStepForward,
+                            UICommand::PlaybackStepBack,
                             UICommand::PlaybackForward,
                             UICommand::PlaybackBack,
                         ];
