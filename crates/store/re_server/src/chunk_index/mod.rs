@@ -315,7 +315,7 @@ impl DatasetChunkIndexes {
         _overwritten: bool,
     ) -> Result<(), StoreError> {
         Err(StoreError::IndexingError(
-            "Lance feature not enabled".to_owned(),
+            "Indexing not available: Lance feature not enabled".to_owned(),
         ))
     }
 }
