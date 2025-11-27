@@ -19,6 +19,7 @@ struct TransformFrameInfo {
 
 pub struct TransformFramesUi {
     frames: Vec<TransformFrameInfo>,
+
     /// True if there are more transform frames than the ones shown here.
     more: bool,
 }
