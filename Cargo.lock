@@ -723,6 +723,9 @@ dependencies = [
  "serde",
  "serde_repr",
  "url",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols",
  "zbus",
 ]
 
@@ -1169,26 +1172,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "bincode"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36eaf5d7b090263e8150820482d5d93cd964a81e4019913c972f4edcc6edb740"
-dependencies = [
- "bincode_derive",
- "serde",
- "unty",
-]
-
-[[package]]
-name = "bincode_derive"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf95709a440f45e986983918d0e8a1f30a9b1df04918fc828670606804ac3c09"
-dependencies = [
- "virtue",
 ]
 
 [[package]]
@@ -2317,7 +2300,7 @@ checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 name = "custom_callback"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
- "bincode 2.0.1",
+ "bincode",
  "mimalloc",
  "parking_lot",
  "rerun",
@@ -3320,7 +3303,7 @@ dependencies = [
  "pollster",
  "profiling",
  "raw-window-handle",
- "ron 0.11.0",
+ "ron",
  "serde",
  "static_assertions",
  "wasm-bindgen",
@@ -3347,7 +3330,7 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
- "ron 0.11.0",
+ "ron",
  "serde",
  "smallvec",
  "unicode-segmentation",
@@ -4647,7 +4630,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1437561a949a2168929d7559aecd2f0ecb18b9e676080396388cdc399ddb723a"
 dependencies = [
  "async-trait",
- "bincode 1.3.3",
+ "bincode",
  "cacache",
  "http",
  "http-cache-semantics",
@@ -5025,9 +5008,9 @@ dependencies = [
 
 [[package]]
 name = "infer"
-version = "0.19.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a588916bfdfd92e71cacef98a63d9b1f0d74d6599980d11894290e7ddefffcf7"
+checksum = "bc150e5ce2330295b8616ce0e3f53250e53af31759a9dbedad1621ba29151847"
 dependencies = [
  "cfb",
 ]
@@ -5647,7 +5630,7 @@ dependencies = [
  "lance-table",
  "libm",
  "log",
- "ndarray 0.16.1",
+ "ndarray",
  "num-traits",
  "object_store",
  "prost 0.13.5",
@@ -6535,21 +6518,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ndarray"
-version = "0.17.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c7c9125e8f6f10c9da3aad044cc918cf8784fa34de857b1aa68038eb05a50a9"
-dependencies = [
- "matrixmultiply",
- "num-complex",
- "num-integer",
- "num-traits",
- "portable-atomic",
- "portable-atomic-util",
- "rawpointer",
-]
-
-[[package]]
 name = "ndk"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6797,7 +6765,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29f1dee9aa8d3f6f8e8b9af3803006101bb3653866ef056d530d53ae68587191"
 dependencies = [
  "libc",
- "ndarray 0.16.1",
+ "ndarray",
  "num-complex",
  "num-integer",
  "num-traits",
@@ -7412,7 +7380,7 @@ dependencies = [
  "proc-macro2",
  "proc-macro2-diagnostics",
  "quote",
- "syn 2.0.106",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -7952,7 +7920,7 @@ checksum = "af066a9c399a26e020ada66a034357a868728e72cd426f3adcd35f80d88d88c8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.106",
+ "syn 2.0.111",
  "version_check",
  "yansi",
 ]
@@ -8142,7 +8110,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa9dae7b05c02ec1a6bc9bcf20d8bc64a7dcbf57934107902a872014899b741f"
 dependencies = [
  "anyhow",
- "bincode 1.3.3",
+ "bincode",
  "byteorder",
  "cfg-if",
  "itertools 0.10.5",
@@ -9039,7 +9007,7 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_format",
- "roxmltree 0.21.1",
+ "roxmltree",
  "rustdoc-json",
  "rustdoc-types",
  "serde",
@@ -9174,7 +9142,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "egui_tiles",
- "ndarray 0.17.1",
+ "ndarray",
  "parking_lot",
  "re_build_info",
  "re_log_encoding",
@@ -9733,7 +9701,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "bincode 2.0.1",
+ "bincode",
  "cfg-if",
  "chrono",
  "clap",
@@ -9971,7 +9939,7 @@ dependencies = [
  "macaw",
  "mime_guess2",
  "mint",
- "ndarray 0.17.1",
+ "ndarray",
  "nohash-hasher",
  "ply-rs-bw",
  "rand 0.9.2",
@@ -10074,7 +10042,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_tracing",
- "ron 0.12.0",
+ "ron",
  "serde",
  "smallvec",
  "strum",
@@ -10272,7 +10240,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "macaw",
- "ndarray 0.17.1",
+ "ndarray",
  "nohash-hasher",
  "ordered-float 5.1.0",
  "parking_lot",
@@ -10313,7 +10281,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "half",
- "ndarray 0.17.1",
+ "ndarray",
  "re_chunk_store",
  "re_data_ui",
  "re_log_types",
@@ -10475,7 +10443,7 @@ dependencies = [
  "re_viewport",
  "re_viewport_blueprint",
  "rfd",
- "ron 0.12.0",
+ "ron",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -10518,7 +10486,7 @@ dependencies = [
  "itertools 0.14.0",
  "linked-hash-map",
  "macaw",
- "ndarray 0.17.1",
+ "ndarray",
  "nohash-hasher",
  "parking_lot",
  "rayon",
@@ -10990,9 +10958,9 @@ dependencies = [
 
 [[package]]
 name = "rfd"
-version = "0.16.0"
+version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a15ad77d9e70a92437d8f74c35d99b4e4691128df018833e99f90bcd36152672"
+checksum = "ef2bee61e6cffa4635c72d7d81a84294e28f0930db0ddcb0f66d10244674ebed"
 dependencies = [
  "ashpd",
  "block2 0.6.2",
@@ -11009,7 +10977,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -11059,33 +11027,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ron"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd490c5b18261893f14449cbd28cb9c0b637aebf161cd77900bfdedaff21ec32"
-dependencies = [
- "bitflags 2.10.0",
- "once_cell",
- "serde",
- "serde_derive",
- "typeid",
- "unicode-ident",
-]
-
-[[package]]
 name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
-
-[[package]]
-name = "roxmltree"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1964b10c76125c36f8afe190065a4bf9a87bf324842c05701330bba9f1cacbb"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "run_wasm"
@@ -11781,7 +11726,7 @@ name = "snippets"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "itertools 0.14.0",
- "ndarray 0.17.1",
+ "ndarray",
  "rand 0.9.2",
  "rand_distr 0.5.1",
  "re_build_tools",
@@ -13071,12 +13016,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
-name = "unty"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
-
-[[package]]
 name = "urdf-rs"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13139,7 +13078,7 @@ dependencies = [
  "kurbo",
  "log",
  "pico-args",
- "roxmltree 0.20.0",
+ "roxmltree",
  "simplecss",
  "siphasher",
  "strict-num",
@@ -13207,12 +13146,6 @@ dependencies = [
  "mimalloc",
  "rerun",
 ]
-
-[[package]]
-name = "virtue"
-version = "0.0.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "051eb1abcf10076295e815102942cc58f9d5e3b4560e46e53c21e8ff6f3af7b1"
 
 [[package]]
 name = "walkdir"
