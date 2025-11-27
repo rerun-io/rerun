@@ -71,7 +71,7 @@ pub async fn search_index(
     // creation of an empty record batch with the right schema, and return that
     // instead.
     //
-    // Note, it's importance we do this here because the lance scanner actually
+    // Note, it's important we do this here because the lance scanner actually
     // mutates the schema based on the type of search being done.
     let stream = if length_zero {
         let rb = RecordBatch::new_empty(stream.schema());
