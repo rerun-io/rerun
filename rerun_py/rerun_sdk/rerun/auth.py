@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import webbrowser
+
+from rerun_bindings import init_login_flow
+
 """
 WorkOS Authentication Module for Jupyter Notebooks.
 
 This module provides OAuth/SSO authentication using WorkOS with browser cookie storage.
 """
 
-import webbrowser
-from rerun_bindings import OauthLoginFlow, init_login_flow
 
 def login_with_browser() -> None:
     """Initiate OAuth flow by redirecting to WorkOS authorization URL."""
@@ -25,4 +27,3 @@ def login_with_browser() -> None:
 
     # Wait for the flow to complete and store credentials
     flow.finish_login_flow()
-

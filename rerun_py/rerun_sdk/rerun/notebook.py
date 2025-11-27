@@ -29,8 +29,6 @@ from .event import (
 )
 from .recording_stream import RecordingStream, get_data_recording
 
-from rerun import auth
-
 HAS_NOTEBOOK = True
 try:
     from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
