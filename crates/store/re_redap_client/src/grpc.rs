@@ -452,7 +452,27 @@ async fn stream_partition_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let forward_chunk = |chunk: Chunk| {
+    let chunk_index_messages = client
+        .query_dataset_chunk_index(PartitionQueryParams {
+            dataset_id,
+            partition_id: partition_id.clone(),
+            include_static_data: true,
+            include_temporal_data: true,
+            query: None,
+        })
+        .await?;
+
+    for msg in chunk_index_messages {
+        if tx
+            .send(DataSourceMessage::ChunkIndexMessage(store_id.clone(), msg))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(()); // cancelled
+        }
+    }
+
+    let send_chunk = |chunk: Chunk| {
         if tx
             .send(
                 LogMsg::ArrowMsg(
@@ -495,7 +515,7 @@ async fn stream_partition_from_server(
     while let Some(chunks) = static_chunk_stream.next().await {
         for chunk in chunks? {
             let (chunk, _partition_id) = chunk;
-            if !forward_chunk(chunk)? {
+            if !send_chunk(chunk)? {
                 return Ok(()); // cancelled
             }
         }
@@ -536,7 +556,7 @@ async fn stream_partition_from_server(
     while let Some(chunks) = temporal_chunk_stream.next().await {
         for chunk in chunks? {
             let (chunk, _partition_id) = chunk;
-            if !forward_chunk(chunk)? {
+            if !send_chunk(chunk)? {
                 return Ok(()); // cancelled
             }
         }

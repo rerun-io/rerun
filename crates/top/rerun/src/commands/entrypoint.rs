@@ -1210,6 +1210,22 @@ fn assert_receive_into_entity_db(
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         match msg {
+                            DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                                let mut_db =
+                                    match store_id.kind() {
+                                        re_log_types::StoreKind::Recording => rec
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(store_id.clone())
+                                            }),
+                                        re_log_types::StoreKind::Blueprint => bp
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(store_id.clone())
+                                            }),
+                                    };
+
+                                mut_db.add_chunk_index_message(chunk_index);
+                            }
+
                             DataSourceMessage::LogMsg(msg) => {
                                 let mut_db =
                                     match msg.store_id().kind() {

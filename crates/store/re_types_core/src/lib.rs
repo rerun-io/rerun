@@ -25,7 +25,7 @@ pub mod arrow_helpers;
 mod arrow_string;
 pub mod arrow_zip_validity;
 mod as_components;
-mod chunk_index;
+mod chunk_index_message;
 mod component_batch;
 mod component_descriptor;
 mod id;
@@ -40,7 +40,7 @@ pub use self::{
     archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
     arrow_string::ArrowString,
     as_components::AsComponents,
-    chunk_index::ChunkIndex,
+    chunk_index_message::ChunkIndexMessage,
     component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},
     component_descriptor::{
         ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,

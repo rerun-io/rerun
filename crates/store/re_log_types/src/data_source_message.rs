@@ -1,6 +1,8 @@
 // TODO(andreas): Conceptually these should go to `re_data_source`.
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
+use re_types_core::ChunkIndexMessage;
+
 use crate::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
 
 /// Message from a data source.
@@ -8,6 +10,11 @@ use crate::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_int
 /// May contain limited UI commands for instrumenting the state of the receiving end.
 #[derive(Clone, Debug)]
 pub enum DataSourceMessage {
+    /// The index of all the chunks in a recording.
+    ///
+    /// Some sources may send this, others may not.
+    ChunkIndexMessage(StoreId, ChunkIndexMessage),
+
     /// See [`LogMsg`].
     LogMsg(LogMsg),
 
@@ -40,8 +47,8 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
             Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::UiCommand(_) => {
-                // Ui commands doesn't have meta-data yet
+            Self::ChunkIndexMessage { .. } | Self::UiCommand(_) => {
+                // Not everything needs latency tracking
             }
         }
     }

@@ -32,7 +32,7 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_column, missing_field,
 };
-use re_types_core::ChunkIndex;
+use re_types_core::ChunkIndexMessage;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
@@ -390,7 +390,7 @@ where
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
     ///
-    /// The result is compatible with [`ChunkIndex`].
+    /// The result is compatible with [`ChunkIndexMessage`].
     pub async fn query_dataset_raw(
         &mut self,
         params: PartitionQueryParams,
@@ -440,7 +440,7 @@ where
     pub async fn query_dataset_chunk_index(
         &mut self,
         params: PartitionQueryParams,
-    ) -> Result<Vec<ChunkIndex>, ApiError> {
+    ) -> Result<Vec<ChunkIndexMessage>, ApiError> {
         self.query_dataset_raw(params)
             .await?
             .collect::<Vec<_>>()
@@ -467,8 +467,9 @@ where
                 let rb = arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
                     ApiError::serialization(err, "failed converting to RecordBatch")
                 })?;
-                ChunkIndex::from_record_batch(rb)
-                    .map_err(|err| ApiError::serialization(err, "failed creating ChunkIndex"))
+                ChunkIndexMessage::from_record_batch(rb).map_err(|err| {
+                    ApiError::serialization(err, "failed creating ChunkIndexMessage")
+                })
             })
             .collect()
     }
