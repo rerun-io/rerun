@@ -2258,7 +2258,7 @@ struct PyOauthLoginFlow {
     login_flow: OauthLoginFlow,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyOauthLoginFlow {
     /// Get the URL for the OAuth login flow.
     fn login_url(&self) -> String {
@@ -2332,6 +2332,10 @@ impl PyCredentials {
     /// The user email.
     fn user_email(&self) -> String {
         self.0.user().email.clone()
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("<Credentials for '{}'>", self.user_email())
     }
 }
 
