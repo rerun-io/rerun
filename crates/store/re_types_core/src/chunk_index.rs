@@ -57,7 +57,7 @@ fn chunk_ids_from_rb(rb: &RecordBatch) -> anyhow::Result<&[ChunkId]> {
         .ok_or_else(|| anyhow::format_err!("Missing chunk_id column in ChunkIndex"))?;
 
     let chunk_ids = chunk_ids.as_fixed_size_binary_opt().ok_or_else(|| {
-        anyhow::format_err!("Expected ChunkIDd to be encoded as a FixedSizeBinary array")
+        anyhow::format_err!("Expected ChunkId to be encoded as a FixedSizeBinary array")
     })?;
 
     Ok(ChunkId::try_slice_from_arrow(chunk_ids)?)
