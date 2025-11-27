@@ -6,7 +6,7 @@ use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
 
-use urdf_rs::{Geometry, Joint, Link, LinkName, Material, Robot, Vec3, Vec4};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
@@ -287,6 +287,14 @@ fn log_robot(
         entity_path.clone(),
         timepoint,
         &CoordinateFrame::update_fields().with_frame(urdf_tree.root.name.clone()),
+    )?;
+    // TODO: Do we always need to do that?
+    send_archetype(
+        tx,
+        store_id,
+        entity_path.clone(),
+        timepoint,
+        &Transform3D::update_fields().with_child_frame(urdf_tree.root.name.clone()),
     )?;
 
     walk_tree(
