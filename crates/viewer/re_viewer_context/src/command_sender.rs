@@ -133,7 +133,7 @@ pub enum SystemCommand {
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
 
-    /// Set OAuth credentials
+    /// Set authentication credentials from an external source.
     SetAuthCredentials {
         access_token: String,
         email: String,
