@@ -19,11 +19,29 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
     let camera_intrinsics =
         archetypes::Pinhole::from_focal_length_and_resolution([2., 2.], [3., 2.])
             .with_image_plane_distance(1.0);
-    let camera_image = archetypes::Image::from_color_model_and_tensor(
-        re_types::datatypes::ColorModel::RGB,
-        Array::<u8, _>::zeros((2, 3, 3).f()),
-    )
-    .expect("failed to create image");
+    let camera_image = {
+        let height = 2;
+        let width = 3;
+        let mut data = Array::<u8, _>::zeros((height, width, 3).f());
+
+        // Create a colored checkerboard pattern
+        for y in 0..height {
+            for x in 0..width {
+                let is_even_square = (x + y) % 2 == 0;
+                let color = if is_even_square {
+                    [255, 100, 100] // Light red
+                } else {
+                    [100, 100, 255] // Light blue
+                };
+                data[[y, x, 0]] = color[0];
+                data[[y, x, 1]] = color[1];
+                data[[y, x, 2]] = color[2];
+            }
+        }
+
+        archetypes::Image::from_color_model_and_tensor(re_types::datatypes::ColorModel::RGB, data)
+            .expect("failed to create image")
+    };
 
     let points2d =
         archetypes::Points2D::new([[0.0, 0.0], [3.0, 0.0], [0.0, 2.0], [3.0, 2.0], [1.5, 1.0]])
