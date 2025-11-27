@@ -1,6 +1,6 @@
-use std::{str::FromStr as _, sync::Arc};
-
+use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
+use std::{str::FromStr as _, sync::Arc};
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
@@ -14,6 +14,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
+use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
@@ -339,31 +340,51 @@ impl App {
         );
 
         {
-            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
-            // as the play/pause shortcut. Egui's built in behavior is to trigger clicks on the
-            // focused item, and we don't want that. Users can use `Enter` instead.
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space/Arrow keys so we can
+            // use them as timeline shortcuts. Egui's built in behavior is to interact with focus,
+            // and we don't want that.
             // But of course text edits should still get it so we use this ugly hack to check if
             // a text edit is focused.
             let command_sender = command_sender.clone();
             creation_context.egui_ctx.on_begin_pass(
                 "filter space key",
                 Arc::new(move |ctx| {
-                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
-                        let is_text_edit_focused =
-                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
+                    if !ctx.text_edit_focused() {
+                        let conflicting_commands = [
+                            UICommand::PlaybackTogglePlayPause,
+                            UICommand::PlaybackBeginning,
+                            UICommand::PlaybackEnd,
+                            UICommand::PlaybackForwardFast,
+                            UICommand::PlaybackBackFast,
+                            UICommand::PlaybackStepForward,
+                            UICommand::PlaybackStepBack,
+                            UICommand::PlaybackForward,
+                            UICommand::PlaybackBack,
+                        ];
 
-                        if !is_text_edit_focused {
-                            let shortcut = UICommand::PlaybackTogglePlayPause
-                                .primary_kb_shortcut(ctx.os())
-                                .expect("Play / pause should have a keyboard shortcut");
-                            debug_assert_eq!(
-                                shortcut.logical_key,
-                                egui::Key::Space,
-                                "Expected space key shortcut"
-                            );
-                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
-                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
+                        let os = ctx.os();
+                        let mut reset_focus_direction = false;
+                        ctx.input_mut(|i| {
+                            for command in conflicting_commands {
+                                for shortcut in command.kb_shortcuts(os) {
+                                    if i.consume_shortcut(&shortcut) {
+                                        if shortcut.logical_key == Key::ArrowLeft
+                                            || shortcut.logical_key == Key::ArrowRight
+                                        {
+                                            reset_focus_direction = true;
+                                        }
+                                        command_sender.send_ui(command);
+                                    }
+                                }
                             }
+                        });
+
+                        if reset_focus_direction {
+                            // Additionally, we need to revert the focus direction on ArrowLeft/Right
+                            // keys to prevent the focus change for timeline shortcuts
+                            ctx.memory_mut(|mem| {
+                                mem.move_focus(FocusDirection::None);
+                            });
                         }
                     }
                 }),
@@ -1767,12 +1788,76 @@ impl App {
                         });
                 }
             }
+            UICommand::PlaybackBack => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-0.1)],
+                        });
+                }
+            }
+            UICommand::PlaybackForward => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(0.1)],
+                        });
+                }
+            }
+            UICommand::PlaybackBackFast => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-1.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackForwardFast => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(1.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackBeginning => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBeginning],
+                        });
+                }
+            }
+            UICommand::PlaybackEnd => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveEnd],
+                        });
+                }
+            }
             UICommand::PlaybackRestart => {
                 if let Some(store_id) = storage_context.hub.active_store_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
                             time_commands: vec![TimeControlCommand::Restart],
+                        });
+                }
+            }
+
+            UICommand::PlaybackSpeed(speed) => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::SetSpeed(speed.0.0)],
                         });
                 }
             }
