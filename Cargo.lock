@@ -3582,9 +3582,9 @@ dependencies = [
 
 [[package]]
 name = "endi"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3d8a32ae18130a3c84dd492d4215c3d913c3b07c6b63c2eb3eb7ff1101ab7bf"
+checksum = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
 
 [[package]]
 name = "enum-map"
@@ -4946,7 +4946,7 @@ dependencies = [
  "moxcms",
  "num-traits",
  "png 0.18.0",
- "tiff",
+ "tiff 0.10.3",
  "zune-core 0.5.0",
  "zune-jpeg 0.5.5",
 ]
@@ -5054,9 +5054,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "1.44.1"
+version = "1.44.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8732d3774162a0851e3f2b150eb98f31a9885dd75985099421d393385a01dfd"
+checksum = "dfd3461e1f00283105bdf97c3a1aca2b3f8456eb809a96938d2b190cd4dbc6d2"
 dependencies = [
  "console 0.15.11",
  "globset",
@@ -5223,6 +5223,12 @@ dependencies = [
  "getrandom 0.3.4",
  "libc",
 ]
+
+[[package]]
+name = "jpeg-decoder"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "00810f1d8b74be64b13dbf3db89ac67740615d6c891f0e7b6179326533011a07"
 
 [[package]]
 name = "js-sys"
@@ -5541,7 +5547,7 @@ dependencies = [
  "prost-types 0.13.5",
  "rand 0.9.2",
  "snafu",
- "strum 0.26.3",
+ "strum",
  "tokio",
  "tracing",
  "xxhash-rust",
@@ -8931,7 +8937,7 @@ dependencies = [
  "re_viewer_context",
  "serde",
  "static_assertions",
- "strum 0.27.2",
+ "strum",
  "thiserror 2.0.17",
  "tokio",
 ]
@@ -9393,7 +9399,7 @@ dependencies = [
  "paste",
  "raw-cpuid",
  "static_assertions",
- "strum 0.26.3",
+ "strum",
  "to_method",
  "zerocopy 0.7.35",
 ]
@@ -9927,7 +9933,7 @@ dependencies = [
  "similar-asserts",
  "smallvec",
  "thiserror 2.0.17",
- "tiff",
+ "tiff 0.9.1",
  "uuid",
 ]
 
@@ -10014,8 +10020,8 @@ dependencies = [
  "ron 0.12.0",
  "serde",
  "smallvec",
- "strum 0.27.2",
- "strum_macros 0.27.2",
+ "strum",
+ "strum_macros",
  "sublime_fuzzy",
  "url",
 ]
@@ -10416,8 +10422,8 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
- "strum 0.27.2",
- "strum_macros 0.27.2",
+ "strum",
+ "strum_macros",
  "tap",
  "tempfile",
  "thiserror 2.0.17",
@@ -10488,7 +10494,7 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
- "strum_macros 0.27.2",
+ "strum_macros",
  "thiserror 2.0.17",
  "tokio",
  "uuid",
@@ -10884,8 +10890,8 @@ dependencies = [
  "re_video",
  "re_web_viewer_server",
  "rustls",
- "strum 0.27.2",
- "strum_macros 0.27.2",
+ "strum",
+ "strum_macros",
  "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
@@ -11866,16 +11872,7 @@ version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
 dependencies = [
- "strum_macros 0.26.4",
-]
-
-[[package]]
-name = "strum"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
-dependencies = [
- "strum_macros 0.27.2",
+ "strum_macros",
 ]
 
 [[package]]
@@ -11888,18 +11885,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustversion",
- "syn 2.0.111",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
  "syn 2.0.111",
 ]
 
@@ -12282,6 +12267,17 @@ dependencies = [
  "byteorder",
  "integer-encoding",
  "ordered-float 2.10.1",
+]
+
+[[package]]
+name = "tiff"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba1310fcea54c6a9a4fd1aad794ecc02c31682f6bfbecdf460bf19533eed1e3e"
+dependencies = [
+ "flate2",
+ "jpeg-decoder",
+ "weezl",
 ]
 
 [[package]]
@@ -14385,9 +14381,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.7.13"
+version = "0.7.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21a0236b59786fed61e2a80582dd500fe61f18b5dca67a4a067d0bc9039339cf"
+checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 dependencies = [
  "memchr",
 ]

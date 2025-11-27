@@ -161,7 +161,7 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 
 # core egui-crates:
 ecolor = "0.33.0"
-eframe = { version = "0.33.0", default-features = false, features = [
+eframe = { version = "0.33.2", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
@@ -169,7 +169,7 @@ eframe = { version = "0.33.0", default-features = false, features = [
 ] }
 egui = { version = "0.33.0", features = ["callstack", "color-hex", "rayon"] }
 egui_extras = { version = "0.33.0", features = ["http", "image", "serde", "svg"] }
-egui_kittest = { version = "0.33.1", features = ["wgpu", "snapshot", "eframe"] }
+egui_kittest = { version = "0.33.2", features = ["wgpu", "snapshot", "eframe"] }
 egui-wgpu = "0.33.0"
 emath = "0.33.0"
 
@@ -346,15 +346,15 @@ slotmap = { version = "1.0.7", features = ["serde"] }
 smallvec = { version = "1.15", features = ["const_generics", "union"] }
 static_assertions = "1.1"
 stl_io = "0.10.0"
-strum = { version = "0.27.2", features = ["derive"] } # need to update re_rav1d first
-strum_macros = "0.27.2" # need to update re_rav1d first
+strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
+strum_macros = "0.26.4" # need to update re_rav1d first
 sublime_fuzzy = "0.7.0"
 syn = "2.0"
 sysinfo = { version = "0.30.13", default-features = false }
 tap = "1.0.1"
 tempfile = "3.23"
 thiserror = "2.0.17"
-tiff = "0.10.3"
+tiff = "0.9.1"
 tiny_http = { version = "0.12.0", default-features = false }
 tobj = "4.0"
 tokio = { version = "1.47.1", default-features = false }

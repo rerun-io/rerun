@@ -427,7 +427,6 @@ pub fn blob_and_format_from_tiff(bytes: &[u8]) -> Result<(Blob, ImageFormat), Im
         DecodingResult::I16(data) => (bytemuck::cast_slice(data), ChannelDatatype::I16),
         DecodingResult::I32(data) => (bytemuck::cast_slice(data), ChannelDatatype::I32),
         DecodingResult::I64(data) => (bytemuck::cast_slice(data), ChannelDatatype::I64),
-        DecodingResult::F16(data) => (bytemuck::cast_slice(data), ChannelDatatype::F16),
     };
 
     let (width, height) = decoder.dimensions()?;
