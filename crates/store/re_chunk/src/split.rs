@@ -67,7 +67,7 @@ impl Chunk {
 
         let target_rows = target_rows.max(1) as usize; // Ensure at least 1 row per chunk
 
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(chunk.num_rows().div_ceil(target_rows));
         let mut start_idx = 0;
         let mut cur_chunk_id = ChunkId::new();
 
