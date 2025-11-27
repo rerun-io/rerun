@@ -32,32 +32,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         -1.5,
                     ),
                 },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                0.002,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                0.004,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                0.003,
-                            ),
-                        },
-                        translation: DVec3(
-                            47.998,
-                            99.996,
-                            -1.5,
-                        ),
-                    },
-                ],
             },
         ),
     ),
@@ -90,56 +64,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         -1.5,
                     ),
                 },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                0.002,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                0.004,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                0.003,
-                            ),
-                        },
-                        translation: DVec3(
-                            48.019999999999996,
-                            99.996,
-                            -1.5,
-                        ),
-                    },
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                0.002,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                0.004,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                0.003,
-                            ),
-                        },
-                        translation: DVec3(
-                            48.04,
-                            99.996,
-                            -1.5,
-                        ),
-                    },
-                ],
             },
         ),
     ),
@@ -172,32 +96,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         0.0,
                     ),
                 },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                1.0,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                1.0,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                1.0,
-                            ),
-                        },
-                        translation: DVec3(
-                            -2.0,
-                            0.0,
-                            0.0,
-                        ),
-                    },
-                ],
             },
         ),
     ),
@@ -230,32 +128,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         -1.497,
                     ),
                 },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                0.002,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                0.004,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                0.003,
-                            ),
-                        },
-                        translation: DVec3(
-                            48.0,
-                            99.996,
-                            -1.497,
-                        ),
-                    },
-                ],
             },
         ),
     ),
@@ -296,32 +168,6 @@ expression: "pretty_print_transform_frame_ids_in(&result, &transform_cache)"
                         0.0,
                     ),
                 },
-                target_from_instances: [
-                    DAffine3 {
-                        matrix3: DMat3 {
-                            x_axis: DVec3(
-                                1.0,
-                                0.0,
-                                0.0,
-                            ),
-                            y_axis: DVec3(
-                                0.0,
-                                1.0,
-                                0.0,
-                            ),
-                            z_axis: DVec3(
-                                0.0,
-                                0.0,
-                                1.0,
-                            ),
-                        },
-                        translation: DVec3(
-                            0.0,
-                            0.0,
-                            0.0,
-                        ),
-                    },
-                ],
             },
         ),
     ),
