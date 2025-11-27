@@ -346,7 +346,7 @@ similar-asserts = "1.7.0"
 slotmap = { version = "1.0.7", features = ["serde"] }
 smallvec = { version = "1.15", features = ["const_generics", "union"] }
 static_assertions = "1.1"
-stl_io = "0.10.0"
+stl_io = "0.9.0"
 strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
 strum_macros = "0.26.4" # need to update re_rav1d first
 sublime_fuzzy = "0.7.0"
