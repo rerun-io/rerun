@@ -169,7 +169,9 @@ fn atomic_latest_at_query(
                 continue;
             }
         } else {
-            row_indices_with_queried_time_from_new_to_old.next()
+            // Pick the last where any relevant component is non-null & non-empty.
+            row_indices_with_queried_time_from_new_to_old
+                .find(|index| has_row_any_component(&chunk, *index, atomic_component_set))
         };
 
         if let Some(row_index) = highest_row_index_with_expected_frame_id {
@@ -707,44 +709,36 @@ mod tests {
             .row_id()
         };
 
-        let query_row_at_time_no_condition = |t| {
-            atomic_latest_at_query(
-                &entity_db,
-                &LatestAtQuery::new(*timeline().name(), t),
-                &entity_path,
-                None,
-                &atomic_component_set(),
-            )?
-            .row_id()
-        };
-
         assert_eq!(query_row_at_time(0), None);
         if out_of_order {
             assert_eq!(query_row_at_time(10), Some(row_id_temp2));
-            assert_eq!(query_row_at_time_no_condition(10), Some(row_id_temp2));
             assert_eq!(query_row_at_time(15), Some(row_id_temp2));
-            assert_eq!(query_row_at_time_no_condition(15), Some(row_id_temp2));
             assert_eq!(query_row_at_time(20), Some(row_id_temp1));
-            assert_eq!(query_row_at_time_no_condition(20), Some(row_id_temp1));
             assert_eq!(query_row_at_time(25), Some(row_id_temp1));
-            assert_eq!(query_row_at_time_no_condition(25), Some(row_id_irrelevant));
             assert_eq!(query_row_at_time(30), Some(row_id_temp0));
-            assert_eq!(query_row_at_time_no_condition(30), Some(row_id_temp0));
             assert_eq!(query_row_at_time(35), Some(row_id_temp0));
-            assert_eq!(query_row_at_time_no_condition(35), Some(row_id_temp0));
         } else {
             assert_eq!(query_row_at_time(10), Some(row_id_temp0));
-            assert_eq!(query_row_at_time_no_condition(10), Some(row_id_temp0));
             assert_eq!(query_row_at_time(15), Some(row_id_temp0));
-            assert_eq!(query_row_at_time_no_condition(15), Some(row_id_temp0));
             assert_eq!(query_row_at_time(20), Some(row_id_temp1));
-            assert_eq!(query_row_at_time_no_condition(20), Some(row_id_temp1));
             assert_eq!(query_row_at_time(25), Some(row_id_temp1));
-            assert_eq!(query_row_at_time_no_condition(25), Some(row_id_irrelevant));
             assert_eq!(query_row_at_time(30), Some(row_id_temp2));
-            assert_eq!(query_row_at_time_no_condition(30), Some(row_id_temp2));
             assert_eq!(query_row_at_time(35), Some(row_id_temp2));
-            assert_eq!(query_row_at_time_no_condition(35), Some(row_id_temp2));
+        }
+
+        // The condition should not make any difference in this scenario!
+        for t in [0, 10, 15, 20, 25, 30, 35] {
+            assert_eq!(
+                query_row_at_time(t),
+                atomic_latest_at_query(
+                    &entity_db,
+                    &LatestAtQuery::new(*timeline().name(), t),
+                    &entity_path,
+                    None,
+                    &atomic_component_set(),
+                )
+                .and_then(|chunk| chunk.row_id())
+            );
         }
 
         // Any query with another frame should fail
@@ -945,7 +939,7 @@ mod tests {
 
             assert_eq!(query_row_no_cond(10), Some(row_id_temp2));
             assert_eq!(query_row_no_cond(20), Some(row_id_temp1));
-            assert_eq!(query_row_no_cond(25), Some(row_id_irrelevant));
+            assert_eq!(query_row_no_cond(25), Some(row_id_temp1));
             assert_eq!(query_row_no_cond(35), Some(row_id_temp0));
         } else {
             assert_eq!(query_row(10, "first"), Some(row_id_temp0));
@@ -965,7 +959,7 @@ mod tests {
 
             assert_eq!(query_row_no_cond(10), Some(row_id_temp0));
             assert_eq!(query_row_no_cond(20), Some(row_id_temp1));
-            assert_eq!(query_row_no_cond(25), Some(row_id_irrelevant));
+            assert_eq!(query_row_no_cond(25), Some(row_id_temp1));
             assert_eq!(query_row_no_cond(35), Some(row_id_temp2));
         }
 
