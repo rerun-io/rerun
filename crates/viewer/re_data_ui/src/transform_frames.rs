@@ -76,16 +76,20 @@ impl TransformFramesUi {
             let Some(frame_id) = frame_ids.lookup_frame_id(frame_id_hash) else {
                 break false;
             };
-            let entity_path = frame_ids.lookup_source_entity(frame_id_hash);
+
+            let Some(frame) = transforms.frame_transforms(frame_id_hash) else {
+                frames.push(TransformFrameInfo {
+                    frame_id: frame_id.clone(),
+                    source_entity: None,
+                });
+
+                break false;
+            };
 
             frames.push(TransformFrameInfo {
                 frame_id: frame_id.clone(),
-                source_entity: entity_path.clone(),
+                source_entity: Some(frame.associated_entity_path().clone()),
             });
-
-            let Some(frame) = transforms.frame_transforms(frame_id_hash) else {
-                break false;
-            };
 
             let Some(transform) = frame.latest_at_transform(ctx.recording(), query) else {
                 break false;
@@ -134,22 +138,22 @@ impl TransformFramesUi {
                     .on_hover_text("There are more frames not displayed here");
             }
 
-            for (idx, transform) in self.frames.iter().take(show_amount).rev().enumerate() {
-                if idx > 0 || more {
+            for (idx, transform) in self.frames.iter().take(show_amount).enumerate().rev() {
+                if idx + 1 < self.frames.len() || more {
                     let id = ui.next_auto_id();
                     let rect = ui.small_icon(&icons::ARROW_DOWN, None);
                     ui.interact(rect, id, egui::Sense::hover())
                         .on_hover_text(format!(
                             "{} is a child frame of {}",
                             transform.frame_id,
-                            idx.checked_sub(1)
-                                .and_then(|idx| self.frames.get(idx))
+                            self.frames
+                                .get(idx + 1)
                                 .map(|transform| transform.frame_id.as_str())
                                 .unwrap_or("another frame")
                         ));
                 }
 
-                let is_current = idx + 1 == self.frames.len();
+                let is_current = idx == 0;
 
                 transform_ui(ctx, ui, transform, is_current, layout);
             }
