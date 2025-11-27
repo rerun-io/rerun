@@ -9,7 +9,13 @@ use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, TransformDatabaseStoreCache, ViewerContext,
 };
 
+/// The max amount of ancestors we show before putting a '…'.
 const MAX_SHOWN_ANCESTORS: usize = 100;
+
+/// The max amount of ancestors we show in a tooltip.
+///
+/// We want this to be less because we don't use a scroll area for
+/// tooltips.
 const MAX_SHOWN_ANCESTORS_TOOLTIP: usize = 3;
 
 struct TransformFrameInfo {
@@ -102,6 +108,7 @@ impl TransformFramesUi {
 
         let mut i = 0;
 
+        // Collect transform frame ancestors.
         let more = loop {
             let Some(frame_id) = frame_ids.lookup_frame_id(frame_id_hash) else {
                 break false;
