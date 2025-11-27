@@ -2284,7 +2284,6 @@ fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
     }
 }
 
-// TODO(aedm): don't rename
 #[pyclass(frozen, name = "Credentials", module = "rerun_bindings.rerun_bindings")]
 struct PyCredentials(Credentials);
 

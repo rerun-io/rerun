@@ -2035,9 +2035,7 @@ class OauthLoginFlow:
     """
 
     def login_url(self) -> str:
-        """
-        Get the URL for the OAuth login flow.
-        """
+        """Get the URL for the OAuth login flow."""
 
     def finish_login_flow(self) -> str:
         """
@@ -2047,6 +2045,7 @@ class OauthLoginFlow:
         -------
         str
             The access token.
+
         """
 
 class Credentials:
@@ -2057,13 +2056,8 @@ class Credentials:
         """The access token."""
 
     @property
-    def refresh_token(self) -> str:
-        """The refresh token."""
-
-    @property
     def user_email(self) -> str:
         """The user email."""
-
 
 def get_credentials() -> Credentials | None:
     """Returns the access token for the current user."""
