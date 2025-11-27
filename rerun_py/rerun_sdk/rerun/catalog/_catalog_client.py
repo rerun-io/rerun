@@ -16,7 +16,7 @@ from . import EntryId, EntryKind, TableInsertMode
 if TYPE_CHECKING:
     import datafusion
 
-    from . import Entry, DatasetEntry, TableEntry
+    from . import DatasetEntry, Entry, TableEntry
 
 
 # Known FFI compatible releases of Datafusion.
@@ -116,6 +116,8 @@ class CatalogClient:
 
     def table_entries(self) -> list[TableEntry]:
         """Returns a list of all dataset entries in the catalog."""
+        from . import TableEntry
+
         return [TableEntry(internal) for internal in self._internal.table_entries()]
 
     # ---
@@ -154,11 +156,13 @@ class CatalogClient:
 
     def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
+        from . import DatasetEntry
 
         return DatasetEntry(self._internal.get_dataset_entry(self._resolve_name_or_id(id, name)))
 
     def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table by its ID or name."""
+        from . import TableEntry
 
         return TableEntry(self._internal.get_table_entry(self._resolve_name_or_id(id, name)))
 

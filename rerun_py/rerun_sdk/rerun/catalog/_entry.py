@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 # TODO: rename
 from rerun_bindings import DatasetEntry as DatasetEntryInternal, TableEntry as TableEntryInternal
 
-from . import EntryId, EntryKind
-
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from . import CatalogClient
+    from . import CatalogClient, EntryId, EntryKind
 
 InternalT = TypeVar("InternalT", DatasetEntryInternal, TableEntryInternal)
 
@@ -23,6 +21,9 @@ class Entry(ABC, Generic[InternalT]):
 
     def __init__(self, inner: InternalT) -> None:
         self._internal = inner
+
+    def __repr__(self) -> str:
+        return self._internal.__repr__()
 
     @property
     def id(self) -> EntryId:
@@ -41,7 +42,7 @@ class Entry(ABC, Generic[InternalT]):
 
         from . import CatalogClient
 
-        return CatalogClient._from_internal(self._internal.catalog())
+        return CatalogClient._from_internal(self._internal.catalog)
 
     @property
     def kind(self) -> EntryKind:
