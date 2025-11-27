@@ -94,6 +94,7 @@ class EncodedDepthImage(Archetype):
              * `image/png`
         meter:
             Conversion from native units to meters (e.g. `0.001` for millimeters).
+
             If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
         colormap:
             Optional colormap for visualization of decoded depth.
@@ -177,6 +178,7 @@ class EncodedDepthImage(Archetype):
              * `image/png`
         meter:
             Conversion from native units to meters (e.g. `0.001` for millimeters).
+
             If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
         colormap:
             Optional colormap for visualization of decoded depth.
@@ -254,6 +256,7 @@ class EncodedDepthImage(Archetype):
              * `image/png`
         meter:
             Conversion from native units to meters (e.g. `0.001` for millimeters).
+
             If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
         colormap:
             Optional colormap for visualization of decoded depth.
@@ -362,6 +365,7 @@ class EncodedDepthImage(Archetype):
         converter=components.DepthMeterBatch._converter,  # type: ignore[misc]
     )
     # Conversion from native units to meters (e.g. `0.001` for millimeters).
+    #
     # If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
