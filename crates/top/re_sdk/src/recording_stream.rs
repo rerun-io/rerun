@@ -1495,12 +1495,10 @@ impl RecordingStream {
                             re_log_types::DataSourceMessage::LogMsg(log_msg) => {
                                 this.record_msg(log_msg);
                             }
-                            re_log_types::DataSourceMessage::TableMsg(_) => {
-                                re_log::error_once!("Ignoring unexpected TableCmd in file");
-                            }
-                            re_log_types::DataSourceMessage::UiCommand(ui_cmd) => {
+                            unsupported => {
                                 re_log::error_once!(
-                                    "Ignoring unexpected UiCommand in file: {ui_cmd:?}",
+                                    "Ignoring unexpected {} in file",
+                                    unsupported.variant_name()
                                 );
                             }
                         }

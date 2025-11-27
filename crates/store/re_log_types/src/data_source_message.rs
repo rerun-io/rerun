@@ -25,6 +25,17 @@ impl_into_enum!(TableMsg, DataSourceMessage, TableMsg);
 impl_into_enum!(DataSourceUiCommand, DataSourceMessage, UiCommand);
 
 impl DataSourceMessage {
+    /// The name of the variant, useful for error message etc
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            Self::ChunkIndexMessage { .. } => "ChunkIndexMessage",
+            Self::LogMsg(_) => "LogMsg",
+            Self::TableMsg(_) => "TableMsg",
+            Self::UiCommand(_) => "UiCommand",
+        }
+    }
+
+    // We sometimes inject meta-data for latency tracking etc
     pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
