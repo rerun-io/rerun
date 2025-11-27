@@ -4,6 +4,27 @@ use arrow::array::{Array as _, AsArray as _, BooleanArray, RecordBatch};
 
 use crate::ChunkId;
 
+#[derive(thiserror::Error, Debug)]
+pub enum ChunkIndexError {
+    #[error("Missing chunk_id column in ChunkIndex")]
+    MissingChunkIdColumn,
+
+    #[error("Expected ChunkId to be encoded as a FixedSizeBinary array")]
+    InvalidChunkIdEncoding,
+
+    #[error("Missing chunk_is_static column in ChunkIndex")]
+    MissingChunkIsStaticColumn,
+
+    #[error("Expected chunk_is_static to be encoded as a Boolean array")]
+    InvalidChunkIsStaticEncoding,
+
+    #[error("Found nulls in chunk_is_static column")]
+    NullsInChunkIsStatic,
+
+    #[error(transparent)]
+    WrongDatatype(#[from] re_arrow_util::WrongDatatypeError),
+}
+
 /// Keeps track of all the chunks in a store (recording) without actually holding the chunks.
 #[ouroboros::self_referencing]
 pub struct ChunkIndex {
@@ -16,15 +37,14 @@ pub struct ChunkIndex {
 }
 
 impl ChunkIndex {
-    pub fn from_record_batch(rb: RecordBatch) -> anyhow::Result<Self> {
+    pub fn from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
         #![expect(clippy::unwrap_used)] // We validate before running the builder
 
         chunk_ids_from_rb(&rb)?; // validate
         let chunk_is_static = chunk_is_static_from_rb(&rb)?;
-        anyhow::ensure!(
-            chunk_is_static.null_count() == 0,
-            "Found nulls in chunk_is_static column"
-        );
+        if chunk_is_static.null_count() != 0 {
+            return Err(ChunkIndexError::NullsInChunkIsStatic);
+        }
 
         Ok(ChunkIndexBuilder {
             rb,
@@ -51,26 +71,26 @@ impl ChunkIndex {
     }
 }
 
-fn chunk_ids_from_rb(rb: &RecordBatch) -> anyhow::Result<&[ChunkId]> {
+fn chunk_ids_from_rb(rb: &RecordBatch) -> Result<&[ChunkId], ChunkIndexError> {
     let chunk_ids = rb
         .column_by_name("chunk_id")
-        .ok_or_else(|| anyhow::format_err!("Missing chunk_id column in ChunkIndex"))?;
+        .ok_or(ChunkIndexError::MissingChunkIdColumn)?;
 
-    let chunk_ids = chunk_ids.as_fixed_size_binary_opt().ok_or_else(|| {
-        anyhow::format_err!("Expected ChunkId to be encoded as a FixedSizeBinary array")
-    })?;
+    let chunk_ids = chunk_ids
+        .as_fixed_size_binary_opt()
+        .ok_or(ChunkIndexError::InvalidChunkIdEncoding)?;
 
     Ok(ChunkId::try_slice_from_arrow(chunk_ids)?)
 }
 
-fn chunk_is_static_from_rb(rb: &RecordBatch) -> anyhow::Result<BooleanArray> {
+fn chunk_is_static_from_rb(rb: &RecordBatch) -> Result<BooleanArray, ChunkIndexError> {
     let chunk_is_static = rb
         .column_by_name("chunk_is_static")
-        .ok_or_else(|| anyhow::format_err!("Missing chunk_is_static column in ChunkIndex"))?;
+        .ok_or(ChunkIndexError::MissingChunkIsStaticColumn)?;
 
-    let chunk_is_static = chunk_is_static.as_boolean_opt().ok_or_else(|| {
-        anyhow::format_err!("Expected chunk_is_static to be encoded as a Boolean array")
-    })?;
+    let chunk_is_static = chunk_is_static
+        .as_boolean_opt()
+        .ok_or(ChunkIndexError::InvalidChunkIsStaticEncoding)?;
 
     Ok(chunk_is_static.clone())
 }
