@@ -10,16 +10,16 @@ if TYPE_CHECKING:
 
     from . import CatalogClient, EntryId, EntryKind
 
-InternalT = TypeVar("InternalT", DatasetEntryInternal, TableEntryInternal)
+InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
 
 
-class Entry(ABC, Generic[InternalT]):
+class Entry(ABC, Generic[InternalEntryT]):
     """An entry in the catalog."""
 
     __slots__ = ("_internal",)
 
-    def __init__(self, inner: InternalT) -> None:
-        self._internal = inner
+    def __init__(self, inner: InternalEntryT) -> None:
+        self._internal: InternalEntryT = inner
 
     def __repr__(self) -> str:
         return f"Entry({self.kind}, '{self.name}'"

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     import datafusion
 
     from . import DatasetEntry, Entry, TableEntry
+    from ._entry import InternalEntryT
 
 
 # Known FFI compatible releases of Datafusion.
@@ -103,7 +104,7 @@ class CatalogClient:
         """Returns the catalog URL."""
         return self._internal.url
 
-    def all_entries(self) -> list[Entry]:
+    def all_entries(self) -> list[Entry[InternalEntryT]]:
         """Returns a list of all entries in the catalog."""
 
         return self.dataset_entries() + self.table_entries()

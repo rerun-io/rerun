@@ -109,13 +109,13 @@ impl From<PyEntryKind> for EntryKind {
 
 // ---
 
-#[pyclass(
+#[pyclass( // NOLINT: ignore[py-cls-eq] internal object, __eq__ not needed
     name = "EntryDetailsInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
 pub struct PyEntryDetails(pub EntryDetails);
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str] internal object, __str__ not needed
 impl PyEntryDetails {
     #[getter]
     fn id(&self) -> String {

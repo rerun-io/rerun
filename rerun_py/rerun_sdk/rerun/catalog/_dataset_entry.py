@@ -46,7 +46,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
 
-        return self._internal.blueprint_dataset()
+        ds = self._internal.blueprint_dataset()
+        return None if ds is None else DatasetEntry(ds)
 
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""

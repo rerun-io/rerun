@@ -38,10 +38,10 @@ use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, P
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
-#[pyclass(
+#[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
     name = "DatasetEntryInternal",
     module = "rerun_bindings.rerun_bindings"
-)] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+)]
 pub struct PyDatasetEntryInternal {
     client: Py<PyCatalogClientInternal>,
     entry_details: EntryDetails,
