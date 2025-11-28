@@ -90,6 +90,8 @@ impl RecordBatchExt for arrow::array::RecordBatch {
                 width: Some(800),
                 include_metadata: false,
                 include_column_metadata: false,
+                // 40 greatly improves readability while keeping all IDs fully visible (e.g. `chunk_NNN`).
+                max_cell_content_width: 40,
                 ..Default::default()
             },
         )
