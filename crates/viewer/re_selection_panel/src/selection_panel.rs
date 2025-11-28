@@ -64,6 +64,10 @@ impl SelectionPanel {
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
+                inner_margin: egui::Margin {
+                    bottom: 4,
+                    ..Default::default()
+                },
                 ..Default::default()
             });
 
