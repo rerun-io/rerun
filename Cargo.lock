@@ -10457,7 +10457,6 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_entity_db",
- "re_format",
  "re_log",
  "re_log_types",
  "re_test_context",
