@@ -54,7 +54,7 @@ pub struct DataSource {
     /// Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
     #[prost(string, optional, tag = "1")]
     pub storage_url: ::core::option::Option<::prost::alloc::string::String>,
-    /// / Which Partition Layer should this data source be registered to?
+    /// / Which segment layer should this data source be registered to?
     /// /
     /// / Defaults to `base` if unspecified.
     #[prost(string, optional, tag = "3")]
@@ -141,6 +141,74 @@ impl ::prost::Name for WriteChunksResponse {
     }
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSegmentTableSchemaRequest {}
+impl ::prost::Name for GetSegmentTableSchemaRequest {
+    const NAME: &'static str = "GetSegmentTableSchemaRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSegmentTableSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSegmentTableSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSegmentTableSchemaResponse {
+    #[prost(message, optional, tag = "1")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for GetSegmentTableSchemaResponse {
+    const NAME: &'static str = "GetSegmentTableSchemaResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSegmentTableSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSegmentTableSchemaResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ScanSegmentTableRequest {
+    /// A list of column names to be projected server-side.
+    ///
+    /// If empty, all columns are returned.
+    ///
+    /// If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
+    /// requested.
+    ///
+    /// If a projected column does not exist, or is projected more than once, the `ScanSegmentTable` call will fail with
+    /// an `InvalidArgument` error.
+    #[prost(string, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ScanSegmentTableRequest {
+    const NAME: &'static str = "ScanSegmentTableRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanSegmentTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanSegmentTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ScanSegmentTableResponse {
+    /// Segments metadata as Arrow RecordBatch.
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ScanSegmentTableResponse {
+    const NAME: &'static str = "ScanSegmentTableResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ScanSegmentTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ScanSegmentTableResponse".into()
+    }
+}
+/// DEPRECATED: Use GetSegmentTableSchemaRequest instead.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPartitionTableSchemaRequest {}
 impl ::prost::Name for GetPartitionTableSchemaRequest {
     const NAME: &'static str = "GetPartitionTableSchemaRequest";
@@ -152,6 +220,7 @@ impl ::prost::Name for GetPartitionTableSchemaRequest {
         "/rerun.cloud.v1alpha1.GetPartitionTableSchemaRequest".into()
     }
 }
+/// DEPRECATED: Use GetSegmentTableSchemaResponse instead.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPartitionTableSchemaResponse {
     #[prost(message, optional, tag = "1")]
@@ -167,6 +236,7 @@ impl ::prost::Name for GetPartitionTableSchemaResponse {
         "/rerun.cloud.v1alpha1.GetPartitionTableSchemaResponse".into()
     }
 }
+/// DEPRECATED: Use ScanSegmentTableRequest instead.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanPartitionTableRequest {
     /// A list of column names to be projected server-side.
@@ -191,9 +261,10 @@ impl ::prost::Name for ScanPartitionTableRequest {
         "/rerun.cloud.v1alpha1.ScanPartitionTableRequest".into()
     }
 }
+/// DEPRECATED: Use ScanSegmentTableResponse instead.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanPartitionTableResponse {
-    /// Partitions metadata as Arrow RecordBatch.
+    /// Segments metadata as Arrow RecordBatch.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
@@ -504,7 +575,9 @@ pub struct VectorIvfPqIndex {
     pub num_sub_vectors: ::core::option::Option<u32>,
     #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
     pub distance_metrics: i32,
-    /// Target size of the IVF partition in rows
+    /// Target size of the IVF partition in rows.
+    /// NOTE: "partition" here refers to Lance's IVF (Inverted File Index) partitions,
+    /// not Rerun segments.
     ///
     /// This maps to lance's underlying `target_partition_size` property
     /// and it indirectly determines how many inverted indices (partitions)
@@ -668,8 +741,14 @@ impl ::prost::Name for BTreeIndexQuery {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryDatasetRequest {
-    /// Client can specify what partitions are queried. If left unspecified (empty list),
-    /// all partitions will be queried.
+    /// Client can specify what segments are queried. If left unspecified (empty list),
+    /// all segments will be queried.
+    #[prost(message, repeated, tag = "11")]
+    pub segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+    /// DEPRECATED: Use segment_ids instead.
+    /// Client can specify what segments are queried. If left unspecified (empty list),
+    /// all segments will be queried.
+    #[deprecated]
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Client can specify specific chunk ids to include. If left unspecified (empty list),
@@ -840,8 +919,8 @@ impl ::prost::Name for QueryRange {
 pub struct FetchChunksRequest {
     /// Information about the chunks to fetch. These dataframes have to include the following columns:
     /// * `chunk_id` - Chunk unique identifier
-    /// * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
-    /// * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+    /// * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
+    /// * `segment_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
     /// * `chunk_key` - chunk location details
     #[prost(message, repeated, tag = "1")]
     pub chunk_infos: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::DataframePart>,
@@ -1499,7 +1578,13 @@ pub struct DatasetDetails {
     /// The blueprint dataset associated with this dataset (if any).
     #[prost(message, optional, tag = "3")]
     pub blueprint_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-    /// The partition of the blueprint dataset corresponding to the default blueprint (if any).
+    /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
+    #[prost(message, optional, tag = "5")]
+    pub default_blueprint_segment:
+        ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// DEPRECATED: Use default_blueprint_segment instead.
+    /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
+    #[deprecated]
     #[prost(message, optional, tag = "4")]
     pub default_blueprint: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
 }
@@ -2084,7 +2169,7 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Register new partitions with the Dataset.
+        /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn register_with_dataset(
@@ -2106,9 +2191,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Write chunks to one or more partitions.
+        /// Write chunks to one or more segments.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+        /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn write_chunks(
@@ -2130,14 +2215,61 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.client_streaming(req, path, codec).await
         }
-        /// Returns the schema of the partition table.
+        /// Returns the schema of the segment table.
         ///
         /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
         ///
-        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
-        /// this endpoint, check out `ScanPartitionTable`.
+        /// To inspect the data of the segment table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanSegmentTable`.
         ///
         /// This endpoint requires the standard dataset headers.
+        pub async fn get_segment_table_schema(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetSegmentTableSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetSegmentTableSchemaResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSegmentTableSchema",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetSegmentTableSchema",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Inspect the contents of the segment table.
+        ///
+        /// The data will follow the schema returned by `GetSegmentTableSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn scan_segment_table(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ScanSegmentTableRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ScanSegmentTableResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanSegmentTable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ScanSegmentTable",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// DEPRECATED: Use GetSegmentTableSchema instead.
+        #[deprecated]
         pub async fn get_partition_table_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::GetPartitionTableSchemaRequest>,
@@ -2159,11 +2291,8 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Inspect the contents of the partition table.
-        ///
-        /// The data will follow the schema returned by `GetPartitionTableSchema`.
-        ///
-        /// This endpoint requires the standard dataset headers.
+        /// DEPRECATED: Use ScanSegmentTable instead.
+        #[deprecated]
         pub async fn scan_partition_table(
             &mut self,
             request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
@@ -2240,7 +2369,7 @@ pub mod rerun_cloud_service_client {
         }
         /// Returns the schema of the dataset.
         ///
-        /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+        /// This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
         /// entities and components present in the dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2360,7 +2489,7 @@ pub mod rerun_cloud_service_client {
         /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
-        /// * Filtering by specific partition and chunk IDs.
+        /// * Filtering by specific segment and chunk IDs.
         /// * Latest-at, range and dataframe queries.
         /// * Arbitrary Lance filters.
         ///
@@ -2640,30 +2769,49 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ReadTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::ReadTableEntryResponse>, tonic::Status>;
-        /// Register new partitions with the Dataset.
+        /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers.
         async fn register_with_dataset(
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
-        /// Write chunks to one or more partitions.
+        /// Write chunks to one or more segments.
         ///
-        /// The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+        /// The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
         ///
         /// This endpoint requires the standard dataset headers.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
         ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
-        /// Returns the schema of the partition table.
+        /// Returns the schema of the segment table.
         ///
         /// This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
         ///
-        /// To inspect the data of the partition table, which is guaranteed to match the schema returned by
-        /// this endpoint, check out `ScanPartitionTable`.
+        /// To inspect the data of the segment table, which is guaranteed to match the schema returned by
+        /// this endpoint, check out `ScanSegmentTable`.
         ///
         /// This endpoint requires the standard dataset headers.
+        async fn get_segment_table_schema(
+            &self,
+            request: tonic::Request<super::GetSegmentTableSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetSegmentTableSchemaResponse>, tonic::Status>;
+        /// Server streaming response type for the ScanSegmentTable method.
+        type ScanSegmentTableStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::ScanSegmentTableResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Inspect the contents of the segment table.
+        ///
+        /// The data will follow the schema returned by `GetSegmentTableSchema`.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn scan_segment_table(
+            &self,
+            request: tonic::Request<super::ScanSegmentTableRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ScanSegmentTableStream>, tonic::Status>;
+        /// DEPRECATED: Use GetSegmentTableSchema instead.
         async fn get_partition_table_schema(
             &self,
             request: tonic::Request<super::GetPartitionTableSchemaRequest>,
@@ -2676,11 +2824,7 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::ScanPartitionTableResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Inspect the contents of the partition table.
-        ///
-        /// The data will follow the schema returned by `GetPartitionTableSchema`.
-        ///
-        /// This endpoint requires the standard dataset headers.
+        /// DEPRECATED: Use ScanSegmentTable instead.
         async fn scan_partition_table(
             &self,
             request: tonic::Request<super::ScanPartitionTableRequest>,
@@ -2714,7 +2858,7 @@ pub mod rerun_cloud_service_server {
         ) -> std::result::Result<tonic::Response<Self::ScanDatasetManifestStream>, tonic::Status>;
         /// Returns the schema of the dataset.
         ///
-        /// This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+        /// This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
         /// entities and components present in the dataset.
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2767,7 +2911,7 @@ pub mod rerun_cloud_service_server {
         /// those chunks (the actual data).
         ///
         /// These Rerun-native queries include:
-        /// * Filtering by specific partition and chunk IDs.
+        /// * Filtering by specific segment and chunk IDs.
         /// * Latest-at, range and dataframe queries.
         /// * Arbitrary Lance filters.
         ///
@@ -3394,6 +3538,93 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.client_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSegmentTableSchema" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetSegmentTableSchemaSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetSegmentTableSchemaRequest>
+                        for GetSegmentTableSchemaSvc<T>
+                    {
+                        type Response = super::GetSegmentTableSchemaResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetSegmentTableSchemaRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_segment_table_schema(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetSegmentTableSchemaSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/ScanSegmentTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct ScanSegmentTableSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::ScanSegmentTableRequest>
+                        for ScanSegmentTableSvc<T>
+                    {
+                        type Response = super::ScanSegmentTableResponse;
+                        type ResponseStream = T::ScanSegmentTableStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ScanSegmentTableRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::scan_segment_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ScanSegmentTableSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
