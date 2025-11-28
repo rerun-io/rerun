@@ -250,7 +250,7 @@ impl ViewContextSystem for TransformTreeContext {
 
                                         TransformInfo::new(tree_transform, poses)
                                     })
-                                    .map_err(|e| e.clone());
+                                    .map_err(|err| err.clone());
 
                                 (*entity_path_hash, transform_info)
                             })

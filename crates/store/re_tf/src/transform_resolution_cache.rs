@@ -290,7 +290,7 @@ impl CachedTransformsForTimeline {
         self.per_child_frame_transforms.get(&source_frame)
     }
 
-    /// Returns all instace poses for a given entity path.
+    /// Returns all instance poses for a given entity path.
     #[inline]
     pub fn pose_transforms(&self, entity_path: EntityPathHash) -> Option<&PoseTransformForEntity> {
         self.per_entity_poses.get(&entity_path)
