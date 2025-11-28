@@ -12,6 +12,6 @@ property:text_log:TextLog:text: List[nullable Utf8] [
 rerun_last_updated_at: Timestamp(ns)
 rerun_layer_names: List[Utf8]
 rerun_num_chunks: u64
-rerun_partition_id: Utf8
+rerun_segment_id: Utf8
 rerun_size_bytes: u64
 rerun_storage_urls: List[Utf8]
