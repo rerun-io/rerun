@@ -32,7 +32,6 @@ struct ExampleDesc {
 // TODO(ab): use design tokens
 pub(super) const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 337.0;
-const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 20.0;
 const AFTER_HEADER_VSPACE: f32 = 48.0;
 const TITLE_TO_GRID_VSPACE: f32 = 24.0;
@@ -246,26 +245,27 @@ impl ExampleSection {
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
+        let max_width = ui.available_width().at_most(1048.0);
+
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
         let column_count = (((ui.available_width() + grid_spacing.x)
             / (MIN_COLUMN_WIDTH + grid_spacing.x))
             .floor() as usize)
-            .clamp(1, MAX_COLUMN_COUNT);
+            .at_least(1);
         let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
             - grid_spacing.x)
             .floor()
             .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
+        dbg!(column_width, max_width, grid_spacing, column_count);
 
         ui.horizontal(|ui| {
-            let welcome_width =
-                column_count as f32 * column_width - (column_count - 1) as f32 * grid_spacing.x;
             // this space is added on the left so that the grid is centered
-            let centering_hspace = (ui.available_width() - welcome_width).max(0.0) / 2.0;
+            let centering_hspace = (ui.available_width() - max_width).max(0.0) / 2.0;
             ui.add_space(centering_hspace);
 
             ui.vertical(|ui| {
-                ui.set_max_width(welcome_width);
+                ui.set_max_width(max_width);
                 header_ui(ui);
 
                 ui.add_space(AFTER_HEADER_VSPACE);
