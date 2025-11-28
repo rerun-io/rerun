@@ -18,15 +18,15 @@ def test_catalog_basics(tmp_path: Path) -> None:
         client.create_table("my_table", pa.schema([]), tmp_path.as_uri())
 
         assert str(client.entries()) == inline_snapshot(
-            "[Entry(EntryKind.DATASET, 'my_dataset', Entry(EntryKind.TABLE, 'my_table']"
+            "[Entry(EntryKind.DATASET, 'my_dataset'), Entry(EntryKind.TABLE, 'my_table')]"
         )
 
-        assert str(client.datasets()) == inline_snapshot("[Entry(EntryKind.DATASET, 'my_dataset']")
+        assert str(client.datasets()) == inline_snapshot("[Entry(EntryKind.DATASET, 'my_dataset')]")
 
-        assert str(client.tables()) == inline_snapshot("[Entry(EntryKind.TABLE, 'my_table']")
+        assert str(client.tables()) == inline_snapshot("[Entry(EntryKind.TABLE, 'my_table')]")
 
         assert str(client.tables(include_hidden=True)) == inline_snapshot(
-            "[Entry(EntryKind.TABLE, '__entries', Entry(EntryKind.TABLE, 'my_table']"
+            "[Entry(EntryKind.TABLE, '__entries'), Entry(EntryKind.TABLE, 'my_table')]"
         )
 
 
@@ -38,15 +38,15 @@ def test_catalog_modify() -> None:
         table2 = client.create_table("table2", pa.schema([]))
 
         assert str(client.tables()) == inline_snapshot(
-            "[Entry(EntryKind.TABLE, 'table1', Entry(EntryKind.TABLE, 'table2']"
+            "[Entry(EntryKind.TABLE, 'table1'), Entry(EntryKind.TABLE, 'table2')]"
         )
 
         table1.set_name("table_one")
 
         assert str(client.tables()) == inline_snapshot(
-            "[Entry(EntryKind.TABLE, 'table2', Entry(EntryKind.TABLE, 'table_one']"
+            "[Entry(EntryKind.TABLE, 'table2'), Entry(EntryKind.TABLE, 'table_one')]"
         )
 
         table2.delete()
 
-        assert str(client.tables()) == inline_snapshot("[Entry(EntryKind.TABLE, 'table_one']")
+        assert str(client.tables()) == inline_snapshot("[Entry(EntryKind.TABLE, 'table_one')]")

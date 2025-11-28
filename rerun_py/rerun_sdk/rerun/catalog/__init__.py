@@ -20,10 +20,5 @@ from rerun_bindings.types import (
     VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
-# isort: off
-# Import order matters to avoid circular imports: Entry must come before DatasetEntry and TableEntry
 from ._catalog_client import CatalogClient as CatalogClient
-from ._entry import Entry as Entry
-from ._dataset_entry import DatasetEntry as DatasetEntry
-from ._table_entry import TableEntry as TableEntry
-# isort: on
+from ._entry import DatasetEntry as DatasetEntry, Entry as Entry, TableEntry as TableEntry
