@@ -30,8 +30,6 @@ You can discuss these changes by:
 
 > [!NOTE]
 > PRs containing large changes which were not discussed previously may be closed without comment.
->
-> Attempting to repeat these kinds of submissions may result in a ban from contributing to Rerun.
 
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
