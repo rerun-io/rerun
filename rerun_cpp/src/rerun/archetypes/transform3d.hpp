@@ -339,8 +339,6 @@ namespace rerun::archetypes {
         /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
         /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
         ///
-        /// ⚠ This currently is also used as the frame id of `archetypes::InstancePoses3D`.
-        ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
         ///
@@ -918,8 +916,6 @@ namespace rerun::archetypes {
         /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
         /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
         /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-        ///
-        /// ⚠ This currently is also used as the frame id of `archetypes::InstancePoses3D`.
         ///
         /// If not specified, this is set to the implicit transform frame of the current entity path.
         /// This means that if a `archetypes::Transform3D` is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
