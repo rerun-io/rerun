@@ -1,9 +1,7 @@
 use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
 use ndarray::Axis;
-
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::EntityPath;
-use re_log_types::hash::Hash64;
+use re_log_types::{EntityPath, hash::Hash64};
 use re_types::{
     View as _, ViewClassIdentifier,
     blueprint::{
@@ -16,11 +14,11 @@ use re_types::{
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, SystemCommand, SystemCommandSender as _,
-    TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, gpu_bridge, suggest_view_for_each_entity,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
+    PerVisualizerInViewClass, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
+    suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -103,8 +101,7 @@ Set the displayed dimensions in a selection panel.",
     fn choose_default_visualizers(
         &self,
         entity_path: &EntityPath,
-        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> re_viewer_context::SmallVisualizerSet {
         // Default implementation would not suggest the Tensor visualizer for images,
@@ -206,7 +203,7 @@ Set the displayed dimensions in a selection panel.",
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, include_entity)
     }
 
     fn ui(

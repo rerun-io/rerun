@@ -47,7 +47,8 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 }
 
 pub use re_log_types::{
-    ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
+    ApplicationId, EntityPath, EntityPathFilter, EntityPathPart, Instance, StoreId, StoreKind,
+    entity_path,
 };
 pub use re_types::archetypes::RecordingInfo;
 

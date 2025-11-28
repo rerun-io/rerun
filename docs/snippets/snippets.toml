@@ -13,6 +13,10 @@
   "rust",
 ] # TODO(RR-2777): Mark as stable when we're ready for it.
 
+# Migration snippets rarely make sense as part of the snippet index.
+"migration/log_line" = ["cpp", "rust", "py"]
+"migration/transactional_transforms" = ["cpp", "rust", "py"]
+
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
 "DataframeQuery" = ["reference/dataframe_save_blueprint"]
@@ -207,11 +211,6 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"archetypes/transform3d_hierarchy_frames" = [
-  # TODO(RR-2685): Sample is incomplete. Implement cross language once we can have flat entity path hierarchy.
-  "cpp",
-  "rust",
-]
 "archetypes/video_stream_synthetic" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -222,6 +221,11 @@ backwards_check = [
   "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+"migration/transactional_transforms" = [ # Not a complete example -- just a couple of log lines
   "cpp",
   "rust",
   "py",

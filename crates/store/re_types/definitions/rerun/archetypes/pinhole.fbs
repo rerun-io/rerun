@@ -3,6 +3,12 @@ namespace rerun.archetypes;
 
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
+/// If [archetypes.Transform3D] is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [archetypes.Pinhole].
+///
+/// If you use explicit transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [archetypes.CoordinateFrame]
+/// as it is the case with other visualizations: for any entity with an [archetypes.Pinhole] the viewer will always visualize it
+/// directly without needing a [archetypes.CoordinateFrame] to refer to the pinhole's child/parent frame.
+///
 /// \example archetypes/pinhole_simple title="Simple pinhole camera" image="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png"
 /// \example archetypes/pinhole_perspective title="Perspective pinhole camera" image="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png"
 table Pinhole (
@@ -11,12 +17,12 @@ table Pinhole (
   "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq"
 ) {
-  // --- Required ---
+  // --- Camera parameters ---
 
   /// Camera projection, from image coordinates to view coordinates.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   image_from_camera: rerun.components.PinholeProjection ("attr.rerun.component_required", order: 1000);
-
-  // --- Recommended ---
 
   /// Pixel resolution (usually integers) of child image space. Width and height.
   ///
@@ -26,10 +32,11 @@ table Pinhole (
   /// ```
   ///
   /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   resolution: rerun.components.Resolution ("attr.rerun.component_recommended", nullable, order: 2000);
 
-  // --- Optional ---
-
+  // --- Other ---
 
   /// Sets the view coordinates for the camera.
   ///
@@ -59,16 +66,48 @@ table Pinhole (
   /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
   /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
   // TODO(#2641): This should specify a default-value of `RDF`
+  // TODO(andreas): this isn't part of the "atomic set" right now because we may also source this from `ViewCoordinates` and things get confusing quickly
+  // Should it be reset when other transform properties are changed?
   camera_xyz: rerun.components.ViewCoordinates ("attr.rerun.component_optional", nullable, order: 3000);
+
+  // --- Topology ---
+
+  /// The child frame this transform transforms from.
+  ///
+  /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+  /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
+  /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+  ///
+  /// If not specified, this is set to the implicit transform frame of the current entity path.
+  /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+  ///
+  /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+  // TODO(RR-2777): Mark as stable when we're ready for it.
+  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 4000);
+
+  /// The parent frame this transform transforms into.
+  ///
+  /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
+  /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+  ///
+  /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
+  // TODO(RR-2777): Mark as stable when we're ready for it.
+  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 4100);
+
+  // --- Visualization in 3D ---
 
   /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
   ///
   /// This is only used for visualization purposes, and does not affect the projection itself.
-  image_plane_distance: rerun.components.ImagePlaneDistance ("attr.rerun.component_optional", nullable, order: 4000);
+  image_plane_distance: rerun.components.ImagePlaneDistance ("attr.rerun.component_optional", nullable, order: 5000);
 
   /// Color of the camera wireframe.
-  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 5000);
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 5100);
 
   /// Width of the camera wireframe lines.
-  line_width: rerun.components.Radius ("attr.rerun.component_optional", nullable, order: 6000);
+  line_width: rerun.components.Radius ("attr.rerun.component_optional", nullable, order: 5200);
 }

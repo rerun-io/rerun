@@ -29,29 +29,29 @@ fn roundtrip() {
             translation: translation_serialized.clone(),
             scale: scale_serialized.clone(),
             relation: relation_child_from_parent_serialized.clone(),
-            ..Transform3D::clear_fields()
+            ..Transform3D::default()
         }, //
         Transform3D {
             translation: translation_serialized.clone(),
             rotation_axis_angle: rotation_axis_angle_serialized.clone(),
-            ..Transform3D::clear_fields()
+            ..Transform3D::default()
         }, //
         Transform3D {
             translation: translation_serialized.clone(),
             rotation_axis_angle: rotation_axis_angle_serialized.clone(),
             scale: scale_serialized.clone(),
             relation: relation_child_from_parent_serialized.clone(),
-            ..Transform3D::clear_fields()
+            ..Transform3D::default()
         }, //
         Transform3D {
             translation: translation_serialized.clone(),
             relation: relation_child_from_parent_serialized.clone(),
-            ..Transform3D::clear_fields()
+            ..Transform3D::default()
         }, //
         Transform3D {
             mat3x3: mat3x3_serialized.clone(),
             relation: relation_parent_from_child_serialized.clone(),
-            ..Transform3D::clear_fields()
+            ..Transform3D::default()
         }, //
     ];
 

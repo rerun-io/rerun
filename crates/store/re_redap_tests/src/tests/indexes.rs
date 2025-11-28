@@ -378,7 +378,6 @@ fn generate_create_index_requests() -> Vec<CreateIndexRequest> {
             config: Some(IndexConfig {
                 properties: Some(IndexProperties {
                     props: Some(Props::Vector(VectorIvfPqIndex {
-                        num_partitions: None,
                         target_partition_num_rows: Some(128),
                         num_sub_vectors: Some(16),
                         distance_metrics: re_protos::cloud::v1alpha1::VectorDistanceMetric::L2

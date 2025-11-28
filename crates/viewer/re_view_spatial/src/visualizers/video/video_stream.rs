@@ -1,10 +1,10 @@
 use re_types::{Archetype as _, archetypes::VideoStream, components::Opacity};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, VideoStreamCache, VideoStreamProcessingError,
-    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for, video_stream_time_from_query,
+    IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    video_stream_time_from_query,
 };
 
 use crate::{
@@ -12,7 +12,10 @@ use crate::{
     contexts::{EntityDepthOffsets, TransformTreeContext},
     view_kind::SpatialViewKind,
     visualizers::{
-        SpatialViewVisualizerData, filter_visualizable_2d_entities,
+        SpatialViewVisualizerData,
+        utilities::{
+            spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
+        },
         video::{
             VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
             visualize_video_frame_texture,
@@ -43,24 +46,16 @@ impl VisualizerSystem for VideoStreamVisualizer {
         VisualizerQueryInfo::from_archetype::<VideoStream>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        re_tracing::profile_function!();
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
 
         let viewer_ctx = ctx.viewer_ctx;
+        let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
         let transforms = context_systems.get::<TransformTreeContext>()?;
         let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
         let latest_at = view_query.latest_at_query();
@@ -68,8 +63,13 @@ impl VisualizerSystem for VideoStreamVisualizer {
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let entity_path = &data_result.entity_path;
 
-            let Some(transform_info) = transforms.transform_info_for_entity(entity_path.hash())
-            else {
+            let Some(transform_info) = transform_info_for_archetype_or_report_error(
+                entity_path,
+                transforms,
+                self.data.preferred_view_kind,
+                view_kind,
+                &mut output,
+            ) else {
                 continue;
             };
 
@@ -221,10 +221,10 @@ impl VisualizerSystem for VideoStreamVisualizer {
             }
         }
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

@@ -10,7 +10,6 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from rerun.catalog import CatalogClient
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .types import (
@@ -1265,6 +1264,7 @@ class EntryKind:
     DATASET_VIEW: EntryKind
     TABLE: EntryKind
     TABLE_VIEW: EntryKind
+    BLUEPRINT_DATASET: EntryKind
 
     def __str__(self, /) -> str:
         """Return str(self)."""
@@ -1283,8 +1283,9 @@ class Entry:
     def name(self) -> str:
         """The entry's name."""
 
+    # TODO(RR-2938): this should return `CatalogClient`
     @property
-    def catalog(self) -> CatalogClient:
+    def catalog(self) -> CatalogClientInternal:
         """The catalog client that this entry belongs to."""
 
     @property
@@ -1532,7 +1533,6 @@ class DatasetEntry(Entry):
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
-        num_partitions: int | None = None,
         target_partition_num_rows: int | None = None,
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
@@ -1555,12 +1555,12 @@ class DatasetEntry(Entry):
             The component column to create the index on.
         time_index : IndexColumnSelector
             Which timeline this index will map to.
-        num_partitions : int | None
-            The number of partitions to create for the index.
-            (Deprecated, use target_partition_num_rows instead)
         target_partition_num_rows : int | None
             The target size (in number of rows) for each partition.
-            Defaults to 4096 if neither this nor num_partitions is specified.
+            The underlying indexer (lance) will pick a default when no value
+            is specified - today this is 8192. It will also cap the
+            maximum number of partitions independently of this setting - currently
+            4096.
         num_sub_vectors : int
             The number of sub-vectors to use when building the index.
         distance_metric : VectorDistanceMetricLike
@@ -1627,6 +1627,7 @@ class TableInsertMode:
 
     APPEND: TableInsertMode
     OVERWRITE: TableInsertMode
+    REPLACE: TableInsertMode
 
     def __str__(self, /) -> str:
         """Return str(self)."""

@@ -91,13 +91,17 @@ class Range2DBatch(BaseBatch[Range2DArrayLike]):
     def _native_to_pa_array(data: Range2DArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import Range1DBatch
 
+        typed_data: Sequence[Range2D]
+
         if isinstance(data, Range2D):
-            data = [data]
+            typed_data = [data]
+        else:
+            typed_data = data
 
         return pa.StructArray.from_arrays(
             [
-                Range1DBatch([x.x_range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
-                Range1DBatch([x.y_range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Range1DBatch([x.x_range for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Range1DBatch([x.y_range for x in typed_data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

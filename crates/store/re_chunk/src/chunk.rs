@@ -1364,21 +1364,32 @@ impl TimeColumn {
                         return Some((*component, self.time_range));
                     }
 
-                    let mut time_min = TimeInt::MAX;
-                    for (i, time) in times.iter().copied().enumerate() {
-                        if validity.is_valid(i) {
-                            time_min = TimeInt::new_temporal(time);
-                            break;
+                    let time_min = {
+                        let mut valid_times = times
+                            .iter()
+                            .enumerate()
+                            .filter(|(i, _time)| validity.is_valid(*i));
+                        if times.is_sorted() {
+                            valid_times.next()
+                        } else {
+                            valid_times.min_by_key(|(_i, time)| *time)
                         }
-                    }
+                        .map_or(TimeInt::MAX, |(_i, time)| TimeInt::new_temporal(*time))
+                    };
 
-                    let mut time_max = TimeInt::MIN;
-                    for (i, time) in times.iter().copied().enumerate().rev() {
-                        if validity.is_valid(i) {
-                            time_max = TimeInt::new_temporal(time);
-                            break;
+                    let time_max = {
+                        let mut valid_times_inv = times
+                            .iter()
+                            .enumerate()
+                            .rev()
+                            .filter(|(i, _time)| validity.is_valid(*i));
+                        if times.is_sorted() {
+                            valid_times_inv.next()
+                        } else {
+                            valid_times_inv.max_by_key(|(_i, time)| *time)
                         }
-                    }
+                        .map_or(TimeInt::MIN, |(_i, time)| TimeInt::new_temporal(*time))
+                    };
 
                     Some((*component, AbsoluteTimeRange::new(time_min, time_max)))
                 } else {
@@ -1431,7 +1442,7 @@ impl re_byte_size::SizeBytes for TimeColumn {
         } = self;
 
         timeline.heap_size_bytes()
-            + times.heap_size_bytes() // cheap
+            + times.heap_size_bytes()
             + is_sorted.heap_size_bytes()
             + time_range.heap_size_bytes()
     }

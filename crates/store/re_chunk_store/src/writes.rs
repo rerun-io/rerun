@@ -24,6 +24,10 @@ impl ChunkStore {
     /// * Inserting a duplicated [`ChunkId`] will result in a no-op.
     /// * Inserting an empty [`Chunk`] will result in a no-op.
     pub fn insert_chunk(&mut self, chunk: &Arc<Chunk>) -> ChunkStoreResult<Vec<ChunkStoreEvent>> {
+        if chunk.is_empty() {
+            return Ok(vec![]); // nothing to do
+        }
+
         if chunk.components().is_empty() {
             // This can happen in 2 scenarios: A) a badly manually crafted chunk or B) an Indicator
             // chunk that went through the Sorbet migration process, and ended up with zero
@@ -38,22 +42,29 @@ impl ChunkStore {
             return Ok(vec![]);
         }
 
+        let split_chunks = self.decompact_chunk_if_needed(chunk);
+        if split_chunks.len() > 1 {
+            re_tracing::profile_scope!("decompact");
+
+            let mut all_events = Vec::new();
+
+            for split_chunk in split_chunks {
+                let events = self.insert_chunk(&split_chunk)?;
+                all_events.extend(events);
+            }
+
+            return Ok(all_events);
+        }
+
         if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
             // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::debug_once!(
-                "Chunk #{} was inserted more than once (this has no effect)",
-                chunk.id()
-            );
+            re_log::warn_once!("Chunk was inserted more than once (this has no effect)");
             return Ok(Vec::new());
         }
 
         if !chunk.is_sorted() {
             return Err(ChunkStoreError::UnsortedChunk);
         }
-
-        let Some(row_id_range) = chunk.row_id_range() else {
-            return Ok(Vec::new());
-        };
 
         re_tracing::profile_function!();
 
@@ -352,9 +363,7 @@ impl ChunkStore {
                 .insert(min_row_id, chunk.id())
                 .is_some()
         {
-            re_log::warn!(
-                chunk_id = %chunk.id(),
-                row_id = %row_id_range.0,
+            re_log::warn_once!(
                 "detected duplicated RowId in the data, this will lead to undefined behavior"
             );
         }
@@ -716,6 +725,71 @@ impl ChunkStore {
             Vec::new()
         }
     }
+
+    /// Naively splits a chunk if it exceeds the configured thresholds.
+    fn decompact_chunk_if_needed(
+        &self,
+        chunk: &std::sync::Arc<re_chunk::Chunk>,
+    ) -> Vec<std::sync::Arc<re_chunk::Chunk>> {
+        let chunk_size_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
+        let chunk_num_rows = chunk.num_rows() as u64;
+
+        // Check if we need to split based on size or row count
+        let needs_split_bytes =
+            self.config.chunk_max_bytes > 0 && chunk_size_bytes > self.config.chunk_max_bytes;
+        let needs_split_rows =
+            self.config.chunk_max_rows > 0 && chunk_num_rows > self.config.chunk_max_rows;
+        let needs_split_unsorted = self.config.chunk_max_rows_if_unsorted > 0
+            && chunk_num_rows > self.config.chunk_max_rows_if_unsorted
+            && !chunk.is_time_sorted();
+
+        if !needs_split_bytes && !needs_split_rows && !needs_split_unsorted {
+            return vec![chunk.clone()];
+        }
+
+        // Determine the target number of rows per split chunk
+        let target_rows = if needs_split_unsorted {
+            self.config.chunk_max_rows_if_unsorted
+        } else if needs_split_rows {
+            self.config.chunk_max_rows
+        } else {
+            // For byte-based splitting, estimate rows per split chunk based on current density
+            let bytes_per_row = chunk_size_bytes / chunk_num_rows.max(1);
+            self.config.chunk_max_bytes / bytes_per_row.max(1)
+        };
+
+        let target_rows = target_rows.max(1) as usize; // Ensure at least 1 row per chunk
+
+        let mut result = Vec::new();
+        let mut start_idx = 0;
+        let mut cur_chunk_id = ChunkId::new();
+
+        while start_idx < chunk.num_rows() {
+            let remaining_rows = chunk.num_rows() - start_idx;
+            let chunk_size = remaining_rows.min(target_rows);
+
+            let split_chunk = chunk
+                .row_sliced(start_idx, chunk_size)
+                // TODO(#11971): keep track of the split chunks' lineage
+                .with_id(cur_chunk_id);
+            cur_chunk_id = cur_chunk_id.next();
+
+            result.push(std::sync::Arc::new(split_chunk));
+
+            start_idx += chunk_size;
+        }
+
+        re_log::trace!(
+            entity_path = %chunk.entity_path(),
+            original_rows = chunk.num_rows(),
+            original_bytes = %re_format::format_bytes(chunk_size_bytes as _),
+            split_into = result.len(),
+            target_rows,
+            "split chunk during merge/compact"
+        );
+
+        result
+    }
 }
 
 #[cfg(test)]
@@ -727,6 +801,8 @@ mod tests {
         build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
+    use re_types::components::Blob;
+    use re_types_core::ComponentDescriptor;
     use similar_asserts::assert_eq;
 
     use crate::ChunkStoreDiffKind;
@@ -1231,6 +1307,186 @@ mod tests {
             let compacted_chunk_id = store.chunks_per_chunk_id.values().next().unwrap().id();
             assert_chunk_ids_per_min_row_id(&store, [(row_id1_1, compacted_chunk_id)]);
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn compaction_blobs() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        // Create a store with a specific byte limit for testing
+        // Default chunk_max_bytes is 12 * 8 * 4096 = 393,216 bytes
+        let chunk_max_bytes = 300_000u64; // 300KB limit for easier testing
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig {
+                chunk_max_bytes,
+                ..Default::default()
+            },
+        );
+
+        let entity_path = EntityPath::from("blob/data");
+
+        // Calculate blob sizes relative to the limit
+        let blob_size_1_3rd = (chunk_max_bytes / 3) as usize; // ~100KB
+        let blob_size_1_2nd = (chunk_max_bytes / 2) as usize; // ~150KB
+
+        // Create test data
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let row_id5 = RowId::new();
+
+        let timepoint1 = [(Timeline::new_sequence("frame"), 1)];
+        let timepoint2 = [(Timeline::new_sequence("frame"), 2)];
+        let timepoint3 = [(Timeline::new_sequence("frame"), 3)];
+        let timepoint4 = [(Timeline::new_sequence("frame"), 4)];
+        let timepoint5 = [(Timeline::new_sequence("frame"), 5)];
+
+        // Create blobs of different sizes
+        let blob1 = Blob::from(vec![1u8; blob_size_1_3rd]); // 1/3 limit
+        let blob2 = Blob::from(vec![2u8; blob_size_1_2nd]); // 1/2 limit
+        let blob3 = Blob::from(vec![3u8; blob_size_1_2nd]); // 1/2 limit
+        let blob4 = Blob::from(vec![4u8; blob_size_1_2nd]); // 1/2 limit
+        let blob5 = Blob::from(vec![5u8; blob_size_1_3rd]); // 1/3 limit
+
+        // Create a simple descriptor for blob components
+        let blob_descriptor = ComponentDescriptor::partial("blob");
+
+        // Create chunks according to the pattern:
+        // 1. Chunk with blob 1/3rd the limit
+        let chunk1 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(
+                    blob_descriptor.clone(),
+                    &[blob1.clone()] as &dyn re_types_core::ComponentBatch,
+                )],
+            )
+            .build()?;
+
+        // 2. Chunk with three blobs 1/2 the limit (will be split across multiple chunks)
+        let chunk2 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(
+                    blob_descriptor.clone(),
+                    &[blob2.clone()] as &dyn re_types_core::ComponentBatch,
+                )],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(
+                    blob_descriptor.clone(),
+                    &[blob3.clone()] as &dyn re_types_core::ComponentBatch,
+                )],
+            )
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(
+                    blob_descriptor.clone(),
+                    &[blob4.clone()] as &dyn re_types_core::ComponentBatch,
+                )],
+            )
+            .build()?;
+
+        // 3. Chunk with blob 1/3rd the limit
+        let chunk3 = Chunk::builder(entity_path.clone())
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [(
+                    blob_descriptor.clone(),
+                    &[blob5.clone()] as &dyn re_types_core::ComponentBatch,
+                )],
+            )
+            .build()?;
+
+        let chunk1 = Arc::new(chunk1);
+        let chunk2 = Arc::new(chunk2);
+        let chunk3 = Arc::new(chunk3);
+
+        eprintln!("Inserting chunk1 (blob 1/3 limit: {blob_size_1_3rd} bytes)");
+        store.insert_chunk(&chunk1)?;
+        eprintln!("Store has {} chunks", store.chunks_per_chunk_id.len());
+
+        eprintln!("Inserting chunk2 (3 blobs 1/2 limit each: {blob_size_1_2nd} bytes)");
+        store.insert_chunk(&chunk2)?;
+        eprintln!("Store has {} chunks", store.chunks_per_chunk_id.len());
+
+        eprintln!("Inserting chunk3 (blob 1/3 limit: {blob_size_1_3rd} bytes)");
+        store.insert_chunk(&chunk3)?;
+        eprintln!("Store has {} chunks", store.chunks_per_chunk_id.len());
+
+        // Verify the expected compaction results:
+        // Expected:
+        // - 1 chunk with the first blob (1/3) and second blob (1/2) = ~250KB (under limit)
+        // - 1 chunk with the third and fourth blobs (each 1/2) = ~300KB (at limit)
+        // - 1 chunk with the final blob (1/3) = ~100KB (under limit)
+        // So we expect 3 chunks total
+
+        eprintln!("Final store state:");
+        eprintln!("{store}");
+
+        // Check that we have the expected number of chunks after compaction
+        assert_eq!(
+            3,
+            store.chunks_per_chunk_id.len(),
+            "Expected 3 chunks after compaction: [blob1+blob2], [blob3], [blob4+blob5]"
+        );
+
+        // Verify the chunks contain the expected data by checking their sizes
+        let mut chunk_sizes: Vec<_> = store
+            .chunks_per_chunk_id
+            .values()
+            .map(|chunk| chunk.total_size_bytes())
+            .collect();
+        chunk_sizes.sort();
+
+        eprintln!("Chunk sizes: {chunk_sizes:?}");
+
+        // The smallest chunk should be blob3
+        let smallest_expected = chunk2.total_size_bytes() / 3;
+        // The middle chunk should be around blob1 + blob2
+        let middle_expected = chunk1.total_size_bytes() + chunk2.total_size_bytes() / 3;
+        // The largest chunk should be blob4 + blob5
+        let largest_expected = chunk1.total_size_bytes() + chunk2.total_size_bytes() / 3;
+
+        // Allow some tolerance for metadata overhead
+        let tolerance = 10_000u64; // 10KB tolerance
+
+        assert!(
+            chunk_sizes[0] >= smallest_expected.saturating_sub(tolerance)
+                && chunk_sizes[0] <= smallest_expected + tolerance,
+            "Smallest chunk size {} should be around {} ± {}",
+            chunk_sizes[0],
+            smallest_expected,
+            tolerance
+        );
+
+        assert!(
+            chunk_sizes[1] >= middle_expected.saturating_sub(tolerance)
+                && chunk_sizes[1] <= middle_expected + tolerance,
+            "Middle chunk size {} should be around {} ± {}",
+            chunk_sizes[1],
+            middle_expected,
+            tolerance
+        );
+
+        assert!(
+            chunk_sizes[2] >= largest_expected.saturating_sub(tolerance)
+                && chunk_sizes[2] <= largest_expected + tolerance,
+            "Largest chunk size {} should be around {} ± {}",
+            chunk_sizes[2],
+            largest_expected,
+            tolerance
+        );
 
         Ok(())
     }

@@ -500,15 +500,32 @@ impl ::prost::Name for InvertedIndex {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VectorIvfPqIndex {
-    /// num_partitions is deprecated. Use target_partition_num_rows instead
-    /// TODO(RR-2798): Remove in 0.6
-    #[prost(uint32, optional, tag = "1")]
-    pub num_partitions: ::core::option::Option<u32>,
     #[prost(uint32, optional, tag = "2")]
     pub num_sub_vectors: ::core::option::Option<u32>,
     #[prost(enumeration = "VectorDistanceMetric", tag = "3")]
     pub distance_metrics: i32,
     /// Target size of the IVF partition in rows
+    ///
+    /// This maps to lance's underlying `target_partition_size` property
+    /// and it indirectly determines how many inverted indices (partitions)
+    /// to build (the larger this value, the fewer partitions will be built):
+    /// num_partitions = total_vectors / target_partition_num_rows
+    ///
+    /// A smaller number here will lead to more partitions, which can improve
+    /// search recall at the cost of higher training time and memory usage.
+    ///
+    /// If missing, we let Lance will pick a default value, which, today, is
+    /// 8192 rows per partition.
+    ///
+    /// Note that Lance will cap the maximum `num_partitions` to 4096:
+    /// `num_partitions = min(4096, total_vectors / target_partition_num_rows)`
+    /// So this means that setting this value too low will have no effect for
+    /// large enough datasets.
+    ///
+    /// References:
+    /// - \[<https://github.com/rerun-io/lance/blob/547bf3e288ff0bc13e96f29c7af46155fbd9f5c2/rust/lance/src/index/vector.rs#L336\]>
+    /// - \[<https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/vector/ivf/builder.rs#L123\]>
+    /// - \[<https://github.com/rerun-io/lance/blob/a55c3afe250bcbe4d338c108ebe4a03d8a92697b/rust/lance-index/src/lib.rs#L280\]>
     #[prost(uint32, optional, tag = "4")]
     pub target_partition_num_rows: ::core::option::Option<u32>,
 }
@@ -1703,6 +1720,8 @@ pub enum TableInsertMode {
     Append = 1,
     /// Overwrites all existing rows in the table with the new rows.
     Overwrite = 2,
+    /// Overwrite rows based on the rerun_table_index fields.
+    Replace = 3,
 }
 impl TableInsertMode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1714,6 +1733,7 @@ impl TableInsertMode {
             Self::Unspecified => "TABLE_INSERT_MODE_UNSPECIFIED",
             Self::Append => "TABLE_INSERT_MODE_APPEND",
             Self::Overwrite => "TABLE_INSERT_MODE_OVERWRITE",
+            Self::Replace => "TABLE_INSERT_MODE_REPLACE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1722,6 +1742,7 @@ impl TableInsertMode {
             "TABLE_INSERT_MODE_UNSPECIFIED" => Some(Self::Unspecified),
             "TABLE_INSERT_MODE_APPEND" => Some(Self::Append),
             "TABLE_INSERT_MODE_OVERWRITE" => Some(Self::Overwrite),
+            "TABLE_INSERT_MODE_REPLACE" => Some(Self::Replace),
             _ => None,
         }
     }

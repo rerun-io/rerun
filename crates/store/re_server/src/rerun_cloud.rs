@@ -61,9 +61,10 @@ impl RerunCloudHandlerBuilder {
         mut self,
         directory: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
+        on_error: crate::OnError,
     ) -> Result<Self, crate::store::Error> {
         self.store
-            .load_directory_as_dataset(directory, on_duplicate)?;
+            .load_directory_as_dataset(directory, on_duplicate, on_error)?;
 
         Ok(self)
     }
@@ -348,10 +349,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn version(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::VersionRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::VersionResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::VersionResponse>> {
         let re_protos::cloud::v1alpha1::VersionRequest {} = request.into_inner();
 
         // NOTE: Reminder that this is only fully filled iff CI=1.
@@ -445,10 +443,8 @@ impl RerunCloudService for RerunCloudHandler {
     async fn create_dataset_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::CreateDatasetEntryRequest>,
-    ) -> Result<
-        tonic::Response<re_protos::cloud::v1alpha1::CreateDatasetEntryResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CreateDatasetEntryResponse>>
+    {
         let CreateDatasetEntryRequest {
             name: dataset_name,
             id: dataset_id,
@@ -509,10 +505,8 @@ impl RerunCloudService for RerunCloudHandler {
     async fn update_dataset_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
-    ) -> Result<
-        tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>>
+    {
         let request: UpdateDatasetEntryRequest = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
@@ -531,10 +525,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn read_table_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ReadTableEntryRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>> {
         let store = self.store.read().await;
 
         let id = request
@@ -596,10 +587,8 @@ impl RerunCloudService for RerunCloudHandler {
     async fn register_with_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::RegisterWithDatasetRequest>,
-    ) -> Result<
-        tonic::Response<re_protos::cloud::v1alpha1::RegisterWithDatasetResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::RegisterWithDatasetResponse>>
+    {
         let mut store = self.store.write().await;
         let dataset_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset_mut(dataset_id)?;
@@ -779,6 +768,7 @@ impl RerunCloudService for RerunCloudHandler {
             {
                 TableInsertMode::Append => InsertOp::Append,
                 TableInsertMode::Overwrite => InsertOp::Overwrite,
+                TableInsertMode::Replace => InsertOp::Replace,
             };
 
             table.write_table(rb, insert_op).await.map_err(|err| {
@@ -796,10 +786,8 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_partition_table_schema(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetPartitionTableSchemaRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::GetPartitionTableSchemaResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetPartitionTableSchemaResponse>>
+    {
         let store = self.store.read().await;
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
@@ -921,10 +909,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn get_dataset_schema(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::GetDatasetSchemaRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::GetDatasetSchemaResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetDatasetSchemaResponse>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
@@ -945,30 +930,21 @@ impl RerunCloudService for RerunCloudHandler {
     async fn create_index(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::CreateIndexResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CreateIndexResponse>> {
         Err(tonic::Status::unimplemented("create_index not implemented"))
     }
 
     async fn list_indexes(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>> {
         Err(tonic::Status::unimplemented("list_indexes not implemented"))
     }
 
     async fn delete_indexes(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
-    ) -> std::result::Result<
-        tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>> {
         Err(tonic::Status::unimplemented(
             "delete_indexes not implemented",
         ))
@@ -1411,10 +1387,8 @@ impl RerunCloudService for RerunCloudHandler {
     async fn do_global_maintenance(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest>,
-    ) -> Result<
-        tonic::Response<re_protos::cloud::v1alpha1::DoGlobalMaintenanceResponse>,
-        tonic::Status,
-    > {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DoGlobalMaintenanceResponse>>
+    {
         Err(tonic::Status::unimplemented(
             "do_global_maintenance not implemented",
         ))

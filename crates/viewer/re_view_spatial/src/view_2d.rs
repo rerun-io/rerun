@@ -1,5 +1,4 @@
 use nohash_hasher::{IntMap, IntSet};
-
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_types::{
@@ -11,7 +10,6 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    VisualizableFilterContext,
 };
 
 use crate::{
@@ -24,19 +22,6 @@ use crate::{
     view_kind::SpatialViewKind,
     visualizers::register_2d_spatial_visualizers,
 };
-
-#[derive(Default)]
-pub struct VisualizableFilterContext2D {
-    // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
-    pub entities_in_main_2d_space: IntSet<EntityPath>,
-    pub reprojectable_3d_entities: IntSet<EntityPath>,
-}
-
-impl VisualizableFilterContext for VisualizableFilterContext2D {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 #[derive(Default)]
 pub struct SpatialView2D;
@@ -161,50 +146,6 @@ impl ViewClass for SpatialView2D {
         SpatialTopology::access(entity_db.store_id(), |topo| {
             topo.subspace_for_entity(&common_ancestor).origin.clone()
         })
-    }
-
-    fn visualizable_filter_context(
-        &self,
-        space_origin: &EntityPath,
-        entity_db: &re_entity_db::EntityDb,
-    ) -> Box<dyn VisualizableFilterContext> {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): The `VisualizableFilterContext` depends entirely on the spatial topology.
-        // If the topology hasn't changed, we don't need to recompute any of this.
-        // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
-
-        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
-            let primary_space = topo.subspace_for_entity(space_origin);
-            if !primary_space.supports_2d_content() {
-                // If this is strict 3D space, only display the origin entity itself.
-                // Everything else we have to assume requires some form of transformation.
-                return VisualizableFilterContext2D {
-                    entities_in_main_2d_space: std::iter::once(space_origin.clone()).collect(),
-                    reprojectable_3d_entities: Default::default(),
-                };
-            }
-
-            // All space are visualizable + the parent space if it is connected via a pinhole.
-            // For the moment we don't allow going down pinholes again.
-            let reprojectable_3d_entities = if primary_space
-                .connection_to_parent
-                .contains(SubSpaceConnectionFlags::Pinhole)
-            {
-                topo.subspace_for_subspace_origin(primary_space.parent_space)
-                    .map(|parent_space| parent_space.entities.clone())
-                    .unwrap_or_default()
-            } else {
-                Default::default()
-            };
-
-            VisualizableFilterContext2D {
-                entities_in_main_2d_space: primary_space.entities.clone(),
-                reprojectable_3d_entities,
-            }
-        });
-
-        Box::new(context.unwrap_or_default())
     }
 
     fn spawn_heuristics(

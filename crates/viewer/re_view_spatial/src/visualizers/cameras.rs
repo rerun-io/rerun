@@ -1,4 +1,5 @@
 use glam::vec3;
+
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
@@ -8,14 +9,17 @@ use re_types::{
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, MaybeVisualizableEntities, ViewContext,
-    ViewContextCollection, ViewOutlineMasks, ViewQuery, ViewSystemExecutionError,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
+use super::SpatialViewVisualizerData;
 use crate::{
-    contexts::TransformTreeContext, pinhole_wrapper::PinholeWrapper, visualizers::process_radius,
+    contexts::TransformTreeContext,
+    pinhole_wrapper::PinholeWrapper,
+    view_kind::SpatialViewKind,
+    visualizers::{process_radius, utilities::spatial_view_kind_from_view_class},
 };
 
 pub struct CamerasVisualizer {
@@ -41,8 +45,8 @@ impl IdentifiedViewSystem for CamerasVisualizer {
 }
 
 struct CameraComponentDataWithFallbacks {
-    image_from_camera: glam::Mat3,
-    resolution: glam::Vec2,
+    child_frame: components::TransformFrameId,
+
     color: egui::Color32,
     line_width: re_renderer::Size,
     camera_xyz: components::ViewCoordinates,
@@ -52,34 +56,56 @@ struct CameraComponentDataWithFallbacks {
 impl CamerasVisualizer {
     fn visit_instance(
         &mut self,
+        ctx: &re_viewer_context::QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
-        data_result: &DataResult,
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
-    ) {
+        view_kind: SpatialViewKind,
+    ) -> Result<(), String> {
+        let instance = Instance::from(0);
+        let ent_path = ctx.target_entity_path;
+
+        // We're currently NOT using `CoordinateFrame` component for this visualization but instead `Pinhole::child_frame`.
+        // Otherwise, you'd need to log a redundant `CoordinateFrame` to see the camera frustum which can be unintuitive.
+        //
+        // Note that `child_frame` defaults to the entity's implicit frame, so if no frames are set it doesn't make a difference.
+        //
+        // In theory `CoordinateFrame::frame_id` and `Pinhole::child_frame` could disagree making it unclear what to show.
+        // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
+        // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases which is arguably
+        // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
+        let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
+
+        // Query the pinhole from the transform tree since it uses atomic-latest-at.
+        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
+        else {
+            // This implies that the transform context didn't see the pinhole transform.
+            // Should be impossible!
+            return Err(
+                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!".to_owned(),
+            );
+        };
+        let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
+
         // Check for valid resolution.
-        let w = pinhole_properties.resolution.x;
-        let h = pinhole_properties.resolution.y;
+        let resolution = resolved_pinhole
+            .resolution
+            .unwrap_or_else(|| typed_fallback_for(ctx, Pinhole::descriptor_resolution().component));
+        let w = resolution.x();
+        let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
-        let color = pinhole_properties.color;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
-            return;
+            return Err("Invalid resolution".to_owned());
         }
 
-        let instance = Instance::from(0);
-        let ent_path = &data_result.entity_path;
-        let frame_id = transforms.transform_frame_id_for(ent_path.hash());
-
         let pinhole = crate::Pinhole {
-            image_from_camera: pinhole_properties.image_from_camera,
-            resolution: pinhole_properties.resolution,
-            color: Some(pinhole_properties.color),
-            line_width: Some(pinhole_properties.line_width),
+            image_from_camera: (*resolved_pinhole.image_from_camera).into(),
+            resolution: glam::vec2(w, h),
         };
 
-        // If the camera is the target frame, there is nothing for us to display.
-        if transforms.target_frame() == frame_id {
+        // If the camera is the target frame of a 2D view, there is nothing for us to display.
+        if transforms.target_frame() == pinhole_frame_id && view_kind == SpatialViewKind::TwoD {
             self.pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -87,16 +113,12 @@ impl CamerasVisualizer {
                 pinhole,
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
-            return;
+            return Err("Can't visualize pinholes at the view's origin".to_owned());
         }
 
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(frame_id) else {
-            // This implies that the transform context didn't see the pinhole transform.
-            // Should be impossible!
-            re_log::error_once!(
-                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!",
-            );
-            return;
+        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
+        else {
+            return Err("No valid pinhole present".to_owned());
         };
         let world_from_camera = pinhole_tree_root_info
             .parent_root_from_pinhole_root
@@ -106,7 +128,7 @@ impl CamerasVisualizer {
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
-            return;
+            return Err("Can only visualize pinhole under isometric transforms".to_owned());
         };
 
         debug_assert!(world_from_camera_iso.is_finite());
@@ -183,7 +205,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(color)
+                .color(pinhole_properties.color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 
@@ -198,6 +220,8 @@ impl CamerasVisualizer {
             std::iter::once(glam::Vec3::ZERO),
             world_from_camera,
         );
+
+        Ok(())
     }
 }
 
@@ -206,22 +230,16 @@ impl VisualizerSystem for CamerasVisualizer {
         VisualizerQueryInfo::from_archetype::<Pinhole>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let transforms = context_systems.get::<TransformTreeContext>()?;
+        let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -243,19 +261,22 @@ impl VisualizerSystem for CamerasVisualizer {
                 query_shadowed_components,
             );
 
-            let Some(pinhole_projection) = query_results
+            // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the
+            // pinhole information from the transform tree instead, which already has this and other properties queried.
+            if query_results
                 .get_required_mono::<components::PinholeProjection>(
                     Pinhole::descriptor_image_from_camera().component,
                 )
-            else {
+                .is_none()
+            {
                 continue;
-            };
+            }
 
-            let resolution = query_results.get_mono_with_fallback::<components::Resolution>(
-                Pinhole::descriptor_resolution().component,
-            );
             let camera_xyz = query_results.get_mono_with_fallback::<components::ViewCoordinates>(
                 Pinhole::descriptor_camera_xyz().component,
+            );
+            let child_frame = query_results.get_mono_with_fallback::<components::TransformFrameId>(
+                Pinhole::descriptor_child_frame().component,
             );
             let image_plane_distance = query_results
                 .get_mono_with_fallback::<components::ImagePlaneDistance>(
@@ -272,8 +293,7 @@ impl VisualizerSystem for CamerasVisualizer {
             );
 
             let component_data = CameraComponentDataWithFallbacks {
-                image_from_camera: pinhole_projection.0.into(),
-                resolution: resolution.into(),
+                child_frame,
                 color,
                 line_width,
                 camera_xyz,
@@ -284,16 +304,19 @@ impl VisualizerSystem for CamerasVisualizer {
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash());
 
-            self.visit_instance(
+            if let Err(err) = self.visit_instance(
+                &ctx.query_context(data_result, &query.latest_at_query()),
                 &mut line_builder,
                 transforms,
-                data_result,
                 &component_data,
                 entity_highlight,
-            );
+                view_kind,
+            ) {
+                output.report_error_for(data_result.entity_path.clone(), err);
+            }
         }
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

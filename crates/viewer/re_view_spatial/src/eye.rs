@@ -216,8 +216,9 @@ pub struct EyeState {
     pub last_eye_up: Option<Vec3>,
 }
 
-/// Utility struct to pass current and new eye information.
-struct ControlEye {
+/// Utility struct for handling eye control parameter changes,
+/// e.g. via user input or blueprint.
+struct EyeController {
     pos: Vec3,
     look_target: Vec3,
     kind: Eye3DKind,
@@ -228,7 +229,7 @@ struct ControlEye {
     did_interact: bool,
 }
 
-impl ControlEye {
+impl EyeController {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
@@ -293,8 +294,15 @@ impl ControlEye {
         })
     }
 
-    /// Saves position, look target and eye up to blueprint if we have interacted
-    /// and that field has changed.
+    fn copy_from_eye(&mut self, eye: &Eye) {
+        self.pos = eye.pos_in_world();
+        self.look_target = eye.pos_in_world() + eye.forward_in_world();
+        self.eye_up = eye.world_from_rub_view.transform_vector3(Vec3::Y);
+        self.fov_y = eye.fov_y;
+    }
+
+    /// Saves the subset of eye controls that can change through user input to the blueprint.
+    /// Does nothing if no interaction happened.
     fn save_to_blueprint(
         &self,
         ctx: &ViewerContext<'_>,
@@ -303,30 +311,32 @@ impl ControlEye {
         old_look_target: Vec3,
         old_eye_up: Vec3,
     ) {
-        if self.did_interact {
-            if self.pos != old_pos {
-                eye_property.save_blueprint_component(
-                    ctx,
-                    &EyeControls3D::descriptor_position(),
-                    &Position3D::from(self.pos),
-                );
-            }
+        if !self.did_interact {
+            return;
+        }
 
-            if self.look_target != old_look_target {
-                eye_property.save_blueprint_component(
-                    ctx,
-                    &EyeControls3D::descriptor_look_target(),
-                    &Position3D::from(self.look_target),
-                );
-            }
+        if self.pos != old_pos {
+            eye_property.save_blueprint_component(
+                ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::from(self.pos),
+            );
+        }
 
-            if self.eye_up != old_eye_up {
-                eye_property.save_blueprint_component(
-                    ctx,
-                    &EyeControls3D::descriptor_eye_up(),
-                    &Vector3D::from(self.eye_up),
-                );
-            }
+        if self.look_target != old_look_target {
+            eye_property.save_blueprint_component(
+                ctx,
+                &EyeControls3D::descriptor_look_target(),
+                &Position3D::from(self.look_target),
+            );
+        }
+
+        if self.eye_up != old_eye_up {
+            eye_property.save_blueprint_component(
+                ctx,
+                &EyeControls3D::descriptor_eye_up(),
+                &Vector3D::from(self.eye_up),
+            );
         }
     }
 
@@ -360,6 +370,7 @@ impl ControlEye {
         self.fwd().dot(self.up()).clamp(-1.0, 1.0).asin()
     }
 
+    /// Distance from eye position to look target.
     fn radius(&self) -> f32 {
         self.pos.distance(self.look_target)
     }
@@ -640,15 +651,15 @@ impl EyeState {
         cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
     ) -> Result<Eye, ViewPropertyQueryError> {
-        let mut eye = ControlEye::from_blueprint(ctx, eye_property, self.fov_y)?;
+        let mut eye_controller = EyeController::from_blueprint(ctx, eye_property, self.fov_y)?;
 
         // Save values before mutating the eye to check if they changed later.
-        let ControlEye {
+        let EyeController {
             pos: old_pos,
             look_target: old_look_target,
             eye_up: old_eye_up,
             ..
-        } = eye;
+        } = eye_controller;
 
         let mut drag_threshold = 0.0;
 
@@ -673,9 +684,9 @@ impl EyeState {
 
         // We do input before tracking entity, because the input can cause the eye
         // to stop tracking.
-        eye.handle_input(self, response, drag_threshold);
+        eye_controller.handle_input(self, response, drag_threshold);
 
-        eye.save_to_blueprint(
+        eye_controller.save_to_blueprint(
             ctx.viewer_ctx,
             eye_property,
             old_pos,
@@ -684,26 +695,27 @@ impl EyeState {
         );
 
         // Handle spinning after saving to blueprint to not continuously write to the blueprint.
-        self.handle_spinning(ctx, eye_property, &mut eye)?;
+        self.handle_spinning(ctx, eye_property, &mut eye_controller)?;
 
         if let Some(tracked_eye) = self.handle_tracking_entity(
             ctx,
             eye_property,
             cameras,
             bounding_boxes,
-            &mut eye,
+            &mut eye_controller,
             old_pos,
             old_look_target,
+            old_eye_up,
             tracking_entity.as_ref(),
         ) {
             return Ok(tracked_eye);
         }
 
-        self.last_look_target = Some(eye.look_target);
-        self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
-        self.last_eye_up = Some(eye.up());
+        self.last_look_target = Some(eye_controller.look_target);
+        self.last_orbit_radius = Some(eye_controller.pos.distance(eye_controller.look_target));
+        self.last_eye_up = Some(eye_controller.up());
 
-        Ok(eye.get_eye())
+        Ok(eye_controller.get_eye())
     }
 
     /// Handles both tracking and clearing tracked entity.
@@ -716,9 +728,10 @@ impl EyeState {
         eye_property: &ViewProperty,
         cameras: &[PinholeWrapper],
         bounding_boxes: &SceneBoundingBoxes,
-        eye: &mut ControlEye,
+        eye_controller: &mut EyeController,
         old_pos: Vec3,
         old_look_target: Vec3,
+        old_eye_up: Vec3,
         tracking_entity: Option<&re_types::components::EntityPath>,
     ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
@@ -730,13 +743,26 @@ impl EyeState {
                 self.last_tracked_entity = Some(tracking_entity.clone());
             }
 
-            let did_eye_change = match eye.kind {
-                Eye3DKind::FirstPerson => eye.pos != old_pos,
-                Eye3DKind::Orbital => eye.look_target != old_look_target,
+            // If the position that doesn't move by changing the eye's rotation changed.
+            let did_eye_orbit_center_change = match eye_controller.kind {
+                Eye3DKind::FirstPerson => eye_controller.pos != old_pos,
+                Eye3DKind::Orbital => eye_controller.look_target != old_look_target,
             };
 
             if let Some(target_eye) = find_camera(cameras, &tracking_entity) {
-                if eye.did_interact && (eye.pos != old_pos || eye.look_target != old_look_target) {
+                if eye_controller.did_interact
+                    && (eye_controller.pos != old_pos
+                        || eye_controller.look_target != old_look_target)
+                {
+                    // When we stop tracking, set the blueprint eye state to the tracked view.
+                    eye_controller.copy_from_eye(&target_eye);
+                    eye_controller.save_to_blueprint(
+                        ctx.viewer_ctx,
+                        eye_property,
+                        old_pos,
+                        old_look_target,
+                        old_eye_up,
+                    );
                     eye_property.clear_blueprint_component(
                         ctx.viewer_ctx,
                         EyeControls3D::descriptor_tracking_entity(),
@@ -744,11 +770,6 @@ impl EyeState {
                 } else {
                     return Some(target_eye);
                 }
-            } else if eye.did_interact && did_eye_change {
-                eye_property.clear_blueprint_component(
-                    ctx.viewer_ctx,
-                    EyeControls3D::descriptor_tracking_entity(),
-                );
             } else {
                 // Note that we may want to focus on an _instance_ instead in the future:
                 // The problem with that is that there may be **many** instances (think point cloud)
@@ -767,7 +788,7 @@ impl EyeState {
                 if let Some(entity_bbox) = bounding_boxes.per_entity.get(&tracking_entity.hash()) {
                     // If we're tracking something new, set the current position & look target to the correct view.
                     if new_tracking {
-                        let fwd = eye.fwd();
+                        let fwd = eye_controller.fwd();
                         let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
                         let radius = if radius < 0.0001 {
                             // Handle zero-sized bounding boxes:
@@ -776,44 +797,61 @@ impl EyeState {
                         } else {
                             radius
                         };
-                        eye.pos = eye.look_target - fwd * radius;
+                        eye_controller.pos = eye_controller.look_target - fwd * radius;
                         // Force write of pos and look target to not use fallbacks for that.
                         eye_property.save_blueprint_component(
                             ctx.viewer_ctx,
                             &EyeControls3D::descriptor_position(),
-                            &Position3D::from(eye.pos),
+                            &Position3D::from(eye_controller.pos),
                         );
 
                         eye_property.save_blueprint_component(
                             ctx.viewer_ctx,
                             &EyeControls3D::descriptor_look_target(),
-                            &Position3D::from(eye.look_target),
+                            &Position3D::from(eye_controller.look_target),
                         );
                     }
 
-                    let orbit_radius = eye.pos.distance(eye.look_target);
+                    let orbit_radius = eye_controller.pos.distance(eye_controller.look_target);
 
                     let pos = entity_bbox.center();
 
-                    let fwd = eye.fwd();
+                    let fwd = eye_controller.fwd();
 
-                    match eye.kind {
+                    match eye_controller.kind {
                         Eye3DKind::FirstPerson => {
-                            eye.pos = pos;
-                            eye.look_target = pos + fwd;
+                            eye_controller.pos = pos;
+                            eye_controller.look_target = pos + fwd;
                         }
                         Eye3DKind::Orbital => {
-                            eye.look_target = pos;
-                            eye.pos = pos - fwd * orbit_radius;
+                            eye_controller.look_target = pos;
+                            eye_controller.pos = pos - fwd * orbit_radius;
                         }
                     }
                 }
 
-                self.last_look_target = Some(eye.look_target);
-                self.last_eye_up = Some(eye.eye_up);
-                self.last_orbit_radius = Some(eye.pos.distance(eye.look_target));
+                self.last_look_target = Some(eye_controller.look_target);
+                self.last_eye_up = Some(eye_controller.eye_up);
+                self.last_orbit_radius =
+                    Some(eye_controller.pos.distance(eye_controller.look_target));
 
-                return Some(eye.get_eye());
+                // When we stop tracking, set the blueprint eye state to the tracked view.
+                if eye_controller.did_interact && did_eye_orbit_center_change {
+                    eye_controller.save_to_blueprint(
+                        ctx.viewer_ctx,
+                        eye_property,
+                        old_pos,
+                        old_look_target,
+                        old_eye_up,
+                    );
+
+                    eye_property.clear_blueprint_component(
+                        ctx.viewer_ctx,
+                        EyeControls3D::descriptor_tracking_entity(),
+                    );
+                } else {
+                    return Some(eye_controller.get_eye());
+                }
             }
         } else {
             self.last_tracked_entity = None;
@@ -827,7 +865,7 @@ impl EyeState {
         &mut self,
         ctx: &ViewContext<'_>,
         eye_property: &ViewProperty,
-        eye: &mut ControlEye,
+        eye_controller: &mut EyeController,
     ) -> Result<(), ViewPropertyQueryError> {
         let spin_speed = **eye_property.component_or_fallback::<AngularSpeed>(
             ctx,
@@ -839,17 +877,17 @@ impl EyeState {
             *spin += spin_speed * ctx.egui_ctx().input(|i| i.stable_dt as f64).at_most(0.1);
             *spin %= std::f64::consts::TAU;
 
-            let quat = Quat::from_axis_angle(eye.up(), *spin as f32);
+            let quat = Quat::from_axis_angle(eye_controller.up(), *spin as f32);
 
-            let fwd = quat * eye.fwd();
+            let fwd = quat * eye_controller.fwd();
 
-            match eye.kind {
+            match eye_controller.kind {
                 Eye3DKind::FirstPerson => {
-                    eye.look_target = eye.pos + fwd;
+                    eye_controller.look_target = eye_controller.pos + fwd;
                 }
                 Eye3DKind::Orbital => {
-                    let d = eye.pos.distance(eye.look_target);
-                    eye.pos = eye.look_target - fwd * d;
+                    let d = eye_controller.pos.distance(eye_controller.look_target);
+                    eye_controller.pos = eye_controller.look_target - fwd * d;
                 }
             }
 
@@ -870,19 +908,17 @@ impl EyeState {
         eye_property: &ViewProperty,
         focused_entity: &EntityPath,
     ) -> Result<(), ViewPropertyQueryError> {
-        let mut eye = ControlEye::from_blueprint(ctx, eye_property, self.fov_y)?;
-        eye.did_interact = true;
-        let ControlEye {
+        let mut eye_controller = EyeController::from_blueprint(ctx, eye_property, self.fov_y)?;
+        eye_controller.did_interact = true;
+        let EyeController {
             pos: old_pos,
             look_target: old_look_target,
             eye_up: old_eye_up,
             ..
-        } = eye;
+        } = eye_controller;
         // Focusing cameras is not something that happens now, since those are always tracked.
         if let Some(target_eye) = find_camera(cameras, focused_entity) {
-            eye.pos = target_eye.pos_in_world();
-            eye.look_target = target_eye.pos_in_world() + target_eye.forward_in_world();
-            eye.eye_up = target_eye.world_from_rub_view.transform_vector3(Vec3::Y);
+            eye_controller.copy_from_eye(&target_eye);
         } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&focused_entity.hash()) {
             let fwd = self
                 .last_eye
@@ -895,11 +931,11 @@ impl EyeState {
             } else {
                 radius
             };
-            eye.look_target = entity_bbox.center();
-            eye.pos = eye.look_target - fwd * radius;
+            eye_controller.look_target = entity_bbox.center();
+            eye_controller.pos = eye_controller.look_target - fwd * radius;
         }
 
-        eye.save_to_blueprint(
+        eye_controller.save_to_blueprint(
             ctx.viewer_ctx,
             eye_property,
             old_pos,

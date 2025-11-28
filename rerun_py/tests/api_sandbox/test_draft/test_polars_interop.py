@@ -3,7 +3,6 @@ from __future__ import annotations
 import pprint
 from typing import TYPE_CHECKING
 
-import polars as pl
 import pyarrow as pa
 import rerun_draft as rr
 from datafusion import col, lit
@@ -14,51 +13,19 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_entries_to_polars(tmp_path: Path) -> None:
-    with rr.server.Server() as server:
-        client = server.client()
-
-        client.create_dataset("my_dataset")
-        client.create_table_entry("my_table", pa.schema([]), tmp_path.as_uri())
-
-        df = client.entries().to_polars()
-
-        assert pprint.pformat(df.schema) == inline_snapshot(
-            """\
-Schema([('id', Binary),
-        ('name', String),
-        ('entry_kind', Int32),
-        ('created_at', Datetime(time_unit='ns', time_zone=None)),
-        ('updated_at', Datetime(time_unit='ns', time_zone=None))])\
-"""
-        )
-
-        df = df.drop(["id", "created_at", "updated_at"]).filter(pl.col("entry_kind") != 5).sort("name")
-        assert str(df) == inline_snapshot("""\
-shape: (3, 2)
-┌────────────┬────────────┐
-│ name       ┆ entry_kind │
-│ ---        ┆ ---        │
-│ str        ┆ i32        │
-╞════════════╪════════════╡
-│ __entries  ┆ 3          │
-│ my_dataset ┆ 1          │
-│ my_table   ┆ 3          │
-└────────────┴────────────┘\
-""")
-
-
 def test_table_to_polars(tmp_path: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
-        client.create_table_entry(
+
+        table = client.create_table(
             "my_table",
             pa.schema([pa.field("int16", pa.int16()), pa.field("string_list", pa.list_(pa.string()))]),
             tmp_path.as_uri(),
         )
-        client.append_to_table("my_table", int16=[12], string_list=[["a", "b", "c"]])
 
-        df = client.get_table_entry(name="my_table").to_polars()
+        table.append(int16=[12], string_list=[["a", "b", "c"]])
+
+        df = client.get_table(name="my_table").to_polars()
 
         assert str(df) == inline_snapshot("""\
 shape: (1, 2)
@@ -97,9 +64,9 @@ shape: (3, 4)
 │ ---                ┆ ---               ┆ ---              ┆ ---              │
 │ str                ┆ list[str]         ┆ u64              ┆ u64              │
 ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╡
-│ simple_recording_0 ┆ ["base"]          ┆ 2                ┆ 1392             │
-│ simple_recording_1 ┆ ["base"]          ┆ 2                ┆ 1392             │
-│ simple_recording_2 ┆ ["base"]          ┆ 2                ┆ 1392             │
+│ simple_recording_0 ┆ ["base"]          ┆ 2                ┆ 1273             │
+│ simple_recording_1 ┆ ["base"]          ┆ 2                ┆ 1273             │
+│ simple_recording_2 ┆ ["base"]          ┆ 2                ┆ 1273             │
 └────────────────────┴───────────────────┴──────────────────┴──────────────────┘\
 """)
 
@@ -111,7 +78,7 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
         df = (
-            ds.query(index="timeline", contents="/**")
+            ds.reader(index="timeline")
             # All former view-level filtering happens now in datafusion and is (hopefully) pushed back
             .filter(in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")]))
             .to_polars()

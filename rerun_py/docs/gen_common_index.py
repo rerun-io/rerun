@@ -227,6 +227,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Mesh3D",
             "archetypes.Points2D",
             "archetypes.Points3D",
+            "archetypes.TransformAxes3D",
         ],
         gen_page=False,
     ),

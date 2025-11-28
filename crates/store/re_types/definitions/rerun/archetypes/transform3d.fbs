@@ -7,9 +7,10 @@ namespace rerun.archetypes;
 /// E.g. if both a translation and a max3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
-/// Whenever you log this archetype, it will write all components, even if you do not explicitly set them.
+/// Whenever you log this archetype, the state of the resulting transform relationship is fully reset to the new archetype.
 /// This means that if you first log a transform with only a translation, and then log one with only a rotation,
 /// it will be resolved to a transform with only a rotation.
+/// (This is unlike how we usually apply latest-at semantics on an archetype where we take the latest state of any component independently)
 ///
 /// For transforms that affect only a single entity and do not propagate along the entity tree refer to [archetypes.InstancePoses3D].
 ///
@@ -22,26 +23,37 @@ namespace rerun.archetypes;
 table Transform3D (
   "attr.docs.category": "Spatial 3D",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
-  "attr.rerun.log_missing_as_empty", // See https://github.com/rerun-io/rerun/issues/6909
   "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq"
 ) {
   /// Translation vector.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   translation: rerun.components.Translation3D ("attr.rerun.component_optional", nullable, order: 1100);
 
   /// Rotation via axis + angle.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   rotation_axis_angle: rerun.components.RotationAxisAngle ("attr.rerun.component_optional", nullable, order: 1200);
 
   /// Rotation via quaternion.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   quaternion: rerun.components.RotationQuat ("attr.rerun.component_optional", nullable, order: 1300);
 
   /// Scaling factor.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   scale: rerun.components.Scale3D ("attr.rerun.component_optional", nullable, order: 1400);
 
   /// 3x3 transformation matrix.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   mat3x3: rerun.components.TransformMat3x3 ("attr.rerun.component_optional", nullable, order: 1500);
 
   /// Specifies the relation this transform establishes between this entity and its parent.
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   relation: rerun.components.TransformRelation ("attr.rerun.component_optional", nullable, order: 1600);
 
   // --- transform frame
@@ -51,35 +63,26 @@ table Transform3D (
   /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
   /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
   /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
-  /// An exception to this rule is static time - you may first mention a child frame on one entity statically and later on
-  /// another one temporally.
   ///
-  /// ⚠ This currently also affects the child frame of [archetypes.Pinhole].
   /// ⚠ This currently is also used as the frame id of [archetypes.InstancePoses3D].
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   // TODO(RR-2777): Mark as stable when we're ready for it.
   child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2000);
 
   /// The parent frame this transform transforms into.
   ///
-  /// ⚠ This currently also affects the parent frame of [archetypes.Pinhole].
-  ///
   /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
   ///
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+  ///
+  /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   // TODO(RR-2777): Mark as stable when we're ready for it.
   parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2100);
-
-  // --- visual representation
-
-  /// Visual length of the 3 axes.
-  ///
-  /// The length is interpreted in the local coordinate system of the transform.
-  /// If the transform is scaled, the axes will be scaled accordingly.
-  axis_length: rerun.components.AxisLength ("attr.rerun.component_optional", nullable, order: 3000);
 }

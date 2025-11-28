@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use re_chunk::ChunkBatcherConfig;
-use re_log_types::LogMsg;
+use re_log_types::{DataSourceMessage, LogMsg};
 
 use crate::sink::SinkFlushError;
 
@@ -14,7 +14,7 @@ pub struct GrpcServerSink {
     uri: re_uri::ProxyUri,
 
     /// Sender to send messages to the gRPC server.
-    sender: re_smart_channel::Sender<LogMsg>,
+    sender: re_smart_channel::Sender<DataSourceMessage>,
 
     /// The gRPC server thread.
     _server_handle: std::thread::JoinHandle<()>,
@@ -38,7 +38,7 @@ impl GrpcServerSink {
             re_uri::Scheme::RerunHttp,
             grpc_server_addr,
         ));
-        let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
+        let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<DataSourceMessage>(
             re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
             re_smart_channel::SmartChannelSource::Sdk,
         );
@@ -74,7 +74,7 @@ impl GrpcServerSink {
 
 impl crate::sink::LogSink for GrpcServerSink {
     fn send(&self, msg: LogMsg) {
-        if let Err(err) = self.sender.send(msg) {
+        if let Err(err) = self.sender.send(msg.into()) {
             re_log::error_once!("Failed to send log message to gRPC server: {err}");
         }
     }

@@ -2,6 +2,7 @@ use egui::{Modifiers, NumExt as _, emath::RectTransform};
 use glam::Vec3;
 
 use macaw::BoundingBox;
+use re_log_types::Instance;
 use re_renderer::{
     LineDrawableBuilder, Size,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
@@ -129,7 +130,7 @@ impl SpatialView3D {
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
-        system_output: re_viewer_context::SystemExecutionOutput,
+        mut system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
@@ -208,6 +209,7 @@ impl SpatialView3D {
                 None,
                 axis_length,
                 re_renderer::OutlineMaskPreference::NONE,
+                Instance::ALL.get(),
             );
 
             // If we are showing the axes for the space, then add the space origin to the bounding box.
@@ -397,7 +399,7 @@ impl SpatialView3D {
             scene_view_coordinates,
         );
 
-        for draw_data in system_output.draw_data {
+        for draw_data in system_output.drain_draw_data() {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 

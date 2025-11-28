@@ -119,4 +119,8 @@ impl PyTasks {
             id: self.ids[index].clone(),
         })
     }
+
+    pub fn __str__(&self) -> String {
+        format!("Tasks(client={}, ids={:#?})", self.client, self.ids)
+    }
 }

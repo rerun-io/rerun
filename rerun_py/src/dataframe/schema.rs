@@ -18,7 +18,7 @@ pub struct SchemaIterator {
     iter: std::vec::IntoIter<PyObject>,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl SchemaIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
@@ -50,12 +50,19 @@ impl PySchema {
     }
 
     /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
+    ///
+    /// Index columns are yielded first, then component columns.
     fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
         let py = slf.py();
         let iter = SchemaIterator {
             iter: slf
                 .schema
                 .iter()
+                .sorted_by_key(|col| match col {
+                    ColumnDescriptor::RowId(_) => 1,
+                    ColumnDescriptor::Time(_) => 2,
+                    ColumnDescriptor::Component(_) => 3,
+                })
                 .filter_map(|col| match col.clone() {
                     ColumnDescriptor::RowId(_) => None, // TODO(#9922)
                     ColumnDescriptor::Time(col) => {

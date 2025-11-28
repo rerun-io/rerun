@@ -466,7 +466,7 @@ pub fn parse_f64(text: &str) -> Option<f64> {
         // Ignore whitespace (trailing, leading, and thousands separators):
         .filter(|c| !c.is_whitespace())
         // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == '−' { '-' } else { c })
+        .map(|c| if c == MINUS { '-' } else { c })
         .collect();
 
     text.parse().ok()
@@ -480,7 +480,7 @@ pub fn parse_i64(text: &str) -> Option<i64> {
         // Ignore whitespace (trailing, leading, and thousands separators):
         .filter(|c| !c.is_whitespace())
         // Replace special minus character with normal minus (hyphen):
-        .map(|c| if c == '−' { '-' } else { c })
+        .map(|c| if c == MINUS { '-' } else { c })
         .collect();
 
     text.parse().ok()
@@ -779,8 +779,18 @@ fn test_parse_duration() {
 /// Remove the custom formatting
 ///
 /// Removes the thin spaces and the special minus character. Useful when copying text.
-pub fn remove_number_formatting(copied_str: &str) -> String {
-    copied_str.replace('\u{2009}', "").replace('−', "-")
+pub fn remove_number_formatting(s: &str) -> String {
+    s.chars()
+        .filter_map(|c| {
+            if c == MINUS {
+                Some('-')
+            } else if c == THIN_SPACE {
+                None
+            } else {
+                Some(c)
+            }
+        })
+        .collect()
 }
 
 #[test]
@@ -801,4 +811,10 @@ fn test_remove_number_formatting() {
         remove_number_formatting(&format_uint(123_456_789_u32)),
         "123456789"
     );
+}
+
+/// Returns "s" if `count` is not one, otherwise returns an empty string.
+#[expect(clippy::needless_pass_by_value)]
+pub fn format_plural_s(count: impl num_traits::Num) -> &'static str {
+    if count.is_one() { "" } else { "s" }
 }

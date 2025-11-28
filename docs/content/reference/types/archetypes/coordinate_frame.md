@@ -15,7 +15,7 @@ To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/c
 
 ## Fields
 ### Required
-* `frame_id`: [`TransformFrameId`](../components/transform_frame_id.md)
+* `frame`: [`TransformFrameId`](../components/transform_frame_id.md)
 
 
 ## Can be shown in

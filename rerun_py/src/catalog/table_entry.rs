@@ -83,6 +83,10 @@ impl PyTableEntry {
     pub fn storage_url(&self) -> String {
         self.url.clone().unwrap_or_default()
     }
+
+    pub fn __str__(&self) -> String {
+        format!("TableEntry(url='{}')", self.url.clone().unwrap_or_default())
+    }
 }
 
 impl PyTableEntry {
@@ -146,6 +150,9 @@ pub enum PyTableInsertMode {
 
     #[pyo3(name = "OVERWRITE")]
     Overwrite = 2,
+
+    #[pyo3(name = "REPLACE")]
+    Replace = 3,
 }
 
 impl From<PyTableInsertMode> for TableInsertMode {
@@ -153,6 +160,7 @@ impl From<PyTableInsertMode> for TableInsertMode {
         match value {
             PyTableInsertMode::Append => Self::Append,
             PyTableInsertMode::Overwrite => Self::Overwrite,
+            PyTableInsertMode::Replace => Self::Replace,
         }
     }
 }

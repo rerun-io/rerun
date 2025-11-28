@@ -8,10 +8,9 @@ use re_types::{
     components::{Blob, MediaType, Opacity, VideoTimestamp},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, VideoAssetCache, ViewContext,
-    ViewContextCollection, ViewId, ViewQuery, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use crate::{
@@ -21,7 +20,6 @@ use crate::{
     visualizers::{
         SpatialViewVisualizerData,
         entity_iterator::{self, process_archetype},
-        filter_visualizable_2d_entities,
         video::{
             VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
             visualize_video_frame_texture,
@@ -52,25 +50,20 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
@@ -129,10 +122,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             },
         )?;
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

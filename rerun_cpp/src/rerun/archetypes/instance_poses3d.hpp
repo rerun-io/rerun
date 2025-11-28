@@ -24,6 +24,11 @@ namespace rerun::archetypes {
     /// If both `archetypes::InstancePoses3D` and `archetypes::Transform3D` are present,
     /// first the tree propagating `archetypes::Transform3D` is applied, then `archetypes::InstancePoses3D`.
     ///
+    /// Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
+    /// This means that if you first log a pose with only a translation, and then log one with only a rotation,
+    /// it will be resolved to a pose with only a rotation.
+    /// (This is unlike how we usually apply latest-at semantics on an archetype where we take the latest state of any component independently)
+    ///
     /// From the point of view of the entity's coordinate system,
     /// all components are applied in the inverse order they are listed here.
     /// E.g. if both a translation and a max3x3 transform are present,
@@ -77,18 +82,28 @@ namespace rerun::archetypes {
     /// ```
     struct InstancePoses3D {
         /// Translation vectors.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> translations;
 
         /// Rotations via axis + angle.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> quaternions;
 
         /// Scaling factors.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> scales;
 
         /// 3x3 transformation matrices.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> mat3x3;
 
       public:
@@ -137,6 +152,8 @@ namespace rerun::archetypes {
         static InstancePoses3D clear_fields();
 
         /// Translation vectors.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_translations(
             const Collection<rerun::components::PoseTranslation3D>& _translations
         ) && {
@@ -146,6 +163,8 @@ namespace rerun::archetypes {
         }
 
         /// Rotations via axis + angle.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_rotation_axis_angles(
             const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
@@ -158,6 +177,8 @@ namespace rerun::archetypes {
         }
 
         /// Rotations via quaternion.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_quaternions(
             const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
@@ -167,12 +188,16 @@ namespace rerun::archetypes {
         }
 
         /// Scaling factors.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_scales(const Collection<rerun::components::PoseScale3D>& _scales) && {
             scales = ComponentBatch::from_loggable(_scales, Descriptor_scales).value_or_throw();
             return std::move(*this);
         }
 
         /// 3x3 transformation matrices.
+        ///
+        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_mat3x3(
             const Collection<rerun::components::PoseTransformMat3x3>& _mat3x3
         ) && {

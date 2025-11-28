@@ -8,9 +8,9 @@ use re_types::{
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use crate::{
@@ -19,10 +19,7 @@ use crate::{
     visualizers::{load_keypoint_connections, process_radius_slice},
 };
 
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities, process_labels_3d,
-    utilities::LabeledBatch,
-};
+use super::{SpatialViewVisualizerData, process_labels_3d, utilities::LabeledBatch};
 
 // ---
 
@@ -185,21 +182,14 @@ impl VisualizerSystem for Points3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -217,6 +207,8 @@ impl VisualizerSystem for Points3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -297,10 +289,10 @@ impl VisualizerSystem for Points3DVisualizer {
             },
         )?;
 
-        Ok(vec![
+        Ok(output.with_draw_data([
             point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
-        ])
+        ]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

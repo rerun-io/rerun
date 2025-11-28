@@ -7,9 +7,11 @@ mod datafusion_table_widget;
 mod display_record_batch;
 mod filters;
 mod header_tooltip;
+mod re_table;
+pub mod re_table_utils;
 mod requested_object;
 mod table_blueprint;
-pub mod table_utils;
+mod table_selection;
 
 pub use self::{
     datafusion_table_widget::{DataFusionTableWidget, TableStatus},

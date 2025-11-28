@@ -19,6 +19,9 @@ _deps
 **/rerun_cpp/docs/xml
 *.tgz
 
+# User-specific VSCode C++ extension config:
+.vscode/c_cpp_properties.json
+
 # Rust compile target directories.
 # These should only be found in the repository root, so prefix them all with slashes:
 /target
@@ -51,6 +54,7 @@ perf.data*
 
 # insta snapshot temp file:
 *.pending-snap
+*.snap.new
 
 # Screenshots from samples etc.
 screenshot*.png
@@ -86,9 +90,6 @@ justfile
 
 # heaptrack files
 *.zst
-
-# IDE stuff
-/.idea
 
 # Lychee link checker cache
 .lycheecache

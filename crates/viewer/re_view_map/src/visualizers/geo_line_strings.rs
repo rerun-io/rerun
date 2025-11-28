@@ -10,7 +10,8 @@ use re_types::{
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -43,7 +44,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         for data_result in view_query.iter_visible_data_results(Self::identifier()) {
             let results =
                 data_result.query_archetype_with_history::<GeoLineStrings>(ctx, view_query);
@@ -112,7 +113,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

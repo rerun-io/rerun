@@ -66,7 +66,8 @@ pub enum PyEntryKind {
     BlueprintDataset = 5,
 }
 
-#[pymethods]
+// Enums don't need str
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyEntryKind {
     // This allows for EntryType.DATASET syntax in Python
     #[classattr]

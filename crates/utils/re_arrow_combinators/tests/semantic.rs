@@ -17,7 +17,7 @@ use arrow::{
 
 use re_types::{components::VideoCodec, reflection::Enum as _};
 
-mod testing_utils;
+mod util;
 
 // Generic test for binary arrays where the offset is the same.
 fn impl_binary_test<O1: arrow::array::OffsetSizeTrait, O2: arrow::array::OffsetSizeTrait>() {
@@ -36,14 +36,14 @@ fn impl_binary_test<O1: arrow::array::OffsetSizeTrait, O2: arrow::array::OffsetS
     let binary_array = builder.finish();
 
     println!("Input:");
-    println!("{}", testing_utils::DisplayRB(binary_array.clone()));
+    println!("{}", util::DisplayRB(binary_array.clone()));
 
     let result = BinaryToListUInt8::<O1, O2>::new()
         .transform(&binary_array)
         .unwrap();
 
     println!("Output:");
-    println!("{}", testing_utils::DisplayRB(result.clone()));
+    println!("{}", util::DisplayRB(result.clone()));
 
     // Verify structure
     assert_eq!(result.len(), 5);

@@ -92,19 +92,33 @@ fn top_bar_ui(
     ui.add_space(12.0);
     website_link_ui(ui);
 
+    if !app.startup_options().web_history_enabled() {
+        ui.add_space(12.0);
+        app.navigation_buttons(ui);
+    }
+
     if !app.is_screenshotting() {
+        show_warnings(frame, ui, app.app_env()); // Fixed width: put first
+
         let latency_snapshot = store_context
             .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
 
         if app.app_options().show_metrics {
             ui.separator();
-            frame_time_label_ui(ui, app);
-            memory_use_label_ui(ui, gpu_resource_stats);
 
-            if let Some(latency_snapshot) = latency_snapshot {
-                // Always show latency when metrics are enabled:
-                latency_snapshot_button_ui(ui, latency_snapshot);
-            }
+            ui.scope(|ui| {
+                ui.spacing_mut().item_spacing.x = 12.0;
+
+                // Varying widths:
+                memory_use_label_ui(ui, gpu_resource_stats);
+                frame_time_label_ui(ui, app);
+                fps_ui(ui, app);
+
+                if let Some(latency_snapshot) = latency_snapshot {
+                    // Always show latency when metrics are enabled:
+                    latency_snapshot_button_ui(ui, latency_snapshot);
+                }
+            });
         } else {
             // Show latency metrics only if high enough to be "interesting":
             if let Some(latency_snapshot) = latency_snapshot {
@@ -133,8 +147,6 @@ fn top_bar_ui(
         if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
-
-        show_warnings(frame, ui, app.app_env());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -165,30 +177,50 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
     // * it will be captured in screenshots in bug reports etc
     // * it let's us customize the message a bit more, with links etc.
 
+    // We want to add a separator if there is any warning. This works.
+    let mut has_shown_warning = false;
+
+    fn show_warning(
+        ui: &mut egui::Ui,
+        has_shown_warning: &mut bool,
+        callback: impl FnOnce(&mut egui::Ui),
+    ) {
+        if !*has_shown_warning {
+            ui.separator();
+            *has_shown_warning = true;
+        }
+
+        callback(ui);
+    }
+
     if cfg!(debug_assertions) {
-        // Warn if in debug build
-        ui.label(
-            egui::RichText::new("⚠ Debug build")
-                .small()
-                .color(ui.visuals().warn_fg_color),
-        )
-        .on_hover_text("Rerun was compiled with debug assertions enabled.");
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            // Warn if in debug build
+            ui.label(
+                egui::RichText::new("⚠ Debug build")
+                    .small()
+                    .color(ui.visuals().warn_fg_color),
+            )
+            .on_hover_text("Rerun was compiled with debug assertions enabled.");
+        });
     }
 
     if !app_env.is_test() {
-        show_software_rasterizer_warning(frame, ui);
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            show_software_rasterizer_warning(frame, ui);
+        });
     }
 
     if crate::docker_detection::is_docker() {
-        ui.hyperlink_to(
-            egui::RichText::new("⚠ Docker")
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            let text = egui::RichText::new("⚠ Docker")
                 .small()
-                .color(ui.visuals().warn_fg_color),
-            "https://github.com/rerun-io/rerun/issues/6835",
-        )
-        .on_hover_ui(|ui| {
-            ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
-            ui.label("Click for more info.");
+                .color(ui.visuals().warn_fg_color);
+            let url = "https://github.com/rerun-io/rerun/issues/6835";
+            ui.hyperlink_to(text,url).on_hover_ui(|ui| {
+                ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
+                ui.label("Click for more info.");
+            });
         });
     }
 }
@@ -342,7 +374,7 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
-    let display_mode = app.state.navigation.peek();
+    let display_mode = app.state.navigation.current();
 
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
@@ -424,7 +456,7 @@ fn panel_buttons_r2l(
     app.state.share_modal.button_ui(
         ui,
         store_hub,
-        app.state.navigation.peek(),
+        app.state.navigation.current(),
         rec_cfg,
         selection,
     );
@@ -468,6 +500,40 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+}
+
+fn fps_ui(ui: &mut egui::Ui, app: &App) {
+    if let Some(fps) = app.frame_time_history.rate() {
+        let visuals = ui.visuals();
+
+        // We only warn if we _suspect_ that we're in "continuous repaint mode".
+        let low_fps_right_now = fps < 20.0 && ui.ctx().has_requested_repaint();
+
+        let now = ui.ctx().input(|i| i.time);
+        let warn_start_id = ui.id().with("fps_warning");
+        let warn_start_time = ui.data_mut(|d| {
+            if low_fps_right_now {
+                *d.get_persisted_mut_or::<f64>(warn_start_id, now)
+            } else {
+                d.remove::<f64>(warn_start_id);
+                now
+            }
+        });
+
+        // Avoid blinking warning
+        let low_fps_for_some_time = 0.5 < (now - warn_start_time);
+
+        let color = if low_fps_for_some_time {
+            visuals.warn_fg_color
+        } else {
+            visuals.weak_text_color()
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{fps:.0} FPS");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("Frames per second. Higher is better.");
     }
 }
 

@@ -170,6 +170,12 @@ impl Tuid {
         Self::from_nanos_and_inc((id >> 64) as u64, (id & (!0 >> 64)) as u64)
     }
 
+    #[cfg(feature = "bytemuck")]
+    #[inline]
+    pub fn slice_from_bytes(bytes: &[u8]) -> Result<&[Self], bytemuck::PodCastError> {
+        bytemuck::try_cast_slice(bytes)
+    }
+
     #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.nanos_since_epoch() as u128) << 64) | (self.inc() as u128)
