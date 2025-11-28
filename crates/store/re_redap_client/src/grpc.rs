@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use arrow::{array::RecordBatch, error::ArrowError};
+use itertools::Itertools as _;
+
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
     AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
     LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
-use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_uri::{Origin, TimeSelection};
@@ -394,6 +396,8 @@ async fn stream_partition_from_server(
 ) -> Result<(), ApiError> {
     let store_id = store_info.store_id.clone();
 
+    re_log::debug!("Streaming {store_id:?}…");
+
     if tx
         .send(
             LogMsg::SetStoreInfo(SetStoreInfo {
@@ -447,11 +451,12 @@ async fn stream_partition_from_server(
         }
     }
 
-    // TODO(RR-2976): Do not, under any circumstances, try to chain the static and temporal streams
+    // TODO(RR-2976): Do not, under any circumstances, try to chain gRPC streams
     // together. Interlaced streams are a giant footgun that will invariably lead to the exhaustion
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
+    // Retrieve the chunk IDs we're interested in (all of them):
     let chunk_index_messages = client
         .query_dataset_chunk_index(PartitionQueryParams {
             dataset_id,
@@ -461,6 +466,23 @@ async fn stream_partition_from_server(
             query: None,
         })
         .await?;
+
+    let batches = chunk_index_messages
+        .iter()
+        .map(|m| m.record_batch().clone())
+        .collect_vec();
+
+    if batches.is_empty() {
+        re_log::info!("Empty recording"); // We likely won't get here even on empty recording
+        return Ok(());
+    }
+
+    let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches)
+        .map_err(|err| ApiError::invalid_arguments(err, "Failed to concat chunk index batches"))?;
+
+    // Prioritize the chunks:
+    let batch = sort_batch(&batch)
+        .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
     for msg in chunk_index_messages {
         if tx
@@ -472,95 +494,74 @@ async fn stream_partition_from_server(
         }
     }
 
-    let send_chunk = |chunk: Chunk| {
-        if tx
-            .send(
-                LogMsg::ArrowMsg(
-                    store_id.clone(),
-                    chunk.to_arrow_msg().map_err(|err| {
-                        ApiError::serialization(
-                            err,
-                            "failed to parse chunk in /FetchChunks response stream",
-                        )
-                    })?,
-                )
-                .into(),
-            )
-            .is_err()
-        {
-            re_log::debug!("Receiver disconnected");
-            return Ok::<_, ApiError>(false);
-        }
+    // Fetch the chunks base on the ids:
+    let chunk_stream = client.fetch_partition_chunks_by_id(&batch).await?;
 
-        if let Some(on_msg) = &on_msg {
-            on_msg();
-        }
-
-        Ok(true)
-    };
-
-    let static_chunk_stream = client
-        .fetch_partition_chunks(PartitionQueryParams {
-            dataset_id,
-            partition_id: partition_id.clone(),
-            include_static_data: true,
-            include_temporal_data: false,
-            query: None,
-        })
-        .await?;
-    let mut static_chunk_stream =
-        fetch_chunks_response_to_chunk_and_partition_id(static_chunk_stream);
+    let mut chunk_stream = fetch_chunks_response_to_chunk_and_partition_id(chunk_stream);
 
     // TODO(#10229): this looks to be converting back and forth?
-    while let Some(chunks) = static_chunk_stream.next().await {
+    while let Some(chunks) = chunk_stream.next().await {
         for chunk in chunks? {
             let (chunk, _partition_id) = chunk;
-            if !send_chunk(chunk)? {
+
+            if tx
+                .send(
+                    LogMsg::ArrowMsg(
+                        store_id.clone(),
+                        chunk.to_arrow_msg().map_err(|err| {
+                            ApiError::serialization(
+                                err,
+                                "failed to parse chunk in /FetchChunks response stream",
+                            )
+                        })?,
+                    )
+                    .into(),
+                )
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
                 return Ok(()); // cancelled
             }
-        }
-    }
 
-    let temporal_chunk_stream = client
-        .fetch_partition_chunks(PartitionQueryParams {
-            dataset_id,
-            partition_id,
-            include_static_data: false,
-            include_temporal_data: true,
-            query: time_range.map(|time_range| {
-                Query {
-                    range: Some(QueryRange {
-                        index: time_range.timeline.name().to_string(),
-                        index_range: time_range.into(),
-                    }),
-                    latest_at: Some(QueryLatestAt {
-                        index: Some(time_range.timeline.name().to_string()),
-                        at: time_range.range.min(),
-                    }),
-                    columns_always_include_everything: false,
-                    columns_always_include_chunk_ids: false,
-                    columns_always_include_byte_offsets: false,
-                    columns_always_include_entity_paths: false,
-                    columns_always_include_static_indexes: false,
-                    columns_always_include_global_indexes: false,
-                    columns_always_include_component_indexes: false,
-                }
-                .into()
-            }),
-        })
-        .await?;
-    let mut temporal_chunk_stream =
-        fetch_chunks_response_to_chunk_and_partition_id(temporal_chunk_stream);
-
-    // TODO(#10229): this looks to be converting back and forth?
-    while let Some(chunks) = temporal_chunk_stream.next().await {
-        for chunk in chunks? {
-            let (chunk, _partition_id) = chunk;
-            if !send_chunk(chunk)? {
-                return Ok(()); // cancelled
+            if let Some(on_msg) = &on_msg {
+                on_msg();
             }
         }
     }
 
     Ok(())
+}
+
+fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
+    use std::sync::Arc;
+
+    let schema = batch.schema();
+
+    // Get column indices:
+    let chunk_is_static = schema.index_of("chunk_is_static")?;
+    let chunk_id = schema.index_of("chunk_id")?;
+
+    let sort_keys = vec![
+        // Static first:
+        arrow::compute::SortColumn {
+            values: Arc::new(batch.column(chunk_is_static).clone()),
+            options: Some(arrow::compute::SortOptions {
+                descending: true,
+                nulls_first: true,
+            }),
+        },
+        // Then sort by chunk id (~time)
+        arrow::compute::SortColumn {
+            values: Arc::new(batch.column(chunk_id).clone()),
+            options: Some(arrow::compute::SortOptions {
+                descending: false,
+                nulls_first: true,
+            }),
+        },
+    ];
+
+    let indices = arrow::compute::lexsort_to_indices(&sort_keys, None)?;
+    let sorted = arrow::compute::take_record_batch(batch, &indices)?;
+
+    Ok(sorted)
 }

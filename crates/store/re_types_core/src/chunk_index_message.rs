@@ -73,6 +73,10 @@ impl ChunkIndexMessage {
         .build())
     }
 
+    pub fn record_batch(&self) -> &RecordBatch {
+        self.borrow_rb()
+    }
+
     pub fn num_rows(&self) -> usize {
         self.borrow_rb().num_rows()
     }
