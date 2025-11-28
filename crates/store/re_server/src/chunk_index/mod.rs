@@ -207,7 +207,7 @@ impl DatasetChunkIndexes {
 
     // ----- Called by Dataset
 
-    pub async fn chunks_loaded(
+    pub async fn on_layer_added(
         &self,
         partition_id: PartitionId,
         store: ChunkStoreHandle,
@@ -254,24 +254,18 @@ impl DatasetChunkIndexes {
     // ---- implementation
 
     /// Get the index for a path and component, if any.
-    pub async fn get(
+    async fn get(
         &self,
         entity_path: &EntityPath,
         component: &ComponentIdentifier,
     ) -> Option<Arc<Index>> {
         let indexes = self.indexes.read().await;
 
-        if let Some(path_indexes) = indexes.get(entity_path) {
-            if let Some(component_index) = path_indexes.get(component) {
-                return Some(component_index.clone());
-            }
-        }
-
-        None
+        indexes.get(entity_path)?.get(component).cloned()
     }
 
     /// Add an index to a dataset
-    pub(crate) async fn add_index(
+    async fn add_index(
         &self,
         dataset: &Dataset,
         config: &IndexConfig,
@@ -349,8 +343,6 @@ impl DatasetChunkIndexes {
         ))
     }
 }
-
-//---- Helper functions
 
 #[cfg(feature = "lance")]
 #[cfg(test)]

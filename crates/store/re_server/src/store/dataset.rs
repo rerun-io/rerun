@@ -397,7 +397,7 @@ impl Dataset {
             )?;
 
         self.indexes()
-            .chunks_loaded(partition_id, store_handle, &layer_name, overwritten)
+            .on_layer_added(partition_id, store_handle, &layer_name, overwritten)
             .await?;
 
         Ok(())
