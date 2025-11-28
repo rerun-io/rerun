@@ -2268,7 +2268,7 @@ impl PyOauthLoginFlow {
     ///
     /// Returns
     /// -------
-    /// PyCredentials
+    /// Credentials
     ///     The credentials of the logged in user.
     fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
         let result: Result<Credentials, re_auth::callback_server::Error> =
