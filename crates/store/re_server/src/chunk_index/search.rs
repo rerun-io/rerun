@@ -16,7 +16,7 @@ pub async fn search_index(
     index: Arc<Index>,
     request: SearchDatasetRequest,
 ) -> Result<impl Stream<Item = Result<RecordBatch, StoreError>> + use<>, StoreError> {
-    let lance_dataset = &mut index.lance_dataset.lock().clone();
+    let lance_dataset = index.lance_dataset.get();
 
     if request.query.columns().len() != 1 && request.query.num_rows() != 1 {
         return Err(StoreError::IndexingError(
@@ -37,14 +37,14 @@ pub async fn search_index(
 
             let mut scanner = &mut lance_dataset.scan();
             scanner = scanner.full_text_search(fts)?;
-            apply_parameters(scanner, request.scan_parameters, lance_dataset).await?;
+            apply_parameters(scanner, request.scan_parameters).await?;
             scanner.try_into_stream().await?
         }
 
         IndexQueryProperties::Vector { top_k } => {
             let mut scanner = &mut lance_dataset.scan();
             scanner = scanner.nearest(FIELD_INSTANCE, query_data, top_k as usize)?;
-            apply_parameters(scanner, request.scan_parameters, lance_dataset).await?;
+            apply_parameters(scanner, request.scan_parameters).await?;
 
             scanner.try_into_stream().await?
         }
@@ -58,7 +58,7 @@ pub async fn search_index(
                 scanner.filter_expr(col(FIELD_INSTANCE).eq(lit(q)));
             }
 
-            apply_parameters(scanner, request.scan_parameters, lance_dataset).await?;
+            apply_parameters(scanner, request.scan_parameters).await?;
 
             scanner.try_into_stream().await?
         }
@@ -88,7 +88,6 @@ pub async fn search_index(
 async fn apply_parameters(
     scanner: &mut lance::dataset::scanner::Scanner,
     parameters: ScanParameters,
-    _lance_dataset: &mut lance::dataset::Dataset,
 ) -> Result<(), StoreError> {
     let ScanParameters {
         columns,

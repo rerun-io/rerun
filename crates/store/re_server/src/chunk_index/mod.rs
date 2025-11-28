@@ -20,6 +20,7 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use tonic::Status;
@@ -36,12 +37,41 @@ pub const FIELD_INSTANCE: &str = "instance";
 // Position of the instance in the column cell
 pub const FIELD_INSTANCE_ID: &str = "instance_id";
 
+
+/// A thread-safe cell that holds an Arc<T> and can be updated atomically.
+pub struct ArcCell<T> {
+    inner: parking_lot::Mutex<Arc<T>>,
+}
+
+impl<T> ArcCell<T> {
+    pub fn new(value: T) -> Self {
+        Self {
+            inner: parking_lot::Mutex::new(Arc::new(value)),
+        }
+    }
+
+    pub fn get(&self) -> Arc<T> {
+        self.inner.lock().clone()
+    }
+
+    pub fn replace(&self, new_value: T) -> Arc<T> {
+        std::mem::replace(&mut *self.inner.lock(), Arc::new(new_value))
+    }
+}
+
+impl<T: Clone> ArcCell<T> {
+    /// Returns a cloned version of the inner value.
+    pub fn cloned(&self) -> T {
+        self.get().deref().clone()
+    }
+}
+
 /// An index for a column of a dataset's chunks
 #[cfg(feature = "lance")]
 pub struct Index {
     config: IndexConfig,
     // Mutex because we need to update the lance object after writing and checking out the latest version.
-    lance_dataset: parking_lot::Mutex<lance::dataset::Dataset>,
+    lance_dataset: ArcCell<lance::dataset::Dataset>,
 }
 
 #[cfg(not(feature = "lance"))]
@@ -387,7 +417,7 @@ mod tests {
         let chunk_indexes = DatasetChunkIndexes::new(dataset.id());
         let index = chunk_indexes.add_index(&dataset, &config, path).await?;
 
-        let lance = index.lance_dataset.lock().clone();
+        let lance = index.lance_dataset.get();
 
         // --- checks on the lance table contents
         assert_eq!(lance.count_rows(None).await?, 1256);

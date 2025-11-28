@@ -1,5 +1,5 @@
 use crate::chunk_index::{
-    FIELD_CHUNK_ID, FIELD_INSTANCE, FIELD_INSTANCE_ID, FIELD_RERUN_PARTITION_ID,
+    ArcCell, FIELD_CHUNK_ID, FIELD_INSTANCE, FIELD_INSTANCE_ID, FIELD_RERUN_PARTITION_ID,
     FIELD_RERUN_PARTITION_LAYER, FIELD_TIMEPOINT,
 };
 use crate::store::Dataset;
@@ -68,7 +68,7 @@ impl super::Index {
                 .transpose()
             });
 
-        let mut lance = self.lance_dataset.lock().clone();
+        let mut lance: lance::Dataset = self.lance_dataset.cloned();
         let mut iter = batches.peekable();
 
         // Expect the first batch to be successfully prepared to get its schema.
@@ -86,7 +86,7 @@ impl super::Index {
 
             if checkout_latest {
                 lance.checkout_latest().await?;
-                *self.lance_dataset.lock() = lance;
+                self.lance_dataset.replace(lance);
             }
         } else {
             Err(StoreError::IndexingError(
@@ -255,7 +255,7 @@ pub async fn create_index(
     create_lance_index(&mut lance_table, &config.properties).await?;
 
     Ok(super::Index {
-        lance_dataset: lance_table.into(),
+        lance_dataset: ArcCell::new(lance_table),
         config: config.clone(),
     })
 }
