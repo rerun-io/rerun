@@ -1,4 +1,3 @@
-use re_renderer::renderer::{DepthCloud, DepthClouds};
 use re_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
@@ -9,12 +8,13 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{PickableTexturedRect, contexts::TransformTreeContext, view_kind::SpatialViewKind};
+use crate::view_kind::SpatialViewKind;
 
 use super::{
     SpatialViewVisualizerData,
     depth_images::{
-        DepthCloudEntities, DepthImageComponentData, first_copied, process_depth_image_data,
+        DepthCloudEntities, DepthImageComponentData, execute_depth_visualizer, first_copied,
+        process_depth_image_data,
     },
 };
 
@@ -49,19 +49,17 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
-        let mut depth_clouds: Vec<DepthCloud> = Vec::new();
+        let preferred_view_kind = self.data.preferred_view_kind;
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
-
-        use super::entity_iterator::{iter_component, iter_slices, process_archetype};
-        process_archetype::<Self, EncodedDepthImage, _>(
+        execute_depth_visualizer::<Self, EncodedDepthImage, _>(
+            &mut self.data,
+            &mut self.depth_cloud_entities,
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            self.data.preferred_view_kind,
-            |ctx, spatial_ctx, results| {
+            preferred_view_kind,
+            |data, depth_cloud_entities, ctx, spatial_ctx, transforms, depth_clouds, results| {
+                use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_blob_chunks) =
@@ -98,7 +96,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
 
                 let entity_path = ctx.target_entity_path;
 
-                let data = re_query::range_zip_1x6(
+                let data_iter = re_query::range_zip_1x6(
                     all_blobs_indexed,
                     all_formats_indexed,
                     all_media_types.slice::<String>(),
@@ -108,7 +106,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 )
                 .filter_map(
-                    |(
+                    move |(
                         (_time, row_id),
                         blobs,
                         format,
@@ -137,9 +135,7 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                         ) {
                             Ok(image) => image,
                             Err(err) => {
-                                re_log::warn_once!(
-                                    "Failed to decode EncodedDepthImage at path {entity_path}: {err}"
-                                );
+                                re_log::warn_once!("Failed to decode EncodedDepthImage at path {entity_path}: {err}");
                                 return None;
                             }
                         };
@@ -155,37 +151,19 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                 );
 
                 process_depth_image_data(
-                    &mut self.data,
-                    &mut self.depth_cloud_entities,
+                    data,
+                    depth_cloud_entities,
                     ctx,
-                    &mut depth_clouds,
+                    depth_clouds,
                     spatial_ctx,
                     transforms,
-                    data,
+                    data_iter,
                     EncodedDepthImage::name(),
                 );
 
                 Ok(())
             },
-        )?;
-
-        let depth_cloud = re_renderer::renderer::DepthCloudDrawData::new(
-            ctx.viewer_ctx.render_ctx(),
-            &DepthClouds {
-                clouds: depth_clouds,
-                radius_boost_in_ui_points_for_outlines:
-                    re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-            },
         )
-        .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
-        output.draw_data.push(depth_cloud.into());
-
-        output.draw_data.push(PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?);
-
-        Ok(output)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

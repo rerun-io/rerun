@@ -9,6 +9,7 @@ use re_types::{
     components::{Colormap, DepthMeter, FillRatio, ImageFormat},
     image::ImageKind,
 };
+use re_view::HybridResults;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
@@ -227,19 +228,17 @@ impl VisualizerSystem for DepthImageVisualizer {
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
-        let mut depth_clouds = Vec::new();
+        let preferred_view_kind = self.data.preferred_view_kind;
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
-
-        use super::entity_iterator::{iter_component, iter_slices, process_archetype};
-        process_archetype::<Self, DepthImage, _>(
+        execute_depth_visualizer::<Self, DepthImage, _>(
+            &mut self.data,
+            &mut self.depth_cloud_entities,
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            self.data.preferred_view_kind,
-            |ctx, spatial_ctx, results| {
+            preferred_view_kind,
+            |data, depth_cloud_entities, ctx, spatial_ctx, transforms, depth_clouds, results| {
+                use super::entity_iterator::{iter_component, iter_slices};
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_buffer_chunks) =
@@ -268,7 +267,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     DepthImage::descriptor_point_fill_ratio().component,
                 );
 
-                let data = re_query::range_zip_1x5(
+                let data_iter = re_query::range_zip_1x5(
                     all_buffers_indexed,
                     all_formats_indexed,
                     all_colormaps.slice::<u8>(),
@@ -305,37 +304,19 @@ impl VisualizerSystem for DepthImageVisualizer {
                 );
 
                 process_depth_image_data(
-                    &mut self.data,
-                    &mut self.depth_cloud_entities,
+                    data,
+                    depth_cloud_entities,
                     ctx,
-                    &mut depth_clouds,
+                    depth_clouds,
                     spatial_ctx,
                     transforms,
-                    data,
+                    data_iter,
                     DepthImage::name(),
                 );
 
                 Ok(())
             },
-        )?;
-
-        let depth_cloud = re_renderer::renderer::DepthCloudDrawData::new(
-            ctx.viewer_ctx.render_ctx(),
-            &DepthClouds {
-                clouds: depth_clouds,
-                radius_boost_in_ui_points_for_outlines:
-                    re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-            },
         )
-        .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
-        output.draw_data.push(depth_cloud.into());
-
-        output.draw_data.push(PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
-            &self.data.pickable_rects,
-        )?);
-
-        Ok(output)
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -345,6 +326,72 @@ impl VisualizerSystem for DepthImageVisualizer {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+}
+
+pub(super) fn execute_depth_visualizer<V, A, F>(
+    data: &mut SpatialViewVisualizerData,
+    depth_cloud_entities: &mut DepthCloudEntities,
+    ctx: &ViewContext<'_>,
+    view_query: &ViewQuery<'_>,
+    context_systems: &ViewContextCollection,
+    preferred_view_kind: Option<SpatialViewKind>,
+    mut process_fn: F,
+) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError>
+where
+    V: VisualizerSystem + IdentifiedViewSystem,
+    A: re_types::Archetype,
+    F: for<'a> FnMut(
+        &mut SpatialViewVisualizerData,
+        &mut DepthCloudEntities,
+        &QueryContext<'a>,
+        &SpatialSceneEntityContext<'a>,
+        &TransformTreeContext,
+        &mut Vec<DepthCloud>,
+        &HybridResults<'a>,
+    ) -> Result<(), ViewSystemExecutionError>,
+{
+    let mut output = VisualizerExecutionOutput::default();
+    let mut depth_clouds = Vec::new();
+
+    let transforms = context_systems.get::<TransformTreeContext>()?;
+
+    use super::entity_iterator::process_archetype;
+    process_archetype::<V, A, _>(
+        ctx,
+        view_query,
+        context_systems,
+        &mut output,
+        preferred_view_kind,
+        |ctx, spatial_ctx, results| {
+            process_fn(
+                data,
+                depth_cloud_entities,
+                ctx,
+                spatial_ctx,
+                transforms,
+                &mut depth_clouds,
+                results,
+            )
+        },
+    )?;
+
+    let depth_cloud = re_renderer::renderer::DepthCloudDrawData::new(
+        ctx.viewer_ctx.render_ctx(),
+        &DepthClouds {
+            clouds: depth_clouds,
+            radius_boost_in_ui_points_for_outlines:
+                re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+        },
+    )
+    .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
+    output.draw_data.push(depth_cloud.into());
+
+    output.draw_data.push(PickableTexturedRect::to_draw_data(
+        ctx.viewer_ctx.render_ctx(),
+        &data.pickable_rects,
+    )?);
+
+    Ok(output)
 }
 
 pub(super) fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
