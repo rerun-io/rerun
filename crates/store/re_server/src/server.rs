@@ -138,6 +138,7 @@ impl Server {
                 // we don't get surprised when things inevitably change.
                 .tcp_nodelay(true)
                 .accept_http1(true)
+                .http2_adaptive_window(Some(true)) // Optimize for high throughput
                 .layer(middlewares);
 
             let _ = builder
