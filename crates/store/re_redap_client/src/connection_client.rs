@@ -10,23 +10,23 @@ use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
         FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaRequest, GetPartitionTableSchemaRequest, GetPartitionTableSchemaResponse,
-        QueryDatasetRequest, QueryDatasetResponse, QueryTasksOnCompletionResponse,
-        QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-        RegisterWithDatasetResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        GetDatasetSchemaRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
+        QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
+        ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
+        ScanSegmentTableRequest, ScanSegmentTableResponse,
         ext::{
             CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
-            EntryDetails, EntryDetailsUpdate, LanceTable, QueryTasksOnCompletionRequest,
-            QueryTasksRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            RegisterTableResponse, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
-            TableEntry, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
-            UpdateEntryResponse,
+            EntryDetails, EntryDetailsUpdate, LanceTable, QueryDatasetRequest,
+            QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
+            ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
+            RegisterWithDatasetTaskDescriptor, TableEntry, UpdateDatasetEntryRequest,
+            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
         },
         rerun_cloud_service_client::RerunCloudServiceClient,
     },
     common::v1alpha1::{
-        ScanParameters, TaskId,
-        ext::{IfDuplicateBehavior, PartitionId},
+        TaskId,
+        ext::{IfDuplicateBehavior, ScanParameters, SegmentId},
     },
     external::prost::bytes::Bytes,
     headers::RerunHeadersInjectorExt as _,
@@ -46,9 +46,9 @@ pub type FetchChunksResponseStream =
 pub type QueryDatasetResponseStream =
     ResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
-pub struct PartitionQueryParams {
+pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
-    pub partition_id: PartitionId,
+    pub segment_id: SegmentId,
     pub include_static_data: bool,
     pub include_temporal_data: bool,
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
@@ -260,102 +260,102 @@ where
     }
 
     //TODO(ab): accept entry name
-    pub async fn get_partition_table_schema(
+    pub async fn get_segment_table_schema(
         &mut self,
         entry_id: EntryId,
     ) -> Result<ArrowSchema, ApiError> {
         self.inner()
-            .get_partition_table_schema(
-                tonic::Request::new(GetPartitionTableSchemaRequest {})
+            .get_segment_table_schema(
+                tonic::Request::new(GetSegmentTableSchemaRequest {})
                     .with_entry_id(entry_id)
                     .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetPartitionTableSchema request")
+                        ApiError::tonic(err, "failed building /GetSegmentTableSchema request")
                     })?,
             )
             .await
-            .map_err(|err| ApiError::tonic(err, "GetPartitionTableSchema failed"))?
+            .map_err(|err| ApiError::tonic(err, "GetSegmentTableSchema failed"))?
             .into_inner()
             .schema
             .ok_or_else(|| {
-                let err = missing_field!(GetPartitionTableSchemaResponse, "schema");
-                ApiError::serialization(err, "missing field in /GetPartitionTableSchema response")
+                let err = missing_field!(GetSegmentTableSchemaResponse, "schema");
+                ApiError::serialization(err, "missing field in /GetSegmentTableSchema response")
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization(err, "failed parsing /GetPartitionTableSchema response")
+                ApiError::serialization(err, "failed parsing /GetSegmentTableSchema response")
             })
     }
 
-    /// Get a list of partition IDs for the given dataset entry ID.
+    /// Get a list of segment IDs for the given dataset entry ID.
     //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
-    pub async fn get_dataset_partition_ids(
+    pub async fn get_dataset_segment_ids(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<Vec<PartitionId>, ApiError> {
-        const COLUMN_NAME: &str = ScanPartitionTableResponse::FIELD_PARTITION_ID;
+    ) -> Result<Vec<SegmentId>, ApiError> {
+        const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
 
         let mut stream = self
             .inner()
-            .scan_partition_table(
-                tonic::Request::new(ScanPartitionTableRequest {
+            .scan_segment_table(
+                tonic::Request::new(ScanSegmentTableRequest {
                     columns: vec![COLUMN_NAME.to_owned()],
                 })
                 .with_entry_id(entry_id)
                 .map_err(|err| {
-                    ApiError::tonic(err, "failed building /ScanPartitionTable request")
+                    ApiError::tonic(err, "failed building /ScanSegmentTable request")
                 })?,
             )
             .await
-            .map_err(|err| ApiError::tonic(err, "/ScanPartitionTable failed"))?
+            .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?
             .into_inner();
 
-        let mut partition_ids = Vec::new();
+        let mut segment_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
             let record_batch: RecordBatch = resp
                 .map_err(|err| {
-                    ApiError::tonic(err, "failed receiving item from /ScanPartitionTable stream")
+                    ApiError::tonic(err, "failed receiving item from /ScanSegmentTable stream")
                 })?
                 .data()
                 .map_err(|err| {
                     ApiError::serialization(
                         err,
-                        "failed parsing item from /ScanPartitionTable stream",
+                        "failed parsing item from /ScanSegmentTable stream",
                     )
                 })?
                 .try_into()
                 .map_err(|err| {
                     ApiError::serialization(
                         err,
-                        "failed decoding item from /ScanPartitionTable stream",
+                        "failed decoding item from /ScanSegmentTable stream",
                     )
                 })?;
 
-            let partition_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
-                let err = missing_column!(ScanPartitionTableResponse, COLUMN_NAME);
+            let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
+                let err = missing_column!(ScanSegmentTableResponse, COLUMN_NAME);
                 ApiError::serialization(
                     err,
-                    "missing column from item in /ScanPartitionTable stream",
+                    "missing column from item in /ScanSegmentTable stream",
                 )
             })?;
 
-            let partition_id_array = partition_id_col
+            let segment_id_array = segment_id_col
                 .try_downcast_array_ref::<arrow::array::StringArray>()
                 .map_err(|err| {
                     ApiError::serialization(
                         err,
-                        "unexpected types in item in /ScanPartitionTable stream",
+                        "unexpected types in item in /ScanSegmentTable stream",
                     )
                 })?;
 
-            partition_ids.extend(
-                partition_id_array
+            segment_ids.extend(
+                segment_id_array
                     .iter()
-                    .filter_map(|opt| opt.map(|s| PartitionId::new(s.to_owned()))),
+                    .filter_map(|opt| opt.map(|s| SegmentId::new(s.to_owned()))),
             );
         }
 
-        Ok(partition_ids)
+        Ok(segment_ids)
     }
 
     //TODO(ab): accept entry name
@@ -385,7 +385,7 @@ where
             })
     }
 
-    /// Fetches all chunks ids for a specified partition.
+    /// Fetches all chunks ids for a specified segment.
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
@@ -393,25 +393,27 @@ where
     /// The result is compatible with [`ChunkIndex`].
     pub async fn query_dataset_raw(
         &mut self,
-        params: PartitionQueryParams,
+        params: SegmentQueryParams,
     ) -> Result<QueryDatasetResponseStream, ApiError> {
-        let PartitionQueryParams {
+        let SegmentQueryParams {
             dataset_id,
-            partition_id,
+            segment_id,
             include_static_data,
             include_temporal_data,
             query,
         } = params;
 
         let query_request = QueryDatasetRequest {
-            partition_ids: vec![partition_id.into()],
+            segment_ids: vec![segment_id],
             chunk_ids: vec![],
             entity_paths: vec![],
             select_all_entity_paths: true,
             fuzzy_descriptors: vec![],
             exclude_static_data: !include_static_data,
             exclude_temporal_data: !include_temporal_data,
-            query,
+            query: query.map(|q| q.try_into()).transpose().map_err(|err| {
+                ApiError::tonic(err, "failed building /QueryDataset request")
+            })?,
             scan_parameters: Some(ScanParameters {
                 columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
@@ -421,7 +423,7 @@ where
         Ok(Box::pin(
             self.inner()
                 .query_dataset(
-                    tonic::Request::new(query_request)
+                    tonic::Request::new(query_request.into())
                         .with_entry_id(dataset_id)
                         .map_err(|err| {
                             ApiError::tonic(err, "failed building /QueryDataset request")
@@ -433,13 +435,13 @@ where
         ))
     }
 
-    /// Fetches all chunks ids for a specified partition.
+    /// Fetches all chunks ids for a specified segment.
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
     pub async fn query_dataset_chunk_index(
         &mut self,
-        params: PartitionQueryParams,
+        params: SegmentQueryParams,
     ) -> Result<Vec<ChunkIndex>, ApiError> {
         self.query_dataset_raw(params)
             .await?
@@ -473,10 +475,10 @@ where
             .collect()
     }
 
-    /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
-    pub async fn fetch_partition_chunks(
+    /// Fetches all chunks for a specified segment. You can include/exclude static/temporal chunks.
+    pub async fn fetch_segment_chunks(
         &mut self,
-        params: PartitionQueryParams,
+        params: SegmentQueryParams,
     ) -> Result<FetchChunksResponseStream, ApiError> {
         let chunk_info_batches = self
             .query_dataset_raw(params)
@@ -584,14 +586,14 @@ where
                 })
         };
 
-        let partition_id_column = get_string_array(RegisterWithDatasetResponse::PARTITION_ID)?;
-        let partition_type_column = DataSourceKind::many_from_arrow(
+        let segment_id_column = get_string_array(RegisterWithDatasetResponse::SEGMENT_ID)?;
+        let segment_type_column = DataSourceKind::many_from_arrow(
             response
-                .column_by_name(RegisterWithDatasetResponse::PARTITION_TYPE)
+                .column_by_name(RegisterWithDatasetResponse::SEGMENT_TYPE)
                 .ok_or_else(|| {
                     let err = missing_column!(
                         RegisterWithDatasetResponse,
-                        RegisterWithDatasetResponse::PARTITION_TYPE
+                        RegisterWithDatasetResponse::SEGMENT_TYPE
                     );
                     ApiError::serialization(err, "missing column in /RegisterWithDataset response")
                 })?,
@@ -603,17 +605,17 @@ where
         let task_id_column = get_string_array(RegisterWithDatasetResponse::TASK_ID)?;
 
         itertools::izip!(
-            partition_id_column,
-            partition_type_column,
+            segment_id_column,
+            segment_type_column,
             storage_url_column,
             task_id_column,
         )
-        .map(|(partition_id, partition_type, storage_url, task_id)| {
+        .map(|(segment_id, segment_type, storage_url, task_id)| {
             Ok(RegisterWithDatasetTaskDescriptor {
-                partition_id: PartitionId::new(
-                    partition_id
+                segment_id: SegmentId::new(
+                    segment_id
                         .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "partition_id");
+                            let err = missing_field!(RegisterWithDatasetResponse, "segment_id");
                             ApiError::serialization(
                                 err,
                                 "missing field in /RegisterWithDataset response",
@@ -621,7 +623,7 @@ where
                         })?
                         .to_owned(),
                 ),
-                partition_type,
+                segment_type,
                 storage_url: url::Url::parse(storage_url.ok_or_else(|| {
                     let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
                     ApiError::serialization(err, "missing field in /RegisterWithDataset response")
