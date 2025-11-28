@@ -35,7 +35,6 @@ use re_sdk::{
 };
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
-use tokio::runtime::Runtime;
 
 // --- FFI ---
 
@@ -2269,11 +2268,11 @@ impl PyOauthLoginFlow {
     ///
     /// Returns
     /// -------
-    /// str
-    ///     The access token.
-    fn finish_login_flow(&mut self) -> PyResult<String> {
-        let result: Result<Credentials, re_auth::callback_server::Error> = Runtime::new()?
-            .block_on(async {
+    /// PyCredentials
+    ///     The credentials of the logged in user.
+    fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
+        let result: Result<Credentials, re_auth::callback_server::Error> =
+            crate::utils::wait_for_future(py, async {
                 loop {
                     let result = self.login_flow.poll().await?;
                     match result {
@@ -2284,7 +2283,7 @@ impl PyOauthLoginFlow {
             });
 
         result
-            .map(|credentials| credentials.access_token().as_str().to_owned())
+            .map(PyCredentials)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
@@ -2296,10 +2295,10 @@ impl PyOauthLoginFlow {
 /// -------
 /// OauthLoginFlow | None
 ///     The login flow, or `None` if the user is already logged in.
-fn init_login_flow() -> PyResult<Option<PyOauthLoginFlow>> {
-    let login_flow = Runtime::new()?
-        .block_on(async { OauthLoginFlow::init(false).await })
+fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyOauthLoginFlow>> {
+    let login_flow = crate::utils::wait_for_future(py, async { OauthLoginFlow::init(false).await })
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
     match login_flow {
         OauthLoginFlowState::AlreadyLoggedIn(_) => {
             // Already logged in, no need to start a login flow.
@@ -2347,7 +2346,7 @@ impl std::cmp::PartialEq for PyCredentials {
 
 #[pyfunction]
 /// Returns the credentials for the current user.
-fn get_credentials() -> PyResult<Option<PyCredentials>> {
+fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
     let Some(credentials) = re_auth::oauth::load_credentials()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
     else {
@@ -2355,9 +2354,9 @@ fn get_credentials() -> PyResult<Option<PyCredentials>> {
         return Ok(None);
     };
 
-    // Refresh credentials if they are expired.
-    let credentials = Runtime::new()?
-        .block_on(async { re_auth::oauth::refresh_credentials(credentials).await })
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    let credentials = crate::utils::wait_for_future(py, async {
+        re_auth::oauth::refresh_credentials(credentials).await
+    })
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     Ok(Some(PyCredentials(credentials)))
 }

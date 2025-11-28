@@ -2037,14 +2037,14 @@ class OauthLoginFlow:
     def login_url(self) -> str:
         """Get the URL for the OAuth login flow."""
 
-    def finish_login_flow(self) -> str:
+    def finish_login_flow(self) -> Credentials:
         """
         Finish the OAuth login flow.
 
         Returns
         -------
-        str
-            The access token.
+        Credentials
+            The credentials of the logged in user.
 
         """
 

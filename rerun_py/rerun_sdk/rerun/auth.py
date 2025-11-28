@@ -22,8 +22,10 @@ def login() -> None:
 
     # Automatically open the login URL in the default browser
     login_url = flow.login_url()
-    print(f"Please open the following URL in your browser if it doesn't open automatically: {login_url}")
+    print("Open the following URL in your browser:")
+    print(login_url)
     webbrowser.open(login_url)
 
     # Wait for the flow to complete and store credentials
-    flow.finish_login_flow()
+    credentials = flow.finish_login_flow()
+    print(f"Success! You're logged in as '{credentials.user_email}'.")
