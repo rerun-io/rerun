@@ -39,7 +39,7 @@ impl TransformFramesUi {
         transform_frame_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
-        // All frame descriptor components, sorted by pirority.
+        // All frame descriptor components, sorted by priority.
         //
         // The bool indicates if we should use the entity path as
         // the current frame.
