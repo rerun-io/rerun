@@ -10,7 +10,7 @@ use re_viewer_context::{
 };
 
 /// The max amount of ancestors we show before putting a '…'.
-const MAX_SHOWN_ANCESTORS: usize = 100;
+const MAX_SHOWN_ANCESTORS: usize = 10;
 
 /// The max amount of ancestors we show in a tooltip.
 ///
