@@ -1,4 +1,8 @@
+use base64::Engine as _;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use jsonwebtoken::decode_header;
+
+use crate::oauth::{MalformedTokenError, RerunCloudClaims};
 
 #[derive(Debug, thiserror::Error)]
 pub enum TokenError {
@@ -14,6 +18,22 @@ pub struct Jwt(pub(crate) String);
 impl Jwt {
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub fn unverified_claims(&self) -> Result<RerunCloudClaims, MalformedTokenError> {
+        let (_header, rest) = self
+            .as_str()
+            .split_once('.')
+            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
+        let (payload, _signature) = rest
+            .split_once('.')
+            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
+        let payload = BASE64_URL_SAFE_NO_PAD
+            .decode(payload)
+            .map_err(MalformedTokenError::Base64)?;
+        let claims: RerunCloudClaims =
+            serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
+        Ok(claims)
     }
 }
 

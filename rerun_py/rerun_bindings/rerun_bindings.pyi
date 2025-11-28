@@ -2021,3 +2021,53 @@ class _ServerInternal:
     def address(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
+
+#####################################################################################################################
+## AUTH                                                                                                            ##
+#####################################################################################################################
+
+class OauthLoginFlow:
+    """
+    OAuth login flow implementation.
+
+    The auth flow is browser-based, and the user will be redirected to the OAuth provider.
+    """
+
+    def login_url(self) -> str:
+        """Get the URL for the OAuth login flow."""
+
+    def finish_login_flow(self) -> Credentials:
+        """
+        Finish the OAuth login flow.
+
+        Returns
+        -------
+        Credentials
+            The credentials of the logged in user.
+
+        """
+
+def init_login_flow() -> OauthLoginFlow | None:
+    """
+    Initialize an OAuth login flow.
+
+    Returns
+    -------
+    OauthLoginFlow | None
+        The login flow, or `None` if the user is already logged in.
+
+    """
+
+class Credentials:
+    """The credentials for the OAuth login flow."""
+
+    @property
+    def access_token(self) -> str:
+        """The access token."""
+
+    @property
+    def user_email(self) -> str:
+        """The user email."""
+
+def get_credentials() -> Credentials | None:
+    """Returns the credentials for the current user."""
