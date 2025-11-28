@@ -373,9 +373,6 @@ pub struct Transform3D {
     /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
     ///
-    /// ⚠ This currently also affects the child frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
-    /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     ///
@@ -387,8 +384,6 @@ pub struct Transform3D {
     pub child_frame: Option<SerializedComponentBatch>,
 
     /// The parent frame this transform transforms into.
-    ///
-    /// ⚠ This currently also affects the parent frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
@@ -937,9 +932,6 @@ impl Transform3D {
     /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
     ///
-    /// ⚠ This currently also affects the child frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
-    /// ⚠ This currently is also used as the frame id of [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
-    ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     ///
@@ -971,8 +963,6 @@ impl Transform3D {
     }
 
     /// The parent frame this transform transforms into.
-    ///
-    /// ⚠ This currently also affects the parent frame of [`archetypes::Pinhole`][crate::archetypes::Pinhole].
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
     /// This means that if a [`archetypes::Transform3D`][crate::archetypes::Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.

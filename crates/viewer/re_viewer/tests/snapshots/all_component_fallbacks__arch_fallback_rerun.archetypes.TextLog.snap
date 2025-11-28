@@ -1,7 +1,7 @@
 ---
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
 expression: arch_display
 ---
 text: []
 level: [INFO]
-color: [2428259839]
+color: [3161148927]

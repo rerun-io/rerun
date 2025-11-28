@@ -86,3 +86,19 @@ mod tests {
         }
     }
 }
+
+// ----------------------------------------------------------------
+
+/// Error used for arrow datatype mismatch.
+#[derive(Debug, Clone, thiserror::Error)]
+pub struct WrongDatatypeError {
+    pub expected: DataType,
+    pub actual: DataType,
+}
+
+impl std::fmt::Display for WrongDatatypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { expected, actual } = self;
+        write!(f, "Wrong datatype: expected {expected}, got {actual}")
+    }
+}

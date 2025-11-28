@@ -231,6 +231,9 @@ pub enum TimeControlCommand {
     TogglePlayPause,
     StepTimeBack,
     StepTimeForward,
+    MoveBySeconds(f64),
+    MoveBeginning,
+    MoveEnd,
 
     /// Restart the time cursor to the start.
     ///
@@ -263,7 +266,7 @@ pub enum TimeControlCommand {
     /// showing all received data.
     ResetTimeView,
 
-    /// Mark up a time range as valid.
+    /// Mark up a time range as valid (fully loaded).
     ///
     /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
     /// Visually, it is outside of the normal time range and shown greyed out.
@@ -906,6 +909,34 @@ impl TimeControl {
 
                 NeedsRepaint::Yes
             }
+            TimeControlCommand::MoveBySeconds(seconds) => {
+                self.move_by_seconds(times_per_timeline, *seconds);
+
+                NeedsRepaint::Yes
+            }
+            TimeControlCommand::MoveBeginning => {
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                    self.states
+                        .entry(*self.timeline.name())
+                        .or_insert_with(|| TimeState::new(full_valid_range.min))
+                        .time = full_valid_range.min.into();
+
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::MoveEnd => {
+                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                    self.states
+                        .entry(*self.timeline.name())
+                        .or_insert_with(|| TimeState::new(full_valid_range.max))
+                        .time = full_valid_range.max.into();
+                    NeedsRepaint::Yes
+                } else {
+                    NeedsRepaint::No
+                }
+            }
             TimeControlCommand::Restart => {
                 if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
                     self.following = false;
@@ -1120,6 +1151,61 @@ impl TimeControl {
             } else {
                 step_fwd_time(time, &stats.per_time).into()
             };
+
+            if let Some(state) = self.states.get_mut(self.timeline.name()) {
+                state.time = new_time;
+            }
+        }
+    }
+
+    fn move_by_seconds(&mut self, times_per_timeline: &TimesPerTimeline, seconds: f64) {
+        if let Some(time) = self.time() {
+            let mut new_time = match self.time_type() {
+                TimeType::Sequence => time + TimeReal::from(seconds as i64),
+                TimeType::DurationNs | TimeType::TimestampNs => time + TimeReal::from_secs(seconds),
+            };
+
+            let range = self
+                .loop_selection()
+                .or_else(|| self.full_valid_range(times_per_timeline).map(|r| r.into()));
+            if let Some(range) = range {
+                if time == range.min && new_time < range.min {
+                    // jump right to the end
+                    new_time = range.max;
+                } else if new_time < range.min {
+                    // we are right at the end, wrap to the start
+                    new_time = range.min;
+                } else if time == range.max && new_time > range.max {
+                    // jump right to the start
+                    new_time = range.min;
+                } else if new_time > range.max {
+                    // we are right at the start, wrap to the end
+                    new_time = range.max;
+                }
+            }
+
+            // if we're outside of a valid time range, move forward/back to the nearest valid range
+            let forward = seconds >= 0.0;
+            let mut valid_ranges = self.valid_time_ranges_for(*self.timeline().name());
+            if !forward {
+                valid_ranges.reverse();
+            }
+            for valid_range in valid_ranges {
+                if new_time < TimeReal::from(valid_range.min()) {
+                    if forward {
+                        new_time = TimeReal::from(valid_range.min());
+                        break;
+                    }
+                } else if new_time > TimeReal::from(valid_range.max()) {
+                    if !forward {
+                        new_time = TimeReal::from(valid_range.max());
+                        break;
+                    }
+                } else {
+                    // we're inside a valid range
+                    break;
+                }
+            }
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
                 state.time = new_time;

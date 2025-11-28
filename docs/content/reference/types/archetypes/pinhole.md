@@ -6,6 +6,12 @@ title: "Pinhole"
 ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 Camera perspective projection (a.k.a. intrinsics).
 
+If [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).
+
+If you use explicit transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)
+as it is the case with other visualizations: for any entity with an [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) the viewer will always visualize it
+directly without needing a [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) to refer to the pinhole's child/parent frame.
+
 ## Fields
 ### Required
 * `image_from_camera`: [`PinholeProjection`](../components/pinhole_projection.md)
@@ -15,6 +21,8 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ### Optional
 * `camera_xyz`: [`ViewCoordinates`](../components/view_coordinates.md)
+* `child_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
+* `parent_frame`: [`TransformFrameId`](../components/transform_frame_id.md)
 * `image_plane_distance`: [`ImagePlaneDistance`](../components/image_plane_distance.md)
 * `color`: [`Color`](../components/color.md)
 * `line_width`: [`Radius`](../components/radius.md)

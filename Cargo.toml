@@ -294,6 +294,7 @@ opentelemetry-http = "0.31.0"
 opentelemetry-otlp = { version = "0.31.0", features = ["gzip-tonic"] }
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 ordered-float = "5.1.0"
+ouroboros = "0.18.5"
 parking_lot = "0.12.5"
 parquet = { version = "56.1", default-features = false }
 paste = "1.0"

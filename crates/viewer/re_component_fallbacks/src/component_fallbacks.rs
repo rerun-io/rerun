@@ -383,6 +383,20 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         archetypes::Pinhole::descriptor_line_width().component,
         |_| components::Radius::new_ui_points(1.),
     );
+    registry.register_component_fallback_provider(
+        archetypes::Pinhole::descriptor_child_frame().component,
+        |ctx| components::TransformFrameId::from_entity_path(ctx.target_entity_path),
+    );
+    registry.register_component_fallback_provider(
+        archetypes::Pinhole::descriptor_parent_frame().component,
+        |ctx| {
+            components::TransformFrameId::from_entity_path(
+                &ctx.target_entity_path
+                    .parent()
+                    .unwrap_or(re_log_types::EntityPath::root()),
+            )
+        },
+    );
 
     // SeriesLines
     registry.register_component_fallback_provider(

@@ -129,13 +129,10 @@ impl Options {
     fn format_record_batch(&self, full_batch: &RecordBatch) -> impl std::fmt::Display {
         let format_options = re_arrow_util::RecordBatchFormatOpts {
             transposed: self.transposed,
-            width: None, // terminal width
-            include_metadata: true,
-            include_column_metadata: true,
             trim_field_names: !self.full_metadata,
             trim_metadata_keys: !self.full_metadata,
             trim_metadata_values: !self.full_metadata,
-            redact_non_deterministic: false,
+            ..Default::default()
         };
 
         if self.verbose <= 2 {

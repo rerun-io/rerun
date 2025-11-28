@@ -1,6 +1,6 @@
-use std::{str::FromStr as _, sync::Arc};
-
+use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
+use std::{str::FromStr as _, sync::Arc};
 
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
@@ -14,6 +14,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
+use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
@@ -72,7 +73,7 @@ pub struct App {
     screenshotter: crate::screenshotter::Screenshotter,
 
     #[cfg(target_arch = "wasm32")]
-    pub(crate) popstate_listener: Option<crate::history::PopstateListener>,
+    pub(crate) popstate_listener: Option<crate::web_history::PopstateListener>,
 
     #[cfg(not(target_arch = "wasm32"))]
     profiler: re_tracing::Profiler,
@@ -339,31 +340,51 @@ impl App {
         );
 
         {
-            // TODO(emilk/egui#7659): This is a workaround consuming the Space key so we can use it
-            // as the play/pause shortcut. Egui's built in behavior is to trigger clicks on the
-            // focused item, and we don't want that. Users can use `Enter` instead.
+            // TODO(emilk/egui#7659): This is a workaround consuming the Space/Arrow keys so we can
+            // use them as timeline shortcuts. Egui's built in behavior is to interact with focus,
+            // and we don't want that.
             // But of course text edits should still get it so we use this ugly hack to check if
             // a text edit is focused.
             let command_sender = command_sender.clone();
             creation_context.egui_ctx.on_begin_pass(
                 "filter space key",
                 Arc::new(move |ctx| {
-                    if let Some(focused) = ctx.memory(|mem| mem.focused()) {
-                        let is_text_edit_focused =
-                            egui::text_edit::TextEditState::load(ctx, focused).is_some();
+                    if !ctx.text_edit_focused() {
+                        let conflicting_commands = [
+                            UICommand::PlaybackTogglePlayPause,
+                            UICommand::PlaybackBeginning,
+                            UICommand::PlaybackEnd,
+                            UICommand::PlaybackForwardFast,
+                            UICommand::PlaybackBackFast,
+                            UICommand::PlaybackStepForward,
+                            UICommand::PlaybackStepBack,
+                            UICommand::PlaybackForward,
+                            UICommand::PlaybackBack,
+                        ];
 
-                        if !is_text_edit_focused {
-                            let shortcut = UICommand::PlaybackTogglePlayPause
-                                .primary_kb_shortcut(ctx.os())
-                                .expect("Play / pause should have a keyboard shortcut");
-                            debug_assert_eq!(
-                                shortcut.logical_key,
-                                egui::Key::Space,
-                                "Expected space key shortcut"
-                            );
-                            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
-                                command_sender.send_ui(UICommand::PlaybackTogglePlayPause);
+                        let os = ctx.os();
+                        let mut reset_focus_direction = false;
+                        ctx.input_mut(|i| {
+                            for command in conflicting_commands {
+                                for shortcut in command.kb_shortcuts(os) {
+                                    if i.consume_shortcut(&shortcut) {
+                                        if shortcut.logical_key == Key::ArrowLeft
+                                            || shortcut.logical_key == Key::ArrowRight
+                                        {
+                                            reset_focus_direction = true;
+                                        }
+                                        command_sender.send_ui(command);
+                                    }
+                                }
                             }
+                        });
+
+                        if reset_focus_direction {
+                            // Additionally, we need to revert the focus direction on ArrowLeft/Right
+                            // keys to prevent the focus change for timeline shortcuts
+                            ctx.memory_mut(|mem| {
+                                mem.move_focus(FocusDirection::None);
+                            });
                         }
                     }
                 }),
@@ -445,6 +466,10 @@ impl App {
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
         &self.build_info
+    }
+
+    pub fn startup_options(&self) -> &StartupOptions {
+        &self.startup_options
     }
 
     pub fn app_options(&self) -> &AppOptions {
@@ -655,23 +680,65 @@ impl App {
         }
     }
 
-    /// Updates the web address on web. Noop on native.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[expect(clippy::unused_self)]
-    fn update_web_address_bar(&self, _store_hub: &StoreHub) {}
-
-    /// Updates the web address on web. Noop on native.
-    #[cfg(target_arch = "wasm32")]
-    fn update_web_address_bar(&self, store_hub: &StoreHub) {
-        if !self.startup_options.web_history_enabled() {
-            return;
+    /// If we're on web and use web history this updates the
+    /// web address bar and updates history.
+    ///
+    /// Otherwise this updates the viewer tracked history.
+    fn update_history(&mut self, store_hub: &StoreHub) {
+        if !self.startup_options().web_history_enabled() {
+            self.update_viewer_history(store_hub);
+        } else {
+            // We don't want to spam the web history API with changes, because
+            // otherwise it will start complaining about it being an insecure
+            // operation.
+            //
+            // This is a kind of hacky way to fix that: If there are currently any
+            // inputs, don't update the web address bar. This works for most cases
+            // because you need to hold down pointer to aggressively scrub, need to
+            // hold down key inputs to quickly step through the timeline.
+            #[cfg(target_arch = "wasm32")]
+            if !self.egui_ctx.is_using_pointer()
+                && self
+                    .egui_ctx
+                    .input(|input| !input.any_touches() && input.keys_down.is_empty())
+            {
+                self.update_web_history(store_hub);
+            }
         }
+    }
 
+    /// Updates the viewer tracked history
+    fn update_viewer_history(&mut self, store_hub: &StoreHub) {
         let time_ctrl = store_hub
             .active_recording()
             .and_then(|db| self.state.time_control(db.store_id()));
 
-        let display_mode = self.state.navigation.peek();
+        let display_mode = self.state.navigation.current();
+        let selection = self.state.selection_state.selected_items();
+
+        let Ok(url) =
+            ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+                .map(|mut url| {
+                    // We don't want the time range in the history url, as that actually leads
+                    // to a subset of the current data!
+                    url.clear_time_range();
+                    url
+                })
+        else {
+            return;
+        };
+
+        self.state.history.update_current_url(url);
+    }
+
+    /// Updates the web address and web history.
+    #[cfg(target_arch = "wasm32")]
+    fn update_web_history(&self, store_hub: &StoreHub) {
+        let time_ctrl = store_hub
+            .active_recording()
+            .and_then(|db| self.state.time_control(db.store_id()));
+
+        let display_mode = self.state.navigation.current();
         let selection = self.state.selection_state.selected_items();
 
         let Ok(url) =
@@ -703,7 +770,7 @@ impl App {
 
         re_log::debug!("Updating navigation bar");
 
-        use crate::history::{HistoryEntry, HistoryExt as _, history};
+        use crate::web_history::{HistoryEntry, HistoryExt as _, history};
         use crate::web_tools::JsResultExt as _;
 
         /// Returns the url without the fragment
@@ -814,7 +881,7 @@ impl App {
                         .navigation
                         .replace(DisplayMode::LocalRecordings(recording_id.clone()));
                 } else {
-                    self.state.navigation.push_start_mode();
+                    self.state.navigation.reset();
                 }
             }
 
@@ -872,7 +939,7 @@ impl App {
             }
 
             SystemCommand::CloseAllEntries => {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
                 store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
@@ -898,7 +965,7 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
-                if &display_mode == self.state.navigation.peek() {
+                if &display_mode == self.state.navigation.current() {
                     return;
                 }
 
@@ -917,15 +984,51 @@ impl App {
                     self.state
                         .selection_state
                         .set_selection(re_viewer_context::ItemCollection::default());
-                    self.state.navigation.push(display_mode);
+                    self.state.navigation.replace(display_mode);
                 } else {
                     self.state.navigation.replace(display_mode);
                 }
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
+
+            SystemCommand::OpenSettings => {
+                self.state
+                    .navigation
+                    .replace(DisplayMode::Settings(Box::new(
+                        self.state.navigation.current().clone(),
+                    )));
+
+                #[cfg(feature = "analytics")]
+                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                    analytics.record(re_analytics::event::SettingsOpened {});
+                }
+            }
+
+            SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {
+                DisplayMode::LocalRecordings(_)
+                | DisplayMode::RedapEntry(_)
+                | DisplayMode::RedapServer(_) => {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
+                            self.state.navigation.current().clone(),
+                        )));
+                }
+
+                DisplayMode::ChunkStoreBrowser(_)
+                | DisplayMode::Settings(_)
+                | DisplayMode::Loading(_)
+                | DisplayMode::LocalTable(_) => {
+                    re_log::debug!(
+                        "Cannot activate chunk store browser from current display mode: {:?}",
+                        self.state.navigation.current()
+                    );
+                }
+            },
+
             SystemCommand::ResetDisplayMode => {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -1482,6 +1585,33 @@ impl App {
                 );
             }
 
+            UICommand::NavigateBack => {
+                if let Some(url) = self.state.history.go_back() {
+                    url.clone().open(
+                        egui_ctx,
+                        &OpenUrlOptions {
+                            follow_if_http: true,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &self.command_sender,
+                    );
+                }
+            }
+            UICommand::NavigateForward => {
+                if let Some(url) = self.state.history.go_forward() {
+                    url.clone().open(
+                        egui_ctx,
+                        &OpenUrlOptions {
+                            follow_if_http: true,
+                            select_redap_source_when_loaded: true,
+                            show_loader: true,
+                        },
+                        &self.command_sender,
+                    );
+                }
+            }
+
             UICommand::Undo => {
                 if let Some(store_context) = store_context {
                     let blueprint_id = store_context.blueprint.store_id().clone();
@@ -1554,21 +1684,25 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
+            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
                 DisplayMode::LocalRecordings(_)
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
-                    self.state.navigation.push(DisplayMode::ChunkStoreBrowser);
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::ChunkStoreBrowser(Box::new(
+                            self.state.navigation.current().clone(),
+                        )));
                 }
 
-                DisplayMode::ChunkStoreBrowser => {
-                    self.state.navigation.pop();
+                DisplayMode::ChunkStoreBrowser(mode) => {
+                    self.state.navigation.replace((**mode).clone());
                 }
 
-                DisplayMode::Settings | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
+                DisplayMode::Settings(_) | DisplayMode::Loading(_) | DisplayMode::LocalTable(_) => {
                     re_log::debug!(
                         "Cannot toggle chunk store browser from current display mode: {:?}",
-                        self.state.navigation.peek()
+                        self.state.navigation.current()
                     );
                 }
             },
@@ -1588,12 +1722,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.state.navigation.push(DisplayMode::Settings);
-
-                #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::SettingsOpened {});
-                }
+                self.command_sender.send_system(SystemCommand::OpenSettings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1659,12 +1788,76 @@ impl App {
                         });
                 }
             }
+            UICommand::PlaybackBack => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-0.1)],
+                        });
+                }
+            }
+            UICommand::PlaybackForward => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(0.1)],
+                        });
+                }
+            }
+            UICommand::PlaybackBackFast => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(-1.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackForwardFast => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBySeconds(1.0)],
+                        });
+                }
+            }
+            UICommand::PlaybackBeginning => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveBeginning],
+                        });
+                }
+            }
+            UICommand::PlaybackEnd => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::MoveEnd],
+                        });
+                }
+            }
             UICommand::PlaybackRestart => {
                 if let Some(store_id) = storage_context.hub.active_store_id() {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: store_id.clone(),
                             time_commands: vec![TimeControlCommand::Restart],
+                        });
+                }
+            }
+
+            UICommand::PlaybackSpeed(speed) => {
+                if let Some(store_id) = storage_context.hub.active_store_id() {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: store_id.clone(),
+                            time_commands: vec![TimeControlCommand::SetSpeed(speed.0.0)],
                         });
                 }
             }
@@ -2893,10 +3086,10 @@ impl eframe::App for App {
                 egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
 
             if back_pressed {
-                crate::history::go_back();
+                crate::web_history::go_back();
             }
             if fwd_pressed {
-                crate::history::go_forward();
+                crate::web_history::go_forward();
             }
         }
 
@@ -3006,9 +3199,9 @@ impl eframe::App for App {
 
         // Make sure some app is active
         // Must be called before `read_context` below.
-        if let DisplayMode::Loading(source) = self.state.navigation.peek() {
+        if let DisplayMode::Loading(source) = self.state.navigation.current() {
             if !self.msg_receive_set().contains(source) {
-                self.state.navigation.pop();
+                self.state.navigation.reset();
             }
         } else if store_hub.active_app().is_none() {
             let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
@@ -3036,7 +3229,7 @@ impl eframe::App for App {
                     None => {}
                 }
             } else {
-                self.state.navigation.push_start_mode();
+                self.state.navigation.reset();
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
         }
@@ -3111,7 +3304,7 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            let display_mode = self.state.navigation.peek().clone();
+            let display_mode = self.state.navigation.current().clone();
             self.run_pending_ui_commands(
                 egui_ctx,
                 &app_blueprint,
@@ -3122,20 +3315,7 @@ impl eframe::App for App {
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
-        // We don't want to spam the web history API with changes, because
-        // otherwise it will start complaining about it being an insecure
-        // operation.
-        //
-        // This is a kind of hacky way to fix that: If there are currently any
-        // inputs, don't update the web address bar. This works for most cases
-        // because you need to hold down pointer to aggressively scrub, need to
-        // hold down key inputs to quickly step through the timeline.
-        if !egui_ctx.is_using_pointer()
-            && egui_ctx.input(|input| !input.any_touches() && input.keys_down.is_empty())
-        {
-            // Update web address after commands have been applied.
-            self.update_web_address_bar(&store_hub);
-        }
+        self.update_history(&store_hub);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
