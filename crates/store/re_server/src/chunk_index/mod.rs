@@ -20,6 +20,7 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
+use std::fmt::format;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -36,7 +37,6 @@ pub const FIELD_TIMEPOINT: &str = "timepoint";
 pub const FIELD_INSTANCE: &str = "instance";
 // Position of the instance in the column cell
 pub const FIELD_INSTANCE_ID: &str = "instance_id";
-
 
 /// A thread-safe cell that holds an Arc<T> and can be updated atomically.
 pub struct ArcCell<T> {
@@ -189,7 +189,10 @@ impl DatasetChunkIndexes {
             )
             .await
         else {
-            return Err(Status::invalid_argument("Column is not indexed"));
+            return Err(StoreError::IndexNotFound(format!(
+                "{}#{}",
+                &request.column.entity_path, &request.column.descriptor.component
+            )))?;
         };
 
         let stream = search::search_index(index, request).await?;
@@ -286,7 +289,7 @@ impl DatasetChunkIndexes {
         if let Some(path_indexes) = indexes.get(entity_path)
             && path_indexes.contains_key(component)
         {
-            return Err(StoreError::DuplicateEntryNameError(format!(
+            return Err(StoreError::IndexAlreadyExists(format!(
                 "{entity_path}#{component}",
             )));
         }

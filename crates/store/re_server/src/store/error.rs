@@ -33,6 +33,12 @@ pub enum Error {
     #[error("Layer '{0}' already exists")]
     LayerAlreadyExists(String),
 
+    #[error("Index '{0}' not found")]
+    IndexNotFound(String),
+
+    #[error("Index '{0}' already exists")]
+    IndexAlreadyExists(String),
+
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
 
@@ -79,6 +85,7 @@ impl From<Error> for tonic::Status {
             | Error::EntryNameNotFound(_)
             | Error::PartitionIdNotFound(_, _)
             | Error::LayerNameNotFound(_, _, _)
+            | Error::IndexNotFound(_)
             | Error::ChunkNotFound(_) => Self::not_found(format!("{err:#}")),
 
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
@@ -94,7 +101,8 @@ impl From<Error> for tonic::Status {
 
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)
-            | Error::LayerAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
+            | Error::LayerAlreadyExists(_)
+            | Error::IndexAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
 
             Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
         }
