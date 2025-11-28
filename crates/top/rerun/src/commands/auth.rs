@@ -47,7 +47,7 @@ pub struct GenerateTokenCommand {
     /// - "human time", e.g. `1 day`, or
     /// - ISO 8601 duration format, e.g. `P1D`.
     #[clap(long)]
-    expiration: jiff::Span,
+    expiration: String,
 }
 
 impl AuthCommands {
@@ -67,10 +67,11 @@ impl AuthCommands {
                 let server = url::Url::parse(&args.server)
                     .map_err(|err| re_auth::cli::Error::Generic(err.into()))?
                     .origin();
-                let options = re_auth::cli::GenerateTokenOptions {
-                    server,
-                    expiration: args.expiration,
-                };
+                let expiration = args
+                    .expiration
+                    .parse::<jiff::Span>()
+                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?;
+                let options = re_auth::cli::GenerateTokenOptions { server, expiration };
                 runtime.block_on(re_auth::cli::generate_token(options))
             }
         }
