@@ -771,40 +771,56 @@ impl TilesDelegate<'_, '_> {
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
                     .show(|ui| {
                         egui::ScrollArea::vertical()
+                            .min_scrolled_height(600.0)
                             .max_height(600.0)
                             .show(ui, |ui| {
-                                ui.visuals_mut().widgets.hovered.weak_bg_fill =
-                                    ui.visuals().error_fg_color;
-                                ui.visuals_mut().widgets.active.weak_bg_fill =
-                                    ui.visuals().error_fg_color;
-
                                 for (item, err) in errors {
-                                    let response =
-                                        re_ui::alert::Alert::error().frame(ui).show(ui, |ui| {
-                                            ui.button(err).on_hover_text(match &item {
-                                                Item::View(blueprint_id) => {
-                                                    blueprint_id.as_entity_path().to_string()
-                                                }
-                                                _ => item
-                                                    .to_data_path()
-                                                    .map(|item| item.to_string())
-                                                    .unwrap_or_default(),
-                                            })
-                                        });
-
-                                    if response.inner.clicked() {
-                                        self.ctx
-                                            .command_sender()
-                                            .send_system(SystemCommand::set_selection(item));
-                                        self.ctx.command_sender().send_ui(
-                                            re_ui::UICommand::ToggleSelectionPanel(Some(true)),
-                                        );
-                                    }
+                                    self.show_item_error(ui, item, &err);
                                 }
                             });
                     });
             });
         }
+    }
+
+    fn show_item_error(&self, ui: &mut egui::Ui, item: Item, err: &str) {
+        let item_entity = match &item {
+            Item::View(blueprint_id) => blueprint_id.as_entity_path().to_string(),
+            _ => item
+                .to_data_path()
+                .map(|item| item.to_string())
+                .unwrap_or_default(),
+        };
+        egui::Frame::window(ui.style())
+            .corner_radius(4)
+            .inner_margin(10.0)
+            .fill(ui.tokens().notification_panel_background_color)
+            .shadow(egui::Shadow::NONE)
+            .show(ui, |ui| {
+                ui.horizontal_top(|ui| {
+                    ui.add(icons::ERROR.as_image().tint(ui.visuals().error_fg_color));
+
+                    ui.vertical(|ui| {
+                        if ui
+                            .selectable_label(
+                                self.ctx.selection().contains_item(&item),
+                                item_entity,
+                            )
+                            .clicked()
+                        {
+                            self.ctx
+                                .command_sender()
+                                .send_system(SystemCommand::set_selection(item));
+                            self.ctx
+                                .command_sender()
+                                .send_ui(re_ui::UICommand::ToggleSelectionPanel(Some(true)));
+                        }
+                        ui.separator();
+                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                        ui.label(err);
+                    })
+                })
+            });
     }
 }
 
