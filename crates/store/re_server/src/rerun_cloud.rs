@@ -1087,7 +1087,8 @@ impl RerunCloudService for RerunCloudHandler {
                             }
                         }
 
-                        // For latest_at queries, filter chunks whose time range contains data at or before the query timestamp
+                        // For latest_at queries, filter chunks whose time range contains data at or before the query timestamp.
+                        // This may include too many chunks, but we are ok with that for now.
                         if let Some(ref latest_at) = query.latest_at {
                             if let Some(ref index) = latest_at.index {
                                 let timeline_name = index.clone().into();
