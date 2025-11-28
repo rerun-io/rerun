@@ -1,7 +1,7 @@
 use eframe::epaint::Margin;
-use egui::{Frame, Id, Ui};
+use egui::{Button, Frame, Id, RichText, TextStyle, Theme, Ui};
 use emath::{NumExt, Rect};
-use re_ui::{DesignTokens, UiExt};
+use re_ui::{UiExt, design_tokens_of};
 
 pub enum IntroItem {
     DocItem {
@@ -15,6 +15,7 @@ pub enum IntroItem {
 impl IntroItem {
     fn items() -> Vec<Self> {
         vec![
+            IntroItem::CloudLoginItem,
             IntroItem::DocItem {
                 title: "Send data in",
                 url: "",
@@ -30,7 +31,6 @@ impl IntroItem {
                 url: "",
                 body: "Perform analysis and send back the results to the original recording.",
             },
-            IntroItem::CloudLoginItem,
         ]
     }
 
@@ -41,31 +41,59 @@ impl IntroItem {
         }
     }
 
-    fn frame(&self, tokens: &DesignTokens) -> Frame {
+    fn frame(&self, ui: &Ui) -> Frame {
+        let opposite_theme = match ui.theme() {
+            Theme::Dark => Theme::Light,
+            Theme::Light => Theme::Dark,
+        };
+        let opposite_tokens = design_tokens_of(opposite_theme);
+        let tokens = ui.tokens();
         let frame = Frame::new()
             .inner_margin(Margin::same(16))
             .corner_radius(8)
             .stroke(tokens.native_frame_stroke);
         match self {
             IntroItem::DocItem { .. } => frame,
-            IntroItem::CloudLoginItem => frame,
+            IntroItem::CloudLoginItem => frame.fill(opposite_tokens.panel_bg_color),
         }
     }
 
     fn show(&self, ui: &mut Ui) {
+        let label_size = 13.0;
         ui.vertical(|ui| match self {
             IntroItem::DocItem { title, url, body } => {
                 egui::Sides::new().shrink_left().show(ui, |ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                ui.heading(*title);
+
+                    ui.heading(RichText::new(*title).strong());
                 }, |ui| {
                     ui.re_hyperlink("Docs", *url, true);
                 });
-                ui.label(*body);
+                ui.label(RichText::new(*body).size(label_size));
             }
             IntroItem::CloudLoginItem => {
-                ui.heading("Rerun Cloud");
-                ui.label("Iterate faster on robotics learning with unified infrastructure. Interested? Read more here or book a demo");
+                let opposite_theme = match ui.theme() {
+                    Theme::Dark => Theme::Light,
+                    Theme::Light => Theme::Dark,
+                };
+                let opposite_tokens = design_tokens_of(opposite_theme);
+                ui.set_style(ui.ctx().style_of(opposite_theme));
+
+                ui.heading(RichText::new("Rerun Cloud").strong());
+
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.style_mut().text_styles.get_mut(&TextStyle::Body).unwrap().size = label_size;
+                    ui.label(
+                        "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
+                    );
+                    ui.hyperlink_to("here", "");
+                    ui.label(" or ");
+                    ui.hyperlink_to("book a demo", "");
+                    ui.label(".");
+                });
+
+                Button::new("Add server and login");
 
                 ui.button("Add server and login");
             }
@@ -85,12 +113,6 @@ pub fn intro_section(ui: &mut egui::Ui) {
     let available_width = ui.available_width();
     let target_column_width = 240.0;
     let max_columns = (available_width / target_column_width).ceil() as u32;
-
-    ui.ctx().debug_painter().debug_rect(
-        Rect::from_min_size(ui.cursor().min, ui.available_size()),
-        egui::Color32::LIGHT_BLUE,
-        "",
-    );
 
     ui.add_space(8.0);
 
@@ -119,7 +141,7 @@ pub fn intro_section(ui: &mut egui::Ui) {
 
         ui.horizontal(|ui| {
             for item in row_items {
-                let frame = item.frame(ui.tokens());
+                let frame = item.frame(ui);
                 let frame_margin_x = frame.inner_margin.sum().x;
                 frame.show(ui, |ui| {
                     ui.set_width(

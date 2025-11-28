@@ -249,15 +249,12 @@ impl ExampleSection {
 
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
-        let column_count = (((ui.available_width() + grid_spacing.x)
-            / (MIN_COLUMN_WIDTH + grid_spacing.x))
+        let column_count = (((max_width + grid_spacing.x) / (MIN_COLUMN_WIDTH + grid_spacing.x))
             .floor() as usize)
             .at_least(1);
-        let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
-            - grid_spacing.x)
+        let column_width = ((max_width + grid_spacing.x) / column_count as f32 - grid_spacing.x)
             .floor()
             .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
-        dbg!(column_width, max_width, grid_spacing, column_count);
 
         ui.horizontal(|ui| {
             // this space is added on the left so that the grid is centered
