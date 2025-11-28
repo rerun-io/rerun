@@ -1076,13 +1076,13 @@ impl RerunCloudService for RerunCloudHandler {
                         // For range queries, filter chunks whose time range intersects with the query range
                         if let Some(ref range) = query.range {
                             let timeline_name = range.index.clone().into();
-                            let dominated = match chunk.timelines().get(&timeline_name) {
+                            let include = match chunk.timelines().get(&timeline_name) {
                                 Some(timeline_col) => {
                                     timeline_col.time_range().intersects(range.index_range)
                                 }
                                 None => chunk.is_static(),
                             };
-                            if !dominated {
+                            if !include {
                                 continue;
                             }
                         }
