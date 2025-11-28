@@ -411,3 +411,38 @@ impl IntoRequest for AuthenticateWithDeviceCode<'_> {
         .map_err(Error::Serialize)
     }
 }
+
+pub struct GenerateToken<'a> {
+    pub server: url::Origin,
+    pub token: &'a str,
+    pub expiration: jiff::Span,
+}
+
+#[derive(serde::Deserialize)]
+pub struct GenerateTokenResponse {
+    pub token: String,
+}
+
+impl IntoRequest for GenerateToken<'_> {
+    type Res = GenerateTokenResponse;
+
+    fn into_request(self) -> Result<ehttp::Request, Error> {
+        #[derive(serde::Serialize)]
+        struct Body<'a> {
+            token: &'a str,
+            expiration: jiff::Span,
+        }
+
+        ehttp::Request::json(
+            format_args!(
+                "{origin}/generate-token",
+                origin = self.server.ascii_serialization()
+            ),
+            &Body {
+                token: self.token,
+                expiration: self.expiration,
+            },
+        )
+        .map_err(Error::Serialize)
+    }
+}

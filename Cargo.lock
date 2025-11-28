@@ -8445,6 +8445,7 @@ dependencies = [
  "getrandom 0.3.3",
  "http",
  "indicatif",
+ "jiff",
  "js-sys",
  "jsonwebtoken",
  "parking_lot",
@@ -10698,6 +10699,7 @@ dependencies = [
  "indexmap 2.11.4",
  "indicatif",
  "itertools 0.14.0",
+ "jiff",
  "log",
  "puffin",
  "rayon",
@@ -10738,6 +10740,7 @@ dependencies = [
  "similar-asserts",
  "tokio",
  "unindent",
+ "url",
 ]
 
 [[package]]
