@@ -174,8 +174,8 @@ TODO(ab):
 ## Internal/wrapper pattern
 
 Experience shows that the pattern of using a pure-Python wrapper around pyo3-based internal object is successful. It allows:
-- keeping the "accept anything" magic on the Python side
-- having simple, canonically typed methods for rust-based objects (making it more likely to benefit from pyo3 magic type conversions) 
+- keeping the "accept anything" magic on the Python side;
+- having simple, canonically typed methods for rust-based objects (making it more likely to benefit from pyo3 magic type conversions).
 
 See `rerun.catalog.CatalogClient` for an example of this pattern.
 
