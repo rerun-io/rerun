@@ -659,6 +659,69 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             view_class.help(ui.ctx().os()).ui(ui);
         });
 
+        self.visualizer_errors_button(ui, view_id);
+    }
+
+    // Styling:
+
+    fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        let theme = if visuals.dark_mode {
+            egui::Theme::Dark
+        } else {
+            egui::Theme::Light
+        };
+        re_ui::design_tokens_of(theme).tab_bar_color
+    }
+
+    fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        visuals.panel_fill.gamma_multiply(0.5)
+    }
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    fn drag_preview_stroke(&self, visuals: &egui::Visuals) -> egui::Stroke {
+        design_tokens_of_visuals(visuals).tile_drag_preview_stroke
+    }
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    fn drag_preview_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        design_tokens_of_visuals(visuals).tile_drag_preview_color
+    }
+
+    /// The height of the bar holding tab titles.
+    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
+    }
+
+    /// What are the rules for simplifying the tree?
+    ///
+    /// These options are applied on every frame by `egui_tiles`.
+    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
+        re_viewport_blueprint::tree_simplification_options()
+    }
+
+    // Callbacks:
+
+    fn on_edit(&mut self, edit_action: egui_tiles::EditAction) {
+        re_log::trace!("Tree edit: {edit_action:?}");
+        match edit_action {
+            EditAction::TileDropped => {
+                self.tile_dropped = true;
+                self.edited = true;
+            }
+
+            EditAction::TabSelected | EditAction::TileResized => {
+                self.edited = true;
+            }
+            EditAction::TileDragged => {
+                // No synchronization needed, because TileDragged happens when a drag starts, so no tiles are actually
+                // modified. When the drag completes, then we get `TileDropped` and run the synchronization.
+            }
+        }
+    }
+}
+
+impl TilesDelegate<'_, '_> {
+    fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
         let visualizer_errors = self.view_states.visualizer_errors(view_id);
 
         let error_count = visualizer_errors.map_or(0, |per_vis| {
@@ -741,63 +804,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                             });
                     });
             });
-        }
-    }
-
-    // Styling:
-
-    fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
-        let theme = if visuals.dark_mode {
-            egui::Theme::Dark
-        } else {
-            egui::Theme::Light
-        };
-        re_ui::design_tokens_of(theme).tab_bar_color
-    }
-
-    fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
-        visuals.panel_fill.gamma_multiply(0.5)
-    }
-
-    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
-    fn drag_preview_stroke(&self, visuals: &egui::Visuals) -> egui::Stroke {
-        design_tokens_of_visuals(visuals).tile_drag_preview_stroke
-    }
-
-    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
-    fn drag_preview_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
-        design_tokens_of_visuals(visuals).tile_drag_preview_color
-    }
-
-    /// The height of the bar holding tab titles.
-    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
-        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
-    }
-
-    /// What are the rules for simplifying the tree?
-    ///
-    /// These options are applied on every frame by `egui_tiles`.
-    fn simplification_options(&self) -> egui_tiles::SimplificationOptions {
-        re_viewport_blueprint::tree_simplification_options()
-    }
-
-    // Callbacks:
-
-    fn on_edit(&mut self, edit_action: egui_tiles::EditAction) {
-        re_log::trace!("Tree edit: {edit_action:?}");
-        match edit_action {
-            EditAction::TileDropped => {
-                self.tile_dropped = true;
-                self.edited = true;
-            }
-
-            EditAction::TabSelected | EditAction::TileResized => {
-                self.edited = true;
-            }
-            EditAction::TileDragged => {
-                // No synchronization needed, because TileDragged happens when a drag starts, so no tiles are actually
-                // modified. When the drag completes, then we get `TileDropped` and run the synchronization.
-            }
         }
     }
 }
