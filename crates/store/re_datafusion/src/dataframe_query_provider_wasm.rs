@@ -78,7 +78,7 @@ impl DataframePartitionStream {
 
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_partition_id(
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
             fetch_chunks_response_stream,
         );
 

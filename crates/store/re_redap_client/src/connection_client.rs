@@ -301,9 +301,7 @@ where
                     columns: vec![COLUMN_NAME.to_owned()],
                 })
                 .with_entry_id(entry_id)
-                .map_err(|err| {
-                    ApiError::tonic(err, "failed building /ScanSegmentTable request")
-                })?,
+                .map_err(|err| ApiError::tonic(err, "failed building /ScanSegmentTable request"))?,
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?
@@ -333,10 +331,7 @@ where
 
             let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
                 let err = missing_column!(ScanSegmentTableResponse, COLUMN_NAME);
-                ApiError::serialization(
-                    err,
-                    "missing column from item in /ScanSegmentTable stream",
-                )
+                ApiError::serialization(err, "missing column from item in /ScanSegmentTable stream")
             })?;
 
             let segment_id_array = segment_id_col
@@ -411,9 +406,10 @@ where
             fuzzy_descriptors: vec![],
             exclude_static_data: !include_static_data,
             exclude_temporal_data: !include_temporal_data,
-            query: query.map(|q| q.try_into()).transpose().map_err(|err| {
-                ApiError::tonic(err, "failed building /QueryDataset request")
-            })?,
+            query: query
+                .map(|q| q.try_into())
+                .transpose()
+                .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
             scan_parameters: Some(ScanParameters {
                 columns: FetchChunksRequest::required_column_names(),
                 ..Default::default()
