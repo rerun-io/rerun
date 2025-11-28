@@ -60,33 +60,6 @@ impl TryFrom<crate::cloud::v1alpha1::CreateIndexRequest> for CreateIndexRequest 
     }
 }
 
-// #[derive(Debug)]
-// pub struct IndexConfig {
-//     /// what kind of index do we want to create and what are its index specific properties.
-//     pub properties: crate::cloud::v1alpha1::IndexProperties,
-//     /// Component / column we want to index.
-//     pub column: IndexColumn,
-//     /// What is the filter index i.e. timeline for which we will query the timepoints.
-//     ///
-//     /// TODO(zehiko) this might go away and we might just index across all the timelines
-//     pub time_index: super::super::common::v1alpha1::IndexColumnSelector,
-// }
-//
-// impl TryFrom<crate::cloud::v1alpha1::IndexConfig> for IndexConfig {
-//     type Error = TypeConversionError;
-//
-//     fn try_from(value: crate::cloud::v1alpha1::IndexConfig) -> Result<Self, Self::Error> {
-//         Ok(IndexConfig {
-//             column: value.column
-//                 .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "column"))?,
-//             time_index: value.time_index
-//                 .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "time_index"))?,
-//             properties: value.properties
-//                 .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::IndexConfig, "properties"))?,
-//         })
-//     }
-// }
-
 // --- RegisterWithDatasetRequest ---
 
 #[derive(Debug)]
