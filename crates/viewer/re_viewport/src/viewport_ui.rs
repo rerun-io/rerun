@@ -6,9 +6,13 @@ use ahash::HashMap;
 use egui::remap_clamp;
 use egui_tiles::{Behavior as _, EditAction};
 
+use itertools::Either;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, Help, Icon, IconText, UiExt as _, design_tokens_of_visuals};
+use re_ui::{
+    ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
+    design_tokens_of_visuals, icons,
+};
 use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo, SystemCommand,
@@ -654,6 +658,90 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         ui.help_button(|ui| {
             view_class.help(ui.ctx().os()).ui(ui);
         });
+
+        let visualizer_errors = self.view_states.visualizer_errors(view_id);
+
+        let error_count = visualizer_errors.map_or(0, |per_vis| {
+            per_vis
+                .values()
+                .map(|errors| match errors {
+                    re_viewer_context::VisualizerExecutionErrorState::Overall(_) => 1,
+                    re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
+                        errors.len()
+                    }
+                })
+                .sum()
+        });
+
+        if let Some(visualizer_errors) = visualizer_errors
+            && error_count > 0
+        {
+            let errors = visualizer_errors.values().flat_map(|err| match err {
+                re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
+                    Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
+                }
+                re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
+                    Either::Right(errors.iter().map(|(entity, err)| {
+                        (
+                            Item::DataResult(view_id, entity.clone().into()),
+                            err.clone(),
+                        )
+                    }))
+                }
+            });
+
+            ui.scope(|ui| {
+                let response = ui
+                    .add(egui::Button::image(
+                        icons::ERROR
+                            .as_image()
+                            .fit_to_exact_size(ui.tokens().small_icon_size)
+                            .alt_text("View errors")
+                            .tint(ui.visuals().error_fg_color),
+                    ))
+                    .on_hover_text(format!(
+                        "Show {error_count} visualizer error{}",
+                        re_format::format_plural_s(error_count)
+                    ));
+
+                egui::Popup::menu(&response)
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                    .show(|ui| {
+                        egui::ScrollArea::vertical()
+                            .max_height(600.0)
+                            .show(ui, |ui| {
+                                ui.visuals_mut().widgets.hovered.weak_bg_fill =
+                                    ui.visuals().error_fg_color;
+                                ui.visuals_mut().widgets.active.weak_bg_fill =
+                                    ui.visuals().error_fg_color;
+
+                                for (item, err) in errors {
+                                    let response =
+                                        re_ui::alert::Alert::error().frame(ui).show(ui, |ui| {
+                                            ui.button(err).on_hover_text(match &item {
+                                                Item::View(blueprint_id) => {
+                                                    blueprint_id.as_entity_path().to_string()
+                                                }
+                                                _ => item
+                                                    .to_data_path()
+                                                    .map(|item| item.to_string())
+                                                    .unwrap_or_default(),
+                                            })
+                                        });
+
+                                    if response.inner.clicked() {
+                                        self.ctx
+                                            .command_sender()
+                                            .send_system(SystemCommand::set_selection(item));
+                                        self.ctx.command_sender().send_ui(
+                                            re_ui::UICommand::ToggleSelectionPanel(Some(true)),
+                                        );
+                                    }
+                                }
+                            });
+                    });
+            });
+        }
     }
 
     // Styling:

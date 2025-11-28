@@ -146,13 +146,26 @@ impl<'a> AppBlueprint<'a> {
         }
     }
 
-    pub fn toggle_selection_panel(&self, command_sender: &CommandSender) {
+    pub fn toggle_selection_panel(
+        &self,
+        command_sender: &CommandSender,
+        wanted_state: Option<bool>,
+    ) {
         // don't toggle if it is overridden
         if self.overrides.is_some_and(|o| o.selection.is_some()) {
             return;
         }
 
-        let new_state = self.panel_states.selection.toggle();
+        let new_state = wanted_state
+            .map(|s| {
+                if s {
+                    PanelState::Expanded
+                } else {
+                    PanelState::Hidden
+                }
+            })
+            .unwrap_or(self.panel_states.selection.toggle());
+
         self.send_panel_state(SELECTION_PANEL_PATH, new_state, command_sender);
 
         // Toggle the opposite side if this panel is visible to save on screen real estate
