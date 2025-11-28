@@ -70,14 +70,14 @@ async fn test_column_projections<T>(
 
     let partition_id_columns = project_fn(
         &service,
-        vec![ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned()],
+        vec![ScanPartitionTableResponse::FIELD_SEGMENT_ID.to_owned()],
         dataset_name,
     )
     .await;
 
     assert_eq!(
         partition_id_columns,
-        vec![ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned()],
+        vec![ScanPartitionTableResponse::FIELD_SEGMENT_ID.to_owned()],
         "the projection should have been applied"
     );
 
@@ -103,7 +103,7 @@ async fn test_column_projections<T>(
         &service,
         vec![
             prop_col.clone(),
-            ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+            ScanPartitionTableResponse::FIELD_SEGMENT_ID.to_owned(),
         ],
         dataset_name,
     )
@@ -113,7 +113,7 @@ async fn test_column_projections<T>(
         ordered_columns,
         vec![
             prop_col,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+            ScanPartitionTableResponse::FIELD_SEGMENT_ID.to_owned(),
         ],
         "the column order should be preserved"
     );
@@ -149,8 +149,8 @@ async fn test_column_projections<T>(
         .scan_partition_table(
             tonic::Request::new(ScanPartitionTableRequest {
                 columns: vec![
-                    ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
-                    ScanPartitionTableResponse::FIELD_PARTITION_ID.to_owned(),
+                    ScanPartitionTableResponse::FIELD_SEGMENT_ID.to_owned(),
+                    ScanPartitionTableResponse::FIELD_SEGMENT_ID.to_owned(),
                 ],
             })
             .with_entry_name(dataset_name)
@@ -164,7 +164,7 @@ async fn test_column_projections<T>(
             assert!(
                 status
                     .message()
-                    .contains(ScanPartitionTableResponse::FIELD_PARTITION_ID)
+                    .contains(ScanPartitionTableResponse::FIELD_SEGMENT_ID)
             );
             assert!(status.message().contains("twice") || status.message().contains("duplicate"));
         }
