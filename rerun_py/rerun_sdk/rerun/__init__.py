@@ -119,6 +119,9 @@ from .archetypes import (
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
 )
+from .auth import (
+    login as login,
+)
 from .components import (
     AlbedoFactor as AlbedoFactor,
     GraphEdge as GraphEdge,
