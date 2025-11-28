@@ -79,16 +79,6 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc ScanSegmentTable(ScanSegmentTableRequest) returns (stream ScanSegmentTableResponse) {}
 
-  // DEPRECATED: Use GetSegmentTableSchema instead.
-  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {
-    option deprecated = true;
-  }
-
-  // DEPRECATED: Use ScanSegmentTable instead.
-  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {
-    option deprecated = true;
-  }
-
   // Returns the schema of the dataset manifest.
   //
   // To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
@@ -299,51 +289,6 @@ message ScanSegmentTableRequest {
 }
 
 message ScanSegmentTableResponse {
-  // Segments metadata as Arrow RecordBatch.
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-// DEPRECATED: Use GetSegmentTableSchemaRequest instead.
-message GetPartitionTableSchemaRequest {
-  option deprecated = true;
-
-  reserved 1;
-  reserved "dataset_id";
-}
-
-// DEPRECATED: Use GetSegmentTableSchemaResponse instead.
-message GetPartitionTableSchemaResponse {
-  option deprecated = true;
-
-  rerun.common.v1alpha1.Schema schema = 1;
-}
-
-// DEPRECATED: Use ScanSegmentTableRequest instead.
-message ScanPartitionTableRequest {
-  option deprecated = true;
-
-  // A list of column names to be projected server-side.
-  //
-  // If empty, all columns are returned.
-  //
-  // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
-  // requested.
-  //
-  // If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
-  // an `InvalidArgument` error.
-  repeated string columns = 3;
-
-  reserved 1;
-  reserved "dataset_id";
-
-  reserved 2;
-  reserved "scan_parameters";
-}
-
-// DEPRECATED: Use ScanSegmentTableResponse instead.
-message ScanPartitionTableResponse {
-  option deprecated = true;
-
   // Segments metadata as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }

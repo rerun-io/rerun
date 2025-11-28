@@ -207,77 +207,6 @@ impl ::prost::Name for ScanSegmentTableResponse {
         "/rerun.cloud.v1alpha1.ScanSegmentTableResponse".into()
     }
 }
-/// DEPRECATED: Use GetSegmentTableSchemaRequest instead.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct GetPartitionTableSchemaRequest {}
-impl ::prost::Name for GetPartitionTableSchemaRequest {
-    const NAME: &'static str = "GetPartitionTableSchemaRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.GetPartitionTableSchemaRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.GetPartitionTableSchemaRequest".into()
-    }
-}
-/// DEPRECATED: Use GetSegmentTableSchemaResponse instead.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct GetPartitionTableSchemaResponse {
-    #[prost(message, optional, tag = "1")]
-    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
-}
-impl ::prost::Name for GetPartitionTableSchemaResponse {
-    const NAME: &'static str = "GetPartitionTableSchemaResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.GetPartitionTableSchemaResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.GetPartitionTableSchemaResponse".into()
-    }
-}
-/// DEPRECATED: Use ScanSegmentTableRequest instead.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct ScanPartitionTableRequest {
-    /// A list of column names to be projected server-side.
-    ///
-    /// If empty, all columns are returned.
-    ///
-    /// If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
-    /// requested.
-    ///
-    /// If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
-    /// an `InvalidArgument` error.
-    #[prost(string, repeated, tag = "3")]
-    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-}
-impl ::prost::Name for ScanPartitionTableRequest {
-    const NAME: &'static str = "ScanPartitionTableRequest";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ScanPartitionTableRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ScanPartitionTableRequest".into()
-    }
-}
-/// DEPRECATED: Use ScanSegmentTableResponse instead.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct ScanPartitionTableResponse {
-    /// Segments metadata as Arrow RecordBatch.
-    #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
-}
-impl ::prost::Name for ScanPartitionTableResponse {
-    const NAME: &'static str = "ScanPartitionTableResponse";
-    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.ScanPartitionTableResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.ScanPartitionTableResponse".into()
-    }
-}
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetDatasetManifestSchemaRequest {}
 impl ::prost::Name for GetDatasetManifestSchemaRequest {
@@ -2268,52 +2197,6 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// DEPRECATED: Use GetSegmentTableSchema instead.
-        #[deprecated]
-        pub async fn get_partition_table_schema(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetPartitionTableSchemaRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetPartitionTableSchemaResponse>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/GetPartitionTableSchema",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "GetPartitionTableSchema",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// DEPRECATED: Use ScanSegmentTable instead.
-        #[deprecated]
-        pub async fn scan_partition_table(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ScanPartitionTableRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::ScanPartitionTableResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic_prost::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.cloud.v1alpha1.RerunCloudService/ScanPartitionTable",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.cloud.v1alpha1.RerunCloudService",
-                "ScanPartitionTable",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
         /// Returns the schema of the dataset manifest.
         ///
         /// To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
@@ -2811,24 +2694,6 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::ScanSegmentTableRequest>,
         ) -> std::result::Result<tonic::Response<Self::ScanSegmentTableStream>, tonic::Status>;
-        /// DEPRECATED: Use GetSegmentTableSchema instead.
-        async fn get_partition_table_schema(
-            &self,
-            request: tonic::Request<super::GetPartitionTableSchemaRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetPartitionTableSchemaResponse>,
-            tonic::Status,
-        >;
-        /// Server streaming response type for the ScanPartitionTable method.
-        type ScanPartitionTableStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::ScanPartitionTableResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// DEPRECATED: Use ScanSegmentTable instead.
-        async fn scan_partition_table(
-            &self,
-            request: tonic::Request<super::ScanPartitionTableRequest>,
-        ) -> std::result::Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status>;
         /// Returns the schema of the dataset manifest.
         ///
         /// To inspect the data of the dataset manifest, which is guaranteed to match the schema returned by
@@ -3614,96 +3479,6 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ScanSegmentTableSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/GetPartitionTableSchema" => {
-                    #[allow(non_camel_case_types)]
-                    struct GetPartitionTableSchemaSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::UnaryService<super::GetPartitionTableSchemaRequest>
-                        for GetPartitionTableSchemaSvc<T>
-                    {
-                        type Response = super::GetPartitionTableSchemaResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetPartitionTableSchemaRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::get_partition_table_schema(
-                                    &inner, request,
-                                )
-                                .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = GetPartitionTableSchemaSvc(inner);
-                        let codec = tonic_prost::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.cloud.v1alpha1.RerunCloudService/ScanPartitionTable" => {
-                    #[allow(non_camel_case_types)]
-                    struct ScanPartitionTableSvc<T: RerunCloudService>(pub Arc<T>);
-                    impl<T: RerunCloudService>
-                        tonic::server::ServerStreamingService<super::ScanPartitionTableRequest>
-                        for ScanPartitionTableSvc<T>
-                    {
-                        type Response = super::ScanPartitionTableResponse;
-                        type ResponseStream = T::ScanPartitionTableStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ScanPartitionTableRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as RerunCloudService>::scan_partition_table(&inner, request)
-                                    .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ScanPartitionTableSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

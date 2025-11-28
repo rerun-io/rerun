@@ -20,6 +20,6 @@ pub(crate) use dataframe_query_provider::PartitionStreamExec;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use dataframe_query_provider_wasm::PartitionStreamExec;
 pub use dataset_manifest::DatasetManifestProvider;
-pub use partition_table::PartitionTableProvider;
+pub use partition_table::SegmentTableProvider;
 pub use search_provider::SearchResultsTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;

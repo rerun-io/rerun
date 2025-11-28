@@ -1,5 +1,5 @@
 use re_log_types::EntryId;
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::ChunkId;
 
 use crate::store::Error;
@@ -7,7 +7,7 @@ use crate::store::Error;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ChunkKey {
     pub chunk_id: ChunkId,
-    pub partition_id: PartitionId,
+    pub segment_id: SegmentId,
     pub layer_name: String,
     pub dataset_id: EntryId,
 }

@@ -27,7 +27,7 @@ use re_dataframe::{
     ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
 };
 use re_log_types::{StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanPartitionTableResponse};
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanSegmentTableResponse};
 use re_redap_client::ConnectionClient;
 
 use crate::dataframe_query_common::{

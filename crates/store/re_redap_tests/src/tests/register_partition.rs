@@ -10,8 +10,8 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::{
     cloud::v1alpha1::{
         CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
-        GetPartitionTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
-        ScanDatasetManifestResponse, ScanPartitionTableRequest, ScanPartitionTableResponse,
+        GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
+        ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
         ext::DatasetDetails, rerun_cloud_service_server::RerunCloudService,
     },
     headers::RerunHeadersInjectorExt as _,
@@ -39,7 +39,7 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
         .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
         .await;
 
-    scan_partition_table_and_snapshot(&service, dataset_name, "simple").await;
+    scan_segment_table_and_snapshot(&service, dataset_name, "simple").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple").await;
 }
 
@@ -95,7 +95,7 @@ pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService
         )
         .await;
 
-    scan_partition_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
+    scan_segment_table_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
     scan_dataset_manifest_and_snapshot(&service, &blueprint_dataset_name, "simple_blueprint").await;
 }
 
@@ -137,7 +137,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
         .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
         .await;
 
-    scan_partition_table_and_snapshot(&service, dataset_name, "simple_with_properties").await;
+    scan_segment_table_and_snapshot(&service, dataset_name, "simple_with_properties").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_properties").await;
 }
 
@@ -190,7 +190,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
 
     let dataset_manifest =
         scan_dataset_manifest_and_snapshot(&service, dataset_name, "out_of_order_properties").await;
-    scan_partition_table_and_snapshot(&service, dataset_name, "out_of_order_properties").await;
+    scan_segment_table_and_snapshot(&service, dataset_name, "out_of_order_properties").await;
 
     // assert test correctness
     let registration_time_col = dataset_manifest
@@ -239,7 +239,7 @@ pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunClo
         .register_with_dataset_name(dataset_name, data_sources_def.to_data_sources())
         .await;
 
-    scan_partition_table_and_snapshot(&service, dataset_name, "simple_with_layers").await;
+    scan_segment_table_and_snapshot(&service, dataset_name, "simple_with_layers").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_layers").await;
 }
 
@@ -299,7 +299,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     )
     .await;
 
-    scan_partition_table_and_snapshot(&fe, dataset_name, "register_prefix_partitions").await;
+    scan_segment_table_and_snapshot(&fe, dataset_name, "register_prefix_partitions").await;
     scan_dataset_manifest_and_snapshot(&fe, dataset_name, "register_prefix_manifest").await;
 }
 
@@ -309,7 +309,7 @@ pub async fn register_and_scan_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "empty_dataset";
     service.create_dataset_entry_with_name(dataset_name).await;
 
-    scan_partition_table_and_snapshot(&service, dataset_name, "empty").await;
+    scan_segment_table_and_snapshot(&service, dataset_name, "empty").await;
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "empty").await;
 }
 
@@ -398,14 +398,14 @@ pub async fn register_partition_bumps_timestamp(service: impl RerunCloudService)
 
 // ---
 
-async fn scan_partition_table_and_snapshot(
+async fn scan_segment_table_and_snapshot(
     service: &impl RerunCloudService,
     dataset_name: &str,
     snapshot_name: &str,
 ) -> RecordBatch {
     let responses: Vec<_> = service
-        .scan_partition_table(
-            tonic::Request::new(ScanPartitionTableRequest {
+        .scan_segment_table(
+            tonic::Request::new(ScanSegmentTableRequest {
                 columns: vec![], // all of them
             })
             .with_entry_name(dataset_name)
@@ -434,8 +434,8 @@ async fn scan_partition_table_and_snapshot(
 
     // check that the _advertised_ schema is consistent with the actual data.
     let alleged_schema: Schema = service
-        .get_partition_table_schema(
-            tonic::Request::new(GetPartitionTableSchemaRequest {})
+        .get_segment_table_schema(
+            tonic::Request::new(GetSegmentTableSchemaRequest {})
                 .with_entry_name(dataset_name)
                 .unwrap(),
         )
@@ -453,21 +453,21 @@ async fn scan_partition_table_and_snapshot(
         alleged_schema.fields(),
         batch.schema_ref().fields(),
         "The actual schema is not consistent with the schema advertised by \
-        `get_partition_table_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
+        `get_segment_table_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
         batch.schema().format_snapshot(),
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanPartitionTableResponse::fields();
+    let required_fields = ScanSegmentTableResponse::fields();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
     );
 
     let unstable_column_names = vec![
-        ScanPartitionTableResponse::FIELD_STORAGE_URLS,
-        ScanPartitionTableResponse::FIELD_SIZE_BYTES,
-        ScanPartitionTableResponse::FIELD_LAST_UPDATED_AT,
+        ScanSegmentTableResponse::FIELD_STORAGE_URLS,
+        ScanSegmentTableResponse::FIELD_SIZE_BYTES,
+        ScanSegmentTableResponse::FIELD_LAST_UPDATED_AT,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
