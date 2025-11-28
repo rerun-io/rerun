@@ -324,14 +324,14 @@ struct TransformsForChildFrameEvents {
     /// Whenever it changes, the previous parent frame is no longer reachable.
     frame_transforms: FrameTransformTimeMap,
 
-    pinhole_projections: Option<Box<PinholeProjectionMap>>, // TODO: stop doing a box here?
+    pinhole_projections: PinholeProjectionMap,
 }
 
 impl TransformsForChildFrameEvents {
     fn new_empty() -> Self {
         Self {
             frame_transforms: BTreeMap::new(),
-            pinhole_projections: None,
+            pinhole_projections: BTreeMap::new(),
         }
     }
 
@@ -341,7 +341,6 @@ impl TransformsForChildFrameEvents {
             frame_transforms,
             pinhole_projections,
         } = self;
-        let pinhole_projections = pinhole_projections.get_or_insert(Default::default());
 
         frame_transforms.insert(time, CachedTransformValue::Cleared);
         pinhole_projections.insert(time, CachedTransformValue::Cleared);
@@ -353,7 +352,6 @@ impl TransformsForChildFrameEvents {
             frame_transforms,
             pinhole_projections,
         } = self;
-        let pinhole_projections = pinhole_projections.get_or_insert(Default::default());
 
         frame_transforms.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
         pinhole_projections.extend(time.iter().map(|t| (*t, CachedTransformValue::Cleared)));
@@ -367,9 +365,7 @@ impl TransformsForChildFrameEvents {
         } = self;
 
         frame_transforms.remove(&time);
-        if let Some(pinhole_projections) = &mut pinhole_projections.as_mut() {
-            pinhole_projections.remove(&time);
-        }
+        pinhole_projections.remove(&time);
     }
 
     fn is_empty(&self) -> bool {
@@ -378,10 +374,7 @@ impl TransformsForChildFrameEvents {
             pinhole_projections,
         } = self;
 
-        frame_transforms.is_empty()
-            && pinhole_projections
-                .as_ref()
-                .is_none_or(|pinholes| pinholes.is_empty())
+        frame_transforms.is_empty() && pinhole_projections.is_empty()
     }
 }
 
@@ -530,8 +523,7 @@ impl TreeTransformsForChildFrame {
     /// Inserts an invalidation point for pinhole projections.
     fn invalidate_pinhole_projection_at(&mut self, time: TimeInt) {
         let events = self.events.get_mut();
-        let pinhole_projections = events.pinhole_projections.get_or_insert_default();
-        add_invalidated_entry_if_not_already_cleared(pinhole_projections, time);
+        add_invalidated_entry_if_not_already_cleared(&mut events.pinhole_projections, time);
     }
 
     #[inline]
@@ -596,7 +588,6 @@ impl TreeTransformsForChildFrame {
 
         let pinhole_projection = events
             .pinhole_projections
-            .as_mut()?
             .range_mut(..query.at().inc())
             .next_back()?
             .1;
@@ -1041,9 +1032,7 @@ impl TransformResolutionCache {
                         per_timeline.per_child_frame_transforms.get_mut(&frame)
                     {
                         let events = transforms.events.get_mut();
-                        if let Some(pinhole_projections) = events.pinhole_projections.as_mut() {
-                            pinhole_projections.remove(&time);
-                        }
+                        events.pinhole_projections.remove(&time);
                     }
                 }
             }
@@ -1294,7 +1283,7 @@ mod tests {
         #[cfg(debug_assertions)]
         assert_eq!(transforms.timeline, Some(*timeline.name()));
         assert_eq!(transforms.events.lock().frame_transforms.len(), 1);
-        assert_eq!(transforms.events.lock().pinhole_projections, None);
+        assert_eq!(transforms.events.lock().pinhole_projections.len(), 0);
         Ok(())
     }
 
