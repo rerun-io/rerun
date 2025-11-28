@@ -24,10 +24,11 @@ __all__ = ["InstancePoses3D"]
 @define(str=False, repr=False, init=False)
 class InstancePoses3D(Archetype):
     """
-    **Archetype**: One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`][rerun.archetypes.Transform3D], it is *not* propagated in the transform hierarchy.
+    **Archetype**: One or more transforms applied on the current entity's transform frame.
 
-    If both [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D] are present,
-    first the tree propagating [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is applied, then [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+    Unlike [`archetypes.Transform3D`][rerun.archetypes.Transform3D], it is *not* propagated in the transform hierarchy.
+    If [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame] is specified, it acts relative to that coordinate frame,
+    otherwise it is relative to the entity's implicit coordinate frame.
 
     Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
     This means that if you first log a pose with only a translation, and then log one with only a rotation,

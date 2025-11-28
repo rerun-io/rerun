@@ -1,10 +1,11 @@
 namespace rerun.archetypes;
 
 
-/// One or more transforms between the current entity and its parent. Unlike [archetypes.Transform3D], it is *not* propagated in the transform hierarchy.
+/// One or more transforms applied on the current entity's transform frame.
 ///
-/// If both [archetypes.InstancePoses3D] and [archetypes.Transform3D] are present,
-/// first the tree propagating [archetypes.Transform3D] is applied, then [archetypes.InstancePoses3D].
+/// Unlike [archetypes.Transform3D], it is *not* propagated in the transform hierarchy.
+/// If [archetypes.CoordinateFrame] is specified, it acts relative to that coordinate frame,
+/// otherwise it is relative to the entity's implicit coordinate frame.
 ///
 /// Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
 /// This means that if you first log a pose with only a translation, and then log one with only a rotation,
@@ -53,6 +54,4 @@ table InstancePoses3D (
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
   mat3x3: [rerun.components.PoseTransformMat3x3] ("attr.rerun.component_optional", nullable, order: 1500);
-
-  // TODO: Clarify interaction with frames.
 }
