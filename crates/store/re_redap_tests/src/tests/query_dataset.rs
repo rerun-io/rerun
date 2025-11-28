@@ -73,16 +73,21 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
             },
             "fuzzy_descriptors_mypoint",
         ),
-        // Test fuzzy_descriptors with no matches
         (
+            // Test fuzzy_descriptors with no matches
             QueryDatasetRequest {
                 fuzzy_descriptors: vec!["NonExistentComponent".to_owned()],
                 ..Default::default()
             },
             "fuzzy_descriptors_no_match",
         ),
-        // Test query with range filter - frames 10-30 (simple recordings have frames 10, 20, 30, 40)
         (
+            // Test query everything
+            QueryDatasetRequest::default(),
+            "query_everything",
+        ),
+        (
+            // Test query with range filter - (simple recordings have frames 10, 20, 30, 40)
             QueryDatasetRequest {
                 query: Some(Query {
                     range: Some(QueryRange {
@@ -98,8 +103,8 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
             },
             "query_range_15_25",
         ),
-        // Test query with latest_at filter - should include chunks with min time <= 25
         (
+            // Test query with latest_at filter - should include chunks with min time <= 25
             QueryDatasetRequest {
                 query: Some(Query {
                     latest_at: Some(QueryLatestAt {
@@ -112,16 +117,16 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
             },
             "query_latest_at_25",
         ),
-        // Test exclude_static_data
         (
+            // Test exclude_static_data
             QueryDatasetRequest {
                 exclude_static_data: true,
                 ..Default::default()
             },
             "exclude_static",
         ),
-        // Test exclude_temporal_data
         (
+            // Test exclude_temporal_data
             QueryDatasetRequest {
                 exclude_temporal_data: true,
                 ..Default::default()
