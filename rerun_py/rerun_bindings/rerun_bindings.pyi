@@ -20,6 +20,10 @@ from .types import (
     ViewContentsLike as ViewContentsLike,
 )
 
+# NOTE
+#
+# The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
+
 class IndexColumnDescriptor:
     """
     The descriptor of an index column.
