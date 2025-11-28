@@ -51,7 +51,7 @@ impl MediaType {
     // Compressed Depth Data:
 
     /// [RVL compressed depth]
-    /// (https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf): `application/rvl`.
+    /// <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>: `application/rvl`.
     ///
     /// Range Image Visualization Library (RVL) compressed depth data format.
     pub const RVL: &'static str = "application/rvl";
