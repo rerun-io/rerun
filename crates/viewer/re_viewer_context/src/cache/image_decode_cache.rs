@@ -82,7 +82,10 @@ impl ImageDecodeCache {
     ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
-        let Some(media_type) = media_type.cloned() else {
+        let Some(media_type) = media_type
+            .cloned()
+            .or_else(|| MediaType::guess_from_data(image_bytes))
+        else {
             return Err(ImageLoadError::UnrecognizedMimeType);
         };
 
@@ -380,6 +383,46 @@ mod tests {
 
     use image::{ColorType, ImageEncoder as _, codecs::png::PngEncoder};
     use re_types::datatypes::ImageFormat as ImageFormatDatatype;
+
+    #[test]
+    fn entry_encoded_depth_guesses_png_media_type() {
+        let width = 2;
+        let height = 2;
+        let depth_values: [u16; 4] = [0, 1, 2, 3];
+
+        let mut encoded_png = Vec::new();
+        {
+            let encoder = PngEncoder::new(&mut encoded_png);
+            encoder
+                .write_image(
+                    bytemuck::cast_slice(&depth_values),
+                    width,
+                    height,
+                    ColorType::L16.into(),
+                )
+                .expect("encoding png failed");
+        }
+
+        let format = ImageFormatComponent::from(ImageFormatDatatype::depth(
+            [width, height],
+            ChannelDatatype::U16,
+        ));
+
+        let mut cache = ImageDecodeCache::default();
+
+        let image_info = cache
+            .entry_encoded_depth(
+                RowId::ZERO,
+                ComponentIdentifier::from("test"),
+                &encoded_png,
+                None,
+                &format,
+            )
+            .expect("decoding encoded depth image failed");
+
+        assert_eq!(image_info.kind, ImageKind::Depth);
+        assert_eq!(image_info.format, format.0);
+    }
 
     #[test]
     fn decoding_png_depth_works() {
