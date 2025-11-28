@@ -152,8 +152,9 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let transform_cache = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.lock_transform_cache(ctx.recording()));
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
 
         let transform_forest =
             re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
@@ -218,10 +219,9 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            // TODO: bad locking.
             let caches = ctx.viewer_ctx.store_context.caches;
             let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.lock_transform_cache(ctx.recording())
+                c.read_lock_transform_cache(ctx.recording())
             });
             let transforms = transform_cache.transforms_for_timeline(query.timeline);
 
