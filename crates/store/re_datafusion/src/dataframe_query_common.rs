@@ -113,22 +113,16 @@ impl DataframeQueryTableProvider {
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
             chunk_ids: vec![],
-            entity_paths: entity_paths
-                .into_iter()
-                .map(|p| (*p).clone().into())
-                .collect(),
+            entity_paths: entity_paths.into_iter().map(|p| (*p).clone()).collect(),
             select_all_entity_paths,
             fuzzy_descriptors,
             exclude_static_data: false,
             exclude_temporal_data: false,
-            query: Some(query.into()),
-            scan_parameters: Some(
-                ScanParameters {
-                    columns: FetchChunksRequest::required_column_names(),
-                    ..Default::default()
-                }
-                .into(),
-            ),
+            query: Some(query),
+            scan_parameters: Some(ScanParameters {
+                columns: FetchChunksRequest::required_column_names(),
+                ..Default::default()
+            }),
         };
 
         let response_stream = client
