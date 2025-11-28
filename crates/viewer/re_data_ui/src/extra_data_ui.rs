@@ -21,14 +21,13 @@ impl ExtraDataUi {
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
         blob::BlobUi::from_components(ctx, entity_path, descr, chunk, entity_components)
-            .map(ExtraDataUi::Blob)
+            .map(Self::Blob)
             .or_else(|| {
                 image::ImageUi::from_components(ctx, descr, chunk, entity_components)
-                    .map(ExtraDataUi::Image)
+                    .map(Self::Image)
             })
             .or_else(|| {
-                video::VideoUi::from_components(ctx, query, entity_path, descr)
-                    .map(ExtraDataUi::Video)
+                video::VideoUi::from_components(ctx, query, entity_path, descr).map(Self::Video)
             })
             .or_else(|| {
                 transform_frames::TransformFramesUi::from_components(
