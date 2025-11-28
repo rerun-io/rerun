@@ -813,7 +813,7 @@ impl TilesDelegate<'_, '_> {
                                 .send_system(SystemCommand::set_selection(item));
                             self.ctx
                                 .command_sender()
-                                .send_ui(re_ui::UICommand::ToggleSelectionPanel(Some(true)));
+                                .send_ui(re_ui::UICommand::ExpandSelectionPanel);
                         }
                         ui.separator();
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);

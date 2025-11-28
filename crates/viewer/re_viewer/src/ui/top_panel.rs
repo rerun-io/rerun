@@ -403,10 +403,10 @@ fn panel_buttons_r2l(
                     "Selection panel toggle",
                     &mut app_blueprint.selection_panel_state().is_expanded(),
                 )
-                .on_hover_ui(|ui| UICommand::ToggleSelectionPanel(None).tooltip_ui(ui))
+                .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
                 .clicked()
             {
-                app_blueprint.toggle_selection_panel(&app.command_sender, None);
+                app_blueprint.toggle_selection_panel(&app.command_sender);
             }
         },
     );

@@ -1679,8 +1679,13 @@ impl App {
                     app_blueprint.toggle_blueprint_panel(&self.command_sender);
                 }
             }
-            UICommand::ToggleSelectionPanel(state) => {
-                app_blueprint.toggle_selection_panel(&self.command_sender, state);
+            UICommand::ToggleSelectionPanel => {
+                app_blueprint.toggle_selection_panel(&self.command_sender);
+            }
+            UICommand::ExpandSelectionPanel => {
+                if !app_blueprint.selection_panel_state().is_expanded() {
+                    app_blueprint.toggle_selection_panel(&self.command_sender);
+                }
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
