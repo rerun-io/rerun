@@ -258,15 +258,14 @@ impl ExampleSection {
             .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
 
         ui.horizontal(|ui| {
+            let welcome_width =
+                column_count as f32 * column_width - (column_count - 1) as f32 * grid_spacing.x;
             // this space is added on the left so that the grid is centered
-            let centering_hspace = (ui.available_width()
-                - column_count as f32 * column_width
-                - (column_count - 1) as f32 * grid_spacing.x)
-                .max(0.0)
-                / 2.0;
+            let centering_hspace = (ui.available_width() - welcome_width).max(0.0) / 2.0;
             ui.add_space(centering_hspace);
 
             ui.vertical(|ui| {
+                ui.set_max_width(welcome_width);
                 header_ui(ui);
 
                 ui.add_space(AFTER_HEADER_VSPACE);

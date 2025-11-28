@@ -1,3 +1,4 @@
+use crate::ui::welcome_screen::intro_section::intro_section;
 use re_ui::{DesignTokens, UiExt as _};
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
@@ -26,6 +27,8 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             )
             .wrap(),
         );
+
+        intro_section(ui);
 
         ui.add_space(18.0);
 

@@ -1,4 +1,5 @@
 mod example_section;
+mod intro_section;
 mod loading_data_ui;
 mod no_data_ui;
 mod welcome_section;
@@ -10,6 +11,7 @@ use re_smart_channel::SmartChannelSource;
 use welcome_section::welcome_section_ui;
 
 use crate::app_state::WelcomeScreenState;
+use crate::ui::welcome_screen::intro_section::intro_section;
 
 #[derive(Default)]
 pub struct WelcomeScreen {
