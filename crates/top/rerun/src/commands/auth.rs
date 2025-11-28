@@ -17,6 +17,9 @@ pub enum AuthCommands {
     /// The access token is part of the credentials produced by `rerun auth login`,
     /// and is used to authorize requests to the Rerun data platform.
     Token(TokenCommand),
+
+    /// Generate a fresh token.
+    GenerateToken(GenerateTokenCommand),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -34,8 +37,21 @@ pub struct LoginCommand {
 #[derive(Debug, Clone, Parser)]
 pub struct TokenCommand {}
 
+#[derive(Debug, Clone, Parser)]
+pub struct GenerateTokenCommand {
+    /// Origin of the server to request the token from.
+    #[clap(long)]
+    server: String,
+
+    /// Duration of the token, either in:
+    /// - "human time", e.g. `1 day`, or
+    /// - ISO 8601 duration format, e.g. `P1D`.
+    #[clap(long)]
+    expiration: jiff::Span,
+}
+
 impl AuthCommands {
-    pub fn run(&self, runtime: &tokio::runtime::Handle) -> Result<(), re_auth::cli::Error> {
+    pub fn run(self, runtime: &tokio::runtime::Handle) -> Result<(), re_auth::cli::Error> {
         match self {
             Self::Login(args) => {
                 let options = re_auth::cli::LoginOptions {
@@ -46,6 +62,17 @@ impl AuthCommands {
             }
 
             Self::Token(_) => runtime.block_on(re_auth::cli::token()),
+
+            Self::GenerateToken(args) => {
+                let server = url::Url::parse(&args.server)
+                    .map_err(|err| re_auth::cli::Error::Generic(err.into()))?
+                    .origin();
+                let options = re_auth::cli::GenerateTokenOptions {
+                    server,
+                    expiration: args.expiration,
+                };
+                runtime.block_on(re_auth::cli::generate_token(options))
+            }
         }
     }
 }
