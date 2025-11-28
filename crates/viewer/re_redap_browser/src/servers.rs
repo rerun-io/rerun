@@ -219,12 +219,12 @@ impl Server {
             } else {
                 matches!(
                     desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME | ScanPartitionTableResponse::FIELD_PARTITION_ID
+                    RECORDING_LINK_COLUMN_NAME | ScanSegmentTableResponse::FIELD_SEGMENT_ID
                 )
             };
 
             let column_sort_key = match desc.display_name().as_str() {
-                ScanPartitionTableResponse::FIELD_PARTITION_ID => 0,
+                ScanSegmentTableResponse::FIELD_SEGMENT_ID => 0,
                 RECORDING_LINK_COLUMN_NAME => 1,
                 _ => 2,
             };
@@ -242,7 +242,7 @@ impl Server {
         })
         .generate_partition_links(
             RECORDING_LINK_COLUMN_NAME,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID,
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
             self.origin.clone(),
             dataset.id(),
         )

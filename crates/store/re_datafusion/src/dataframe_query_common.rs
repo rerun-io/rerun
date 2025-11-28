@@ -22,11 +22,10 @@ use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
-        ext::{Query, QueryLatestAt, QueryRange},
+        FetchChunksRequest, GetDatasetSchemaRequest, ScanSegmentTableResponse,
+        ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
     },
     common::v1alpha1::ext::ScanParameters,
     headers::RerunHeadersInjectorExt as _,
@@ -109,7 +108,7 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let dataset_query = QueryDatasetRequest {
-            partition_ids: partition_ids
+            segment_ids: partition_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
@@ -135,7 +134,7 @@ impl DataframeQueryTableProvider {
         let response_stream = client
             .inner()
             .query_dataset(
-                tonic::Request::new(dataset_query)
+                tonic::Request::new(dataset_query.into())
                     .with_entry_id(dataset_id)
                     .map_err(|err| exec_datafusion_err!("{err}"))?,
             )
@@ -161,7 +160,7 @@ impl DataframeQueryTableProvider {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID,
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
         ));
 
         Ok(Self {
