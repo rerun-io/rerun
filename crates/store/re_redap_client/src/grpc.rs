@@ -44,7 +44,8 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ApiErr
                         .assume_http2(true),
                 )
             })
-            .map_err(|err| ApiError::connection(err, "connecting to server"))?;
+            .map_err(|err| ApiError::connection(err, "connecting to server"))?
+            .http2_adaptive_window(true); // Optimize for throughput
 
         if false {
             // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
@@ -76,6 +77,8 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ApiErr
             let Ok(endpoint) = Endpoint::new(origin.coerce_http_url()) else {
                 return Err(original_error);
             };
+
+            let endpoint = endpoint.http2_adaptive_window(true); // Optimize for throughput
 
             if endpoint.connect().await.is_ok() {
                 Err(ApiError {

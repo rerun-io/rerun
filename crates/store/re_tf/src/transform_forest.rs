@@ -823,7 +823,7 @@ mod tests {
 
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
-    use re_log_types::{StoreInfo, TimeCell, TimePoint, TimelineName};
+    use re_log_types::{StoreInfo, TimeCell, TimePoint, Timeline, TimelineName};
     use re_types::components::TransformFrameId;
     use re_types::{RowId, archetypes, components};
 
@@ -1041,74 +1041,96 @@ mod tests {
     /// ```
     ///
     /// TODO(RR-2627): Add instances poses into the mix.
-    /// TODO(RR-2799): Variant where everything is just logged on a single entity
-    fn simple_frame_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
+    fn simple_frame_hierarchy_test_scene(
+        multiple_entities: bool,
+    ) -> Result<EntityDb, Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
         entity_db.add_chunk(&Arc::new(
-            Chunk::builder(EntityPath::from("transforms0"))
-                .with_archetype_auto_row(
-                    TimePoint::STATIC,
-                    &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0])
-                        .with_child_frame("top")
-                        .with_parent_frame("root"),
-                )
-                .build()?,
+            Chunk::builder(EntityPath::from(if multiple_entities {
+                "transforms0"
+            } else {
+                "tf"
+            }))
+            .with_archetype_auto_row(
+                [(Timeline::log_tick(), 0)],
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0])
+                    .with_child_frame("top")
+                    .with_parent_frame("root"),
+            )
+            .build()?,
         ))?;
 
         entity_db.add_chunk(&Arc::new(
-            Chunk::builder(EntityPath::from("transforms1"))
-                .with_archetype_auto_row(
-                    TimePoint::STATIC,
-                    &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
-                        .with_child_frame("child0")
-                        .with_parent_frame("top"),
-                )
-                .build()?,
+            Chunk::builder(EntityPath::from(if multiple_entities {
+                "transforms1"
+            } else {
+                "tf"
+            }))
+            .with_archetype_auto_row(
+                [(Timeline::log_tick(), 0)],
+                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
+                    .with_child_frame("child0")
+                    .with_parent_frame("top"),
+            )
+            .build()?,
         ))?;
         entity_db.add_chunk(&Arc::new(
-            Chunk::builder(EntityPath::from("transforms2"))
-                .with_archetype_auto_row(
-                    TimePoint::STATIC,
-                    &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0])
-                        .with_child_frame("child1")
-                        .with_parent_frame("top"),
-                )
-                .build()?,
+            Chunk::builder(EntityPath::from(if multiple_entities {
+                "transforms2"
+            } else {
+                "tf"
+            }))
+            .with_archetype_auto_row(
+                [(Timeline::log_tick(), 0)],
+                &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0])
+                    .with_child_frame("child1")
+                    .with_parent_frame("top"),
+            )
+            .build()?,
         ))?;
         entity_db.add_chunk(&Arc::new(
-            Chunk::builder(EntityPath::from("transforms3"))
-                .with_archetype_auto_row(
-                    TimePoint::STATIC,
-                    &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0])
-                        .with_child_frame("pinhole")
-                        .with_parent_frame("root"),
-                )
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::STATIC,
-                    &test_pinhole()
-                        .with_child_frame("pinhole")
-                        .with_parent_frame("root"),
-                )
-                .build()?,
+            Chunk::builder(EntityPath::from(if multiple_entities {
+                "transforms3"
+            } else {
+                "tf"
+            }))
+            .with_archetype_auto_row(
+                [(Timeline::log_tick(), 0)],
+                &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0])
+                    .with_child_frame("pinhole")
+                    .with_parent_frame("root"),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(Timeline::log_tick(), 0)],
+                &test_pinhole()
+                    .with_child_frame("pinhole")
+                    .with_parent_frame("root"),
+            )
+            .build()?,
         ))?;
         entity_db.add_chunk(&Arc::new(
-            Chunk::builder(EntityPath::from("transforms4"))
-                .with_archetype_auto_row(
-                    TimePoint::STATIC,
-                    &archetypes::Transform3D::from_translation([0.0, 2.0, 0.0])
-                        .with_child_frame("child2d")
-                        .with_parent_frame("pinhole"),
-                )
-                .build()?,
+            Chunk::builder(EntityPath::from(if multiple_entities {
+                "transforms4"
+            } else {
+                "tf"
+            }))
+            .with_archetype_auto_row(
+                [(Timeline::log_tick(), 0)],
+                &archetypes::Transform3D::from_translation([0.0, 2.0, 0.0])
+                    .with_child_frame("child2d")
+                    .with_parent_frame("pinhole"),
+            )
+            .build()?,
         ))?;
 
         Ok(entity_db)
     }
 
-    #[test]
-    fn test_simple_frame_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
-        let test_scene = simple_frame_hierarchy_test_scene()?;
+    fn test_simple_frame_hierarchy(
+        multiple_entities: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let test_scene = simple_frame_hierarchy_test_scene(multiple_entities)?;
         let mut transform_cache = TransformResolutionCache::default();
         transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
@@ -1141,21 +1163,24 @@ mod tests {
         }
 
         // Check that there is no connection between the implicit & explicit frames.
+        let implicit_frame = if multiple_entities {
+            TransformFrameIdHash::from_entity_path(&"transforms2".into())
+        } else {
+            TransformFrameIdHash::from_entity_path(&"tf".into())
+        };
         assert_eq!(
             transform_forest
                 .transform_from_to(
                     TransformFrameIdHash::from_str("child0"),
-                    std::iter::once(TransformFrameIdHash::from_entity_path(
-                        &"transforms2".into()
-                    )),
+                    std::iter::once(implicit_frame),
                     &|_| 0.0
                 )
                 .collect_vec(),
             vec![(
-                TransformFrameIdHash::from_entity_path(&"transforms2".into()),
+                implicit_frame,
                 Err(TransformFromToError::NoPathBetweenFrames {
                     target: TransformFrameIdHash::from_str("child0"),
-                    src: TransformFrameIdHash::from_entity_path(&"transforms2".into()),
+                    src: implicit_frame,
                     target_root: TransformFrameIdHash::from_str("root"),
                     source_root: TransformFrameIdHash::entity_path_hierarchy_root(),
                 })
@@ -1163,6 +1188,16 @@ mod tests {
         );
 
         // Check that for our two trees everything is connected with everything
+        let implicit_frames = if multiple_entities {
+            vec![
+                TransformFrameId::from_entity_path(&"transforms0".into()),
+                TransformFrameId::from_entity_path(&"transforms1".into()),
+                TransformFrameId::from_entity_path(&"transforms2".into()),
+                TransformFrameId::from_entity_path(&EntityPath::root()),
+            ]
+        } else {
+            vec![TransformFrameId::from_entity_path(&"tf".into())]
+        };
         for tree_elements in [
             [
                 TransformFrameId::new("top"),
@@ -1173,13 +1208,7 @@ mod tests {
                 TransformFrameId::new("child2d"),
             ]
             .iter(),
-            [
-                TransformFrameId::from_entity_path(&"transforms0".into()),
-                TransformFrameId::from_entity_path(&"transforms1".into()),
-                TransformFrameId::from_entity_path(&"transforms2".into()),
-                TransformFrameId::from_entity_path(&EntityPath::root()),
-            ]
-            .iter(),
+            implicit_frames.iter(),
         ] {
             for pair in tree_elements.permutations(2) {
                 let from = pair[0];
@@ -1203,7 +1232,11 @@ mod tests {
         // Blanket check that we have all the right connections. A bit redundant to above checks, but not as stable due to encompassing snapshotting.
         // We don't test for tree rearrangement here, this has been already tested quite a bit in `test_simple_entity_hierarchy`
         insta::assert_snapshot!(
-            "simple_frame_hierarchy_root_connections",
+            if multiple_entities {
+                "simple_frame_hierarchy__multiple_entities"
+            } else {
+                "simple_frame_hierarchy__all_on_single_entity"
+            },
             pretty_print_transform_frame_ids_in(
                 &transform_forest.root_from_frame,
                 &transform_cache
@@ -1211,6 +1244,17 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_simple_frame_hierarchy_multiple_entities() -> Result<(), Box<dyn std::error::Error>> {
+        test_simple_frame_hierarchy(true)
+    }
+
+    #[test]
+    fn test_simple_frame_hierarchy_all_on_single_entity() -> Result<(), Box<dyn std::error::Error>>
+    {
+        test_simple_frame_hierarchy(false)
     }
 
     #[test]
@@ -1243,7 +1287,7 @@ mod tests {
         // Handle creation from empty cache but full store gracefully.
         {
             let transform_cache = TransformResolutionCache::default();
-            let test_scene = simple_frame_hierarchy_test_scene()?;
+            let test_scene = simple_frame_hierarchy_test_scene(true)?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
 
             // The forest doesn't know about any of the frames despite having seen the populated store.
@@ -1267,7 +1311,7 @@ mod tests {
         // Handle creation from partially filled cache gracefully.
         {
             let mut transform_cache = TransformResolutionCache::default();
-            let mut test_scene = simple_frame_hierarchy_test_scene()?;
+            let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
             transform_cache.add_chunks(test_scene.storage_engine().store().iter_chunks());
 
             // Add a connection the cache doesn't know about.
@@ -1306,7 +1350,7 @@ mod tests {
         // (this also makes sure that we get the right transform back for the known frames even when a latest-at query would yield something the cache doesn't know about)
         {
             let mut transform_cache = TransformResolutionCache::default();
-            let mut test_scene = simple_frame_hierarchy_test_scene()?;
+            let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
 
             test_scene.add_chunk(&Arc::new(
                 Chunk::builder(EntityPath::from("transforms"))
