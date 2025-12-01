@@ -374,7 +374,6 @@ impl Dataset {
             .map(|layer| layer.store_handle())
     }
 
-    /// Adds a layer
     pub async fn add_layer(
         &mut self,
         partition_id: PartitionId,
