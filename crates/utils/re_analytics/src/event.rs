@@ -435,6 +435,30 @@ impl Properties for SettingsOpened {
 
 // -----------------------------------------------
 
+/// Links the current anonymous analytics ID to an authenticated user ID.
+///
+/// This is sent when a user logs in, allowing us to connect their
+/// pre-login anonymous activity with their authenticated identity.
+pub struct SetPersonProperty {
+    /// The authenticated user ID to link to the current analytics ID.
+    pub email: String,
+}
+
+impl Event for SetPersonProperty {
+    const NAME: &'static str = "$set";
+
+    const KIND: EventKind = EventKind::SetPersonProperty;
+}
+
+impl Properties for SetPersonProperty {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self { email } = self;
+        event.insert("email", email);
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;

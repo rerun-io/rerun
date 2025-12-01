@@ -61,6 +61,11 @@ pub enum EventKind {
     ///
     /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
     Update,
+
+    /// Set a property on the current analytics ID.
+    ///
+    /// Used e.g. to set the authenticated user's email address on the analytics ID.
+    SetPersonProperty,
 }
 
 // ----------------------------------------------------------------------------

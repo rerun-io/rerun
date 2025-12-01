@@ -195,6 +195,14 @@ impl InMemoryCredentials {
     /// Ensure credentials are persisted to disk before using them.
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
         storage::store(&self.0)?;
+
+        // Send an alias event to link the analytics ID to the authenticated user
+        if let Some(analytics) = re_analytics::Analytics::global_get() {
+            analytics.record(re_analytics::event::SetPersonProperty {
+                email: self.0.user.email.clone(),
+            });
+        }
+
         Ok(self.0)
     }
 }
