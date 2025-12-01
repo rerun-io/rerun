@@ -1,6 +1,6 @@
 use eframe::epaint::Margin;
-use egui::{Button, Frame, Id, RichText, TextStyle, Theme, Ui};
-use emath::{NumExt, Rect};
+use egui::{Frame, RichText, TextStyle, Theme, Ui};
+use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::{UiExt, design_tokens_of};
 use re_uri::Origin;
 
@@ -40,13 +40,6 @@ impl IntroItem {
         ]
     }
 
-    fn weight(&self) -> u32 {
-        match self {
-            IntroItem::DocItem { .. } => 1,
-            IntroItem::CloudLoginItem => 2,
-        }
-    }
-
     fn frame(&self, ui: &Ui) -> Frame {
         let opposite_theme = match ui.theme() {
             Theme::Dark => Theme::Light,
@@ -62,6 +55,15 @@ impl IntroItem {
             IntroItem::DocItem { .. } => frame,
             IntroItem::CloudLoginItem => frame.fill(opposite_tokens.panel_bg_color),
         }
+    }
+
+    fn card_item(&self, ui: &Ui) -> CardLayoutItem {
+        let frame = self.frame(ui);
+        let min_width = match &self {
+            IntroItem::DocItem { .. } => 200.0,
+            IntroItem::CloudLoginItem => 400.0,
+        };
+        CardLayoutItem { frame, min_width }
     }
 
     fn show(&self, ui: &mut Ui) {
@@ -114,60 +116,11 @@ struct IntroSectionLayoutStats {
 
 pub fn intro_section(ui: &mut egui::Ui) {
     let mut items = IntroItem::items();
-    items.reverse();
-
-    let available_width = ui.available_width();
-    let target_column_width = 240.0;
-    let max_columns = (available_width / target_column_width).ceil() as u32;
 
     ui.add_space(8.0);
 
-    let mut row = 0;
-
-    while !items.is_empty() {
-        let mut row_columns = 0;
-        let mut row_items = vec![];
-        while let Some(item) =
-            items.pop_if(|item| row_columns + item.weight() <= max_columns || row_items.is_empty())
-        {
-            row_columns += item.weight();
-            row_items.push(item);
-        }
-
-        let gap_space = ui.spacing().item_spacing.x * (row_items.len() - 1) as f32;
-        let gap_space_item = gap_space / row_items.len() as f32;
-        let column_width = available_width / row_columns as f32;
-
-        let row_stats_id = Id::new(row);
-        let row_stats = ui.data_mut(|data| {
-            data.get_temp_mut_or_default::<IntroSectionLayoutStats>(row_stats_id)
-                .clone()
-        });
-        let mut new_row_stats = IntroSectionLayoutStats::default();
-
-        ui.horizontal(|ui| {
-            for item in row_items {
-                let frame = item.frame(ui);
-                let frame_margin_x = frame.inner_margin.sum().x;
-                frame.show(ui, |ui| {
-                    ui.set_width(
-                        ((column_width * item.weight() as f32) - frame_margin_x - gap_space_item)
-                            .at_most(ui.available_width()),
-                    );
-                    item.show(ui);
-
-                    let height = ui.min_size().y;
-                    new_row_stats.max_inner_height =
-                        f32::max(new_row_stats.max_inner_height, height);
-
-                    ui.set_height(row_stats.max_inner_height);
-                });
-            }
-        });
-
-        row += 1;
-        ui.data_mut(|data| {
-            data.insert_temp(row_stats_id, new_row_stats);
-        });
-    }
+    CardLayout::new(items.iter().map(|item| item.card_item(ui)).collect()).show(ui, |ui, index| {
+        let item = &items[index];
+        item.show(ui);
+    });
 }

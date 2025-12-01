@@ -29,24 +29,5 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         );
 
         intro_section(ui);
-
-        ui.add_space(18.0);
-
-        let bullet_text = |ui: &mut egui::Ui, text: &str| {
-            ui.horizontal(|ui| {
-                ui.add_space(1.0);
-                ui.bullet(ui.visuals().strong_text_color());
-                ui.add_space(5.0);
-                ui.add(
-                    egui::Label::new(
-                        egui::RichText::new(text)
-                            .color(ui.visuals().widgets.active.text_color())
-                            .text_style(DesignTokens::welcome_screen_body()),
-                    )
-                    .wrap(),
-                );
-            });
-            ui.add_space(4.0);
-        };
     });
 }
