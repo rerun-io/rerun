@@ -24,10 +24,10 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple("my_segment_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_segment_id2", &["my/entity"]),
             LayerDefinition::simple(
-                "my_partition_id3",
+                "my_segment_id3",
                 &["my/entity", "another/one", "yet/another/one"],
             ),
         ],
@@ -47,7 +47,7 @@ pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
 pub async fn register_and_scan_blueprint_dataset(service: impl RerunCloudService) {
     let blueprint_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         2,
-        [LayerDefinition::simple_blueprint("blueprint_partition_id")],
+        [LayerDefinition::simple_blueprint("blueprint_segment_id")],
     );
 
     let dataset_name = "my_dataset1";
@@ -103,26 +103,26 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple("my_segment_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_segment_id2", &["my/entity"]),
             LayerDefinition::simple(
-                "my_partition_id3",
+                "my_segment_id3",
                 &["my/entity", "another/one", "yet/another/one"],
             ),
             LayerDefinition::properties(
-                "my_partition_id1",
+                "my_segment_id1",
                 [prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm partition 1"),
+                    re_types::archetypes::TextLog::new("i'm segment 1"),
                 )],
             )
             .layer_name("props"),
             LayerDefinition::properties(
-                "my_partition_id2",
+                "my_segment_id2",
                 [
                     prop(
                         "text_log",
-                        re_types::archetypes::TextLog::new("i'm partition 2"),
+                        re_types::archetypes::TextLog::new("i'm segment 2"),
                     ),
                     prop("points", re_types::archetypes::Points2D::new([(0.0, 1.0)])),
                 ],
@@ -141,7 +141,7 @@ pub async fn register_and_scan_simple_dataset_with_properties(service: impl Reru
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "simple_with_properties").await;
 }
 
-/// This test checks that the registration order takes precedence to resolve a partition's
+/// This test checks that the registration order takes precedence to resolve a segment's
 /// properties.
 ///
 /// Note: this is not great. We should probably use the "regular" Rerun way for that (aka row id
@@ -153,7 +153,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
     let first_logged_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         10, // <- mind this
         [LayerDefinition::properties(
-            "my_partition_id1",
+            "my_segment_id1",
             [prop(
                 "text_log",
                 re_types::archetypes::TextLog::new(
@@ -168,7 +168,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
     let last_logged_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         20, // <- mind this
         [LayerDefinition::properties(
-            "my_partition_id1",
+            "my_segment_id1",
             [prop(
                 "text_log",
                 re_types::archetypes::TextLog::new("I was logged last, registered first"),
@@ -222,14 +222,14 @@ pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunClo
         1,
         [
             LayerDefinition::simple(
-                "partition1",
+                "segment1",
                 &["my/entity", "another/one", "yet/another/one"],
             ),
-            LayerDefinition::simple("partition1", &["extra/entity"]).layer_name("extra"),
-            LayerDefinition::simple("partition2", &["another/one", "yet/another/one"])
+            LayerDefinition::simple("segment1", &["extra/entity"]).layer_name("extra"),
+            LayerDefinition::simple("segment2", &["another/one", "yet/another/one"])
                 .layer_name("base"),
-            LayerDefinition::simple("partition2", &["extra/entity"]).layer_name("extra"),
-            LayerDefinition::simple("partition3", &["i/am/alone"]),
+            LayerDefinition::simple("segment2", &["extra/entity"]).layer_name("extra"),
+            LayerDefinition::simple("segment3", &["i/am/alone"]),
         ],
     );
 
@@ -251,7 +251,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     let tuid_prefix1 = 1;
     create_simple_recording_in(
         tuid_prefix1,
-        "my_partition_id1",
+        "my_segment_id1",
         &["my/entity", "my/other/entity"],
         root_dir.path(),
     )
@@ -260,7 +260,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     let tuid_prefix2 = 2;
     create_simple_recording_in(
         tuid_prefix2,
-        "my_partition_id2",
+        "my_segment_id2",
         &["my/entity"],
         root_dir.path(),
     )
@@ -269,7 +269,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     let tuid_prefix3 = 3;
     create_simple_recording_in(
         tuid_prefix3,
-        "my_partition_id3",
+        "my_segment_id3",
         &["my/entity", "another/one", "yet/another/one"],
         root_dir.path(),
     )
@@ -299,7 +299,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     )
     .await;
 
-    scan_segment_table_and_snapshot(&fe, dataset_name, "register_prefix_partitions").await;
+    scan_segment_table_and_snapshot(&fe, dataset_name, "register_prefix_segments").await;
     scan_dataset_manifest_and_snapshot(&fe, dataset_name, "register_prefix_manifest").await;
 }
 
@@ -313,7 +313,7 @@ pub async fn register_and_scan_empty_dataset(service: impl RerunCloudService) {
     scan_dataset_manifest_and_snapshot(&service, dataset_name, "empty").await;
 }
 
-pub async fn register_partition_bumps_timestamp(service: impl RerunCloudService) {
+pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
     async fn get_dataset_updated_at_nanos(
         service: &impl RerunCloudService,
         dataset_name: &str,
@@ -352,12 +352,12 @@ pub async fn register_partition_bumps_timestamp(service: impl RerunCloudService)
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     //
-    // Register a partition - this should update the timestamp
+    // Register a segment - this should update the timestamp
     //
 
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
-        [LayerDefinition::simple("partition1", &["my/entity"])],
+        [LayerDefinition::simple("segment1", &["my/entity"])],
     );
 
     service
@@ -369,19 +369,19 @@ pub async fn register_partition_bumps_timestamp(service: impl RerunCloudService)
 
     assert!(
         after_register_updated_at_nanos > initial_updated_at_nanos,
-        "Timestamp should be updated after registering partition. Initial: {initial_updated_at_nanos}, After register: {after_register_updated_at_nanos}"
+        "Timestamp should be updated after registering segment. Initial: {initial_updated_at_nanos}, After register: {after_register_updated_at_nanos}"
     );
 
     // Small delay to ensure timestamp difference
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     //
-    // Register another layer to the same partition - this should also update the timestamp
+    // Register another layer to the same segment - this should also update the timestamp
     //
 
     let layer_data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         2,
-        [LayerDefinition::simple("partition1", &["another/entity"]).layer_name("layer2")],
+        [LayerDefinition::simple("segment1", &["another/entity"]).layer_name("layer2")],
     );
 
     service
@@ -476,11 +476,11 @@ async fn scan_segment_table_and_snapshot(
         .sort_property_columns();
 
     insta::assert_snapshot!(
-        format!("{snapshot_name}_partitions_schema"),
+        format!("{snapshot_name}_segments_schema"),
         batch.format_schema_snapshot()
     );
     insta::assert_snapshot!(
-        format!("{snapshot_name}_partitions_data"),
+        format!("{snapshot_name}_segments_data"),
         filtered_batch.format_snapshot(false)
     );
 
