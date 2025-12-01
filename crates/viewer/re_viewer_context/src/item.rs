@@ -1,7 +1,7 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 
-use crate::{ContainerId, Contents, ViewId};
+use crate::{BlueprintId, ContainerId, Contents, ViewId, blueprint_id::ViewIdRegistry};
 
 /// One "thing" in the UI.
 ///
@@ -45,6 +45,21 @@ pub enum Item {
 }
 
 impl Item {
+    pub fn view_id(&self) -> Option<BlueprintId<ViewIdRegistry>> {
+        match self {
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::TableId(_)
+            | Item::InstancePath(_)
+            | Item::ComponentPath(_)
+            | Item::Container(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => None,
+            Item::View(view_id) | Item::DataResult(view_id, _) => Some(*view_id),
+        }
+    }
+
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
             Self::AppId(_)

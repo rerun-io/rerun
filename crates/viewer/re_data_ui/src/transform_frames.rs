@@ -79,6 +79,11 @@ impl TransformFramesUi {
         let (priority, component, use_entity_path) =
             find_frame_component(transform_frame_descr.component)?;
 
+        let selected_view_id = ctx
+            .selection()
+            .single_item()
+            .and_then(|item| item.view_id());
+
         if entity_components
             .iter()
             .filter(|(desc, _)| desc.component != component)
@@ -220,7 +225,17 @@ fn transform_ui(
             if let Some(source_entity) = &transform.source_entity
                 && response.on_hover_text(source_entity.to_string()).clicked()
             {
-                let item = Item::from(source_entity.clone());
+                let selected_view_id = ctx
+                    .selection()
+                    .single_item()
+                    .and_then(|item| item.view_id());
+
+                let item = if let Some(selected_view) = selected_view_id {
+                    Item::DataResult(selected_view, source_entity.clone().into())
+                } else {
+                    Item::from(source_entity.clone())
+                };
+
                 ctx.command_sender()
                     .send_system(SystemCommand::set_selection(item));
             }
