@@ -83,3 +83,56 @@ where
             .cloned()
     }
 }
+
+/// Casts a `ListArray` to a `FixedSizeListArray` with the specified value length.
+///
+/// The source `ListArray` must have lists of exactly that length (or null).
+#[derive(Clone)]
+pub struct ListToFixedSizeList {
+    value_length: i32,
+}
+
+impl ListToFixedSizeList {
+    /// Create a new `ListToFixedSizeList` transformation with an expected value length.
+    pub fn new(value_length: i32) -> Self {
+        Self { value_length }
+    }
+}
+
+impl Transform for ListToFixedSizeList {
+    type Source = arrow::array::ListArray;
+    type Target = arrow::array::FixedSizeListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+        // Check that each list has exactly the expected length (or is null).
+        let offsets = source.value_offsets();
+        let expected_length = self.value_length as usize;
+        for i in 0..source.len() {
+            if source.is_valid(i) {
+                let start = offsets[i] as usize;
+                let end = offsets[i + 1] as usize;
+                let length = end - start;
+                if length != expected_length {
+                    return Err(Error::UnexpectedListValueLength {
+                        expected: expected_length,
+                        actual: length,
+                    });
+                }
+            }
+        }
+
+        // We know that `source` is a `ListArray` by it's type. But Arrow won't expose its field directly.
+        let field = match source.data_type() {
+            arrow::datatypes::DataType::List(f) => f.clone(),
+            _ => unreachable!(),
+        };
+
+        // Build the FixedSizeListArray.
+        Ok(arrow::array::FixedSizeListArray::try_new(
+            field,
+            self.value_length,
+            source.values().clone(),
+            source.nulls().cloned(),
+        )?)
+    }
+}
