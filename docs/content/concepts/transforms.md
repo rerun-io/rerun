@@ -3,12 +3,17 @@ title: Transforms & Transform Frames
 order: 300
 ---
 
+Rerun comes with built-in support for modelling spatial relationships between entities through.
+This page details how the [different archetypes](https://rerun.io/docs/reference/types/archetypes#transforms) involved interact with each other and explains how geometric transforms are set up in Rerun.
+
 ## Transform hierarchies with entity paths
 
-Rerun uses transforms to define spatial relationships between entities. The [`Transform3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Transform3D) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
+The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
-The simplest way to use transforms is through entity path hierarchies, where each transform describes the relationship between an entity and its parent path:
+The simplest way to use transforms is through entity path hierarchies, where each transform describes the relationship between an entity and its parent path.
+Note that by default, all entities are connected via an identity transforms (to opt out of that, you have to use explicit transform frames, more on that later).
 
+TODO: make tested cross language snippet
 ```python
 import rerun as rr
 
@@ -26,21 +31,27 @@ rr.log("sun/planet/moon", rr.Transform3D(translation=[3.0, 0.0, 0.0]))  # Moon 3
 
 In this hierarchy:
 - The `sun` entity exists at the origin of its own coordinate system
-- The `sun/planet` transform places the planet 6 units away from the sun
-- The `sun/planet/moon` transform places the moon 3 units away from the planet
+- The `sun/planet` transform places the planet 6 units along x away from the sun
+- The `sun/planet/moon` transform places the moon 3 units along x away from the planet
 
-This creates a transform hierarchy where transforms propagate down the entity tree. The moon's final position in the sun's coordinate system is 9 units away (6 + 3), because the transforms are applied sequentially.
+This creates a transform hierarchy where transforms propagate down the entity tree. The moon's final position in the sun's coordinate system is 9 units away (6 + 3),
+because the transforms are applied sequentially.
 
 ## Explicit transform frames
 
-⚠️ **Experimental feature**: Transform frames are still in early development and the API may change.
+While entity path hierarchies work well for many cases, sometimes you need more flexibility in organizing your transforms.
+In particular for anyone familiar with ROS we recommend using explicit transform frames as it allows you to model
+your data much closer to how it would be defined when using ROS' [tf2](https://wiki.ros.org/tf2) library.
 
-While entity path hierarchies work well for many cases, sometimes you need more flexibility in organizing your transforms. Explicit transform frames allow you to decouple the spatial relationships from the entity hierarchy by using named coordinate frames.
+In a nutshell, by explicitely specifying transform frames, you can decouple the spatial relationships from the entity hierarchy.
 
-### Using named frames
+Instead of relying on the path relationships of entities, each entity is first associated with a named transform frame using
+the [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) archetype.
 
-With explicit frames, you specify `child_frame` and `parent_frame` parameters to define which coordinate systems a transform connects:
+The relationship between transform frames is then determined by logging [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
+with `child_frame` and `parent_frame` parameters to define the geometric relationship between two transform frames.
 
+TODO: make tested cross language snippet
 ```python
 import rerun as rr
 import numpy as np
@@ -72,154 +83,108 @@ rr.log("moon_transform", rr.Transform3D(
 ))
 ```
 
-Key differences with explicit frames:
-- **Decoupled organization**: Entities can be logged at any path (`/sun`, `/planet`, `/moon`)
-- **Named relationships**: Transforms specify explicit frame names rather than using entity hierarchy
-- **Frame assignment**: [`rr.CoordinateFrame`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.CoordinateFrame) tells entities which frame they belong to
-- **Flexible hierarchy**: The spatial hierarchy is independent of the entity path structure
+Note that unlike in ROS, you can log your transform relationship on _any_ entity.
+However, currently once an entity specified the relation between two frames, this relation may no longer be logged on any other entity.
 
-### Transform types
+Named transform frames have a few of advantages over entity path based hierarchies:
+* topology may change over time
+* which entity is associated with which frame may change over time (it can also be [overriden via blueprint](..concepts/visualizers-and-overrides.md))
+* several entities may be associated with the same frame without
+* frees up entity paths for semantic rather than geometric organization
 
-Rerun supports several types of transforms:
+## Entity hierarchy based transforms under the hood - entity derived transform frames
 
-- **Affine 3D transforms** ([`rr.Transform3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Transform3D)): Define translation, rotation, and scale relationships between coordinate systems
-- **Pinhole camera projections** ([`rr.Pinhole`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole)): Define 3D → 2D camera projections with explicit frame support
+Under the hood, Rerun's entity path hierarchies actually use the same transform frame system as named frames.
+For each entity path, an associated transform frame with the prefix `tf#` automatically is automatically created:
+for example, an entity `/world/robot` gets frame `tf#/world/robot`.
 
-## Entity-path derived frames: Bridging both approaches
+Path based hierarchies are then established by defaults the Viewer uses (also referred to as fallbacks):
+Given an entity `/word/robot`:
+* if no `CoordinateFrame::frame` is specified, it automatically defaults to `tf#/word/robot`
+* if no `Transform3D::child_frame` is specified, it automatically defaults to `tf#/word/robot`
+* if no `Transform3D::parent_frame` is specified, it automatically defaults to the parent's implicit frame, `tf#/word`
 
-Under the hood, Rerun's entity path hierarchies actually use the same transform frame system as explicit frames. When you don't specify `child_frame` and `parent_frame`, Rerun automatically creates implicit frames derived from entity paths.
+The only special properties these implicit frames have over their named counter parts is that they
+have implicit identity relationships.
 
-### How implicit frames work
+### Example
 
-Each entity path automatically gets an associated transform frame with the prefix `tf#`:
-- Entity `/world/robot` gets frame `tf#/world/robot`
-- Entity `/world/robot/arm` gets frame `tf#/world/robot/arm`
-- These implicit frames are connected by identity transforms following the path hierarchy
-
-### Side-by-side comparison
-
-Here are equivalent setups using both approaches:
-
-**Traditional entity-path approach:**
+Given these entities:
+TODO: xlanguage please
 ```python
-# Entities follow the path hierarchy
-rr.log("world/robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log("world/robot/arm", rr.Transform3D(translation=[0, 1, 0]))
-rr.log("world/robot/arm/gripper", rr.Points3D([0, 0, 0]))
+rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
+rr.log("robot/arm", rr.Transform3D(translation=[0, 1, 0]))
+rr.log("robot/arm/gripper", rr.Points3D([0, 0, 0]))
 ```
 
-**Equivalent explicit frame approach:**
-```python
-# Entities can be organized independently of spatial relationships
-rr.log("robot", rr.CoordinateFrame("robot_frame"))
-rr.log("arm", rr.CoordinateFrame("arm_frame"))  
-rr.log("gripper_points", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("gripper_frame"))
+Rerun will interpret this _as-if_ it was logged with the named transform frames like so:
 
-# Spatial relationships defined separately
-rr.log("robot_transform", rr.Transform3D(
-    translation=[1, 0, 0],
-    child_frame="robot_frame", 
-    parent_frame="tf#/world"  # Connect to implicit world frame
-))
-rr.log("arm_transform", rr.Transform3D(
-    translation=[0, 1, 0],
-    child_frame="arm_frame",
-    parent_frame="robot_frame"
-))
-rr.log("gripper_transform", rr.Transform3D(
-    child_frame="gripper_frame",
-    parent_frame="arm_frame"
-))
+TODO: xlanguage please
+```python
+rr.log("robot",
+    rr.CoordinateFrame("tf#/robot"),
+    rr.Transform3D(
+        translation=[1, 0, 0],
+        child_frame="tf#/robot", 
+        parent_frame="tf#/"
+    )
+)
+rr.log("robot/arm",
+    rr.CoordinateFrame("tf#/robot/arm"),
+    rr.Transform3D(
+        translation=[0, 1, 0],
+        child_frame="tf#/robot/arm", 
+        parent_frame="tf#/robot"
+    )
+)
+rr.log("robot/arm/gripper", 
+    rr.CoordinateFrame("tf#/robot/arm/gripper"),
+    rr.Points3D([0, 0, 0])
+)
 ```
 
-Both approaches create the same spatial relationships but offer different trade-offs:
-- **Entity paths**: Simple and intuitive, couples entity organization with spatial hierarchy
-- **Explicit frames**: More flexible, allows complex spatial relationships independent of entity structure
+### Mixing explicit and implicit transform frames
 
-### Camera example with both approaches
+We generally do not recommend mixing explicit and implicit transform frames, but doing so works seemlessly
+and can be useful in some situations:
 
-A practical example with cameras and 3D content:
-
+TODO: xlanguage please.
 ```python
-# Log 3D world content
-rr.log("world/points", rr.Points3D(world_points))
-
-# Traditional approach - cameras in entity hierarchy
-rr.log("world/camera/0", rr.Transform3D(translation=cam0_pose.pos, mat3x3=cam0_pose.rot))
-rr.log("world/camera/0/image", rr.Pinhole(image_from_camera=cam0_intrinsics))
-rr.log("world/camera/0/image", rr.Image(cam0_image))
-rr.log("world/camera/0/image/detections", rr.Boxes2D(cam0_detections))
-
-# Explicit frame approach - same spatial result, different organization
-rr.log("cam0", rr.CoordinateFrame("cam0_frame"))
-rr.log("cam0_image_view", rr.CoordinateFrame("cam0_image_frame"))
-rr.log("cam0_transform", rr.Transform3D(
-    translation=cam0_pose.pos, mat3x3=cam0_pose.rot,
-    child_frame="cam0_frame", parent_frame="tf#/world"
-))
-rr.log("cam0_projection", rr.Pinhole(
-    image_from_camera=cam0_intrinsics,
-    child_frame="cam0_image_frame", parent_frame="cam0_frame"
-))
-rr.log("cam0_image_view", rr.Image(cam0_image))
-rr.log("detection_boxes", rr.Boxes2D(cam0_detections), rr.CoordinateFrame("cam0_image_frame"))
+rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
+rr.log("arm",
+    rr.Transform3D(translation=[0, 1, 0], parent_frame="tf#/robot", child_frame="arm_frame"),
+    rr.CoordinateFrame("arm_frame")
+)
+rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```
 
-Rerun automatically handles the transform chain resolution, so both approaches result in the same spatial relationships and viewer behavior.
+## Pinhole projections
+
+TODO: Write a chapter on how pinhole projections are also spatial relationships in Rerun
+
 
 ## View coordinates
 
-You can use [`rr.ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.ViewCoordinates) to define the semantic meaning of coordinate axes, helping Rerun orient 3D views naturally and making camera interactions more intuitive.
+You can use the [`ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) archetype to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
 
-### 3D view coordinates
+For 3D spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. In Python this can be done with `rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)`.
+Note that in this example the archetype is logged at the root path, this will make it apply to all 3D views. Generally, a 3D view picks up view coordinates at or above its origin entity path.
 
-For 3D spaces, view coordinates specify the up-axis and handedness:
+[Pinholes](https://rerun.io/docs/reference/types/archetypes/view_coordinates) have a view coordinates field integrated as a shortcut.
+The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 
-```python
-# Entity-path approach - applies to all 3D views
-rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+WARNING: unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
 
-# Explicit frame approach - can be applied per frame
-rr.log("world_coords", rr.ViewCoordinates.RIGHT_HAND_Z_UP, rr.CoordinateFrame("world_frame"))
-rr.log("robot_coords", rr.ViewCoordinates.RIGHT_HAND_Y_UP, rr.CoordinateFrame("robot_frame"))
-```
+For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
-Common coordinate systems:
-- `RIGHT_HAND_Z_UP`: X=Right, Y=Forward, Z=Up (common in robotics)
-- `RIGHT_HAND_Y_UP`: X=Right, Y=Up, Z=Back (common in graphics)
-- `LEFT_HAND_Y_UP`: X=Right, Y=Up, Z=Forward (common in game engines)
+## Poses & instancing
 
-### Camera coordinate systems
+TODO: briefly explain poses, how they're relative to their entity's frame, how they can be used for instancing. Use a viewer embedd of the instancing example.
 
-For cameras, you can specify view coordinates using the `camera_xyz` parameter in [`rr.Pinhole`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole):
+## Visualizing transforms
 
-```python
-# Traditional approach
-rr.log("world/camera", rr.Pinhole(
-    image_from_camera=intrinsics,
-    camera_xyz=rr.ViewCoordinates.RDF  # X=Right, Y=Down, Z=Forward (default)
-))
+TODO: write about how transforms can be visualized
 
-# Explicit frame approach  
-rr.log("camera_projection", rr.Pinhole(
-    image_from_camera=intrinsics,
-    camera_xyz=rr.ViewCoordinates.RDF,
-    child_frame="camera_image_frame",
-    parent_frame="camera_frame"
-))
-```
+## 2D Transforms
 
-**Important**: Unlike 3D view coordinates which only affect visualization, camera view coordinates actually influence the projection math. Different camera orientations will project world content differently based on this setting.
-
-For 2D spaces and other entities, view coordinates currently have no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
-
-## Summary
-
-Rerun's transform system offers flexibility in how you organize spatial relationships:
-
-- **Start simple** with entity-path hierarchies for straightforward cases
-- **Use explicit frames** when you need to decouple entity organization from spatial relationships  
-- **Mix both approaches** as needed - they work seamlessly together through the underlying frame system
-- **Leverage view coordinates** to ensure natural 3D navigation and correct camera projections
-
-The choice between approaches depends on your use case: entity paths for simplicity, explicit frames for flexibility, or a combination for complex scenarios.
+TODO: lack of 2d transforms
