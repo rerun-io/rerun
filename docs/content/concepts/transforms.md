@@ -43,7 +43,7 @@ While entity path hierarchies work well for many cases, sometimes you need more 
 In particular for anyone familiar with ROS we recommend using explicit transform frames as it allows you to model
 your data much closer to how it would be defined when using ROS' [tf2](https://wiki.ros.org/tf2) library.
 
-In a nutshell, by explicitely specifying transform frames, you can decouple the spatial relationships from the entity hierarchy.
+In a nutshell, by explicitly specifying transform frames, you can decouple the spatial relationships from the entity hierarchy.
 
 Instead of relying on the path relationships of entities, each entity is first associated with a named transform frame using
 the [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) archetype.
@@ -88,7 +88,7 @@ However, currently once an entity specified the relation between two frames, thi
 
 Named transform frames have a few of advantages over entity path based hierarchies:
 * topology may change over time
-* which entity is associated with which frame may change over time (it can also be [overriden via blueprint](..concepts/visualizers-and-overrides.md))
+* which entity is associated with which frame may change over time (it can also be [overridden via blueprint](..concepts/visualizers-and-overrides.md))
 * several entities may be associated with the same frame without
 * frees up entity paths for semantic rather than geometric organization
 
@@ -145,9 +145,10 @@ rr.log("robot/arm/gripper",
 
 ### Mixing explicit and implicit transform frames
 
-We generally do not recommend mixing explicit and implicit transform frames, but doing so works seemlessly
-and can be useful in some situations:
+We generally do not recommend mixing explicit and implicit transform frames since it can get confusing,
+but doing so works seamlessly and can be useful in some situations.
 
+Example:
 TODO: xlanguage please.
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
@@ -160,7 +161,35 @@ rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 
 ## Pinhole projections
 
-TODO: Write a chapter on how pinhole projections are also spatial relationships in Rerun
+In Rerun, pinhole cameras are also treated as spatial relationships that define projections from 3D spaces to 2D subspaces.
+This unified approach allows the same transform system to handle both traditional 3D-to-3D transforms and 3D-to-2D projections seamlessly.
+
+The [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) archetype defines this projection relationship through its intrinsic matrix (`image_from_camera`) and resolution.
+Both implicit & named coordinate frames are supported, exactly as on [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
+
+With the right setup, pinholes allow a bunch of powerful visualizations:
+* the pinhole glyph itself in 3D views
+* 2D in 3D: all 2D content that is part of the pinhole's transform subtree
+* 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
+    * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
+
+### Example: 3D scene with 2D projections
+
+Here's how to set up a 3D scene with pinhole cameras that create 2D projections:
+
+In this example, the 3D objects (box and points) are automatically projected into the 2D camera view,
+demonstrating how Rerun's transform system handles the spatial relationship between 3D world coordinates
+and 2D image coordinates through pinhole projections.
+
+snippet: archetypes/pinhole_projections
+
+<picture data-inline-viewer="snippets/archetypes/pinhole_projections">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1200w.png">
+  <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png">
+</picture>
 
 
 ## View coordinates
@@ -179,7 +208,7 @@ For 2D spaces and other entities, view coordinates currently have currently no e
 
 ## Poses & instancing
 
-TODO: briefly explain poses, how they're relative to their entity's frame, how they can be used for instancing. Use a viewer embedd of the instancing example.
+TODO: briefly explain poses, how they're relative to their entity's frame, how they can be used for instancing. Use a viewer embed of the instancing example.
 
 ## Visualizing transforms
 
