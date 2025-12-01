@@ -2,17 +2,6 @@
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
-"archetypes/coordinate_frame_builtin_frames" = [
-  "py",
-  "cpp",
-  "rust",
-] # TODO(RR-2777): Mark as stable when we're ready for it.
-"archetypes/transform3d_hierarchy_frames" = [
-  "py",
-  "cpp",
-  "rust",
-] # TODO(RR-2777): Mark as stable when we're ready for it.
-
 # Migration snippets rarely make sense as part of the snippet index.
 "migration/log_line" = ["cpp", "rust", "py"]
 "migration/transactional_transforms" = ["cpp", "rust", "py"]
