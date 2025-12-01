@@ -1,8 +1,9 @@
-use arrow::array::{Float32Array, Float64Array, ListArray};
+use arrow::array::{Float32Array, Float64Array, ListArray, UInt32Array};
 
 use re_log_types::TimeType;
 use rerun::{
-    CoordinateFrame, EncodedImage, InstancePoses3D, Transform3D, TransformAxes3D, VideoStream,
+    CoordinateFrame, EncodedImage, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
+    VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
     lenses::{Lens, LensesSink, Op, OpError},
@@ -12,10 +13,10 @@ use rerun::{
 // `re_arrow_combinators` provides the building blocks from which we compose the conversions.
 use re_arrow_combinators::{
     Transform as _,
-    cast::PrimitiveCast,
+    cast::{ListToFixedSizeList, PrimitiveCast},
     map::MapFixedSizeList,
     map::MapList,
-    reshape::StructToFixedList,
+    reshape::{RowMajorToColumnMajor, StructToFixedList},
     semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
 };
 
@@ -90,6 +91,27 @@ pub fn list_string_to_list_codec_uint32(list_array: &ListArray) -> Result<ListAr
 /// Converts a list of structs with i64 `seconds` and i32 `nanos` fields to a list of timestamps in nanoseconds (i64).
 pub fn list_timespec_to_list_nanos(list_array: &ListArray) -> Result<ListArray, OpError> {
     let pipeline = MapList::new(TimeSpecToNanos::default());
+    Ok(pipeline.transform(list_array)?)
+}
+
+/// Converts 3x3 row-major f64 matrices stored in variable-size lists to column-major f32 fixed-size lists.
+pub fn list_3x3_row_major_to_column_major(list_array: &ListArray) -> Result<ListArray, OpError> {
+    let pipeline = MapList::new(
+        ListToFixedSizeList::new(9)
+            .then(RowMajorToColumnMajor::new(3, 3))
+            .then(MapFixedSizeList::new(PrimitiveCast::<
+                Float64Array,
+                Float32Array,
+            >::new())),
+    );
+    Ok(pipeline.transform(list_array)?)
+}
+
+/// Converts u32 width and height fields to a `Resolution` component (fixed-size list with two f32 values).
+pub fn width_height_to_resolution(list_array: &ListArray) -> Result<ListArray, OpError> {
+    let pipeline = MapList::new(StructToFixedList::new(["width", "height"]).then(
+        MapFixedSizeList::new(PrimitiveCast::<UInt32Array, Float32Array>::new()),
+    ));
     Ok(pipeline.transform(list_array)?)
 }
 
@@ -287,12 +309,46 @@ fn main() -> anyhow::Result<()> {
             })?
             .build();
 
+    // Simple pinhole camera calibration lens, setting `image_from_camera` from the `K` matrix.
+    // TODO(michael): set child_frame of Pinhole?
+    let pinhole_lens = Lens::for_input_column(
+        EntityPathFilter::all(),
+        "foxglove.CameraCalibration:message",
+    )
+    .output_columns(|out| {
+        out.time(
+            TIME_NAME,
+            args.epoch.time_type(),
+            [
+                Op::access_field("timestamp"),
+                Op::func(list_timespec_to_list_nanos),
+            ],
+        )
+        .component(
+            Pinhole::descriptor_resolution(),
+            [Op::func(width_height_to_resolution)],
+        )
+        .component(
+            Pinhole::descriptor_image_from_camera(),
+            [
+                Op::access_field("K"),
+                Op::func(list_3x3_row_major_to_column_major),
+            ],
+        )
+        .component(
+            Pinhole::descriptor_parent_frame(),
+            [Op::access_field("frame_id")],
+        )
+    })?
+    .build();
+
     let lenses_sink = LensesSink::new(GrpcSink::default())
         .with_lens(image_lens)
         .with_lens(instance_pose_lens)
         .with_lens(instance_poses_lens)
         .with_lens(video_lens)
-        .with_lens(transforms_lens);
+        .with_lens(transforms_lens)
+        .with_lens(pinhole_lens);
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_mcap_protobuf")?;
     rec.set_sink(Box::new(lenses_sink));
