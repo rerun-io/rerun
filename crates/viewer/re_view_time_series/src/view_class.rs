@@ -196,13 +196,14 @@ impl ViewClass for TimeSeriesView {
         system_registry.register_fallback_provider(
             TimeAxis::descriptor_view_range().component,
             |ctx| {
-                let times_per_timeline = ctx.viewer_ctx().recording().times_per_timeline();
-                let (timeline_min, timeline_max) = times_per_timeline
+                let time_histogram_per_timeline =
+                    ctx.viewer_ctx().recording().time_histogram_per_timeline();
+                let (timeline_min, timeline_max) = time_histogram_per_timeline
                     .get(ctx.viewer_ctx().time_ctrl.timeline().name())
-                    .and_then(|stats| {
+                    .and_then(|hist| {
                         Some((
-                            *stats.per_time.keys().next()?,
-                            *stats.per_time.keys().next_back()?,
+                            re_log_types::TimeInt::new_temporal(hist.min_key()?),
+                            re_log_types::TimeInt::new_temporal(hist.max_key()?),
                         ))
                     })
                     .unzip();

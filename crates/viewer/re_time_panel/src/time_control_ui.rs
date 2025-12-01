@@ -1,7 +1,8 @@
 use egui::NumExt as _;
 
-use re_entity_db::TimesPerTimeline;
-use re_log_types::TimeType;
+use re_chunk_store::external::re_chunk;
+use re_entity_db::TimeHistogramPerTimeline;
+use re_log_types::{TimeType, Timeline};
 use re_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::{UICommand, UiExt as _, list_item};
 
@@ -15,7 +16,8 @@ impl TimeControlUi {
     pub fn timeline_selector_ui(
         &self,
         time_ctrl: &TimeControl,
-        times_per_timeline: &TimesPerTimeline,
+        time_histogram_per_timeline: &TimeHistogramPerTimeline,
+        timelines: &std::collections::BTreeMap<re_chunk::TimelineName, Timeline>,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -28,8 +30,26 @@ impl TimeControlUi {
             let response = egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_ctrl.timeline().name().as_str())
                 .show_ui(ui, |ui| {
-                    for timeline_stats in times_per_timeline.timelines_with_stats() {
-                        let timeline = &timeline_stats.timeline;
+                    // Ensure default timelines (log_time, log_tick) are always shown, even before data arrives
+                    let default_timelines = [
+                        Timeline::log_time(),
+                        Timeline::log_tick(),
+                    ];
+
+                    let mut all_timelines: std::collections::BTreeMap<_, _> = default_timelines
+                        .iter()
+                        .map(|t| (*t.name(), *t))
+                        .collect();
+
+                    // Add any custom timelines from logged data
+                    all_timelines.extend(timelines.iter().map(|(k, v)| (*k, *v)));
+
+                    for (timeline_name, timeline) in all_timelines.iter() {
+                        let event_count = time_histogram_per_timeline
+                            .get(timeline_name)
+                            .map(|hist| hist.total_count())
+                            .unwrap_or(0);
+
                         if ui
                             .selectable_label(
                                 timeline == time_ctrl.timeline(),
@@ -38,7 +58,7 @@ impl TimeControlUi {
                                     egui::Atom::grow(),
                                     egui::RichText::new(format!(
                                         "{} events",
-                                        re_format::format_uint(timeline_stats.num_events())
+                                        re_format::format_uint(event_count)
                                     ))
                                     .size(10.0)
                                     .color(ui.tokens().text_subdued),

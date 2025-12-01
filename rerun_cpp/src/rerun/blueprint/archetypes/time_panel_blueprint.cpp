@@ -14,6 +14,9 @@ namespace rerun::blueprint::archetypes {
         archetype.timeline =
             ComponentBatch::empty<rerun::blueprint::components::TimelineName>(Descriptor_timeline)
                 .value_or_throw();
+        archetype.time =
+            ComponentBatch::empty<rerun::blueprint::components::TimeInt>(Descriptor_time)
+                .value_or_throw();
         archetype.playback_speed =
             ComponentBatch::empty<rerun::blueprint::components::PlaybackSpeed>(
                 Descriptor_playback_speed
@@ -37,12 +40,15 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> TimePanelBlueprint::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(7);
+        columns.reserve(8);
         if (state.has_value()) {
             columns.push_back(state.value().partitioned(lengths_).value_or_throw());
         }
         if (timeline.has_value()) {
             columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
+        }
+        if (time.has_value()) {
+            columns.push_back(time.value().partitioned(lengths_).value_or_throw());
         }
         if (playback_speed.has_value()) {
             columns.push_back(playback_speed.value().partitioned(lengths_).value_or_throw());
@@ -68,6 +74,9 @@ namespace rerun::blueprint::archetypes {
         }
         if (timeline.has_value()) {
             return columns(std::vector<uint32_t>(timeline.value().length(), 1));
+        }
+        if (time.has_value()) {
+            return columns(std::vector<uint32_t>(time.value().length(), 1));
         }
         if (playback_speed.has_value()) {
             return columns(std::vector<uint32_t>(playback_speed.value().length(), 1));
@@ -96,13 +105,16 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(8);
 
         if (archetype.state.has_value()) {
             cells.push_back(archetype.state.value());
         }
         if (archetype.timeline.has_value()) {
             cells.push_back(archetype.timeline.value());
+        }
+        if (archetype.time.has_value()) {
+            cells.push_back(archetype.time.value());
         }
         if (archetype.playback_speed.has_value()) {
             cells.push_back(archetype.playback_speed.value());
