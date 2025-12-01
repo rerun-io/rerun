@@ -988,15 +988,12 @@ impl RerunCloudService for RerunCloudHandler {
 
             //TODO(RR-2613): we must do a much better job at handling these
             chunk_ids: requested_chunk_ids,
-            fuzzy_descriptors,
+            fuzzy_descriptors: _,
             exclude_static_data,
             exclude_temporal_data,
             scan_parameters,
-            query,
+            query: _,
         } = request.into_inner();
-
-        // Parse the query to extract time range filtering parameters
-        let query: Option<Query> = query.map(TryInto::try_into).transpose()?;
 
         if scan_parameters.is_some() {
             re_log::warn_once!(
@@ -1056,54 +1053,6 @@ impl RerunCloudService for RerunCloudHandler {
                     }
                     if exclude_temporal_data && !chunk.is_static() {
                         continue;
-                    }
-
-                    // Filter by fuzzy descriptors
-                    if !fuzzy_descriptors.is_empty() {
-                        let has_matching_descriptor = chunk.component_descriptors().any(|desc| {
-                            let descriptor_str = desc.to_string();
-                            fuzzy_descriptors
-                                .iter()
-                                .any(|fuzzy| descriptor_str.contains(fuzzy.as_str()))
-                        });
-                        if !has_matching_descriptor {
-                            continue;
-                        }
-                    }
-
-                    // Filter by query time range
-                    if let Some(ref query) = query {
-                        // For range queries, filter chunks whose time range intersects with the query range
-                        if let Some(ref range) = query.range {
-                            let timeline_name = range.index.clone().into();
-                            let include = match chunk.timelines().get(&timeline_name) {
-                                Some(timeline_col) => {
-                                    timeline_col.time_range().intersects(range.index_range)
-                                }
-                                None => chunk.is_static(),
-                            };
-                            if !include {
-                                continue;
-                            }
-                        }
-
-                        // For latest_at queries, filter chunks whose time range contains data at or before the query timestamp.
-                        // This may include too many chunks, but we are ok with that for now.
-                        if let Some(ref latest_at) = query.latest_at {
-                            if let Some(ref index) = latest_at.index {
-                                let timeline_name = index.clone().into();
-                                let dominated = match chunk.timelines().get(&timeline_name) {
-                                    Some(timeline_col) => {
-                                        // A chunk is relevant if its min time is <= query time
-                                        timeline_col.time_range().min() <= latest_at.at
-                                    }
-                                    None => chunk.is_static(), // Static chunks are always included
-                                };
-                                if !dominated {
-                                    continue;
-                                }
-                            }
-                        }
                     }
 
                     let mut missing_timelines: BTreeSet<_> = timelines.keys().copied().collect();
