@@ -308,6 +308,7 @@ impl ChunkStoreSubscriber for QueryCache {
             let ChunkStoreDiff {
                 kind: _, // Don't care: both additions and deletions invalidate query results.
                 chunk,
+                split_source: _, // Don't care
                 compacted,
             } = diff;
 

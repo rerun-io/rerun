@@ -139,7 +139,7 @@ You can also use the `todo()!` macro during development, but again it won't pass
 ### Misc
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
-Use `re_error::format(err)` when displaying an error.
+Use `{:#}` or `re_error::format(err)` when displaying an error - NOT `Debug`/`{:?}`.
 
 We make extensive use of snapshot testing. To work around non-deterministic values, such as TUIDs (time-prefixed unique IDs), many types (should) offer `std::fmt::Display` implementations with redactions that can be access via an overloaded `-` formatting option:
 

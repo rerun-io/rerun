@@ -258,11 +258,11 @@ pub async fn serve_from_channel(
                         break;
                     }
                 }
-                DataSourceMessage::TableMsg(_) => {
-                    re_log::error_once!("Not implemented: re_grpc_server support for TableMsg");
-                }
-                DataSourceMessage::UiCommand(_) => {
-                    re_log::error_once!("Not implemented: re_grpc_server support for UiCommand");
+                unsupported => {
+                    re_log::error_once!(
+                        "Not implemented: re_grpc_server support for {}",
+                        unsupported.variant_name()
+                    );
                 }
             }
         }
@@ -346,12 +346,10 @@ pub fn spawn_from_rx_set(
                         break;
                     }
                 }
-                DataSourceMessage::TableMsg(_) => {
-                    re_log::error_once!("Received a TableMsg, grpc server can't forward these yet");
-                }
-                DataSourceMessage::UiCommand(ui_command) => {
+                unsupported => {
                     re_log::error_once!(
-                        "Received a UI command, grpc server can't forward these yet: {ui_command:?}"
+                        "gRPC proxy server cannot forward {}",
+                        unsupported.variant_name()
                     );
                 }
             }

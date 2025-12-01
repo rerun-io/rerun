@@ -3,7 +3,6 @@ use arrow::datatypes::SchemaRef;
 use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::WriteTableRequest;
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, ProviderDetails, TableInsertMode};
 use re_protos::{
     TypeConversionError,
@@ -32,7 +31,8 @@ use re_protos::{
     headers::RerunHeadersInjectorExt as _,
     invalid_schema, missing_column, missing_field,
 };
-use re_types_core::ChunkIndex;
+use re_protos::{cloud::v1alpha1::WriteTableRequest, common::v1alpha1::DataframePart};
+use re_types_core::ChunkIndexMessage;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
@@ -390,7 +390,7 @@ where
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
     ///
-    /// The result is compatible with [`ChunkIndex`].
+    /// The result is compatible with [`ChunkIndexMessage`].
     pub async fn query_dataset_raw(
         &mut self,
         params: PartitionQueryParams,
@@ -437,10 +437,12 @@ where
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
+    ///
+    /// You can pass on the results to [`Self::query_dataset_chunk_index`].
     pub async fn query_dataset_chunk_index(
         &mut self,
         params: PartitionQueryParams,
-    ) -> Result<Vec<ChunkIndex>, ApiError> {
+    ) -> Result<Vec<ChunkIndexMessage>, ApiError> {
         self.query_dataset_raw(params)
             .await?
             .collect::<Vec<_>>()
@@ -467,14 +469,36 @@ where
                 let rb = arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
                     ApiError::serialization(err, "failed converting to RecordBatch")
                 })?;
-                ChunkIndex::from_record_batch(rb)
-                    .map_err(|err| ApiError::serialization(err, "failed creating ChunkIndex"))
+                ChunkIndexMessage::from_record_batch(rb).map_err(|err| {
+                    ApiError::serialization(err, "failed creating ChunkIndexMessage")
+                })
             })
             .collect()
     }
 
-    /// Fetches all chunks for a specified partition. You can include/exclude static/temporal chunks.
-    pub async fn fetch_partition_chunks(
+    /// Input should be same schema as what [`Self::query_dataset_chunk_index`] returns.
+    pub async fn fetch_partition_chunks_by_id(
+        &mut self,
+        record_batch: &RecordBatch,
+    ) -> Result<FetchChunksResponseStream, ApiError> {
+        let fetch_chunks_request = FetchChunksRequest {
+            chunk_infos: vec![DataframePart::from(record_batch)],
+        };
+
+        let fetch_chunks_response_stream = self
+            .inner()
+            .fetch_chunks(fetch_chunks_request)
+            .await
+            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?
+            .into_inner();
+
+        Ok(Box::pin(fetch_chunks_response_stream))
+    }
+
+    /// Fetches chunks for a specified partition and query.
+    ///
+    /// Convenience for [`Self::query_dataset_chunk_index`] + [`Self::fetch_partition_chunks_by_id`].
+    pub async fn fetch_partition_chunks_by_query(
         &mut self,
         params: PartitionQueryParams,
     ) -> Result<FetchChunksResponseStream, ApiError> {

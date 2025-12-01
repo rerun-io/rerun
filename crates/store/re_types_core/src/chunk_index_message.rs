@@ -4,6 +4,8 @@ use arrow::array::{Array as _, AsArray as _, BooleanArray, RecordBatch};
 
 use crate::ChunkId;
 
+// -----------------------------------------------------------------------------------------
+
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkIndexError {
     #[error("Missing chunk_id column in ChunkIndex")]
@@ -25,9 +27,13 @@ pub enum ChunkIndexError {
     WrongDatatype(#[from] re_arrow_util::WrongDatatypeError),
 }
 
-/// Keeps track of all the chunks in a store (recording) without actually holding the chunks.
+// -----------------------------------------------------------------------------------------
+
+/// Communicates the chunks in a store (recording) without actually holding the chunks.
+///
+/// This is sent from the server to the client/viewer.
 #[ouroboros::self_referencing]
-pub struct ChunkIndex {
+pub struct ChunkIndexMessage {
     rb: RecordBatch,
 
     #[borrows(rb)]
@@ -36,7 +42,22 @@ pub struct ChunkIndex {
     chunk_is_static: BooleanArray,
 }
 
-impl ChunkIndex {
+impl std::fmt::Debug for ChunkIndexMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ChunkIndexMessage")
+            .field("num_chunks", &self.num_rows())
+            .finish()
+    }
+}
+
+impl Clone for ChunkIndexMessage {
+    fn clone(&self) -> Self {
+        #![expect(clippy::unwrap_used)] // `self` is existence proof that this cannot fail
+        Self::from_record_batch(self.borrow_rb().clone()).unwrap()
+    }
+}
+
+impl ChunkIndexMessage {
     pub fn from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
         #![expect(clippy::unwrap_used)] // We validate before running the builder
 
@@ -46,12 +67,16 @@ impl ChunkIndex {
             return Err(ChunkIndexError::NullsInChunkIsStatic);
         }
 
-        Ok(ChunkIndexBuilder {
+        Ok(ChunkIndexMessageBuilder {
             rb,
             chunk_is_static,
             chunk_ids_builder: |rb: &RecordBatch| chunk_ids_from_rb(rb).unwrap(),
         }
         .build())
+    }
+
+    pub fn record_batch(&self) -> &RecordBatch {
+        self.borrow_rb()
     }
 
     pub fn num_rows(&self) -> usize {
