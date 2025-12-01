@@ -207,20 +207,26 @@ impl<'a> opentelemetry::propagation::Extractor for HashMapExtractor<'a> {
 
 #[cfg(feature = "pyo3")]
 /// Extract trace context from Python ContextVar for cross-boundary propagation
-/// 
+///
 /// This function reads trace context headers stored in a Python ContextVar named "TRACE_CONTEXT"
-/// from the "redap_tests.telemetry" module. This enables distributed tracing across Python→Rust
+/// from the standardized "tracecontext" module. This enables distributed tracing across Python→Rust
 /// boundaries in PyO3 applications.
-pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> std::collections::HashMap<String, String> {
+///
+/// The Python application should create a `tracecontext.py` module containing:
+/// ```python
+/// import contextvars
+/// TRACE_CONTEXT = contextvars.ContextVar("trace_context")
+/// ```
+pub fn extract_trace_context_from_contextvar(
+    py: pyo3::Python<'_>,
+) -> std::collections::HashMap<String, String> {
     use pyo3::prelude::*;
     use pyo3::types::PyDict;
-    
-    tracing::info!("🔍 Attempting to extract trace context from ContextVar");
-    
+
     let result = (|| -> PyResult<std::collections::HashMap<String, String>> {
-        let telemetry_module = py.import("redap_tests.telemetry")?;
-        let context_var = telemetry_module.getattr("TRACE_CONTEXT")?;
-        
+        let tracecontext_module = py.import("tracecontext")?;
+        let context_var = tracecontext_module.getattr("TRACE_CONTEXT")?;
+
         match context_var.call_method0("get") {
             Ok(trace_data) => {
                 let mut headers = std::collections::HashMap::new();
@@ -232,26 +238,18 @@ pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> std::colle
                             headers.insert(key_str, value_str);
                         }
                     }
-                    tracing::info!(
-                        "📋 Successfully extracted {} trace headers from ContextVar",
-                        headers.len()
-                    );
+
                     tracing::debug!("🔍 Trace headers: {:?}", headers);
-                } else {
-                    tracing::info!("🔍 ContextVar contains non-dict data");
                 }
                 Ok(headers)
             }
-            Err(_) => {
-                tracing::info!("🔍 ContextVar is not set or empty");
-                Ok(std::collections::HashMap::new())
-            }
+            Err(_) => Ok(std::collections::HashMap::default()),
         }
     })();
-    
+
     result.unwrap_or_else(|err| {
         tracing::debug!("❌ Failed to extract trace context: {}", err);
-        std::collections::HashMap::new()
+        std::collections::HashMap::default()
     })
 }
 
