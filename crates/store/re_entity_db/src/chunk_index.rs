@@ -17,6 +17,9 @@ pub struct ChunkInfo {
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
 /// This is currently used to show a progress bar.
+///
+/// This is constructed from one ore more [`ChunkIndexMessage`], which is what
+/// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
 pub struct ChunkIndex {

@@ -29,7 +29,9 @@ pub enum ChunkIndexError {
 
 // -----------------------------------------------------------------------------------------
 
-/// Communicates some of all the chunks in a store (recording) without actually holding the chunks.
+/// Communicates the chunks in a store (recording) without actually holding the chunks.
+///
+/// This is sent from the server to the client/viewer.
 #[ouroboros::self_referencing]
 pub struct ChunkIndexMessage {
     rb: RecordBatch,
