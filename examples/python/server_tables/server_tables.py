@@ -86,7 +86,7 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
     """
     client.append_to_table(
         STATUS_LOG_TABLE_NAME,
-        rerun_partition_id=partition_list,
+        rerun_segment_id=partition_list,
         is_complete=[False] * len(partition_list),
         update_time=[datetime.now()] * len(partition_list),
     )
@@ -123,7 +123,7 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
     # can use an append statement as in the previous write.
     client.update_table(
         STATUS_LOG_TABLE_NAME,
-        rerun_partition_id=partition_list,
+        rerun_segment_id=partition_list,
         is_complete=[True] * len(partition_list),
         update_time=[datetime.now()] * len(partition_list),
     )
