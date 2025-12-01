@@ -79,11 +79,6 @@ impl TransformFramesUi {
         let (priority, component, use_entity_path) =
             find_frame_component(transform_frame_descr.component)?;
 
-        let selected_view_id = ctx
-            .selection()
-            .single_item()
-            .and_then(|item| item.view_id());
-
         if entity_components
             .iter()
             .filter(|(desc, _)| desc.component != component)
