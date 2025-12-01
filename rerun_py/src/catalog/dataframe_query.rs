@@ -12,7 +12,7 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
-use tracing::{info, instrument};
+use tracing::instrument;
 
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
@@ -20,12 +20,30 @@ use re_datafusion::DataframeQueryTableProvider;
 
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_perf_telemetry::{HashMapExtractor, extract_trace_context_from_contextvar};
+
+/// Create a tracing span with optional distributed tracing context propagation
+macro_rules! with_trace_span {
+    ($py:expr, $span_name:expr, $body:block) => {{
+        let trace_headers = extract_trace_context_from_contextvar($py);
+        if !trace_headers.is_empty() {
+            let parent_ctx =
+                re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(
+                    |prop| prop.extract(&HashMapExtractor(&trace_headers)),
+                );
+            let _guard = parent_ctx.attach();
+            let _span = tracing::span!(tracing::Level::INFO, $span_name).entered();
+            $body
+        } else {
+            let _span = tracing::span!(tracing::Level::INFO, $span_name).entered();
+            $body
+        }
+    }};
+}
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
 use crate::catalog::{PyDatasetEntry, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
-
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
@@ -295,45 +313,12 @@ impl PyDataframeQueryView {
         py: Python<'_>,
         values: crate::dataframe::IndexValuesLike<'_>,
     ) -> PyResult<Self> {
-        // Extract trace context from Python ContextVar for distributed tracing
-        let trace_headers = extract_trace_context_from_contextvar(py);
-
-        if !trace_headers.is_empty() {
-            info!("🚀 Creating Rust span with trace propagation from Python");
-
-            // Extract OpenTelemetry context from the headers
-            let parent_ctx =
-                re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(
-                    |prop| prop.extract(&HashMapExtractor(&trace_headers)),
-                );
-
-            // Set the extracted context as current - this must stay alive for the entire operation
-            let _guard = parent_ctx.attach();
-
-            // Create span within the attached context
-            let span = tracing::span!(
-                tracing::Level::INFO,
-                "filter_index_values_rust",
-                trace_headers = ?trace_headers
-            );
-            let _entered = span.enter();
-
-            // All subsequent operations should now inherit this trace context
+        with_trace_span!(py, "filter_index_values", {
             let values = values.to_index_values()?;
-
             Ok(self.clone_with_new_query(py, |query_expression| {
                 query_expression.filtered_index_values = Some(values);
             }))
-        } else {
-            info!("🏷️ Creating basic Rust span without trace propagation");
-            let _span = tracing::span!(tracing::Level::INFO, "filter_index_values_rust").entered();
-
-            let values = values.to_index_values()?;
-
-            Ok(self.clone_with_new_query(py, |query_expression| {
-                query_expression.filtered_index_values = Some(values);
-            }))
-        }
+        })
     }
 
     /// Filter the view to only include rows where the given component column is not null.
@@ -405,36 +390,11 @@ impl PyDataframeQueryView {
     ///     The original view will not be modified.
     #[instrument(skip_all)]
     fn fill_latest_at(&self, py: Python<'_>) -> Self {
-        // Extract trace context from Python ContextVar for distributed tracing
-        let trace_headers = extract_trace_context_from_contextvar(py);
-        
-        if !trace_headers.is_empty() {
-            info!("🚀 Creating fill_latest_at span with trace propagation");
-            
-            // Extract OpenTelemetry context from the headers
-            let parent_ctx =
-                re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(
-                    |prop| prop.extract(&HashMapExtractor(&trace_headers)),
-                );
-            
-            // Set the extracted context as current
-            let _guard = parent_ctx.attach();
-            
-            // Create span within the attached context
-            let span = tracing::span!(tracing::Level::INFO, "fill_latest_at_rust");
-            let _entered = span.enter();
-            
+        with_trace_span!(py, "fill_latest_at", {
             self.clone_with_new_query(py, |query_expression| {
                 query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
             })
-        } else {
-            info!("🏷️ Creating basic fill_latest_at span without trace propagation");
-            let _span = tracing::span!(tracing::Level::INFO, "fill_latest_at_rust").entered();
-            
-            self.clone_with_new_query(py, |query_expression| {
-                query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
-            })
-        }
+        })
     }
 
     /// Returns a DataFusion table provider capsule.
@@ -471,25 +431,7 @@ impl PyDataframeQueryView {
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
-        // Extract trace context from Python ContextVar for distributed tracing
-        let trace_headers = extract_trace_context_from_contextvar(py);
-        
-        if !trace_headers.is_empty() {
-            info!("🚀 Creating df span with trace propagation");
-            
-            // Extract OpenTelemetry context from the headers
-            let parent_ctx =
-                re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(
-                    |prop| prop.extract(&HashMapExtractor(&trace_headers)),
-                );
-            
-            // Set the extracted context as current
-            let _guard = parent_ctx.attach();
-            
-            // Create span within the attached context
-            let span = tracing::span!(tracing::Level::INFO, "df_rust");
-            let _entered = span.enter();
-            
+        with_trace_span!(py, "df", {
             let dataset = self_.dataset.borrow(py);
             let super_ = dataset.as_super();
             let client = super_.client.borrow(py);
@@ -501,22 +443,7 @@ impl PyDataframeQueryView {
 
             let df = ctx.call_method1("read_table", (self_,))?;
             Ok(df)
-        } else {
-            info!("🏷️ Creating basic df span without trace propagation");
-            let _span = tracing::span!(tracing::Level::INFO, "df_rust").entered();
-            
-            let dataset = self_.dataset.borrow(py);
-            let super_ = dataset.as_super();
-            let client = super_.client.borrow(py);
-            let ctx = client.ctx(py)?;
-            let ctx = ctx.bind(py);
-
-            drop(client);
-            drop(dataset);
-
-            let df = ctx.call_method1("read_table", (self_,))?;
-            Ok(df)
-        }
+        })
     }
 
     /// Get the relevant chunk_ids for this view.

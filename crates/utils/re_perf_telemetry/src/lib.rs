@@ -248,7 +248,7 @@ pub fn extract_trace_context_from_contextvar(
     })();
 
     result.unwrap_or_else(|err| {
-        tracing::debug!("❌ Failed to extract trace context: {}", err);
+        tracing::debug!("Failed to extract trace context: {}", err);
         std::collections::HashMap::default()
     })
 }

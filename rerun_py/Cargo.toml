@@ -64,6 +64,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
+re_perf_telemetry = { workspace = true, features = ["pyo3"] }
 re_sdk = { workspace = true, features = ["data_loaders"] }
 re_sorbet.workspace = true
 re_tuid.workspace = true
