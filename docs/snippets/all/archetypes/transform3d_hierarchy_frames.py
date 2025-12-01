@@ -48,6 +48,13 @@ rr.log(
     rr.CoordinateFrame("moon_frame"),
 )
 
+rr.log(
+    "sun_transforms",
+    rr.Transform3D(
+        child_frame="sun_frame",
+    ),
+)
+
 # The viewer automatically creates a 3D view at `/`. To connect it to our transform hierarchy, we set its coordinate frame
 # to `sun_frame` as well. Alternatively, we could also set a blueprint that makes `/sun` the space origin.
 rr.log("/", rr.CoordinateFrame("sun_frame"))

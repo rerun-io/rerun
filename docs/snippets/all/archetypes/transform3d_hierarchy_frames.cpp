@@ -43,6 +43,11 @@ int main() {
         rerun::CoordinateFrame("moon_frame")
     );
 
+    rec.log(
+        "sun_transforms",
+        rerun::Transform3D().with_child_frame("sun_frame")
+    );
+
     // The viewer automatically creates a 3D view at `/`. To connect it to our transform hierarchy, we set its coordinate frame
     // to `sun_frame` as well. Alternatively, we could also set a blueprint that makes `/sun` the space origin.
     rec.log("/", rerun::CoordinateFrame("sun_frame"));
