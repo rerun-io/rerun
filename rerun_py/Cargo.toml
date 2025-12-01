@@ -15,7 +15,7 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module"]
+default = ["extension-module", "perf_telemetry"]
 
 ## Extra features that aren't ready to be included in release builds yet.
 extra = []
@@ -64,7 +64,6 @@ re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
-re_perf_telemetry = { workspace = true, features = ["pyo3"] }
 re_sdk = { workspace = true, features = ["data_loaders"] }
 re_sorbet.workspace = true
 re_tuid.workspace = true
@@ -110,7 +109,7 @@ thiserror.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
+re_perf_telemetry = { workspace = true, features = ["tracy", "pyo3"], optional = true }
 
 
 [build-dependencies]
