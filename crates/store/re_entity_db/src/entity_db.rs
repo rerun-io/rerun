@@ -589,6 +589,7 @@ impl EntityDb {
         Ok(store_events)
     }
 
+    /// Used mostly for tests
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
@@ -596,7 +597,7 @@ impl EntityDb {
     fn add_chunk_with_timestamp_metadata(
         &mut self,
         chunk: &Arc<Chunk>,
-        timestamps: &re_sorbet::TimestampMetadata,
+        chunk_timestamps: &re_sorbet::TimestampMetadata,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let store_events = self.storage_engine.write().store().insert_chunk(chunk)?;
 
@@ -613,7 +614,7 @@ impl EntityDb {
         self.on_store_events(&store_events);
 
         // We inform the stats last, since it measures e2e latency.
-        self.stats.on_events(timestamps, &store_events);
+        self.stats.on_events(chunk_timestamps, &store_events);
 
         Ok(store_events)
     }
