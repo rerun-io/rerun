@@ -107,15 +107,15 @@ impl Transform for ListToFixedSizeList {
         // Check that each list has exactly the expected length (or is null).
         let offsets = source.value_offsets();
         let expected_length = self.value_length as usize;
-        for i in 0..source.len() {
-            if source.is_valid(i) {
-                let start = offsets[i] as usize;
-                let end = offsets[i + 1] as usize;
-                let length = end - start;
-                if length != expected_length {
+        for list_index in 0..source.len() {
+            if source.is_valid(list_index) {
+                let start = offsets[list_index] as usize;
+                let end = offsets[list_index + 1] as usize;
+                let list_length = end - start;
+                if list_length != expected_length {
                     return Err(Error::UnexpectedListValueLength {
                         expected: expected_length,
-                        actual: length,
+                        actual: list_length,
                     });
                 }
             }
