@@ -616,11 +616,7 @@ class DatasetView:
                 else:
                     index_values = np.array([], dtype=np.datetime64)
 
-                other_df = (
-                    view.filter_partition_id(segment)
-                    .using_index_values(index_values)
-                    .df()
-                )
+                other_df = view.filter_partition_id(segment).using_index_values(index_values).df()
 
                 if df is None:
                     df = other_df
