@@ -315,15 +315,13 @@ impl EyeController {
             return;
         }
 
-        if self.pos != old_pos {
+        // If any of these change because of interactions don't use fallback for the other.
+        if self.pos != old_pos || self.look_target != old_look_target {
             eye_property.save_blueprint_component(
                 ctx,
                 &EyeControls3D::descriptor_position(),
                 &Position3D::from(self.pos),
             );
-        }
-
-        if self.look_target != old_look_target {
             eye_property.save_blueprint_component(
                 ctx,
                 &EyeControls3D::descriptor_look_target(),
