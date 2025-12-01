@@ -36,7 +36,7 @@ pub const FIELD_INSTANCE: &str = "instance";
 // Position of the instance in the column cell
 pub const FIELD_INSTANCE_ID: &str = "instance_id";
 
-/// A thread-safe cell that holds an Arc<T> and can be updated atomically.
+/// A thread-safe cell that holds an `Arc<T>` and can be updated atomically.
 pub struct ArcCell<T> {
     inner: parking_lot::Mutex<Arc<T>>,
 }
