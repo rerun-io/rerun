@@ -687,7 +687,7 @@ impl RerunCloudService for RerunCloudHandler {
             let segment_id: SegmentId = chunk_batch
                 .schema()
                 .metadata()
-                .get("rerun:partition_id") // TODO: rename to "rerun:segment_id"
+                .get("rerun:partition_id")
                 .ok_or_else(|| {
                     tonic::Status::invalid_argument(
                         "Received chunk without 'rerun.partition_id' metadata",

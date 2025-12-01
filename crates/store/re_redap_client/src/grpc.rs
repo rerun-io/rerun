@@ -294,7 +294,7 @@ where
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<DataSourceMessage>,
-    uri: re_uri::DatasetPartitionUri, // TODO(#xxxx): rename to DatasetSegmentUri
+    uri: re_uri::DatasetPartitionUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), ApiError> {
     re_log::debug!("Loading {uri}…");
@@ -352,7 +352,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         re_log::debug!("No blueprint dataset found for {uri}");
     }
 
-    // TODO(#xxxx): rename partition_id to segment_id in re_uri
     let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
