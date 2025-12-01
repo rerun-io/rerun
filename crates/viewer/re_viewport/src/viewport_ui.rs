@@ -722,24 +722,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
 impl TilesDelegate<'_, '_> {
     fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let visualizer_errors = self.view_states.visualizer_errors(view_id);
+        let Some(visualizer_errors) = self.view_states.visualizer_errors(view_id) else {
+            return;
+        };
 
-        let error_count = visualizer_errors.map_or(0, |per_vis| {
-            per_vis
-                .values()
-                .map(|errors| match errors {
-                    re_viewer_context::VisualizerExecutionErrorState::Overall(_) => 1,
-                    re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
-                        errors.len()
-                    }
-                })
-                .sum()
-        });
-
-        if let Some(visualizer_errors) = visualizer_errors
-            && error_count > 0
-        {
-            let errors = visualizer_errors.values().flat_map(|err| match err {
+        let errors = visualizer_errors
+            .values()
+            .flat_map(|err| match err {
                 re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
                     Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
                 }
@@ -751,36 +740,42 @@ impl TilesDelegate<'_, '_> {
                         )
                     }))
                 }
-            });
+            })
+            .collect::<Vec<_>>();
 
-            ui.scope(|ui| {
-                let response = ui
-                    .add(egui::Button::image(
-                        icons::ERROR
-                            .as_image()
-                            .fit_to_exact_size(ui.tokens().small_icon_size)
-                            .alt_text("View errors")
-                            .tint(ui.visuals().error_fg_color),
-                    ))
-                    .on_hover_text(format!(
-                        "Show {error_count} visualizer error{}",
-                        re_format::format_plural_s(error_count)
-                    ));
-
-                egui::Popup::menu(&response)
-                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-                    .show(|ui| {
-                        egui::ScrollArea::vertical()
-                            .min_scrolled_height(600.0)
-                            .max_height(600.0)
-                            .show(ui, |ui| {
-                                for (item, err) in errors {
-                                    self.show_item_error(ui, item, &err);
-                                }
-                            });
-                    });
-            });
+        if visualizer_errors.is_empty() {
+            return;
         }
+
+        let error_count = visualizer_errors.len();
+
+        ui.scope(|ui| {
+            let response = ui
+                .add(egui::Button::image(
+                    icons::ERROR
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .alt_text("View errors")
+                        .tint(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(format!(
+                    "Show {error_count} visualizer error{}",
+                    re_format::format_plural_s(error_count)
+                ));
+
+            egui::Popup::menu(&response)
+                .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                .show(|ui| {
+                    egui::ScrollArea::vertical()
+                        .min_scrolled_height(600.0)
+                        .max_height(600.0)
+                        .show(ui, |ui| {
+                            for (item, err) in errors {
+                                self.show_item_error(ui, item, &err);
+                            }
+                        });
+                });
+        });
     }
 
     fn show_item_error(&self, ui: &mut egui::Ui, item: Item, err: &str) {

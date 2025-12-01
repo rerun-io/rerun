@@ -417,11 +417,8 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let has_error = errors.is_some_and(|errors| {
-            errors
-                .values()
-                .any(|error| matches!(error, VisualizerExecutionErrorState::Overall(_)))
-        });
+        let has_error =
+            errors.is_some_and(|errors| errors.values().any(|error| error.is_overall()));
 
         let item_content = if has_error {
             list_item::LabelContent::new(

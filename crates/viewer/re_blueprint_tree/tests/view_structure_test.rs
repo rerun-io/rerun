@@ -173,7 +173,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
         let blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, ctx.blueprint_query);
 
-        blueprint_tree.show(ctx, &blueprint, ui);
+        blueprint_tree.show(ctx, &blueprint, ui, &test_context.view_states.lock());
     });
 
     if let Some(filter_query) = filter_query {
@@ -202,7 +202,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
                     viewer_ctx.blueprint_query,
                 );
 
-                blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                blueprint_tree.show(viewer_ctx, &blueprint, ui, &test_context.view_states.lock());
             });
 
             test_context.handle_system_commands(ui.ctx());
