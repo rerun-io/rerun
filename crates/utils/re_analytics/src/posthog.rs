@@ -50,7 +50,7 @@ impl<'a> PostHogEvent<'a> {
                 properties: [("session_id", session_id.into())].into(),
                 set: properties.collect(),
             }),
-            crate::EventKind::SetPersonProperty => Self::Alias(PostHogSetPersonPropertiesEvent {
+            crate::EventKind::SetPersonProperties => Self::Alias(PostHogSetPersonPropertiesEvent {
                 timestamp: event.time_utc,
                 event: "$set",
                 distinct_id: analytics_id,
@@ -80,7 +80,7 @@ pub struct PostHogIdentifyEvent<'a> {
     set: HashMap<&'a str, serde_json::Value>,
 }
 
-// See https://posthog.com/docs/api/post-only-endpoints#alias.
+// See https://posthog.com/docs/product-analytics/person-properties.
 #[derive(Debug, serde::Serialize)]
 pub struct PostHogSetPersonPropertiesEvent<'a> {
     timestamp: Timestamp,

@@ -435,19 +435,18 @@ impl Properties for SettingsOpened {
 
 // -----------------------------------------------
 
-/// Links the current anonymous analytics ID to an authenticated user ID.
+/// Links the current anonymous analytics ID to an authenticated user.
 ///
 /// This is sent when a user logs in, allowing us to connect their
 /// pre-login anonymous activity with their authenticated identity.
 pub struct SetPersonProperty {
-    /// The authenticated user ID to link to the current analytics ID.
     pub email: String,
 }
 
 impl Event for SetPersonProperty {
     const NAME: &'static str = "$set";
 
-    const KIND: EventKind = EventKind::SetPersonProperty;
+    const KIND: EventKind = EventKind::SetPersonProperties;
 }
 
 impl Properties for SetPersonProperty {

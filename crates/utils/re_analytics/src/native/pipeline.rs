@@ -44,10 +44,10 @@ impl Pipeline {
             re_log::debug_once!("Analytics disabled in tests");
             return Ok(None);
         }
-        // if cfg!(debug_assertions) {
-        //     re_log::debug_once!("Analytics disabled in debug builds");
-        //     return Ok(None);
-        // }
+        if cfg!(debug_assertions) {
+            re_log::debug_once!("Analytics disabled in debug builds");
+            return Ok(None);
+        }
 
         let sink = PostHogSink::default();
 
