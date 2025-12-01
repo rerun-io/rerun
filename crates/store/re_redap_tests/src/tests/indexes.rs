@@ -45,7 +45,9 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
             .map(|_| ())
             .unwrap_err()
             .code();
-        assert_eq!(code, tonic::Code::InvalidArgument);
+        // TODO(RR-2779): OSS returns NotFound.
+        // This is more precise and Rerun Cloud should be updated to return it.
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 
     // TODO(cmc): At some point we will want to properly define what happens in case of concurrent
@@ -120,7 +122,9 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
                 .map(|_| ())
                 .unwrap_err()
                 .code();
-            assert_eq!(code, tonic::Code::InvalidArgument);
+            // TODO(RR-2779): OSS returns NotFound.
+            // This is more precise and Rerun Cloud should be updated to return it.
+            assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
 
             for req in search_dataset_requests.values() {
                 search_dataset(&service, dataset_name, req.clone())
@@ -254,7 +258,9 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
             .unwrap_err()
             .code();
 
-        assert_eq!(code, tonic::Code::InvalidArgument);
+        // TODO(RR-2779): OSS returns NotFound.
+        // This is more precise and Rerun Cloud should be updated to return it.
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 
     for req in &create_index_requests {

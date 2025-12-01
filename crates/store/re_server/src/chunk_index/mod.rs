@@ -20,11 +20,9 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
-use std::fmt::format;
-use std::ops::Deref;
+use std::ops::Deref as _;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
-use tonic::Status;
 use tracing::instrument;
 // Fields in an index table
 
@@ -334,7 +332,7 @@ impl DatasetChunkIndexes {
         }
     }
 
-    pub async fn chunks_loaded(
+    pub async fn on_layer_added(
         &self,
         partition_id: PartitionId,
         store: ChunkStoreHandle,
