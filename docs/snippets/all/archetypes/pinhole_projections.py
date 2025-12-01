@@ -37,13 +37,14 @@ blueprint = rrb.Blueprint(
             name="3D Scene",
             contents=["/**"],
             overrides={
+                # Adjust visual size of camera frustum in 3D view for better visibility.
                 "camera": rr.Pinhole.from_fields(image_plane_distance=1.0)
-            },  # Use a bigger camera frustum than the default.
+            },
         ),
         # 2D projection from angled camera
         rrb.Spatial2DView(
             origin="camera",  # Make sure that the origin is at the camera's path.
-            name="Camera View",
+            name="Camera",
             contents=["/**"],  # Add everything, so 3D objects get projected.
         ),
     )
