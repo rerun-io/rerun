@@ -61,6 +61,11 @@ def pytest_configure(config: pytest.Config) -> None:
         "creates_table: mark test as creating a table (which requires providing a server-accessible path)",
     )
 
+    config.addinivalue_line(
+        "markers",
+        "aws_ci_credentials: mark a test as requiring AWS CI credentials",
+    )
+
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Skip local-only tests when using remote resource prefix."""
