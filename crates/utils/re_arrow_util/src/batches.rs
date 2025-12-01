@@ -111,6 +111,9 @@ pub trait RecordBatchExt {
     fn project_columns<'a, I>(self, projected_columns: I) -> arrow::error::Result<RecordBatch>
     where
         I: Iterator<Item = &'a str>;
+
+    /// Rename columns based on the provided (original, new) pairs.
+    fn rename_columns(self, renames: &[(&str, &str)]) -> arrow::error::Result<RecordBatch>;
 }
 
 impl RecordBatchExt for RecordBatch {
@@ -250,6 +253,29 @@ impl RecordBatchExt for RecordBatch {
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(new_fields, metadata)),
             new_columns,
+            &RecordBatchOptions::default().with_row_count(Some(row_count)),
+        )
+    }
+
+    fn rename_columns(self, renames: &[(&str, &str)]) -> arrow::error::Result<RecordBatch> {
+        let (schema_ref, columns, row_count) = self.into_parts();
+        let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
+
+        let new_fields: Vec<_> = fields
+            .iter()
+            .map(|f| {
+                for (original_name, new_name) in renames {
+                    if f.name() == *original_name {
+                        return Arc::new(f.as_ref().clone().with_name(*new_name));
+                    }
+                }
+                Arc::clone(f)
+            })
+            .collect();
+
+        Self::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(new_fields, metadata)),
+            columns,
             &RecordBatchOptions::default().with_row_count(Some(row_count)),
         )
     }
@@ -1071,5 +1097,99 @@ mod tests {
 
         let projected = batch.project_columns(std::iter::once("id")).unwrap();
         assert_eq!(projected.schema_ref().metadata(), &metadata);
+    }
+
+    #[test]
+    fn test_rename_columns_basic() {
+        let batch = sample_batch();
+        let renamed = batch
+            .rename_columns(&[("name", "full_name"), ("age", "years")])
+            .unwrap();
+
+        assert_eq!(renamed.num_columns(), 3);
+        assert_eq!(renamed.schema_ref().field(0).name(), "id");
+        assert_eq!(renamed.schema_ref().field(1).name(), "full_name");
+        assert_eq!(renamed.schema_ref().field(2).name(), "years");
+        assert_eq!(renamed.num_rows(), 3);
+
+        // Verify data is preserved
+        let name_col = renamed
+            .column(1)
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .unwrap();
+        assert_eq!(name_col.value(0), "Alice");
+    }
+
+    #[test]
+    fn test_rename_columns_no_renames() {
+        let batch = sample_batch();
+        let renamed = batch.rename_columns(&[]).unwrap();
+
+        assert_eq!(renamed.schema_ref().field(0).name(), "id");
+        assert_eq!(renamed.schema_ref().field(1).name(), "name");
+        assert_eq!(renamed.schema_ref().field(2).name(), "age");
+    }
+
+    #[test]
+    fn test_rename_columns_nonexistent_column() {
+        let batch = sample_batch();
+        // Renaming a nonexistent column should silently do nothing
+        let renamed = batch
+            .rename_columns(&[("nonexistent", "something")])
+            .unwrap();
+
+        assert_eq!(renamed.schema_ref().field(0).name(), "id");
+        assert_eq!(renamed.schema_ref().field(1).name(), "name");
+        assert_eq!(renamed.schema_ref().field(2).name(), "age");
+    }
+
+    #[test]
+    fn test_rename_columns_preserves_metadata() {
+        let mut metadata = std::collections::HashMap::new();
+        metadata.insert("key".to_owned(), "value".to_owned());
+
+        let batch = RecordBatch::try_new(
+            Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("a", DataType::Int32, false),
+                    Field::new("b", DataType::Utf8, false),
+                ],
+                metadata.clone(),
+            )),
+            vec![
+                Arc::new(Int32Array::from(vec![1])),
+                Arc::new(StringArray::from(vec!["x"])),
+            ],
+        )
+        .unwrap();
+
+        let renamed = batch.rename_columns(&[("a", "alpha")]).unwrap();
+
+        assert_eq!(renamed.schema_ref().metadata(), &metadata);
+        assert_eq!(renamed.schema_ref().field(0).name(), "alpha");
+    }
+
+    #[test]
+    fn test_rename_columns_preserves_field_properties() {
+        let schema = Arc::new(Schema::new(vec![
+            Field::new("col", DataType::Int32, true).with_metadata(std::collections::HashMap::from([
+                ("description".to_owned(), "A test column".to_owned()),
+            ])),
+        ]));
+
+        let batch = RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(vec![1, 2, 3]))])
+            .unwrap();
+
+        let renamed = batch.rename_columns(&[("col", "renamed_col")]).unwrap();
+
+        let field = renamed.schema_ref().field(0);
+        assert_eq!(field.name(), "renamed_col");
+        assert!(field.is_nullable());
+        assert_eq!(field.data_type(), &DataType::Int32);
+        assert_eq!(
+            field.metadata().get("description"),
+            Some(&"A test column".to_owned())
+        );
     }
 }
