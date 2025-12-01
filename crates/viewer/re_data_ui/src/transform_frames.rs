@@ -10,7 +10,7 @@ use re_viewer_context::{
 };
 
 /// The max amount of ancestors we show before putting a '…'.
-const MAX_SHOWN_ANCESTORS: usize = 10;
+const MAX_SHOWN_ANCESTORS: usize = 100;
 
 /// The max amount of ancestors we show in a tooltip.
 ///
@@ -34,7 +34,6 @@ impl TransformFramesUi {
     pub fn from_components(
         ctx: &ViewerContext<'_>,
         query: &re_chunk_store::LatestAtQuery,
-        entity_path: &EntityPath,
         transform_frame_descr: &ComponentDescriptor,
         transform_frame_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
@@ -44,40 +43,19 @@ impl TransformFramesUi {
         // The bool indicates if we should use the entity path as
         // the current frame.
         let frame_components = [
-            (
-                archetypes::Transform3D::descriptor_child_frame().component,
-                false,
-            ),
-            (
-                archetypes::Pinhole::descriptor_child_frame().component,
-                false,
-            ),
-            (
-                archetypes::CoordinateFrame::descriptor_frame().component,
-                false,
-            ),
-            (
-                archetypes::Pinhole::descriptor_parent_frame().component,
-                true,
-            ),
-            (
-                archetypes::Transform3D::descriptor_parent_frame().component,
-                true,
-            ),
+            archetypes::CoordinateFrame::descriptor_frame().component,
+            archetypes::Pinhole::descriptor_child_frame().component,
         ];
 
         let find_frame_component = |other_component| {
             frame_components
                 .iter()
+                .copied()
                 .enumerate()
-                .map(|(priority, (component, use_entity_path))| {
-                    (priority, *component, *use_entity_path)
-                })
-                .find(|(_, component, _)| *component == other_component)
+                .find(|(_, component)| *component == other_component)
         };
 
-        let (priority, component, use_entity_path) =
-            find_frame_component(transform_frame_descr.component)?;
+        let (priority, component) = find_frame_component(transform_frame_descr.component)?;
 
         if entity_components
             .iter()
@@ -87,15 +65,12 @@ impl TransformFramesUi {
         {
             return None;
         }
-        let mut frame_id_hash = if use_entity_path {
-            TransformFrameIdHash::from_entity_path(entity_path)
-        } else {
-            let frame_id = transform_frame_chunk
-                .component_mono::<components::TransformFrameId>(transform_frame_descr.component)?
-                .ok()?;
 
-            TransformFrameIdHash::new(&frame_id)
-        };
+        let frame_id = transform_frame_chunk
+            .component_mono::<components::TransformFrameId>(transform_frame_descr.component)?
+            .ok()?;
+
+        let mut frame_id_hash = TransformFrameIdHash::new(&frame_id);
 
         let caches = ctx.store_context.caches;
         let transform_cache = caches
@@ -145,21 +120,26 @@ impl TransformFramesUi {
     }
 
     pub fn data_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, layout: UiLayout) {
-        egui::Frame::new()
-            .corner_radius(ui.visuals().menu_corner_radius)
-            .fill(ui.visuals().tokens().text_edit_bg_color)
-            .inner_margin(8.0)
-            .show(ui, |ui| match layout {
-                UiLayout::Tooltip => self.show_transforms(ctx, layout, ui),
-                UiLayout::List | UiLayout::SelectionPanel => {
-                    egui::ScrollArea::vertical()
-                        .max_height(350.0)
-                        .stick_to_bottom(true)
+        match layout {
+            UiLayout::Tooltip => self.show_transforms(ctx, layout, ui),
+            UiLayout::List | UiLayout::SelectionPanel => {
+                ui.collapsing("Transform frame parents", |ui| {
+                    egui::Frame::new()
+                        .corner_radius(ui.visuals().menu_corner_radius)
+                        .fill(ui.visuals().tokens().text_edit_bg_color)
+                        .inner_margin(8.0)
                         .show(ui, |ui| {
-                            self.show_transforms(ctx, layout, ui);
+                            egui::ScrollArea::vertical()
+                                .min_scrolled_height(350.0)
+                                .max_height(350.0)
+                                .stick_to_bottom(true)
+                                .show(ui, |ui| {
+                                    self.show_transforms(ctx, layout, ui);
+                                })
                         });
-                }
-            });
+                });
+            }
+        }
     }
 
     fn show_transforms(&self, ctx: &ViewerContext<'_>, layout: UiLayout, ui: &mut egui::Ui) {

@@ -33,7 +33,6 @@ impl ExtraDataUi {
                 transform_frames::TransformFramesUi::from_components(
                     ctx,
                     query,
-                    entity_path,
                     descr,
                     chunk,
                     entity_components,
