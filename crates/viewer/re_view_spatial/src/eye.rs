@@ -1000,6 +1000,7 @@ impl EyeState {
 
                 interpolation.start.lerp(&target_eye, t)
             } else {
+                self.stop_interpolation();
                 target_eye
             }
         } else {
