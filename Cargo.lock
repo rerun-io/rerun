@@ -13011,10 +13011,11 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.47.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d486e75fbc4a6284398c5434f8fe371038f0ec845cbb9f3a3d7bcbcd9b692fb"
+checksum = "7a443c518c081ef29fafc4c53c32c6f8cba953b019854080214cad1e6d47c297"
 dependencies = [
+ "bytes",
  "egui",
  "egui_extras",
  "futures",
