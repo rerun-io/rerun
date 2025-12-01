@@ -28,6 +28,7 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
+mod button;
 #[cfg(feature = "testing")]
 pub mod testing;
 

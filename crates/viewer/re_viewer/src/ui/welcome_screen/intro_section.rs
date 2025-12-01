@@ -2,6 +2,12 @@ use eframe::epaint::Margin;
 use egui::{Button, Frame, Id, RichText, TextStyle, Theme, Ui};
 use emath::{NumExt, Rect};
 use re_ui::{UiExt, design_tokens_of};
+use re_uri::Origin;
+
+pub struct CloudLoginState {
+    pub has_server: Option<Origin>,
+    pub has_token: bool,
+}
 
 pub enum IntroItem {
     DocItem {
@@ -15,7 +21,6 @@ pub enum IntroItem {
 impl IntroItem {
     fn items() -> Vec<Self> {
         vec![
-            IntroItem::CloudLoginItem,
             IntroItem::DocItem {
                 title: "Send data in",
                 url: "",
@@ -31,6 +36,7 @@ impl IntroItem {
                 url: "",
                 body: "Perform analysis and send back the results to the original recording.",
             },
+            IntroItem::CloudLoginItem,
         ]
     }
 
@@ -93,9 +99,9 @@ impl IntroItem {
                     ui.label(".");
                 });
 
-                Button::new("Add server and login");
+                if ui.primary_button("Add server and login").clicked() {
 
-                ui.button("Add server and login");
+                };
             }
         });
     }

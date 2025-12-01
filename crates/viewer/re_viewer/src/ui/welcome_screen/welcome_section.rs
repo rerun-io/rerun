@@ -2,7 +2,7 @@ use crate::ui::welcome_screen::intro_section::intro_section;
 use re_ui::{DesignTokens, UiExt as _};
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
-pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize multimodal data";
+pub(super) const WELCOME_SCREEN_TITLE: &str = "Welcome to Rerun";
 pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
     "Log data with the Rerun SDK in C++, Python, or Rust",
     "Visualize and explore live or recorded data",
@@ -48,16 +48,5 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             });
             ui.add_space(4.0);
         };
-
-        for text in WELCOME_SCREEN_BULLET_TEXT {
-            bullet_text(ui, text);
-        }
-
-        ui.add_space(9.0);
-
-        ui.scope(|ui| {
-            ui.style_mut().override_text_style = Some(DesignTokens::welcome_screen_body());
-            ui.re_hyperlink("Go to documentation", DOCS_URL, true);
-        });
     });
 }

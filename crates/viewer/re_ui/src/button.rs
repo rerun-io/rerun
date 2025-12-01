@@ -1,0 +1,114 @@
+use crate::{DesignTokens, UiExt};
+use egui::style::WidgetVisuals;
+use egui::{Button, CornerRadius, IntoAtoms, Style};
+
+pub enum Variant {
+    Primary,
+    Secondary,
+    Ghost,
+}
+
+pub fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
+    f(&mut style.visuals.widgets.active);
+    f(&mut style.visuals.widgets.hovered);
+    f(&mut style.visuals.widgets.inactive);
+    f(&mut style.visuals.widgets.noninteractive);
+    f(&mut style.visuals.widgets.open);
+}
+
+impl Variant {
+    pub fn apply(&self, style: &mut Style, tokens: &DesignTokens) {
+        match self {
+            Variant::Primary => {
+                all_visuals(style, |vis| {
+                    vis.bg_fill = tokens.bg_fill_inverse;
+                    vis.weak_bg_fill = tokens.bg_fill_inverse;
+                    vis.fg_stroke.color = tokens.text_inverse;
+                });
+                style.visuals.widgets.hovered.bg_fill = tokens.bg_fill_inverse_hover;
+                style.visuals.widgets.hovered.weak_bg_fill = tokens.bg_fill_inverse_hover;
+            }
+            Variant::Secondary => {
+                all_visuals(style, |vis| {
+                    vis.bg_fill = tokens.widget_active_bg_fill;
+                    vis.weak_bg_fill = tokens.widget_active_bg_fill;
+                });
+                style.visuals.widgets.hovered.bg_fill = tokens.widget_noninteractive_bg_fill;
+                style.visuals.widgets.hovered.weak_bg_fill = tokens.widget_noninteractive_bg_fill;
+            }
+            Variant::Ghost => {
+                // The default button
+            }
+        }
+    }
+}
+
+pub struct ReButton<'a> {
+    pub variant: Variant,
+    inner: Button<'a>,
+}
+
+impl<'a> ReButton<'a> {
+    pub fn new(atoms: impl IntoAtoms<'a>) -> Self {
+        Self::from_button(Button::new(atoms))
+    }
+
+    pub fn from_button(button: Button<'a>) -> Self {
+        ReButton {
+            inner: button,
+            variant: Variant::Ghost,
+        }
+    }
+
+    pub fn primary(mut self) -> Self {
+        self.variant = Variant::Primary;
+        self
+    }
+
+    pub fn secondary(mut self) -> Self {
+        self.variant = Variant::Secondary;
+        self
+    }
+
+    pub fn ghost(mut self) -> Self {
+        self.variant = Variant::Ghost;
+        self
+    }
+}
+
+pub trait ReButtonExt<'a> {
+    fn primary(self) -> ReButton<'a>;
+    fn secondary(self) -> ReButton<'a>;
+}
+
+impl<'a> ReButtonExt<'a> for Button<'a> {
+    fn primary(self) -> ReButton<'a> {
+        ReButton {
+            inner: self,
+            variant: Variant::Primary,
+        }
+    }
+
+    fn secondary(self) -> ReButton<'a> {
+        ReButton {
+            inner: self,
+            variant: Variant::Secondary,
+        }
+    }
+}
+
+impl<'a> egui::Widget for ReButton<'a> {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let previous_style = ui.style().clone();
+        let tokens = ui.tokens();
+        let style = ui.style_mut();
+        style.spacing.button_padding = egui::vec2(12.0, 8.0);
+        all_visuals(style, |vis| {
+            vis.corner_radius = CornerRadius::same(6);
+        });
+        self.variant.apply(style, tokens);
+        let response = ui.add(self.inner);
+        ui.set_style(previous_style);
+        response
+    }
+}

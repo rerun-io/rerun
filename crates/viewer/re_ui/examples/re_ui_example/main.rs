@@ -552,6 +552,80 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.label("This some help text.");
         });
 
+        ui.group(|ui| {
+            ui.label("Button types");
+
+            // Regular egui button
+            ui.button("Regular button");
+
+            // Small icon button
+            if ui
+                .small_icon_button(&icons::ADD, "Small icon button")
+                .clicked()
+            {
+                re_log::info!("Small icon button clicked");
+            }
+
+            // Medium icon toggle button
+            ui.horizontal(|ui| {
+                ui.label("Medium toggle:");
+                let mut toggle_state = false;
+                ui.medium_icon_toggle_button(&icons::PLAY, "Toggle button", &mut toggle_state);
+            });
+
+            // Large button
+            ui.horizontal(|ui| {
+                ui.label("Large buttons:");
+                if ui.large_button(&icons::PLAY).clicked() {
+                    re_log::info!("Large button clicked");
+                }
+                if ui.large_button_selected(&icons::PAUSE, true).clicked() {
+                    re_log::info!("Large button (selected) clicked");
+                }
+            });
+
+            // Visibility toggle button
+            ui.horizontal(|ui| {
+                ui.label("Visibility toggle:");
+                let mut visible = true;
+                ui.visibility_toggle_button(&mut visible);
+            });
+
+            // Toggle switch
+            ui.horizontal(|ui| {
+                ui.label("Toggle switch:");
+                let mut switch_state = true;
+                ui.toggle_switch(8.0, &mut switch_state);
+            });
+
+            // Help button
+            ui.horizontal(|ui| {
+                ui.label("Help button:");
+                ui.help_button(|ui| {
+                    ui.label("This is a help tooltip.");
+                });
+            });
+
+            // Icon and text menu item (typically used in menus)
+            ui.menu_button("Menu with icon items", |ui| {
+                if ui
+                    .icon_and_text_menu_item(&icons::ADD, "Add item")
+                    .clicked()
+                {
+                    re_log::info!("Menu item clicked");
+                }
+                if ui
+                    .icon_and_text_menu_item(&icons::REMOVE, "Remove item")
+                    .clicked()
+                {
+                    re_log::info!("Remove menu item clicked");
+                }
+            });
+
+            ui.primary_button("Hello");
+            ui.secondary_button("World");
+        });
+
         Default::default()
     }
 
