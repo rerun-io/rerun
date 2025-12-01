@@ -52,7 +52,7 @@ def test_partition_ordering(readonly_test_dataset: DatasetEntry) -> None:
             readonly_test_dataset.dataframe_query_view(index=time_index, contents="/**")
             .fill_latest_at()
             .df()
-            .select("rerun_partition_id", time_index)
+            .select("rerun_segment_id", time_index)
             .execute_stream_partitioned()
         )
 

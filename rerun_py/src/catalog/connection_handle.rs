@@ -14,7 +14,7 @@ use re_log::external::log::warn;
 use re_log_types::EntryId;
 use re_protos::{
     cloud::v1alpha1::{
-        EntryFilter, EntryKind, QueryTasksResponse,
+        EntryFilter, EntryKind, QueryDatasetResponse, QueryTasksResponse,
         ext::{
             DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
             RegisterWithDatasetTaskDescriptor, TableEntry,
@@ -618,7 +618,10 @@ impl ConnectionHandle {
             exclude_temporal_data: false,
             query: Some(query),
             scan_parameters: Some(ScanParameters {
-                columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
+                columns: vec![
+                    QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID.to_owned(),
+                    QueryDatasetResponse::FIELD_CHUNK_ID.to_owned(),
+                ],
                 ..Default::default()
             }),
         };
