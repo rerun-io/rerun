@@ -89,8 +89,5 @@ pub async fn test_heuristics_mixed_all_root() {
     // Views are in a random order, lets order them
     sort_views_by_class_identifier(&mut harness);
 
-    harness.save_recording_to_file("test.rrd");
-    harness.save_blueprint_to_file("test.bpd");
-
     harness.snapshot_app("heuristics_mixed_all_root");
 }
