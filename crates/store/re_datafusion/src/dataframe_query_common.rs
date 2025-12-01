@@ -536,7 +536,7 @@ mod tests {
         ));
 
         let capacity = 4;
-        let byte_width = 32;
+        let byte_width = 16;
         let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
         chunk_id_builder.append_value([0u8; 16]).unwrap();
         chunk_id_builder.append_value([1u8; 16]).unwrap();
