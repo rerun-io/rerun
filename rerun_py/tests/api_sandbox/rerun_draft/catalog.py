@@ -709,7 +709,7 @@ class TableEntry(Entry):
     def client(self) -> CatalogClient:
         """Returns the CatalogClient associated with this table."""
         inner_catalog = _catalog.CatalogClient.__new__(_catalog.CatalogClient)  # bypass __init__
-        inner_catalog._raw_client = self._inner.catalog
+        inner_catalog._internal = self._inner.catalog
         outer_catalog = CatalogClient.__new__(CatalogClient)  # bypass __init__
         outer_catalog._inner = inner_catalog
 

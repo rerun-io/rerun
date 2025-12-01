@@ -8,7 +8,7 @@ import pyarrow.compute
 from rerun.error_utils import RerunMissingDependencyError
 
 if TYPE_CHECKING:
-    from rerun_bindings import DatasetEntry
+    from rerun.catalog import DatasetEntry
 
 HAS_DATAFUSION = True
 try:

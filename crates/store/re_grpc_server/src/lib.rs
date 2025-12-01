@@ -1161,6 +1161,12 @@ mod tests {
             let completion = completion.clone();
             async move {
                 tonic::transport::Server::builder()
+                    // NOTE: This NODELAY very likely does nothing because of the call to
+                    // `serve_with_incoming_shutdown` below, but we better be on the defensive here so
+                    // we don't get surprised when things inevitably change.
+                    .tcp_nodelay(true)
+                    .accept_http1(true)
+                    .http2_adaptive_window(Some(true)) // Optimize for throughput
                     .add_service(
                         MessageProxyServiceServer::new(super::MessageProxy::new(options))
                             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)

@@ -50,7 +50,12 @@ async fn stream_async(
         };
 
         #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = { tonic::transport::Endpoint::new(url)?.connect().await? };
+        let tonic_client = {
+            tonic::transport::Endpoint::new(url)?
+                .http2_adaptive_window(true) // Optimize for throughput
+                .connect()
+                .await?
+        };
 
         MessageProxyServiceClient::new(tonic_client)
             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
