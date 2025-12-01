@@ -614,6 +614,9 @@ impl EntityDb {
         self.on_store_events(&store_events);
 
         // We inform the stats last, since it measures e2e latency.
+        // We only care about latency metrics during ingestion (adding a chunk)
+        // which is why we only call it here, and not inside of `on_store_events`
+        // (we need the `chunk_timestamps`).
         self.stats.on_events(chunk_timestamps, &store_events);
 
         Ok(store_events)
