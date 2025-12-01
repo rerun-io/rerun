@@ -1173,13 +1173,16 @@ mod tests {
     #[test]
     fn test_rename_columns_preserves_field_properties() {
         let schema = Arc::new(Schema::new(vec![
-            Field::new("col", DataType::Int32, true).with_metadata(std::collections::HashMap::from([
-                ("description".to_owned(), "A test column".to_owned()),
-            ])),
+            Field::new("col", DataType::Int32, true).with_metadata(
+                std::collections::HashMap::from([(
+                    "description".to_owned(),
+                    "A test column".to_owned(),
+                )]),
+            ),
         ]));
 
-        let batch = RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(vec![1, 2, 3]))])
-            .unwrap();
+        let batch =
+            RecordBatch::try_new(schema, vec![Arc::new(Int32Array::from(vec![1, 2, 3]))]).unwrap();
 
         let renamed = batch.rename_columns(&[("col", "renamed_col")]).unwrap();
 

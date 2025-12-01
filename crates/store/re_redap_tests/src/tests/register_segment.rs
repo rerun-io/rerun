@@ -221,10 +221,7 @@ pub async fn register_and_scan_simple_dataset_with_layers(service: impl RerunClo
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple(
-                "segment1",
-                &["my/entity", "another/one", "yet/another/one"],
-            ),
+            LayerDefinition::simple("segment1", &["my/entity", "another/one", "yet/another/one"]),
             LayerDefinition::simple("segment1", &["extra/entity"]).layer_name("extra"),
             LayerDefinition::simple("segment2", &["another/one", "yet/another/one"])
                 .layer_name("base"),
