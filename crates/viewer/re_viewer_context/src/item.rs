@@ -47,16 +47,16 @@ pub enum Item {
 impl Item {
     pub fn view_id(&self) -> Option<BlueprintId<ViewIdRegistry>> {
         match self {
-            Item::AppId(_)
-            | Item::DataSource(_)
-            | Item::StoreId(_)
-            | Item::TableId(_)
-            | Item::InstancePath(_)
-            | Item::ComponentPath(_)
-            | Item::Container(_)
-            | Item::RedapEntry(_)
-            | Item::RedapServer(_) => None,
-            Item::View(view_id) | Item::DataResult(view_id, _) => Some(*view_id),
+            Self::AppId(_)
+            | Self::DataSource(_)
+            | Self::StoreId(_)
+            | Self::TableId(_)
+            | Self::InstancePath(_)
+            | Self::ComponentPath(_)
+            | Self::Container(_)
+            | Self::RedapEntry(_)
+            | Self::RedapServer(_) => None,
+            Self::View(view_id) | Self::DataResult(view_id, _) => Some(*view_id),
         }
     }
 
