@@ -192,6 +192,71 @@ impl From<&TraceHeaders> for opentelemetry::Context {
 
 // ---
 
+/// Simple extractor for HashMap<String, String> to work with OpenTelemetry propagation
+pub struct HashMapExtractor<'a>(pub &'a std::collections::HashMap<String, String>);
+
+impl<'a> opentelemetry::propagation::Extractor for HashMapExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).map(|s| s.as_str())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|s| s.as_str()).collect()
+    }
+}
+
+#[cfg(feature = "pyo3")]
+/// Extract trace context from Python ContextVar for cross-boundary propagation
+/// 
+/// This function reads trace context headers stored in a Python ContextVar named "TRACE_CONTEXT"
+/// from the "redap_tests.telemetry" module. This enables distributed tracing across Python→Rust
+/// boundaries in PyO3 applications.
+pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> std::collections::HashMap<String, String> {
+    use pyo3::prelude::*;
+    use pyo3::types::PyDict;
+    
+    tracing::info!("🔍 Attempting to extract trace context from ContextVar");
+    
+    let result = (|| -> PyResult<std::collections::HashMap<String, String>> {
+        let telemetry_module = py.import("redap_tests.telemetry")?;
+        let context_var = telemetry_module.getattr("TRACE_CONTEXT")?;
+        
+        match context_var.call_method0("get") {
+            Ok(trace_data) => {
+                let mut headers = std::collections::HashMap::new();
+                if let Ok(dict) = trace_data.downcast::<PyDict>() {
+                    for (key, value) in dict {
+                        if let (Ok(key_str), Ok(value_str)) =
+                            (key.extract::<String>(), value.extract::<String>())
+                        {
+                            headers.insert(key_str, value_str);
+                        }
+                    }
+                    tracing::info!(
+                        "📋 Successfully extracted {} trace headers from ContextVar",
+                        headers.len()
+                    );
+                    tracing::debug!("🔍 Trace headers: {:?}", headers);
+                } else {
+                    tracing::info!("🔍 ContextVar contains non-dict data");
+                }
+                Ok(headers)
+            }
+            Err(_) => {
+                tracing::info!("🔍 ContextVar is not set or empty");
+                Ok(std::collections::HashMap::new())
+            }
+        }
+    })();
+    
+    result.unwrap_or_else(|err| {
+        tracing::debug!("❌ Failed to extract trace context: {}", err);
+        std::collections::HashMap::new()
+    })
+}
+
+// ---
+
 // Extension to [`tracing_subscriber:EnvFilter`] that allows to
 // add a directive only if not already present in the base filter
 pub trait EnvFilterExt

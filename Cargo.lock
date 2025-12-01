@@ -9207,6 +9207,7 @@ dependencies = [
  "opentelemetry_sdk",
  "parking_lot",
  "prometheus-client",
+ "pyo3",
  "serde",
  "serde_json",
  "tokio",

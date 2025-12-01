@@ -38,7 +38,7 @@ nasm = ["re_video/nasm"]
 ## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
 ##
 ## This only works on native.
-perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
+perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry", "re_perf_telemetry/pyo3"]
 
 server = ["re_sdk/server", "dep:re_grpc_server"]
 
