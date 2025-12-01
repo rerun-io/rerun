@@ -606,14 +606,14 @@ where
                 })
         };
 
-        let segment_id_column = get_string_array(RegisterWithDatasetResponse::SEGMENT_ID)?;
+        let segment_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_SEGMENT_ID)?;
         let segment_type_column = DataSourceKind::many_from_arrow(
             response
-                .column_by_name(RegisterWithDatasetResponse::SEGMENT_TYPE)
+                .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE)
                 .ok_or_else(|| {
                     let err = missing_column!(
                         RegisterWithDatasetResponse,
-                        RegisterWithDatasetResponse::SEGMENT_TYPE
+                        RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE
                     );
                     ApiError::serialization(err, "missing column in /RegisterWithDataset response")
                 })?,
@@ -621,8 +621,8 @@ where
         .map_err(|err| {
             ApiError::serialization(err, "failed parsing /RegisterWithDataset response")
         })?;
-        let storage_url_column = get_string_array(RegisterWithDatasetResponse::STORAGE_URL)?;
-        let task_id_column = get_string_array(RegisterWithDatasetResponse::TASK_ID)?;
+        let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
+        let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
 
         itertools::izip!(
             segment_id_column,

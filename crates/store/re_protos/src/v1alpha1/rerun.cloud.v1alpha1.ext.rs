@@ -1501,20 +1501,20 @@ impl GetDatasetSchemaResponse {
 // --- RegisterWithDatasetResponse ---
 
 impl RegisterWithDatasetResponse {
-    pub const SEGMENT_ID: &str = "rerun_segment_id";
-    pub const SEGMENT_LAYER: &str = "rerun_segment_layer";
-    pub const SEGMENT_TYPE: &str = "rerun_segment_type";
-    pub const STORAGE_URL: &str = "rerun_storage_url";
-    pub const TASK_ID: &str = "rerun_task_id";
+    pub const FIELD_SEGMENT_ID: &str = "rerun_segment_id";
+    pub const FIELD_SEGMENT_LAYER: &str = "rerun_segment_layer";
+    pub const FIELD_SEGMENT_TYPE: &str = "rerun_segment_type";
+    pub const FIELD_STORAGE_URL: &str = "rerun_storage_url";
+    pub const FIELD_TASK_ID: &str = "rerun_task_id";
 
     /// The Arrow schema of the dataframe in [`Self::data`].
     pub fn schema() -> Schema {
         Schema::new(vec![
-            Field::new(Self::SEGMENT_ID, DataType::Utf8, false),
-            Field::new(Self::SEGMENT_LAYER, DataType::Utf8, false),
-            Field::new(Self::SEGMENT_TYPE, DataType::Utf8, false),
-            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
-            Field::new(Self::TASK_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_SEGMENT_ID, DataType::Utf8, false),
+            Field::new(Self::FIELD_SEGMENT_LAYER, DataType::Utf8, false),
+            Field::new(Self::FIELD_SEGMENT_TYPE, DataType::Utf8, false),
+            Field::new(Self::FIELD_STORAGE_URL, DataType::Utf8, false),
+            Field::new(Self::FIELD_TASK_ID, DataType::Utf8, false),
         ])
     }
 

@@ -104,7 +104,7 @@ async fn register_with_dataset(
 
     // extract task ids from the response record batch
     let task_ids = {
-        resp.column_by_name(RegisterWithDatasetResponse::TASK_ID)
+        resp.column_by_name(RegisterWithDatasetResponse::FIELD_TASK_ID)
             .expect("task_id column expected")
             .as_any()
             .downcast_ref::<arrow::array::StringArray>()
