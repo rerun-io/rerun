@@ -388,7 +388,6 @@ impl PyDataframeQueryView {
     ///     A new view with the null values filled in.
     ///
     ///     The original view will not be modified.
-    #[instrument(skip_all)]
     fn fill_latest_at(&self, py: Python<'_>) -> Self {
         with_trace_span!(py, "fill_latest_at", {
             self.clone_with_new_query(py, |query_expression| {
