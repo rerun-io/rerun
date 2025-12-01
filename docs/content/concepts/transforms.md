@@ -159,6 +159,8 @@ rr.log("arm",
 rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```
 
+TODO: show a picture of a tree.
+
 ## Pinhole projections
 
 In Rerun, pinhole cameras are also treated as spatial relationships that define projections from 3D spaces to 2D subspaces.
@@ -172,6 +174,9 @@ With the right setup, pinholes allow a bunch of powerful visualizations:
 * 2D in 3D: all 2D content that is part of the pinhole's transform subtree
 * 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
     * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
+
+If a transform frame relationship has both a pinhole projection & regular transforms (in this context often regarded as the camera extrinsics)
+the regular transform is applied first.
 
 ### Example: 3D scene with 2D projections
 
@@ -206,14 +211,47 @@ WARNING: unlike in 3D views where `rr.ViewCoordinates` only impacts how the rend
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
-## Poses & instancing
+## Pose transforms
 
-TODO: briefly explain poses, how they're relative to their entity's frame, how they can be used for instancing. Use a viewer embed of the instancing example.
+[`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) defines geometric poses relative to an entity's transform frame.
+Unlike with [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), poses do not propagate through the transform hierarchy
+and can store an arbitrary amount of transforms on the same entity.
+
+An entity that has both [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
+without `child_frame`/`parent_frame` as well as `InstancePoses3D`,
+the [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is applied first
+(affecting the entity and all its children), then [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d)
+is applied only to that specific entity.
+(This is consistent with how entity hierarchy based transforms translate to transform frames.)
+
+### Instancing
+
+Rerun's [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) archetype is not only used
+to model poses relative to an Entity's frame, but also for repeating (known as "instancing") visualizations on the same entity:
+most visualizations will show once for each transform on [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d)
+in the respective place.
+
+snippet: archetypes/mesh3d_instancing
+
+<picture data-inline-viewer="snippets/archetypes/mesh3d_instancing">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png">
+  <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
+</picture>
+
+In this example, the mesh at `"shape"` is instantiated four times with different translations and rotations.
+The box at `"shape/box"` is not affected by its parent's instance poses and appears only once.
+
+<!-- 
 
 ## Visualizing transforms
 
-TODO: write about how transforms can be visualized
+TODO(andreas, grtlr): write about how transforms can be visualized
 
 ## 2D Transforms
 
-TODO: lack of 2d transforms
+TODO(#349): lack of 2d transforms
+
+-->
