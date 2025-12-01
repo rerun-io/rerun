@@ -23,14 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Specifies the coordinate frame for an entity.
 ///
-/// **Experimental:** Transform frames are still in early development!
-///
 /// If not specified, the coordinate frame uses an implicit frame derived from the entity path.
 /// The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
 ///
 /// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the reference.
-///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 ///
 /// ## Example
 ///

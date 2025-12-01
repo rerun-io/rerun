@@ -17,8 +17,6 @@
 namespace rerun::archetypes {
     /// **Archetype**: Specifies the coordinate frame for an entity.
     ///
-    /// **Experimental:** Transform frames are still in early development!
-    ///
     /// If not specified, the coordinate frame uses an implicit frame derived from the entity path.
     /// The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
     ///
@@ -39,15 +37,15 @@ namespace rerun::archetypes {
     ///     rec.set_time_sequence("time", 0);
     ///     rec.log(
     ///         "red_box",
-    ///         rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}}
-    ///         ).with_colors({rerun::Color(255, 0, 0)}),
+    ///         rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}})
+    ///             .with_colors({rerun::Color(255, 0, 0)}),
     ///         // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
     ///         rerun::Transform3D::from_translation({2.0f, 0.0f, 0.0f})
     ///     );
     ///     rec.log(
     ///         "blue_box",
-    ///         rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}}
-    ///         ).with_colors({rerun::Color(0, 0, 255)}),
+    ///         rerun::Boxes3D::from_half_sizes({{0.5f, 0.5f, 0.5f}})
+    ///             .with_colors({rerun::Color(0, 0, 255)}),
     ///         // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
     ///         rerun::Transform3D::from_translation({-2.0f, 0.0f, 0.0f})
     ///     );
@@ -61,9 +59,6 @@ namespace rerun::archetypes {
     ///     }
     /// }
     /// ```
-    ///
-    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    ///
     struct CoordinateFrame {
         /// The coordinate frame to use for the current entity.
         std::optional<ComponentBatch> frame;

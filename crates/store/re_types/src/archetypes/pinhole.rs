@@ -29,8 +29,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// as it is the case with other visualizations: for any entity with an [`archetypes::Pinhole`][crate::archetypes::Pinhole] the viewer will always visualize it
 /// directly without needing a [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame] to refer to the pinhole's child/parent frame.
 ///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-///
 /// ## Examples
 ///
 /// ### Simple pinhole camera
@@ -161,8 +159,6 @@ pub struct Pinhole {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub child_frame: Option<SerializedComponentBatch>,
 
     /// The parent frame this transform transforms into.
@@ -173,8 +169,6 @@ pub struct Pinhole {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub parent_frame: Option<SerializedComponentBatch>,
 
     /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
@@ -696,8 +690,6 @@ impl Pinhole {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #[inline]
     pub fn with_child_frame(
         mut self,
@@ -728,8 +720,6 @@ impl Pinhole {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #[inline]
     pub fn with_parent_frame(
         mut self,
