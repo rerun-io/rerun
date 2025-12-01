@@ -242,6 +242,8 @@ pub struct DesignTokens {
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        anyhow::ensure!(!tokens_ron.trim().is_empty(), "Empty theme file");
+
         let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
             .expect("Failed to parse data/color_table.ron");
         let colors = load_color_table(&color_table_ron);

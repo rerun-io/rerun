@@ -149,6 +149,17 @@ impl ApiError {
         }
     }
 
+    pub fn invalid_arguments(
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::InvalidArguments,
+            source: Some(Box::new(err)),
+        }
+    }
+
     pub fn internal(
         err: impl std::error::Error + Send + Sync + 'static,
         message: impl Into<String>,

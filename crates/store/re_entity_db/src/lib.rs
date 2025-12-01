@@ -4,6 +4,7 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod chunk_index;
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;
@@ -14,6 +15,7 @@ mod times_per_timeline;
 mod versioned_instance_path;
 
 pub use self::{
+    chunk_index::ChunkIndex,
     entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
     entity_tree::EntityTree,
     ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats},

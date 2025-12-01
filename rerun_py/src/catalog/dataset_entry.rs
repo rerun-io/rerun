@@ -445,7 +445,7 @@ impl PyDatasetEntryInternal {
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let mut client = connection.client().await?;
             let response_stream = client
-                .fetch_segment_chunks(re_redap_client::SegmentQueryParams {
+                .fetch_segment_chunks_by_query(re_redap_client::SegmentQueryParams {
                     dataset_id,
                     segment_id: partition_id.clone().into(),
                     include_static_data: true,
