@@ -80,7 +80,7 @@ Named transform frames have several advantages over entity path based hierarchie
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
-## Entity hierarchy based transforms under the hood - entity derived transform frames
+## Entity hierarchy based transforms under the hood - implicit transform frames
 
 Under the hood, Rerun's entity path hierarchies actually use the same transform frame system as named frames.
 For each entity path, an associated transform frame with the prefix `tf#` is automatically created:
@@ -247,11 +247,11 @@ The box at `"shape/box"` is not affected by its parent's instance poses and appe
 
 <!--
 
-## Visualizing transforms
+Visualizing transforms
 
 TODO(andreas, grtlr): write about how transforms can be visualized
 
-## 2D Transforms
+2D Transforms
 
 TODO(#349): lack of 2D transforms
 
