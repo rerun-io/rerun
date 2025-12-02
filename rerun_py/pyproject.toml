@@ -262,6 +262,7 @@ filterwarnings = """
 error
 """
 norecursedirs = ".* venv* target* build"
+addopts = "-m 'not aws_ci_credentials'"
 
 ######################
 # mypy configuration #
