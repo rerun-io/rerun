@@ -18,7 +18,9 @@ use re_protos::{
 };
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
-use crate::{FieldsExt as _, RecordBatchExt as _, SchemaExt as _, create_simple_recording_in};
+use crate::{
+    FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _, create_simple_recording_in,
+};
 
 pub async fn register_and_scan_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
