@@ -64,6 +64,7 @@ re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.28.
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.28.0-alpha.1", default-features = false }
 
 # crates/store:
+re_arrow_combinators = { path = "crates/store/re_arrow_combinators", version = "=0.28.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.28.0-alpha.1", default-features = false }
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.28.0-alpha.1", default-features = false }
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.28.0-alpha.1", default-features = false }
@@ -93,7 +94,6 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.28.0-alpha.1", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.28.0-alpha.1", default-features = false }
-re_arrow_combinators = { path = "crates/utils/re_arrow_combinators", version = "=0.28.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.28.0-alpha.1", default-features = false }
 re_auth = { path = "crates/utils/re_auth", version = "=0.28.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.28.0-alpha.1", default-features = false }
