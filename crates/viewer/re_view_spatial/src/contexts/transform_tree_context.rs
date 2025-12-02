@@ -232,16 +232,17 @@ impl ViewContextSystem for TransformTreeContext {
                         .entity_transform_id_mapping
                         .transform_frame_id_to_entity_path
                         .get(&transform_frame_id_hash)?;
-                    let transform_infos = entity_paths.iter().map(move |entity_path_hash| {
-                        let transform_info = map_tree_transform_to_transform_info(
-                            ctx,
-                            tree_transform,
-                            transforms,
-                            latest_at_query,
-                            entity_path_hash,
-                        );
-                        (*entity_path_hash, transform_info)
-                    });
+                    let transform_infos =
+                        entity_paths_for_frame.iter().map(move |entity_path_hash| {
+                            let transform_info = map_tree_transform_to_transform_info(
+                                ctx,
+                                tree_transform.clone(),
+                                transforms,
+                                latest_at_query,
+                                entity_path_hash,
+                            );
+                            (*entity_path_hash, transform_info)
+                        });
 
                     Some(transform_infos)
                 })
