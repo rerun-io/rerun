@@ -4,7 +4,7 @@ use re_protos::{
 };
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
-use crate::SchemaExt as _;
+use crate::SchemaTestExt as _;
 
 pub async fn simple_dataset_schema(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(

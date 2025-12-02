@@ -13,7 +13,7 @@ use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
+use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
@@ -25,7 +25,7 @@ use re_protos::{
     common::v1alpha1::ext::DatasetHandle,
     headers::RerunHeadersInjectorExt as _,
 };
-use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
+use re_redap_client::fetch_chunks_response_to_chunk_and_segment_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
 use super::{
@@ -136,7 +136,7 @@ impl PyDatasetEntryInternal {
     fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_
             .dataset_details
-            .default_blueprint
+            .default_blueprint_segment
             .as_ref()
             .map(ToString::to_string)
     }
@@ -153,7 +153,7 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
 
         let mut dataset_details = self_.dataset_details.clone();
-        dataset_details.default_blueprint = partition_id.map(Into::into);
+        dataset_details.default_blueprint_segment = partition_id.map(Into::into);
 
         let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
 
@@ -181,7 +181,7 @@ impl PyDatasetEntryInternal {
         let dataset_id = self_.entry_details.id;
 
         let provider = wait_for_future(self_.py(), async move {
-            PartitionTableProvider::new(connection.client().await?, dataset_id)
+            SegmentTableProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
@@ -345,7 +345,7 @@ impl PyDatasetEntryInternal {
 
         connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
 
-        Ok(task_descriptor.partition_id.id)
+        Ok(task_descriptor.segment_id.id)
     }
 
     /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
@@ -445,9 +445,9 @@ impl PyDatasetEntryInternal {
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let mut client = connection.client().await?;
             let response_stream = client
-                .fetch_partition_chunks(re_redap_client::PartitionQueryParams {
+                .fetch_segment_chunks_by_query(re_redap_client::SegmentQueryParams {
                     dataset_id,
-                    partition_id: partition_id.clone().into(),
+                    segment_id: partition_id.clone().into(),
                     include_static_data: true,
                     include_temporal_data: true,
                     query: None,
@@ -455,8 +455,7 @@ impl PyDatasetEntryInternal {
                 .await
                 .map_err(to_py_err)?;
 
-            let mut chunks_stream =
-                fetch_chunks_response_to_chunk_and_partition_id(response_stream);
+            let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
             let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());

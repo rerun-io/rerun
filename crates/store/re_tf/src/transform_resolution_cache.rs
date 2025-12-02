@@ -514,6 +514,11 @@ impl TreeTransformsForChildFrame {
         }
     }
 
+    /// The entity path that produces information for this frame.
+    pub fn associated_entity_path(&self) -> &EntityPath {
+        &self.associated_entity_path
+    }
+
     /// Inserts an invalidation point for transforms.
     fn invalidate_transform_at(&mut self, time: TimeInt) {
         let events = self.events.get_mut();

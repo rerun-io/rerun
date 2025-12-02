@@ -1,0 +1,9 @@
+---
+source: crates/store/re_redap_tests/src/tests/register_segment.rs
+expression: filtered_batch.format_snapshot(false)
+---
+┌──────────────────┬──────────────────────┬──────────────────┬──────────────────┬──────────────────────────────────────────┐
+│ rerun_layer_name ┆ rerun_segment_id     ┆ rerun_layer_type ┆ rerun_num_chunks ┆ rerun_schema_sha256                      │
+╞══════════════════╪══════════════════════╪══════════════════╪══════════════════╪══════════════════════════════════════════╡
+│ base             ┆ blueprint_segment_id ┆ rrd              ┆ 1                ┆ c7bc6dae21fe00e0c6e3d0d5a0e36e5ab19c8d7… │
+└──────────────────┴──────────────────────┴──────────────────┴──────────────────┴──────────────────────────────────────────┘

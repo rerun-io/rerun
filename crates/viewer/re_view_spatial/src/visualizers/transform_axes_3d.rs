@@ -2,7 +2,7 @@ use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _,
-    archetypes::{CoordinateFrame, InstancePoses3D, Transform3D, TransformAxes3D},
+    archetypes::{CoordinateFrame, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D},
     components::{AxisLength, ShowLabels},
 };
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -41,9 +41,10 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         // Make this visualizer available for any entity with Transform3D components
         query_info.required = RequiredComponents::Any(
             Transform3D::all_component_identifiers()
-                .chain(TransformAxes3D::all_component_identifiers())
-                .chain(InstancePoses3D::all_component_identifiers())
                 .chain(CoordinateFrame::all_component_identifiers())
+                .chain(InstancePoses3D::all_component_identifiers())
+                .chain(Pinhole::all_component_identifiers())
+                .chain(TransformAxes3D::all_component_identifiers())
                 .collect(),
         );
 

@@ -1,7 +1,5 @@
 """Demonstrates using explicit `CoordinateFrame` with implicit transform frames only."""
 
-# TODO(RR-2777): This is still an experimental feature.
-
 import rerun as rr
 
 rr.init("rerun_example_transform3d_hierarchy", spawn=True)

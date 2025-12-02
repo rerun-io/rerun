@@ -67,11 +67,13 @@ impl Args {
             let mut builder = crate::RerunCloudHandlerBuilder::new();
 
             for dataset in &self.datasets {
-                builder = builder.with_directory_as_dataset(
-                    dataset,
-                    re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
-                    crate::OnError::Continue,
-                )?;
+                builder = builder
+                    .with_directory_as_dataset(
+                        dataset,
+                        re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                        crate::OnError::Continue,
+                    )
+                    .await?;
             }
 
             #[cfg_attr(not(feature = "lance"), expect(clippy::never_loop))]

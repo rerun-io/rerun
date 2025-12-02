@@ -12,7 +12,7 @@ chunk_is_static: bool [
     rerun:kind:control
 ]
 chunk_key: Binary
-chunk_partition_id: Utf8 [
+chunk_segment_id: Utf8 [
     rerun:kind:control
 ]
-rerun_partition_layer: Utf8
+rerun_segment_layer: Utf8

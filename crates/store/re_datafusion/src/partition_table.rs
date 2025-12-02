@@ -10,7 +10,7 @@ use tracing::instrument;
 
 use re_log_types::EntryId;
 use re_protos::{
-    cloud::v1alpha1::{ScanPartitionTableRequest, ScanPartitionTableResponse},
+    cloud::v1alpha1::{ScanSegmentTableRequest, ScanSegmentTableResponse},
     headers::RerunHeadersInjectorExt as _,
 };
 use re_redap_client::ConnectionClient;
@@ -20,20 +20,20 @@ use crate::wasm_compat::make_future_send;
 
 //TODO(ab): deduplicate from DatasetManifestProvider
 #[derive(Clone)]
-pub struct PartitionTableProvider {
+pub struct SegmentTableProvider {
     client: ConnectionClient,
     dataset_id: EntryId,
 }
 
-impl std::fmt::Debug for PartitionTableProvider {
+impl std::fmt::Debug for SegmentTableProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PartitionTableProvider")
+        f.debug_struct("SegmentTableProvider")
             .field("dataset_id", &self.dataset_id)
             .finish()
     }
 }
 
-impl PartitionTableProvider {
+impl SegmentTableProvider {
     pub fn new(client: ConnectionClient, dataset_id: EntryId) -> Self {
         Self { client, dataset_id }
     }
@@ -45,8 +45,8 @@ impl PartitionTableProvider {
 }
 
 #[async_trait]
-impl GrpcStreamToTable for PartitionTableProvider {
-    type GrpcStreamData = ScanPartitionTableResponse;
+impl GrpcStreamToTable for SegmentTableProvider {
+    type GrpcStreamData = ScanSegmentTableResponse;
 
     #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
@@ -57,11 +57,11 @@ impl GrpcStreamToTable for PartitionTableProvider {
         Ok(Arc::new(
             make_future_send(async move {
                 client
-                    .get_partition_table_schema(dataset_id)
+                    .get_segment_table_schema(dataset_id)
                     .await
                     .map_err(|err| {
                         DataFusionError::External(
-                            format!("Couldn't get partition table schema: {err}").into(),
+                            format!("Couldn't get segment table schema: {err}").into(),
                         )
                     })
             })
@@ -75,7 +75,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
-        let request = tonic::Request::new(ScanPartitionTableRequest {
+        let request = tonic::Request::new(ScanSegmentTableRequest {
             columns: vec![], // all of them
         })
         .with_entry_id(self.dataset_id)
@@ -83,7 +83,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.inner().scan_partition_table(request).await) })
+        make_future_send(async move { Ok(client.inner().scan_segment_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
@@ -95,7 +95,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
         response
             .data
             .ok_or(DataFusionError::Execution(
-                "DataFrame missing from PartitionList response".to_owned(),
+                "DataFrame missing from SegmentTable response".to_owned(),
             ))?
             .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))

@@ -14,7 +14,7 @@ use re_sdk::external::re_log_encoding::ToApplication as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 
-use crate::RecordBatchExt as _;
+use crate::RecordBatchTestExt as _;
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
 };

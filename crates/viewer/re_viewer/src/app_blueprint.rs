@@ -153,6 +153,7 @@ impl<'a> AppBlueprint<'a> {
         }
 
         let new_state = self.panel_states.selection.toggle();
+
         self.send_panel_state(SELECTION_PANEL_PATH, new_state, command_sender);
 
         // Toggle the opposite side if this panel is visible to save on screen real estate

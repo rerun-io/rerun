@@ -52,7 +52,7 @@ def test_partition_ordering(readonly_test_dataset: DatasetEntry) -> None:
             readonly_test_dataset.dataframe_query_view(index=time_index, contents="/**")
             .fill_latest_at()
             .df()
-            .select("rerun_partition_id", time_index)
+            .select("rerun_segment_id", time_index)
             .execute_stream_partitioned()
         )
 
@@ -133,7 +133,7 @@ def test_query_view_from_schema(readonly_test_dataset: DatasetEntry) -> None:
             assert contents.count() > 0
 
 
-def readonly_test_dataset_schema_comparison_self_consistent(readonly_test_dataset: DatasetEntry) -> None:
+def test_readonly_dataset_schema_comparison_self_consistent(readonly_test_dataset: DatasetEntry) -> None:
     schema_0 = readonly_test_dataset.schema()
     schema_1 = readonly_test_dataset.schema()
     set_diff = set(schema_0).symmetric_difference(schema_1)

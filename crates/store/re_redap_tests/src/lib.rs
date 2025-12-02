@@ -21,7 +21,6 @@ mod tests;
 mod utils;
 
 pub use self::utils::{
-    arrow::{FieldsExt, RecordBatchExt, SchemaExt},
     path::TempPath,
     rerun::{
         TuidPrefix, create_minimal_binary_recording_in, create_nasty_recording,
@@ -32,3 +31,5 @@ pub use self::utils::{
 };
 
 pub use self::tests::*;
+
+pub use ::re_arrow_util::{FieldsTestExt, RecordBatchTestExt, SchemaTestExt}; // convenience

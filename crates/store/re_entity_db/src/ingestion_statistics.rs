@@ -1,9 +1,9 @@
 use emath::History;
 use parking_lot::Mutex;
-
-use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
-use re_sorbet::TimestampMetadata;
 use saturating_cast::SaturatingCast as _;
+
+use re_chunk_store::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
+use re_sorbet::TimestampMetadata;
 
 /// Statistics about the latency of incoming data to a store.
 #[derive(Default)]
@@ -21,13 +21,12 @@ impl Clone for IngestionStatistics {
 
 impl IngestionStatistics {
     #[inline]
-    pub fn on_events(&self, timestamps: &TimestampMetadata, events: &[ChunkStoreEvent]) {
+    pub fn on_events(&self, chunk_timestamps: &TimestampMetadata, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
         let now_nanos = nanos_since_epoch();
         let mut stats = self.stats.lock();
         for event in events {
-            if event.diff.kind == ChunkStoreDiffKind::Addition {
-                stats.on_new_chunk(now_nanos, timestamps, &event.diff.chunk);
-            }
+            stats.on_new_chunk(now_nanos, chunk_timestamps, &event.diff);
         }
     }
 }
@@ -82,9 +81,13 @@ impl LatencyStats {
     fn on_new_chunk(
         &mut self,
         now_nanos: i64,
-        timestamps: &TimestampMetadata,
-        chunk: &re_chunk::Chunk,
+        chunk_timestamps: &TimestampMetadata,
+        diff: &ChunkStoreDiff,
     ) {
+        if diff.kind != ChunkStoreDiffKind::Addition {
+            return;
+        }
+
         let Self {
             e2e,
             log2chunk,
@@ -95,17 +98,21 @@ impl LatencyStats {
 
         let now = now_nanos as f64 / 1e9;
 
-        let chunk_creation_nanos = chunk.id().nanos_since_epoch().saturating_cast::<i64>();
+        // We use the chunk id for timing, so we need to get the _original_ id:
+        let original_chunk_id = diff.split_source.unwrap_or(diff.chunk.id());
+        let chunk_creation_nanos = original_chunk_id
+            .nanos_since_epoch()
+            .saturating_cast::<i64>();
 
         let TimestampMetadata {
             grpc_encoded_at,
             grpc_decoded_at,
-        } = timestamps;
+        } = chunk_timestamps;
 
         let grpc_encoded_at_nanos = grpc_encoded_at.and_then(system_time_to_nanos);
         let grpc_decoded_at_nanos = grpc_decoded_at.and_then(system_time_to_nanos);
 
-        for row_id in chunk.row_ids() {
+        for row_id in diff.chunk.row_ids() {
             let row_creation_nanos = row_id.nanos_since_epoch().saturating_cast::<i64>();
 
             // Total:

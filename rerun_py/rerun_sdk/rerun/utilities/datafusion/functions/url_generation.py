@@ -52,7 +52,7 @@ def partition_url(
     if not HAS_DATAFUSION:
         raise RerunMissingDependencyError("datafusion", "datafusion")
     if partition_id_col is None:
-        partition_id_col = col("rerun_partition_id")
+        partition_id_col = col("rerun_segment_id")
     if isinstance(partition_id_col, str):
         partition_id_col = col(partition_id_col)
 
