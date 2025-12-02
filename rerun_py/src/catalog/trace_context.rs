@@ -23,7 +23,7 @@ pub(crate) use with_trace_span;
 
 /// Get the trace context ContextVar for distributed tracing propagation.
 #[pyfunction]
-pub fn _rerun_trace_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
+pub fn rerun_trace_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
     #[cfg(feature = "perf_telemetry")]
     {
         let context_var = re_perf_telemetry::get_trace_context_var(py)?;

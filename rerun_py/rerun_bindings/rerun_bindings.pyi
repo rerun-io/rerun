@@ -1852,5 +1852,5 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
-def _rerun_trace_context() -> Any:
+def rerun_trace_context() -> Any:
     """Get the trace context ContextVar for distributed tracing propagation."""
