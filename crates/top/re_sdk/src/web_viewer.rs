@@ -25,7 +25,7 @@ struct WebViewerSink {
     open_browser: bool,
 
     /// Sender to send messages to the gRPC server.
-    sender: re_smart_channel::LogSender,
+    sender: re_log_channel::LogSender,
 
     /// The gRPC server thread.
     _server_handle: std::thread::JoinHandle<()>,
@@ -53,9 +53,9 @@ impl WebViewerSink {
             re_uri::Scheme::RerunHttp,
             grpc_server_addr,
         ));
-        let (channel_tx, channel_rx) = re_smart_channel::log_channel(
-            re_smart_channel::SmartMessageSource::MessageProxy(uri),
-            re_smart_channel::SmartChannelSource::Sdk,
+        let (channel_tx, channel_rx) = re_log_channel::log_channel(
+            re_log_channel::SmartMessageSource::MessageProxy(uri),
+            re_log_channel::SmartChannelSource::Sdk,
         );
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
@@ -110,10 +110,10 @@ impl crate::sink::LogSink for WebViewerSink {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_smart_channel::FlushError::Closed => {
+                re_log_channel::FlushError::Closed => {
                     SinkFlushError::failed("The viewer is no longer subscribed")
                 }
-                re_smart_channel::FlushError::Timeout => SinkFlushError::Timeout,
+                re_log_channel::FlushError::Timeout => SinkFlushError::Timeout,
             })
     }
 

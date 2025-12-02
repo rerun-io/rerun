@@ -1,6 +1,6 @@
 use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
-use re_smart_channel::{LogReceiver, SmartChannelSource, SmartMessageSource};
+use re_log_channel::{LogReceiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 
@@ -161,7 +161,7 @@ impl LogDataSource {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
-                let (tx, rx) = re_smart_channel::log_channel(
+                let (tx, rx) = re_log_channel::log_channel(
                     SmartMessageSource::File(path.clone()),
                     SmartChannelSource::File(path.clone()),
                 );
@@ -188,7 +188,7 @@ impl LogDataSource {
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
-                let (tx, rx) = re_smart_channel::log_channel(
+                let (tx, rx) = re_log_channel::log_channel(
                     SmartMessageSource::File(name.clone().into()),
                     SmartChannelSource::File(name.clone().into()),
                 );
@@ -219,7 +219,7 @@ impl LogDataSource {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => {
-                let (tx, rx) = re_smart_channel::log_channel(
+                let (tx, rx) = re_log_channel::log_channel(
                     SmartMessageSource::Stdin,
                     SmartChannelSource::Stdin,
                 );
@@ -237,12 +237,12 @@ impl LogDataSource {
                 uri,
                 select_when_loaded,
             } => {
-                let (tx, rx) = re_smart_channel::log_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream {
+                let (tx, rx) = re_log_channel::log_channel(
+                    re_log_channel::SmartMessageSource::RedapGrpcStream {
                         uri: uri.clone(),
                         select_when_loaded,
                     },
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream {
+                    re_log_channel::SmartChannelSource::RedapGrpcStream {
                         uri: uri.clone(),
                         select_when_loaded,
                     },

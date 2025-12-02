@@ -226,20 +226,20 @@ impl ItemCollection {
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
-                    re_smart_channel::SmartChannelSource::File(path) => {
+                    re_log_channel::SmartChannelSource::File(path) => {
                         Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
                     }
-                    re_smart_channel::SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+                    re_log_channel::SmartChannelSource::RrdHttpStream { url, follow: _ } => {
                         Some((ClipboardTextDesc::Url, url.clone()))
                     }
-                    re_smart_channel::SmartChannelSource::RrdWebEventListener => None,
-                    re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
-                    re_smart_channel::SmartChannelSource::Sdk => None,
-                    re_smart_channel::SmartChannelSource::Stdin => None,
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
+                    re_log_channel::SmartChannelSource::RrdWebEventListener => None,
+                    re_log_channel::SmartChannelSource::JsChannel { .. } => None,
+                    re_log_channel::SmartChannelSource::Sdk => None,
+                    re_log_channel::SmartChannelSource::Stdin => None,
+                    re_log_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
-                    re_smart_channel::SmartChannelSource::MessageProxy(uri) => {
+                    re_log_channel::SmartChannelSource::MessageProxy(uri) => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
                 },

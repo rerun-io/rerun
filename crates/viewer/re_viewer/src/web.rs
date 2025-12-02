@@ -26,7 +26,7 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
 struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
+    log_tx: re_log_channel::Sender<re_log_types::DataSourceMessage>,
 }
 
 #[wasm_bindgen]
@@ -254,9 +254,9 @@ impl WebHandle {
             return;
         }
 
-        let (log_tx, log_rx) = re_smart_channel::log_channel(
-            re_smart_channel::SmartMessageSource::JsChannelPush,
-            re_smart_channel::SmartChannelSource::JsChannel {
+        let (log_tx, log_rx) = re_log_channel::log_channel(
+            re_log_channel::SmartMessageSource::JsChannelPush,
+            re_log_channel::SmartChannelSource::JsChannel {
                 channel_name: channel_name.to_owned(),
             },
         );

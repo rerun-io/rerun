@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use re_data_source::LogDataSource;
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::SmartChannelSource;
 use re_uri::{
     Scheme,
     external::url::{self, Url},
@@ -751,9 +751,9 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
     use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
-    let (tx, rx) = re_smart_channel::log_channel(
-        re_smart_channel::SmartMessageSource::RrdWebEventCallback,
-        re_smart_channel::SmartChannelSource::RrdWebEventListener,
+    let (tx, rx) = re_log_channel::log_channel(
+        re_log_channel::SmartMessageSource::RrdWebEventCallback,
+        re_log_channel::SmartChannelSource::RrdWebEventListener,
     );
     let egui_ctx = egui_ctx.clone();
     re_log_encoding::rrd::stream_from_http::stream_rrd_from_event_listener(Arc::new({
@@ -794,7 +794,7 @@ mod tests {
     use crate::{DisplayMode, Item, StoreHub};
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
-    use re_smart_channel::SmartChannelSource;
+    use re_log_channel::SmartChannelSource;
     use re_uri::{
         CatalogUri, DatasetPartitionUri, Fragment,
         external::url::{self, Url},

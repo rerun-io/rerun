@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::SmartChannelSource;
 use re_ui::{DesignTokens, UiExt as _};
 
 /// Show a loading screen for when we are connecting to a data source.

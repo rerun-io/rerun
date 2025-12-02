@@ -13,9 +13,9 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_entity_db::{EntityDb, StoreBundle};
+use re_log_channel::SmartChannelSource;
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
-use re_smart_channel::SmartChannelSource;
 use re_types::{archetypes, components::Timestamp};
 
 use crate::{
@@ -459,7 +459,7 @@ impl StoreHub {
     /// If the data source is a http url, it will ignore the follow flag.
     pub fn find_recording_store_by_source(
         &self,
-        data_source: &re_smart_channel::SmartChannelSource,
+        data_source: &re_log_channel::SmartChannelSource,
     ) -> Option<&EntityDb> {
         self.store_bundle.entity_dbs().find(|db| {
             db.store_id().is_recording()
@@ -883,11 +883,11 @@ impl StoreHub {
             // - aren't network sources
             // - don't point at the given `uri`
             match data_source {
-                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
+                re_log_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
 
-                re_smart_channel::SmartChannelSource::RedapGrpcStream {
-                    uri: redap_uri, ..
-                } => redap_uri.to_string() != uri,
+                re_log_channel::SmartChannelSource::RedapGrpcStream { uri: redap_uri, .. } => {
+                    redap_uri.to_string() != uri
+                }
                 _ => true,
             }
         });

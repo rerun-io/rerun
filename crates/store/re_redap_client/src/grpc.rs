@@ -295,7 +295,7 @@ where
 /// with the server's version.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
-    tx: re_smart_channel::LogSender,
+    tx: re_log_channel::LogSender,
     uri: re_uri::DatasetPartitionUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), ApiError> {
@@ -390,7 +390,7 @@ pub async fn stream_blueprint_and_segment_from_server(
 async fn stream_segment_from_server(
     client: &mut ConnectionClient,
     store_info: StoreInfo,
-    tx: &re_smart_channel::LogSender,
+    tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
     segment_id: SegmentId,
     time_range: Option<TimeSelection>,

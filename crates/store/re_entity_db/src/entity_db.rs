@@ -18,7 +18,7 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::SmartChannelSource;
 use re_types_core::ChunkIndexMessage;
 
 use crate::{
@@ -72,7 +72,7 @@ pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
     ///
     /// Clones of an [`EntityDb`] gets a `None` source.
-    pub data_source: Option<re_smart_channel::SmartChannelSource>,
+    pub data_source: Option<re_log_channel::SmartChannelSource>,
 
     chunk_index: ChunkIndex,
 

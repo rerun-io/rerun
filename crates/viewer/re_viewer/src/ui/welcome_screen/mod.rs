@@ -6,7 +6,7 @@ mod welcome_section;
 use std::sync::Arc;
 
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::SmartChannelSource;
 use welcome_section::welcome_section_ui;
 
 use crate::app_state::WelcomeScreenState;

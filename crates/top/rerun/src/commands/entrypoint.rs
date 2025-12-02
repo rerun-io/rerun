@@ -5,8 +5,8 @@ use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
+use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 use re_log_types::DataSourceMessage;
-use re_smart_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
 
@@ -1256,7 +1256,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                         num_messages += 1;
                     }
 
-                    re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
                         on_flush_done();
                     }
 
@@ -1340,7 +1340,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 // TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
 
 fn stream_to_rrd_on_disk(
-    rx: &re_smart_channel::LogReceiverSet,
+    rx: &re_log_channel::LogReceiverSet,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;

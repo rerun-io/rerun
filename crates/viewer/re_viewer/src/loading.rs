@@ -27,7 +27,7 @@ pub fn load_blueprint_file(path: &std::path::Path) -> Option<StoreBundle> {
         Ok(mut rrd) => {
             for entity_db in rrd.entity_dbs_mut() {
                 entity_db.data_source =
-                    Some(re_smart_channel::SmartChannelSource::File(path.into()));
+                    Some(re_log_channel::SmartChannelSource::File(path.into()));
             }
             Some(rrd)
         }

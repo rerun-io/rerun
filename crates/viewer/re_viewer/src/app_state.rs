@@ -8,7 +8,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
-use re_smart_channel::LogReceiverSet;
+use re_log_channel::LogReceiverSet;
 use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
@@ -900,17 +900,17 @@ pub(crate) fn create_time_control_for<'cfgs>(
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
                 // We assume the `RrdHttpStream` is a done recording.
-                re_smart_channel::SmartChannelSource::File(_)
-                | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
-                | re_smart_channel::SmartChannelSource::RedapGrpcStream { .. }
-                | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
+                re_log_channel::SmartChannelSource::File(_)
+                | re_log_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
+                | re_log_channel::SmartChannelSource::RedapGrpcStream { .. }
+                | re_log_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
                 // Live data - follow it!
-                re_smart_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
-                | re_smart_channel::SmartChannelSource::Sdk
-                | re_smart_channel::SmartChannelSource::MessageProxy { .. }
-                | re_smart_channel::SmartChannelSource::Stdin
-                | re_smart_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
+                re_log_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
+                | re_log_channel::SmartChannelSource::Sdk
+                | re_log_channel::SmartChannelSource::MessageProxy { .. }
+                | re_log_channel::SmartChannelSource::Stdin
+                | re_log_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
             }
         } else {
             PlayState::Following // No known source 🤷‍♂️

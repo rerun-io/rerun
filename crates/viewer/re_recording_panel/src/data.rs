@@ -12,7 +12,7 @@ use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::SmartChannelSource;
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};

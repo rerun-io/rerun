@@ -5,7 +5,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::SmartChannelSource;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 

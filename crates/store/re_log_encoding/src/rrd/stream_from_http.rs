@@ -15,10 +15,10 @@ pub fn stream_from_http_to_channel(
     url: String,
     follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::LogReceiver {
-    let (tx, rx) = re_smart_channel::log_channel(
-        re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
-        re_smart_channel::SmartChannelSource::RrdHttpStream {
+) -> re_log_channel::LogReceiver {
+    let (tx, rx) = re_log_channel::log_channel(
+        re_log_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
+        re_log_channel::SmartChannelSource::RrdHttpStream {
             url: url.clone(),
             follow,
         },

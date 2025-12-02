@@ -210,13 +210,13 @@ pub async fn serve_from_channel(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    channel_rx: re_smart_channel::LogReceiver,
+    channel_rx: re_log_channel::LogReceiver,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::task::spawn_blocking(move || {
-        use re_smart_channel::SmartMessagePayload;
+        use re_log_channel::SmartMessagePayload;
 
         loop {
             let msg = if let Ok(msg) = channel_rx.recv() {
@@ -275,7 +275,7 @@ pub async fn serve_from_channel(
 
 /// Start a Rerun server, listening on `addr`.
 ///
-/// This function additionally accepts a [`re_smart_channel::LogReceiverSet`], from which the
+/// This function additionally accepts a [`re_log_channel::LogReceiverSet`], from which the
 /// server will read all messages. It is similar to creating a client
 /// and sending messages through `WriteMessages`, but without the overhead
 /// of a localhost connection.
@@ -285,7 +285,7 @@ pub fn spawn_from_rx_set(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    rxs: re_smart_channel::LogReceiverSet,
+    rxs: re_log_channel::LogReceiverSet,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
@@ -297,7 +297,7 @@ pub fn spawn_from_rx_set(
     });
 
     tokio::task::spawn_blocking(move || {
-        use re_smart_channel::SmartMessagePayload;
+        use re_log_channel::SmartMessagePayload;
 
         loop {
             let msg = if let Ok(msg) = rxs.recv() {
@@ -372,15 +372,15 @@ pub fn spawn_with_recv(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-) -> re_smart_channel::LogReceiver {
+) -> re_log_channel::LogReceiver {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
     ));
 
-    let (channel_log_tx, channel_log_rx) = re_smart_channel::log_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_smart_channel::SmartChannelSource::MessageProxy(uri),
+    let (channel_log_tx, channel_log_rx) = re_log_channel::log_channel(
+        re_log_channel::SmartMessageSource::MessageProxy(uri.clone()),
+        re_log_channel::SmartChannelSource::MessageProxy(uri),
     );
 
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);

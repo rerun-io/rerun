@@ -15,12 +15,12 @@ use crate::TonicStatusError;
 pub fn stream(
     uri: re_uri::ProxyUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::LogReceiver {
+) -> re_log_channel::LogReceiver {
     re_log::debug!("Loading {uri} via gRPC…");
 
-    let (tx, rx) = re_smart_channel::log_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_smart_channel::SmartChannelSource::MessageProxy(uri.clone()),
+    let (tx, rx) = re_log_channel::log_channel(
+        re_log_channel::SmartMessageSource::MessageProxy(uri.clone()),
+        re_log_channel::SmartChannelSource::MessageProxy(uri.clone()),
     );
 
     crate::spawn_future(async move {
@@ -34,7 +34,7 @@ pub fn stream(
 
 async fn stream_async(
     uri: re_uri::ProxyUri,
-    tx: &re_smart_channel::LogSender,
+    tx: &re_log_channel::LogSender,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {

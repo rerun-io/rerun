@@ -401,7 +401,7 @@ trait ContextMenuAction {
     fn process_data_source(
         &self,
         _ctx: &ContextMenuContext<'_>,
-        _data_source: &re_smart_channel::SmartChannelSource,
+        _data_source: &re_log_channel::SmartChannelSource,
     ) {
     }
 

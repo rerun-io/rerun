@@ -12,7 +12,7 @@ use re_log_types::{
 };
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{LogReceiver, LogReceiverSet, SmartChannelSource};
+use re_log_channel::{LogReceiver, LogReceiverSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -2285,14 +2285,14 @@ impl App {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
             let msg = match msg.payload {
-                re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
+                re_log_channel::SmartMessagePayload::Msg(msg) => msg,
 
-                re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
                     on_flush_done();
                     continue;
                 }
 
-                re_smart_channel::SmartMessagePayload::Quit(err) => {
+                re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
                         re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
