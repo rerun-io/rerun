@@ -15,15 +15,22 @@ pub struct Receiver<T: Send> {
 impl<T: Send> Receiver<T> {
     pub(crate) fn new(
         rx: crossbeam::channel::Receiver<SmartMessage<T>>,
-        stats: Arc<Channel>,
+        channel: Arc<Channel>,
         source: Arc<SmartChannelSource>,
     ) -> Self {
         Self {
             rx,
-            channel: stats,
+            channel,
             source,
             connected: AtomicBool::new(true),
         }
+    }
+
+    /// Call this on each sent message.
+    ///
+    /// Can be used to wake up the receiver thread.
+    pub fn set_waker(&self, waker: impl Fn() + Send + Sync + 'static) {
+        *self.channel.waker.write() = Some(Box::new(waker));
     }
 
     /// Are we still connected?

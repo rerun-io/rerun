@@ -1,65 +1,45 @@
 use std::sync::Arc;
 
-use web_time::Instant;
-
 use crate::{Channel, SendError, SmartMessage, SmartMessagePayload, SmartMessageSource};
 
 #[derive(Clone)]
 pub struct Sender<T: Send> {
     tx: crossbeam::channel::Sender<SmartMessage<T>>,
     source: Arc<SmartMessageSource>,
-    stats: Arc<Channel>,
+    channel: Arc<Channel>,
 }
 
 impl<T: Send> Sender<T> {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage<T>>,
         source: Arc<SmartMessageSource>,
-        stats: Arc<Channel>,
+        channel: Arc<Channel>,
     ) -> Self {
-        Self { tx, source, stats }
-    }
-
-    /// Clones the sender with an updated source.
-    pub fn clone_as(&self, source: SmartMessageSource) -> Self {
         Self {
-            tx: self.tx.clone(),
-            source: Arc::new(source),
-            stats: Arc::clone(&self.stats),
+            tx,
+            source,
+            channel,
         }
     }
 
+    /// Send a message to the receiver
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        self.send_at(
-            Instant::now(),
-            Arc::clone(&self.source),
-            SmartMessagePayload::Msg(msg),
-        )
-        .map_err(|SendError(msg)| match msg {
-            SmartMessagePayload::Msg(msg) => SendError(msg),
-            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
-        })
-    }
+        let source = Arc::clone(&self.source);
 
-    /// Forwards a message as-is.
-    fn send_at(
-        &self,
-        time: Instant,
-        source: Arc<SmartMessageSource>,
-        payload: SmartMessagePayload<T>,
-    ) -> Result<(), SendError<SmartMessagePayload<T>>> {
         // NOTE: We should never be sending a message with an unknown source.
         debug_assert!(!matches!(*source, SmartMessageSource::Unknown));
 
-        self.tx
-            .send(SmartMessage {
-                time,
-                source,
-                payload,
-            })
-            .map_err(|SendError(msg)| SendError(msg.payload))?;
+        let payload = SmartMessagePayload::Msg(msg);
 
-        if let Some(waker) = self.stats.waker.read().as_ref() {
+        self.tx
+            .send(SmartMessage { source, payload })
+            .map_err(|SendError(msg)| SendError(msg.payload))
+            .map_err(|SendError(msg)| match msg {
+                SmartMessagePayload::Msg(msg) => SendError(msg),
+                SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
+            })?;
+
+        if let Some(waker) = self.channel.waker.read().as_ref() {
             (waker)();
         }
 
@@ -77,7 +57,6 @@ impl<T: Send> Sender<T> {
         let (tx, rx) = std::sync::mpsc::sync_channel(0); // oneshot
         self.tx
             .send(SmartMessage {
-                time: Instant::now(),
                 source: Arc::clone(&self.source),
                 payload: SmartMessagePayload::Flush {
                     on_flush_done: Box::new(move || {
@@ -92,7 +71,7 @@ impl<T: Send> Sender<T> {
             std::sync::mpsc::RecvTimeoutError::Disconnected => FlushError::Closed,
         })?;
 
-        if let Some(waker) = self.stats.waker.read().as_ref() {
+        if let Some(waker) = self.channel.waker.read().as_ref() {
             (waker)();
         }
 
@@ -114,12 +93,11 @@ impl<T: Send> Sender<T> {
         debug_assert!(!matches!(*self.source, SmartMessageSource::Unknown));
 
         self.tx.send(SmartMessage {
-            time: Instant::now(),
             source: Arc::clone(&self.source),
             payload: SmartMessagePayload::Quit(err),
         })?;
 
-        if let Some(waker) = self.stats.waker.read().as_ref() {
+        if let Some(waker) = self.channel.waker.read().as_ref() {
             (waker)();
         }
 

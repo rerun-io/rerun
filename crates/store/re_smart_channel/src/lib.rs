@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 use re_uri::RedapUri;
-use web_time::Instant;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
@@ -342,7 +341,6 @@ impl<T: Send + PartialEq> PartialEq for SmartMessagePayload<T> {
 
 #[derive(Debug, PartialEq)]
 pub struct SmartMessage<T: Send> {
-    pub time: Instant,
     pub source: Arc<SmartMessageSource>,
     pub payload: SmartMessagePayload<T>,
 }
