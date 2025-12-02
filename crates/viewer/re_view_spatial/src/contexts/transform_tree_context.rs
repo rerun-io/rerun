@@ -228,31 +228,22 @@ impl ViewContextSystem for TransformTreeContext {
             tree_transforms_per_frame
                 .into_iter()
                 .filter_map(|(transform_frame_id_hash, tree_transform)| {
-                    self.entity_transform_id_mapping
+                    let entity_paths_for_frame = self
+                        .entity_transform_id_mapping
                         .transform_frame_id_to_entity_path
-                        .get(&transform_frame_id_hash)
-                        .map(|entity_paths| {
-                            entity_paths.iter().map(move |entity_path_hash| {
-                                let transform_info = tree_transform
-                                    .as_ref()
-                                    .map(|tree_transform| {
-                                        let poses = transforms
-                                            .pose_transforms(*entity_path_hash)
-                                            .map(|pose_transforms| {
-                                                pose_transforms.latest_at_instance_poses(
-                                                    ctx.recording(),
-                                                    latest_at_query,
-                                                )
-                                            })
-                                            .unwrap_or_default();
+                        .get(&transform_frame_id_hash)?;
+                    let transform_infos = entity_paths.iter().map(move |entity_path_hash| {
+                        let transform_info = map_tree_transform_to_transform_info(
+                            ctx,
+                            tree_transform,
+                            transforms,
+                            latest_at_query,
+                            entity_path_hash,
+                        );
+                        (*entity_path_hash, transform_info)
+                    });
 
-                                        TransformInfo::new(tree_transform, poses)
-                                    })
-                                    .map_err(|err| err.clone());
-
-                                (*entity_path_hash, transform_info)
-                            })
-                        })
+                    Some(transform_infos)
                 })
                 .flatten()
                 .collect()
@@ -271,6 +262,24 @@ impl ViewContextSystem for TransformTreeContext {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+}
+
+fn map_tree_transform_to_transform_info(
+    ctx: &ViewContext<'_>,
+    tree_transform: Result<TreeTransform, re_tf::TransformFromToError>,
+    transforms: &re_tf::CachedTransformsForTimeline,
+    latest_at_query: &LatestAtQuery,
+    entity_path_hash: &EntityPathHash,
+) -> Result<TransformInfo, re_tf::TransformFromToError> {
+    let tree_transform = tree_transform.as_ref().map_err(|err| err.clone())?;
+    let poses = transforms
+        .pose_transforms(*entity_path_hash)
+        .map(|pose_transforms| {
+            pose_transforms.latest_at_instance_poses(ctx.recording(), latest_at_query)
+        })
+        .unwrap_or_default();
+
+    Ok(TransformInfo::new(tree_transform, poses))
 }
 
 impl TransformTreeContext {
