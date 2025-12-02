@@ -64,6 +64,7 @@ re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.28.
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.28.0-alpha.1", default-features = false }
 
 # crates/store:
+re_arrow_combinators = { path = "crates/store/re_arrow_combinators", version = "=0.28.0-alpha.1", default-features = false }
 re_chunk = { path = "crates/store/re_chunk", version = "=0.28.0-alpha.1", default-features = false }
 re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.28.0-alpha.1", default-features = false }
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.28.0-alpha.1", default-features = false }
@@ -75,15 +76,18 @@ re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.28.0-alph
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.28.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.28.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.28.0-alpha.1", default-features = false }
+re_mcap = { path = "crates/store/re_mcap", version = "=0.28.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.28.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.28.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.28.0-alpha.1", default-features = false }
+re_smart_channel = { path = "crates/store/re_smart_channel", version = "=0.28.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.28.0-alpha.1", default-features = false }
+re_uri = { path = "crates/store/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 
 # crates/top:
 re_sdk = { path = "crates/top/re_sdk", version = "=0.28.0-alpha.1", default-features = false }
@@ -93,7 +97,6 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.28.0-alpha.1", defaul
 
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.28.0-alpha.1", default-features = false }
-re_arrow_combinators = { path = "crates/utils/re_arrow_combinators", version = "=0.28.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.28.0-alpha.1", default-features = false }
 re_auth = { path = "crates/utils/re_auth", version = "=0.28.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.28.0-alpha.1", default-features = false }
@@ -104,16 +107,13 @@ re_error = { path = "crates/utils/re_error", version = "=0.28.0-alpha.1", defaul
 re_format = { path = "crates/utils/re_format", version = "=0.28.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.28.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.28.0-alpha.1", default-features = false }
-re_mcap = { path = "crates/utils/re_mcap", version = "=0.28.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.28.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.28.0-alpha.1", default-features = false }
 re_ros_msg = { path = "crates/utils/re_ros_msg", version = "=0.28.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.28.0-alpha.1", default-features = false }
 re_span = { path = "crates/utils/re_span", version = "=0.28.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.28.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.28.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.28.0-alpha.1", default-features = false }
-re_uri = { path = "crates/utils/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.28.0-alpha.1", default-features = false }
 
 # crates/viewer:
