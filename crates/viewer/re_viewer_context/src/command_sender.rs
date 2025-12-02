@@ -147,6 +147,9 @@ pub enum SystemCommand {
         access_token: String,
         email: String,
     },
+
+    /// Logout from rerun cloud
+    Logout,
 }
 
 impl SystemCommand {

@@ -1240,6 +1240,12 @@ impl App {
                     re_log::error!("Failed to store credentials: {err}");
                 }
             }
+            SystemCommand::Logout => {
+                if let Err(err) = re_auth::oauth::clear_credentials() {
+                    re_log::error!("Failed to logout: {err}");
+                }
+                self.state.redap_servers.logout();
+            }
         }
     }
 

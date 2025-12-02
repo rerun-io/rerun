@@ -361,6 +361,10 @@ impl RedapServers {
             .is_some()
     }
 
+    pub fn logout(&mut self) {
+        self.server_modal_ui.logout();
+    }
+
     pub fn auth_email(&self) -> Option<String> {
         self.server_modal_ui.auth.email.clone()
     }

@@ -154,7 +154,17 @@ struct IntroSectionLayoutStats {
 pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext, login_state: &CloudState) {
     let mut items = IntroItem::items(login_state);
 
-    ui.add_space(8.0);
+    ui.add_space(32.0);
+
+    if let LoginState::Auth { email: Some(email) } = &login_state.login {
+        ui.strong(RichText::new(format!("Hi, {}!", email)).size(15.0));
+
+        if ui.button("Logout").clicked() {
+            ctx.command_sender.send_system(SystemCommand::Logout);
+        }
+
+        ui.add_space(32.0);
+    }
 
     CardLayout::new(items.iter().map(|item| item.card_item(ui)).collect()).show(ui, |ui, index| {
         let item = &items[index];

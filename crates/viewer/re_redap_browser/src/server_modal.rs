@@ -150,6 +150,11 @@ impl ServerModal {
         self.modal.open();
     }
 
+    pub fn logout(&mut self) {
+        self.auth.email = None;
+        self.auth.reset_login_flow();
+    }
+
     pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
         let was_open = self.modal.is_open();
 
