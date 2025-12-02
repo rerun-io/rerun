@@ -297,7 +297,6 @@ pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetPartitionUri,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), ApiError> {
     re_log::debug!("Loading {uri}…");
 
@@ -332,7 +331,6 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_segment,
             None,
             re_uri::Fragment::default(),
-            on_msg.as_deref(),
         )
         .await?;
 
@@ -378,7 +376,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         segment_id.into(),
         time_range,
         fragment,
-        on_msg.as_deref(),
     )
     .await?;
 
@@ -386,7 +383,6 @@ pub async fn stream_blueprint_and_segment_from_server(
 }
 
 /// Low-level function to stream data as a chunk store from a server.
-#[expect(clippy::too_many_arguments)]
 async fn stream_segment_from_server(
     client: &mut ConnectionClient,
     store_info: StoreInfo,
@@ -395,7 +391,6 @@ async fn stream_segment_from_server(
     segment_id: SegmentId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
-    on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), ApiError> {
     let store_id = store_info.store_id.clone();
 
@@ -524,10 +519,6 @@ async fn stream_segment_from_server(
             {
                 re_log::debug!("Receiver disconnected");
                 return Ok(()); // cancelled
-            }
-
-            if let Some(on_msg) = &on_msg {
-                on_msg();
             }
         }
     }

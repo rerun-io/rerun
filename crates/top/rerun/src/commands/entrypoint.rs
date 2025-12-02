@@ -1488,10 +1488,7 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                let on_msg = None;
-                data_source.stream(connection_registry, on_msg)
-            })
+            .map(|data_source| data_source.stream(connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {

@@ -12,17 +12,14 @@ use crate::TonicStatusError;
 /// Read log messages from a proxy server.
 ///
 /// This is used by the viewer to _receive_ log messages.
-pub fn stream(
-    uri: re_uri::ProxyUri,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_log_channel::LogReceiver {
+pub fn stream(uri: re_uri::ProxyUri) -> re_log_channel::LogReceiver {
     re_log::debug!("Loading {uri} via gRPC…");
 
     let (tx, rx) =
         re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri.clone()));
 
     crate::spawn_future(async move {
-        if let Err(err) = stream_async(uri, &tx, on_msg).await {
+        if let Err(err) = stream_async(uri, &tx).await {
             tx.quit(Some(Box::new(err))).ok();
         }
     });
@@ -33,7 +30,6 @@ pub fn stream(
 async fn stream_async(
     uri: re_uri::ProxyUri,
     tx: &re_log_channel::LogSender,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {
         let url = uri.origin.as_url();
@@ -83,9 +79,6 @@ async fn stream_async(
                 if tx.send(log_msg.into()).is_err() {
                     re_log::debug!("gRPC stream smart channel closed");
                     break;
-                }
-                if let Some(on_msg) = &on_msg {
-                    on_msg();
                 }
             }
 

@@ -141,12 +141,9 @@ impl LogDataSource {
     /// but the loading is done in a background task.
     ///
     /// `on_cmd` is used to respond to UI commands.
-    ///
-    /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
@@ -155,7 +152,6 @@ impl LogDataSource {
                 re_log_encoding::rrd::stream_from_http::stream_from_http_to_channel(
                     url.to_string(),
                     follow,
-                    on_msg,
                 ),
             ),
 
@@ -174,10 +170,6 @@ impl LogDataSource {
                 };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
-
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
 
                 Ok(rx)
             }
@@ -204,10 +196,6 @@ impl LogDataSource {
                     &tx,
                 )?;
 
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
-
                 Ok(rx)
             }
 
@@ -216,10 +204,6 @@ impl LogDataSource {
                 let (tx, rx) = re_log_channel::log_channel(LogSource::Stdin);
 
                 crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
-
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
 
                 Ok(rx)
             }
@@ -241,10 +225,8 @@ impl LogDataSource {
                         .client(uri_clone.origin.clone())
                         .await
                         .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
-                    re_redap_client::stream_blueprint_and_segment_from_server(
-                        client, tx, uri_clone, on_msg,
-                    )
-                    .await
+                    re_redap_client::stream_blueprint_and_segment_from_server(client, tx, uri_clone)
+                        .await
                 };
 
                 spawn_future(async move {
@@ -255,7 +237,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri)),
         }
     }
 }

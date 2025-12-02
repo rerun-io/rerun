@@ -519,7 +519,11 @@ impl App {
         // Make sure we wake up when a new message is available:
         rx.set_waker({
             let egui_ctx = self.egui_ctx.clone();
-            move || egui_ctx.request_repaint()
+            move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            }
         });
 
         // Add unknown redap servers.
@@ -1355,22 +1359,8 @@ impl App {
                 }
             }
         }
-        // On native, `add_receiver` spawns a thread that wakes up the ui thread
-        // on any new message. On web we cannot spawn threads, so instead we need
-        // to supply a waker that is called when new messages arrive in background tasks
-        let waker = {
-            let egui_ctx = egui_ctx.clone();
-            Box::new(move || {
-                // Spend a few more milliseconds decoding incoming messages,
-                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-            })
-        };
 
-        match data_source
-            .clone()
-            .stream(&self.connection_registry, Some(waker))
-        {
+        match data_source.clone().stream(&self.connection_registry) {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));

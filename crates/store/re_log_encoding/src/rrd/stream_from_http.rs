@@ -11,39 +11,30 @@ use re_log_types::LogMsg;
 /// in `Following` mode rather than `Playing` mode.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_from_http_to_channel(
-    url: String,
-    follow: bool,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_log_channel::LogReceiver {
+pub fn stream_from_http_to_channel(url: String, follow: bool) -> re_log_channel::LogReceiver {
     let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::RrdHttpStream {
         url: url.clone(),
         follow,
     });
     stream_from_http(
         url.clone(),
-        Arc::new(move |msg| {
-            if let Some(on_msg) = &on_msg {
-                on_msg();
+        Arc::new(move |msg| match msg {
+            HttpMessage::LogMsg(msg) => {
+                if tx.send(msg.into()).is_ok() {
+                    ControlFlow::Continue(())
+                } else {
+                    re_log::info_once!("Closing connection to {url}");
+                    ControlFlow::Break(())
+                }
             }
-            match msg {
-                HttpMessage::LogMsg(msg) => {
-                    if tx.send(msg.into()).is_ok() {
-                        ControlFlow::Continue(())
-                    } else {
-                        re_log::info_once!("Closing connection to {url}");
-                        ControlFlow::Break(())
-                    }
-                }
-                HttpMessage::Success => {
-                    tx.quit(None).warn_on_err_once("Failed to send quit marker");
-                    ControlFlow::Break(())
-                }
-                HttpMessage::Failure(err) => {
-                    tx.quit(Some(err))
-                        .warn_on_err_once("Failed to send quit marker");
-                    ControlFlow::Break(())
-                }
+            HttpMessage::Success => {
+                tx.quit(None).warn_on_err_once("Failed to send quit marker");
+                ControlFlow::Break(())
+            }
+            HttpMessage::Failure(err) => {
+                tx.quit(Some(err))
+                    .warn_on_err_once("Failed to send quit marker");
+                ControlFlow::Break(())
             }
         }),
     );
