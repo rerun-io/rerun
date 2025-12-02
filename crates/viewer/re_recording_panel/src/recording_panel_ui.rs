@@ -6,9 +6,9 @@ use re_data_ui::{
     DataUi as _,
     item_ui::{entity_db_button_ui, table_id_button_ui},
 };
+use re_log_channel::SmartChannelSource;
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
-use re_log_channel::SmartChannelSource;
 use re_ui::{
     OnResponseExt as _, UiExt as _, UiLayout, icons, list_item,
     list_item::{LabelContent, ListItemContentButtonsExt as _},

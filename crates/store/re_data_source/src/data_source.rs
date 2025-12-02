@@ -1,6 +1,6 @@
+use re_log_channel::{LogReceiver, SmartChannelSource, SmartMessageSource};
 use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
-use re_log_channel::{LogReceiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 

@@ -1,8 +1,8 @@
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
-use re_log_types::StoreId;
 use re_log_channel::LogReceiver;
+use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
 use crate::{RecordingOrTable, time_control::TimeControlCommand};

@@ -11,6 +11,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
+use re_log_channel::SmartChannelSource;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
@@ -18,7 +19,6 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_log_channel::SmartChannelSource;
 use re_types_core::ChunkIndexMessage;
 
 use crate::{

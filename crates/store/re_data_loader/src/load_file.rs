@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
-use re_log_types::{FileSource, LogMsg};
 use re_log_channel::LogSender;
+use re_log_types::{FileSource, LogMsg};
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
 

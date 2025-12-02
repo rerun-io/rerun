@@ -5,10 +5,10 @@ use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
+use re_log_channel::LogReceiverSet;
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
-use re_log_channel::LogReceiverSet;
 use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{

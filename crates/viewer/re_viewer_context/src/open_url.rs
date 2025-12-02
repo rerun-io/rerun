@@ -793,8 +793,8 @@ mod tests {
 
     use crate::{DisplayMode, Item, StoreHub};
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
-    use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_log_channel::SmartChannelSource;
+    use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_uri::{
         CatalogUri, DatasetPartitionUri, Fragment,
         external::url::{self, Url},

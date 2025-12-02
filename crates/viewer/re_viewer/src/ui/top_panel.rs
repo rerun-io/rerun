@@ -2,8 +2,8 @@ use egui::NumExt as _;
 use itertools::Itertools as _;
 
 use re_format::format_uint;
-use re_renderer::WgpuResourcePoolStatistics;
 use re_log_channel::{LogReceiverSet, SmartChannelSource};
+use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::{StoreContext, StoreHub};
 
