@@ -1,7 +1,7 @@
 use eframe::epaint::Margin;
-use egui::{Frame, RichText, TextStyle, Theme, Ui};
+use egui::{Button, Frame, RichText, TextStyle, Theme, Ui};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
-use re_ui::{UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
+use re_ui::{ReButtonExt, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
 use re_viewer_context::{GlobalContext, Item, SystemCommand, SystemCommandSender as _};
 
@@ -151,7 +151,7 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, login_state: &C
     if let LoginState::Auth { email: Some(email) } = &login_state.login {
         ui.strong(RichText::new(format!("Hi, {email}!")).size(15.0));
 
-        if ui.button("Logout").clicked() {
+        if ui.add(Button::new("Logout").secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);
         }
 
