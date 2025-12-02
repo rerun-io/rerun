@@ -78,14 +78,13 @@ def test_create_table_invalid_name(entry_factory: EntryFactory, tmp_path: pathli
     ):
         _ = entry_factory.create_table(table_name, schema, tmp_path.absolute().as_uri())
 
-def test_create_existing_table_fails(
-    prefilled_catalog: PrefilledCatalog, entry_factory: EntryFactory, tmp_path: pathlib.Path
-) -> None:
+
+def test_create_existing_table_fails(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
     from .conftest import TABLE_FILEPATH
 
     existing_table_name = "simple_datatypes"
 
-    _existing_table = prefilled_catalog.client.ctx.table(entry_factory.apply_prefix(existing_table_name))
+    _existing_table = prefilled_catalog.client.ctx.table(prefilled_catalog.factory.apply_prefix(existing_table_name))
 
     schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
@@ -93,7 +92,9 @@ def test_create_existing_table_fails(
         Exception,
         match="failed to create table",
     ):
-        _table_entry = entry_factory.create_table_entry(existing_table_name, schema, tmp_path.absolute().as_uri())
+        _table_entry = prefilled_catalog.factory.create_table_entry(
+            existing_table_name, schema, tmp_path.absolute().as_uri()
+        )
 
     existing_table_location = f"file://{TABLE_FILEPATH}"
 
@@ -101,4 +102,4 @@ def test_create_existing_table_fails(
         Exception,
         match="failed to create table",
     ):
-        _table_entry = entry_factory.create_table_entry("new_table_name", schema, existing_table_location)
+        _table_entry = prefilled_catalog.factory.create_table_entry("new_table_name", schema, existing_table_location)
