@@ -1,4 +1,4 @@
-use std::sync::{Arc, atomic::Ordering::Relaxed};
+use std::sync::Arc;
 
 use web_time::Instant;
 
@@ -42,7 +42,7 @@ impl<T: Send> Sender<T> {
     }
 
     /// Forwards a message as-is.
-     fn send_at(
+    fn send_at(
         &self,
         time: Instant,
         source: Arc<SmartMessageSource>,
@@ -136,16 +136,5 @@ impl<T: Send> Sender<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.tx.len()
-    }
-
-    /// Latest known latency from sending a message to receiving it, it nanoseconds.
-    pub fn latency_nanos(&self) -> u64 {
-        self.stats.latency_nanos.load(Relaxed)
-    }
-
-    /// Latest known latency from sending a message to receiving it,
-    /// in seconds
-    pub fn latency_sec(&self) -> f32 {
-        self.latency_nanos() as f32 / 1e9
     }
 }

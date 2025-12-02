@@ -1,6 +1,6 @@
 //! A channel that keeps track of latency and queue length.
 
-use std::sync::{Arc, atomic::AtomicU64};
+use std::sync::Arc;
 
 use parking_lot::RwLock;
 use re_uri::RedapUri;
@@ -272,9 +272,6 @@ impl std::fmt::Display for SmartMessageSource {
 /// Shared by all receivers and senders of a channel
 #[derive(Default)]
 pub(crate) struct Channel {
-    /// Latest known latency from sending a message to receiving it, it nanoseconds.
-    latency_nanos: AtomicU64,
-
     /// The sender should call this every time a message is sent.
     ///
     /// This can be used to wake up the receiver thread.
@@ -374,13 +371,11 @@ fn test_smart_channel() {
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
-    assert_eq!(tx.latency_nanos(), 0);
 
     tx.send(42).unwrap();
 
     assert_eq!(tx.len(), 1);
     assert_eq!(rx.len(), 1);
-    assert_eq!(tx.latency_nanos(), 0);
 
     std::thread::sleep(std::time::Duration::from_millis(10));
 
@@ -388,7 +383,6 @@ fn test_smart_channel() {
 
     assert_eq!(tx.len(), 0);
     assert_eq!(rx.len(), 0);
-    assert!(tx.latency_nanos() > 1_000_000);
 }
 
 #[test]
