@@ -267,6 +267,8 @@ jiff = { version = "0.2.15", features = ["js"] }
 js-sys = "0.3.77"
 jsonwebtoken = { version = "9.3", default-features = false }
 lance = { version = "0.38.2", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
+lance-index = { version = "0.38.2", default-features = false }
+lance-linalg = { version = "0.38.2", default-features = false }
 libc = "0.2.176"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.28"
