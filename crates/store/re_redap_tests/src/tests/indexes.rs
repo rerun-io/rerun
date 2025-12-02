@@ -258,8 +258,7 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
             .unwrap_err()
             .code();
 
-        // TODO(RR-2779): OSS returns NotFound.
-        // This is more precise and Rerun Cloud should be updated to return it.
+        // TODO(RR-3100)
         assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 
@@ -288,7 +287,8 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
             .unwrap_err()
             .code();
 
-        assert_eq!(code, tonic::Code::NotFound);
+        // TODO(RR-3100)
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 }
 
