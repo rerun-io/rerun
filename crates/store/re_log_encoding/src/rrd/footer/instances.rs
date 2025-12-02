@@ -101,7 +101,7 @@ pub struct RrdFooter {
 /// of columns in that recording (because e.g. all the data for a specific entity path is gone),
 /// which in turn will affect the Sorbet schema of the recording too.
 ///
-/// Filtering RRD manifests is very non trivial and should only be done with great care.
+/// Filtering RRD manifests is very non trivial and should only be performed with great care.
 #[derive(Clone, Debug)]
 pub struct RrdManifest {
     /// The recording ID that was used to identify the original recording.
@@ -118,6 +118,7 @@ pub struct RrdManifest {
     /// The SHA256 hash of the Sorbet schema of the associated RRD stream.
     ///
     /// This is always computed by sorting the fields of the schema by name first.
+    /// See [`RrdManifest::compute_sorbet_schema_sha256]`.
     pub sorbet_schema_sha256: [u8; 32],
 
     /// The actual manifest data, which catalogs every chunk in this recording.
@@ -127,7 +128,7 @@ pub struct RrdManifest {
     /// any of the actual data in memory.
     ///
     /// Note in particular that there isn't any recording ID column in here, since an [`RrdManifest`]
-    /// is always scoped to a single recording: [`RrdManifest::store_id`].
+    /// is always scoped to a single recording: the one specified in [`RrdManifest::store_id`].
     //
     // TODO(cmc): should we slap a sorbet:version on this? that probably should be part of the sorbet ABI as
     // much as anything else?

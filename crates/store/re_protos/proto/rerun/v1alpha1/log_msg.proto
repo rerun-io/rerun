@@ -243,9 +243,9 @@ message StoreVersion {
 // This is a transport-level type, the associated application-level type can be found
 // in `re_log_encoding::RrdFooter`.
 message RrdFooter {
-  // All the `RrdManifest`s that were found in this RRD footer.
+  // All the `RrdManifest`s that were found in this RRD stream.
   //
-  // Each `RrdManifest` corresponds to one, and exactly one, RRD stream (i.e. recording).
+  // Each `RrdManifest` corresponds to one, and exactly one, recording.
   //
   // The order is unspecified.
   repeated RrdManifest manifests = 1;
