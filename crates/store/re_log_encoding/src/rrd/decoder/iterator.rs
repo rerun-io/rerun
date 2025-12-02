@@ -139,7 +139,7 @@ impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderI
 
                         // …and the underlying decoder already considers that it's done (i.e. it's
                         // waiting for a whole new stream to begin): time to stop.
-                        Ok(None) if self.decoder.state == DecoderState::StreamHeader => {
+                        Ok(None) if self.decoder.state == DecoderState::WaitingForStreamHeader => {
                             return None;
                         }
 

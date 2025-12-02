@@ -151,7 +151,7 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
 
                         // …and the underlying decoder already considers that it's done (i.e. it's
                         // waiting for a whole new stream to begin): time to stop.
-                        Ok(None) if decoder.state == DecoderState::StreamHeader => {
+                        Ok(None) if decoder.state == DecoderState::WaitingForStreamHeader => {
                             return std::task::Poll::Ready(None);
                         }
 

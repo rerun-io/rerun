@@ -12,6 +12,13 @@ pub enum Serializer {
     Protobuf = 2,
 }
 
+// TODO(cmc): None of these options make sense to have at the global scope and/or in the StreamHeader.
+// * Global scope: that makes the decoder stateful in a very bad way (think e.g. about loading
+//   specific chunks straight from footer metadata).
+// * StreamHeader: both of these are concerns that only apply to message payloads, and should therefore
+//   be flags in the MessageHeader.
+// In practice I believe both are effectively completely ignored everywhere it matters. They need
+// to go away for real though.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EncodingOptions {
     pub compression: Compression,
@@ -83,6 +90,15 @@ impl Decodable for EncodingOptions {
 
 // ---
 
+/// The first frame in an RRD stream.
+///
+/// During normal operations, there can only be a single [`StreamHeader`] per RRD stream.
+///
+/// It is possible to break that invariant by concatenating streams using external tools,
+/// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
+/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd route > all_my_recordings.rrd`,
+/// would once again guarantee that only one header is present though.
+/// I.e. that invariant holds as long as one stays within our ecosystem of tools.
 #[derive(Debug, Clone, Copy)]
 pub struct StreamHeader {
     pub fourcc: [u8; 4],
@@ -157,7 +173,7 @@ impl Encodable for StreamHeader {
 impl Decodable for StreamHeader {
     fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
         if data.len() != Self::ENCODED_SIZE_BYTES {
-            return Err(crate::rrd::CodecError::HeaderDecoding(format!(
+            return Err(crate::rrd::CodecError::FrameDecoding(format!(
                 "invalid StreamHeader length (expected {} but got {})",
                 Self::ENCODED_SIZE_BYTES,
                 data.len()
@@ -190,12 +206,177 @@ impl Decodable for StreamHeader {
     }
 }
 
+// ---
+
+/// The last frame in an RRD stream.
+///
+/// During normal operations, there can only be a single [`StreamFooter`] per RRD stream.
+///
+/// It is possible to break that invariant by concatenating streams using external tools,
+/// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
+/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd route > all_my_recordings.rrd`,
+/// would once again guarantee that only one footer is present though.
+/// I.e. that invariant holds as long as one stays within our ecosystem of tools.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StreamFooter {
+    /// Same as the one in the [`StreamHeader`], i.e. [`crate::rrd::RRD_FOURCC`].
+    ///
+    /// Used to go straight to the footer of an RRD stream ("backwards").
+    pub fourcc: [u8; 4], // RRF2
+
+    /// A unique identifier to disambiguate the footer from other frames.
+    ///
+    /// Always set to [`Self::RRD_IDENTIFIER`].
+    pub identifier: [u8; 4], // FOOT
+
+    /// The position in bytes where the serialized [`RrdFooter`] payload starts, excluding the
+    /// message header.
+    ///
+    /// I.e. a transport-level [`RrdFooter`] can be decoded from the bytes at (pseudo-code):
+    /// ```text
+    /// let start = stream_footer.rrd_footer_byte_offset_from_start_excluding_header;
+    /// let end = start + stream_footer.rrd_footer_byte_size_excluding_header;
+    /// let bytes = &file[start..end];
+    /// let rrd_footer = re_protos::RrdFooter::decode(bytes)?;
+    /// let rrd_footer = rrd_footer.to_application()?;
+    /// ```
+    ///
+    /// [`RrdFooter`]: [crate::RrdFooter]
+    pub rrd_footer_byte_offset_from_start_excluding_header: u64,
+
+    /// The size in bytes of the serialized [`RrdFooter`] payload, excluding the message header.
+    ///
+    /// This is guaranteed to be the same value as the `len` found in the associated message
+    /// header, but duplicating it here makes it possible for decoders to get everything they
+    /// need using a single IO.
+    ///
+    /// [`RrdFooter`]: [crate::RrdFooter]
+    pub rrd_footer_byte_size_excluding_header: u64,
+
+    /// Checksum for the [`RrdFooter`] payload.
+    ///
+    /// The footer is most often accessed by jumping straight to it, so this is a nice extra safety
+    /// to make sure that we didn't just get "lucky" (or unlucky, rather) when jumping around and
+    /// parsing random bytes.
+    ///
+    /// [`RrdFooter`]: [crate::RrdFooter]
+    //
+    // TODO(cmc): It shouldn't be the job of the StreamFooter to carry checksums for a specific
+    // message's payload. All frames should have identifiers and CRCs for both themselves and their
+    // payloads, in which case this CRC would belong in the MessageHeader.
+    pub crc_excluding_header: u32,
+}
+
+impl StreamFooter {
+    pub const ENCODED_SIZE_BYTES: usize = 28;
+    pub const CRC_SEED: u32 = 7850921; // "RERUN" in base 26 (A=0, Z=25)
+    pub const RRD_IDENTIFIER: [u8; 4] = *b"FOOT";
+
+    pub fn new(
+        rrd_footer_byte_offset_from_start_excluding_header: u64,
+        rrd_footer_byte_size_excluding_header: u64,
+        crc_excluding_header: u32,
+    ) -> Self {
+        Self {
+            fourcc: crate::RRD_FOURCC,
+            identifier: Self::RRD_IDENTIFIER,
+            rrd_footer_byte_offset_from_start_excluding_header,
+            rrd_footer_byte_size_excluding_header,
+            crc_excluding_header,
+        }
+    }
+
+    pub fn from_rrd_footer_bytes(
+        rrd_footer_byte_offset_from_start_excluding_header: u64,
+        rrd_footer_bytes: &[u8],
+    ) -> Self {
+        let crc_excluding_header = xxhash_rust::xxh32::xxh32(rrd_footer_bytes, Self::CRC_SEED);
+        Self {
+            fourcc: crate::RRD_FOURCC,
+            identifier: Self::RRD_IDENTIFIER,
+            rrd_footer_byte_offset_from_start_excluding_header,
+            rrd_footer_byte_size_excluding_header: rrd_footer_bytes.len() as u64,
+            crc_excluding_header,
+        }
+    }
+}
+
+impl Encodable for StreamFooter {
+    fn to_rrd_bytes(&self, out: &mut Vec<u8>) -> Result<u64, crate::rrd::CodecError> {
+        let Self {
+            fourcc,
+            identifier,
+            rrd_footer_byte_offset_from_start_excluding_header,
+            rrd_footer_byte_size_excluding_header,
+            crc_excluding_header: crc,
+        } = self;
+
+        let before = out.len() as u64;
+
+        out.extend_from_slice(fourcc);
+        out.extend_from_slice(identifier);
+        out.extend_from_slice(&rrd_footer_byte_offset_from_start_excluding_header.to_le_bytes());
+        out.extend_from_slice(&rrd_footer_byte_size_excluding_header.to_le_bytes());
+        out.extend_from_slice(&crc.to_le_bytes());
+
+        let n = out.len() as u64 - before;
+        assert_eq!(Self::ENCODED_SIZE_BYTES as u64, n);
+
+        Ok(n)
+    }
+}
+
+impl Decodable for StreamFooter {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
+        if data.len() != Self::ENCODED_SIZE_BYTES {
+            return Err(crate::rrd::CodecError::FrameDecoding(format!(
+                "invalid StreamFooter length (expected {} but got {})",
+                Self::ENCODED_SIZE_BYTES,
+                data.len()
+            )));
+        }
+
+        let to_array_4b = |slice: &[u8]| slice.try_into().expect("always returns an Ok() variant");
+
+        let fourcc: [u8; 4] = to_array_4b(&data[0..4]);
+        if fourcc != crate::RRD_FOURCC {
+            return Err(crate::rrd::CodecError::FrameDecoding(format!(
+                "invalid StreamFooter FourCC (expected {:?} but got {:?})",
+                crate::RRD_FOURCC,
+                fourcc,
+            )));
+        }
+
+        let identifier: [u8; 4] = to_array_4b(&data[4..8]);
+        if identifier != Self::RRD_IDENTIFIER {
+            return Err(crate::rrd::CodecError::FrameDecoding(format!(
+                "invalid StreamFooter identifier (expected {:?} but got {:?})",
+                Self::RRD_IDENTIFIER,
+                identifier,
+            )));
+        }
+
+        let rrd_footer_byte_offset_from_start_excluding_header =
+            u64::from_le_bytes(data[8..16].try_into().expect("cannot fail, checked above"));
+        let rrd_footer_byte_size_excluding_header =
+            u64::from_le_bytes(data[16..24].try_into().expect("cannot fail, checked above"));
+        let crc = u32::from_le_bytes(data[24..28].try_into().expect("cannot fail, checked above"));
+
+        Ok(Self {
+            fourcc,
+            identifier,
+            rrd_footer_byte_offset_from_start_excluding_header,
+            rrd_footer_byte_size_excluding_header,
+            crc_excluding_header: crc,
+        })
+    }
+}
+
 // --- MessageHeader ---
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u64)]
 pub enum MessageKind {
-    #[default]
     End = Self::END,
     SetStoreInfo = Self::SET_STORE_INFO,
     ArrowMsg = Self::ARROW_MSG,
@@ -238,7 +419,7 @@ impl Encodable for MessageHeader {
 impl Decodable for MessageHeader {
     fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
         if data.len() != Self::ENCODED_SIZE_BYTES {
-            return Err(crate::rrd::CodecError::HeaderDecoding(format!(
+            return Err(crate::rrd::CodecError::FrameDecoding(format!(
                 "invalid MessageHeader length (expected {} but got {})",
                 Self::ENCODED_SIZE_BYTES,
                 data.len()
@@ -252,7 +433,7 @@ impl Decodable for MessageHeader {
             MessageKind::ARROW_MSG => MessageKind::ArrowMsg,
             MessageKind::BLUEPRINT_ACTIVATION_COMMAND => MessageKind::BlueprintActivationCommand,
             _ => {
-                return Err(crate::rrd::CodecError::HeaderDecoding(format!(
+                return Err(crate::rrd::CodecError::FrameDecoding(format!(
                     "unknown MessageHeader kind: {kind:?}"
                 )));
             }

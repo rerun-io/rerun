@@ -16,7 +16,8 @@
 //! state machines that turn collections of `Encodable`s and `Decodable`s into actual RRD streams.
 
 mod errors;
-mod headers;
+mod footer;
+mod frames;
 mod log_msg;
 
 #[cfg(feature = "decoder")]
@@ -32,10 +33,11 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_from_http;
 
-pub use self::errors::{CodecError, NotAnRrdError, OptionsError};
-pub use self::headers::{
+pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
+pub use self::footer::RrdFooter;
+pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
-    StreamHeader,
+    StreamFooter, StreamHeader,
 };
 
 #[cfg(feature = "decoder")]
