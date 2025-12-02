@@ -37,7 +37,7 @@ pub const FIELD_INSTANCE: &str = "instance";
 pub const FIELD_INSTANCE_ID: &str = "instance_id";
 
 /// A thread-safe cell that holds an `Arc<T>` and can be updated atomically.
-pub struct ArcCell<T> {
+struct ArcCell<T> {
     inner: parking_lot::Mutex<Arc<T>>,
 }
 
@@ -66,14 +66,14 @@ impl<T: Clone> ArcCell<T> {
 
 /// An index for a column of a dataset's chunks
 #[cfg(feature = "lance")]
-pub struct Index {
+struct Index {
     config: IndexConfig,
     // Mutex because we need to update the lance object after writing and checking out the latest version.
     lance_dataset: ArcCell<lance::dataset::Dataset>,
 }
 
 #[cfg(not(feature = "lance"))]
-pub struct Index {}
+struct Index {}
 
 /// All indexes for a dataset's chunks
 ///
