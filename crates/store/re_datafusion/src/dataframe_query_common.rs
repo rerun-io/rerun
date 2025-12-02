@@ -67,8 +67,7 @@ impl DataframeQueryTableProvider {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         partition_ids: &[impl AsRef<str> + Sync],
-        #[cfg(not(target_arch = "wasm32"))]
-        trace_headers: Option<crate::TraceHeaders>,
+        #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 
