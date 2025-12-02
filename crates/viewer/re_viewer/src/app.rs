@@ -1055,6 +1055,10 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
+            SystemCommand::EditRedapServerModal(origin) => {
+                self.state.redap_servers.open_edit_server_modal(origin);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }

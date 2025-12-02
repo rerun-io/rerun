@@ -3,7 +3,11 @@ use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
+use crate::ui::CloudState;
+use crate::ui::welcome_screen::intro_section::intro_section;
+use crate::ui::welcome_screen::welcome_section::welcome_section_ui;
 use re_ui::{DesignTokens, UiExt as _};
+use re_viewer_context::{GlobalContext, ViewerContext};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -240,7 +244,7 @@ impl ExampleSection {
     /// │                               │    │
     /// │                               │    │
     /// ```
-    pub(super) fn ui(&mut self, ui: &mut egui::Ui, header_ui: &impl Fn(&mut Ui)) {
+    pub(super) fn ui(&mut self, ui: &mut egui::Ui, ctx: &GlobalContext, login_state: &CloudState) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
@@ -263,7 +267,9 @@ impl ExampleSection {
 
             ui.vertical(|ui| {
                 ui.set_max_width(max_width);
-                header_ui(ui);
+
+                welcome_section_ui(ui);
+                intro_section(ui, ctx, login_state);
 
                 ui.add_space(AFTER_HEADER_VSPACE);
 

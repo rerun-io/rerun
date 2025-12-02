@@ -1,5 +1,4 @@
-use crate::ui::welcome_screen::intro_section::intro_section;
-use re_ui::{DesignTokens, UiExt as _};
+use re_ui::DesignTokens;
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "Welcome to Rerun";
@@ -27,7 +26,5 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             )
             .wrap(),
         );
-
-        intro_section(ui);
     });
 }

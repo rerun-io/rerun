@@ -13,6 +13,9 @@ use welcome_section::welcome_section_ui;
 use crate::app_state::WelcomeScreenState;
 use crate::ui::welcome_screen::intro_section::intro_section;
 
+pub use intro_section::{CloudState, LoginState};
+use re_viewer_context::{GlobalContext, ViewerContext};
+
 #[derive(Default)]
 pub struct WelcomeScreen {
     example_page: ExampleSection,
@@ -27,8 +30,10 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        ctx: &GlobalContext,
         welcome_screen_state: &WelcomeScreenState,
         log_sources: &[Arc<SmartChannelSource>],
+        login_state: &CloudState,
     ) {
         if welcome_screen_state.opacity <= 0.0 {
             return;
@@ -63,7 +68,7 @@ impl WelcomeScreen {
                             no_data_ui::no_data_ui(ui);
                         }
                     } else {
-                        self.example_page.ui(ui, &welcome_section_ui);
+                        self.example_page.ui(ui, ctx, login_state);
                     }
                 });
             });

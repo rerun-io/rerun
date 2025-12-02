@@ -27,8 +27,8 @@ pub enum ServerModalMode {
 }
 
 /// Authentication state for the server modal.
-struct Authentication {
-    email: Option<String>,
+pub(crate) struct Authentication {
+    pub(crate) email: Option<String>,
     token: String,
     show_token_input: bool,
     login_flow: Option<LoginFlow>,
@@ -93,7 +93,7 @@ pub struct ServerModal {
     mode: ServerModalMode,
     scheme: Scheme,
     host: String,
-    auth: Authentication,
+    pub(crate) auth: Authentication,
     port: u16,
 }
 

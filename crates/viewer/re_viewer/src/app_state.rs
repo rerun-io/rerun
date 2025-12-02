@@ -23,6 +23,7 @@ use re_viewer_context::{
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::{ViewportBlueprint, ui::add_view_or_container_modal_ui};
 
+use crate::ui::{CloudState, LoginState};
 use crate::{
     StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx, history,
     navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
@@ -651,7 +652,35 @@ impl AppState {
 
                             DisplayMode::RedapServer(origin) => {
                                 if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
-                                    welcome_screen.ui(ui, welcome_screen_state, &rx_log.sources());
+                                    let origin = redap_servers
+                                        .iter_servers()
+                                        .find(|s| !s.origin().is_localhost())
+                                        .map(|s| s.origin())
+                                        .cloned();
+
+                                    let email = redap_servers.auth_email();
+                                    let origin_token = origin
+                                        .as_ref()
+                                        .map(|o| redap_servers.is_authenticated(o))
+                                        .unwrap_or(false);
+
+                                    let login_state = if origin_token {
+                                        LoginState::Auth { email }
+                                    } else {
+                                        LoginState::NoAuth
+                                    };
+
+                                    let login_state = CloudState {
+                                        login: login_state,
+                                        has_server: origin,
+                                    };
+                                    welcome_screen.ui(
+                                        ui,
+                                        &ctx.global_context,
+                                        welcome_screen_state,
+                                        &rx_log.sources(),
+                                        &login_state,
+                                    );
                                 } else {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);
                                 }
