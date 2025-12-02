@@ -49,16 +49,6 @@ pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("failed to load credentials: {0}")]
-pub struct CredentialsClearError(#[from] storage::ClearError);
-
-pub fn clear_credentials() -> Result<(), CredentialsClearError> {
-    storage::clear()?;
-
-    Ok(())
-}
-
-#[derive(Debug, thiserror::Error)]
 pub enum CredentialsRefreshError {
     #[error("failed to refresh credentials: {0}")]
     Api(#[from] api::Error),
