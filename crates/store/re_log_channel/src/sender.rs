@@ -83,7 +83,7 @@ impl LogSender {
     /// This sends a message down the channel allowing the receiving end to know whether one of the
     /// sender has left, and if so why (if applicable).
     ///
-    /// Using a [`Sender`] after calling `quit` is undefined behavior: the receiving end is free
+    /// Using a [`LogSender`] after calling `quit` is undefined behavior: the receiving end is free
     /// to silently drop those messages (or worse).
     pub fn quit(
         &self,

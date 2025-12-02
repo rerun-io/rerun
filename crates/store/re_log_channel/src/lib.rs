@@ -306,7 +306,7 @@ pub enum SmartMessagePayload {
         on_flush_done: Box<dyn FnOnce() + Send>,
     },
 
-    /// The [`Sender`] has quit.
+    /// The [`LogSender`] has quit.
     ///
     /// `None` indicates the sender left gracefully, an error indicates otherwise.
     Quit(Option<Box<dyn std::error::Error + Send>>),
