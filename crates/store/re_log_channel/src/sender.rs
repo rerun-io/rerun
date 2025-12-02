@@ -28,9 +28,6 @@ impl LogSender {
     pub fn send(&self, msg: DataSourceMessage) -> Result<(), SendError<Box<DataSourceMessage>>> {
         let source = Arc::clone(&self.source);
 
-        // NOTE: We should never be sending a message with an unknown source.
-        debug_assert!(!matches!(*source, SmartMessageSource::Unknown));
-
         let payload = SmartMessagePayload::Msg(msg);
 
         self.tx
@@ -89,9 +86,6 @@ impl LogSender {
         &self,
         err: Option<Box<dyn std::error::Error + Send>>,
     ) -> Result<(), SendError<Box<SmartMessage>>> {
-        // NOTE: We should never be sending a message with an unknown source.
-        debug_assert!(!matches!(*self.source, SmartMessageSource::Unknown));
-
         self.tx
             .send(SmartMessage {
                 source: Arc::clone(&self.source),

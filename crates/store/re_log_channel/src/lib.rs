@@ -208,14 +208,6 @@ impl SmartChannelSource {
 /// from a different source.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SmartMessageSource {
-    /// The source is unknown.
-    ///
-    /// This is only used when we need to allocate a sender but cannot yet know what that the
-    /// source is.
-    /// This should never be used to send a message; use [`Sender::clone_as`] to specify the source
-    /// of a [`Sender`] after its creation.
-    Unknown,
-
     /// The sender is a background thread reading data from a file on disk.
     File(std::path::PathBuf),
 
@@ -254,7 +246,6 @@ pub enum SmartMessageSource {
 impl std::fmt::Display for SmartMessageSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&match self {
-            Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
             Self::RrdHttpStream { url } => url.clone(),
             Self::MessageProxy(uri) => uri.to_string(),
