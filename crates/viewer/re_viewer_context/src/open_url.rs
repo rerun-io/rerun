@@ -751,7 +751,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
     use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
-    let (tx, rx) = re_smart_channel::smart_channel(
+    let (tx, rx) = re_smart_channel::log_channel(
         re_smart_channel::SmartMessageSource::RrdWebEventCallback,
         re_smart_channel::SmartChannelSource::RrdWebEventListener,
     );

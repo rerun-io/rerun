@@ -210,7 +210,7 @@ pub async fn serve_from_channel(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    channel_rx: re_smart_channel::Receiver<DataSourceMessage>,
+    channel_rx: re_smart_channel::LogReceiver,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();

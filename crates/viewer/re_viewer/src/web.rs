@@ -254,7 +254,7 @@ impl WebHandle {
             return;
         }
 
-        let (log_tx, log_rx) = re_smart_channel::smart_channel(
+        let (log_tx, log_rx) = re_smart_channel::log_channel(
             re_smart_channel::SmartMessageSource::JsChannelPush,
             re_smart_channel::SmartChannelSource::JsChannel {
                 channel_name: channel_name.to_owned(),

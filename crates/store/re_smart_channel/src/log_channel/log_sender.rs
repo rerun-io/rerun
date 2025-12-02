@@ -3,6 +3,7 @@ use re_log_types::DataSourceMessage;
 /// Something producing a stream of [`DataSourceMessage`].
 ///
 /// This could be a gRPC client, or an rrd file loader, for instance.
+#[derive(Clone)]
 pub struct LogSender {
     pub(crate) tx: crate::Sender<DataSourceMessage>,
 }

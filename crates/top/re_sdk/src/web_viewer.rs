@@ -1,5 +1,5 @@
 use re_chunk::ChunkBatcherConfig;
-use re_log_types::{DataSourceMessage, LogMsg};
+use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 use crate::log_sink::SinkFlushError;
@@ -25,7 +25,7 @@ struct WebViewerSink {
     open_browser: bool,
 
     /// Sender to send messages to the gRPC server.
-    sender: re_smart_channel::Sender<DataSourceMessage>,
+    sender: re_smart_channel::LogSender,
 
     /// The gRPC server thread.
     _server_handle: std::thread::JoinHandle<()>,
@@ -53,11 +53,10 @@ impl WebViewerSink {
             re_uri::Scheme::RerunHttp,
             grpc_server_addr,
         ));
-        let (channel_tx, channel_rx) =
-            re_smart_channel::smart_channel::<re_log_types::DataSourceMessage>(
-                re_smart_channel::SmartMessageSource::MessageProxy(uri),
-                re_smart_channel::SmartChannelSource::Sdk,
-            );
+        let (channel_tx, channel_rx) = re_smart_channel::log_channel(
+            re_smart_channel::SmartMessageSource::MessageProxy(uri),
+            re_smart_channel::SmartChannelSource::Sdk,
+        );
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
             .spawn(move || {

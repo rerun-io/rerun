@@ -156,13 +156,12 @@ impl LogDataSource {
                     url.to_string(),
                     follow,
                     on_msg,
-                )
-                .into(),
+                ),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
-                let (tx, rx) = re_smart_channel::smart_channel(
+                let (tx, rx) = re_smart_channel::log_channel(
                     SmartMessageSource::File(path.clone()),
                     SmartChannelSource::File(path.clone()),
                 );
@@ -183,13 +182,13 @@ impl LogDataSource {
                     on_msg();
                 }
 
-                Ok(rx.into())
+                Ok(rx)
             }
 
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
-                let (tx, rx) = re_smart_channel::smart_channel(
+                let (tx, rx) = re_smart_channel::log_channel(
                     SmartMessageSource::File(name.clone().into()),
                     SmartChannelSource::File(name.clone().into()),
                 );
@@ -215,12 +214,12 @@ impl LogDataSource {
                     on_msg();
                 }
 
-                Ok(rx.into())
+                Ok(rx)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => {
-                let (tx, rx) = re_smart_channel::smart_channel(
+                let (tx, rx) = re_smart_channel::log_channel(
                     SmartMessageSource::Stdin,
                     SmartChannelSource::Stdin,
                 );
@@ -231,14 +230,14 @@ impl LogDataSource {
                     on_msg();
                 }
 
-                Ok(rx.into())
+                Ok(rx)
             }
 
             Self::RedapDatasetPartition {
                 uri,
                 select_when_loaded,
             } => {
-                let (tx, rx) = re_smart_channel::smart_channel(
+                let (tx, rx) = re_smart_channel::log_channel(
                     re_smart_channel::SmartMessageSource::RedapGrpcStream {
                         uri: uri.clone(),
                         select_when_loaded,
@@ -267,10 +266,10 @@ impl LogDataSource {
                         re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });
-                Ok(rx.into())
+                Ok(rx)
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg).into()),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
         }
     }
 }

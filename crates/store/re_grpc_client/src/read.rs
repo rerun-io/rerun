@@ -1,7 +1,6 @@
 use tokio_stream::StreamExt as _;
 
 use re_log_encoding::ToApplication as _;
-use re_log_types::DataSourceMessage;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
@@ -16,10 +15,10 @@ use crate::TonicStatusError;
 pub fn stream(
     uri: re_uri::ProxyUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::Receiver<DataSourceMessage> {
+) -> re_smart_channel::LogReceiver {
     re_log::debug!("Loading {uri} via gRPC…");
 
-    let (tx, rx) = re_smart_channel::smart_channel(
+    let (tx, rx) = re_smart_channel::log_channel(
         re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
         re_smart_channel::SmartChannelSource::MessageProxy(uri.clone()),
     );
@@ -35,7 +34,7 @@ pub fn stream(
 
 async fn stream_async(
     uri: re_uri::ProxyUri,
-    tx: &re_smart_channel::Sender<DataSourceMessage>,
+    tx: &re_smart_channel::LogSender,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {

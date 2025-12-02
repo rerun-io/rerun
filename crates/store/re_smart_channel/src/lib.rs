@@ -281,7 +281,7 @@ pub(crate) struct Channel {
     waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
-pub fn smart_channel<T: Send>(
+pub(crate) fn smart_channel<T: Send>(
     sender_source: SmartMessageSource,
     source: SmartChannelSource,
 ) -> (Sender<T>, Receiver<T>) {

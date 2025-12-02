@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use re_log::ResultExt as _;
-use re_log_types::{DataSourceMessage, LogMsg};
+use re_log_types::LogMsg;
 
 /// Stream an rrd file from a HTTP server.
 ///
@@ -15,8 +15,8 @@ pub fn stream_from_http_to_channel(
     url: String,
     follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> re_smart_channel::Receiver<DataSourceMessage> {
-    let (tx, rx) = re_smart_channel::smart_channel(
+) -> re_smart_channel::LogReceiver {
+    let (tx, rx) = re_smart_channel::log_channel(
         re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
         re_smart_channel::SmartChannelSource::RrdHttpStream {
             url: url.clone(),
