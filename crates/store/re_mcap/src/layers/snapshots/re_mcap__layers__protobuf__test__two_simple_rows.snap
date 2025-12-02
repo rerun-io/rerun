@@ -1,5 +1,5 @@
 ---
-source: crates/utils/re_mcap/src/layers/protobuf.rs
+source: crates/store/re_mcap/src/layers/protobuf.rs
 expression: "format!(\"{:-240}\", &chunks[0])"
 ---
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

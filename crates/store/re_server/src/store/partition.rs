@@ -44,6 +44,10 @@ impl Partition {
         self.inner.layers.len()
     }
 
+    pub fn layers(&self) -> &HashMap<String, Layer> {
+        &self.inner.layers
+    }
+
     /// Iterate over layers.
     ///
     /// Layers are iterated in (registration time, layer name) order, as per how they should appear
@@ -66,12 +70,13 @@ impl Partition {
         self.inner.updated_at()
     }
 
+    /// Result: a successful result is `true` if the layer existed and was overwritten
     pub fn insert_layer(
         &mut self,
         layer_name: String,
         layer: Layer,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         // Check if the layer already exists first
         if self.inner.layers.contains_key(&layer_name) {
             match on_duplicate {
@@ -79,20 +84,19 @@ impl Partition {
                     // Will overwrite, so modify
                     self.inner.modify().layers.insert(layer_name, layer);
                     // Timestamp updated when guard drops
+                    Ok(true)
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring layer '{layer_name}': already exists in partition");
                     // No modification, no timestamp update
+                    Ok(true)
                 }
-                IfDuplicateBehavior::Error => {
-                    return Err(Error::LayerAlreadyExists(layer_name));
-                }
+                IfDuplicateBehavior::Error => Err(Error::LayerAlreadyExists(layer_name)),
             }
         } else {
             self.inner.modify().layers.insert(layer_name, layer);
+            Ok(false)
         }
-
-        Ok(())
     }
 
     pub fn num_chunks(&self) -> u64 {
