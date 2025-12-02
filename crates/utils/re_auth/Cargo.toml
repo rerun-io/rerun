@@ -37,6 +37,7 @@ oauth = [
 ]
 
 [dependencies]
+re_analytics.workspace = true
 re_log.workspace = true
 
 async-trait.workspace = true
