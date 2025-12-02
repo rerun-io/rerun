@@ -18,7 +18,7 @@ use re_redap_client::ConnectionClient;
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
 
-//TODO(ab): deduplicate from PartitionTableProvider
+//TODO(ab): deduplicate from SegmentTableProvider
 #[derive(Clone)]
 pub struct DatasetManifestProvider {
     client: ConnectionClient,

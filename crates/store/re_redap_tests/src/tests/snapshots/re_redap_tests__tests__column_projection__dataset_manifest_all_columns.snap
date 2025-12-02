@@ -4,7 +4,7 @@ expression: "&all_columns"
 ---
 [
     "rerun_layer_name",
-    "rerun_partition_id",
+    "rerun_segment_id",
     "rerun_storage_url",
     "rerun_layer_type",
     "rerun_registration_time",

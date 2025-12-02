@@ -245,7 +245,7 @@ class DatasetEntry(Entry):
         return view.segment_table(join_meta=join_meta, join_key=join_key)
 
     def manifest(self) -> datafusion.DataFrame:
-        return self._inner.manifest().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+        return self._inner.manifest().df()
 
     def segment_url(
         self,
@@ -513,7 +513,7 @@ class DatasetView:
     ) -> datafusion.DataFrame:
         # Get the partition table from the inner object
 
-        partitions = self._inner.partition_table().df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+        partitions = self._inner.partition_table().df()
 
         if self._lazy_state.filtered_segments is not None:
             ctx = datafusion.SessionContext()
@@ -616,12 +616,7 @@ class DatasetView:
                 else:
                     index_values = np.array([], dtype=np.datetime64)
 
-                other_df = (
-                    view.filter_partition_id(segment)
-                    .using_index_values(index_values)
-                    .df()
-                    .with_column_renamed("rerun_partition_id", "rerun_segment_id")
-                )
+                other_df = view.filter_partition_id(segment).using_index_values(index_values).df()
 
                 if df is None:
                     df = other_df
@@ -640,7 +635,6 @@ class DatasetView:
                     self._inner.dataframe_query_view(index=index, contents=full_contents)
                     .using_index_values(np.array([], dtype=np.datetime64))
                     .df()
-                    .with_column_renamed("rerun_partition_id", "rerun_segment_id")
                 )
             else:
                 return df
@@ -648,7 +642,7 @@ class DatasetView:
             if self._lazy_state.filtered_segments is not None:
                 view = view.filter_partition_id(*self._lazy_state.filtered_segments)
 
-            return view.df().with_column_renamed("rerun_partition_id", "rerun_segment_id")
+            return view.df()
 
     def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         import datafusion.functions as F
