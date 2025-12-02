@@ -29,6 +29,18 @@ impl AlertKind {
     }
 }
 
+pub struct AlertText {
+    alert: Alert,
+    visible_text: String,
+    full_text: Option<String>,
+}
+
+impl egui::Widget for AlertText {
+    fn ui(self, ui: &mut Ui) -> Response {
+        self.alert.show_text(ui, self.visible_text, self.full_text)
+    }
+}
+
 /// Show a pretty info / error message
 pub struct Alert {
     kind: AlertKind,
@@ -55,7 +67,7 @@ impl Alert {
         Self { kind }
     }
 
-    fn frame(&self, ui: &Ui) -> egui::Frame {
+    pub fn frame(&self, ui: &Ui) -> egui::Frame {
         let colors = self.kind.colors(ui);
 
         egui::Frame::new()
@@ -99,6 +111,18 @@ impl Alert {
             }
         })
         .response
+    }
+
+    pub fn text_widget(
+        self,
+        visible_text: impl Into<String>,
+        full_text: Option<String>,
+    ) -> AlertText {
+        AlertText {
+            alert: self,
+            visible_text: visible_text.into(),
+            full_text,
+        }
     }
 }
 

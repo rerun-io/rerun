@@ -592,7 +592,12 @@ impl AppState {
                                 }
 
                                 if show_blueprints {
-                                    blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
+                                    blueprint_tree.show(
+                                        &ctx,
+                                        &viewport_ui.blueprint,
+                                        ui,
+                                        view_states,
+                                    );
                                 }
                             }
 

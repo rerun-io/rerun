@@ -2,10 +2,10 @@ use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
 use re_byte_size::SizeBytes;
 use std::sync::Arc;
 
+use super::{Cache, CacheMemoryReport};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_tf::TransformResolutionCache;
-use re_viewer_context::{Cache, CacheMemoryReport};
 
 /// Stores a [`TransformResolutionCache`] for each recording.
 ///
