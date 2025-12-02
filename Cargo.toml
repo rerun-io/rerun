@@ -86,6 +86,7 @@ re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", defa
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.28.0-alpha.1", default-features = false }
+re_uri = { path = "crates/store/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 
 # crates/top:
 re_sdk = { path = "crates/top/re_sdk", version = "=0.28.0-alpha.1", default-features = false }
@@ -113,7 +114,6 @@ re_span = { path = "crates/utils/re_span", version = "=0.28.0-alpha.1", default-
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.28.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.28.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.28.0-alpha.1", default-features = false }
-re_uri = { path = "crates/utils/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.28.0-alpha.1", default-features = false }
 
 # crates/viewer:
