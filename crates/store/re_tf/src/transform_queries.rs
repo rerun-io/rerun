@@ -43,23 +43,27 @@ fn has_row_any_component(
     })
 }
 
-/// Finds a unit chunk/row that has the latest changes for the given set of components and has
-/// the given `frame_id` at the `frame_id_component`
-///
+/// Filters a atomic-latest-at the given  [`Self::requested_frame_id`] at the [`Self::condition_frame_id_component`].
 /// We have to find the last row-id for the given `condition_frame_id_component` and time.
-/// Today, `condition_frame_id_component` is either `child_frame_id` for `Transform3D`/`Pinhole` or `frame_id` for `InstancePoses3D`.
+/// Today, `condition_frame_id_component` is always `child_frame_id` for either `Transform3D` or `Pinhole`.
+#[derive(Copy, Clone)]
+struct AtomicLatestAtFrameFilter {
+    condition_frame_id_component: ComponentIdentifier,
+    requested_frame_id: TransformFrameIdHash,
+}
+
+/// Finds a unit chunk/row that has the latest changes for the given set of components and optionally matches for a frame id.
 ///
 /// Since everything has the same row-id, everything has to be on the same chunk -> we return a unit chunk!
 ///
 /// Does **not** handle clears. Our transform cache already handles clear events separately,
 /// since we eagerly create events whenever a change occurs.
 /// (Unlike transform components, we immediately read out clears and add those clear events to our event book-keeping)
-fn atomic_latest_at_query_for_frame(
+fn atomic_latest_at_query(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
     entity_path: &EntityPath,
-    condition_frame_id_component: ComponentIdentifier,
-    requested_frame_id: TransformFrameIdHash,
+    frame_filter: Option<AtomicLatestAtFrameFilter>,
     atomic_component_set: &[ComponentIdentifier],
 ) -> Option<UnitChunkShared> {
     let storage_engine = entity_db.storage_engine();
@@ -112,10 +116,15 @@ fn atomic_latest_at_query_for_frame(
         };
 
         // Finds the last row index with time <= the query time and a matching frame id.
-        let highest_row_index_with_expected_frame_id = if let Some(frame_id_column) =
-            chunk.components().get_array(condition_frame_id_component)
+        let highest_row_index_with_expected_frame_id = if let Some(AtomicLatestAtFrameFilter {
+            condition_frame_id_component,
+            requested_frame_id,
+        }) = frame_filter
         {
-            row_indices_with_queried_time_from_new_to_old.find(|index| {
+            if let Some(frame_id_column) =
+                chunk.components().get_array(condition_frame_id_component)
+            {
+                row_indices_with_queried_time_from_new_to_old.find(|index| {
                 let frame_id_row_untyped = frame_id_column.value(*index);
                 let Some(frame_id_row) =
                     frame_id_row_untyped.downcast_array_ref::<arrow::array::StringArray>()
@@ -150,14 +159,19 @@ fn atomic_latest_at_query_for_frame(
 
                 frame_id == requested_frame_id
             })
-        } else if entity_path_derived_frame_id == requested_frame_id {
+            } else if entity_path_derived_frame_id == requested_frame_id {
+                // Pick the last where any relevant component is non-null & non-empty.
+                row_indices_with_queried_time_from_new_to_old
+                    .find(|index| has_row_any_component(&chunk, *index, atomic_component_set))
+            } else {
+                // There's no child_frame id and we're also not looking for the entity-path derived frame,
+                // so this chunk doesn't have any information about the transform we're looking for.
+                continue;
+            }
+        } else {
             // Pick the last where any relevant component is non-null & non-empty.
             row_indices_with_queried_time_from_new_to_old
                 .find(|index| has_row_any_component(&chunk, *index, atomic_component_set))
-        } else {
-            // There's no child_frame id and we're also not looking for the entity-path derived frame,
-            // so this chunk doesn't have any information about the transform we're looking for.
-            continue;
         };
 
         if let Some(row_index) = highest_row_index_with_expected_frame_id {
@@ -226,12 +240,14 @@ pub fn query_and_resolve_tree_transform_at_entity(
     // * we're already doing special caching anyways
     // * we don't want to merge over row-ids *at all* since our query handling here is a little bit different. The query cache is geared towards "regular Rerun semantics"
     // * we already handled `Clear`/`ClearRecursive` upon pre-population of our cache entries (we know when a clear occurs on this entity!)
-    let unit_chunk: Option<UnitChunkShared> = atomic_latest_at_query_for_frame(
+    let unit_chunk: Option<UnitChunkShared> = atomic_latest_at_query(
         entity_db,
         query,
         entity_path,
-        identifier_child_frame,
-        child_frame_id,
+        Some(AtomicLatestAtFrameFilter {
+            condition_frame_id_component: identifier_child_frame,
+            requested_frame_id: child_frame_id,
+        }),
         &all_components_of_transaction,
     );
     let Some(unit_chunk) = unit_chunk else {
@@ -331,7 +347,6 @@ pub fn query_and_resolve_tree_transform_at_entity(
 // TODO(#3849): There's no way to discover invalid transforms right now (they can be intentional but often aren't).
 pub fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
-    frame_id: TransformFrameIdHash,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<DAffine3> {
@@ -341,9 +356,6 @@ pub fn query_and_resolve_instance_poses_at_entity(
     let identifier_quaternions = InstancePoses3D::descriptor_quaternions().component;
     let identifier_scales = InstancePoses3D::descriptor_scales().component;
     let identifier_mat3x3 = InstancePoses3D::descriptor_mat3x3().component;
-
-    // TODO(RR-2627): We're not handling this correctly yet.
-    let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
 
     let all_components_of_transaction = [
         identifier_translations,
@@ -363,12 +375,11 @@ pub fn query_and_resolve_instance_poses_at_entity(
     // * we're already doing special caching anyways
     // * we don't want to merge over row-ids *at all* since our query handling here is a little bit different. The query cache is geared towards "regular Rerun semantics"
     // * we already handled `Clear`/`ClearRecursive` upon pre-population of our cache entries (we know when a clear occurs on this entity!)
-    let unit_chunk: Option<UnitChunkShared> = atomic_latest_at_query_for_frame(
+    let unit_chunk: Option<UnitChunkShared> = atomic_latest_at_query(
         entity_db,
         query,
         entity_path,
-        identifier_child_frame,
-        frame_id,
+        None,
         &all_components_of_transaction,
     );
     let Some(unit_chunk) = unit_chunk else {
@@ -498,12 +509,14 @@ pub fn query_and_resolve_pinhole_projection_at_entity(
         identifier_resolution,
     ];
 
-    let unit_chunk = atomic_latest_at_query_for_frame(
+    let unit_chunk = atomic_latest_at_query(
         entity_db,
         query,
         entity_path,
-        identifier_child_frame,
-        child_frame_id,
+        Some(AtomicLatestAtFrameFilter {
+            condition_frame_id_component: identifier_child_frame,
+            requested_frame_id: child_frame_id,
+        }),
         &all_components_of_transaction,
     );
     let Some(unit_chunk) = unit_chunk else {
@@ -643,7 +656,7 @@ mod tests {
         MyPoints::descriptor_labels().component
     }
 
-    fn atomic_latest_at_temporal_only_no_frame_cond(
+    fn atomic_latest_at_temporal_only_no_frames_present(
         out_of_order: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
@@ -680,15 +693,17 @@ mod tests {
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
 
-        let requested_frame = TransformFrameIdHash::from_entity_path(&entity_path);
+        let requested_frame_id = TransformFrameIdHash::from_entity_path(&entity_path);
 
         let query_row_at_time = |t| {
-            atomic_latest_at_query_for_frame(
+            atomic_latest_at_query(
                 &entity_db,
                 &LatestAtQuery::new(*timeline().name(), t),
                 &entity_path,
-                frame_condition_component(),
-                requested_frame,
+                Some(AtomicLatestAtFrameFilter {
+                    condition_frame_id_component: frame_condition_component(),
+                    requested_frame_id,
+                }),
                 &atomic_component_set(),
             )?
             .row_id()
@@ -711,15 +726,32 @@ mod tests {
             assert_eq!(query_row_at_time(35), Some(row_id_temp2));
         }
 
-        // Any query with another frame should fail
-        for t in [0, 15, 30, 40] {
-            assert!(
-                atomic_latest_at_query_for_frame(
+        // The condition should not make any difference in this scenario!
+        for t in [0, 10, 15, 20, 25, 30, 35] {
+            assert_eq!(
+                query_row_at_time(t),
+                atomic_latest_at_query(
                     &entity_db,
                     &LatestAtQuery::new(*timeline().name(), t),
                     &entity_path,
-                    frame_condition_component(),
-                    TransformFrameIdHash::from_str("nope"),
+                    None,
+                    &atomic_component_set(),
+                )
+                .and_then(|chunk| chunk.row_id())
+            );
+        }
+
+        // Any query with another frame should fail
+        for t in [0, 15, 30, 40] {
+            assert!(
+                atomic_latest_at_query(
+                    &entity_db,
+                    &LatestAtQuery::new(*timeline().name(), t),
+                    &entity_path,
+                    Some(AtomicLatestAtFrameFilter {
+                        condition_frame_id_component: frame_condition_component(),
+                        requested_frame_id: TransformFrameIdHash::from_str("nope"),
+                    }),
                     &atomic_component_set(),
                 )
                 .is_none()
@@ -731,18 +763,18 @@ mod tests {
     #[test]
     fn atomic_latest_at_temporal_only_no_frame_cond_in_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        atomic_latest_at_temporal_only_no_frame_cond(false)
+        atomic_latest_at_temporal_only_no_frames_present(false)
     }
 
     #[test]
     fn atomic_latest_at_temporal_only_no_frame_cond_out_of_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        atomic_latest_at_temporal_only_no_frame_cond(true)
+        atomic_latest_at_temporal_only_no_frames_present(true)
     }
 
     #[test]
-    fn atomic_latest_at_static_and_temporal_no_frame_cond() -> Result<(), Box<dyn std::error::Error>>
-    {
+    fn atomic_latest_at_static_and_temporal_no_frames_present()
+    -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
 
         // Populate store.
@@ -782,15 +814,17 @@ mod tests {
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
 
-        let requested_frame = TransformFrameIdHash::from_entity_path(&entity_path);
+        let requested_frame_id = TransformFrameIdHash::from_entity_path(&entity_path);
 
         let query_row_at_time = |t| {
-            atomic_latest_at_query_for_frame(
+            atomic_latest_at_query(
                 &entity_db,
                 &LatestAtQuery::new(*timeline().name(), t),
                 &entity_path,
-                frame_condition_component(),
-                requested_frame,
+                Some(AtomicLatestAtFrameFilter {
+                    condition_frame_id_component: frame_condition_component(),
+                    requested_frame_id,
+                }),
                 &atomic_component_set(),
             )?
             .row_id()
@@ -802,12 +836,14 @@ mod tests {
 
         // Any query with another frame should fail
         assert!(
-            atomic_latest_at_query_for_frame(
+            atomic_latest_at_query(
                 &entity_db,
                 &LatestAtQuery::new(*timeline().name(), 0),
                 &entity_path,
-                frame_condition_component(),
-                TransformFrameIdHash::from_str("nope"),
+                Some(AtomicLatestAtFrameFilter {
+                    condition_frame_id_component: frame_condition_component(),
+                    requested_frame_id: TransformFrameIdHash::from_str("nope"),
+                }),
                 &atomic_component_set(),
             )
             .is_none()
@@ -816,7 +852,7 @@ mod tests {
         Ok(())
     }
 
-    fn atomic_latest_at_temporal_only_with_frame_cond(
+    fn atomic_latest_at_temporal_only_with_frames(
         out_of_order: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
@@ -858,12 +894,25 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk))?;
 
         let query_row = |t, label: &str| {
-            atomic_latest_at_query_for_frame(
+            atomic_latest_at_query(
                 &entity_db,
                 &LatestAtQuery::new(*timeline().name(), t),
                 &entity_path,
-                frame_condition_component(),
-                TransformFrameIdHash::from_str(label),
+                Some(AtomicLatestAtFrameFilter {
+                    condition_frame_id_component: frame_condition_component(),
+                    requested_frame_id: TransformFrameIdHash::from_str(label),
+                }),
+                &atomic_component_set(),
+            )?
+            .row_id()
+        };
+
+        let query_row_no_cond = |t| {
+            atomic_latest_at_query(
+                &entity_db,
+                &LatestAtQuery::new(*timeline().name(), t),
+                &entity_path,
+                None,
                 &atomic_component_set(),
             )?
             .row_id()
@@ -887,6 +936,11 @@ mod tests {
             assert_eq!(query_row(20, "tf#/my_entity"), Some(row_id_temp2));
             assert_eq!(query_row(25, "tf#/my_entity"), Some(row_id_temp2));
             assert_eq!(query_row(35, "tf#/my_entity"), Some(row_id_temp2));
+
+            assert_eq!(query_row_no_cond(10), Some(row_id_temp2));
+            assert_eq!(query_row_no_cond(20), Some(row_id_temp1));
+            assert_eq!(query_row_no_cond(25), Some(row_id_temp1));
+            assert_eq!(query_row_no_cond(35), Some(row_id_temp0));
         } else {
             assert_eq!(query_row(10, "first"), Some(row_id_temp0));
             assert_eq!(query_row(20, "first"), Some(row_id_temp0));
@@ -902,20 +956,25 @@ mod tests {
             assert_eq!(query_row(20, "tf#/my_entity"), None);
             assert_eq!(query_row(25, "tf#/my_entity"), None);
             assert_eq!(query_row(35, "tf#/my_entity"), Some(row_id_temp2));
+
+            assert_eq!(query_row_no_cond(10), Some(row_id_temp0));
+            assert_eq!(query_row_no_cond(20), Some(row_id_temp1));
+            assert_eq!(query_row_no_cond(25), Some(row_id_temp1));
+            assert_eq!(query_row_no_cond(35), Some(row_id_temp2));
         }
 
         Ok(())
     }
     #[test]
-    fn atomic_latest_at_temporal_only_with_frame_cond_in_order()
+    fn atomic_latest_at_temporal_only_with_frames_in_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        atomic_latest_at_temporal_only_with_frame_cond(false)
+        atomic_latest_at_temporal_only_with_frames(false)
     }
 
     #[test]
-    fn atomic_latest_at_temporal_only_with_frame_cond_out_of_order()
+    fn atomic_latest_at_temporal_only_with_frames_out_of_order()
     -> Result<(), Box<dyn std::error::Error>> {
-        atomic_latest_at_temporal_only_with_frame_cond(true)
+        atomic_latest_at_temporal_only_with_frames(true)
     }
 
     #[test]
@@ -962,12 +1021,14 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk))?;
 
         let query_row = |t, label: &str| {
-            atomic_latest_at_query_for_frame(
+            atomic_latest_at_query(
                 &entity_db,
                 &LatestAtQuery::new(*timeline().name(), t),
                 &entity_path,
-                frame_condition_component(),
-                TransformFrameIdHash::from_str(label),
+                Some(AtomicLatestAtFrameFilter {
+                    condition_frame_id_component: frame_condition_component(),
+                    requested_frame_id: TransformFrameIdHash::from_str(label),
+                }),
                 &atomic_component_set(),
             )?
             .row_id()
@@ -1016,12 +1077,14 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk))?;
 
         let query_row = |t, label: &str| {
-            atomic_latest_at_query_for_frame(
+            atomic_latest_at_query(
                 &entity_db,
                 &LatestAtQuery::new(*timeline().name(), t),
                 &entity_path,
-                frame_condition_component(),
-                TransformFrameIdHash::from_str(label),
+                Some(AtomicLatestAtFrameFilter {
+                    condition_frame_id_component: frame_condition_component(),
+                    requested_frame_id: TransformFrameIdHash::from_str(label),
+                }),
                 &atomic_component_set(),
             )?
             .row_id()

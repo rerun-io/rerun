@@ -1,6 +1,4 @@
 //! Logs a transform hierarchy using explicit transform frame relationships.
-//!
-//! ⚠️ This is an experimental feature ⚠️
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =

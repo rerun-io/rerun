@@ -48,36 +48,36 @@ service RerunCloudService {
 
   /* Write data */
 
-  // Register new partitions with the Dataset.
+  // Register new segments with the Dataset.
   //
   // This endpoint requires the standard dataset headers.
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Write chunks to one or more partitions.
+  // Write chunks to one or more segments.
   //
-  // The partition ID for each individual chunk is extracted from their metadata (`rerun:partition_id`).
+  // The segment ID for each individual chunk is extracted from their metadata (`rerun:segment_id`).
   //
   // This endpoint requires the standard dataset headers.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   /* Query schemas */
 
-  // Returns the schema of the partition table.
+  // Returns the schema of the segment table.
   //
   // This is not to be confused with the schema of the dataset itself. For that, refer to `GetDatasetSchema`.
   //
-  // To inspect the data of the partition table, which is guaranteed to match the schema returned by
-  // this endpoint, check out `ScanPartitionTable`.
+  // To inspect the data of the segment table, which is guaranteed to match the schema returned by
+  // this endpoint, check out `ScanSegmentTable`.
   //
   // This endpoint requires the standard dataset headers.
-  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
+  rpc GetSegmentTableSchema(GetSegmentTableSchemaRequest) returns (GetSegmentTableSchemaResponse) {}
 
-  // Inspect the contents of the partition table.
+  // Inspect the contents of the segment table.
   //
-  // The data will follow the schema returned by `GetPartitionTableSchema`.
+  // The data will follow the schema returned by `GetSegmentTableSchema`.
   //
   // This endpoint requires the standard dataset headers.
-  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
+  rpc ScanSegmentTable(ScanSegmentTableRequest) returns (stream ScanSegmentTableResponse) {}
 
   // Returns the schema of the dataset manifest.
   //
@@ -96,7 +96,7 @@ service RerunCloudService {
 
   // Returns the schema of the dataset.
   //
-  // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+  // This is the union of all the schemas from all the underlying segments. It will contain all the indexes,
   // entities and components present in the dataset.
   //
   // This endpoint requires the standard dataset headers.
@@ -133,7 +133,7 @@ service RerunCloudService {
   // those chunks (the actual data).
   //
   // These Rerun-native queries include:
-  // * Filtering by specific partition and chunk IDs.
+  // * Filtering by specific segment and chunk IDs.
   // * Latest-at, range and dataframe queries.
   // * Arbitrary Lance filters.
   //
@@ -230,7 +230,7 @@ message DataSource {
   // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
   optional string storage_url = 1;
 
-  /// Which Partition Layer should this data source be registered to?
+  /// Which segment layer should this data source be registered to?
   ///
   /// Defaults to `base` if unspecified.
   optional string layer = 3;
@@ -269,16 +269,13 @@ message WriteChunksResponse {}
 
 /* Query schemas */
 
-message GetPartitionTableSchemaRequest {
-  reserved 1;
-  reserved "dataset_id";
-}
+message GetSegmentTableSchemaRequest {}
 
-message GetPartitionTableSchemaResponse {
+message GetSegmentTableSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
-message ScanPartitionTableRequest {
+message ScanSegmentTableRequest {
   // A list of column names to be projected server-side.
   //
   // If empty, all columns are returned.
@@ -286,19 +283,13 @@ message ScanPartitionTableRequest {
   // If not empty, the returned `RecordBatch` are guaranteed to only have the requested column, in the order they were
   // requested.
   //
-  // If a projected column does not exist, or is projected more than once, the `ScanPartitionTable` call will fail with
+  // If a projected column does not exist, or is projected more than once, the `ScanSegmentTable` call will fail with
   // an `InvalidArgument` error.
-  repeated string columns = 3;
-
-  reserved 1;
-  reserved "dataset_id";
-
-  reserved 2;
-  reserved "scan_parameters";
+  repeated string columns = 1;
 }
 
-message ScanPartitionTableResponse {
-  // Partitions metadata as Arrow RecordBatch.
+message ScanSegmentTableResponse {
+  // Segments metadata as Arrow RecordBatch.
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -436,7 +427,9 @@ message VectorIvfPqIndex {
 
   VectorDistanceMetric distance_metrics = 3;
 
-  // Target size of the IVF partition in rows
+  // Target size of the IVF partition in rows.
+  // NOTE: "partition" here refers to Lance's IVF (Inverted File Index) partitions,
+  // not Rerun segments.
   //
   // This maps to lance's underlying `target_partition_size` property
   // and it indirectly determines how many inverted indices (partitions)
@@ -528,9 +521,9 @@ message BTreeIndexQuery {
 }
 
 message QueryDatasetRequest {
-  // Client can specify what partitions are queried. If left unspecified (empty list),
-  // all partitions will be queried.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+  // Client can specify what segments are queried. If left unspecified (empty list),
+  // all segments will be queried.
+  repeated rerun.common.v1alpha1.SegmentId segment_ids = 11;
 
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
   // all chunks that match other query parameters will be included.
@@ -578,6 +571,8 @@ message QueryDatasetRequest {
 
   reserved 1;
   reserved "dataset_id";
+  reserved 2;
+  reserved "partition_ids";
 }
 
 message QueryDatasetResponse {
@@ -654,8 +649,8 @@ message QueryRange {
 message FetchChunksRequest {
   // Information about the chunks to fetch. These dataframes have to include the following columns:
   // * `chunk_id` - Chunk unique identifier
-  // * `partition_id` - partition this chunk belongs to. Currently needed as we pass this metadata back and forth
-  // * `partition_layer` - specific partition layer. Currently needed as we pass this metadata back and forth
+  // * `segment_id` - segment this chunk belongs to. Currently needed as we pass this metadata back and forth
+  // * `segment_layer` - specific segment layer. Currently needed as we pass this metadata back and forth
   // * `chunk_key` - chunk location details
   repeated rerun.common.v1alpha1.DataframePart chunk_infos = 1;
 }
@@ -973,8 +968,11 @@ message DatasetDetails {
   // The blueprint dataset associated with this dataset (if any).
   optional rerun.common.v1alpha1.EntryId blueprint_dataset = 3;
 
-  // The partition of the blueprint dataset corresponding to the default blueprint (if any).
-  optional rerun.common.v1alpha1.PartitionId default_blueprint = 4;
+  // The segment of the blueprint dataset corresponding to the default blueprint (if any).
+  optional rerun.common.v1alpha1.SegmentId default_blueprint_segment = 5;
+
+  reserved 4;
+  reserved "default_blueprint";
 }
 
 message DatasetEntry {

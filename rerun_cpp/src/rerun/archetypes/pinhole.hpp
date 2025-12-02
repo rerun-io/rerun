@@ -86,9 +86,6 @@ namespace rerun::archetypes {
     ///     );
     /// }
     /// ```
-    ///
-    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    ///
     struct Pinhole {
         /// Camera projection, from image coordinates to view coordinates.
         ///

@@ -13,6 +13,7 @@ pub const PUBLIC_POSTHOG_PROJECT_KEY: &str = "phc_sgKidIE4WYYFSJHd8LEYY1UZqASpnf
 pub enum PostHogEvent<'a> {
     Capture(PostHogCaptureEvent<'a>),
     Identify(PostHogIdentifyEvent<'a>),
+    Alias(PostHogSetPersonPropertiesEvent<'a>),
 }
 
 impl<'a> PostHogEvent<'a> {
@@ -49,6 +50,12 @@ impl<'a> PostHogEvent<'a> {
                 properties: [("session_id", session_id.into())].into(),
                 set: properties.collect(),
             }),
+            crate::EventKind::SetPersonProperties => Self::Alias(PostHogSetPersonPropertiesEvent {
+                timestamp: event.time_utc,
+                event: "$set",
+                distinct_id: analytics_id,
+                properties: [("$set", properties.collect())].into(),
+            }),
         }
     }
 }
@@ -71,6 +78,15 @@ pub struct PostHogIdentifyEvent<'a> {
     properties: HashMap<&'a str, serde_json::Value>,
     #[serde(rename = "$set")]
     set: HashMap<&'a str, serde_json::Value>,
+}
+
+// See https://posthog.com/docs/product-analytics/person-properties.
+#[derive(Debug, serde::Serialize)]
+pub struct PostHogSetPersonPropertiesEvent<'a> {
+    timestamp: Timestamp,
+    event: &'a str,
+    distinct_id: &'a str,
+    properties: HashMap<&'a str, serde_json::Value>,
 }
 
 // See https://posthog.com/docs/api/post-only-endpoints#batch-events.

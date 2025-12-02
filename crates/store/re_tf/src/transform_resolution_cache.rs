@@ -480,6 +480,11 @@ impl TransformsForChildFrame {
         }
     }
 
+    /// The entity path that produces information for this frame.
+    pub fn associated_entity_path(&self) -> &EntityPath {
+        &self.associated_entity_path
+    }
+
     /// Inserts an invalidation point for transforms.
     fn invalidate_transform_at(&mut self, time: TimeInt) {
         let events = self.events.get_mut();
@@ -573,7 +578,6 @@ impl TransformsForChildFrame {
             *pose_transform =
                 CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
                     &self.associated_entity_path,
-                    self.child_frame, // TODO(RR-2627): We're not handling this correctly yet.
                     entity_db,
                     query,
                 ));

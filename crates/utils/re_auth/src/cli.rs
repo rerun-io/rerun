@@ -2,10 +2,10 @@ use std::time::Duration;
 
 use indicatif::ProgressBar;
 
+use crate::OauthLoginFlow;
 pub use crate::callback_server::Error;
-use crate::callback_server::OauthCallbackServer;
-use crate::oauth::api::{AuthenticateWithCode, Pkce, send_async};
-use crate::oauth::{self, Credentials};
+use crate::oauth;
+use crate::oauth::login_flow::OauthLoginFlowState;
 
 pub struct LoginOptions {
     pub open_browser: bool,
@@ -42,92 +42,47 @@ pub async fn token() -> Result<(), Error> {
 /// This first checks if valid credentials already exist locally,
 /// and doesn't perform the login flow if so, unless `options.force_login` is set to `true`.
 pub async fn login(options: LoginOptions) -> Result<(), Error> {
-    let mut login_hint = None;
-    if !options.force_login {
-        // NOTE: If the loading fails for whatever reason, we debug log the error
-        // and have the user login again as if nothing happened.
-        match oauth::load_credentials() {
-            Ok(Some(credentials)) => {
-                login_hint = Some(credentials.user().email.clone());
-                match oauth::refresh_credentials(credentials).await {
-                    Ok(credentials) => {
-                        println!("You're already logged in as: {}", credentials.user().email);
-                        println!("Note: We've refreshed your credentials.");
-                        println!("Note: Run `rerun auth login --force` to login again.");
-                        return Ok(());
-                    }
-                    Err(err) => {
-                        re_log::debug!("refreshing credentials failed: {err}");
-                        // Credentials are bad, login again.
-                        // fallthrough
-                    }
-                }
-            }
-
-            Ok(None) => {
-                // No credentials yet, login as usual.
-                // fallthrough
-            }
-
-            Err(err) => {
-                re_log::debug!(
-                    "validating credentials failed, logging user in again anyway. reason: {err}"
-                );
-                // fallthrough
-            }
-        }
-    }
-
-    let p = ProgressBar::new_spinner();
-
     // Login process:
 
     // 1. Start web server listening for token
-    let pkce = Pkce::new();
-    let server = OauthCallbackServer::new(&pkce, login_hint.as_deref())?;
-    p.inc(1);
+    let login_flow = match OauthLoginFlow::init(options.force_login).await? {
+        OauthLoginFlowState::AlreadyLoggedIn(credentials) => {
+            println!("You're already logged in as: {}", credentials.user().email);
+            println!("Note: We've refreshed your credentials.");
+            println!("Note: Run `rerun auth login --force` to login again.");
+            return Ok(());
+        }
+        OauthLoginFlowState::LoginFlowStarted(login_flow) => login_flow,
+    };
+
+    let progress_bar = ProgressBar::new_spinner();
 
     // 2. Open authorization URL in browser
-    let login_url = server.get_login_url();
-
-    // Once the user opens the link, they are redirected to the login UI.
-    // If they were already logged in, it will immediately redirect them
-    // to the login callback with an authorization code.
-    // That code is then sent by our callback page back to the web server here.
+    let login_url = login_flow.get_login_url();
     if options.open_browser {
-        p.println("Opening login page in your browser.");
-        p.println("Once you've logged in, the process will continue here.");
-        p.println(format!(
+        progress_bar.println("Opening login page in your browser.");
+        progress_bar.println("Once you've logged in, the process will continue here.");
+        progress_bar.println(format!(
             "Alternatively, manually open this url: {login_url}"
         ));
         webbrowser::open(login_url).ok(); // Ok to ignore error here. The user can just open the above url themselves.
     } else {
-        p.println("Open the following page in your browser:");
-        p.println(login_url);
+        progress_bar.println("Open the following page in your browser:");
+        progress_bar.println(login_url);
     }
-    p.inc(1);
+    progress_bar.inc(1);
 
-    // 3. Wait for callback
-    p.set_message("Waiting for browser…");
-    let code = loop {
-        match server.check_for_browser_response()? {
-            None => {
-                p.inc(1);
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            Some(response) => break response,
+    // 3. Wait for login to finish
+    progress_bar.set_message("Waiting for browser…");
+    let credentials = loop {
+        if let Some(code) = login_flow.poll().await? {
+            break code;
         }
+        progress_bar.inc(1);
+        std::thread::sleep(Duration::from_millis(10));
     };
 
-    // 4. Exchange code for credentials
-    let auth = send_async(AuthenticateWithCode::new(&code, &pkce))
-        .await
-        .map_err(|err| Error::Generic(err.into()))?;
-
-    // 5. Store credentials
-    let credentials = Credentials::from_auth_response(auth.into())?.ensure_stored()?;
-
-    p.finish_and_clear();
+    progress_bar.finish_and_clear();
 
     println!(
         "Success! You are now logged in as {}",

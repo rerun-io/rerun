@@ -39,6 +39,7 @@ re_redap_client.workspace = true
 re_renderer = { workspace = true, features = ["serde"] }
 re_smart_channel.workspace = true
 re_string_interner.workspace = true
+re_tf.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_types_core.workspace = true

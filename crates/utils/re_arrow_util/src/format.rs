@@ -168,6 +168,11 @@ pub struct RecordBatchFormatOpts {
     /// Don't print more rows than this.
     pub max_rows: usize,
 
+    /// Individual cells will never exceed this size.
+    ///
+    /// When they do, their contents will be truncated and replaced with ellipses instead.
+    pub max_cell_content_width: usize,
+
     /// If `true`, displays the dataframe's metadata too.
     pub include_metadata: bool,
 
@@ -193,6 +198,7 @@ impl Default for RecordBatchFormatOpts {
             transposed: false,
             width: None,
             max_rows: usize::MAX,
+            max_cell_content_width: 100,
             include_metadata: true,
             include_column_metadata: true,
             trim_field_names: true,
@@ -211,11 +217,13 @@ impl RecordBatchFormatOpts {
 }
 
 /// Nicely format this record batch in a way that fits the terminal.
+#[must_use = "this merely formats, you need to print it yourself"]
 pub fn format_record_batch(batch: &arrow::array::RecordBatch) -> Table {
     format_record_batch_with_width(batch, None, false)
 }
 
 /// Nicely format this record batch using the specified options.
+#[must_use = "this merely formats, you need to print it yourself"]
 pub fn format_record_batch_opts(
     batch: &arrow::array::RecordBatch,
     opts: &RecordBatchFormatOpts,
@@ -232,6 +240,7 @@ pub fn format_record_batch_opts(
 ///
 /// If `transposed` is `true`, the dataframe will be printed transposed on its diagonal axis.
 /// This is very useful for wide (i.e. lots of columns), short (i.e. not many rows) datasets.
+#[must_use = "this merely formats, you need to print it yourself"]
 pub fn format_record_batch_with_width(
     batch: &arrow::array::RecordBatch,
     width: Option<usize>,
@@ -259,6 +268,7 @@ fn format_dataframe_with_metadata(
         transposed: _,
         width,
         max_rows: _,
+        max_cell_content_width: _,
         include_metadata,
         include_column_metadata: _,
         trim_field_names: _, // passed as part of `opts` below
@@ -316,6 +326,7 @@ fn format_dataframe_without_metadata(
         transposed,
         width,
         max_rows,
+        max_cell_content_width,
         include_metadata: _,
         include_column_metadata,
         trim_field_names,
@@ -379,7 +390,7 @@ fn format_dataframe_without_metadata(
 
             for i in 0..num_rows_shown {
                 let cell = match formatter(i) {
-                    Ok(string) => format_cell(string),
+                    Ok(string) => format_cell(string, max_cell_content_width),
                     Err(err) => Cell::new(err),
                 };
                 cells.push(cell);
@@ -441,7 +452,7 @@ fn format_dataframe_without_metadata(
             let cells: Vec<_> = formatters
                 .iter()
                 .map(|formatter| match formatter(row) {
-                    Ok(string) => format_cell(string),
+                    Ok(string) => format_cell(string, max_cell_content_width),
                     Err(err) => Cell::new(err),
                 })
                 .collect();
@@ -468,15 +479,13 @@ fn format_dataframe_without_metadata(
     (num_columns, table)
 }
 
-fn format_cell(string: String) -> Cell {
-    const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
-
+fn format_cell(string: String, max_cell_content_width: usize) -> Cell {
     let chars: Vec<_> = string.chars().collect();
-    if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+    if chars.len() > max_cell_content_width {
         Cell::new(
             chars
                 .into_iter()
-                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                .take(max_cell_content_width.saturating_sub(1))
                 .chain(['…'])
                 .collect::<String>(),
         )

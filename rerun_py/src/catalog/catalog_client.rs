@@ -3,19 +3,21 @@ use arrow::ffi_stream::ArrowArrayStreamReader;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    Bound, Py, PyAny, PyResult, Python,
+    Bound, Py, PyAny, PyErr, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
 use crate::catalog::table_entry::PyTableInsertMode;
 use crate::catalog::{
-    ConnectionHandle, PyDatasetEntry, PyEntry, PyEntryId, PyRerunHtmlTable, PyTableEntry, to_py_err,
+    ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
+    to_py_err,
 };
 use crate::utils::{get_tokio_runtime, wait_for_future};
 use arrow::pyarrow::FromPyArrow as _;
@@ -90,41 +92,19 @@ impl PyCatalogClientInternal {
             .and_then(|datafusion| datafusion.getattr("dataframe_formatter"))
             .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
 
-        let client = wait_for_future(py, connection.client())?;
-        let runtime = get_tokio_runtime().handle();
-        let provider_names = get_all_catalog_names(&client, runtime).map_err(to_py_err)?;
-        let mut providers = provider_names
-            .iter()
-            .map(|p| p.as_str())
-            .collect::<Vec<_>>();
-        if !providers.contains(&DEFAULT_CATALOG_NAME) {
-            providers.push(DEFAULT_CATALOG_NAME);
-        }
-
-        if let Some(ctx) = datafusion_ctx.as_ref() {
-            for provider_name in providers {
-                let catalog_provider = PyDataFusionCatalogProvider::new(
-                    Some(provider_name.to_owned()),
-                    client.clone(),
-                );
-
-                ctx.call_method1(
-                    py,
-                    "register_catalog_provider",
-                    (provider_name, catalog_provider),
-                )?;
-            }
-        }
-
         if let Ok(format_fn) = format_fn {
             let _ = format_fn.call1((html_renderer,))?;
         }
 
-        Ok(Self {
+        let ret = Self {
             origin,
             connection,
             datafusion_ctx,
-        })
+        };
+
+        ret.update_catalog_providers(py, true)?;
+
+        Ok(ret)
     }
 
     /// Get the URL of the catalog (a `rerun+http` URL).
@@ -133,31 +113,11 @@ impl PyCatalogClientInternal {
         self.origin.to_string()
     }
 
-    /// Get a list of all entries in the catalog.
-    fn all_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details = connection.find_entries(py, EntryFilter::new())?;
-
-        // Generate entry objects.
-        entry_details
-            .into_iter()
-            .map(|details| {
-                let id = Py::new(py, PyEntryId::from(details.id))?;
-                Py::new(
-                    py,
-                    PyEntry {
-                        client: self_.clone_ref(py),
-                        id,
-                        details,
-                    },
-                )
-            })
-            .collect()
-    }
-
     /// Get a list of all dataset entries in the catalog.
-    fn dataset_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyDatasetEntry>>> {
+    fn dataset_entries(
+        self_: Py<Self>,
+        py: Python<'_>,
+    ) -> PyResult<Vec<Py<PyDatasetEntryInternal>>> {
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -166,27 +126,17 @@ impl PyCatalogClientInternal {
         entry_details
             .into_iter()
             .map(|details| {
-                let id = Py::new(py, PyEntryId::from(details.id))?;
                 let dataset_entry = connection.read_dataset(py, details.id)?;
-
-                let entry = PyEntry {
-                    client: self_.clone_ref(py),
-                    id,
-                    details,
-                };
-
-                let dataset = PyDatasetEntry {
-                    dataset_details: dataset_entry.dataset_details,
-                    dataset_handle: dataset_entry.handle,
-                };
-
-                Py::new(py, (dataset, entry))
+                Py::new(
+                    py,
+                    PyDatasetEntryInternal::new(self_.clone_ref(py), dataset_entry),
+                )
             })
             .collect()
     }
 
     /// Get a list of all table entries in the catalog.
-    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTableEntry>>> {
+    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -195,18 +145,10 @@ impl PyCatalogClientInternal {
         entry_details
             .into_iter()
             .map(|details| {
-                let id = Py::new(py, PyEntryId::from(details.id))?;
-
                 let table_entry = connection.read_table(py, details.id)?;
-                let table = PyTableEntry::new(&table_entry);
+                let table = PyTableEntryInternal::new(self_.clone_ref(py), table_entry);
 
-                let entry = PyEntry {
-                    client: self_.clone_ref(py),
-                    id,
-                    details,
-                };
-
-                Py::new(py, (table, entry))
+                Py::new(py, table)
             })
             .collect()
     }
@@ -255,25 +197,14 @@ impl PyCatalogClientInternal {
         self_: Py<Self>,
         id: Py<PyEntryId>,
         py: Python<'_>,
-    ) -> PyResult<Py<PyDatasetEntry>> {
+    ) -> PyResult<Py<PyDatasetEntryInternal>> {
         let connection = self_.borrow(py).connection.clone();
-
-        let client = self_.clone_ref(py);
-
         let dataset_entry = connection.read_dataset(py, id.borrow(py).id)?;
 
-        let entry = PyEntry {
-            client,
-            id,
-            details: dataset_entry.details,
-        };
-
-        let dataset = PyDatasetEntry {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
-
-        Py::new(py, (dataset, entry))
+        Py::new(
+            py,
+            PyDatasetEntryInternal::new(self_.clone_ref(py), dataset_entry),
+        )
     }
 
     /// Get a table by name or id.
@@ -283,45 +214,31 @@ impl PyCatalogClientInternal {
         self_: Py<Self>,
         py: Python<'_>,
         id: Py<PyEntryId>,
-    ) -> PyResult<Py<PyTableEntry>> {
+    ) -> PyResult<Py<PyTableEntryInternal>> {
         let connection = self_.borrow(py).connection.clone();
-
-        let client = self_.clone_ref(py);
-
         let table_entry = connection.read_table(py, id.borrow(py).id)?;
-        let table = PyTableEntry::new(&table_entry);
 
-        let entry = PyEntry {
-            client,
-            id,
-            details: table_entry.details,
-        };
-
-        Py::new(py, (table, entry))
+        Py::new(
+            py,
+            PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
+        )
     }
 
     // ---
 
     /// Create a new dataset with the provided name.
-    fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDatasetEntry>> {
+    fn create_dataset(
+        self_: Py<Self>,
+        py: Python<'_>,
+        name: &str,
+    ) -> PyResult<Py<PyDatasetEntryInternal>> {
         let connection = self_.borrow_mut(py).connection.clone();
-
         let dataset_entry = connection.create_dataset(py, name.to_owned())?;
 
-        let entry_id = Py::new(py, PyEntryId::from(dataset_entry.details.id))?;
-
-        let entry = PyEntry {
-            client: self_.clone_ref(py),
-            id: entry_id,
-            details: dataset_entry.details,
-        };
-
-        let dataset = PyDatasetEntry {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
-
-        Py::new(py, (dataset, entry))
+        Py::new(
+            py,
+            PyDatasetEntryInternal::new(self_.clone_ref(py), dataset_entry),
+        )
     }
 
     fn register_table(
@@ -329,7 +246,7 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: String,
         url: String,
-    ) -> PyResult<Py<PyTableEntry>> {
+    ) -> PyResult<Py<PyTableEntryInternal>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
         let url = url
@@ -337,17 +254,13 @@ impl PyCatalogClientInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
 
         let table_entry = connection.register_table(py, name, url)?;
-        let table = PyTableEntry::new(&table_entry);
 
-        let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
+        self_.borrow(py).update_catalog_providers(py, false)?;
 
-        let entry = PyEntry {
-            client: self_.clone_ref(py),
-            id: entry_id,
-            details: table_entry.details,
-        };
-
-        Py::new(py, (table, entry))
+        Py::new(
+            py,
+            PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
+        )
     }
 
     fn create_table_entry(
@@ -356,7 +269,7 @@ impl PyCatalogClientInternal {
         name: String,
         schema: PyArrowType<Schema>,
         url: String,
-    ) -> PyResult<Py<PyTableEntry>> {
+    ) -> PyResult<Py<PyTableEntryInternal>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
         let url = url
@@ -365,17 +278,13 @@ impl PyCatalogClientInternal {
 
         let schema = Arc::new(schema.0);
         let table_entry = connection.create_table_entry(py, name, schema, &url)?;
-        let table = PyTableEntry::new(&table_entry);
 
-        let entry_id = Py::new(py, PyEntryId::from(table_entry.details.id))?;
+        self_.borrow(py).update_catalog_providers(py, false)?;
 
-        let entry = PyEntry {
-            client: self_.clone_ref(py),
-            id: entry_id,
-            details: table_entry.details,
-        };
-
-        Py::new(py, (table, entry))
+        Py::new(
+            py,
+            PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
+        )
     }
 
     fn write_table(
@@ -438,5 +347,45 @@ impl PyCatalogClientInternal {
         }
 
         Py::new(py, PyEntryId::from(entry_details[0].id))
+    }
+}
+
+impl PyCatalogClientInternal {
+    fn update_catalog_providers(&self, py: Python<'_>, force_register: bool) -> Result<(), PyErr> {
+        let client = wait_for_future(py, self.connection.client())?;
+        let runtime = get_tokio_runtime().handle();
+
+        let provider_names = get_all_catalog_names(&client, runtime).map_err(to_py_err)?;
+        let mut providers = provider_names
+            .iter()
+            .map(|p| p.as_str())
+            .collect::<Vec<_>>();
+        if !providers.contains(&DEFAULT_CATALOG_NAME) {
+            providers.push(DEFAULT_CATALOG_NAME);
+        }
+
+        if let Some(ctx) = self.datafusion_ctx.as_ref() {
+            let existing_catalogs: HashSet<String> =
+                ctx.call_method0(py, "catalog_names")?.extract(py)?;
+
+            for provider_name in providers {
+                if !force_register && existing_catalogs.contains(provider_name) {
+                    continue;
+                }
+
+                let catalog_provider = PyDataFusionCatalogProvider::new(
+                    Some(provider_name.to_owned()),
+                    client.clone(),
+                );
+
+                ctx.call_method1(
+                    py,
+                    "register_catalog_provider",
+                    (provider_name, catalog_provider),
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }

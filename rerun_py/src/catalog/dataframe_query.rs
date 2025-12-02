@@ -18,16 +18,20 @@ use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
+#[cfg(feature = "perf_telemetry")]
+use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
-use crate::catalog::{PyDatasetEntry, to_py_err};
+#[cfg(feature = "perf_telemetry")]
+use crate::catalog::trace_context::with_trace_span;
+use crate::catalog::{PyDatasetEntryInternal, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyDataframeQueryView {
-    dataset: Py<PyDatasetEntry>,
+    dataset: Py<PyDatasetEntryInternal>,
 
     query_expression: QueryExpression,
 
@@ -40,7 +44,7 @@ pub struct PyDataframeQueryView {
 impl PyDataframeQueryView {
     #[instrument(skip(dataset, contents, py))]
     pub fn new(
-        dataset: Py<PyDatasetEntry>,
+        dataset: Py<PyDatasetEntryInternal>,
         index: Option<String>,
         contents: Py<PyAny>,
         include_semantically_empty_columns: bool,
@@ -54,7 +58,7 @@ impl PyDataframeQueryView {
 
         // We get the schema from the store since we need it to resolve our columns
         // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
-        let schema = PyDatasetEntry::fetch_arrow_schema(&dataset.borrow(py))?;
+        let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset.borrow(py))?;
 
         // TODO(jleibs): Check schema for the index name
 
@@ -406,18 +410,35 @@ impl PyDataframeQueryView {
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
-        let dataset = self_.dataset.borrow(py);
-        let super_ = dataset.as_super();
-        let client = super_.client.borrow(py);
-        let ctx = client.ctx(py)?;
-        let ctx = ctx.bind(py);
+        // TODO(zehiko) this will go away asap as we're enabling perf telemetry by default
+        #[cfg(feature = "perf_telemetry")]
+        {
+            with_trace_span!(py, "df", {
+                let dataset = self_.dataset.borrow(py);
+                let client = dataset.client().borrow(py);
+                let ctx = client.ctx(py)?;
+                let ctx = ctx.bind(py);
 
-        drop(client);
-        drop(dataset);
+                drop(client);
+                drop(dataset);
 
-        let df = ctx.call_method1("read_table", (self_,))?;
+                let df = ctx.call_method1("read_table", (self_,))?;
+                Ok(df)
+            })
+        }
+        #[cfg(not(feature = "perf_telemetry"))]
+        {
+            let dataset = self_.dataset.borrow(py);
+            let client = dataset.client().borrow(py);
+            let ctx = client.ctx(py)?;
+            let ctx = ctx.bind(py);
 
-        Ok(df)
+            drop(client);
+            drop(dataset);
+
+            let df = ctx.call_method1("read_table", (self_,))?;
+            Ok(df)
+        }
     }
 
     /// Get the relevant chunk_ids for this view.
@@ -427,9 +448,8 @@ impl PyDataframeQueryView {
         py: Python<'py>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let dataset = self_.dataset.borrow(py);
-        let entry = dataset.as_super();
-        let dataset_id = entry.details.id;
-        let connection = entry.client.borrow(py).connection().clone();
+        let dataset_id = dataset.entry_id();
+        let connection = dataset.client().borrow(py).connection().clone();
 
         // Fetch relevant chunks
         connection.get_chunk_ids_for_dataframe_query(
@@ -441,7 +461,7 @@ impl PyDataframeQueryView {
     }
 
     pub fn __str__(&self, py: Python<'_>) -> String {
-        let dataset_str = PyDatasetEntry::__str__(self.dataset.borrow(py));
+        let dataset_str = PyDatasetEntryInternal::__str__(self.dataset.borrow(py));
         let query_expr_str = format!("{:#?}", self.query_expression);
 
         let dataset_line = indent::indent_all_by(1, format!("dataset={dataset_str},"));
@@ -456,17 +476,31 @@ impl PyDataframeQueryView {
 impl PyDataframeQueryView {
     fn as_table_provider(&self, py: Python<'_>) -> PyResult<Arc<dyn TableProvider>> {
         let dataset = self.dataset.borrow(py);
-        let entry = dataset.as_super();
-        let dataset_id = entry.details.id;
-        let connection = entry.client.borrow(py).connection().clone();
+        let dataset_id = dataset.entry_id();
+        let connection = dataset.client().borrow(py).connection().clone();
 
-        wait_for_future(py, async {
+        // Capture trace context to propagate into async query execution
+        #[cfg(all(feature = "perf_telemetry", not(target_arch = "wasm32")))]
+        let trace_headers_opt = {
+            let trace_headers = extract_trace_context_from_contextvar(py);
+            if trace_headers.traceparent.is_empty() {
+                None
+            } else {
+                Some(trace_headers)
+            }
+        };
+        #[cfg(not(all(feature = "perf_telemetry", not(target_arch = "wasm32"))))]
+        let trace_headers_opt = None;
+
+        wait_for_future(py, async move {
             DataframeQueryTableProvider::new(
                 connection.origin().clone(),
                 connection.connection_registry().clone(),
                 dataset_id,
                 &self.query_expression,
                 &self.partition_ids,
+                #[cfg(not(target_arch = "wasm32"))]
+                trace_headers_opt,
             )
             .await
         })

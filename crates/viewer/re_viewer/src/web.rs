@@ -589,6 +589,24 @@ impl WebHandle {
         });
         egui_ctx.request_repaint();
     }
+
+    #[wasm_bindgen]
+    pub fn set_credentials(&self, access_token: &str, email: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+        let crate::App {
+            command_sender,
+            egui_ctx,
+            ..
+        } = &mut *app;
+
+        command_sender.send_system(SystemCommand::SetAuthCredentials {
+            access_token: access_token.to_owned(),
+            email: email.to_owned(),
+        });
+        egui_ctx.request_repaint();
+    }
 }
 
 /// Best effort attempt at finding a store id based on the recording id.

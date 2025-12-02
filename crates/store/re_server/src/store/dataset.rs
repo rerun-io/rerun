@@ -9,24 +9,25 @@ use arrow::{
 use itertools::Either;
 use parking_lot::Mutex;
 
+use crate::chunk_index::DatasetChunkIndexes;
+use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::{
     cloud::v1alpha1::{
-        EntryKind, ScanDatasetManifestResponse, ScanPartitionTableResponse,
+        EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
         ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails},
     },
-    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, PartitionId},
+    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
 };
-
-use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
     name: String,
     details: DatasetDetails,
-    partitions: HashMap<PartitionId, Partition>,
+    partitions: HashMap<SegmentId, Partition>,
+    indexes: DatasetChunkIndexes,
 }
 
 pub struct Dataset {
@@ -50,6 +51,7 @@ impl Dataset {
                 name,
                 details,
                 partitions: HashMap::default(),
+                indexes: DatasetChunkIndexes::new(id),
             }),
             cached_schema: Mutex::new(None),
         }
@@ -89,11 +91,19 @@ impl Dataset {
         self.inner.updated_at()
     }
 
-    pub fn partition(&self, partition_id: &PartitionId) -> Result<&Partition, Error> {
+    pub fn indexes(&self) -> &DatasetChunkIndexes {
+        &self.inner.indexes
+    }
+
+    pub fn partitions(&self) -> &HashMap<SegmentId, Partition> {
+        &self.inner.partitions
+    }
+
+    pub fn partition(&self, segment_id: &SegmentId) -> Result<&Partition, Error> {
         self.inner
             .partitions
-            .get(partition_id)
-            .ok_or_else(|| Error::PartitionIdNotFound(partition_id.clone(), self.id))
+            .get(segment_id)
+            .ok_or_else(|| Error::SegmentIdNotFound(segment_id.clone(), self.id))
     }
 
     /// Returns the partitions from the given list of id.
@@ -101,19 +111,19 @@ impl Dataset {
     /// As per our proto conventions, all partitions are returned if none is listed.
     pub fn partitions_from_ids<'a>(
         &'a self,
-        partition_ids: &'a [PartitionId],
-    ) -> Result<impl Iterator<Item = (&'a PartitionId, &'a Partition)>, Error> {
-        if partition_ids.is_empty() {
+        segment_ids: &'a [SegmentId],
+    ) -> Result<impl Iterator<Item = (&'a SegmentId, &'a Partition)>, Error> {
+        if segment_ids.is_empty() {
             Ok(Either::Left(self.inner.partitions.iter()))
         } else {
-            // Validate that all partition IDs exist
-            for id in partition_ids {
+            // Validate that all segment IDs exist
+            for id in segment_ids {
                 if !self.inner.partitions.contains_key(id) {
-                    return Err(Error::PartitionIdNotFound(id.clone(), self.id));
+                    return Err(Error::SegmentIdNotFound(id.clone(), self.id));
                 }
             }
 
-            Ok(Either::Right(partition_ids.iter().filter_map(|id| {
+            Ok(Either::Right(segment_ids.iter().filter_map(|id| {
                 self.inner
                     .partitions
                     .get(id)
@@ -189,32 +199,32 @@ impl Dataset {
         Ok(schema)
     }
 
-    pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
+    pub fn segment_ids(&self) -> impl Iterator<Item = SegmentId> {
         self.inner.partitions.keys().cloned()
     }
 
-    pub fn partition_table(&self) -> Result<RecordBatch, Error> {
+    pub fn segment_table(&self) -> Result<RecordBatch, Error> {
         let row_count = self.inner.partitions.len();
 
-        let mut all_partition_properties = Vec::with_capacity(row_count);
+        let mut all_segment_properties = Vec::with_capacity(row_count);
 
-        let mut partition_ids = Vec::with_capacity(row_count);
+        let mut segment_ids = Vec::with_capacity(row_count);
         let mut layer_names = Vec::with_capacity(row_count);
         let mut storage_urls = Vec::with_capacity(row_count);
         let mut last_updated_at = Vec::with_capacity(row_count);
         let mut num_chunks = Vec::with_capacity(row_count);
         let mut size_bytes = Vec::with_capacity(row_count);
 
-        for (partition_id, partition) in &self.inner.partitions {
+        for (segment_id, partition) in &self.inner.partitions {
             let layer_count = partition.layer_count();
             let mut layer_names_row = Vec::with_capacity(layer_count);
             let mut storage_urls_row = Vec::with_capacity(layer_count);
 
-            let mut current_partition_properties = BTreeMap::default();
+            let mut current_segment_properties = BTreeMap::default();
 
             for (layer_name, layer) in partition.iter_layers() {
                 layer_names_row.push(layer_name.to_owned());
-                storage_urls_row.push(format!("memory:///{}/{partition_id}/{layer_name}", self.id));
+                storage_urls_row.push(format!("memory:///{}/{segment_id}/{layer_name}", self.id));
 
                 let layer_properties = layer
                     .compute_properties()
@@ -222,11 +232,11 @@ impl Dataset {
 
                 // Accumulate properties.
                 //
-                // The semantics for the layer to partition property propagation is that the
+                // The semantics for the layer to segment property propagation is that the
                 // last registered layer wins. The code below achieves this by virtual of the
                 // layers being iterated in registration order.
                 for (col_idx, field) in layer_properties.schema().fields().iter().enumerate() {
-                    current_partition_properties.insert(
+                    current_segment_properties.insert(
                         Arc::clone(field),
                         Arc::clone(layer_properties.column(col_idx)),
                     );
@@ -235,23 +245,23 @@ impl Dataset {
 
             let properties_batch = RecordBatch::try_new_with_options(
                 Arc::new(Schema::new_with_metadata(
-                    current_partition_properties
+                    current_segment_properties
                         .keys()
                         .map(Arc::clone)
                         .collect::<Fields>(),
                     Default::default(),
                 )),
-                current_partition_properties.into_values().collect(),
-                // There should always be exactly one row, one per partition. Also, we must specify
+                current_segment_properties.into_values().collect(),
+                // There should always be exactly one row, one per segment. Also, we must specify
                 // it anyway for the cases where there are no properties at all (so arrow is unable
                 // to infer the row count).
                 &RecordBatchOptions::default().with_row_count(Some(1)),
             )
             .map_err(Error::failed_to_extract_properties)?;
 
-            all_partition_properties.push(properties_batch);
+            all_segment_properties.push(properties_batch);
 
-            partition_ids.push(partition_id.to_string());
+            segment_ids.push(segment_id.to_string());
             layer_names.push(layer_names_row);
             storage_urls.push(storage_urls_row);
             last_updated_at.push(partition.last_updated_at().as_nanosecond() as i64);
@@ -260,11 +270,11 @@ impl Dataset {
         }
 
         let properties_record_batch =
-            re_arrow_util::concat_polymorphic_batches(all_partition_properties.as_slice())
+            re_arrow_util::concat_polymorphic_batches(all_segment_properties.as_slice())
                 .map_err(Error::failed_to_extract_properties)?;
 
-        let base_record_batch = ScanPartitionTableResponse::create_dataframe(
-            partition_ids,
+        let base_record_batch = ScanSegmentTableResponse::create_dataframe(
+            segment_ids,
             layer_names,
             storage_urls,
             last_updated_at,
@@ -354,45 +364,54 @@ impl Dataset {
 
     pub fn layer_store_handle(
         &self,
-        partition_id: &PartitionId,
+        segment_id: &SegmentId,
         layer_name: &str,
     ) -> Option<&ChunkStoreHandle> {
         self.inner
             .partitions
-            .get(partition_id)
+            .get(segment_id)
             .and_then(|partition| partition.layer(layer_name))
             .map(|layer| layer.store_handle())
     }
 
-    pub fn add_layer(
+    pub async fn add_layer(
         &mut self,
-        partition_id: PartitionId,
+        segment_id: SegmentId,
         layer_name: String,
         store_handle: ChunkStoreHandle,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
-        re_log::debug!(?partition_id, ?layer_name, "add_layer");
+        re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
-        self.inner
+        let overwritten = self
+            .inner
             .modify()
             .partitions
-            .entry(partition_id)
+            .entry(segment_id.clone())
             .or_default()
-            .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
+            .insert_layer(
+                layer_name.clone(),
+                Layer::new(store_handle.clone()),
+                on_duplicate,
+            )?;
+
+        self.indexes()
+            .on_layer_added(segment_id, store_handle, &layer_name, overwritten)
+            .await?;
 
         Ok(())
     }
 
-    /// Load a RRD using its recording id as partition id.¨
+    /// Load a RRD using its recording id as segment id.
     ///
     /// Only stores with matching kinds with be loaded.
-    pub fn load_rrd(
+    pub async fn load_rrd(
         &mut self,
         path: &Path,
         layer_name: Option<&str>,
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
-    ) -> Result<BTreeSet<PartitionId>, Error> {
+    ) -> Result<BTreeSet<SegmentId>, Error> {
         re_log::info!("Loading RRD: {}", path.display());
         let contents =
             ChunkStore::handle_from_rrd_filepath(&InMemoryStore::chunk_store_config(), path)
@@ -407,16 +426,17 @@ impl Dataset {
                 continue;
             }
 
-            let partition_id = PartitionId::new(store_id.recording_id().to_string());
+            let partition_id = SegmentId::new(store_id.recording_id().to_string());
 
             self.add_layer(
                 partition_id.clone(),
                 layer_name.to_owned(),
-                chunk_store,
+                chunk_store.clone(),
                 on_duplicate,
-            )?;
+            )
+            .await?;
 
-            new_partition_ids.insert(partition_id);
+            new_partition_ids.insert(partition_id.clone());
         }
 
         Ok(new_partition_ids)

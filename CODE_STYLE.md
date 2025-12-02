@@ -130,6 +130,10 @@ When importing a `trait` to use its trait methods, do this: `use Trait as _;`. T
 
 When intentionally ignoring a `Result`, prefer `foo().ok();` over `let _ = foo();`. The former shows what is happening, and will fail to compile if `foo`:s return type ever changes.
 
+We group and order imports (`use` statements) by `std`, other crates, and lastly own `crate` and `super`. This corresponds to [`StdExternalCrate`](https://rust-lang.github.io/rustfmt/?version=v1.8.0&search=group#StdExternalCrate%5C%3A).
+
+We group our `use` statements by module, e.g. `crate_name::module::{a, b, c}`. This is a compromise, being rather terse while still avoiding excessive merge conflicts. See [the cargofmt docs](https://rust-lang.github.io/rustfmt/?version=v1.8.0&search=group#Module%5C%3A) for details.
+
 ### `TODO`:s
 When you must remember to do something before merging a PR, write `TODO` or `FIXME` in any file. The CI will not be green until you either remove them or rewrite them as `TODO(yourname)`.
 
@@ -139,7 +143,7 @@ You can also use the `todo()!` macro during development, but again it won't pass
 ### Misc
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
-Use `re_error::format(err)` when displaying an error.
+Use `{:#}` or `re_error::format(err)` when displaying an error - NOT `Debug`/`{:?}`.
 
 We make extensive use of snapshot testing. To work around non-deterministic values, such as TUIDs (time-prefixed unique IDs), many types (should) offer `std::fmt::Display` implementations with redactions that can be access via an overloaded `-` formatting option:
 

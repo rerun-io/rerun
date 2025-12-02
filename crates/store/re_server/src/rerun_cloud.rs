@@ -4,12 +4,16 @@ use std::sync::Arc;
 use ahash::HashMap;
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
+use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use crate::chunk_index::DatasetChunkIndexes;
+use crate::entrypoint::NamedPath;
+use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
@@ -18,29 +22,27 @@ use re_protos::{
     cloud::v1alpha1::{
         DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
         GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetPartitionTableSchemaResponse, QueryDatasetResponse,
+        GetDatasetSchemaResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
         QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
         QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
         RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanPartitionTableResponse, ScanTableResponse,
+        ScanSegmentTableResponse, ScanTableResponse,
         ext::{
             self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
             CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate,
-            ProviderDetails, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
-            UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
-            UpdateEntryResponse,
+            ProviderDetails, QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
+            TableInsertMode, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+            UpdateEntryRequest, UpdateEntryResponse,
         },
         rerun_cloud_service_server::RerunCloudService,
     },
     common::v1alpha1::{
         TaskId,
-        ext::{IfDuplicateBehavior, PartitionId},
+        ext::{IfDuplicateBehavior, SegmentId},
     },
     headers::RerunHeadersExtractorExt as _,
+    missing_field,
 };
-
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -57,14 +59,15 @@ impl RerunCloudHandlerBuilder {
         Self::default()
     }
 
-    pub fn with_directory_as_dataset(
+    pub async fn with_directory_as_dataset(
         mut self,
         directory: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
         on_error: crate::OnError,
     ) -> Result<Self, crate::store::Error> {
         self.store
-            .load_directory_as_dataset(directory, on_duplicate, on_error)?;
+            .load_directory_as_dataset(directory, on_duplicate, on_error)
+            .await?;
 
         Ok(self)
     }
@@ -106,24 +109,24 @@ impl RerunCloudHandler {
         }
     }
 
-    /// Returns all the chunk stores of the specified dataset and partitions ids. If `partition_ids`
-    /// is empty, return stores of all partitions.
+    /// Returns all the chunk stores of the specified dataset and segment ids. If `segment_ids`
+    /// is empty, return stores of all segments.
     ///
-    /// Returns (partition id, layer name, store) tuples.
+    /// Returns (segment id, layer name, store) tuples.
     async fn get_chunk_stores(
         &self,
         dataset_id: EntryId,
-        partition_ids: &[PartitionId],
-    ) -> Result<Vec<(PartitionId, String, ChunkStoreHandle)>, tonic::Status> {
+        segment_ids: &[SegmentId],
+    ) -> Result<Vec<(SegmentId, String, ChunkStoreHandle)>, tonic::Status> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
 
         Ok(dataset
-            .partitions_from_ids(partition_ids)?
-            .flat_map(|(partition_id, partition)| {
+            .partitions_from_ids(segment_ids)?
+            .flat_map(|(segment_id, partition)| {
                 partition.iter_layers().map(|(layer_name, layer)| {
                     (
-                        partition_id.clone(),
+                        segment_id.clone(),
                         layer_name.to_owned(),
                         layer.store_handle().clone(),
                     )
@@ -240,7 +243,7 @@ macro_rules! decl_stream {
 
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
-decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
+decl_stream!(ScanSegmentTableResponseStream<manifest:ScanSegmentTableResponse>);
 decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
 decl_stream!(ScanTableResponseStream<rerun_cloud:ScanTableResponse>);
@@ -465,7 +468,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let dataset_details = DatasetDetails {
             blueprint_dataset: Some(blueprint_dataset_id),
-            default_blueprint: None,
+            default_blueprint_segment: None,
         };
 
         let dataset = store.create_dataset(
@@ -627,12 +630,9 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(
-                    &rrd_path,
-                    Some(&layer),
-                    on_duplicate,
-                    dataset.store_kind(),
-                )?;
+                let new_partition_ids = dataset
+                    .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
+                    .await?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
@@ -684,7 +684,7 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
 
-            let partition_id: PartitionId = chunk_batch
+            let segment_id: SegmentId = chunk_batch
                 .schema()
                 .metadata()
                 .get("rerun:partition_id")
@@ -701,10 +701,14 @@ impl RerunCloudService for RerunCloudHandler {
             })?);
 
             chunk_stores
-                .entry(partition_id.clone())
+                .entry(segment_id.clone())
                 .or_insert_with(|| {
                     ChunkStore::new(
-                        StoreId::new(StoreKind::Recording, entry_id.to_string(), partition_id.id),
+                        StoreId::new(
+                            StoreKind::Recording,
+                            entry_id.to_string(),
+                            segment_id.id.clone(),
+                        ),
                         InMemoryStore::chunk_store_config(),
                     )
                 })
@@ -719,12 +723,14 @@ impl RerunCloudService for RerunCloudHandler {
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
-            dataset.add_layer(
-                entity_path,
-                DataSource::DEFAULT_LAYER.to_owned(),
-                ChunkStoreHandle::new(chunk_store),
-                IfDuplicateBehavior::Error,
-            )?;
+            dataset
+                .add_layer(
+                    entity_path,
+                    DataSource::DEFAULT_LAYER.to_owned(),
+                    ChunkStoreHandle::new(chunk_store),
+                    IfDuplicateBehavior::Error,
+                )
+                .await?;
         }
 
         Ok(tonic::Response::new(
@@ -783,20 +789,20 @@ impl RerunCloudService for RerunCloudHandler {
 
     /* Query schemas */
 
-    async fn get_partition_table_schema(
+    async fn get_segment_table_schema(
         &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::GetPartitionTableSchemaRequest>,
-    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetPartitionTableSchemaResponse>>
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetSegmentTableSchemaRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetSegmentTableSchemaResponse>>
     {
         let store = self.store.read().await;
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset(entry_id)?;
-        let record_batch = dataset.partition_table().map_err(|err| {
-            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
+        let record_batch = dataset.segment_table().map_err(|err| {
+            tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
         })?;
 
-        Ok(tonic::Response::new(GetPartitionTableSchemaResponse {
+        Ok(tonic::Response::new(GetSegmentTableSchemaResponse {
             schema: Some(
                 record_batch
                     .schema_ref()
@@ -811,20 +817,20 @@ impl RerunCloudService for RerunCloudHandler {
         }))
     }
 
-    type ScanPartitionTableStream = ScanPartitionTableResponseStream;
+    type ScanSegmentTableStream = ScanSegmentTableResponseStream;
 
-    async fn scan_partition_table(
+    async fn scan_segment_table(
         &self,
-        request: tonic::Request<re_protos::cloud::v1alpha1::ScanPartitionTableRequest>,
-    ) -> Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status> {
+        request: tonic::Request<re_protos::cloud::v1alpha1::ScanSegmentTableRequest>,
+    ) -> Result<tonic::Response<Self::ScanSegmentTableStream>, tonic::Status> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
         let request = request.into_inner();
 
         let dataset = store.dataset(entry_id)?;
-        let mut record_batch = dataset.partition_table().map_err(|err| {
-            tonic::Status::internal(format!("Unable to read partition table: {err:#}"))
+        let mut record_batch = dataset.segment_table().map_err(|err| {
+            tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
         })?;
 
         // project columns
@@ -837,13 +843,13 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let stream = futures::stream::once(async move {
-            Ok(ScanPartitionTableResponse {
+            Ok(ScanSegmentTableResponse {
                 data: Some(record_batch.into()),
             })
         });
 
         Ok(tonic::Response::new(
-            Box::pin(stream) as Self::ScanPartitionTableStream
+            Box::pin(stream) as Self::ScanSegmentTableStream
         ))
     }
 
@@ -929,25 +935,58 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn create_index(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CreateIndexResponse>> {
-        Err(tonic::Status::unimplemented("create_index not implemented"))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                dataset.indexes().create_index(dataset, request.into_inner().try_into()?).await
+            } else {
+                Err(tonic::Status::unimplemented("create_index requires the `lance` feature"))
+            }
+        }
     }
 
     async fn list_indexes(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>> {
-        Err(tonic::Status::unimplemented("list_indexes not implemented"))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                dataset.indexes().list_indexes(request.into_inner()).await
+            } else {
+                Err(tonic::Status::unimplemented("list_indexes requires the `lance` feature"))
+            }
+        }
     }
 
     async fn delete_indexes(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>> {
-        Err(tonic::Status::unimplemented(
-            "delete_indexes not implemented",
-        ))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                let request = request.into_inner();
+                let column = request.column.ok_or_else(|| {
+                    missing_field!(re_protos::cloud::v1alpha1::DeleteIndexesRequest, "column")
+                })?;
+
+                dataset.indexes().delete_indexes(column.try_into()?).await
+            } else {
+                Err(tonic::Status::unimplemented("delete_indexes requires the `lance` feature"))
+            }
+        }
     }
 
     /* Queries */
@@ -956,11 +995,19 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn search_dataset(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::SearchDatasetRequest>,
-    ) -> std::result::Result<tonic::Response<Self::SearchDatasetStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "search_dataset not implemented",
-        ))
+        request: tonic::Request<re_protos::cloud::v1alpha1::SearchDatasetRequest>,
+    ) -> tonic::Result<tonic::Response<Self::SearchDatasetStream>> {
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                Ok(DatasetChunkIndexes::search_dataset(dataset, request.into_inner().try_into()?).await?)
+            } else {
+                Err(tonic::Status::unimplemented("search_dataset requires the `lance` feature"))
+            }
+        }
     }
 
     type QueryDatasetStream = QueryDatasetResponseStream;
@@ -977,8 +1024,8 @@ impl RerunCloudService for RerunCloudHandler {
 
         let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
 
-        let re_protos::cloud::v1alpha1::QueryDatasetRequest {
-            partition_ids,
+        let QueryDatasetRequest {
+            segment_ids,
             entity_paths,
             select_all_entity_paths,
 
@@ -989,24 +1036,16 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_temporal_data: _,
             scan_parameters: _,
             query: _,
-        } = request.into_inner();
+        } = request.into_inner().try_into()?;
 
-        let entity_paths: IntSet<EntityPath> = entity_paths
-            .into_iter()
-            .map(EntityPath::try_from)
-            .collect::<Result<IntSet<EntityPath>, _>>()?;
+        let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
         if select_all_entity_paths && !entity_paths.is_empty() {
             return Err(tonic::Status::invalid_argument(
                 "cannot specify entity paths if `select_all_entity_paths` is true",
             ));
         }
 
-        let partition_ids = partition_ids
-            .into_iter()
-            .map(PartitionId::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let chunk_stores = self.get_chunk_stores(entry_id, &partition_ids).await?;
+        let chunk_stores = self.get_chunk_stores(entry_id, &segment_ids).await?;
 
         if chunk_stores.is_empty() {
             let stream = futures::stream::iter([{
@@ -1021,7 +1060,7 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let stream = futures::stream::iter(chunk_stores.into_iter().map(
-            move |(partition_id, layer_name, store_handle)| {
+            move |(segment_id, layer_name, store_handle)| {
                 let num_chunks = store_handle.read().num_chunks();
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
@@ -1065,14 +1104,14 @@ impl RerunCloudService for RerunCloudHandler {
                         timeline_data.2.push(None);
                     }
 
-                    chunk_partition_ids.push(partition_id.id.clone());
+                    chunk_partition_ids.push(segment_id.id.clone());
                     chunk_ids.push(chunk.id());
                     chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
                     chunk_keys.push(
                         ChunkKey {
                             chunk_id: chunk.id(),
-                            partition_id: partition_id.clone(),
+                            segment_id: segment_id.clone(),
                             layer_name: layer_name.clone(),
                             dataset_id: entry_id,
                         }
