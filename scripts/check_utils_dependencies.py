@@ -41,11 +41,7 @@ def main() -> int:
 
         crate_path = crate_info["path"]
         # Disallow dependencies on store, top, and viewer crates
-        if (
-            crate_path.startswith("crates/store/")
-            or crate_path.startswith("crates/top/")
-            or crate_path.startswith("crates/viewer/")
-        ):
+        if crate_path.startswith(("crates/store/", "crates/top/", "crates/viewer/")):
             disallowed_workspace_crates.add(crate_name)
 
     # Check each Cargo.toml in crates/utils
@@ -69,7 +65,10 @@ def main() -> int:
             if isinstance(target_data, dict):
                 dep_sections.append((f"target.{target_name}.dependencies", target_data.get("dependencies", {})))
                 dep_sections.append((f"target.{target_name}.dev-dependencies", target_data.get("dev-dependencies", {})))
-                dep_sections.append((f"target.{target_name}.build-dependencies", target_data.get("build-dependencies", {})))
+                dep_sections.append((
+                    f"target.{target_name}.build-dependencies",
+                    target_data.get("build-dependencies", {}),
+                ))
 
         for section_name, deps in dep_sections:
             if not isinstance(deps, dict):
