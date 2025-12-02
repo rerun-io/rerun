@@ -216,7 +216,7 @@ colored = "2.2" # Old b/c of dify
 comfy-table = { version = "7.2", default-features = false }
 console_error_panic_hook = "0.1.7"
 const_format = "0.2.35"
-convert_case = "0.6.0"
+convert_case = "0.10.0"
 criterion = "0.5.0"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.0"
@@ -260,13 +260,13 @@ image = { version = "0.25.6", default-features = false }
 indent = "0.1.1"
 indexmap = "2.11" # Version chosen to align with other dependencies
 indicatif = "0.18.0" # Progress bar
-infer = "0.16.0" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+infer = "0.19.0" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.43"
 itertools = "0.14.0"
 jiff = { version = "0.2.15", features = ["js"] }
 js-sys = "0.3.77"
 jsonwebtoken = { version = "9.3", default-features = false }
-lance = { version = "0.38.2", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
+lance = { version = "0.39.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 libc = "0.2.176"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.28"
@@ -325,11 +325,11 @@ raw-window-handle = "0.6.2"
 rayon = "1.11"
 regex-lite = "0.1.7"
 rexif = "0.7.5"
-rfd = { version = "0.15.4", default-features = false, features = ["async-std", "xdg-portal"] }
+rfd = { version = "0.16.0", default-features = false, features = ["async-std", "xdg-portal"] }
 ron = { version = "0.11.0", features = ["integer128"] }
 roxmltree = "0.20.0"
 rustdoc-json = "0.9.7"
-rustdoc-types = "0.56.0"
+rustdoc-types = "0.57.0"
 rustls = { version = "0.23.32", default-features = false }
 saturating_cast = "0.1"
 scuffle-av1 = "0.1.4"
@@ -346,7 +346,7 @@ similar-asserts = "1.7.0"
 slotmap = { version = "1.0.7", features = ["serde"] }
 smallvec = { version = "1.15", features = ["const_generics", "union"] }
 static_assertions = "1.1"
-stl_io = "0.8.5"
+stl_io = "0.9.0"
 strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
 strum_macros = "0.26.4" # need to update re_rav1d first
 sublime_fuzzy = "0.7.0"
