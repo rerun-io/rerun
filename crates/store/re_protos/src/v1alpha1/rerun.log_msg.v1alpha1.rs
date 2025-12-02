@@ -285,9 +285,9 @@ impl ::prost::Name for StoreVersion {
 /// in `re_log_encoding::RrdFooter`.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RrdFooter {
-    /// All the `RrdManifest`s that were found in this RRD footer.
+    /// All the `RrdManifest`s that were found in this RRD stream.
     ///
-    /// Each `RrdManifest` corresponds to one, and exactly one, RRD stream (i.e. recording).
+    /// Each `RrdManifest` corresponds to one, and exactly one, recording.
     ///
     /// The order is unspecified.
     #[prost(message, repeated, tag = "1")]
