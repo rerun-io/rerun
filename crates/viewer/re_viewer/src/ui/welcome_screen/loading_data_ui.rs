@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_log_channel::SmartChannelSource;
+use re_log_channel::LogSource;
 use re_ui::{DesignTokens, UiExt as _};
 
 /// Show a loading screen for when we are connecting to a data source.
@@ -22,7 +22,7 @@ pub fn loading_data_ui(ui: &mut egui::Ui, loading_text: &str) {
     });
 }
 
-pub fn loading_text_for_data_sources(log_sources: &[Arc<SmartChannelSource>]) -> Option<String> {
+pub fn loading_text_for_data_sources(log_sources: &[Arc<LogSource>]) -> Option<String> {
     // If there's several data sources that should show a loading text, pick the first one.
     for source in log_sources {
         if let Some(loading_name) = source.loading_name() {

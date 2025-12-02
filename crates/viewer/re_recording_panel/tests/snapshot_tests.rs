@@ -30,7 +30,7 @@ fn fake_local_and_example_recordings_test() {
         "rerun_example_dna",
         "dna_rec_id",
     ));
-    example_entity_db.data_source = Some(re_log_channel::SmartChannelSource::RrdHttpStream {
+    example_entity_db.data_source = Some(re_log_channel::LogSource::RrdHttpStream {
         url: "https://app.rerun.io/version/nightly/examples/dna.rrd".to_owned(),
         follow: false,
     });
@@ -42,7 +42,7 @@ fn fake_local_and_example_recordings_test() {
         "local_app_id",
         "local_rec_id",
     ));
-    local_entity_db.data_source = Some(re_log_channel::SmartChannelSource::Sdk);
+    local_entity_db.data_source = Some(re_log_channel::LogSource::Sdk);
     store_hub.insert_entity_db(local_entity_db);
 
     // fake a local blueprint (it should not be visible in the recording panel)
@@ -51,7 +51,7 @@ fn fake_local_and_example_recordings_test() {
         "local_app_id",
         "local_blueprint_id",
     ));
-    blueprint_entity_db.data_source = Some(re_log_channel::SmartChannelSource::Sdk);
+    blueprint_entity_db.data_source = Some(re_log_channel::LogSource::Sdk);
 
     // release the lock lest we deadlock
     drop(store_hub);

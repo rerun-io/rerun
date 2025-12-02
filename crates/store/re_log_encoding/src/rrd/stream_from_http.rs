@@ -16,13 +16,10 @@ pub fn stream_from_http_to_channel(
     follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_log_channel::LogReceiver {
-    let (tx, rx) = re_log_channel::log_channel(
-        re_log_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
-        re_log_channel::SmartChannelSource::RrdHttpStream {
-            url: url.clone(),
-            follow,
-        },
-    );
+    let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::RrdHttpStream {
+        url: url.clone(),
+        follow,
+    });
     stream_from_http(
         url.clone(),
         Arc::new(move |msg| {

@@ -251,12 +251,9 @@ impl WebHandle {
             return;
         }
 
-        let (log_tx, log_rx) = re_log_channel::log_channel(
-            re_log_channel::SmartMessageSource::JsChannelPush,
-            re_log_channel::SmartChannelSource::JsChannel {
-                channel_name: channel_name.to_owned(),
-            },
-        );
+        let (log_tx, log_rx) = re_log_channel::log_channel(re_log_channel::LogSource::JsChannel {
+            channel_name: channel_name.to_owned(),
+        });
 
         app.add_log_receiver(log_rx);
         self.log_senders.insert(id.to_owned(), log_tx);

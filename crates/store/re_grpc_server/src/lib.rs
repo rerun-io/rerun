@@ -378,10 +378,8 @@ pub fn spawn_with_recv(
         addr,
     ));
 
-    let (channel_log_tx, channel_log_rx) = re_log_channel::log_channel(
-        re_log_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_log_channel::SmartChannelSource::MessageProxy(uri),
-    );
+    let (channel_log_tx, channel_log_rx) =
+        re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri));
 
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);
 

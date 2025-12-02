@@ -2,19 +2,19 @@ use std::sync::Arc;
 
 use re_log_types::DataSourceMessage;
 
-use crate::{Channel, SendError, SmartMessage, SmartMessagePayload, SmartMessageSource};
+use crate::{Channel, LogSource, SendError, SmartMessage, SmartMessagePayload};
 
 #[derive(Clone)]
 pub struct LogSender {
     tx: crossbeam::channel::Sender<SmartMessage>,
-    source: Arc<SmartMessageSource>,
+    source: Arc<LogSource>,
     channel: Arc<Channel>,
 }
 
 impl LogSender {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage>,
-        source: Arc<SmartMessageSource>,
+        source: Arc<LogSource>,
         channel: Arc<Channel>,
     ) -> Self {
         Self {

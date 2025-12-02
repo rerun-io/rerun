@@ -1,4 +1,4 @@
-use re_log_channel::{LogReceiver, SmartChannelSource, SmartMessageSource};
+use re_log_channel::{LogReceiver, LogSource};
 use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
 
@@ -161,10 +161,7 @@ impl LogDataSource {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
-                let (tx, rx) = re_log_channel::log_channel(
-                    SmartMessageSource::File(path.clone()),
-                    SmartChannelSource::File(path.clone()),
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File(path.clone()));
 
                 // This recording will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -188,10 +185,7 @@ impl LogDataSource {
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
-                let (tx, rx) = re_log_channel::log_channel(
-                    SmartMessageSource::File(name.clone().into()),
-                    SmartChannelSource::File(name.clone().into()),
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File(name.clone().into()));
 
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -219,10 +213,7 @@ impl LogDataSource {
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => {
-                let (tx, rx) = re_log_channel::log_channel(
-                    SmartMessageSource::Stdin,
-                    SmartChannelSource::Stdin,
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::Stdin);
 
                 crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
 
@@ -237,16 +228,11 @@ impl LogDataSource {
                 uri,
                 select_when_loaded,
             } => {
-                let (tx, rx) = re_log_channel::log_channel(
-                    re_log_channel::SmartMessageSource::RedapGrpcStream {
+                let (tx, rx) =
+                    re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
                         uri: uri.clone(),
                         select_when_loaded,
-                    },
-                    re_log_channel::SmartChannelSource::RedapGrpcStream {
-                        uri: uri.clone(),
-                        select_when_loaded,
-                    },
-                );
+                    });
 
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();

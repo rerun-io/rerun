@@ -28,26 +28,30 @@ pub enum FlushError {
     Timeout,
 }
 
-/// Identifies in what context this smart channel was created, and who/what is holding its
-/// receiving end.
+/// Identifies in what context this smart channel was created,
+/// and what is holding the [`LogSender`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub enum SmartChannelSource {
-    /// The channel was created in the context of loading a file from disk (could be
-    /// `.rrd` files, or `.glb`, `.png`, …).
+pub enum LogSource {
+    /// The sender is a background thread reading data from a file on disk
+    /// (could be `.rrd` files, or `.glb`, `.png`, …).
     File(std::path::PathBuf),
 
-    /// The channel was created in the context of loading an `.rrd` file over http.
-    ///
-    /// The `follow` flag indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
-    // TODO(andreas): having follow in here is a bit weird. This should be part of the link fragments instead.
-    RrdHttpStream { url: String, follow: bool },
+    /// The sender is a background thread fetching data from an HTTP file server.
+    RrdHttpStream {
+        /// Should include `http(s)://` prefix.
+        url: String,
+
+        /// Indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
+        // TODO(andreas): having follow in here is a bit weird. This should be part of the link fragments instead.
+        follow: bool,
+    },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`
-    /// js event.
+    /// javascript event.
     ///
     /// Only applicable to web browser iframes.
     /// Used for the inline web viewer in a notebook.
-    RrdWebEventListener,
+    RrdWebEvent,
 
     /// The channel was created in the context of a javascript client submitting an RRD directly as bytes.
     JsChannel {
@@ -55,14 +59,14 @@ pub enum SmartChannelSource {
         channel_name: String,
     },
 
-    /// The channel was created in the context of loading data using a Rerun SDK sharing the same
-    /// process.
+    /// The sender is a Rerun SDK running from another thread in the same process.
     Sdk,
 
-    /// The channel was created in the context of streaming in RRD data from standard input.
+    /// The data is streaming in from standard input.
     Stdin,
 
-    /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
+    /// The data is streaming in directly from a Rerun Data Platform server,
+    /// over `rerun://` gRPC interface.
     RedapGrpcStream {
         uri: re_uri::DatasetPartitionUri,
 
@@ -74,25 +78,25 @@ pub enum SmartChannelSource {
     MessageProxy(re_uri::ProxyUri),
 }
 
-impl std::fmt::Display for SmartChannelSource {
+impl std::fmt::Display for LogSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::File(path) => path.display().fmt(f),
+            Self::File(path) => write!(f, "file://{}", path.to_string_lossy()),
             Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
             Self::MessageProxy(uri) => uri.fmt(f),
             Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
-            Self::RrdWebEventListener => "Web event listener".fmt(f),
+            Self::RrdWebEvent => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
-            Self::Stdin => "Standard input".fmt(f),
+            Self::Stdin => "stdin".fmt(f),
         }
     }
 }
 
-impl SmartChannelSource {
+impl LogSource {
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
+            Self::File(_) | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
             Self::RrdHttpStream { .. }
             | Self::JsChannel { .. }
             | Self::RedapGrpcStream { .. }
@@ -104,7 +108,7 @@ impl SmartChannelSource {
         match self {
             Self::File(_)
             | Self::Sdk
-            | Self::RrdWebEventListener
+            | Self::RrdWebEvent
             | Self::Stdin
             | Self::RrdHttpStream { .. }
             | Self::JsChannel { .. }
@@ -123,7 +127,7 @@ impl SmartChannelSource {
 
             Self::File(_)
             | Self::Sdk
-            | Self::RrdWebEventListener
+            | Self::RrdWebEvent
             | Self::Stdin
             | Self::RrdHttpStream { .. }
             | Self::JsChannel { .. } => None,
@@ -149,7 +153,7 @@ impl SmartChannelSource {
             Self::RrdHttpStream { url, .. } => Some(url.clone()),
             Self::RedapGrpcStream { uri, .. } => Some(uri.partition_id.clone()),
 
-            Self::RrdWebEventListener
+            Self::RrdWebEvent
             | Self::JsChannel { .. }
             | Self::MessageProxy { .. }
             | Self::Sdk
@@ -180,9 +184,7 @@ impl SmartChannelSource {
                     uri.clone().without_query_and_fragment()
                 )
             }
-            Self::RrdWebEventListener | Self::JsChannel { .. } => {
-                "Waiting for logging data…".to_owned()
-            }
+            Self::RrdWebEvent | Self::JsChannel { .. } => "Waiting for logging data…".to_owned(),
             Self::Sdk => "Waiting for logging data from SDK".to_owned(),
         }
     }
@@ -202,63 +204,7 @@ impl SmartChannelSource {
     }
 }
 
-/// Identifies who/what sent a particular message in a smart channel.
-///
-/// Due to the multiplexed nature of the smart channel, every message coming in can originate
-/// from a different source.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SmartMessageSource {
-    /// The sender is a background thread reading data from a file on disk.
-    File(std::path::PathBuf),
-
-    /// The sender is a background thread fetching data from an HTTP file server.
-    RrdHttpStream {
-        /// Should include `http(s)://` prefix.
-        url: String,
-    },
-
-    /// The sender is a javascript callback triggered by a `postMessage` event.
-    ///
-    /// Only applicable to web browser iframes.
-    RrdWebEventCallback,
-
-    /// The sender is a javascript client submitting an RRD directly as bytes.
-    JsChannelPush,
-
-    /// The sender is a Rerun SDK running from another thread in the same process.
-    Sdk,
-
-    /// The data is streaming in from standard input.
-    Stdin,
-
-    /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    RedapGrpcStream {
-        uri: re_uri::DatasetPartitionUri,
-
-        /// Switch to this recording once it has been loaded?
-        select_when_loaded: bool,
-    },
-
-    /// A stream of messages over message proxy gRPC interface.
-    MessageProxy(re_uri::ProxyUri),
-}
-
-impl std::fmt::Display for SmartMessageSource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&match self {
-            Self::File(path) => format!("file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url } => url.clone(),
-            Self::MessageProxy(uri) => uri.to_string(),
-            Self::RedapGrpcStream { uri, .. } => uri.to_string(),
-            Self::RrdWebEventCallback => "web_callback".into(),
-            Self::JsChannelPush => "javascript".into(),
-            Self::Sdk => "sdk".into(),
-            Self::Stdin => "stdin".into(),
-        })
-    }
-}
-
-// ---
+// -------------------------------------------------------------------------------------
 
 /// Shared by all receivers and senders of a channel
 #[derive(Default)]
@@ -270,16 +216,14 @@ pub(crate) struct Channel {
 }
 
 /// Create a new communication channel for [`re_log_types::DataSourceMessage`].
-pub fn log_channel(
-    msg_src: crate::SmartMessageSource,
-    channel_src: crate::SmartChannelSource,
-) -> (LogSender, LogReceiver) {
+pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
     // TODO(emilk): add a back-channel to be used for controlling what data we load.
 
+    let source = Arc::new(source);
     let channel = Arc::new(Channel::default());
     let (tx, rx) = crossbeam::channel::unbounded();
-    let sender = LogSender::new(tx, Arc::new(msg_src), channel.clone());
-    let receiver = LogReceiver::new(rx, channel, Arc::new(channel_src));
+    let sender = LogSender::new(tx, source.clone(), channel.clone());
+    let receiver = LogReceiver::new(rx, channel, source);
     (sender, receiver)
 }
 
@@ -315,7 +259,7 @@ impl std::fmt::Debug for SmartMessagePayload {
 
 #[derive(Debug)]
 pub struct SmartMessage {
-    pub source: Arc<SmartMessageSource>,
+    pub source: Arc<LogSource>,
     pub payload: SmartMessagePayload,
 }
 

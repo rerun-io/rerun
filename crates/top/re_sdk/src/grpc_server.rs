@@ -38,10 +38,7 @@ impl GrpcServerSink {
             re_uri::Scheme::RerunHttp,
             grpc_server_addr,
         ));
-        let (channel_tx, channel_rx) = re_log_channel::log_channel(
-            re_log_channel::SmartMessageSource::MessageProxy(uri.clone()),
-            re_log_channel::SmartChannelSource::Sdk,
-        );
+        let (channel_tx, channel_rx) = re_log_channel::log_channel(re_log_channel::LogSource::Sdk);
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
             .spawn(move || {

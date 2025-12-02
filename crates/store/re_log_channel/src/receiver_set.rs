@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crossbeam::channel::Select;
 use parking_lot::Mutex;
 
-use crate::{RecvError, SmartChannelSource, SmartMessage};
+use crate::{LogSource, RecvError, SmartMessage};
 
 use super::LogReceiver;
 
@@ -29,7 +29,7 @@ impl LogReceiverSet {
     }
 
     /// Are we currently receiving this source?
-    pub fn contains(&self, source: &SmartChannelSource) -> bool {
+    pub fn contains(&self, source: &LogSource) -> bool {
         self.receivers
             .lock()
             .iter()
@@ -37,7 +37,7 @@ impl LogReceiverSet {
     }
 
     /// Disconnect from any channel with the given source.
-    pub fn remove(&self, source: &SmartChannelSource) {
+    pub fn remove(&self, source: &LogSource) {
         self.receivers.lock().retain(|r| r.source() != source);
     }
 
@@ -56,22 +56,22 @@ impl LogReceiverSet {
             // retain only sources which:
             // - aren't network sources
             // - don't point at the given `needle`
-            SmartChannelSource::RrdHttpStream { url, .. } => url != needle,
-            SmartChannelSource::MessageProxy(url) => url.to_string() != needle,
-            SmartChannelSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
+            LogSource::RrdHttpStream { url, .. } => url != needle,
+            LogSource::MessageProxy(url) => url.to_string() != needle,
+            LogSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
 
-            SmartChannelSource::File(_)
-            | SmartChannelSource::Stdin
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. } => true,
+            LogSource::File(_)
+            | LogSource::Stdin
+            | LogSource::Sdk
+            | LogSource::RrdWebEvent
+            | LogSource::JsChannel { .. } => true,
         });
     }
 
     /// List of connected receiver sources.
     ///
     /// This gets culled after calling one of the `recv` methods.
-    pub fn sources(&self) -> Vec<Arc<SmartChannelSource>> {
+    pub fn sources(&self) -> Vec<Arc<LogSource>> {
         re_tracing::profile_function!();
         let mut rx = self.receivers.lock();
         rx.retain(|r| r.is_connected());
@@ -126,7 +126,7 @@ impl LogReceiverSet {
     }
 
     /// Returns immediately if there is nothing to receive.
-    pub fn try_recv(&self) -> Option<(Arc<SmartChannelSource>, SmartMessage)> {
+    pub fn try_recv(&self) -> Option<(Arc<LogSource>, SmartMessage)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -161,7 +161,7 @@ impl LogReceiverSet {
     pub fn recv_timeout(
         &self,
         timeout: std::time::Duration,
-    ) -> Option<(Arc<SmartChannelSource>, SmartMessage)> {
+    ) -> Option<(Arc<LogSource>, SmartMessage)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -196,16 +196,13 @@ impl LogReceiverSet {
 
 #[test]
 fn test_receive_set() {
-    use crate::{SmartMessageSource, log_channel};
+    use crate::{LogSource, log_channel};
     use re_log_types::StoreId;
 
     let timeout = std::time::Duration::from_millis(100);
 
-    let (tx_file, rx_file) = log_channel(
-        SmartMessageSource::File("path".into()),
-        SmartChannelSource::File("path".into()),
-    );
-    let (tx_sdk, rx_sdk) = log_channel(SmartMessageSource::Sdk, SmartChannelSource::Sdk);
+    let (tx_file, rx_file) = log_channel(LogSource::File("path".into()));
+    let (tx_sdk, rx_sdk) = log_channel(LogSource::Sdk);
 
     let set = LogReceiverSet::default();
 
@@ -219,7 +216,7 @@ fn test_receive_set() {
     assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
-        vec![Arc::new(SmartChannelSource::File("path".into()))]
+        vec![Arc::new(LogSource::File("path".into()))]
     );
 
     set.add(rx_sdk);
@@ -229,8 +226,8 @@ fn test_receive_set() {
     assert_eq!(
         set.sources(),
         vec![
-            Arc::new(SmartChannelSource::File("path".into())),
-            Arc::new(SmartChannelSource::Sdk)
+            Arc::new(LogSource::File("path".into())),
+            Arc::new(LogSource::Sdk)
         ]
     );
 
@@ -242,7 +239,7 @@ fn test_receive_set() {
             },
         ))
         .unwrap();
-    assert_eq!(set.try_recv().unwrap().0, Arc::new(SmartChannelSource::Sdk));
+    assert_eq!(set.try_recv().unwrap().0, Arc::new(LogSource::Sdk));
 
     assert!(set.try_recv().is_none());
     assert!(set.recv_timeout(timeout).is_none());
@@ -254,7 +251,7 @@ fn test_receive_set() {
     assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
-        vec![Arc::new(SmartChannelSource::File("path".into()))]
+        vec![Arc::new(LogSource::File("path".into()))]
     );
 
     drop(tx_file);

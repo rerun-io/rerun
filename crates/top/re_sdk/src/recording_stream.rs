@@ -1427,10 +1427,8 @@ impl RecordingStream {
         let filepath = filepath.as_ref();
         let has_contents = contents.is_some();
 
-        let (tx, rx) = re_log_channel::log_channel(
-            re_log_channel::SmartMessageSource::Sdk,
-            re_log_channel::SmartChannelSource::File(filepath.into()),
-        );
+        let (tx, rx) =
+            re_log_channel::log_channel(re_log_channel::LogSource::File(filepath.into()));
 
         let mut settings = crate::DataLoaderSettings {
             application_id: Some(store_info.application_id().clone()),

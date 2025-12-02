@@ -3,12 +3,12 @@ use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
 };
 
-use crate::{Channel, SmartChannelSource, SmartMessage, TryRecvError};
+use crate::{Channel, LogSource, SmartMessage, TryRecvError};
 
 pub struct LogReceiver {
     pub(crate) rx: crossbeam::channel::Receiver<SmartMessage>,
     pub(crate) channel: Arc<Channel>,
-    pub(crate) source: Arc<SmartChannelSource>,
+    pub(crate) source: Arc<LogSource>,
     connected: AtomicBool,
 }
 
@@ -16,7 +16,7 @@ impl LogReceiver {
     pub(crate) fn new(
         rx: crossbeam::channel::Receiver<SmartMessage>,
         channel: Arc<Channel>,
-        source: Arc<SmartChannelSource>,
+        source: Arc<LogSource>,
     ) -> Self {
         Self {
             rx,
@@ -86,7 +86,7 @@ impl LogReceiver {
 
     /// Where is the data coming from?
     #[inline]
-    pub fn source(&self) -> &SmartChannelSource {
+    pub fn source(&self) -> &LogSource {
         &self.source
     }
 

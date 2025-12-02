@@ -11,7 +11,7 @@
 use std::rc::Rc;
 
 use re_entity_db::EntityDb;
-use re_log_channel::SmartChannelSource;
+use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, RecordingId, TimeReal, Timeline, TimelineName};
 use re_viewer_context::{ContainerId, Item, ItemCollection, ItemContext, ViewId};
 use re_viewport_blueprint::ViewportBlueprint;
@@ -36,7 +36,7 @@ impl ViewerEvent {
     #[inline]
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
         let partition_id = db.data_source.as_ref().and_then(|ds| {
-            if let SmartChannelSource::RedapGrpcStream {
+            if let LogSource::RedapGrpcStream {
                 uri: re_uri::DatasetPartitionUri { partition_id, .. },
                 ..
             } = ds

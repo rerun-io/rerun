@@ -18,10 +18,8 @@ pub fn stream(
 ) -> re_log_channel::LogReceiver {
     re_log::debug!("Loading {uri} via gRPC…");
 
-    let (tx, rx) = re_log_channel::log_channel(
-        re_log_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_log_channel::SmartChannelSource::MessageProxy(uri.clone()),
-    );
+    let (tx, rx) =
+        re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri.clone()));
 
     crate::spawn_future(async move {
         if let Err(err) = stream_async(uri, &tx, on_msg).await {

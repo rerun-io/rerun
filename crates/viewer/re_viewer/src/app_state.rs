@@ -900,17 +900,17 @@ pub(crate) fn create_time_control_for<'cfgs>(
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
                 // We assume the `RrdHttpStream` is a done recording.
-                re_log_channel::SmartChannelSource::File(_)
-                | re_log_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
-                | re_log_channel::SmartChannelSource::RedapGrpcStream { .. }
-                | re_log_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
+                re_log_channel::LogSource::File(_)
+                | re_log_channel::LogSource::RrdHttpStream { follow: false, .. }
+                | re_log_channel::LogSource::RedapGrpcStream { .. }
+                | re_log_channel::LogSource::RrdWebEvent => PlayState::Playing,
 
                 // Live data - follow it!
-                re_log_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
-                | re_log_channel::SmartChannelSource::Sdk
-                | re_log_channel::SmartChannelSource::MessageProxy { .. }
-                | re_log_channel::SmartChannelSource::Stdin
-                | re_log_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
+                re_log_channel::LogSource::RrdHttpStream { follow: true, .. }
+                | re_log_channel::LogSource::Sdk
+                | re_log_channel::LogSource::MessageProxy { .. }
+                | re_log_channel::LogSource::Stdin
+                | re_log_channel::LogSource::JsChannel { .. } => PlayState::Following,
             }
         } else {
             PlayState::Following // No known source 🤷‍♂️

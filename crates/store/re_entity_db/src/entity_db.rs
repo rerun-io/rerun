@@ -11,7 +11,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
-use re_log_channel::SmartChannelSource;
+use re_log_channel::LogSource;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
@@ -72,7 +72,7 @@ pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
     ///
     /// Clones of an [`EntityDb`] gets a `None` source.
-    pub data_source: Option<re_log_channel::SmartChannelSource>,
+    pub data_source: Option<re_log_channel::LogSource>,
 
     chunk_index: ChunkIndex,
 
@@ -286,13 +286,13 @@ impl EntityDb {
             StoreKind::Blueprint => EntityDbClass::Blueprint,
 
             StoreKind::Recording => match &self.data_source {
-                Some(SmartChannelSource::RrdHttpStream { url, .. })
+                Some(LogSource::RrdHttpStream { url, .. })
                     if url.starts_with("https://app.rerun.io") =>
                 {
                     EntityDbClass::ExampleRecording
                 }
 
-                Some(SmartChannelSource::RedapGrpcStream { uri, .. }) => {
+                Some(LogSource::RedapGrpcStream { uri, .. }) => {
                     EntityDbClass::DatasetPartition(uri)
                 }
 
