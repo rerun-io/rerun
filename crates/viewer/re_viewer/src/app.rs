@@ -1000,9 +1000,10 @@ impl App {
                     )));
 
                 #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::SettingsOpened {});
-                }
+                // if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                //     analytics.record(re_analytics::event::SettingsOpened {});
+                // }
+                re_analytics::record(|| re_analytics::event::SettingsOpened {});
             }
 
             SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {

@@ -102,7 +102,7 @@ pub struct Identify {
 impl Event for Identify {
     const NAME: &'static str = "$identify";
 
-    const KIND: EventKind = EventKind::Update;
+    const KIND: EventKind = EventKind::Identify;
 }
 
 impl Properties for Identify {

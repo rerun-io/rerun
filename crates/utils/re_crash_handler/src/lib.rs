@@ -71,22 +71,29 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
             #[cfg(feature = "analytics")]
             {
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::CrashPanic {
-                        build_info: _build_info.clone(),
-                        callstack,
-                        // Don't include panic message, because it can contain sensitive information,
-                        // e.g. `panic!("Couldn't read {sensitive_file_path}")`.
-                        message: None,
-                        file_line,
-                    });
+                // if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                //     analytics.record(re_analytics::event::CrashPanic {
+                //         build_info: _build_info.clone(),
+                //         callstack,
+                //         // Don't include panic message, because it can contain sensitive information,
+                //         // e.g. `panic!("Couldn't read {sensitive_file_path}")`.
+                //         message: None,
+                //         file_line,
+                //     });
 
-                    if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
-                        && cfg!(debug_assertions)
-                    {
-                        eprintln!("Failed to flush analytics: {err}");
-                    }
-                }
+                //     if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
+                //         && cfg!(debug_assertions)
+                //     {
+                //         eprintln!("Failed to flush analytics: {err}");
+                //     }
+                // }
+
+                re_analytics::record_and_flush(|| re_analytics::event::CrashPanic {
+                    build_info: _build_info.clone(),
+                    callstack,
+                    message: None,
+                    file_line,
+                });
             }
 
             // We compile with `panic = "abort"`, but we don't want to report the same problem twice, so just exit:
@@ -204,19 +211,24 @@ fn install_signal_handler(build_info: BuildInfo) {
 
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-            analytics.record(re_analytics::event::CrashSignal {
-                build_info,
-                signal: signal_name.to_owned(),
-                callstack,
-            });
+        // if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+        //     analytics.record(re_analytics::event::CrashSignal {
+        //         build_info,
+        //         signal: signal_name.to_owned(),
+        //         callstack,
+        //     });
 
-            if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
-                && cfg!(debug_assertions)
-            {
-                eprintln!("Failed to flush analytics: {err}");
-            }
-        }
+        //     if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
+        //         && cfg!(debug_assertions)
+        //     {
+        //         eprintln!("Failed to flush analytics: {err}");
+        //     }
+        // }
+        re_analytics::record_and_flush(|| re_analytics::event::CrashSignal {
+            build_info,
+            signal: signal_name.to_owned(),
+            callstack,
+        });
     }
 
     fn callstack() -> String {

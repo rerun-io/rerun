@@ -43,7 +43,7 @@ impl<'a> PostHogEvent<'a> {
                     .chain([("session_id", session_id.into())])
                     .collect(),
             }),
-            crate::EventKind::Update => Self::Identify(PostHogIdentifyEvent {
+            crate::EventKind::Identify => Self::Identify(PostHogIdentifyEvent {
                 timestamp: event.time_utc,
                 event: "$identify",
                 distinct_id: analytics_id,

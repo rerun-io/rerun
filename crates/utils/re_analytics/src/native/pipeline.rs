@@ -11,6 +11,9 @@ use super::{AbortSignal, sink::PostHogSink};
 
 use crate::{AnalyticsEvent, Config, FlushError};
 
+// This is the environment variable that controls analytics collection.
+const ENV_ANALYTICS: &str = "RERUN_ANALYTICS";
+
 pub enum PipelineEvent {
     Analytics(AnalyticsEvent),
     Flush,
@@ -36,25 +39,37 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub(crate) fn new(config: &Config, tick: Duration) -> Result<Option<Self>, PipelineError> {
-        if std::env::var("CI").is_ok() {
-            re_log::debug_once!("Analytics disabled on CI");
-            return Ok(None);
-        }
-        if cfg!(feature = "testing") {
-            re_log::debug_once!("Analytics disabled in tests");
-            return Ok(None);
-        }
-        if cfg!(debug_assertions) {
-            re_log::debug_once!("Analytics disabled in debug builds");
-            return Ok(None);
+        let force_analytics = match std::env::var(ENV_ANALYTICS) {
+            Ok(s) => {
+                if s == "0" {
+                    re_log::debug_once!("Analytics disabled by environment variable");
+                    return Ok(None);
+                }
+                s.to_lowercase() == "force"
+            }
+            _ => false,
+        };
+
+        if !force_analytics {
+            if !config.analytics_enabled {
+                re_log::debug_once!("Analytics disabled by configuration");
+                return Ok(None);
+            }
+            if std::env::var("CI").is_ok() {
+                re_log::debug_once!("Analytics disabled on CI");
+                return Ok(None);
+            }
+            if cfg!(feature = "testing") {
+                re_log::debug_once!("Analytics disabled in tests");
+                return Ok(None);
+            }
+            if cfg!(debug_assertions) {
+                re_log::debug_once!("Analytics disabled in debug builds");
+                return Ok(None);
+            }
         }
 
         let sink = PostHogSink::default();
-
-        if !config.analytics_enabled {
-            return Ok(None);
-        }
-
         let (event_tx, event_rx) = channel::bounded(2048);
         let (flush_done_tx, flush_done_rx) = channel::bounded(1);
         let abort_signal = AbortSignal::new();

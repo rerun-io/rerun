@@ -127,7 +127,7 @@ impl WebViewerServer {
             num_wasm_served: Default::default(),
 
             #[cfg(feature = "analytics")]
-            analytics: re_analytics::Analytics::global_or_init(),
+            analytics: re_analytics::Analytics::global_or_init(), // TODO: <-- nem kell ide
         });
 
         let inner_copy = inner.clone();
