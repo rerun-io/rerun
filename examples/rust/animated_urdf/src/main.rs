@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let (rec, _serve_guard) = args.rerun.init("rerun_example_clock")?;
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_animated_urdf")?;
     run(&rec, &args)
 }
 
@@ -48,17 +48,16 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                     joint.limit.lower..=joint.limit.upper,
                 );
 
-                // NOTE: each joint already has a fixed origin pose (logged with the URDF file),
-                // and Rerun won't allow us to override or add to that transform here.
-                // So instead we apply the dynamic rotation to the child link of the joint:
-                let child_link = urdf.get_joint_child(joint);
-                let link_path = urdf.get_link_path(child_link);
+                // Rerun loads the URDF transforms with child/parent frame relations.
+                // In order to move a joint, we just need to log a new transform between two of those frames.
                 rec.log(
-                    link_path,
+                    "/transforms",
                     &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
                         fixed_axis,
                         dynamic_angle as f32,
-                    )),
+                    ))
+                    .with_parent_frame(joint.parent.link.clone())
+                    .with_child_frame(joint.child.link.clone()),
                 )?;
             }
         }
