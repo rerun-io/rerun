@@ -1,3 +1,4 @@
+use crate::RrdManifest;
 use crate::rrd::decoder::state_machine::DecoderState;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
@@ -106,6 +107,18 @@ pub struct DecoderIterator<T, R: std::io::BufRead> {
 impl<T, R: std::io::BufRead> DecoderIterator<T, R> {
     pub fn num_bytes_processed(&self) -> u64 {
         self.decoder.byte_chunks.num_read() as _
+    }
+}
+
+impl<T: DecoderEntrypoint, R: std::io::BufRead> DecoderIterator<T, R> {
+    /// Returns all the RRD manifests accumulated _so far_.
+    ///
+    /// RRD manifests are parsed from footers, of which there might be more than one e.g. in the
+    /// case of concatenated streams.
+    ///
+    /// This is not cheap: it automatically performs the transport to app level conversion.
+    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        self.decoder.rrd_manifests()
     }
 }
 
