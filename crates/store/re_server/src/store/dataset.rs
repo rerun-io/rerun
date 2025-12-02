@@ -9,6 +9,8 @@ use arrow::{
 use itertools::Either;
 use parking_lot::Mutex;
 
+use crate::chunk_index::DatasetChunkIndexes;
+use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
@@ -20,13 +22,12 @@ use re_protos::{
     common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
 };
 
-use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
-
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
     name: String,
     details: DatasetDetails,
     partitions: HashMap<SegmentId, Partition>,
+    indexes: DatasetChunkIndexes,
 }
 
 pub struct Dataset {
@@ -50,6 +51,7 @@ impl Dataset {
                 name,
                 details,
                 partitions: HashMap::default(),
+                indexes: DatasetChunkIndexes::new(id),
             }),
             cached_schema: Mutex::new(None),
         }
@@ -87,6 +89,14 @@ impl Dataset {
     #[inline]
     pub fn updated_at(&self) -> jiff::Timestamp {
         self.inner.updated_at()
+    }
+
+    pub fn indexes(&self) -> &DatasetChunkIndexes {
+        &self.inner.indexes
+    }
+
+    pub fn partitions(&self) -> &HashMap<SegmentId, Partition> {
+        &self.inner.partitions
     }
 
     pub fn partition(&self, segment_id: &SegmentId) -> Result<&Partition, Error> {
@@ -364,7 +374,7 @@ impl Dataset {
             .map(|layer| layer.store_handle())
     }
 
-    pub fn add_layer(
+    pub async fn add_layer(
         &mut self,
         segment_id: SegmentId,
         layer_name: String,
@@ -373,12 +383,21 @@ impl Dataset {
     ) -> Result<(), Error> {
         re_log::debug!(?segment_id, ?layer_name, "add_layer");
 
-        self.inner
+        let overwritten = self
+            .inner
             .modify()
             .partitions
-            .entry(segment_id)
+            .entry(segment_id.clone())
             .or_default()
-            .insert_layer(layer_name, Layer::new(store_handle), on_duplicate)?;
+            .insert_layer(
+                layer_name.clone(),
+                Layer::new(store_handle.clone()),
+                on_duplicate,
+            )?;
+
+        self.indexes()
+            .on_layer_added(segment_id, store_handle, &layer_name, overwritten)
+            .await?;
 
         Ok(())
     }
@@ -386,7 +405,7 @@ impl Dataset {
     /// Load a RRD using its recording id as segment id.
     ///
     /// Only stores with matching kinds with be loaded.
-    pub fn load_rrd(
+    pub async fn load_rrd(
         &mut self,
         path: &Path,
         layer_name: Option<&str>,
@@ -412,11 +431,12 @@ impl Dataset {
             self.add_layer(
                 partition_id.clone(),
                 layer_name.to_owned(),
-                chunk_store,
+                chunk_store.clone(),
                 on_duplicate,
-            )?;
+            )
+            .await?;
 
-            new_partition_ids.insert(partition_id);
+            new_partition_ids.insert(partition_id.clone());
         }
 
         Ok(new_partition_ids)
