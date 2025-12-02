@@ -9073,6 +9073,7 @@ dependencies = [
  "bytes",
  "criterion",
  "ehttp",
+ "insta",
  "itertools 0.14.0",
  "js-sys",
  "lz4_flex 0.12.0",
