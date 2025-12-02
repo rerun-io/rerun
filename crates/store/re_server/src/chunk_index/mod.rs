@@ -348,11 +348,13 @@ impl DatasetChunkIndexes {
 #[cfg(feature = "lance")]
 #[cfg(test)]
 mod tests {
+    //! Simple test for vector search. More extensive tests are in the `redap_tests` package that
+    //! also tests consistency between this local server and Rerun Cloud.
+
     use super::*;
-    use crate::chunk_index::DatasetChunkIndexes;
     use arrow::array::{
-        Array as _, ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder,
-        Float32Array, Float32Builder, ListBuilder, RecordBatch, record_batch,
+        ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder,
+        Float32Array, Float32Builder, ListBuilder, RecordBatch,
     };
     use arrow::buffer::ScalarBuffer;
     use nohash_hasher::IntMap;
@@ -365,104 +367,6 @@ mod tests {
     use re_protos::cloud::v1alpha1::ext::{IndexColumn, IndexProperties, IndexQueryProperties};
     use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
     use re_types_core::{ChunkId, ComponentDescriptor, Loggable as _, SerializedComponentColumn};
-
-    const RRD: &str = "../../../tests/assets/rrd/snippets/views/timeseries.rrd";
-    const ENTITY_PATH: &str = "/trig/sin";
-    const TIMELINE: &str = "log_time";
-    const COMPONENT: &str = "Scalars:scalars";
-
-    #[tokio::test]
-    async fn test_index_chunks() -> anyhow::Result<()> {
-        let mut dataset = Dataset::new(
-            EntryId::new(),
-            "test-data".to_owned(),
-            StoreKind::Recording,
-            Default::default(),
-        );
-
-        dataset
-            .load_rrd(
-                Path::new(RRD),
-                None,
-                IfDuplicateBehavior::Error,
-                StoreKind::Recording,
-            )
-            .await?;
-
-        //dump_dataset_info(&dataset);
-
-        let config = IndexConfig {
-            time_index: TimelineName::new(TIMELINE),
-            column: IndexColumn {
-                entity_path: EntityPath::from(ENTITY_PATH),
-                descriptor: ComponentDescriptor {
-                    component: ComponentIdentifier::new(COMPONENT),
-                    archetype: None,
-                    component_type: None,
-                },
-            },
-            properties: IndexProperties::Btree,
-        };
-
-        let dir = tempfile::TempDir::new()?;
-        let path = dir.path();
-
-        let chunk_indexes = DatasetChunkIndexes::new(dataset.id());
-        let index = chunk_indexes.add_index(&dataset, &config, path).await?;
-
-        let lance = index.lance_dataset.get();
-
-        // --- checks on the lance table contents
-        assert_eq!(lance.count_rows(None).await?, 1256);
-
-        let count = lance
-            .scan()
-            .filter("instance > 0")?
-            .empty_project()?
-            .with_row_id()
-            .count_rows()
-            .await?;
-
-        // It's a sinusoid, half of the values are positive.
-        assert_eq!(count, 1256 / 2);
-
-        // --- test search function
-        use arrow::datatypes as arrow_schema;
-
-        let mut search = search::search_index(
-            index,
-            SearchDatasetRequest {
-                column: IndexColumn {
-                    entity_path: EntityPath::from(ENTITY_PATH),
-                    descriptor: ComponentDescriptor {
-                        component: ComponentIdentifier::new(COMPONENT),
-                        archetype: None,
-                        component_type: None,
-                    },
-                },
-                #[expect(clippy::disallowed_methods)]
-                query: record_batch!(("index", Float64, [0.0]))?,
-                scan_parameters: ScanParameters {
-                    columns: vec![
-                        FIELD_TIMEPOINT.to_owned(),
-                        FIELD_CHUNK_ID.to_owned(),
-                        FIELD_INSTANCE.to_owned(),
-                    ],
-                    ..Default::default()
-                },
-                properties: IndexQueryProperties::Btree,
-            },
-        )
-        .await?;
-
-        while let Some(next) = search.next().await {
-            let next = next?;
-            assert_eq!(next.column(0).len(), 1);
-            //println!("{:?}", next);
-        }
-
-        Ok(())
-    }
 
     #[tokio::test]
     async fn test_vector_search() -> anyhow::Result<()> {
@@ -611,35 +515,5 @@ mod tests {
         }
 
         Ok(())
-    }
-
-    #[expect(dead_code)]
-    fn dump_dataset_info(dataset: &Dataset) {
-        for partition in dataset.partitions().values() {
-            for (lid, layer) in partition.layers() {
-                for chunk in layer.store_handle().read().iter_chunks() {
-                    println!(
-                        "Chunk '{}' layer='{}' id = {}",
-                        lid,
-                        chunk.entity_path(),
-                        chunk.id()
-                    );
-                    println!("  - timelines:");
-                    for (tid, timeline) in chunk.timelines() {
-                        println!("    - '{tid}' {:?}", timeline.timeline().datatype());
-                    }
-                    println!("  - components:");
-                    for component in chunk.components().0.values() {
-                        println!(
-                            "    - '{}' {} ({})",
-                            component.descriptor.component,
-                            component.list_array.value_type(),
-                            component.list_array.len(),
-                        );
-                    }
-                    println!();
-                }
-            }
-        }
     }
 }
