@@ -65,6 +65,7 @@ pub enum UICommand {
     ToggleBlueprintPanel,
     ExpandBlueprintPanel,
     ToggleSelectionPanel,
+    ExpandSelectionPanel,
     ToggleTimePanel,
     ToggleChunkStoreBrowser,
     Settings,
@@ -239,6 +240,7 @@ impl UICommand {
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ExpandBlueprintPanel => ("Expand blueprint panel", "Expand the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
+            Self::ExpandSelectionPanel => ("Expand selection panel", "Expand the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
             Self::ToggleChunkStoreBrowser => (
                 "Toggle chunk store browser",
@@ -464,6 +466,7 @@ impl UICommand {
             Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],
             Self::ExpandBlueprintPanel => smallvec![],
             Self::ToggleSelectionPanel => smallvec![ctrl_shift(Key::S)],
+            Self::ExpandSelectionPanel => smallvec![],
             Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
             Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
             Self::Settings => smallvec![cmd(Key::Comma)],

@@ -79,7 +79,7 @@ def test_partition_table_to_polars(simple_dataset_prefix: Path) -> None:
         df = ds.partition_table().df().to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
-Schema([('rerun_partition_id', String),
+Schema([('rerun_segment_id', String),
         ('rerun_layer_names', List(String)),
         ('rerun_storage_urls', List(String)),
         ('rerun_last_updated_at', Datetime(time_unit='ns', time_zone=None)),
@@ -87,11 +87,11 @@ Schema([('rerun_partition_id', String),
         ('rerun_size_bytes', UInt64)])\
 """)
 
-        df = df.drop(["rerun_storage_urls", "rerun_last_updated_at"]).sort("rerun_partition_id")
+        df = df.drop(["rerun_storage_urls", "rerun_last_updated_at"]).sort("rerun_segment_id")
         assert str(df) == inline_snapshot("""\
 shape: (3, 4)
 ┌────────────────────┬───────────────────┬──────────────────┬──────────────────┐
-│ rerun_partition_id ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │
+│ rerun_segment_id   ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │
 │ ---                ┆ ---               ┆ ---              ┆ ---              │
 │ str                ┆ list[str]         ┆ u64              ┆ u64              │
 ╞════════════════════╪═══════════════════╪══════════════════╪══════════════════╡
@@ -115,17 +115,17 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         df = view.df().to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
-Schema([('rerun_partition_id', String),
+Schema([('rerun_segment_id', String),
         ('timeline', Datetime(time_unit='ns', time_zone=None)),
         ('/points:Points2D:colors', List(UInt32)),
         ('/points:Points2D:positions', List(Array(Float32, shape=(2,))))])\
 """)
 
-        df = df.sort("rerun_partition_id")
+        df = df.sort("rerun_segment_id")
         assert str(df) == inline_snapshot("""\
 shape: (2, 4)
 ┌────────────────────┬─────────────────────┬─────────────────────────┬────────────────────────────┐
-│ rerun_partition_id ┆ timeline            ┆ /points:Points2D:colors ┆ /points:Points2D:positions │
+│ rerun_segment_id   ┆ timeline            ┆ /points:Points2D:colors ┆ /points:Points2D:positions │
 │ ---                ┆ ---                 ┆ ---                     ┆ ---                        │
 │ str                ┆ datetime[ns]        ┆ list[u32]               ┆ list[array[f32, 2]]        │
 ╞════════════════════╪═════════════════════╪═════════════════════════╪════════════════════════════╡

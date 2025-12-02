@@ -55,22 +55,25 @@ This page lists all built-in archetypes.
 * [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 * [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, colors etc.
 * [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
-* [`CoordinateFrame`](archetypes/coordinate_frame.md): Specifies the coordinate frame for an entity.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
 * [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
-* [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
 * [`Points3D`](archetypes/points3d.md): A 3D point cloud with positions and optional colors, radii, labels, etc.
-* [`Transform3D`](archetypes/transform3d.md): A transform between two 3D spaces, i.e. a pose.
-* [`TransformAxes3D`](archetypes/transform_axes3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
-* [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 
 ## Text
 
 * [`TextDocument`](archetypes/text_document.md): A text element intended to be displayed in its own text box.
 * [`TextLog`](archetypes/text_log.md): A log entry in a text log, comprised of a text body and its log level.
+
+## Transforms
+
+* [`CoordinateFrame`](archetypes/coordinate_frame.md): Specifies the coordinate frame for an entity.
+* [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
+* [`Transform3D`](archetypes/transform3d.md): A transform between two 3D spaces, i.e. a pose.
+* [`TransformAxes3D`](archetypes/transform_axes3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
+* [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 
 ## Video
 

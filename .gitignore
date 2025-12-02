@@ -38,11 +38,12 @@ _deps
 
 # Python build artifacts:
 __pycache__
+.mypy_cache
 *.pyc
 *.pyd
 *.so
-**/.pytest_cache
 **/.ipynb_checkpoints/
+**/.pytest_cache
 
 # Pixi environment
 .pixi

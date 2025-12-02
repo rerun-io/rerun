@@ -24,6 +24,7 @@ mod image;
 mod instance_path;
 mod store_id;
 mod tensor;
+mod transform_frames;
 mod video;
 
 mod extra_data_ui;

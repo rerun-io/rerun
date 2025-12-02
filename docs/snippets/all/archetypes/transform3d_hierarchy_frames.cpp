@@ -1,6 +1,4 @@
 // Logs a transform hierarchy using explicit transform frame relationships.
-//
-// ⚠️ This is an experimental feature ⚠️
 
 #include <rerun.hpp>
 

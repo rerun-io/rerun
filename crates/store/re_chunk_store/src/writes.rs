@@ -8,8 +8,9 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
-    ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
+    ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
+    ChunkStoreDiffKind, ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
+    store::ChunkIdSetPerTime,
 };
 
 // ---
@@ -58,6 +59,12 @@ impl ChunkStore {
             for split_chunk in split_chunks {
                 let events = self.insert_chunk(&split_chunk)?;
                 all_events.extend(events);
+            }
+
+            for event in &mut all_events {
+                if event.diff.kind == ChunkStoreDiffKind::Addition {
+                    event.diff.split_source = Some(chunk.id());
+                }
             }
 
             return Ok(all_events);
@@ -347,7 +354,7 @@ impl ChunkStore {
                     .chain(
                         self.remove_chunk(elected_chunk.id())
                             .into_iter()
-                            .filter(|diff| diff.kind == crate::ChunkStoreDiffKind::Deletion)
+                            .filter(|diff| diff.kind == ChunkStoreDiffKind::Deletion)
                             .map(|diff| (diff.chunk.id(), diff.chunk)),
                     )
                     .collect();

@@ -31,8 +31,6 @@ class Pinhole(PinholeExt, Archetype):
     as it is the case with other visualizations: for any entity with an [`archetypes.Pinhole`][rerun.archetypes.Pinhole] the viewer will always visualize it
     directly without needing a [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame] to refer to the pinhole's child/parent frame.
 
-    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-
     Examples
     --------
     ### Simple pinhole camera:
@@ -472,8 +470,6 @@ class Pinhole(PinholeExt, Archetype):
     #
     # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
-    # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     parent_frame: components.TransformFrameIdBatch | None = field(
@@ -489,8 +485,6 @@ class Pinhole(PinholeExt, Archetype):
     # To set the frame an entity is part of see [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
     #
     # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #
-    # ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -58,11 +58,15 @@ snippet: archetypes/transform3d_simple
 snippet: archetypes/transform3d_hierarchy
 
 <picture data-inline-viewer="snippets/archetypes/transform3d_hierarchy">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png">
-  <img src="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png">
+  <img src="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png">
+</picture>
+
+### Transform hierarchy with explicit frames
+
+snippet: archetypes/transform3d_hierarchy_frames
+
+<picture data-inline-viewer="snippets/archetypes/transform3d_hierarchy_frames">
+  <img src="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png">
 </picture>
 
 ### Update a transform over time

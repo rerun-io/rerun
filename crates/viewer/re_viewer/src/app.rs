@@ -1699,6 +1699,11 @@ impl App {
             UICommand::ToggleSelectionPanel => {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
             }
+            UICommand::ExpandSelectionPanel => {
+                if !app_blueprint.selection_panel_state().is_expanded() {
+                    app_blueprint.toggle_selection_panel(&self.command_sender);
+                }
+            }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
@@ -2296,6 +2301,11 @@ impl App {
             };
 
             match msg {
+                DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                    let entity_db = store_hub.entity_db_mut(&store_id);
+                    entity_db.add_chunk_index_message(chunk_index);
+                }
+
                 DataSourceMessage::LogMsg(msg) => {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
                 }

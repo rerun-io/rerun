@@ -994,10 +994,15 @@ impl EyeState {
             let t = t.clamp(0.0, 1.0);
             let t = ease_out(t);
 
-            // Make sure to repaint if we're interpolating.
-            ctx.egui_ctx().request_repaint();
+            if t < 1.0 {
+                // Make sure to repaint if we're interpolating.
+                ctx.egui_ctx().request_repaint();
 
-            interpolation.start.lerp(&target_eye, t)
+                interpolation.start.lerp(&target_eye, t)
+            } else {
+                self.stop_interpolation();
+                target_eye
+            }
         } else {
             self.stop_interpolation();
             target_eye

@@ -64,7 +64,12 @@ fn test_range_selection_in_blueprint_tree() {
                             true,
                         );
 
-                        blueprint_tree.show(viewer_ctx, &blueprint, ui);
+                        blueprint_tree.show(
+                            viewer_ctx,
+                            &blueprint,
+                            ui,
+                            &test_context.view_states.lock(),
+                        );
                     });
 
                     test_context.handle_system_commands(ui.ctx());
