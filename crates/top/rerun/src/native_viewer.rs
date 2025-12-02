@@ -6,11 +6,9 @@ use re_viewer::external::eframe;
 ///
 /// ⚠️  This function must be called from the main thread since some platforms require that
 /// their UI runs on the main thread! ⚠️
-pub fn show(
-    main_thread_token: crate::MainThreadToken,
-    log_source: re_log_channel::LogSource,
-    msgs: Vec<LogMsg>,
-) -> eframe::Result {
+pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> eframe::Result {
+    let log_source = re_log_channel::LogSource::Sdk; // Whatever. Nobody is really using this functions anyhow.
+
     if msgs.is_empty() {
         re_log::debug!("Empty array of msgs - call to show() ignored");
         return Ok(());
