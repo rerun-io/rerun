@@ -451,14 +451,6 @@ fn send_transform(
     parent_frame: String,
     child_frame: String,
 ) -> anyhow::Result<()> {
-    // TODO: remove axis log this after debugging
-    send_archetype(
-        tx,
-        store_id,
-        entity_path.clone(),
-        timepoint,
-        &TransformAxes3D::update_fields().with_axis_length(0.1),
-    )?;
     send_archetype(
         tx,
         store_id,
