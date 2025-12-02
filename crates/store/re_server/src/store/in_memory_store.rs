@@ -16,7 +16,7 @@ use re_protos::{
         EntryKind,
         ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry},
     },
-    common::v1alpha1::ext::{IfDuplicateBehavior, PartitionId},
+    common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId},
 };
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
@@ -61,17 +61,17 @@ impl InMemoryStore {
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
-        // sort keys per dataset, partition, layer
+        // sort keys per dataset, segment, layer
         let mut chunk_key_index: HashMap<
             &EntryId,
-            HashMap<&PartitionId, HashMap<&str, Vec<&ChunkKey>>>,
+            HashMap<&SegmentId, HashMap<&str, Vec<&ChunkKey>>>,
         > = Default::default();
 
         for chunk_key in chunk_keys {
             chunk_key_index
                 .entry(&chunk_key.dataset_id)
                 .or_default()
-                .entry(&chunk_key.partition_id)
+                .entry(&chunk_key.segment_id)
                 .or_default()
                 .entry(&chunk_key.layer_name)
                 .or_default()
@@ -80,16 +80,16 @@ impl InMemoryStore {
 
         let mut result = Vec::with_capacity(chunk_keys.len());
 
-        for (dataset_id, partition_index) in chunk_key_index {
+        for (dataset_id, segment_index) in chunk_key_index {
             let dataset = self.dataset(*dataset_id)?;
 
-            for (partition_id, layer_index) in partition_index {
-                let partition = dataset.partition(partition_id)?;
+            for (segment_id, layer_index) in segment_index {
+                let partition = dataset.partition(segment_id)?;
 
                 let store_id = StoreId::new(
                     StoreKind::Recording,
                     dataset_id.to_string(),
-                    partition_id.id.as_str(),
+                    segment_id.id.as_str(),
                 );
 
                 for (layer_name, chunk_keys) in layer_index {
@@ -98,7 +98,7 @@ impl InMemoryStore {
                         .ok_or_else(|| {
                             Error::LayerNameNotFound(
                                 layer_name.to_owned(),
-                                partition_id.clone(),
+                                segment_id.clone(),
                                 *dataset_id,
                             )
                         })?

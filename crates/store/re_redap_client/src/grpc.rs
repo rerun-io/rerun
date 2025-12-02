@@ -10,12 +10,12 @@ use re_log_types::{
     LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::{Origin, TimeSelection};
 
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, PartitionQueryParams};
+use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ApiError> {
@@ -182,11 +182,11 @@ pub(crate) async fn client(
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
 //
 // TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-// TODO(cmc): we should compute contiguous runs of the same partition here, and return a `(String, Vec<Chunk>)`
+// TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(String, Vec<Chunk>)`
 // instead. Because of how the server performs the computation, this will very likely work out well
 // in practice.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
+pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
 where
@@ -208,7 +208,7 @@ where
                 r.chunks
                     .into_iter()
                     .map(|arrow_msg| {
-                        let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                        let segment_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                         use re_log_encoding::ToApplication as _;
                         let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -227,7 +227,7 @@ where
                             },
                         )?;
 
-                        Ok((chunk, partition_id))
+                        Ok((chunk, segment_id))
                     })
                     .collect::<Result<Vec<_>, _>>()
             })
@@ -242,7 +242,7 @@ where
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
-pub fn fetch_chunks_response_to_chunk_and_partition_id<S>(
+pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
 ) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
 where
@@ -260,7 +260,7 @@ where
         resp.chunks
             .into_iter()
             .map(|arrow_msg| {
-                let partition_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
+                let segment_id = arrow_msg.store_id.clone().map(|id| id.recording_id);
 
                 use re_log_encoding::ToApplication as _;
                 let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -278,13 +278,13 @@ where
                         )
                     })?;
 
-                Ok((chunk, partition_id))
+                Ok((chunk, segment_id))
             })
             .collect::<Result<Vec<_>, _>>()
     })
 }
 
-/// Canonical way to ingest partition data from a Rerun data platform server, dealing with
+/// Canonical way to ingest segment data from a Rerun data platform server, dealing with
 /// server-stored blueprints if any.
 ///
 /// The current strategy currently consists of _always_ downloading the blueprint first and setting
@@ -293,7 +293,7 @@ where
 ///
 /// A key advantage of this approach is that it ensures that the default blueprint is always in sync
 /// with the server's version.
-pub async fn stream_blueprint_and_partition_from_server(
+pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<DataSourceMessage>,
     uri: re_uri::DatasetPartitionUri,
@@ -305,8 +305,8 @@ pub async fn stream_blueprint_and_partition_from_server(
 
     let recording_store_id = uri.store_id();
 
-    if let Some((blueprint_dataset, blueprint_partition)) =
-        dataset_entry.dataset_details.default_bluprint()
+    if let Some((blueprint_dataset, blueprint_segment)) =
+        dataset_entry.dataset_details.default_blueprint()
     {
         re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
@@ -324,12 +324,12 @@ pub async fn stream_blueprint_and_partition_from_server(
             is_partial: false,
         };
 
-        stream_partition_from_server(
+        stream_segment_from_server(
             &mut client,
             blueprint_store_info,
             &tx,
             blueprint_dataset,
-            blueprint_partition,
+            blueprint_segment,
             None,
             re_uri::Fragment::default(),
             on_msg.as_deref(),
@@ -357,7 +357,7 @@ pub async fn stream_blueprint_and_partition_from_server(
     let re_uri::DatasetPartitionUri {
         origin: _,
         dataset_id,
-        partition_id,
+        partition_id: segment_id,
         time_range,
         fragment,
     } = uri;
@@ -370,12 +370,12 @@ pub async fn stream_blueprint_and_partition_from_server(
         is_partial: time_range.is_some(),
     };
 
-    stream_partition_from_server(
+    stream_segment_from_server(
         &mut client,
         store_info,
         &tx,
         dataset_id.into(),
-        partition_id.into(),
+        segment_id.into(),
         time_range,
         fragment,
         on_msg.as_deref(),
@@ -387,12 +387,12 @@ pub async fn stream_blueprint_and_partition_from_server(
 
 /// Low-level function to stream data as a chunk store from a server.
 #[expect(clippy::too_many_arguments)]
-async fn stream_partition_from_server(
+async fn stream_segment_from_server(
     client: &mut ConnectionClient,
     store_info: StoreInfo,
     tx: &re_smart_channel::Sender<DataSourceMessage>,
     dataset_id: EntryId,
-    partition_id: PartitionId,
+    segment_id: SegmentId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
     on_msg: Option<&(dyn Fn() + Send + Sync)>,
@@ -461,9 +461,9 @@ async fn stream_partition_from_server(
 
     // Retrieve the chunk IDs we're interested in (all of them):
     let chunk_index_messages = client
-        .query_dataset_chunk_index(PartitionQueryParams {
+        .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
-            partition_id: partition_id.clone(),
+            segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
             query: None,
@@ -498,9 +498,9 @@ async fn stream_partition_from_server(
     }
 
     // Fetch the chunks base on the ids:
-    let chunk_stream = client.fetch_partition_chunks_by_id(&batch).await?;
+    let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
 
-    let mut chunk_stream = fetch_chunks_response_to_chunk_and_partition_id(chunk_stream);
+    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
 
     // TODO(#10229): this looks to be converting back and forth?
     while let Some(chunks) = chunk_stream.next().await {

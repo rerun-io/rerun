@@ -21,7 +21,7 @@ def test_dataset_basics(complex_dataset_prefix: Path) -> None:
         partition_df = ds.partition_table().df()
 
         assert str(partition_df.schema()) == inline_snapshot("""\
-rerun_partition_id: string not null
+rerun_segment_id: string not null
 rerun_layer_names: list<rerun_layer_names: string not null> not null
   child 0, rerun_layer_names: string not null
 rerun_storage_urls: list<rerun_storage_urls: string not null> not null
@@ -34,10 +34,10 @@ sorbet:version: '0.1.2'\
 """)
 
         assert str(
-            partition_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_partition_id")
+            partition_df.drop("rerun_storage_urls", "rerun_last_updated_at").sort("rerun_segment_id")
         ) == inline_snapshot("""\
 ┌─────────────────────┬───────────────────┬──────────────────┬──────────────────┐
-│ rerun_partition_id  ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │
+│ rerun_segment_id    ┆ rerun_layer_names ┆ rerun_num_chunks ┆ rerun_size_bytes │
 │ ---                 ┆ ---               ┆ ---              ┆ ---              │
 │ type: Utf8          ┆ type: List[Utf8]  ┆ type: u64        ┆ type: u64        │
 ╞═════════════════════╪═══════════════════╪══════════════════╪══════════════════╡

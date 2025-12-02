@@ -19,7 +19,7 @@ def test_partition_ids(entry_factory: EntryFactory, resource_prefix: str, snapsh
         ds.partition_table()
         .df()
         .drop("rerun_storage_urls", "rerun_last_updated_at", "rerun_size_bytes")
-        .sort("rerun_partition_id")
+        .sort("rerun_segment_id")
         == snapshot
     )
     assert sorted(ds.partition_ids()) == snapshot

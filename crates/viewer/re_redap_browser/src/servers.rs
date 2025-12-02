@@ -8,7 +8,7 @@ use egui::{Frame, Margin, RichText};
 
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
-use re_protos::cloud::v1alpha1::{EntryKind, ScanPartitionTableResponse};
+use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
@@ -219,12 +219,12 @@ impl Server {
             } else {
                 matches!(
                     desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME | ScanPartitionTableResponse::FIELD_PARTITION_ID
+                    RECORDING_LINK_COLUMN_NAME | ScanSegmentTableResponse::FIELD_SEGMENT_ID
                 )
             };
 
             let column_sort_key = match desc.display_name().as_str() {
-                ScanPartitionTableResponse::FIELD_PARTITION_ID => 0,
+                ScanSegmentTableResponse::FIELD_SEGMENT_ID => 0,
                 RECORDING_LINK_COLUMN_NAME => 1,
                 _ => 2,
             };
@@ -242,7 +242,7 @@ impl Server {
         })
         .generate_partition_links(
             RECORDING_LINK_COLUMN_NAME,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID,
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
             self.origin.clone(),
             dataset.id(),
         )
