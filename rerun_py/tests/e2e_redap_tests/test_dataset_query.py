@@ -83,7 +83,7 @@ def readonly_test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -
     for rb in readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
         assert rb.num_rows > 0
 
-    for partition_batch in readonly_test_dataset.partition_table().to_arrow_reader():
+    for partition_batch in readonly_test_dataset.segment_table().to_arrow_reader():
         assert partition_batch.num_rows > 0
 
 

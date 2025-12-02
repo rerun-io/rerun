@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 def test_url_generation(readonly_test_dataset: DatasetEntry) -> None:
     from rerun.utilities.datafusion.functions import url_generation
 
-    udf = url_generation.partition_url_with_timeref_udf(readonly_test_dataset, "time_1")
+    udf = url_generation.segment_url_with_timeref_udf(readonly_test_dataset, "time_1")
 
     results = (
         readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")

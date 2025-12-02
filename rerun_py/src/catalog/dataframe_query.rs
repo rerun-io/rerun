@@ -34,10 +34,10 @@ pub struct PyDataframeQueryView {
 
     query_expression: QueryExpression,
 
-    /// Limit the query to these partition ids.
+    /// Limit the query to these segment ids.
     ///
     /// If empty, use the whole dataset.
-    partition_ids: Vec<String>,
+    segment_ids: Vec<String>,
 }
 
 impl PyDataframeQueryView {
@@ -83,7 +83,7 @@ impl PyDataframeQueryView {
                 sparse_fill_strategy: SparseFillStrategy::None,
                 selection: None,
             },
-            partition_ids: vec![],
+            segment_ids: vec![],
         })
     }
 
@@ -95,7 +95,7 @@ impl PyDataframeQueryView {
         let mut copy = Self {
             dataset: self.dataset.clone_ref(py),
             query_expression: self.query_expression.clone(),
-            partition_ids: self.partition_ids.clone(),
+            segment_ids: self.segment_ids.clone(),
         };
 
         mutation_fn(&mut copy.query_expression);
@@ -106,25 +106,25 @@ impl PyDataframeQueryView {
 
 #[pymethods]
 impl PyDataframeQueryView {
-    /// Filter by one or more partition ids. All partition ids are included if not specified.
-    #[pyo3(signature = (partition_id, *args))]
-    fn filter_partition_id<'py>(
+    /// Filter by one or more segment ids. All segment ids are included if not specified.
+    #[pyo3(signature = (segment_id, *args))]
+    fn filter_segment_id<'py>(
         &self,
         py: Python<'py>,
-        partition_id: String,
+        segment_id: String,
         args: &Bound<'py, PyTuple>,
     ) -> PyResult<Self> {
-        let mut partition_ids = vec![partition_id];
+        let mut segment_ids = vec![segment_id];
 
         for i in 0..args.len()? {
             let item = args.get_item(i)?;
-            partition_ids.push(item.extract()?);
+            segment_ids.push(item.extract()?);
         }
 
         Ok(Self {
             dataset: self.dataset.clone_ref(py),
             query_expression: self.query_expression.clone(),
-            partition_ids,
+            segment_ids,
         })
     }
 
@@ -455,7 +455,7 @@ impl PyDataframeQueryView {
             py,
             dataset_id,
             &self_.query_expression,
-            self_.partition_ids.as_slice(),
+            self_.segment_ids.as_slice(),
         )
     }
 
@@ -465,10 +465,9 @@ impl PyDataframeQueryView {
 
         let dataset_line = indent::indent_all_by(1, format!("dataset={dataset_str},"));
         let query_line = indent::indent_all_by(1, format!("query_expression={query_expr_str},"));
-        let partition_line =
-            indent::indent_all_by(1, format!("partition_ids={:?}", self.partition_ids));
+        let segment_line = indent::indent_all_by(1, format!("segment_ids={:?}", self.segment_ids));
 
-        format!("DataframeQueryView(\n{dataset_line}\n{query_line}\n{partition_line}\n)")
+        format!("DataframeQueryView(\n{dataset_line}\n{query_line}\n{segment_line}\n)")
     }
 }
 
@@ -497,7 +496,7 @@ impl PyDataframeQueryView {
                 connection.connection_registry().clone(),
                 dataset_id,
                 &self.query_expression,
-                &self.partition_ids,
+                &self.segment_ids,
                 #[cfg(not(target_arch = "wasm32"))]
                 trace_headers_opt,
             )
