@@ -1,25 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
 
 from rerun_bindings import (
     CatalogClientInternal,
-    DatasetEntry as DatasetEntry,
-    Entry as Entry,
-    EntryId as EntryId,
-    EntryKind as EntryKind,
-    TableEntry as TableEntry,
-    TableInsertMode as TableInsertMode,
 )
 
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
+from . import EntryId, EntryKind, TableInsertMode
 
 if TYPE_CHECKING:
     import datafusion
+
+    from . import DatasetEntry, TableEntry
 
 
 # Known FFI compatible releases of Datafusion.
@@ -63,6 +60,8 @@ class CatalogClient:
     is not installed.
     """
 
+    __slots__ = ("_internal",)
+
     def __init__(self, address: str, token: str | None = None) -> None:
         from importlib.metadata import version
         from importlib.util import find_spec
@@ -83,41 +82,57 @@ class CatalogClient:
                 "datafusion", datafusion_version, _compatible_datafusion_version(expected_df_version)
             )
 
-        self._raw_client = CatalogClientInternal(address, token)
+        self._internal = CatalogClientInternal(address, token)
+
+    @classmethod
+    def _from_internal(cls, internal: CatalogClientInternal) -> Self:
+        """
+        Wrap an existing internal client object.
+
+        This is an internal API and should not be used directly.
+        """
+        instance = object.__new__(cls)
+        instance._internal = internal
+        return instance
 
     def __repr__(self) -> str:
-        return self._raw_client.__repr__()
+        return self._internal.__repr__()
 
     @property
     def url(self) -> str:
         """Returns the catalog URL."""
-        return self._raw_client.url
+        return self._internal.url
 
-    def all_entries(self) -> list[Entry]:
+    def all_entries(self) -> list[DatasetEntry | TableEntry]:
         """Returns a list of all entries in the catalog."""
-        return self._raw_client.all_entries()
+
+        return self.dataset_entries() + self.table_entries()
 
     def dataset_entries(self) -> list[DatasetEntry]:
         """Returns a list of all dataset entries in the catalog."""
-        return self._raw_client.dataset_entries()
+        from . import DatasetEntry
+
+        return [DatasetEntry(internal) for internal in self._internal.dataset_entries()]
 
     def table_entries(self) -> list[TableEntry]:
         """Returns a list of all dataset entries in the catalog."""
-        return self._raw_client.table_entries()
+        from . import TableEntry
+
+        return [TableEntry(internal) for internal in self._internal.table_entries()]
 
     # ---
 
     def entry_names(self) -> list[str]:
         """Returns a list of all entry names in the catalog."""
-        return self._raw_client.entry_names()
+        return self._internal.entry_names()
 
     def dataset_names(self) -> list[str]:
         """Returns a list of all dataset names in the catalog."""
-        return self._raw_client.dataset_names()
+        return self._internal.dataset_names()
 
     def table_names(self) -> list[str]:
         """Returns a list of all table names in the catalog."""
-        return self._raw_client.table_names()
+        return self._internal.table_names()
 
     # ---
 
@@ -141,13 +156,15 @@ class CatalogClient:
 
     def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
+        from . import DatasetEntry
 
-        return self._raw_client.get_dataset_entry(self._resolve_name_or_id(id, name))
+        return DatasetEntry(self._internal.get_dataset_entry(self._resolve_name_or_id(id, name)))
 
     def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table by its ID or name."""
+        from . import TableEntry
 
-        return self._raw_client.get_table_entry(self._resolve_name_or_id(id, name))
+        return TableEntry(self._internal.get_table_entry(self._resolve_name_or_id(id, name)))
 
     # ---
 
@@ -168,7 +185,10 @@ class CatalogClient:
 
     def create_dataset(self, name: str) -> DatasetEntry:
         """Creates a new dataset with the given name."""
-        return self._raw_client.create_dataset(name)
+
+        from . import DatasetEntry
+
+        return DatasetEntry(self._internal.create_dataset(name))
 
     def register_table(self, name: str, url: str) -> TableEntry:
         """
@@ -184,7 +204,9 @@ class CatalogClient:
             The URL of the Lance table to register.
 
         """
-        return self._raw_client.register_table(name, url)
+        from . import TableEntry
+
+        return TableEntry(self._internal.register_table(name, url))
 
     def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
         """
@@ -203,7 +225,9 @@ class CatalogClient:
             The URL of the directory for where to store the Lance table.
 
         """
-        return self._raw_client.create_table_entry(name, schema, url)
+        from . import TableEntry
+
+        return TableEntry(self._internal.create_table_entry(name, schema, url))
 
     def write_table(
         self,
@@ -256,7 +280,7 @@ class CatalogClient:
             schema = batches[0].schema
             batches = RecordBatchReader.from_batches(schema, batches)
 
-        return self._raw_client.write_table(name, batches, insert_mode)
+        return self._internal.write_table(name, batches, insert_mode)
 
     def append_to_table(self, table_name: str, **named_params: Any) -> None:
         """
@@ -334,28 +358,31 @@ class CatalogClient:
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""
-        return self._raw_client.do_global_maintenance()
+        return self._internal.do_global_maintenance()
 
     @property
     def ctx(self) -> datafusion.SessionContext:
         """Returns a DataFusion session context for querying the catalog."""
 
-        return self._raw_client.ctx()
+        return self._internal.ctx()
 
     # ---
 
     def _resolve_name_or_id(self, id: EntryId | str | None = None, name: str | None = None) -> EntryId:
         """Helper method to resolve either ID or name. Returns the id or throw an error."""
 
-        # TODO(ab): this screams for a `match` statement in Python 3.10+
-        if id is not None and name is not None:
-            raise ValueError("Only one of 'id' or 'name' must be provided.")
-        elif id is not None:
-            if isinstance(id, EntryId):
+        match id, name:
+            case (None, None):
+                raise ValueError("Either 'id' or 'name' must be provided.")
+
+            case (EntryId(), None):
                 return id
-            else:
+
+            case (str(id), None):
                 return EntryId(id)
-        elif name is not None:
-            return self._raw_client._entry_id_from_entry_name(name)
-        else:
-            raise ValueError("Either 'id' or 'name' must be provided.")
+
+            case (None, str(name)):
+                return self._internal._entry_id_from_entry_name(name)
+
+            case _:
+                raise ValueError("Only one of 'id' or 'name' must be provided.")

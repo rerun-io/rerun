@@ -9,12 +9,16 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 
 use re_dataframe_ui::RequestedObject;
-use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
+use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
-use re_protos::TypeConversionError;
-use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry};
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, ext::DatasetEntry};
-use re_protos::external::prost;
+use re_protos::{
+    TypeConversionError,
+    cloud::v1alpha1::{
+        EntryFilter, EntryKind,
+        ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry},
+    },
+    external::prost,
+};
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
@@ -246,10 +250,10 @@ async fn fetch_dataset_details(
             origin: origin.clone(),
         })?;
 
-    let table_provider = PartitionTableProvider::new(client, id)
+    let table_provider = SegmentTableProvider::new(client, id)
         .into_provider()
         .await
-        .map_err(|err| ApiError::internal(err, "failed creating partition table provider"))?;
+        .map_err(|err| ApiError::internal(err, "failed creating segment table provider"))?;
 
     Ok((result, table_provider))
 }

@@ -1,8 +1,4 @@
-"""
-Logs a transform hierarchy using explicit transform frame relationships.
-
-⚠️ This is an experimental feature ⚠️
-"""
+"""Logs a transform hierarchy using explicit transform frame relationships."""
 
 import numpy as np
 import rerun as rr

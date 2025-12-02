@@ -103,6 +103,7 @@ impl CompareCommand {
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
                 &re_arrow_util::RecordBatchFormatOpts {
                     width: Some(800),
+                    max_cell_content_width: 100,
                     trim_field_names: false,
                     trim_metadata_keys: false,
                     trim_metadata_values: false,

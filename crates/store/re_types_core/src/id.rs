@@ -132,6 +132,10 @@ impl ChunkId {
         Self(re_tuid::Tuid::from_u128(id))
     }
 
+    pub fn arrow_from_slice(slice: &[Self]) -> arrow::array::FixedSizeBinaryArray {
+        crate::tuids_to_arrow(bytemuck::cast_slice(slice))
+    }
+
     /// None if it is the wrong datatype
     pub fn try_slice_from_arrow(
         array: &arrow::array::FixedSizeBinaryArray,
