@@ -617,9 +617,20 @@ impl StoreInfo {
 
     /// Creates a new store info for testing purposes.
     pub fn testing() -> Self {
-        // Don't use a version for testing since it may show up in snapshots that then would change on every version.
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
         Self::new_unversioned(
-            StoreId::new(StoreKind::Recording, "test_app", "test_recording"),
+            StoreId::random(StoreKind::Recording, "test_app"),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
+
+    /// Creates a new store info for testing purposes with a fixed store id.
+    ///
+    /// Most of the time we don't want to fix the store id since it is used as a key in static store subscribers.
+    pub fn testing_with_recording_id(recording_id: impl Into<RecordingId>) -> Self {
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
+        Self::new_unversioned(
+            StoreId::new(StoreKind::Recording, "test_app", recording_id),
             StoreSource::Other("test".to_owned()),
         )
     }

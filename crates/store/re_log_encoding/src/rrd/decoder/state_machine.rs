@@ -411,7 +411,7 @@ mod tests {
             row_id: *RowId::ZERO,
             info: StoreInfo {
                 store_version: Some(CrateVersion::LOCAL), // Encoder sets the crate version
-                ..StoreInfo::testing()
+                ..StoreInfo::testing_with_recording_id("test_recording")
             },
         })
     }
