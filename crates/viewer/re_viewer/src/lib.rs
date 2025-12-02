@@ -251,34 +251,6 @@ pub fn customize_eframe_and_setup_renderer(
 
 // ---------------------------------------------------------------------------
 
-/// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: re_smart_channel::Receiver<T>,
-    ctx: egui::Context,
-) -> re_smart_channel::Receiver<T> {
-    // We need to intercept messages to wake up the ui thread.
-    // For that, we need a new channel.
-    // However, we want to make sure the channel latency numbers are from the start
-    // of the first channel, to the end of the second.
-    // For that we need to use `chained_channel`, `recv_with_send_time` and `send_at`.
-    let (tx, new_rx) = rx.chained_channel();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok(msg) = rx.recv_with_send_time() {
-                if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::trace!("Shutting down ui_waker thread");
-        })
-        .expect("Failed to spawn UI waker thread");
-    new_rx
-}
-
 /// Reset the viewer state as stored on disk and local storage,
 /// keeping only the analytics state.
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // wasm only

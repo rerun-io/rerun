@@ -2,6 +2,7 @@
 
 use std::sync::{Arc, atomic::AtomicU64};
 
+use parking_lot::RwLock;
 use re_uri::RedapUri;
 use web_time::Instant;
 
@@ -268,18 +269,23 @@ impl std::fmt::Display for SmartMessageSource {
 
 // ---
 
-/// Stats for a channel, possibly shared between chained channels.
+/// Shared by all receivers and senders of a channel
 #[derive(Default)]
-pub(crate) struct SharedStats {
+pub(crate) struct Channel {
     /// Latest known latency from sending a message to receiving it, it nanoseconds.
     latency_nanos: AtomicU64,
+
+    /// The sender should call this every time a message is sent.
+    ///
+    /// This can be used to wake up the receiver thread.
+    waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
 pub fn smart_channel<T: Send>(
     sender_source: SmartMessageSource,
     source: SmartChannelSource,
 ) -> (Sender<T>, Receiver<T>) {
-    let stats = Arc::new(SharedStats::default());
+    let stats = Arc::new(Channel::default());
     smart_channel_with_stats(sender_source, Arc::new(source), stats)
 }
 
@@ -289,7 +295,7 @@ pub fn smart_channel<T: Send>(
 pub(crate) fn smart_channel_with_stats<T: Send>(
     sender_source: SmartMessageSource,
     source: Arc<SmartChannelSource>,
-    stats: Arc<SharedStats>,
+    stats: Arc<Channel>,
 ) -> (Sender<T>, Receiver<T>) {
     let (tx, rx) = crossbeam::channel::unbounded();
     let sender_source = Arc::new(sender_source);

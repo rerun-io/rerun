@@ -2,20 +2,20 @@ use std::sync::{Arc, atomic::Ordering::Relaxed};
 
 use web_time::Instant;
 
-use crate::{SendError, SharedStats, SmartMessage, SmartMessagePayload, SmartMessageSource};
+use crate::{Channel, SendError, SmartMessage, SmartMessagePayload, SmartMessageSource};
 
 #[derive(Clone)]
 pub struct Sender<T: Send> {
     tx: crossbeam::channel::Sender<SmartMessage<T>>,
     source: Arc<SmartMessageSource>,
-    stats: Arc<SharedStats>,
+    stats: Arc<Channel>,
 }
 
 impl<T: Send> Sender<T> {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage<T>>,
         source: Arc<SmartMessageSource>,
-        stats: Arc<SharedStats>,
+        stats: Arc<Channel>,
     ) -> Self {
         Self { tx, source, stats }
     }
@@ -42,7 +42,7 @@ impl<T: Send> Sender<T> {
     }
 
     /// Forwards a message as-is.
-    pub fn send_at(
+     fn send_at(
         &self,
         time: Instant,
         source: Arc<SmartMessageSource>,
@@ -57,7 +57,13 @@ impl<T: Send> Sender<T> {
                 source,
                 payload,
             })
-            .map_err(|SendError(msg)| SendError(msg.payload))
+            .map_err(|SendError(msg)| SendError(msg.payload))?;
+
+        if let Some(waker) = self.stats.waker.read().as_ref() {
+            (waker)();
+        }
+
+        Ok(())
     }
 
     /// Blocks until all previously sent messages have been received.
@@ -84,7 +90,13 @@ impl<T: Send> Sender<T> {
         rx.recv_timeout(timeout).map_err(|err| match err {
             std::sync::mpsc::RecvTimeoutError::Timeout => FlushError::Timeout,
             std::sync::mpsc::RecvTimeoutError::Disconnected => FlushError::Closed,
-        })
+        })?;
+
+        if let Some(waker) = self.stats.waker.read().as_ref() {
+            (waker)();
+        }
+
+        Ok(())
     }
 
     /// Used to indicate that a sender has left.
@@ -105,7 +117,13 @@ impl<T: Send> Sender<T> {
             time: Instant::now(),
             source: Arc::clone(&self.source),
             payload: SmartMessagePayload::Quit(err),
-        })
+        })?;
+
+        if let Some(waker) = self.stats.waker.read().as_ref() {
+            (waker)();
+        }
+
+        Ok(())
     }
 
     /// Is the channel currently empty of messages?

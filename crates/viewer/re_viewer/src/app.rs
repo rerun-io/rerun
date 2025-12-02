@@ -12,7 +12,7 @@ use re_log_types::{
 };
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{LogReceiverSet, SmartChannelSource};
+use re_smart_channel::{LogReceiver, LogReceiverSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -516,9 +516,13 @@ impl App {
     pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
         re_log::debug!("Adding new log receiver: {}", rx.source());
 
-        // Make sure we wake up when a message is sent.
-        #[cfg(not(target_arch = "wasm32"))]
-        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
+        let rx = LogReceiver::from(rx);
+
+        // Make sure we wake up when a new message is available:
+        rx.set_waker({
+            let egui_ctx = self.egui_ctx.clone();
+            move || egui_ctx.request_repaint()
+        });
 
         // Add unknown redap servers.
         //
@@ -529,7 +533,7 @@ impl App {
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
         }
 
-        self.rx_log.add(rx.into());
+        self.rx_log.add(rx);
     }
 
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection

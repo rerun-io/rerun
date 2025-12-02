@@ -3,11 +3,11 @@ use std::sync::{
     atomic::{AtomicBool, Ordering::Relaxed},
 };
 
-use crate::{SharedStats, SmartChannelSource, SmartMessage, TryRecvError};
+use crate::{Channel, SmartChannelSource, SmartMessage, TryRecvError};
 
 pub struct Receiver<T: Send> {
     pub(crate) rx: crossbeam::channel::Receiver<SmartMessage<T>>,
-    stats: Arc<SharedStats>,
+    pub(crate) channel: Arc<Channel>,
     pub(crate) source: Arc<SmartChannelSource>,
     connected: AtomicBool,
 }
@@ -15,12 +15,12 @@ pub struct Receiver<T: Send> {
 impl<T: Send> Receiver<T> {
     pub(crate) fn new(
         rx: crossbeam::channel::Receiver<SmartMessage<T>>,
-        stats: Arc<SharedStats>,
+        stats: Arc<Channel>,
         source: Arc<SmartChannelSource>,
     ) -> Self {
         Self {
             rx,
-            stats,
+            channel: stats,
             source,
             connected: AtomicBool::new(true),
         }
@@ -43,7 +43,7 @@ impl<T: Send> Receiver<T> {
         };
 
         let latency_nanos = msg.time.elapsed().as_nanos() as u64;
-        self.stats.latency_nanos.store(latency_nanos, Relaxed);
+        self.channel.latency_nanos.store(latency_nanos, Relaxed);
 
         Ok(msg)
     }
@@ -60,7 +60,7 @@ impl<T: Send> Receiver<T> {
         };
 
         let latency_nanos = msg.time.elapsed().as_nanos() as u64;
-        self.stats.latency_nanos.store(latency_nanos, Relaxed);
+        self.channel.latency_nanos.store(latency_nanos, Relaxed);
 
         Ok(msg)
     }
@@ -81,18 +81,9 @@ impl<T: Send> Receiver<T> {
         };
 
         let latency_nanos = msg.time.elapsed().as_nanos() as u64;
-        self.stats.latency_nanos.store(latency_nanos, Relaxed);
+        self.channel.latency_nanos.store(latency_nanos, Relaxed);
 
         Ok(msg)
-    }
-
-    /// Receives without registering the latency.
-    ///
-    /// This is for use with [`crate::Sender::send_at`] when chaining to another channel
-    /// created with [`Self::chained_channel`].
-    #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
-    pub fn recv_with_send_time(&self) -> Result<SmartMessage<T>, crate::RecvError> {
-        self.rx.recv()
     }
 
     /// Where is the data coming from?
@@ -115,7 +106,7 @@ impl<T: Send> Receiver<T> {
 
     /// Latest known latency from sending a message to receiving it, it nanoseconds.
     pub fn latency_nanos(&self) -> u64 {
-        self.stats.latency_nanos.load(Relaxed)
+        self.channel.latency_nanos.load(Relaxed)
     }
 
     /// Latest known latency from sending a message to receiving it,
@@ -136,7 +127,7 @@ impl<T: Send> Receiver<T> {
             // to forward existing messages.
             crate::SmartMessageSource::Unknown,
             self.source.clone(),
-            self.stats.clone(),
+            self.channel.clone(),
         )
     }
 }
