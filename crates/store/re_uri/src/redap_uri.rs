@@ -228,6 +228,15 @@ mod tests {
         assert_eq!(segment_id, "pid");
     }
 
+    /// Test that `segment_id` and `partition_id` together do not work.
+    #[test]
+    fn test_dataset_data_url_ambiguous_segment_id_partition_id() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&segment_id=sid";
+        let address: Result<RedapUri, _> = url.parse();
+
+        assert_eq!(address, Err(Error::AmbiguousSegmentId));
+    }
+
     #[test]
     fn test_dataset_data_url_with_fragment() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid#selection=/some/entity[#42]";

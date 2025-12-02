@@ -56,12 +56,17 @@ impl std::fmt::Display for DatasetSegmentUri {
 impl DatasetSegmentUri {
     pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
         let mut segment_id = None;
+        let mut legacy_partition_id = None;
         let mut time_range = None;
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
-                // Accept both `segment_id` (new) and `partition_id` (legacy) for backward compatibility.
-                "segment_id" | "partition_id" => {
+                // Accept legacy `partition_id` query parameter.
+                "partition_id" => {
+                    legacy_partition_id = Some(value.to_string());
+                }
+
+                "segment_id" => {
                     segment_id = Some(value.to_string());
                 }
                 "time_range" => {
@@ -76,8 +81,16 @@ impl DatasetSegmentUri {
             }
         }
 
-        let Some(segment_id) = segment_id else {
-            return Err(Error::MissingSegmentId);
+        let segment_id = match (segment_id, legacy_partition_id) {
+            (Some(s), None) | (None, Some(s)) => s,
+
+            (None, None) => {
+                return Err(Error::MissingSegmentId);
+            }
+
+            (Some(_), Some(_)) => {
+                return Err(Error::AmbiguousSegmentId);
+            }
         };
 
         let mut fragment = Fragment::default();

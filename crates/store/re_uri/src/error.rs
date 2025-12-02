@@ -30,6 +30,11 @@ pub enum Error {
     )]
     MissingSegmentId,
 
+    #[error(
+        "Dataset data URL cannot contain both `?segment_id` and legacy `?partition_id` query parameters"
+    )]
+    AmbiguousSegmentId,
+
     #[error("Invalid TUID: {0}")]
     InvalidTuid(<re_tuid::Tuid as FromStr>::Err),
 }
