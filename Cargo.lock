@@ -10259,7 +10259,6 @@ dependencies = [
  "arrow",
  "bytemuck",
  "cfg-if",
- "crossbeam",
  "eframe",
  "egui",
  "egui-wgpu",
