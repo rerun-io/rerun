@@ -36,15 +36,29 @@ pub enum StoreError {
     NoLocalStorage,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ClearError {
+    #[error("failed to clear credentials: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("could not find a valid config location, please ensure $HOME is set")]
+    UnknownConfigLocation,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("failed to get window.localStorage")]
+    NoLocalStorage,
+}
+
 #[cfg(not(target_arch = "wasm32"))]
-pub use file::{load, store};
+pub use file::{clear, load, store};
 
 #[cfg(target_arch = "wasm32")]
-pub use web::{load, store};
+pub use web::{clear, load, store};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod file {
-    use super::{Credentials, LoadError, StoreError};
+    use super::{ClearError, Credentials, LoadError, StoreError};
     use std::path::PathBuf;
 
     fn credentials_path() -> Option<PathBuf> {
@@ -71,13 +85,24 @@ mod file {
         std::fs::write(path, data)?;
         Ok(())
     }
+
+    pub fn clear() -> Result<(), ClearError> {
+        let path = credentials_path().ok_or(ClearError::UnknownConfigLocation)?;
+
+        match std::fs::remove_file(path) {
+            Ok(()) => Ok(()),
+            // If the file didn't exist this isn't a failure.
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(ClearError::Io(err)),
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
 mod web {
     use wasm_bindgen::JsCast as _;
 
-    use super::{Credentials, LoadError, StoreError};
+    use super::{ClearError, Credentials, LoadError, StoreError};
 
     const STORAGE_KEY: &str = "rerun_auth";
 
@@ -90,6 +115,12 @@ mod web {
     }
 
     impl From<NoLocalStorage> for StoreError {
+        fn from(_: NoLocalStorage) -> Self {
+            Self::NoLocalStorage
+        }
+    }
+
+    impl From<NoLocalStorage> for ClearError {
         fn from(_: NoLocalStorage) -> Self {
             Self::NoLocalStorage
         }
@@ -137,6 +168,14 @@ mod web {
         let data = serde_json::to_string(credentials)?;
         local_storage
             .set_item(STORAGE_KEY, &data)
+            .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
+        Ok(())
+    }
+
+    pub fn clear() -> Result<(), ClearError> {
+        let local_storage = get_local_storage()?;
+        local_storage
+            .remove_item(STORAGE_KEY)
             .map_err(|err| std::io::Error::other(string_from_js_value(err)))?;
         Ok(())
     }
