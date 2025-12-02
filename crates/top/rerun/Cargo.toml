@@ -105,10 +105,7 @@ perf_telemetry = [
 ## Enables Tracy profiler integration on top of `perf_telemetry`.
 ##
 ## This only works on native.
-perf_telemetry_tracy = [
-  "perf_telemetry",
-  "re_perf_telemetry/tracy",
-]
+perf_telemetry_tracy = ["perf_telemetry", "re_perf_telemetry/tracy"]
 
 ## Add support for the [`run()`] function, which acts like a main-function for a CLI,
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).

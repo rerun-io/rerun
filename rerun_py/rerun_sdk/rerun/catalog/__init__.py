@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# TODO(zehiko) remove the ignore when we enable perf_telemetry feature by default
 from rerun_bindings import (  # type: ignore[attr-defined]
     AlreadyExistsError as AlreadyExistsError,
     DataframeQueryView as DataframeQueryView,
