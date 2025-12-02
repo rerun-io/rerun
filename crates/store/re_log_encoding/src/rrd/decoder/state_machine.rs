@@ -713,7 +713,7 @@ mod tests {
     fn stream_irregular_chunks_protobuf() {
         // this attempts to stress-test `try_read` with byte chunks of various sizes
 
-        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 6);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
         let mut data = Cursor::new(data);
 
         let mut decoder = DecoderApp::new();

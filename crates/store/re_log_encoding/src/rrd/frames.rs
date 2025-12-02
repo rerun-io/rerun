@@ -96,7 +96,7 @@ impl Decodable for EncodingOptions {
 ///
 /// It is possible to break that invariant by concatenating streams using external tools,
 /// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
-/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd route > all_my_recordings.rrd`,
+/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd merge > all_my_recordings.rrd`,
 /// would once again guarantee that only one header is present though.
 /// I.e. that invariant holds as long as one stays within our ecosystem of tools.
 #[derive(Debug, Clone, Copy)]
@@ -214,7 +214,7 @@ impl Decodable for StreamHeader {
 ///
 /// It is possible to break that invariant by concatenating streams using external tools,
 /// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
-/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd route > all_my_recordings.rrd`,
+/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd merge > all_my_recordings.rrd`,
 /// would once again guarantee that only one footer is present though.
 /// I.e. that invariant holds as long as one stays within our ecosystem of tools.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

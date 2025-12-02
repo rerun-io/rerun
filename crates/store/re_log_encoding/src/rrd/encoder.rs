@@ -80,7 +80,7 @@ pub struct Encoder<W: std::io::Write> {
     /// * Because `prost` only supports buffers, not IO traits.
     scratch: Vec<u8>,
 
-    /// Tracks the state required to build the RRD manifest for this stream.
+    /// Tracks the state required to build the RRD footer for this stream.
     ///
     /// If set to `None`, the footer will not be computed.
     ///
