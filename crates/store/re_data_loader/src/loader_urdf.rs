@@ -10,10 +10,12 @@ use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_types::archetypes::{Asset3D, CoordinateFrame, Transform3D, TransformAxes3D};
-use re_types::datatypes::Vec3D;
-use re_types::external::glam;
-use re_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
+use re_types::{
+    AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
+    archetypes::{Asset3D, CoordinateFrame, Transform3D},
+    datatypes::Vec3D,
+    external::glam,
+};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
