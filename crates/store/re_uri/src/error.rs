@@ -25,9 +25,7 @@ pub enum Error {
     #[error("URL {url:?} cannot be loaded as a recording")]
     CannotLoadUrlAsRecording { url: String },
 
-    #[error(
-        "Dataset data URL requires a `?segment_id` (or legacy `?partition_id`) query parameter"
-    )]
+    #[error("Dataset data URL requires a `?segment_id` query parameter")]
     MissingSegmentId,
 
     #[error(
