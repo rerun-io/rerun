@@ -28,4 +28,6 @@ impl_size_bytes_pod!(
     u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, bool, f32, f64
 );
 impl_size_bytes_pod!(half::f16);
+
+#[cfg(feature = "glam")]
 impl_size_bytes_pod!(glam::DAffine3);

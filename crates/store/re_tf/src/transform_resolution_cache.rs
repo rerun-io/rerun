@@ -5,7 +5,7 @@ use glam::DAffine3;
 use itertools::{Either, izip};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::{
@@ -18,8 +18,7 @@ use crate::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::external::arrow;
-use re_chunk_store::{Chunk, LatestAtQuery};
+use re_chunk_store::{Chunk, LatestAtQuery, external::arrow};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{ComponentIdentifier, archetypes, components};

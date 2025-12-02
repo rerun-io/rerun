@@ -1,10 +1,9 @@
 use std::collections::hash_map::Entry;
 
 use nohash_hasher::IntMap;
-use re_chunk_store::external::re_chunk::external::re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes;
 use re_log_types::EntityPath;
-use re_types::components::TransformFrameId;
-use re_types::{TransformFrameIdHash, archetypes};
+use re_types::{TransformFrameIdHash, archetypes, components::TransformFrameId};
 
 /// Frame id registry for resolving frame id hashes back to frame ids.
 pub struct FrameIdRegistry {

@@ -20,6 +20,7 @@ all-features = true
 
 
 [features]
+glam = ["dep:glam"]
 
 
 [dependencies]
@@ -27,4 +28,4 @@ all-features = true
 arrow.workspace = true
 half.workspace = true
 smallvec.workspace = true
-glam.workspace = true
+glam = { workspace = true, optional = true }
