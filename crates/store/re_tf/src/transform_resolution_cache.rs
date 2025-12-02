@@ -433,8 +433,7 @@ impl PartialEq for TransformsForChildFrame {
 
 impl SizeBytes for TransformsForChildFrame {
     fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes()
-            + self.associated_entity_path.heap_size_bytes()
+        self.associated_entity_path.heap_size_bytes()
             + self.child_frame.heap_size_bytes()
             + self.events.lock().heap_size_bytes()
     }
