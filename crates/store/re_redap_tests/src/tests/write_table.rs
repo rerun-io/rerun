@@ -1,4 +1,4 @@
-use crate::RecordBatchExt as _;
+use crate::RecordBatchTestExt as _;
 use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches};
 use crate::utils::streaming::make_streaming_request;
 use crate::utils::tables::create_simple_lance_dataset;

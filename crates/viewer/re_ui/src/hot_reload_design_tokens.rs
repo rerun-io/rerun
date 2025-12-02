@@ -63,7 +63,7 @@ mod design_token_access {
         let design_tokens = match DesignTokensPerTheme::load() {
             Ok(design_tokens) => design_tokens,
             Err(err) => {
-                re_log::error!("Failed to reload design tokens: {err}");
+                re_log::error!("Failed to reload design tokens: {err:#}");
                 return;
             }
         };

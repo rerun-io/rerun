@@ -17,14 +17,16 @@ def test_catalog_basics(tmp_path: Path) -> None:
         client.create_dataset("my_dataset")
         client.create_table("my_table", pa.schema([]), tmp_path.as_uri())
 
-        assert str(client.entries()) == inline_snapshot("[Entry(Dataset, 'my_dataset'), Entry(Table, 'my_table')]")
+        assert str(client.entries()) == inline_snapshot(
+            "[Entry(EntryKind.DATASET, 'my_dataset'), Entry(EntryKind.TABLE, 'my_table')]"
+        )
 
-        assert str(client.datasets()) == inline_snapshot("[Entry(Dataset, 'my_dataset')]")
+        assert str(client.datasets()) == inline_snapshot("[Entry(EntryKind.DATASET, 'my_dataset')]")
 
-        assert str(client.tables()) == inline_snapshot("[Entry(Table, 'my_table')]")
+        assert str(client.tables()) == inline_snapshot("[Entry(EntryKind.TABLE, 'my_table')]")
 
         assert str(client.tables(include_hidden=True)) == inline_snapshot(
-            "[Entry(Table, '__entries'), Entry(Table, 'my_table')]"
+            "[Entry(EntryKind.TABLE, '__entries'), Entry(EntryKind.TABLE, 'my_table')]"
         )
 
 
@@ -35,12 +37,16 @@ def test_catalog_modify() -> None:
         table1 = client.create_table("table1", pa.schema([]))
         table2 = client.create_table("table2", pa.schema([]))
 
-        assert str(client.tables()) == inline_snapshot("[Entry(Table, 'table1'), Entry(Table, 'table2')]")
+        assert str(client.tables()) == inline_snapshot(
+            "[Entry(EntryKind.TABLE, 'table1'), Entry(EntryKind.TABLE, 'table2')]"
+        )
 
         table1.set_name("table_one")
 
-        assert str(client.tables()) == inline_snapshot("[Entry(Table, 'table2'), Entry(Table, 'table_one')]")
+        assert str(client.tables()) == inline_snapshot(
+            "[Entry(EntryKind.TABLE, 'table2'), Entry(EntryKind.TABLE, 'table_one')]"
+        )
 
         table2.delete()
 
-        assert str(client.tables()) == inline_snapshot("[Entry(Table, 'table_one')]")
+        assert str(client.tables()) == inline_snapshot("[Entry(EntryKind.TABLE, 'table_one')]")

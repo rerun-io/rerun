@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
-    CatalogClientInternal,
     DataframeQueryView as DataframeQueryView,
-    DatasetEntry as DatasetEntry,
-    Entry as Entry,
+    DataFusionTable as DataFusionTable,
     EntryId as EntryId,
     EntryKind as EntryKind,
+    IndexConfig as IndexConfig,
+    IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
-    TableEntry as TableEntry,
+    Schema as Schema,
     TableInsertMode as TableInsertMode,
     Task as Task,
     Tasks as Tasks,
@@ -21,3 +21,4 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient
+from ._entry import DatasetEntry as DatasetEntry, Entry as Entry, TableEntry as TableEntry

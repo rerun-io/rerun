@@ -15,15 +15,15 @@ namespace rerun.archetypes;
 /// For transforms that affect only a single entity and do not propagate along the entity tree refer to [archetypes.InstancePoses3D].
 ///
 /// \example archetypes/transform3d_simple title="Variety of 3D transforms" image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png"
-/// \example archetypes/transform3d_hierarchy title="Transform hierarchy" image="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png"
+/// \example archetypes/transform3d_hierarchy title="Transform hierarchy" !api image="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png"
+/// \example archetypes/transform3d_hierarchy_frames title="Transform hierarchy with explicit frames" !api image="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png"
 /// \example archetypes/transform3d_row_updates title="Update a transform over time" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png"
 /// \example archetypes/transform3d_column_updates title="Update a transform over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png"
 /// \example archetypes/transform3d_partial_updates title="Update specific properties of a transform over time" image="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png"
-// TODO(RR-2777): Add frame example once it's ready.
 table Transform3D (
-  "attr.docs.category": "Spatial 3D",
+  "attr.docs.category": "Transforms",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
-  "attr.rerun.state": "stable",
+"attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq"
 ) {
   /// Translation vector.
@@ -70,8 +70,7 @@ table Transform3D (
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  // TODO(RR-2777): Mark as stable when we're ready for it.
-  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2000);
+  child_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2000);
 
   /// The parent frame this transform transforms into.
   ///
@@ -81,6 +80,5 @@ table Transform3D (
   /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
   ///
   /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-  // TODO(RR-2777): Mark as stable when we're ready for it.
-  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", "attr.rerun.state": "unstable", nullable, order: 2100);
+  parent_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", nullable, order: 2100);
 }

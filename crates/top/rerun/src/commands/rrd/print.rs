@@ -129,6 +129,7 @@ impl Options {
     fn format_record_batch(&self, full_batch: &RecordBatch) -> impl std::fmt::Display {
         let format_options = re_arrow_util::RecordBatchFormatOpts {
             transposed: self.transposed,
+            max_cell_content_width: 100,
             trim_field_names: !self.full_metadata,
             trim_metadata_keys: !self.full_metadata,
             trim_metadata_values: !self.full_metadata,

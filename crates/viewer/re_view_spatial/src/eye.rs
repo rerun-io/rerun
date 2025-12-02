@@ -315,15 +315,13 @@ impl EyeController {
             return;
         }
 
-        if self.pos != old_pos {
+        // If any of these change because of interactions don't use fallback for the other.
+        if self.pos != old_pos || self.look_target != old_look_target {
             eye_property.save_blueprint_component(
                 ctx,
                 &EyeControls3D::descriptor_position(),
                 &Position3D::from(self.pos),
             );
-        }
-
-        if self.look_target != old_look_target {
             eye_property.save_blueprint_component(
                 ctx,
                 &EyeControls3D::descriptor_look_target(),
@@ -996,10 +994,15 @@ impl EyeState {
             let t = t.clamp(0.0, 1.0);
             let t = ease_out(t);
 
-            // Make sure to repaint if we're interpolating.
-            ctx.egui_ctx().request_repaint();
+            if t < 1.0 {
+                // Make sure to repaint if we're interpolating.
+                ctx.egui_ctx().request_repaint();
 
-            interpolation.start.lerp(&target_eye, t)
+                interpolation.start.lerp(&target_eye, t)
+            } else {
+                self.stop_interpolation();
+                target_eye
+            }
         } else {
             self.stop_interpolation();
             target_eye

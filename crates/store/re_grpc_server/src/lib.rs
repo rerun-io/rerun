@@ -258,11 +258,11 @@ pub async fn serve_from_channel(
                         break;
                     }
                 }
-                DataSourceMessage::TableMsg(_) => {
-                    re_log::error_once!("Not implemented: re_grpc_server support for TableMsg");
-                }
-                DataSourceMessage::UiCommand(_) => {
-                    re_log::error_once!("Not implemented: re_grpc_server support for UiCommand");
+                unsupported => {
+                    re_log::error_once!(
+                        "Not implemented: re_grpc_server support for {}",
+                        unsupported.variant_name()
+                    );
                 }
             }
         }
@@ -346,12 +346,10 @@ pub fn spawn_from_rx_set(
                         break;
                     }
                 }
-                DataSourceMessage::TableMsg(_) => {
-                    re_log::error_once!("Received a TableMsg, grpc server can't forward these yet");
-                }
-                DataSourceMessage::UiCommand(ui_command) => {
+                unsupported => {
                     re_log::error_once!(
-                        "Received a UI command, grpc server can't forward these yet: {ui_command:?}"
+                        "gRPC proxy server cannot forward {}",
+                        unsupported.variant_name()
                     );
                 }
             }
@@ -1161,6 +1159,12 @@ mod tests {
             let completion = completion.clone();
             async move {
                 tonic::transport::Server::builder()
+                    // NOTE: This NODELAY very likely does nothing because of the call to
+                    // `serve_with_incoming_shutdown` below, but we better be on the defensive here so
+                    // we don't get surprised when things inevitably change.
+                    .tcp_nodelay(true)
+                    .accept_http1(true)
+                    .http2_adaptive_window(Some(true)) // Optimize for throughput
                     .add_service(
                         MessageProxyServiceServer::new(super::MessageProxy::new(options))
                             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
