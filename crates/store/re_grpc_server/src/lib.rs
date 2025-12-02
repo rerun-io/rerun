@@ -275,7 +275,7 @@ pub async fn serve_from_channel(
 
 /// Start a Rerun server, listening on `addr`.
 ///
-/// This function additionally accepts a `ReceiveSet`, from which the
+/// This function additionally accepts a [`re_smart_channel::LogReceiverSet`], from which the
 /// server will read all messages. It is similar to creating a client
 /// and sending messages through `WriteMessages`, but without the overhead
 /// of a localhost connection.
@@ -285,7 +285,7 @@ pub fn spawn_from_rx_set(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    rxs: re_smart_channel::ReceiveSet<re_log_types::DataSourceMessage>,
+    rxs: re_smart_channel::LogReceiverSet,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();

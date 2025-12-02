@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_smart_channel::{LogReceiverSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::{StoreContext, StoreHub};
 
@@ -303,7 +303,7 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     );
 }
 
-fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSourceMessage>) {
+fn connection_status_ui(ui: &mut egui::Ui, rx: &LogReceiverSet) {
     let sources = rx
         .sources()
         .into_iter()

@@ -6,7 +6,7 @@ use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
 use re_log_types::DataSourceMessage;
-use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
+use re_smart_channel::{LogReceiverSet, Receiver, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
 
@@ -1061,7 +1061,7 @@ fn serve_web(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
-            ReceiveSet::new(log_receivers),
+            LogReceiverSet::new(log_receivers.into_iter().map(|x| x.into()).collect()),
         );
 
         // Add the proxy URL to the url parameters.
@@ -1119,7 +1119,13 @@ fn serve_grpc(
         server_addr,
         server_options,
         shutdown,
-        ReceiveSet::new(receivers.log_receivers),
+        LogReceiverSet::new(
+            receivers
+                .log_receivers
+                .into_iter()
+                .map(|x| x.into())
+                .collect(),
+        ),
     );
 
     // Gracefully shut down the server on SIGINT
@@ -1162,7 +1168,7 @@ fn save_or_test_receive(
         log_receivers.push(log_server);
     }
 
-    let receive_set = ReceiveSet::new(log_receivers);
+    let receive_set = LogReceiverSet::new(log_receivers.into_iter().map(|x| x.into()).collect());
 
     if let Some(rrd_path) = save {
         Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
@@ -1186,9 +1192,7 @@ fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool 
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_entity_db(
-    rx: &ReceiveSet<DataSourceMessage>,
-) -> anyhow::Result<re_entity_db::EntityDb> {
+fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a EntityDb…");
 
     let mut rec: Option<re_entity_db::EntityDb> = None;
@@ -1342,7 +1346,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 // TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
 
 fn stream_to_rrd_on_disk(
-    rx: &re_smart_channel::ReceiveSet<DataSourceMessage>,
+    rx: &re_smart_channel::LogReceiverSet,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;

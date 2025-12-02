@@ -12,7 +12,7 @@ use re_log_types::{
 };
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
+use re_smart_channel::{LogReceiverSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
@@ -84,7 +84,7 @@ pub struct App {
     component_ui_registry: ComponentUiRegistry,
     component_fallback_registry: FallbackProviderRegistry,
 
-    rx_log: ReceiveSet<DataSourceMessage>,
+    rx_log: LogReceiverSet,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -529,7 +529,7 @@ impl App {
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
         }
 
-        self.rx_log.add(rx);
+        self.rx_log.add(rx.into());
     }
 
     /// Update the active [`re_viewer_context::TimeControl`]. And if the blueprint inspection
@@ -624,7 +624,7 @@ impl App {
         }
     }
 
-    pub fn msg_receive_set(&self) -> &ReceiveSet<DataSourceMessage> {
+    pub fn msg_receive_set(&self) -> &LogReceiverSet {
         &self.rx_log
     }
 
