@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayRef, ListArray, StringArray},
+    array::{Array as _, ArrayRef, ListArray, StringArray},
     compute::SortOptions,
     datatypes::{DataType, Field, Fields},
 };
@@ -12,12 +12,11 @@ use datafusion::{
 };
 use itertools::Itertools as _;
 
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
-use re_chunk::ArrowArray as _;
+use crate::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 
 // --
 
-pub trait RecordBatchExt {
+pub trait RecordBatchTestExt {
     /// Formats a record batch in a snapshot-friendly way.
     fn format_snapshot(&self, transposed: bool) -> String;
 
@@ -81,11 +80,11 @@ pub trait RecordBatchExt {
     fn remove_columns(&self, columns: &[&str]) -> Self;
 }
 
-impl RecordBatchExt for arrow::array::RecordBatch {
+impl RecordBatchTestExt for arrow::array::RecordBatch {
     fn format_snapshot(&self, transposed: bool) -> String {
-        re_arrow_util::format_record_batch_opts(
+        crate::format_record_batch_opts(
             self,
-            &re_arrow_util::RecordBatchFormatOpts {
+            &crate::RecordBatchFormatOpts {
                 transposed,
                 width: Some(800),
                 include_metadata: false,
@@ -176,6 +175,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         }
 
         let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
+        #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
         Some(Self::try_new(Arc::new(schema), arrays).expect("creating record batch"))
     }
 
@@ -210,6 +210,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         if schema.fields().is_empty() {
             Self::new_empty(schema)
         } else {
+            #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
             Self::try_new(schema, arrays).expect("creation should succeed")
         }
     }
@@ -309,6 +310,7 @@ impl RecordBatchExt for arrow::array::RecordBatch {
         if schema.fields().is_empty() {
             Self::new_empty(schema.clone())
         } else {
+            #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
             Self::try_new(schema.clone(), arrays).expect("creation should succeed")
         }
     }
@@ -338,12 +340,12 @@ impl RecordBatchExt for arrow::array::RecordBatch {
     }
 }
 
-pub trait SchemaExt {
+pub trait SchemaTestExt {
     /// Formats a record batch in a snapshot-friendly way.
     fn format_snapshot(&self) -> String;
 }
 
-impl SchemaExt for arrow::datatypes::Schema {
+impl SchemaTestExt for arrow::datatypes::Schema {
     fn format_snapshot(&self) -> String {
         let metadata = (!self.metadata().is_empty()).then(|| {
             format!(
@@ -363,13 +365,13 @@ impl SchemaExt for arrow::datatypes::Schema {
                 format!(
                     "{}: {}",
                     field.name(),
-                    re_arrow_util::format_data_type(field.data_type())
+                    crate::format_data_type(field.data_type())
                 )
             } else {
                 format!(
                     "{}: {} [\n    {}\n]",
                     field.name(),
-                    re_arrow_util::format_data_type(field.data_type()),
+                    crate::format_data_type(field.data_type()),
                     field
                         .metadata()
                         .iter()
@@ -384,7 +386,7 @@ impl SchemaExt for arrow::datatypes::Schema {
     }
 }
 
-pub trait FieldsExt {
+pub trait FieldsTestExt {
     /// Returns true if all the required fields are present, regardless of the order.
     fn contains_unordered(
         &self,
@@ -392,7 +394,7 @@ pub trait FieldsExt {
     ) -> bool;
 }
 
-impl FieldsExt for Fields {
+impl FieldsTestExt for Fields {
     fn contains_unordered(
         &self,
         required_fields: impl IntoIterator<Item = impl AsRef<Field>>,

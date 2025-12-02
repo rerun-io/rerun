@@ -11,7 +11,7 @@ use re_protos::{
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
 };
-use crate::{FieldsExt as _, RecordBatchExt as _};
+use crate::{FieldsTestExt as _, RecordBatchTestExt as _};
 
 pub async fn query_empty_dataset(service: impl RerunCloudService) {
     let dataset_name = "dataset";
