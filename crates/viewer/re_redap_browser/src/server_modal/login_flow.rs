@@ -4,7 +4,6 @@ mod native;
 mod web;
 
 use egui::{IntoAtoms as _, vec2};
-use re_auth::oauth::Credentials;
 use re_ui::{
     UiExt as _,
     notifications::{Notification, NotificationLevel},
@@ -23,7 +22,7 @@ pub struct LoginFlow {
 }
 
 pub enum LoginFlowResult {
-    Success(Credentials),
+    Success,
     Failure(String),
 }
 
@@ -75,7 +74,7 @@ impl LoginFlow {
                     format!("Logged in as {}", credentials.user().email),
                 )));
 
-                Some(LoginFlowResult::Success(credentials))
+                Some(LoginFlowResult::Success)
             }
 
             Ok(None) => None,

@@ -53,18 +53,19 @@ pub(crate) mod oauth {
     // so we store them in a static.
     static CACHE: RwLock<Option<Credentials>> = RwLock::const_new(None);
 
-    static AUTH_SUBSCRIBERS: std::sync::Mutex<Vec<Box<dyn Fn(Option<oauth::User>) + Send>>> =
-        std::sync::Mutex::new(Vec::new());
+    type AuthCallback = Box<dyn Fn(Option<oauth::User>) + Send>;
+    static AUTH_SUBSCRIBERS: parking_lot::Mutex<Vec<AuthCallback>> =
+        parking_lot::Mutex::new(Vec::new());
 
     pub(crate) fn auth_update(user: Option<&oauth::User>) {
-        let subscribers = AUTH_SUBSCRIBERS.lock().unwrap();
+        let subscribers = AUTH_SUBSCRIBERS.lock();
         for sub in &*subscribers {
             sub(user.cloned());
         }
     }
 
     pub fn subscribe_auth_changes(callback: impl Fn(Option<oauth::User>) + Send + 'static) {
-        let mut subscribers = AUTH_SUBSCRIBERS.lock().unwrap();
+        let mut subscribers = AUTH_SUBSCRIBERS.lock();
         subscribers.push(Box::new(callback));
     }
 

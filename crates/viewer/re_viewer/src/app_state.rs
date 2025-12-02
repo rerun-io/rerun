@@ -246,7 +246,7 @@ impl AppState {
                     view_states,
                     selection_state,
                     focused_item,
-                    auth_state: auth_state,
+                    auth_state,
                     ..
                 } = self;
 

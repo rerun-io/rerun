@@ -4,9 +4,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-use re_viewer_context::{
-    CommandSender, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 use std::str::FromStr as _;
 
 use crate::{context::Context, servers::Command};
@@ -43,7 +41,7 @@ impl Authentication {
     ///
     /// Optionally, this can be given a token, which takes
     /// precedence over stored credentials.
-    fn new(token: Option<String>, use_stored_credentials: bool) -> Self {
+    fn new(token: Option<String>) -> Self {
         let (token, show_token_input) = match token {
             Some(token) => (token, true),
             None => (String::new(), false),
@@ -94,7 +92,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::new(None, false),
+            auth: Authentication::new(None),
             port: 443,
         }
     }
@@ -102,10 +100,9 @@ impl Default for ServerModal {
 
 impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
-        let use_stored_credentials = connection_registry.should_use_stored_credentials();
         *self = match mode {
             ServerModalMode::Add => {
-                let auth = Authentication::new(None, use_stored_credentials);
+                let auth = Authentication::new(None);
 
                 Self {
                     mode: ServerModalMode::Add,
@@ -119,11 +116,9 @@ impl ServerModal {
                 let credentials = connection_registry.credentials(&origin);
                 let auth = match credentials {
                     Some(re_redap_client::Credentials::Token(token)) => {
-                        Authentication::new(Some(token.to_string()), use_stored_credentials)
+                        Authentication::new(Some(token.to_string()))
                     }
-                    Some(re_redap_client::Credentials::Stored) | None => {
-                        Authentication::new(None, use_stored_credentials)
-                    }
+                    Some(re_redap_client::Credentials::Stored) | None => Authentication::new(None),
                 };
 
                 Self {
@@ -302,7 +297,7 @@ impl ServerModal {
     }
 }
 
-fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext, auth: &mut Authentication) {
+fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             if auth.show_token_input {
@@ -337,7 +332,7 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext, auth: &mut Authentication) {
                 if let Some(flow) = &mut auth.login_flow {
                     if let Some(result) = flow.ui(ui, ctx.command_sender) {
                         match result {
-                            LoginFlowResult::Success(credentials) => {
+                            LoginFlowResult::Success => {
                                 auth.error = None;
                                 // Clear login flow to close popup window
                                 auth.reset_login_flow();

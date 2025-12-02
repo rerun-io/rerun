@@ -185,7 +185,7 @@ impl App {
             re_auth::credentials::subscribe_auth_changes(move |user| {
                 command_sender.send_system(SystemCommand::OnAuthChanged(
                     user.map(|user| AuthContext { email: user.email }),
-                ))
+                ));
             });
         }
 
