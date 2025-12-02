@@ -76,6 +76,7 @@ re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.28.0-alph
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.28.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.28.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.28.0-alpha.1", default-features = false }
+re_mcap = { path = "crates/store/re_mcap", version = "=0.28.0-alpha.1", default-features = false }
 re_protos = { path = "crates/store/re_protos", version = "=0.28.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.28.0-alpha.1", default-features = false }
@@ -104,7 +105,6 @@ re_error = { path = "crates/utils/re_error", version = "=0.28.0-alpha.1", defaul
 re_format = { path = "crates/utils/re_format", version = "=0.28.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.28.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.28.0-alpha.1", default-features = false }
-re_mcap = { path = "crates/utils/re_mcap", version = "=0.28.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.28.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.28.0-alpha.1", default-features = false }
 re_ros_msg = { path = "crates/utils/re_ros_msg", version = "=0.28.0-alpha.1", default-features = false }
