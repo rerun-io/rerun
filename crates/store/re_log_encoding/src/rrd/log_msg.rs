@@ -132,3 +132,10 @@ impl Decodable for re_protos::log_msg::v1alpha1::RrdFooter {
         Ok(Self::decode(data)?)
     }
 }
+
+impl Decodable for re_protos::log_msg::v1alpha1::RrdManifest {
+    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
+        use re_protos::external::prost::Message as _;
+        Ok(Self::decode(data)?)
+    }
+}

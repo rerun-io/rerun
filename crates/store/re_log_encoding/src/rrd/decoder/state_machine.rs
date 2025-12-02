@@ -9,7 +9,7 @@ use crate::StreamFooter;
 use crate::rrd::MessageHeader;
 use crate::{
     CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
-    EncodingOptions, Serializer, StreamHeader,
+    EncodingOptions, RrdManifest, Serializer, StreamHeader, ToApplication as _,
 };
 
 // ---
@@ -55,6 +55,11 @@ pub struct Decoder<T> {
 
     /// The application id cache used for migrating old data.
     pub(crate) app_id_cache: CachingApplicationIdInjector,
+
+    /// All the RRD manifests accumulated so far by parsing incoming footers in the RRD stream.
+    ///
+    /// Transport-level types to keep decoding cheap.
+    rrd_manifests: Vec<re_protos::log_msg::v1alpha1::RrdManifest>,
 
     _decodable: std::marker::PhantomData<T>,
 }
@@ -120,6 +125,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
             byte_chunks: ByteChunkBuffer::new(),
             state: DecoderState::WaitingForStreamHeader,
             app_id_cache: CachingApplicationIdInjector::default(),
+            rrd_manifests: Vec::new(),
             _decodable: std::marker::PhantomData::<T>,
         }
     }
@@ -127,6 +133,19 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// Feed a bunch of bytes to the decoding state machine.
     pub fn push_byte_chunk(&mut self, byte_chunk: Vec<u8>) {
         self.byte_chunks.push(byte_chunk);
+    }
+
+    /// Returns all the RRD manifests accumulated _so far_.
+    ///
+    /// RRD manifests are parsed from footers, of which there might be more than one e.g. in the
+    /// case of concatenated streams.
+    ///
+    /// This is not cheap: it automatically performs the transport to app level conversion.
+    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        self.rrd_manifests
+            .iter()
+            .map(|m| m.to_application(()).map_err(Into::into))
+            .collect()
     }
 
     /// Read the next message in the stream, dropping messages missing application id that cannot
@@ -301,7 +320,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                         if !bytes.is_empty() {
                             let rrd_footer =
                                 re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&bytes)?;
-                            _ = rrd_footer; // TODO(cmc): we'll use that in the next PR, promise.
+                            self.rrd_manifests.extend(rrd_footer.manifests);
 
                             // A non-empty ::End message means there must be a footer ahead, no exception.
                             self.state = DecoderState::WaitingForStreamFooter;
