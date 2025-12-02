@@ -1,4 +1,4 @@
-//! A channel that keeps track of latency and queue length.
+//! An in-memory channel of Rerun data messages
 
 use std::sync::Arc;
 
