@@ -14,7 +14,7 @@ Rerun features a built-in [data-loader](https://rerun.io/docs/reference/data-loa
 
 ## Overview
 
-Using an `URDF` in Rerun only requires you to load the file with the logging API.
+Using a `URDF` in Rerun only requires you to load the file with the logging API.
 This will automatically invoke the data-loader, which will take care of:
 * resolving paths to meshes
 * loading meshes and shapes as Rerun entities
@@ -27,7 +27,7 @@ Once that is done, the joints can be updated by sending `Transform3D`s, where yo
 
 ## Example
 
-Here is an example that demonstrates how to load and update an `URDF` with the Python SDK:
+Here is an example that demonstrates how to load and update a `URDF` with the Python SDK:
 
 ```python
 from pathlib import Path
