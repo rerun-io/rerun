@@ -4,12 +4,16 @@ use std::sync::Arc;
 use ahash::HashMap;
 use arrow::array::BinaryArray;
 use arrow::record_batch::RecordBatch;
+use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
+use crate::chunk_index::DatasetChunkIndexes;
+use crate::entrypoint::NamedPath;
+use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
@@ -37,10 +41,8 @@ use re_protos::{
         ext::{IfDuplicateBehavior, SegmentId},
     },
     headers::RerunHeadersExtractorExt as _,
+    missing_field,
 };
-
-use crate::entrypoint::NamedPath;
-use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -57,14 +59,15 @@ impl RerunCloudHandlerBuilder {
         Self::default()
     }
 
-    pub fn with_directory_as_dataset(
+    pub async fn with_directory_as_dataset(
         mut self,
         directory: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
         on_error: crate::OnError,
     ) -> Result<Self, crate::store::Error> {
         self.store
-            .load_directory_as_dataset(directory, on_duplicate, on_error)?;
+            .load_directory_as_dataset(directory, on_duplicate, on_error)
+            .await?;
 
         Ok(self)
     }
@@ -627,12 +630,9 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset.load_rrd(
-                    &rrd_path,
-                    Some(&layer),
-                    on_duplicate,
-                    dataset.store_kind(),
-                )?;
+                let new_partition_ids = dataset
+                    .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
+                    .await?;
 
                 for partition_id in new_partition_ids {
                     partition_ids.push(partition_id.to_string());
@@ -723,12 +723,14 @@ impl RerunCloudService for RerunCloudHandler {
 
         #[expect(clippy::iter_over_hash_type)]
         for (entity_path, chunk_store) in chunk_stores {
-            dataset.add_layer(
-                entity_path,
-                DataSource::DEFAULT_LAYER.to_owned(),
-                ChunkStoreHandle::new(chunk_store),
-                IfDuplicateBehavior::Error,
-            )?;
+            dataset
+                .add_layer(
+                    entity_path,
+                    DataSource::DEFAULT_LAYER.to_owned(),
+                    ChunkStoreHandle::new(chunk_store),
+                    IfDuplicateBehavior::Error,
+                )
+                .await?;
         }
 
         Ok(tonic::Response::new(
@@ -933,25 +935,58 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn create_index(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::CreateIndexRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CreateIndexResponse>> {
-        Err(tonic::Status::unimplemented("create_index not implemented"))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                dataset.indexes().create_index(dataset, request.into_inner().try_into()?).await
+            } else {
+                Err(tonic::Status::unimplemented("create_index requires the `lance` feature"))
+            }
+        }
     }
 
     async fn list_indexes(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ListIndexesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ListIndexesResponse>> {
-        Err(tonic::Status::unimplemented("list_indexes not implemented"))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                dataset.indexes().list_indexes(request.into_inner()).await
+            } else {
+                Err(tonic::Status::unimplemented("list_indexes requires the `lance` feature"))
+            }
+        }
     }
 
     async fn delete_indexes(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
+        request: tonic::Request<re_protos::cloud::v1alpha1::DeleteIndexesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteIndexesResponse>> {
-        Err(tonic::Status::unimplemented(
-            "delete_indexes not implemented",
-        ))
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                let request = request.into_inner();
+                let column = request.column.ok_or_else(|| {
+                    missing_field!(re_protos::cloud::v1alpha1::DeleteIndexesRequest, "column")
+                })?;
+
+                dataset.indexes().delete_indexes(column.try_into()?).await
+            } else {
+                Err(tonic::Status::unimplemented("delete_indexes requires the `lance` feature"))
+            }
+        }
     }
 
     /* Queries */
@@ -960,11 +995,19 @@ impl RerunCloudService for RerunCloudHandler {
 
     async fn search_dataset(
         &self,
-        _request: tonic::Request<re_protos::cloud::v1alpha1::SearchDatasetRequest>,
-    ) -> std::result::Result<tonic::Response<Self::SearchDatasetStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented(
-            "search_dataset not implemented",
-        ))
+        request: tonic::Request<re_protos::cloud::v1alpha1::SearchDatasetRequest>,
+    ) -> tonic::Result<tonic::Response<Self::SearchDatasetStream>> {
+        cfg_if! {
+            if #[cfg(feature = "lance")] {
+                let store = self.store.read().await;
+                let entry_id = get_entry_id_from_headers(&store, &request)?;
+                let dataset = store.dataset(entry_id)?;
+
+                Ok(DatasetChunkIndexes::search_dataset(dataset, request.into_inner().try_into()?).await?)
+            } else {
+                Err(tonic::Status::unimplemented("search_dataset requires the `lance` feature"))
+            }
+        }
     }
 
     type QueryDatasetStream = QueryDatasetResponseStream;
