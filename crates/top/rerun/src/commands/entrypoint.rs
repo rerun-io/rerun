@@ -1462,7 +1462,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDatasetPartition { .. } => {
+                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDatasetSegment { .. } => {
                         if config.data_sources_from_redap_datasets {
                             data_sources.push(data_source);
                         } else {
