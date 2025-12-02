@@ -210,7 +210,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
         {
             rrd_manifest.sanity_check_cheap()?;
 
-            // that will only work for test local to this crate, but that's better than nothing
+            // that will only work for tests local to this crate, but that's better than nothing
             #[cfg(test)]
             rrd_manifest.sanity_check_heavy()?;
         }
