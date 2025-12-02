@@ -38,10 +38,11 @@ impl TransformFramesUi {
         transform_frame_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
     ) -> Option<Self> {
-        // All frame descriptor components, sorted by priority.
+        // Frame descriptor components we want to show ancestors for, sorted by priority.
         //
-        // The bool indicates if we should use the entity path as
-        // the current frame.
+        // We don't want to show it for `Transform3D.child_frame` because it is valid for
+        // an entity to declare many transform frames. In which case it wouldn't make sense
+        // to display one of those frame's ancestors.
         let frame_components = [
             archetypes::CoordinateFrame::descriptor_frame().component,
             archetypes::Pinhole::descriptor_child_frame().component,
