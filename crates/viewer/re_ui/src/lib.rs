@@ -35,6 +35,7 @@ pub mod testing;
 use egui::NumExt as _;
 
 pub use self::{
+    button::*,
     command::{UICommand, UICommandSender},
     command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl},
     context_ext::ContextExt,

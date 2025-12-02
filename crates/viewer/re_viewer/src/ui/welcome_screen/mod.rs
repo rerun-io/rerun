@@ -8,13 +8,11 @@ use std::sync::Arc;
 
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use re_smart_channel::SmartChannelSource;
-use welcome_section::welcome_section_ui;
 
 use crate::app_state::WelcomeScreenState;
-use crate::ui::welcome_screen::intro_section::intro_section;
 
 pub use intro_section::{CloudState, LoginState};
-use re_viewer_context::{GlobalContext, ViewerContext};
+use re_viewer_context::GlobalContext;
 
 #[derive(Default)]
 pub struct WelcomeScreen {
@@ -30,7 +28,7 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        ctx: &GlobalContext,
+        ctx: &GlobalContext<'_>,
         welcome_screen_state: &WelcomeScreenState,
         log_sources: &[Arc<SmartChannelSource>],
         login_state: &CloudState,

@@ -1,11 +1,9 @@
 use eframe::epaint::Margin;
 use egui::{Frame, RichText, TextStyle, Theme, Ui};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
-use re_ui::{UICommand, UICommandSender, UiExt, design_tokens_of};
+use re_ui::{UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
-use re_viewer_context::{
-    BlueprintContext, GlobalContext, Item, SystemCommand, SystemCommandSender, ViewerContext,
-};
+use re_viewer_context::{GlobalContext, Item, SystemCommand, SystemCommandSender as _};
 
 pub enum LoginState {
     NoAuth,
@@ -74,7 +72,7 @@ impl<'a> IntroItem<'a> {
         CardLayoutItem { frame, min_width }
     }
 
-    fn show(&self, ui: &mut Ui, ctx: &GlobalContext) {
+    fn show(&self, ui: &mut Ui, ctx: &GlobalContext<'_>) {
         let label_size = 13.0;
         ui.vertical(|ui| match self {
             IntroItem::DocItem { title, url, body } => {
@@ -92,14 +90,13 @@ impl<'a> IntroItem<'a> {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
                 };
-                let opposite_tokens = design_tokens_of(opposite_theme);
                 ui.set_style(ui.ctx().style_of(opposite_theme));
 
                 ui.heading(RichText::new("Rerun Cloud").strong());
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
-                    ui.style_mut().text_styles.get_mut(&TextStyle::Body).unwrap().size = label_size;
+                    ui.style_mut().text_styles.get_mut(&TextStyle::Body).expect("Should always have body text style").size = label_size;
                     ui.label(
                         "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
                     );
@@ -113,13 +110,13 @@ impl<'a> IntroItem<'a> {
                     CloudState { has_server: None, login: LoginState::NoAuth } => {
                         if ui.primary_button("Add server and login").clicked() {
                             ctx.command_sender.send_ui(UICommand::AddRedapServer);
-                        };
+                        }
                     }
                     CloudState { has_server: None, login } => {
                         ui.horizontal_wrapped(|ui| {
                             if ui.primary_button("Add server").clicked() {
                                 ctx.command_sender.send_ui(UICommand::AddRedapServer);
-                            };
+                            }
                             if let LoginState::Auth { email: Some(email) } = login {
                                 ui.weak("logged in as");
                                 ui.strong(email);
@@ -135,7 +132,7 @@ impl<'a> IntroItem<'a> {
                         ui.strong(format!("{}", &origin.host));
                         });
                     }
-                    CloudState { has_server: Some(origin), login: LoginState::Auth {email} } => {
+                    CloudState { has_server: Some(origin), login: LoginState::Auth { .. } } => {
                         if ui.primary_button("Explore your data").clicked() {
                             ctx.command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(origin.clone())));
                         }
@@ -146,18 +143,13 @@ impl<'a> IntroItem<'a> {
     }
 }
 
-#[derive(Default, Debug, Clone)]
-struct IntroSectionLayoutStats {
-    max_inner_height: f32,
-}
-
-pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext, login_state: &CloudState) {
-    let mut items = IntroItem::items(login_state);
+pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, login_state: &CloudState) {
+    let items = IntroItem::items(login_state);
 
     ui.add_space(32.0);
 
     if let LoginState::Auth { email: Some(email) } = &login_state.login {
-        ui.strong(RichText::new(format!("Hi, {}!", email)).size(15.0));
+        ui.strong(RichText::new(format!("Hi, {email}!")).size(15.0));
 
         if ui.button("Logout").clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);

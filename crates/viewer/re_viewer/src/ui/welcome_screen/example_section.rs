@@ -7,7 +7,7 @@ use crate::ui::CloudState;
 use crate::ui::welcome_screen::intro_section::intro_section;
 use crate::ui::welcome_screen::welcome_section::welcome_section_ui;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{GlobalContext, ViewerContext};
+use re_viewer_context::GlobalContext;
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -244,7 +244,12 @@ impl ExampleSection {
     /// │                               │    │
     /// │                               │    │
     /// ```
-    pub(super) fn ui(&mut self, ui: &mut egui::Ui, ctx: &GlobalContext, login_state: &CloudState) {
+    pub(super) fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &GlobalContext<'_>,
+        login_state: &CloudState,
+    ) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));

@@ -1,4 +1,4 @@
-use egui::{Frame, Id, NumExt, Ui};
+use egui::{Frame, Id, NumExt as _, Ui};
 
 pub struct CardLayoutItem {
     pub frame: Frame,

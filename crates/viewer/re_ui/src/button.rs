@@ -1,4 +1,4 @@
-use crate::{DesignTokens, UiExt};
+use crate::{DesignTokens, UiExt as _};
 use egui::style::WidgetVisuals;
 use egui::{Button, CornerRadius, IntoAtoms, Style};
 
@@ -8,7 +8,7 @@ pub enum Variant {
     Ghost,
 }
 
-pub fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
+fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
     f(&mut style.visuals.widgets.active);
     f(&mut style.visuals.widgets.hovered);
     f(&mut style.visuals.widgets.inactive);
@@ -19,7 +19,7 @@ pub fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
 impl Variant {
     pub fn apply(&self, style: &mut Style, tokens: &DesignTokens) {
         match self {
-            Variant::Primary => {
+            Self::Primary => {
                 all_visuals(style, |vis| {
                     vis.bg_fill = tokens.bg_fill_inverse;
                     vis.weak_bg_fill = tokens.bg_fill_inverse;
@@ -28,7 +28,7 @@ impl Variant {
                 style.visuals.widgets.hovered.bg_fill = tokens.bg_fill_inverse_hover;
                 style.visuals.widgets.hovered.weak_bg_fill = tokens.bg_fill_inverse_hover;
             }
-            Variant::Secondary => {
+            Self::Secondary => {
                 all_visuals(style, |vis| {
                     vis.bg_fill = tokens.widget_active_bg_fill;
                     vis.weak_bg_fill = tokens.widget_active_bg_fill;
@@ -36,7 +36,7 @@ impl Variant {
                 style.visuals.widgets.hovered.bg_fill = tokens.widget_noninteractive_bg_fill;
                 style.visuals.widgets.hovered.weak_bg_fill = tokens.widget_noninteractive_bg_fill;
             }
-            Variant::Ghost => {
+            Self::Ghost => {
                 // The default button
             }
         }
@@ -97,7 +97,7 @@ impl<'a> ReButtonExt<'a> for Button<'a> {
     }
 }
 
-impl<'a> egui::Widget for ReButton<'a> {
+impl egui::Widget for ReButton<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let previous_style = ui.style().clone();
         let tokens = ui.tokens();
