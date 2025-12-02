@@ -12,7 +12,7 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
     DragAndDropManager, FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass,
     SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
@@ -112,6 +112,10 @@ pub struct AppState {
     /// that last several frames.
     #[serde(skip)]
     pub(crate) focused_item: Option<Item>,
+
+    /// Are we logged in?
+    #[serde(skip)]
+    pub(crate) auth_state: Option<AuthContext>,
 }
 
 impl Default for AppState {
@@ -136,6 +140,7 @@ impl Default for AppState {
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+            auth_state: Default::default(),
 
             #[cfg(feature = "testing")]
             test_hook: None,
@@ -241,6 +246,7 @@ impl AppState {
                     view_states,
                     selection_state,
                     focused_item,
+                    auth_state: auth_state,
                     ..
                 } = self;
 
@@ -368,6 +374,7 @@ impl AppState {
 
                         connection_registry,
                         display_mode,
+                        auth_context: auth_state.as_ref(),
                     },
                     component_ui_registry,
                     component_fallback_registry,
@@ -413,6 +420,7 @@ impl AppState {
 
                         connection_registry,
                         display_mode,
+                        auth_context: auth_state.as_ref(),
                     },
                     component_ui_registry,
                     component_fallback_registry,

@@ -4,7 +4,7 @@ use re_data_source::LogDataSource;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{RecordingOrTable, time_control::TimeControlCommand};
+use crate::{AuthContext, RecordingOrTable, time_control::TimeControlCommand};
 
 // ----------------------------------------------------------------------------
 
@@ -138,6 +138,9 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+
+    /// Notify about authentication changes.
+    OnAuthChanged(Option<AuthContext>),
 
     /// Set authentication credentials from an external source.
     SetAuthCredentials {

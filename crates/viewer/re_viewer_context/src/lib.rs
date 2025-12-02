@@ -69,7 +69,7 @@ pub use self::{
     display_mode::DisplayMode,
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
     file_dialog::sanitize_file_name,
-    global_context::GlobalContext,
+    global_context::{AuthContext, GlobalContext},
     heuristics::suggest_view_for_each_entity,
     image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at},
     item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
