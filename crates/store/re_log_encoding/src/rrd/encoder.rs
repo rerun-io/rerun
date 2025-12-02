@@ -126,7 +126,9 @@ impl FooterState {
 
     #[expect(clippy::unnecessary_wraps, clippy::unused_self)] // won't stay for long
     fn finish(self) -> Result<crate::RrdFooter, EncodeError> {
-        Ok(crate::RrdFooter {})
+        Ok(crate::RrdFooter {
+            manifests: Default::default(),
+        })
     }
 }
 

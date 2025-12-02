@@ -34,7 +34,7 @@ mod file_sink;
 pub mod stream_from_http;
 
 pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
-pub use self::footer::RrdFooter;
+pub use self::footer::{RrdFooter, RrdManifest, RrdManifestBuilder};
 pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
     StreamFooter, StreamHeader,
