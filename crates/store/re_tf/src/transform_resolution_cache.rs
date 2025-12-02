@@ -63,9 +63,15 @@ impl Default for TransformResolutionCache {
 
 impl SizeBytes for TransformResolutionCache {
     fn heap_size_bytes(&self) -> u64 {
-        self.frame_id_registry.heap_size_bytes()
-            + self.per_timeline.heap_size_bytes()
-            + self.static_timeline.heap_size_bytes()
+        let Self {
+            frame_id_registry,
+            per_timeline,
+            static_timeline,
+        } = self;
+
+        frame_id_registry.heap_size_bytes()
+            + per_timeline.heap_size_bytes()
+            + static_timeline.heap_size_bytes()
     }
 }
 
@@ -81,7 +87,9 @@ pub struct ParentFromChildTransform {
 
 impl SizeBytes for ParentFromChildTransform {
     fn heap_size_bytes(&self) -> u64 {
-        self.parent.heap_size_bytes() + self.transform.heap_size_bytes()
+        let Self { parent, transform } = self;
+
+        parent.heap_size_bytes() + transform.heap_size_bytes()
     }
 }
 
@@ -259,9 +267,15 @@ impl CachedTransformsForTimeline {
 
 impl SizeBytes for CachedTransformsForTimeline {
     fn heap_size_bytes(&self) -> u64 {
-        self.per_child_frame_transforms.heap_size_bytes()
-            + self.non_recursive_clears.heap_size_bytes()
-            + self.recursive_clears.heap_size_bytes()
+        let Self {
+            per_child_frame_transforms,
+            non_recursive_clears,
+            recursive_clears,
+        } = self;
+
+        per_child_frame_transforms.heap_size_bytes()
+            + non_recursive_clears.heap_size_bytes()
+            + recursive_clears.heap_size_bytes()
     }
 }
 
@@ -377,9 +391,15 @@ impl TransformsForChildFrameEvents {
 
 impl SizeBytes for TransformsForChildFrameEvents {
     fn heap_size_bytes(&self) -> u64 {
-        self.frame_transforms.heap_size_bytes()
-            + self.pose_transforms.heap_size_bytes()
-            + self.pinhole_projections.heap_size_bytes()
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        frame_transforms.heap_size_bytes()
+            + pose_transforms.heap_size_bytes()
+            + pinhole_projections.heap_size_bytes()
     }
 }
 
@@ -432,9 +452,18 @@ impl PartialEq for TransformsForChildFrame {
 
 impl SizeBytes for TransformsForChildFrame {
     fn heap_size_bytes(&self) -> u64 {
-        self.associated_entity_path.heap_size_bytes()
-            + self.child_frame.heap_size_bytes()
-            + self.events.lock().heap_size_bytes()
+        let Self {
+            associated_entity_path,
+            child_frame,
+            events,
+
+            #[cfg(debug_assertions)]
+                timeline: _,
+        } = self;
+
+        associated_entity_path.heap_size_bytes()
+            + child_frame.heap_size_bytes()
+            + events.lock().heap_size_bytes()
     }
 }
 
@@ -473,10 +502,17 @@ pub struct ResolvedPinholeProjection {
 
 impl SizeBytes for ResolvedPinholeProjection {
     fn heap_size_bytes(&self) -> u64 {
-        self.parent.heap_size_bytes()
-            + self.image_from_camera.heap_size_bytes()
-            + self.resolution.heap_size_bytes()
-            + self.view_coordinates.heap_size_bytes()
+        let Self {
+            parent,
+            image_from_camera,
+            resolution,
+            view_coordinates,
+        } = self;
+
+        parent.heap_size_bytes()
+            + image_from_camera.heap_size_bytes()
+            + resolution.heap_size_bytes()
+            + view_coordinates.heap_size_bytes()
     }
 }
 

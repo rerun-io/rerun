@@ -37,9 +37,13 @@ impl TransformDatabaseStoreCache {
 
 impl SizeBytes for TransformDatabaseStoreCache {
     fn heap_size_bytes(&self) -> u64 {
-        let cache = self.transform_cache.lock();
+        let Self {
+            initialized,
+            transform_cache,
+        } = self;
+        let cache = transform_cache.lock();
 
-        cache.total_size_bytes()
+        initialized.heap_size_bytes() + cache.total_size_bytes()
     }
 }
 

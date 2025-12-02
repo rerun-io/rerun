@@ -27,7 +27,11 @@ impl Default for FrameIdRegistry {
 
 impl SizeBytes for FrameIdRegistry {
     fn heap_size_bytes(&self) -> u64 {
-        self.frame_id_lookup_table.total_size_bytes()
+        let Self {
+            frame_id_lookup_table,
+        } = self;
+
+        frame_id_lookup_table.total_size_bytes()
     }
 }
 
