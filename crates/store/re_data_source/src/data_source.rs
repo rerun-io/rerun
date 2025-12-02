@@ -1,6 +1,6 @@
-use re_log_types::{DataSourceMessage, RecordingId};
+use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
-use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
+use re_smart_channel::{LogReceiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 
@@ -147,7 +147,7 @@ impl LogDataSource {
         self,
         connection_registry: &ConnectionRegistryHandle,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<DataSourceMessage>> {
+    ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
         match self {
@@ -156,7 +156,8 @@ impl LogDataSource {
                     url.to_string(),
                     follow,
                     on_msg,
-                ),
+                )
+                .into(),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -182,7 +183,7 @@ impl LogDataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(rx.into())
             }
 
             // When loading a file on Web, or when using drag-n-drop.
@@ -214,7 +215,7 @@ impl LogDataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(rx.into())
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -230,7 +231,7 @@ impl LogDataSource {
                     on_msg();
                 }
 
-                Ok(rx)
+                Ok(rx.into())
             }
 
             Self::RedapDatasetPartition {
@@ -266,10 +267,10 @@ impl LogDataSource {
                         re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });
-                Ok(rx)
+                Ok(rx.into())
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg).into()),
         }
     }
 }

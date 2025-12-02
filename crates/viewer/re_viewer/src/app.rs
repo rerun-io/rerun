@@ -513,10 +513,8 @@ impl App {
     }
 
     #[expect(clippy::needless_pass_by_ref_mut)]
-    pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
+    pub fn add_log_receiver(&mut self, rx: LogReceiver) {
         re_log::debug!("Adding new log receiver: {}", rx.source());
-
-        let rx = LogReceiver::from(rx);
 
         // Make sure we wake up when a new message is available:
         rx.set_waker({

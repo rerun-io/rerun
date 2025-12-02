@@ -97,7 +97,7 @@ pub fn run_native_viewer_with_messages(
     connection_registry: Option<re_redap_client::ConnectionRegistryHandle>,
     async_runtime: AsyncRuntimeHandle,
 ) -> eframe::Result {
-    let (tx, rx) = re_smart_channel::smart_channel(
+    let (tx, rx) = re_smart_channel::log_channel(
         re_smart_channel::SmartMessageSource::Sdk,
         re_smart_channel::SmartChannelSource::Sdk,
     );

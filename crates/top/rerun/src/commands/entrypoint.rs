@@ -6,7 +6,7 @@ use tokio::runtime::Runtime;
 
 use re_data_source::LogDataSource;
 use re_log_types::DataSourceMessage;
-use re_smart_channel::{LogReceiverSet, Receiver, SmartMessagePayload};
+use re_smart_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 
 use crate::{CallSource, commands::RrdCommands};
 
@@ -1061,7 +1061,7 @@ fn serve_web(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
-            LogReceiverSet::new(log_receivers.into_iter().map(|x| x.into()).collect()),
+            LogReceiverSet::new(log_receivers),
         );
 
         // Add the proxy URL to the url parameters.
@@ -1119,13 +1119,7 @@ fn serve_grpc(
         server_addr,
         server_options,
         shutdown,
-        LogReceiverSet::new(
-            receivers
-                .log_receivers
-                .into_iter()
-                .map(|x| x.into())
-                .collect(),
-        ),
+        LogReceiverSet::new(receivers.log_receivers),
     );
 
     // Gracefully shut down the server on SIGINT
@@ -1159,16 +1153,16 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let log_server = re_grpc_server::spawn_with_recv(
+        let log_rx = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
         );
 
-        log_receivers.push(log_server);
+        log_receivers.push(log_rx);
     }
 
-    let receive_set = LogReceiverSet::new(log_receivers.into_iter().map(|x| x.into()).collect());
+    let receive_set = LogReceiverSet::new(log_receivers);
 
     if let Some(rrd_path) = save {
         Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
@@ -1436,7 +1430,7 @@ impl UrlParamProcessingConfig {
 /// Log receivers created from URLs or path parameters that were passed in on the CLI.
 struct ReceiversFromUrlParams {
     /// Log receivers that we want to hook up to a connection or viewer.
-    log_receivers: Vec<Receiver<DataSourceMessage>>,
+    log_receivers: Vec<LogReceiver>,
 
     /// URLs that should be passed on to the viewer if possible.
     ///

@@ -372,13 +372,13 @@ pub fn spawn_with_recv(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-) -> re_smart_channel::Receiver<re_log_types::DataSourceMessage> {
+) -> re_smart_channel::LogReceiver {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
     ));
 
-    let (channel_log_tx, channel_log_rx) = re_smart_channel::smart_channel(
+    let (channel_log_tx, channel_log_rx) = re_smart_channel::log_channel(
         re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
         re_smart_channel::SmartChannelSource::MessageProxy(uri),
     );
