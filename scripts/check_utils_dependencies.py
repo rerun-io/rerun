@@ -12,10 +12,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-try:
-    import tomllib  # Python 3.11+
-except ImportError:
-    import tomli as tomllib  # fallback for older Python versions
+import tomli
 
 
 def main() -> int:
@@ -26,7 +23,7 @@ def main() -> int:
 
     # Parse workspace Cargo.toml to get all workspace crates and their locations
     with open(workspace_toml, "rb") as f:
-        workspace_data = tomllib.load(f)
+        workspace_data = tomli.load(f)
 
     # Get all workspace crates
     workspace_deps = workspace_data.get("workspace", {}).get("dependencies", {})
@@ -51,7 +48,7 @@ def main() -> int:
         crate_name = crate_dir.name
 
         with open(cargo_toml, "rb") as f:
-            crate_data = tomllib.load(f)
+            crate_data = tomli.load(f)
 
         # Check all dependency sections
         dep_sections = [
