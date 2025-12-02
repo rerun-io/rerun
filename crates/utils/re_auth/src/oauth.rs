@@ -236,6 +236,8 @@ impl InMemoryCredentials {
             });
         }
 
+        crate::credentials::oauth::auth_update(Some(&self.0.user));
+
         Ok(self.0)
     }
 }

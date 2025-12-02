@@ -39,3 +39,9 @@ pub struct GlobalContext<'a> {
 pub struct AuthContext {
     pub email: String,
 }
+
+impl<'a> GlobalContext<'a> {
+    pub fn logged_in(&self) -> bool {
+        self.auth_context.is_some()
+    }
+}

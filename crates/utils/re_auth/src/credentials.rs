@@ -43,7 +43,7 @@ impl CredentialsProvider for StaticCredentialsProvider {
 pub use oauth::{CliCredentialsProvider, subscribe_auth_changes};
 
 #[cfg(feature = "oauth")]
-mod oauth {
+pub(crate) mod oauth {
     use super::{CredentialsProvider, CredentialsProviderError, Jwt};
     use crate::oauth;
     use crate::oauth::{Credentials, load_and_refresh_credentials};
@@ -56,7 +56,7 @@ mod oauth {
     static AUTH_SUBSCRIBERS: std::sync::Mutex<Vec<Box<dyn Fn(Option<oauth::User>) + Send>>> =
         std::sync::Mutex::new(Vec::new());
 
-    fn auth_update(user: Option<&oauth::User>) {
+    pub(crate) fn auth_update(user: Option<&oauth::User>) {
         let subscribers = AUTH_SUBSCRIBERS.lock().unwrap();
         for sub in &*subscribers {
             sub(user.cloned());
