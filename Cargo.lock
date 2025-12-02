@@ -9627,7 +9627,6 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "serde",
- "sha2",
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
