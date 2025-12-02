@@ -340,20 +340,21 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             let StreamFooter {
                                 fourcc: _,
                                 identifier: _,
-                                rrd_footer_byte_offset_from_start_excluding_header:
-                                    rrd_manifest_byte_offset_from_start_excluding_header,
-                                rrd_footer_byte_size_excluding_header:
-                                    rrd_manifest_byte_size_excluding_header,
+                                rrd_footer_byte_offset_from_start_excluding_header,
+                                rrd_footer_byte_size_excluding_header,
                                 crc_excluding_header: _,
                             } = footer;
 
-                            let start = rrd_manifest_byte_offset_from_start_excluding_header;
-                            let end = start + rrd_manifest_byte_size_excluding_header;
+                            let rrd_footer_start =
+                                rrd_footer_byte_offset_from_start_excluding_header;
+                            let rrd_footer_end =
+                                rrd_footer_start + rrd_footer_byte_size_excluding_header;
 
-                            if end > position as u64 {
-                                // The RRD manifest cannot possibly end after the footer starts.
+                            if rrd_footer_end > position as u64 {
+                                // The RRD footer cannot possibly end after the stream footer starts, since it must
+                                // be part of an ::End message.
                                 re_log::error!(
-                                    position = self.byte_chunks.num_read(),
+                                    position,
                                     bytes = ?bytes,
                                     ?footer,
                                     err = "offsets are invalid",
@@ -372,7 +373,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             // of bubbling up errors all the way to the end user, merely log one here stop the state
                             // machine forever.
                             re_log::error!(
-                                position = self.byte_chunks.num_read(),
+                                position,
                                 bytes = ?bytes,
                                 %err,
                                 "corrupt footer in rrd stream"
