@@ -20,28 +20,10 @@ use re_datafusion::DataframeQueryTableProvider;
 
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_perf_telemetry::extract_trace_context_from_contextvar;
-
-/// Create a tracing span with optional distributed tracing context propagation
-macro_rules! with_trace_span {
-    ($py:expr, $span_name:expr, $body:block) => {{
-        let trace_headers = extract_trace_context_from_contextvar($py);
-        if !trace_headers.traceparent.is_empty() {
-            let parent_ctx =
-                re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(
-                    |prop| prop.extract(&trace_headers),
-                );
-            let _guard = parent_ctx.attach();
-            let _span = tracing::span!(tracing::Level::INFO, $span_name).entered();
-            $body
-        } else {
-            let _span = tracing::span!(tracing::Level::INFO, $span_name).entered();
-            $body
-        }
-    }};
-}
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
+use crate::catalog::trace_context::with_trace_span;
 use crate::catalog::{PyDatasetEntryInternal, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 

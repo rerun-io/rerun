@@ -192,19 +192,6 @@ impl From<&TraceHeaders> for opentelemetry::Context {
 
 // ---
 
-/// Simple extractor for `HashMap<String, String>` to work with `OpenTelemetry` propagation
-pub struct HashMapExtractor<'a>(pub &'a std::collections::HashMap<String, String>);
-
-impl opentelemetry::propagation::Extractor for HashMapExtractor<'_> {
-    fn get(&self, key: &str) -> Option<&str> {
-        self.0.get(key).map(|s| s.as_str())
-    }
-
-    fn keys(&self) -> Vec<&str> {
-        self.0.keys().map(|s| s.as_str()).collect()
-    }
-}
-
 /// The name of the `ContextVar` used for trace context propagation
 pub const TRACE_CONTEXT_VAR_NAME: &str = "TRACE_CONTEXT";
 

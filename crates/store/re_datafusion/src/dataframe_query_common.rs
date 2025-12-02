@@ -49,6 +49,8 @@ pub struct DataframeQueryTableProvider {
     sort_index: Option<Index>,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
+    /// passing trace headers between phases of execution pipeline helps keep
+    /// the entire operation under a single trace.
     trace_headers: Option<re_perf_telemetry::TraceHeaders>,
 }
 
@@ -268,6 +270,7 @@ impl TableProvider for DataframeQueryTableProvider {
             Arc::clone(&self.chunk_info_batches),
             query_expression,
             self.client.clone(),
+            self.trace_headers.clone(),
         )
         .map(Arc::new)
         .map(|exec| {
