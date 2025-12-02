@@ -242,10 +242,7 @@ impl DatasetChunkIndexes {
 
         for (index, segment_id, layer_name, chunk) in worklist {
             index
-                .store_chunks(
-                    vec![(segment_id.clone(), layer_name, chunk.clone())],
-                    true,
-                )
+                .store_chunks(vec![(segment_id.clone(), layer_name, chunk.clone())], true)
                 .await?;
         }
 
@@ -353,8 +350,8 @@ mod tests {
 
     use super::*;
     use arrow::array::{
-        ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder,
-        Float32Array, Float32Builder, ListBuilder, RecordBatch,
+        ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder, Float32Array,
+        Float32Builder, ListBuilder, RecordBatch,
     };
     use arrow::buffer::ScalarBuffer;
     use nohash_hasher::IntMap;
