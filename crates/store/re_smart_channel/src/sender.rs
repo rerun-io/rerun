@@ -1,17 +1,19 @@
 use std::sync::Arc;
 
+use re_log_types::DataSourceMessage;
+
 use crate::{Channel, SendError, SmartMessage, SmartMessagePayload, SmartMessageSource};
 
 #[derive(Clone)]
-pub struct Sender<T: Send> {
-    tx: crossbeam::channel::Sender<SmartMessage<T>>,
+pub struct LogSender {
+    tx: crossbeam::channel::Sender<SmartMessage>,
     source: Arc<SmartMessageSource>,
     channel: Arc<Channel>,
 }
 
-impl<T: Send> Sender<T> {
+impl LogSender {
     pub(crate) fn new(
-        tx: crossbeam::channel::Sender<SmartMessage<T>>,
+        tx: crossbeam::channel::Sender<SmartMessage>,
         source: Arc<SmartMessageSource>,
         channel: Arc<Channel>,
     ) -> Self {
@@ -23,7 +25,7 @@ impl<T: Send> Sender<T> {
     }
 
     /// Send a message to the receiver
-    pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
+    pub fn send(&self, msg: DataSourceMessage) -> Result<(), SendError<Box<DataSourceMessage>>> {
         let source = Arc::clone(&self.source);
 
         // NOTE: We should never be sending a message with an unknown source.
@@ -33,12 +35,10 @@ impl<T: Send> Sender<T> {
 
         self.tx
             .send(SmartMessage { source, payload })
-            .map_err(|SendError(msg)| SendError(msg.payload))
-            .map_err(|SendError(msg)| match msg {
-                SmartMessagePayload::Msg(msg) => SendError(msg),
+            .map_err(|SendError(msg)| match msg.payload {
+                SmartMessagePayload::Msg(msg) => SendError(Box::new(msg)),
                 SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
             })?;
-
         if let Some(waker) = self.channel.waker.read().as_ref() {
             (waker)();
         }
@@ -88,14 +88,16 @@ impl<T: Send> Sender<T> {
     pub fn quit(
         &self,
         err: Option<Box<dyn std::error::Error + Send>>,
-    ) -> Result<(), SendError<SmartMessage<T>>> {
+    ) -> Result<(), SendError<Box<SmartMessage>>> {
         // NOTE: We should never be sending a message with an unknown source.
         debug_assert!(!matches!(*self.source, SmartMessageSource::Unknown));
 
-        self.tx.send(SmartMessage {
-            source: Arc::clone(&self.source),
-            payload: SmartMessagePayload::Quit(err),
-        })?;
+        self.tx
+            .send(SmartMessage {
+                source: Arc::clone(&self.source),
+                payload: SmartMessagePayload::Quit(err),
+            })
+            .map_err(|SendError(msg)| SendError(Box::new(msg)))?;
 
         if let Some(waker) = self.channel.waker.read().as_ref() {
             (waker)();

@@ -3,17 +3,18 @@
 use std::sync::Arc;
 
 use parking_lot::RwLock;
+use re_log_types::DataSourceMessage;
 use re_uri::RedapUri;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
-mod log_channel;
 mod receiver;
+mod receiver_set;
 mod sender;
 
-pub use self::log_channel::{LogReceiver, LogReceiverSet, LogSender, log_channel};
-pub use self::receiver::Receiver;
-pub use self::sender::Sender;
+pub use self::receiver::LogReceiver;
+pub use self::receiver_set::LogReceiverSet;
+pub use self::sender::LogSender;
 
 // --- Source ---
 
@@ -277,26 +278,17 @@ pub(crate) struct Channel {
     waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
-pub(crate) fn smart_channel<T: Send>(
-    sender_source: SmartMessageSource,
-    source: SmartChannelSource,
-) -> (Sender<T>, Receiver<T>) {
-    let stats = Arc::new(Channel::default());
-    smart_channel_with_stats(sender_source, Arc::new(source), stats)
-}
+/// Create a new communication channel for [`re_log_types::DataSourceMessage`].
+pub fn log_channel(
+    msg_src: crate::SmartMessageSource,
+    channel_src: crate::SmartChannelSource,
+) -> (LogSender, LogReceiver) {
+    // TODO(emilk): add a back-channel to be used for controlling what data we load.
 
-/// Create a new channel using the same stats as some other.
-///
-/// This is a very leaky abstraction, and it would be nice to refactor some day
-pub(crate) fn smart_channel_with_stats<T: Send>(
-    sender_source: SmartMessageSource,
-    source: Arc<SmartChannelSource>,
-    stats: Arc<Channel>,
-) -> (Sender<T>, Receiver<T>) {
+    let channel = Arc::new(Channel::default());
     let (tx, rx) = crossbeam::channel::unbounded();
-    let sender_source = Arc::new(sender_source);
-    let sender = Sender::new(tx, sender_source, stats.clone());
-    let receiver = Receiver::new(rx, stats, source);
+    let sender = LogSender::new(tx, Arc::new(msg_src), channel.clone());
+    let receiver = LogReceiver::new(rx, channel, Arc::new(channel_src));
     (sender, receiver)
 }
 
@@ -305,9 +297,9 @@ pub(crate) fn smart_channel_with_stats<T: Send>(
 /// The payload of a [`SmartMessage`].
 ///
 /// Either data or an end-of-stream marker.
-pub enum SmartMessagePayload<T: Send> {
+pub enum SmartMessagePayload {
     /// A message sent down the channel.
-    Msg(T),
+    Msg(DataSourceMessage),
 
     /// When received, flush anything already received and then call the given callback.
     Flush {
@@ -320,7 +312,7 @@ pub enum SmartMessagePayload<T: Send> {
     Quit(Option<Box<dyn std::error::Error + Send>>),
 }
 
-impl<T: Send> std::fmt::Debug for SmartMessagePayload<T> {
+impl std::fmt::Debug for SmartMessagePayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Msg(_) => f.write_str("Msg(_)"),
@@ -330,78 +322,24 @@ impl<T: Send> std::fmt::Debug for SmartMessagePayload<T> {
     }
 }
 
-impl<T: Send + PartialEq> PartialEq for SmartMessagePayload<T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        match (self, rhs) {
-            (Self::Msg(msg1), Self::Msg(msg2)) => msg1.eq(msg2),
-            _ => false,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct SmartMessage<T: Send> {
+#[derive(Debug)]
+pub struct SmartMessage {
     pub source: Arc<SmartMessageSource>,
-    pub payload: SmartMessagePayload<T>,
+    pub payload: SmartMessagePayload,
 }
 
-impl<T: Send> SmartMessage<T> {
-    pub fn data(&self) -> Option<&T> {
+impl SmartMessage {
+    pub fn data(&self) -> Option<&DataSourceMessage> {
         match &self.payload {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
     }
 
-    pub fn into_data(self) -> Option<T> {
+    pub fn into_data(self) -> Option<DataSourceMessage> {
         match self.payload {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
     }
-}
-
-// ---
-
-#[test]
-fn test_smart_channel() {
-    let (tx, rx) = smart_channel(SmartMessageSource::Sdk, SmartChannelSource::Sdk); // whatever source
-
-    assert_eq!(tx.len(), 0);
-    assert_eq!(rx.len(), 0);
-
-    tx.send(42).unwrap();
-
-    assert_eq!(tx.len(), 1);
-    assert_eq!(rx.len(), 1);
-
-    std::thread::sleep(std::time::Duration::from_millis(10));
-
-    assert_eq!(rx.recv().map(|msg| msg.into_data()), Ok(Some(42)));
-
-    assert_eq!(tx.len(), 0);
-    assert_eq!(rx.len(), 0);
-}
-
-#[test]
-fn test_smart_channel_connected() {
-    let (tx1, rx) = smart_channel(SmartMessageSource::Sdk, SmartChannelSource::Sdk); // whatever source
-    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
-    assert!(rx.is_connected());
-
-    let tx2 = tx1.clone();
-    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
-    assert!(rx.is_connected());
-
-    tx2.send(42).unwrap();
-    assert_eq!(rx.try_recv().map(|msg| msg.into_data()), Ok(Some(42)));
-    assert!(rx.is_connected());
-
-    drop(tx1);
-    assert_eq!(rx.try_recv(), Err(TryRecvError::Empty));
-    assert!(rx.is_connected());
-
-    drop(tx2);
-    assert_eq!(rx.try_recv(), Err(TryRecvError::Disconnected));
-    assert!(!rx.is_connected());
 }

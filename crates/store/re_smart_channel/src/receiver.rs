@@ -5,16 +5,16 @@ use std::sync::{
 
 use crate::{Channel, SmartChannelSource, SmartMessage, TryRecvError};
 
-pub struct Receiver<T: Send> {
-    pub(crate) rx: crossbeam::channel::Receiver<SmartMessage<T>>,
+pub struct LogReceiver {
+    pub(crate) rx: crossbeam::channel::Receiver<SmartMessage>,
     pub(crate) channel: Arc<Channel>,
     pub(crate) source: Arc<SmartChannelSource>,
     connected: AtomicBool,
 }
 
-impl<T: Send> Receiver<T> {
+impl LogReceiver {
     pub(crate) fn new(
-        rx: crossbeam::channel::Receiver<SmartMessage<T>>,
+        rx: crossbeam::channel::Receiver<SmartMessage>,
         channel: Arc<Channel>,
         source: Arc<SmartChannelSource>,
     ) -> Self {
@@ -43,7 +43,7 @@ impl<T: Send> Receiver<T> {
     }
 
     #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
-    pub fn recv(&self) -> Result<SmartMessage<T>, crate::RecvError> {
+    pub fn recv(&self) -> Result<SmartMessage, crate::RecvError> {
         let Ok(msg) = self.rx.recv() else {
             self.connected.store(false, Relaxed);
             return Err(crate::RecvError);
@@ -52,7 +52,7 @@ impl<T: Send> Receiver<T> {
         Ok(msg)
     }
 
-    pub fn try_recv(&self) -> Result<SmartMessage<T>, TryRecvError> {
+    pub fn try_recv(&self) -> Result<SmartMessage, TryRecvError> {
         let msg = match self.rx.try_recv() {
             Ok(x) => x,
             Err(err) => {
@@ -70,7 +70,7 @@ impl<T: Send> Receiver<T> {
     pub fn recv_timeout(
         &self,
         timeout: std::time::Duration,
-    ) -> Result<SmartMessage<T>, crate::RecvTimeoutError> {
+    ) -> Result<SmartMessage, crate::RecvTimeoutError> {
         let msg = match self.rx.recv_timeout(timeout) {
             Ok(x) => x,
             Err(err) => {
@@ -100,21 +100,5 @@ impl<T: Send> Receiver<T> {
     #[inline]
     pub fn len(&self) -> usize {
         self.rx.len()
-    }
-
-    /// Create a new channel that use the same stats as this one.
-    ///
-    /// This means both channels will see the same latency numbers.
-    ///
-    /// Care must be taken to use [`Self::recv_with_send_time`] and [`crate::Sender::send_at`].
-    /// This is a very leaky abstraction, and it would be nice with a refactor.
-    pub fn chained_channel(&self) -> (crate::Sender<T>, Self) {
-        crate::smart_channel_with_stats(
-            // NOTE: We cannot know yet, and it doesn't matter as the new sender will only be used
-            // to forward existing messages.
-            crate::SmartMessageSource::Unknown,
-            self.source.clone(),
-            self.channel.clone(),
-        )
     }
 }

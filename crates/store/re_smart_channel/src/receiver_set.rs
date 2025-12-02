@@ -3,8 +3,6 @@ use std::sync::Arc;
 use crossbeam::channel::Select;
 use parking_lot::Mutex;
 
-use re_log_types::DataSourceMessage;
-
 use crate::{RecvError, SmartChannelSource, SmartMessage};
 
 use super::LogReceiver;
@@ -106,7 +104,7 @@ impl LogReceiverSet {
 
     /// Blocks until a message is ready to be received,
     /// or we are empty.
-    pub fn recv(&self) -> Result<SmartMessage<DataSourceMessage>, RecvError> {
+    pub fn recv(&self) -> Result<SmartMessage, RecvError> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -119,16 +117,16 @@ impl LogReceiverSet {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx.rx);
+            sel.recv(&r.rx);
         }
 
         let oper = sel.select();
         let index = oper.index();
-        oper.recv(&rx[index].rx.rx).map_err(|_err| RecvError)
+        oper.recv(&rx[index].rx).map_err(|_err| RecvError)
     }
 
     /// Returns immediately if there is nothing to receive.
-    pub fn try_recv(&self) -> Option<(Arc<SmartChannelSource>, SmartMessage<DataSourceMessage>)> {
+    pub fn try_recv(&self) -> Option<(Arc<SmartChannelSource>, SmartMessage)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -140,12 +138,12 @@ impl LogReceiverSet {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx.rx);
+            sel.recv(&r.rx);
         }
 
         let oper = sel.try_select().ok()?;
         let index = oper.index();
-        if let Ok(msg) = oper.recv(&rx[index].rx.rx) {
+        if let Ok(msg) = oper.recv(&rx[index].rx) {
             return Some((rx[index].source.clone(), msg));
         }
 
@@ -163,7 +161,7 @@ impl LogReceiverSet {
     pub fn recv_timeout(
         &self,
         timeout: std::time::Duration,
-    ) -> Option<(Arc<SmartChannelSource>, SmartMessage<DataSourceMessage>)> {
+    ) -> Option<(Arc<SmartChannelSource>, SmartMessage)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -175,12 +173,12 @@ impl LogReceiverSet {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx.rx);
+            sel.recv(&r.rx);
         }
 
         let oper = sel.select_timeout(timeout).ok()?;
         let index = oper.index();
-        if let Ok(msg) = oper.recv(&rx[index].rx.rx) {
+        if let Ok(msg) = oper.recv(&rx[index].rx) {
             return Some((rx[index].source.clone(), msg));
         }
 
