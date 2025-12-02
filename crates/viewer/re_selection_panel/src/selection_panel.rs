@@ -563,74 +563,9 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
         String::new()
     };
 
-    let caches = ctx.viewer_ctx.store_context.caches;
-    let transform_cache = caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-        c.lock_transform_cache(ctx.recording())
-    });
-
     let property_content = list_item::PropertyContent::new("Coordinate frame")
         .value_fn(|ui, _| {
-            let frame_exists = transform_cache
-                .frame_id_registry()
-                .lookup_frame_id(TransformFrameIdHash::from_str(&frame_id))
-                .is_some();
-            let mut text_edit =
-                egui::TextEdit::singleline(&mut frame_id).hint_text(&frame_id_before);
-            if !frame_exists {
-                text_edit = text_edit.text_color(ui.tokens().error_fg_color);
-            }
-            let response = ui.add(text_edit);
-
-            let mut suggestions = transform_cache
-                .frame_id_registry()
-                .iter_frame_ids()
-                // Only show named frames.
-                .filter(|(_, id)| !id.is_entity_path_derived())
-                .filter_map(|(_, id)| id.strip_prefix(&frame_id))
-                .filter(|rest| !rest.is_empty())
-                .collect::<Vec<_>>();
-
-            suggestions.sort_unstable();
-
-            let width = response.rect.width();
-            egui::Popup::from_response(&response)
-                .style(re_ui::menu::menu_style())
-                .open((response.has_focus() || response.lost_focus()) && !suggestions.is_empty())
-                .show(|ui| {
-                    ui.set_width(width);
-
-                    egui::ScrollArea::vertical()
-                        .min_scrolled_height(350.0)
-                        .max_height(350.0)
-                        .show(ui, |ui| {
-                            for rest in suggestions {
-                                let mut job = egui::text::LayoutJob::default();
-                                job.append(
-                                    &frame_id,
-                                    0.0,
-                                    egui::TextFormat::simple(
-                                        ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                                        ui.tokens().text_default,
-                                    ),
-                                );
-                                job.append(
-                                    rest,
-                                    0.0,
-                                    egui::TextFormat::simple(
-                                        ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                                        ui.tokens().text_subdued,
-                                    ),
-                                );
-
-                                if ui
-                                    .add(egui::Button::new(job).min_size(egui::vec2(width, 0.0)))
-                                    .clicked()
-                                {
-                                    frame_id.push_str(rest);
-                                }
-                            }
-                        });
-                });
+            frame_id_edit(ctx, ui, &mut frame_id, &frame_id_before);
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
             crate::visualizer_ui::remove_and_reset_override_buttons(
@@ -670,6 +605,85 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             &TransformFrameId::new(&frame_id),
         );
     }
+}
+
+fn frame_id_edit(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    frame_id: &mut String,
+    frame_id_before: &String,
+) {
+    let caches = ctx.viewer_ctx.store_context.caches;
+    let transform_cache = caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+        c.lock_transform_cache(ctx.recording())
+    });
+
+    let frame_exists = transform_cache
+        .frame_id_registry()
+        .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
+        .is_some();
+    let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
+    if !frame_exists {
+        text_edit = text_edit.text_color(ui.tokens().error_fg_color);
+    }
+    let response = ui.add(text_edit);
+
+    let mut suggestions = transform_cache
+        .frame_id_registry()
+        .iter_frame_ids()
+        // Only show named frames.
+        .filter(|(_, id)| !id.is_entity_path_derived())
+        .filter_map(|(_, id)| id.strip_prefix(&*frame_id))
+        .filter(|rest| !rest.is_empty())
+        .collect::<Vec<_>>();
+
+    let suggestions_open =
+        (response.has_focus() || response.lost_focus()) && !suggestions.is_empty();
+
+    suggestions.sort_unstable();
+
+    let width = response.rect.width();
+
+    let suggestions_ui = |ui: &mut egui::Ui| {
+        for rest in suggestions {
+            let mut job = egui::text::LayoutJob::default();
+            job.append(
+                &*frame_id,
+                0.0,
+                egui::TextFormat::simple(
+                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
+                    ui.tokens().text_default,
+                ),
+            );
+            job.append(
+                rest,
+                0.0,
+                egui::TextFormat::simple(
+                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
+                    ui.tokens().text_subdued,
+                ),
+            );
+
+            if ui
+                .add(egui::Button::new(job).min_size(egui::vec2(width, 0.0)))
+                .clicked()
+            {
+                frame_id.push_str(rest);
+            }
+        }
+    };
+
+    egui::Popup::from_response(&response)
+        .style(re_ui::menu::menu_style())
+        .open(suggestions_open)
+        .show(|ui: &mut egui::Ui| {
+            ui.set_width(width);
+
+            egui::ScrollArea::vertical()
+                .min_scrolled_height(350.0)
+                .max_height(350.0)
+                .show(ui, suggestions_ui);
+        });
 }
 
 fn show_recording_properties(
