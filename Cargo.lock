@@ -8423,6 +8423,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "comfy-table",
+ "datafusion",
  "half",
  "insta",
  "itertools 0.14.0",
@@ -9402,7 +9403,6 @@ dependencies = [
  "anyhow",
  "arrow",
  "chrono",
- "datafusion",
  "futures",
  "insta",
  "itertools 0.14.0",
@@ -9597,6 +9597,8 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "lance",
+ "lance-index",
+ "lance-linalg",
  "nohash-hasher",
  "parking_lot",
  "re_arrow_util",
@@ -9616,9 +9618,11 @@ dependencies = [
  "re_types_core",
  "serde",
  "sha2",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
+ "tokio-util",
  "tonic",
  "tonic-web",
  "tower",
@@ -10130,7 +10134,6 @@ dependencies = [
  "ndarray",
  "nohash-hasher",
  "ordered-float 5.1.0",
- "parking_lot",
  "re_byte_size",
  "re_chunk_store",
  "re_component_ui",
@@ -10395,6 +10398,7 @@ dependencies = [
  "re_renderer",
  "re_smart_channel",
  "re_string_interner",
+ "re_tf",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -10423,10 +10427,12 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
+ "itertools 0.14.0",
  "nohash-hasher",
  "rayon",
  "re_context_menu",
  "re_entity_db",
+ "re_format",
  "re_log",
  "re_log_types",
  "re_renderer",
@@ -13012,10 +13018,11 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.47.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d486e75fbc4a6284398c5434f8fe371038f0ec845cbb9f3a3d7bcbcd9b692fb"
+checksum = "7a443c518c081ef29fafc4c53c32c6f8cba953b019854080214cad1e6d47c297"
 dependencies = [
+ "bytes",
  "egui",
  "egui_extras",
  "futures",

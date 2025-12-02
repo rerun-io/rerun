@@ -56,8 +56,8 @@ pub use self::{
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId},
     cache::{
         Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
-        SharablePlayableVideoStream, TensorStatsCache, VideoAssetCache, VideoStreamCache,
-        VideoStreamProcessingError,
+        SharablePlayableVideoStream, TensorStatsCache, TransformDatabaseStoreCache,
+        VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
     },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     command_sender::{

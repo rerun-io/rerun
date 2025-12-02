@@ -22,11 +22,11 @@ use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::{
     cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
-        ext::{Query, QueryLatestAt, QueryRange},
+        FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse,
+        ScanSegmentTableResponse,
+        ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
     },
     common::v1alpha1::ext::ScanParameters,
     headers::RerunHeadersInjectorExt as _,
@@ -109,33 +109,27 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let dataset_query = QueryDatasetRequest {
-            partition_ids: partition_ids
+            segment_ids: partition_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
             chunk_ids: vec![],
-            entity_paths: entity_paths
-                .into_iter()
-                .map(|p| (*p).clone().into())
-                .collect(),
+            entity_paths: entity_paths.into_iter().map(|p| (*p).clone()).collect(),
             select_all_entity_paths,
             fuzzy_descriptors,
             exclude_static_data: false,
             exclude_temporal_data: false,
-            query: Some(query.into()),
-            scan_parameters: Some(
-                ScanParameters {
-                    columns: FetchChunksRequest::required_column_names(),
-                    ..Default::default()
-                }
-                .into(),
-            ),
+            query: Some(query),
+            scan_parameters: Some(ScanParameters {
+                columns: FetchChunksRequest::required_column_names(),
+                ..Default::default()
+            }),
         };
 
         let response_stream = client
             .inner()
             .query_dataset(
-                tonic::Request::new(dataset_query)
+                tonic::Request::new(dataset_query.into())
                     .with_entry_id(dataset_id)
                     .map_err(|err| exec_datafusion_err!("{err}"))?,
             )
@@ -161,7 +155,7 @@ impl DataframeQueryTableProvider {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID,
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
         ));
 
         Ok(Self {
@@ -415,21 +409,24 @@ pub(crate) fn group_chunk_infos_by_partition_id(
 
     for batch in chunk_info_batches.as_ref() {
         let partition_ids = batch
-            .column_by_name("chunk_partition_id")
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
             .ok_or(exec_datafusion_err!(
-                "Unable to find chunk_partition_id column"
+                "Unable to find {} column",
+                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?
             .as_any()
             .downcast_ref::<StringArray>()
             .ok_or(exec_datafusion_err!(
-                "chunk_partition_id must be string type"
+                "{} must be string type",
+                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?;
 
         // group rows by partition ID
         let mut partition_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
         for (row_idx, partition_id) in partition_ids.iter().enumerate() {
             let pid = partition_id.ok_or(exec_datafusion_err!(
-                "Found null partition_id in chunk_partition_id column at row {row_idx}"
+                "Found null segment id in {} column at row {row_idx}",
+                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?;
             partition_rows
                 .entry(pid.to_owned())
@@ -532,19 +529,19 @@ mod tests {
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                Field::new("chunk_partition_id", DataType::Utf8, false),
-                Field::new("chunk_id", DataType::FixedSizeBinary(32), false),
+                QueryDatasetResponse::field_chunk_segment_id(),
+                QueryDatasetResponse::field_chunk_id(),
             ],
             HashMap::default(),
         ));
 
         let capacity = 4;
-        let byte_width = 32;
+        let byte_width = 16;
         let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
-        chunk_id_builder.append_value([0u8; 32]).unwrap();
-        chunk_id_builder.append_value([1u8; 32]).unwrap();
-        chunk_id_builder.append_value([2u8; 32]).unwrap();
-        chunk_id_builder.append_value([3u8; 32]).unwrap();
+        chunk_id_builder.append_value([0u8; 16]).unwrap();
+        chunk_id_builder.append_value([1u8; 16]).unwrap();
+        chunk_id_builder.append_value([2u8; 16]).unwrap();
+        chunk_id_builder.append_value([3u8; 16]).unwrap();
         let chunk_id_array = Arc::new(chunk_id_builder.finish());
 
         let batch1 = RecordBatch::try_new_with_options(
@@ -563,9 +560,9 @@ mod tests {
         .unwrap();
 
         let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
-        chunk_id_builder.append_value([4u8; 32]).unwrap();
-        chunk_id_builder.append_value([5u8; 32]).unwrap();
-        chunk_id_builder.append_value([6u8; 32]).unwrap();
+        chunk_id_builder.append_value([4u8; 16]).unwrap();
+        chunk_id_builder.append_value([5u8; 16]).unwrap();
+        chunk_id_builder.append_value([6u8; 16]).unwrap();
         let chunk_id_array = Arc::new(chunk_id_builder.finish());
 
         let batch2 = RecordBatch::try_new_with_options(
@@ -593,8 +590,8 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_a.len(), 2);
-        assert_eq!(chunk_ids_a.value(0), [0u8; 32]);
-        assert_eq!(chunk_ids_a.value(1), [2u8; 32]);
+        assert_eq!(chunk_ids_a.value(0), [0u8; 16]);
+        assert_eq!(chunk_ids_a.value(1), [2u8; 16]);
 
         let group_b = grouped.get("B").unwrap();
         assert_eq!(group_b.len(), 2);
@@ -605,7 +602,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_b1.len(), 1);
-        assert_eq!(chunk_ids_b1.value(0), [1u8; 32]);
+        assert_eq!(chunk_ids_b1.value(0), [1u8; 16]);
         let chunk_ids_b2 = group_b[1]
             .column_by_name("chunk_id")
             .unwrap()
@@ -613,7 +610,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_b2.len(), 1);
-        assert_eq!(chunk_ids_b2.value(0), [4u8; 32]);
+        assert_eq!(chunk_ids_b2.value(0), [4u8; 16]);
 
         let group_c = grouped.get("C").unwrap();
         assert_eq!(group_c.len(), 2);
@@ -624,7 +621,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_c1.len(), 1);
-        assert_eq!(chunk_ids_c1.value(0), [3u8; 32]);
+        assert_eq!(chunk_ids_c1.value(0), [3u8; 16]);
         let chunk_ids_c2 = group_c[1]
             .column_by_name("chunk_id")
             .unwrap()
@@ -632,7 +629,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_c2.len(), 1);
-        assert_eq!(chunk_ids_c2.value(0), [5u8; 32]);
+        assert_eq!(chunk_ids_c2.value(0), [5u8; 16]);
 
         let group_d = grouped.get("D").unwrap();
         assert_eq!(group_d.len(), 1);
@@ -643,6 +640,6 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_d.len(), 1);
-        assert_eq!(chunk_ids_d.value(0), [6u8; 32]);
+        assert_eq!(chunk_ids_d.value(0), [6u8; 16]);
     }
 }

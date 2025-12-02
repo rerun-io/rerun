@@ -1002,19 +1002,15 @@ fn connect_to_existing_server(
     for rx in receivers.log_receivers {
         while rx.is_connected() {
             while let Ok(msg) = rx.recv() {
-                if let Some(log_msg) = msg.into_data() {
-                    match log_msg {
+                if let Some(msg) = msg.into_data() {
+                    match msg {
                         DataSourceMessage::LogMsg(log_msg) => {
                             sink.send(log_msg);
                         }
-                        DataSourceMessage::TableMsg(_) => {
+                        unsupported => {
                             re_log::error_once!(
-                                "Received a Table message, can't pass this on to the server"
-                            );
-                        }
-                        DataSourceMessage::UiCommand(ui_command) => {
-                            re_log::error_once!(
-                                "Received a UI command, can't pass this on to the server: {ui_command:?}"
+                                "Can't pass on {} to the server",
+                                unsupported.variant_name()
                             );
                         }
                     }
@@ -1214,6 +1210,22 @@ fn assert_receive_into_entity_db(
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         match msg {
+                            DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                                let mut_db =
+                                    match store_id.kind() {
+                                        re_log_types::StoreKind::Recording => rec
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(store_id.clone())
+                                            }),
+                                        re_log_types::StoreKind::Blueprint => bp
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(store_id.clone())
+                                            }),
+                                    };
+
+                                mut_db.add_chunk_index_message(chunk_index);
+                            }
+
                             DataSourceMessage::LogMsg(msg) => {
                                 let mut_db =
                                     match msg.store_id().kind() {
@@ -1357,12 +1369,10 @@ fn stream_to_rrd_on_disk(
                     DataSourceMessage::LogMsg(log_msg) => {
                         encoder.append(&log_msg)?;
                     }
-                    DataSourceMessage::TableMsg(_) => {
-                        re_log::error_once!("Received a TableMsg which can't be stored in a file");
-                    }
-                    DataSourceMessage::UiCommand(ui_command) => {
+                    unsupported => {
                         re_log::error_once!(
-                            "Received a UI command which can't be stored in a file: {ui_command:?}"
+                            "Received a {} which can't be stored in a file",
+                            unsupported.variant_name()
                         );
                     }
                 }

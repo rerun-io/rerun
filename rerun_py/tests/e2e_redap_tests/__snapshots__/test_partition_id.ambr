@@ -1,7 +1,7 @@
 # serializer version: 1
 # name: test_partition_ids
   ┌──────────────────────────────────┬───────────────────┬──────────────────┐
-  │ rerun_partition_id               ┆ rerun_layer_names ┆ rerun_num_chunks │
+  │ rerun_segment_id                 ┆ rerun_layer_names ┆ rerun_num_chunks │
   │ ---                              ┆ ---               ┆ ---              │
   │ type: Utf8                       ┆ type: List[Utf8]  ┆ type: u64        │
   ╞══════════════════════════════════╪═══════════════════╪══════════════════╡

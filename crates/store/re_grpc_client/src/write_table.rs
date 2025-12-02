@@ -21,6 +21,8 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, tonic:
             .assume_http2(true),
     )?;
 
+    endpoint = endpoint.http2_adaptive_window(true); // Optimize for throughput
+
     if false {
         // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
         endpoint = endpoint.initial_stream_window_size(Some(4 * 1024 * 1024));

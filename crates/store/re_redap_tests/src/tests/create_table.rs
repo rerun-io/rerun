@@ -1,4 +1,4 @@
-use crate::SchemaExt as _;
+use crate::SchemaTestExt as _;
 use arrow::datatypes::{DataType, Field, Schema};
 use re_protos::cloud::v1alpha1::GetTableSchemaRequest;
 use re_protos::cloud::v1alpha1::ext::{

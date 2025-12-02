@@ -78,101 +78,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### Transform hierarchy
-/// ```ignore
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
-///
-///     // TODO(#5521): log two views as in the python example
-///
-///     rec.set_duration_secs("sim_time", 0.0);
-///
-///     // Planetary motion is typically in the XY plane.
-///     rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?;
-///
-///     // Setup spheres, all are in the center of their own space:
-///     rec.log(
-///         "sun",
-///         &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[1.0, 1.0, 1.0]])
-///             .with_colors([rerun::Color::from_rgb(255, 200, 10)])
-///             .with_fill_mode(rerun::components::FillMode::Solid),
-///     )?;
-///
-///     rec.log(
-///         "sun/planet",
-///         &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.4, 0.4, 0.4]])
-///             .with_colors([rerun::Color::from_rgb(40, 80, 200)])
-///             .with_fill_mode(rerun::components::FillMode::Solid),
-///     )?;
-///
-///     rec.log(
-///         "sun/planet/moon",
-///         &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.15, 0.15, 0.15]])
-///             .with_colors([rerun::Color::from_rgb(180, 180, 180)])
-///             .with_fill_mode(rerun::components::FillMode::Solid),
-///     )?;
-///
-///     // Draw fixed paths where the planet & moon move.
-///     let d_planet = 6.0;
-///     let d_moon = 3.0;
-///     let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);
-///     let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();
-///     rec.log(
-///         "sun/planet_path",
-///         &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(
-///             circle
-///                 .iter()
-///                 .map(|p| [p[0] * d_planet, p[1] * d_planet, 0.0]),
-///         )]),
-///     )?;
-///     rec.log(
-///         "sun/planet/moon_path",
-///         &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(
-///             circle.iter().map(|p| [p[0] * d_moon, p[1] * d_moon, 0.0]),
-///         )]),
-///     )?;
-///
-///     // Movement via transforms.
-///     for i in 0..(6 * 120) {
-///         let time = i as f32 / 120.0;
-///         rec.set_duration_secs("sim_time", time);
-///         let r_moon = time * 5.0;
-///         let r_planet = time * 2.0;
-///
-///         rec.log(
-///             "sun/planet",
-///             &rerun::Transform3D::from_translation_rotation(
-///                 [r_planet.sin() * d_planet, r_planet.cos() * d_planet, 0.0],
-///                 rerun::RotationAxisAngle {
-///                     axis: [1.0, 0.0, 0.0].into(),
-///                     angle: rerun::Angle::from_degrees(20.0),
-///                 },
-///             ),
-///         )?;
-///         rec.log(
-///             "sun/planet/moon",
-///             &rerun::Transform3D::from_translation([
-///                 r_moon.cos() * d_moon,
-///                 r_moon.sin() * d_moon,
-///                 0.0,
-///             ])
-///             .with_relation(rerun::TransformRelation::ChildFromParent),
-///         )?;
-///     }
-///
-///     Ok(())
-/// }
-/// ```
-/// <center>
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/1200w.png">
-///   <img src="https://static.rerun.io/transform_hierarchy/cb7be7a5a31fcb2efc02ba38e434849248f87554/full.png" width="640">
-/// </picture>
-/// </center>
-///
 /// ### Update a transform over time
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -379,8 +284,6 @@ pub struct Transform3D {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub child_frame: Option<SerializedComponentBatch>,
 
     /// The parent frame this transform transforms into.
@@ -391,8 +294,6 @@ pub struct Transform3D {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     pub parent_frame: Option<SerializedComponentBatch>,
 }
 
@@ -938,8 +839,6 @@ impl Transform3D {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #[inline]
     pub fn with_child_frame(
         mut self,
@@ -970,8 +869,6 @@ impl Transform3D {
     /// To set the frame an entity is part of see [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    ///
-    /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     #[inline]
     pub fn with_parent_frame(
         mut self,
