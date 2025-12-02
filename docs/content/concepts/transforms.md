@@ -13,7 +13,7 @@ This page details how the [different archetypes](https://rerun.io/docs/reference
 The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
 The simplest way to use transforms is through entity path hierarchies, where each transform describes the relationship between an entity and its parent path.
-Note that by default, all entities are connected via identity transforms (to opt out of that, you have to use explicit transform frames, more on that later).
+Note that by default, all entities are connected via identity transforms (to opt out of that, you have to use named transform frames, more on that later).
 
 snippet: concepts/transform3d_hierarchy_simple
 
@@ -25,10 +25,10 @@ In this hierarchy:
 This creates a transform hierarchy where transforms propagate down the entity tree. The moon's final position in the sun's coordinate system is 9 units away (6 + 3),
 because the transforms are applied sequentially.
 
-## Explicit transform frames
+## Named transform frames
 
 While entity path hierarchies work well for many cases, sometimes you need more flexibility in organizing your transforms.
-In particular for anyone familiar with ROS we recommend using explicit transform frames as it allows you to model
+In particular for anyone familiar with ROS we recommend using named transform frames as it allows you to model
 your data much closer to how it would be defined when using ROS' [tf2](https://wiki.ros.org/tf2) library.
 
 In a nutshell, by explicitly specifying transform frames, you can decouple the spatial relationships from the entity hierarchy.
@@ -44,10 +44,10 @@ TODO: make tested cross language snippet
 import rerun as rr
 import numpy as np
 
-rr.init("explicit_frames_example", spawn=True)
+rr.init("named_frames_example", spawn=True)
 rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
-# Define entities with explicit coordinate frames
+# Define entities with named coordinate frames
 rr.log("sun", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[1, 1, 1], colors=[255, 200, 10]),
        rr.CoordinateFrame("sun_frame"))
 rr.log("planet", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[0.4, 0.4, 0.4], colors=[40, 80, 200]),
@@ -58,14 +58,14 @@ rr.log("moon", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[0.15, 0.15, 0.15],
 # Connect the viewer to the sun's coordinate frame
 rr.log("/", rr.CoordinateFrame("sun_frame"))
 
-# Define explicit frame relationships
+# Define frame relationships
 rr.log("planet_transform", rr.Transform3D(
     translation=[6.0, 0.0, 0.0],
     child_frame="planet_frame",
     parent_frame="sun_frame"
 ))
 rr.log("moon_transform", rr.Transform3D(
-    translation=[3.0, 0.0, 0.0], 
+    translation=[3.0, 0.0, 0.0],
     child_frame="moon_frame",
     parent_frame="planet_frame"
 ))
@@ -113,7 +113,7 @@ rr.log("robot",
     rr.CoordinateFrame("tf#/robot"),
     rr.Transform3D(
         translation=[1, 0, 0],
-        child_frame="tf#/robot", 
+        child_frame="tf#/robot",
         parent_frame="tf#/"
     )
 )
@@ -121,11 +121,11 @@ rr.log("robot/arm",
     rr.CoordinateFrame("tf#/robot/arm"),
     rr.Transform3D(
         translation=[0, 1, 0],
-        child_frame="tf#/robot/arm", 
+        child_frame="tf#/robot/arm",
         parent_frame="tf#/robot"
     )
 )
-rr.log("robot/arm/gripper", 
+rr.log("robot/arm/gripper",
     rr.CoordinateFrame("tf#/robot/arm/gripper"),
     rr.Points3D([0, 0, 0])
 )
@@ -138,9 +138,9 @@ rr.log("robot/arm/gripper",
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/1024w.png">
 </picture>
 
-### Mixing explicit and implicit transform frames
+### Mixing named and implicit transform frames
 
-We generally do not recommend mixing explicit and implicit transform frames since it can get confusing,
+We generally do not recommend mixing named and implicit transform frames since it can get confusing,
 but doing so works seamlessly and can be useful in some situations.
 
 Example:
@@ -245,7 +245,7 @@ snippet: archetypes/mesh3d_instancing
 In this example, the mesh at `"shape"` is instantiated four times with different translations and rotations.
 The box at `"shape/box"` is not affected by its parent's instance poses and appears only once.
 
-<!-- 
+<!--
 
 ## Visualizing transforms
 
@@ -253,6 +253,6 @@ TODO(andreas, grtlr): write about how transforms can be visualized
 
 ## 2D Transforms
 
-TODO(#349): lack of 2d transforms
+TODO(#349): lack of 2D transforms
 
 -->
