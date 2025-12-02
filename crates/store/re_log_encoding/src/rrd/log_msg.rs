@@ -60,6 +60,16 @@ impl Encodable for re_protos::log_msg::v1alpha1::RrdFooter {
     }
 }
 
+impl Encodable for re_protos::log_msg::v1alpha1::RrdManifest {
+    fn to_rrd_bytes(&self, out: &mut Vec<u8>) -> Result<u64, CodecError> {
+        use re_protos::external::prost::Message as _;
+
+        let before = out.len() as u64;
+        self.encode(out)?;
+        Ok(out.len() as u64 - before)
+    }
+}
+
 // NOTE: This is implemented for `Option<_>` because, in the native RRD protocol, the message kind
 // might be `MessageKind::End` (signifying end-of-stream), which has no representation in our Protobuf
 // definitions. I.e. `MessageKind::End` yields `None`.

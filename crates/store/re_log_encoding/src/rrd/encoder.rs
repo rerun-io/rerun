@@ -1,15 +1,15 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-use std::borrow::Borrow;
+use std::{borrow::Borrow, collections::HashMap};
 
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, StoreId};
 use re_sorbet::SorbetError;
 
 use crate::{
     CodecError, Compression, Encodable as _, EncodingOptions, MessageHeader, MessageKind,
-    Serializer, StreamFooter, StreamHeader, ToTransport as _,
+    RrdManifestBuilder, Serializer, StreamFooter, StreamHeader, ToTransport as _,
 };
 
 // ----------------------------------------------------------------------------
@@ -103,10 +103,23 @@ struct FooterState {
     /// want to override the recording ID of each chunk with that one (because that's the existing
     /// behavior, certainly not because it's nice).
     recording_id_scope: Option<re_log_types::StoreId>,
+
+    manifests: HashMap<re_log_types::StoreId, ManifestState>,
+}
+
+/// The accumulated state for a specific RRD manifest.
+#[derive(Default)]
+struct ManifestState {
+    /// The accumulated recording IDs of each individual chunk, extracted from their `LogMsg`.
+    ///
+    /// This will only be used if [`FooterState::recording_id_scope`] is empty.
+    recording_ids: Vec<re_log_types::StoreId>,
+
+    /// The state of the RRD manifest currently being built.
+    manifest: RrdManifestBuilder,
 }
 
 impl FooterState {
-    #[expect(clippy::unnecessary_wraps)] // won't stay for long
     fn append(
         &mut self,
         _byte_span_excluding_header: re_span::Span<u64>,
@@ -117,16 +130,58 @@ impl FooterState {
                 self.recording_id_scope = Some(msg.info.store_id.clone());
             }
 
-            LogMsg::ArrowMsg(_, _) | LogMsg::BlueprintActivationCommand(_) => {}
+            LogMsg::ArrowMsg(store_id, msg) => {
+                // NOTE(1): The fact that this parses the `RecordBatch` back into an actual `Chunk`
+                // is a bit unfortunate, but really it's nowhere near as bad as one might think:
+                // the real costly work is to parse the IPC payload into a `RecordBatch` in the
+                // first place, but thankfully we don't have to repay that cost here.
+                // Not only that: keep in mind that this entire codepath is only taken when writing
+                // actual RRD files, so performance is generally IO bound anyway.
+                //
+                // NOTE(2): The fact that we also perform a Sorbet migration in the process is a
+                // bit weirder on the other hand, but then again this is generally not a new a
+                // problem: we tend to perform Sorbet migrations a bit too aggressively all over
+                // the place. We really need a layer that sits between the transport and
+                // application layer where one can accessed the parsed, unmigrated data.
+                let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch)?;
+
+                // See `self.recording_id_scope` for some explanations.
+                let recording_id = self
+                    .recording_id_scope
+                    .clone()
+                    .unwrap_or_else(|| store_id.clone());
+
+                // This line is important: it implies that if a recording doesn't have any data
+                // chunks at all, we do not even reserve an RRD manifest for it in the footer.
+                let ManifestState {
+                    recording_ids,
+                    manifest,
+                } = self.manifests.entry(recording_id.clone()).or_default();
+
+                recording_ids.push(recording_id);
+                manifest.append(&chunk_batch, byte_offset, byte_size)?;
+            }
+
+            LogMsg::BlueprintActivationCommand(_) => {}
         }
 
         Ok(())
     }
 
-    #[expect(clippy::unnecessary_wraps, clippy::unused_self)] // won't stay for long
     fn finish(self) -> Result<crate::RrdFooter, EncodeError> {
+        let manifests: Result<HashMap<StoreId, crate::RrdManifest>, _> = self
+            .manifests
+            .into_iter()
+            .map(|(store_id, state)| {
+                state
+                    .manifest
+                    .build(store_id.clone())
+                    .map(|m| (store_id, m))
+            })
+            .collect();
+
         Ok(crate::RrdFooter {
-            manifests: Default::default(),
+            manifests: manifests?,
         })
     }
 }
