@@ -3,7 +3,7 @@
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{Decodable as _, Encoder, RrdManifestBuilder, ToApplication as _};
-use re_log_types::{LogMsg, StoreId, external::re_tuid::Tuid};
+use re_log_types::{LogMsg, StoreId, build_log_time, external::re_tuid::Tuid};
 
 #[test]
 fn simple_manifest() {
@@ -91,7 +91,7 @@ fn footer_empty() {
 
 fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
     use re_log_types::{
-        TimeInt, build_frame_nr,
+        TimeInt, TimeType, Timeline, build_frame_nr,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
 
@@ -100,16 +100,28 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ty
 
     let entity_path = "my_entity";
 
+    fn build_elapsed(value: i64) -> (Timeline, TimeInt) {
+        (
+            Timeline::new("elapsed", TimeType::DurationNs),
+            TimeInt::saturated_temporal(value * 1e9 as i64),
+        )
+    }
+
+    fn build_timepoint(time: TimeInt) -> [(Timeline, TimeInt); 3] {
+        [
+            build_frame_nr(time),
+            build_log_time(time.into()),
+            build_elapsed(time.as_i64()),
+        ]
+    }
+
     [
-        // Single chunk with sequential, complete data
         {
-            // Sequential frames
             let frame1 = TimeInt::new_temporal(10);
             let frame2 = TimeInt::new_temporal(20);
             let frame3 = TimeInt::new_temporal(30);
             let frame4 = TimeInt::new_temporal(40);
 
-            // Data for each frame
             let points1 = MyPoint::from_iter(0..1);
             let points3 = MyPoint::from_iter(2..3);
             let points4 = MyPoint::from_iter(3..4);
@@ -120,17 +132,17 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ty
             Chunk::builder_with_id(next_chunk_id(), entity_path)
                 .with_sparse_component_batches(
                     next_row_id(),
-                    [build_frame_nr(frame1)],
+                    build_timepoint(frame1),
                     [(MyPoints::descriptor_points(), Some(&points1 as _))],
                 )
                 .with_sparse_component_batches(
                     next_row_id(),
-                    [build_frame_nr(frame2)],
+                    build_timepoint(frame2),
                     [(MyPoints::descriptor_colors(), Some(&colors2 as _))],
                 )
                 .with_sparse_component_batches(
                     next_row_id(),
-                    [build_frame_nr(frame3)],
+                    build_timepoint(frame3),
                     [
                         (MyPoints::descriptor_points(), Some(&points3 as _)),
                         (MyPoints::descriptor_colors(), Some(&colors3 as _)),
@@ -138,7 +150,7 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ty
                 )
                 .with_sparse_component_batches(
                     next_row_id(),
-                    [build_frame_nr(frame4)],
+                    build_timepoint(frame4),
                     [(MyPoints::descriptor_points(), Some(&points4 as _))],
                 )
                 .build()
