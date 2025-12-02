@@ -627,6 +627,7 @@ impl StoreInfo {
     /// Creates a new store info for testing purposes with a fixed store id.
     ///
     /// Most of the time we don't want to fix the store id since it is used as a key in static store subscribers, which might not get teared down after every test.
+    /// Use this only if the recording id may show up somewhere in the test output.
     pub fn testing_with_recording_id(recording_id: impl Into<RecordingId>) -> Self {
         // Do not use a version since it breaks snapshot tests on every update otherwise.
         Self::new_unversioned(
