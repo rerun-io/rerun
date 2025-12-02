@@ -7,12 +7,10 @@ use re_tf::{TransformFrameId, TransformFrameIdHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
 use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, ViewContext, ViewContextSystem,
+    DataResult, IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
     ViewContextSystemOncePerFrameResult, typed_fallback_for,
 };
 use vec1::smallvec_v1::SmallVec1;
-
-use crate::caches::TransformDatabaseStoreCache;
 
 type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
 
