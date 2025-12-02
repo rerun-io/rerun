@@ -15,21 +15,7 @@ The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d
 The simplest way to use transforms is through entity path hierarchies, where each transform describes the relationship between an entity and its parent path.
 Note that by default, all entities are connected via identity transforms (to opt out of that, you have to use explicit transform frames, more on that later).
 
-TODO: make tested cross language snippet
-```python
-import rerun as rr
-
-rr.init("transform_hierarchy_example", spawn=True)
-
-# Log entities at their hierarchy positions
-rr.log("sun", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[1, 1, 1], colors=[255, 200, 10]))
-rr.log("sun/planet", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[0.4, 0.4, 0.4], colors=[40, 80, 200]))
-rr.log("sun/planet/moon", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[0.15, 0.15, 0.15], colors=[180, 180, 180]))
-
-# Define transforms - each describes the relationship to its parent
-rr.log("sun/planet", rr.Transform3D(translation=[6.0, 0.0, 0.0]))  # Planet 6 units from sun
-rr.log("sun/planet/moon", rr.Transform3D(translation=[3.0, 0.0, 0.0]))  # Moon 3 units from planet
-```
+snippet: concepts/transform3d_hierarchy_simple
 
 In this hierarchy:
 - The `sun` entity exists at the origin of its own coordinate system
