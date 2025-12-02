@@ -13,7 +13,7 @@ use lance::deps::arrow_array::UInt8Array;
 use re_chunk_store::Chunk;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
-use re_protos::common::v1alpha1::ext::SegmentId as PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::ComponentIdentifier;
 
 use crate::chunk_index::{
@@ -50,7 +50,7 @@ impl super::Index {
     /// Store chunks in the index.
     pub async fn store_chunks(
         &self,
-        chunks: Vec<(PartitionId, String, Arc<Chunk>)>,
+        chunks: Vec<(SegmentId, String, Arc<Chunk>)>,
         checkout_latest: bool,
     ) -> Result<(), StoreError> {
         let index_type: IndexType = (&self.config.properties).into();
@@ -59,10 +59,10 @@ impl super::Index {
 
         let batches = chunks
             .into_iter()
-            .filter_map(move |(partition_id, layer, chunk)| {
+            .filter_map(move |(segment_id, layer, chunk)| {
                 Self::prepare_record_batch(
                     index_type,
-                    &partition_id,
+                    &segment_id,
                     layer,
                     timeline,
                     component,
@@ -106,7 +106,7 @@ impl super::Index {
     /// Returns `None` if the chunk doesn't contain the `timeline` or the `component`.
     pub fn prepare_record_batch(
         index_type: IndexType,
-        partition_id: &PartitionId,
+        segment_id: &SegmentId,
         layer: String,
         timeline: TimelineName,
         component: ComponentIdentifier,
@@ -146,9 +146,9 @@ impl super::Index {
         // to the first element of the dictionary values array.
         let dict_keys = UInt8Array::from_iter_values(std::iter::repeat_n(0, total_instances));
 
-        let partition_id_array = {
-            let partition_id_values = StringArray::from_iter_values([partition_id.id.as_str()]);
-            DictionaryArray::new(dict_keys.clone(), Arc::new(partition_id_values))
+        let segment_id_array = {
+            let segment_id_values = StringArray::from_iter_values([segment_id.id.as_str()]);
+            DictionaryArray::new(dict_keys.clone(), Arc::new(segment_id_values))
         };
 
         let layer_array = {
@@ -219,7 +219,7 @@ impl super::Index {
         let batch = RecordBatch::try_from_iter([
             (
                 FIELD_RERUN_PARTITION_ID,
-                Arc::new(partition_id_array) as ArrayRef,
+                Arc::new(segment_id_array) as ArrayRef,
             ),
             (FIELD_RERUN_PARTITION_LAYER, Arc::new(layer_array)),
             (FIELD_CHUNK_ID, Arc::new(chunk_id_array)),

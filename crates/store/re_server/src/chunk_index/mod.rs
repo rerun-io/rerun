@@ -17,7 +17,7 @@ use re_protos::cloud::v1alpha1::{
     CreateIndexResponse, DeleteIndexesResponse, ListIndexesRequest, ListIndexesResponse,
     SearchDatasetResponse,
 };
-use re_protos::common::v1alpha1::ext::SegmentId as PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
 use std::ops::Deref as _;
@@ -210,7 +210,7 @@ impl DatasetChunkIndexes {
 
     pub async fn on_layer_added(
         &self,
-        partition_id: PartitionId,
+        segment_id: SegmentId,
         store: ChunkStoreHandle,
         layer_name: &str,
         _overwritten: bool,
@@ -230,7 +230,7 @@ impl DatasetChunkIndexes {
                             // Needs indexing
                             worklist.push((
                                 index.clone(),
-                                partition_id.clone(),
+                                segment_id.clone(),
                                 layer_name.to_owned(),
                                 chunk.clone(),
                             ));
@@ -240,10 +240,10 @@ impl DatasetChunkIndexes {
             }
         }
 
-        for (index, partition_id, layer_name, chunk) in worklist {
+        for (index, segment_id, layer_name, chunk) in worklist {
             index
                 .store_chunks(
-                    vec![(partition_id.clone(), layer_name, chunk.clone())],
+                    vec![(segment_id.clone(), layer_name, chunk.clone())],
                     true,
                 )
                 .await?;
@@ -303,14 +303,14 @@ impl DatasetChunkIndexes {
 
         // Backfill existing data in the index
         let mut backfill = Vec::new();
-        for (partition_id, partition) in dataset.partitions() {
+        for (segment_id, partition) in dataset.partitions() {
             for (layer_name, layer) in partition.layers() {
                 let store = layer.store_handle().read();
                 for chunk in store.iter_chunks() {
                     if chunk.entity_path() == entity_path
                         && chunk.components().0.contains_key(component)
                     {
-                        backfill.push((partition_id.clone(), layer_name.clone(), chunk.clone()));
+                        backfill.push((segment_id.clone(), layer_name.clone(), chunk.clone()));
                     }
                 }
             }
@@ -334,7 +334,7 @@ impl DatasetChunkIndexes {
 
     pub async fn on_layer_added(
         &self,
-        partition_id: PartitionId,
+        segment_id: SegmentId,
         store: ChunkStoreHandle,
         layer_name: &str,
         _overwritten: bool,
@@ -379,7 +379,7 @@ mod tests {
             Default::default(),
         );
 
-        let partition_id = PartitionId::new("test-partition".to_owned());
+        let segment_id = SegmentId::new("test-segment".to_owned());
         let layer_name = "test-layer".to_owned();
 
         let row_ids: FixedSizeBinaryArray = {
@@ -439,7 +439,7 @@ mod tests {
         let handle = ChunkStoreHandle::new(store);
 
         dataset
-            .add_layer(partition_id, layer_name, handle, IfDuplicateBehavior::Error)
+            .add_layer(segment_id, layer_name, handle, IfDuplicateBehavior::Error)
             .await?;
 
         //----- Create the index
