@@ -1,3 +1,3 @@
 mod instances;
 
-pub use self::instances::RrdFooter;
+pub use self::instances::{RrdFooter, RrdManifest};
