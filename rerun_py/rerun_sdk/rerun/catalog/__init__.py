@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rerun_bindings import (
+from rerun_bindings import (  # type: ignore[attr-defined]
     AlreadyExistsError as AlreadyExistsError,
     DataframeQueryView as DataframeQueryView,
     DataFusionTable as DataFusionTable,
@@ -14,10 +14,8 @@ from rerun_bindings import (
     Task as Task,
     Tasks as Tasks,
     VectorDistanceMetric as VectorDistanceMetric,
+    _rerun_trace_context as _rerun_trace_context,
 )
-
-# Conditionally compiled function - always exists at runtime but mypy can't verify
-from rerun_bindings import _rerun_trace_context as _rerun_trace_context  # type: ignore[attr-defined]
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,
     VectorDistanceMetricLike as VectorDistanceMetricLike,

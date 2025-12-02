@@ -16,7 +16,7 @@ version.workspace = true
 
 default = []
 
-## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
 ##
 ## This only works on native.
 perf_telemetry = ["dep:re_perf_telemetry"]
@@ -55,7 +55,7 @@ url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
+re_perf_telemetry = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tonic = { workspace = true, default-features = false, features = ["transport", "tls-native-roots"] }
 

@@ -1,5 +1,6 @@
 use pyo3::{Py, PyAny, PyResult, Python, pyfunction};
 
+#[cfg(feature = "perf_telemetry")]
 /// Create a tracing span with optional distributed tracing context propagation
 macro_rules! with_trace_span {
     ($py:expr, $span_name:expr, $body:block) => {{
@@ -19,6 +20,7 @@ macro_rules! with_trace_span {
     }};
 }
 
+#[cfg(feature = "perf_telemetry")]
 pub(crate) use with_trace_span;
 
 /// Get the trace context ContextVar for distributed tracing propagation.

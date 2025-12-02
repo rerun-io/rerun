@@ -144,7 +144,7 @@ wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
+re_perf_telemetry = { workspace = true, optional = true }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
