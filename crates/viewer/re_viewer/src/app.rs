@@ -1348,14 +1348,29 @@ impl App {
             })
         };
 
-        match data_source
+        let started_successfully = match data_source
             .clone()
             .stream(&self.connection_registry, Some(waker))
         {
-            Ok(rx) => self.add_log_receiver(rx),
+            Ok(rx) => {
+                self.add_log_receiver(rx);
+                true
+            }
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
+                false
             }
+        };
+
+        #[cfg(feature = "analytics")]
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+            let data_source_analytics = data_source.analytics();
+            analytics.record(re_analytics::event::LoadDataSource {
+                source_type: data_source_analytics.source_type,
+                file_extension: data_source_analytics.file_extension,
+                file_source: data_source_analytics.file_source,
+                started_successfully,
+            });
         }
     }
 

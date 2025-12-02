@@ -272,6 +272,92 @@ impl LogDataSource {
             Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
         }
     }
+
+    /// Returns analytics data for this data source.
+    pub fn analytics(&self) -> LogDataSourceAnalytics {
+        match self {
+            Self::RrdHttpUrl { url, .. } => {
+                let file_extension = std::path::Path::new(url.path())
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|s| s.to_lowercase());
+                LogDataSourceAnalytics {
+                    source_type: "http",
+                    file_extension,
+                    file_source: None,
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::FilePath(file_src, path) => {
+                let file_extension = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|s| s.to_lowercase());
+                LogDataSourceAnalytics {
+                    source_type: "file",
+                    file_extension,
+                    file_source: Some(Self::file_source_to_analytics_str(file_src)),
+                }
+            }
+
+            Self::FileContents(file_src, file_contents) => {
+                let file_extension = std::path::Path::new(&file_contents.name)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|s| s.to_lowercase());
+                LogDataSourceAnalytics {
+                    source_type: "file_contents",
+                    file_extension,
+                    file_source: Some(Self::file_source_to_analytics_str(file_src)),
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::Stdin => LogDataSourceAnalytics {
+                source_type: "stdin",
+                file_extension: None,
+                file_source: None,
+            },
+
+            Self::RedapDatasetPartition { .. } => LogDataSourceAnalytics {
+                source_type: "redap_grpc",
+                file_extension: None,
+                file_source: None,
+            },
+
+            Self::RedapProxy(_) => LogDataSourceAnalytics {
+                source_type: "redap_proxy",
+                file_extension: None,
+                file_source: None,
+            },
+        }
+    }
+
+    fn file_source_to_analytics_str(file_source: &re_log_types::FileSource) -> &'static str {
+        use re_log_types::FileSource;
+        match file_source {
+            FileSource::Cli => "cli",
+            FileSource::Uri => "uri",
+            FileSource::DragAndDrop { .. } => "drag_and_drop",
+            FileSource::FileDialog { .. } => "file_dialog",
+            FileSource::Sdk => "sdk",
+        }
+    }
+}
+
+/// Analytics data extracted from a [`LogDataSource`].
+#[derive(Clone, Debug)]
+pub struct LogDataSourceAnalytics {
+    /// The type of data source (e.g., "file", "http", ``redap_grpc``, "stdin").
+    pub source_type: &'static str,
+
+    /// The file extension if applicable (e.g., "rrd", "png", "glb").
+    pub file_extension: Option<String>,
+
+    /// How the file was opened (e.g., "cli", ``file_dialog``, ``drag_and_drop``).
+    /// Only applicable for file-based sources.
+    pub file_source: Option<&'static str>,
 }
 
 // TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
