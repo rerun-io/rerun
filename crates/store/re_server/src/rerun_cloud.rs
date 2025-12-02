@@ -993,7 +993,7 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_temporal_data,
             scan_parameters,
             query: _,
-        } = request.into_inner();
+        } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
             re_log::warn_once!(
@@ -1001,10 +1001,7 @@ impl RerunCloudService for RerunCloudHandler {
             );
         }
 
-        let entity_paths: IntSet<EntityPath> = entity_paths
-            .into_iter()
-            .map(EntityPath::try_from)
-            .collect::<Result<IntSet<EntityPath>, _>>()?;
+        let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
         if select_all_entity_paths && !entity_paths.is_empty() {
             return Err(tonic::Status::invalid_argument(
                 "cannot specify entity paths if `select_all_entity_paths` is true",
@@ -1042,8 +1039,8 @@ impl RerunCloudService for RerunCloudHandler {
                         continue;
                     }
 
-                    let tuid = chunk.id().as_tuid().into();
-                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&tuid) {
+                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&chunk.id())
+                    {
                         continue;
                     }
 
