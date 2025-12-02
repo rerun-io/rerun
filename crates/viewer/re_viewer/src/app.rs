@@ -1699,6 +1699,11 @@ impl App {
             UICommand::ToggleSelectionPanel => {
                 app_blueprint.toggle_selection_panel(&self.command_sender);
             }
+            UICommand::ExpandSelectionPanel => {
+                if !app_blueprint.selection_panel_state().is_expanded() {
+                    app_blueprint.toggle_selection_panel(&self.command_sender);
+                }
+            }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {

@@ -49,16 +49,6 @@ pub fn load_credentials() -> Result<Option<Credentials>, CredentialsLoadError> {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("failed to load credentials: {0}")]
-pub struct CredentialsClearError(#[from] storage::ClearError);
-
-pub fn clear_credentials() -> Result<(), CredentialsClearError> {
-    storage::clear()?;
-
-    Ok(())
-}
-
-#[derive(Debug, thiserror::Error)]
 pub enum CredentialsRefreshError {
     #[error("failed to refresh credentials: {0}")]
     Api(#[from] api::Error),
@@ -238,6 +228,14 @@ impl InMemoryCredentials {
     /// Ensure credentials are persisted to disk before using them.
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
         storage::store(&self.0)?;
+
+        // Link the analytics ID to the authenticated user
+        if let Some(analytics) = re_analytics::Analytics::global_get() {
+            analytics.record(re_analytics::event::SetPersonProperty {
+                email: self.0.user.email.clone(),
+            });
+        }
+
         Ok(self.0)
     }
 }
