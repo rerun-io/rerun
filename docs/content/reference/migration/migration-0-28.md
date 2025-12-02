@@ -66,7 +66,7 @@ on send and query!
 
 ## Python SDK: "partition" renamed to "segment" in catalog APIs
 
-<!-- TODO(ab): as I roll more API updates, I'll keep that section up-to-date --> 
+<!-- TODO(ab): as I roll more API updates, I'll keep that section up-to-date -->
 
 In the `rerun.catalog` module, all APIs using "partition" terminology have been renamed to use "segment" instead.
 The old APIs are deprecated and will be removed in a future release.
