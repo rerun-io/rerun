@@ -49,9 +49,10 @@ pub struct DataframeQueryTableProvider {
     sort_index: Option<Index>,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
+
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
-    trace_headers: Option<re_perf_telemetry::TraceHeaders>,
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 impl DataframeQueryTableProvider {
@@ -65,7 +66,7 @@ impl DataframeQueryTableProvider {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         partition_ids: &[impl AsRef<str> + Sync],
-        trace_headers: Option<re_perf_telemetry::TraceHeaders>,
+        trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 

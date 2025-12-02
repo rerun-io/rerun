@@ -49,9 +49,10 @@ const CPU_THREAD_IO_CHANNEL_SIZE: usize = 32;
 /// Returns a guard that must be kept alive for the duration of the traced scope.
 /// We can use this to ensure all phases of table provider's execution pipeline are
 /// parented by a single trace.
+#[cfg(not(target_arch = "wasm32"))]
 #[inline]
 fn attach_trace_context(
-    trace_headers: &Option<re_perf_telemetry::TraceHeaders>,
+    trace_headers: &Option<crate::TraceHeaders>,
 ) -> Option<re_perf_telemetry::external::opentelemetry::ContextGuard> {
     let headers = trace_headers.as_ref()?;
     if !headers.traceparent.is_empty() {
@@ -81,9 +82,10 @@ pub(crate) struct PartitionStreamExec {
     target_partitions: usize,
     worker_runtime: Arc<CpuRuntime>,
     client: ConnectionClient,
+
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
-    trace_headers: Option<re_perf_telemetry::TraceHeaders>,
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
@@ -105,7 +107,7 @@ pub struct DataframePartitionStreamInner {
 
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
-    trace_headers: Option<re_perf_telemetry::TraceHeaders>,
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 /// This is a temporary fix to minimize the impact of leaking memory
@@ -129,6 +131,7 @@ impl Stream for DataframePartitionStream {
             return Poll::Ready(None);
         };
 
+        #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(&this.trace_headers);
         let _span = tracing::info_span!("poll_next").entered();
 
@@ -206,7 +209,7 @@ impl PartitionStreamExec {
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         mut query_expression: QueryExpression,
         client: ConnectionClient,
-        trace_headers: Option<re_perf_telemetry::TraceHeaders>,
+        trace_headers: Option<crate::TraceHeaders>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -518,6 +521,7 @@ impl ExecutionPlan for PartitionStreamExec {
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
+        #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(&self.trace_headers);
         let _span = tracing::info_span!("execute").entered();
 

@@ -17,7 +17,6 @@ use tracing::instrument;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
-
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sdk::ComponentDescriptor;
