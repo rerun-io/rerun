@@ -158,48 +158,6 @@ impl From<&str> for crate::common::v1alpha1::SegmentId {
     }
 }
 
-// --- PartitionId (DEPRECATED - use SegmentId instead) ---
-
-/// DEPRECATED: Use [`SegmentId`] instead.
-#[deprecated(since = "0.24.0", note = "Use SegmentId instead")]
-pub type PartitionId = SegmentId;
-
-// Backward compatibility: convert from deprecated proto PartitionId to SegmentId
-impl TryFrom<crate::common::v1alpha1::PartitionId> for SegmentId {
-    type Error = TypeConversionError;
-
-    fn try_from(value: crate::common::v1alpha1::PartitionId) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: value
-                .id
-                .ok_or(missing_field!(crate::common::v1alpha1::PartitionId, "id"))?,
-        })
-    }
-}
-
-// Backward compatibility: convert SegmentId to deprecated proto PartitionId
-impl From<SegmentId> for crate::common::v1alpha1::PartitionId {
-    fn from(value: SegmentId) -> Self {
-        Self { id: Some(value.id) }
-    }
-}
-
-// shortcuts for deprecated proto PartitionId
-
-impl From<String> for crate::common::v1alpha1::PartitionId {
-    fn from(id: String) -> Self {
-        Self { id: Some(id) }
-    }
-}
-
-impl From<&str> for crate::common::v1alpha1::PartitionId {
-    fn from(id: &str) -> Self {
-        Self {
-            id: Some(id.to_owned()),
-        }
-    }
-}
-
 // --- DatasetHandle ---
 
 #[derive(Debug, Clone)]

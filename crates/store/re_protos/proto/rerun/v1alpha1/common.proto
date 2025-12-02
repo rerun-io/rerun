@@ -195,14 +195,6 @@ message SegmentId {
   optional string id = 1;
 }
 
-// DEPRECATED: Use SegmentId instead.
-// Kept for backward compatibility.
-message PartitionId {
-  option deprecated = true;
-
-  optional string id = 1;
-}
-
 message ComponentDescriptor {
   reserved 1;
   reserved "archetype_name";

@@ -674,12 +674,6 @@ pub struct QueryDatasetRequest {
     /// all segments will be queried.
     #[prost(message, repeated, tag = "11")]
     pub segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
-    /// DEPRECATED: Use segment_ids instead.
-    /// Client can specify what segments are queried. If left unspecified (empty list),
-    /// all segments will be queried.
-    #[deprecated]
-    #[prost(message, repeated, tag = "2")]
-    pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
     /// Client can specify specific chunk ids to include. If left unspecified (empty list),
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]
@@ -1511,11 +1505,6 @@ pub struct DatasetDetails {
     #[prost(message, optional, tag = "5")]
     pub default_blueprint_segment:
         ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
-    /// DEPRECATED: Use default_blueprint_segment instead.
-    /// The segment of the blueprint dataset corresponding to the default blueprint (if any).
-    #[deprecated]
-    #[prost(message, optional, tag = "4")]
-    pub default_blueprint: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
 }
 impl ::prost::Name for DatasetDetails {
     const NAME: &'static str = "DatasetDetails";

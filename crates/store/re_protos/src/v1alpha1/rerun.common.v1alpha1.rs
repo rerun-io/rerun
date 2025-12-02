@@ -346,23 +346,6 @@ impl ::prost::Name for SegmentId {
         "/rerun.common.v1alpha1.SegmentId".into()
     }
 }
-/// DEPRECATED: Use SegmentId instead.
-/// Kept for backward compatibility.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct PartitionId {
-    #[prost(string, optional, tag = "1")]
-    pub id: ::core::option::Option<::prost::alloc::string::String>,
-}
-impl ::prost::Name for PartitionId {
-    const NAME: &'static str = "PartitionId";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.PartitionId".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.PartitionId".into()
-    }
-}
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.

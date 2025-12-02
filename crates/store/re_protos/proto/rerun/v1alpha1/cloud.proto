@@ -525,11 +525,6 @@ message QueryDatasetRequest {
   // all segments will be queried.
   repeated rerun.common.v1alpha1.SegmentId segment_ids = 11;
 
-  // DEPRECATED: Use segment_ids instead.
-  // Client can specify what segments are queried. If left unspecified (empty list),
-  // all segments will be queried.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2 [deprecated = true];
-
   // Client can specify specific chunk ids to include. If left unspecified (empty list),
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
@@ -576,6 +571,8 @@ message QueryDatasetRequest {
 
   reserved 1;
   reserved "dataset_id";
+  reserved 2;
+  reserved "partition_ids";
 }
 
 message QueryDatasetResponse {
@@ -974,9 +971,8 @@ message DatasetDetails {
   // The segment of the blueprint dataset corresponding to the default blueprint (if any).
   optional rerun.common.v1alpha1.SegmentId default_blueprint_segment = 5;
 
-  // DEPRECATED: Use default_blueprint_segment instead.
-  // The segment of the blueprint dataset corresponding to the default blueprint (if any).
-  optional rerun.common.v1alpha1.PartitionId default_blueprint = 4 [deprecated = true];
+  reserved 4;
+  reserved "default_blueprint";
 }
 
 message DatasetEntry {

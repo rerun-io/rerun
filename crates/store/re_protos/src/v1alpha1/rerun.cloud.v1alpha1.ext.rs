@@ -108,15 +108,9 @@ impl Default for QueryDatasetRequest {
 }
 
 impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
-    #[expect(
-        deprecated,
-        reason = "We need to set partition_ids for backward compatibility"
-    )]
     fn from(value: QueryDatasetRequest) -> Self {
         Self {
             segment_ids: value.segment_ids.into_iter().map(Into::into).collect(),
-            // Keep partition_ids empty - we only use segment_ids for new code
-            partition_ids: vec![],
             chunk_ids: value
                 .chunk_ids
                 .into_iter()
@@ -136,26 +130,13 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
 impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetRequest {
     type Error = tonic::Status;
 
-    #[expect(
-        deprecated,
-        reason = "We need to read partition_ids for backward compatibility"
-    )]
     fn try_from(value: crate::cloud::v1alpha1::QueryDatasetRequest) -> Result<Self, Self::Error> {
         // Support both segment_ids (new) and partition_ids (deprecated) for backward compatibility
-        let segment_ids = if !value.segment_ids.is_empty() {
-            value
-                .segment_ids
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?
-        } else {
-            // Fallback to deprecated partition_ids
-            value
-                .partition_ids
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<Vec<_>, _>>()?
-        };
+        let segment_ids = value
+            .segment_ids
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Self {
             segment_ids,
@@ -615,21 +596,11 @@ impl DatasetDetails {
 impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
     type Error = TypeConversionError;
 
-    #[expect(
-        deprecated,
-        reason = "We need to read default_blueprint for backward compatibility"
-    )]
     fn try_from(value: crate::cloud::v1alpha1::DatasetDetails) -> Result<Self, Self::Error> {
-        // Support both default_blueprint_segment (new) and default_blueprint (deprecated)
-        let default_blueprint_segment = if value.default_blueprint_segment.is_some() {
-            value
-                .default_blueprint_segment
-                .map(TryInto::try_into)
-                .transpose()?
-        } else {
-            // Fallback to deprecated default_blueprint
-            value.default_blueprint.map(TryInto::try_into).transpose()?
-        };
+        let default_blueprint_segment = value
+            .default_blueprint_segment
+            .map(TryInto::try_into)
+            .transpose()?;
 
         Ok(Self {
             blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
@@ -639,16 +610,10 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
 }
 
 impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
-    #[expect(
-        deprecated,
-        reason = "We need to set default_blueprint for backward compatibility"
-    )]
     fn from(value: DatasetDetails) -> Self {
         Self {
             blueprint_dataset: value.blueprint_dataset.map(Into::into),
             default_blueprint_segment: value.default_blueprint_segment.clone().map(Into::into),
-            // Keep deprecated field empty - we only use default_blueprint_segment for new code
-            default_blueprint: None,
         }
     }
 }
