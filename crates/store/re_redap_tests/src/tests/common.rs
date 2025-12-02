@@ -18,7 +18,7 @@ use re_protos::{
 use re_types_core::AsComponents;
 
 use crate::{
-    RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,
+    RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
     create_recording_with_embeddings, create_recording_with_properties,
     create_recording_with_scalars, create_recording_with_text, create_simple_recording,
 };
@@ -104,7 +104,7 @@ async fn register_with_dataset(
 
     // extract task ids from the response record batch
     let task_ids = {
-        resp.column_by_name(RegisterWithDatasetResponse::TASK_ID)
+        resp.column_by_name(RegisterWithDatasetResponse::FIELD_TASK_ID)
             .expect("task_id column expected")
             .as_any()
             .downcast_ref::<arrow::array::StringArray>()

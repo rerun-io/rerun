@@ -13,7 +13,7 @@ use lance::deps::arrow_array::UInt8Array;
 use re_chunk_store::Chunk;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId as PartitionId;
 use re_types_core::ComponentIdentifier;
 
 use crate::chunk_index::{

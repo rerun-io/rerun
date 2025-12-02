@@ -29,6 +29,7 @@ re_tuid = { workspace = true, features = ["bytemuck"] }
 
 anyhow.workspace = true
 arrow.workspace = true
+datafusion.workspace = true
 half.workspace = true
 itertools.workspace = true
 serde_json.workspace = true

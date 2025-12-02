@@ -17,6 +17,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
+use re_auth::{
+    OauthLoginFlow,
+    oauth::{Credentials, login_flow::OauthLoginFlowState},
+};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -167,6 +171,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
+    m.add_class::<PyOauthLoginFlow>()?;
+    m.add_class::<PyCredentials>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -174,6 +180,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
         return Ok(());
     }
+
+    m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
+    m.add_function(wrap_pyfunction!(init_login_flow, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -2241,4 +2250,113 @@ authkey = multiprocessing.current_process().authkey
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
+}
+
+#[pyclass(name = "OauthLoginFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+struct PyOauthLoginFlow {
+    login_flow: OauthLoginFlow,
+}
+
+#[pymethods] // NOLINT: ignore[py-mthd-str]
+impl PyOauthLoginFlow {
+    /// Get the URL for the OAuth login flow.
+    fn login_url(&self) -> String {
+        self.login_flow.server.get_login_url().to_owned()
+    }
+
+    /// Finish the OAuth login flow.
+    ///
+    /// Returns
+    /// -------
+    /// Credentials
+    ///     The credentials of the logged in user.
+    fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
+        let result: Result<Credentials, re_auth::callback_server::Error> =
+            crate::utils::wait_for_future(py, async {
+                loop {
+                    let result = self.login_flow.poll().await?;
+                    match result {
+                        Some(credentials) => break Ok(credentials),
+                        None => tokio::time::sleep(Duration::from_millis(10)).await,
+                    }
+                }
+            });
+
+        result
+            .map(PyCredentials)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+#[pyfunction]
+/// Initialize an OAuth login flow.
+///
+/// Returns
+/// -------
+/// OauthLoginFlow | None
+///     The login flow, or `None` if the user is already logged in.
+fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyOauthLoginFlow>> {
+    let login_flow = crate::utils::wait_for_future(py, async { OauthLoginFlow::init(false).await })
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    match login_flow {
+        OauthLoginFlowState::AlreadyLoggedIn(_) => {
+            // Already logged in, no need to start a login flow.
+            Ok(None)
+        }
+        OauthLoginFlowState::LoginFlowStarted(login_flow) => {
+            Ok(Some(PyOauthLoginFlow { login_flow }))
+        }
+    }
+}
+
+#[pyclass(
+    frozen,
+    eq,
+    name = "Credentials",
+    module = "rerun_bindings.rerun_bindings"
+)]
+/// The credentials for the OAuth login flow.
+struct PyCredentials(Credentials);
+
+#[pymethods]
+impl PyCredentials {
+    #[getter]
+    /// The access token.
+    fn access_token(&self) -> String {
+        self.0.access_token().as_str().to_owned()
+    }
+
+    #[getter]
+    /// The user email.
+    fn user_email(&self) -> String {
+        self.0.user().email.clone()
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("<Credentials for '{}'>", self.user_email())
+    }
+}
+
+impl std::cmp::PartialEq for PyCredentials {
+    fn eq(&self, other: &Self) -> bool {
+        self.access_token() == other.access_token()
+    }
+}
+
+#[pyfunction]
+/// Returns the credentials for the current user.
+fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
+    let Some(credentials) = re_auth::oauth::load_credentials()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+    else {
+        // No credentials found.
+        return Ok(None);
+    };
+
+    let credentials = crate::utils::wait_for_future(py, async {
+        re_auth::oauth::refresh_credentials(credentials).await
+    })
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    Ok(Some(PyCredentials(credentials)))
 }

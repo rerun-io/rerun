@@ -72,4 +72,8 @@ impl VisualizerExecutionErrorState {
             Self::PerEntity(errors) => errors.get(path).cloned(),
         }
     }
+
+    pub fn is_overall(&self) -> bool {
+        matches!(self, Self::Overall(_))
+    }
 }

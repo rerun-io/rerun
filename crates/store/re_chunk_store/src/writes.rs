@@ -8,8 +8,9 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
-    ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
+    ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
+    ChunkStoreDiffKind, ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
+    store::ChunkIdSetPerTime,
 };
 
 // ---
@@ -42,15 +43,28 @@ impl ChunkStore {
             return Ok(vec![]);
         }
 
-        let split_chunks = self.decompact_chunk_if_needed(chunk);
+        let split_chunks = Chunk::split_chunk_if_needed(
+            chunk.clone(),
+            &re_chunk::ChunkSplitConfig {
+                chunk_max_bytes: self.config.chunk_max_bytes,
+                chunk_max_rows: self.config.chunk_max_rows,
+                chunk_max_rows_if_unsorted: self.config.chunk_max_rows_if_unsorted,
+            },
+        );
         if split_chunks.len() > 1 {
-            re_tracing::profile_scope!("decompact");
+            re_tracing::profile_scope!("add-splits");
 
             let mut all_events = Vec::new();
 
             for split_chunk in split_chunks {
                 let events = self.insert_chunk(&split_chunk)?;
                 all_events.extend(events);
+            }
+
+            for event in &mut all_events {
+                if event.diff.kind == ChunkStoreDiffKind::Addition {
+                    event.diff.split_source = Some(chunk.id());
+                }
             }
 
             return Ok(all_events);
@@ -340,7 +354,7 @@ impl ChunkStore {
                     .chain(
                         self.remove_chunk(elected_chunk.id())
                             .into_iter()
-                            .filter(|diff| diff.kind == crate::ChunkStoreDiffKind::Deletion)
+                            .filter(|diff| diff.kind == ChunkStoreDiffKind::Deletion)
                             .map(|diff| (diff.chunk.id(), diff.chunk)),
                     )
                     .collect();
@@ -724,71 +738,6 @@ impl ChunkStore {
         } else {
             Vec::new()
         }
-    }
-
-    /// Naively splits a chunk if it exceeds the configured thresholds.
-    fn decompact_chunk_if_needed(
-        &self,
-        chunk: &std::sync::Arc<re_chunk::Chunk>,
-    ) -> Vec<std::sync::Arc<re_chunk::Chunk>> {
-        let chunk_size_bytes = <Chunk as SizeBytes>::total_size_bytes(chunk);
-        let chunk_num_rows = chunk.num_rows() as u64;
-
-        // Check if we need to split based on size or row count
-        let needs_split_bytes =
-            self.config.chunk_max_bytes > 0 && chunk_size_bytes > self.config.chunk_max_bytes;
-        let needs_split_rows =
-            self.config.chunk_max_rows > 0 && chunk_num_rows > self.config.chunk_max_rows;
-        let needs_split_unsorted = self.config.chunk_max_rows_if_unsorted > 0
-            && chunk_num_rows > self.config.chunk_max_rows_if_unsorted
-            && !chunk.is_time_sorted();
-
-        if !needs_split_bytes && !needs_split_rows && !needs_split_unsorted {
-            return vec![chunk.clone()];
-        }
-
-        // Determine the target number of rows per split chunk
-        let target_rows = if needs_split_unsorted {
-            self.config.chunk_max_rows_if_unsorted
-        } else if needs_split_rows {
-            self.config.chunk_max_rows
-        } else {
-            // For byte-based splitting, estimate rows per split chunk based on current density
-            let bytes_per_row = chunk_size_bytes / chunk_num_rows.max(1);
-            self.config.chunk_max_bytes / bytes_per_row.max(1)
-        };
-
-        let target_rows = target_rows.max(1) as usize; // Ensure at least 1 row per chunk
-
-        let mut result = Vec::new();
-        let mut start_idx = 0;
-        let mut cur_chunk_id = ChunkId::new();
-
-        while start_idx < chunk.num_rows() {
-            let remaining_rows = chunk.num_rows() - start_idx;
-            let chunk_size = remaining_rows.min(target_rows);
-
-            let split_chunk = chunk
-                .row_sliced(start_idx, chunk_size)
-                // TODO(#11971): keep track of the split chunks' lineage
-                .with_id(cur_chunk_id);
-            cur_chunk_id = cur_chunk_id.next();
-
-            result.push(std::sync::Arc::new(split_chunk));
-
-            start_idx += chunk_size;
-        }
-
-        re_log::trace!(
-            entity_path = %chunk.entity_path(),
-            original_rows = chunk.num_rows(),
-            original_bytes = %re_format::format_bytes(chunk_size_bytes as _),
-            split_into = result.len(),
-            target_rows,
-            "split chunk during merge/compact"
-        );
-
-        result
     }
 }
 

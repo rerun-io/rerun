@@ -369,8 +369,15 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                         .on_hover_text("Clear login status")
                         .clicked()
                     {
-                        auth.error = None;
-                        auth.start_login_flow(ui);
+                        match re_auth::oauth::clear_credentials() {
+                            Ok(()) => {
+                                auth.email = None;
+                                auth.start_login_flow(ui);
+                            }
+                            Err(err) => {
+                                auth.error = Some(err.to_string());
+                            }
+                        }
                     }
                 } else if auth.error.is_some() {
                     if ui

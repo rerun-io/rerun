@@ -2,6 +2,8 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use egui::NumExt as _;
+
 use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
@@ -765,7 +767,7 @@ pub fn entity_db_button_ui(
     }
 
     let response = list_item::list_item_scope(ui, "entity db button", |ui| {
-        list_item
+        let response = list_item
             .show_hierarchical(ui, item_content)
             .on_hover_ui(|ui| {
                 entity_db.data_ui(
@@ -775,7 +777,27 @@ pub fn entity_db_button_ui(
                     &ctx.current_query(),
                     entity_db,
                 );
-            })
+            });
+
+        if let Some(progress) = entity_db.chunk_index().progress()
+            && progress < 1.0
+        {
+            // Paint a progress bar:
+            let inner_r = 1.5;
+            let outer_r = 2.5;
+            let wrect = response.rect;
+            let outer_rect = wrect.with_min_y(wrect.bottom() - 2.0 * outer_r);
+            let inner_rect = outer_rect.shrink(outer_r - inner_r);
+            let progress_x = egui::lerp(inner_rect.x_range(), progress);
+            let progress_x = progress_x.at_least(inner_rect.left() + 3.0); // Always show a little bit of the progress bar
+            let filled_rect = inner_rect.with_max_x(progress_x);
+            ui.painter()
+                .rect_filled(outer_rect, outer_r, ui.tokens().panel_bg_color);
+            ui.painter()
+                .rect_filled(filled_rect, inner_r, ui.visuals().selection.bg_fill);
+        }
+
+        response
     })
     .inner;
 

@@ -16,21 +16,20 @@ mod task;
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::{Bound, PyResult, prelude::*};
 
-use crate::catalog::dataframe_query::PyDataframeQueryView;
-
 pub use self::{
     catalog_client::PyCatalogClientInternal,
     connection_handle::ConnectionHandle,
+    dataframe_query::PyDataframeQueryView,
     dataframe_rendering::PyRerunHtmlTable,
     datafusion_table::PyDataFusionTable,
-    dataset_entry::PyDatasetEntry,
-    entry::{PyEntry, PyEntryId, PyEntryKind},
+    dataset_entry::PyDatasetEntryInternal,
+    entry::{PyEntryDetails, PyEntryId, PyEntryKind},
     errors::to_py_err,
     indexes::{
         PyIndexConfig, PyIndexProperties, PyIndexingResult, PyVectorDistanceMetric,
         VectorDistanceMetricLike, VectorLike,
     },
-    table_entry::{PyTableEntry, PyTableInsertMode},
+    table_entry::{PyTableEntryInternal, PyTableInsertMode},
     task::{PyTask, PyTasks},
 };
 
@@ -40,9 +39,9 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 
     m.add_class::<PyEntryId>()?;
     m.add_class::<PyEntryKind>()?;
-    m.add_class::<PyEntry>()?;
-    m.add_class::<PyDatasetEntry>()?;
-    m.add_class::<PyTableEntry>()?;
+    m.add_class::<PyEntryDetails>()?;
+    m.add_class::<PyDatasetEntryInternal>()?;
+    m.add_class::<PyTableEntryInternal>()?;
     m.add_class::<PyTableInsertMode>()?;
     m.add_class::<PyTask>()?;
     m.add_class::<PyTasks>()?;

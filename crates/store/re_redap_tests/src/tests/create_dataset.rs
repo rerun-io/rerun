@@ -39,7 +39,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         .unwrap();
 
     assert!(dataset_details.blueprint_dataset.is_some());
-    assert!(dataset_details.default_blueprint.is_none());
+    assert!(dataset_details.default_blueprint_segment.is_none());
 
     //
     // Check the dataset got a matching blueprint dataset
@@ -58,7 +58,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         .unwrap();
 
     assert!(bp_dataset_details.blueprint_dataset.is_none());
-    assert!(bp_dataset_details.default_blueprint.is_none());
+    assert!(bp_dataset_details.default_blueprint_segment.is_none());
 
     //
     // Check a duplicate entry name is rejected.
@@ -130,7 +130,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         .unwrap();
 
     assert!(dataset_details.blueprint_dataset.is_some());
-    assert!(dataset_details.default_blueprint.is_none());
+    assert!(dataset_details.default_blueprint_segment.is_none());
 
     //
     // Create a table

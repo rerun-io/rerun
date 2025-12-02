@@ -17,7 +17,7 @@ use re_protos::cloud::v1alpha1::{
     CreateIndexResponse, DeleteIndexesResponse, ListIndexesRequest, ListIndexesResponse,
     SearchDatasetResponse,
 };
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId as PartitionId;
 use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
 use std::ops::Deref as _;

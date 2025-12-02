@@ -255,7 +255,7 @@ impl LogDataSource {
                         .client(uri_clone.origin.clone())
                         .await
                         .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
-                    re_redap_client::stream_blueprint_and_partition_from_server(
+                    re_redap_client::stream_blueprint_and_segment_from_server(
                         client, tx, uri_clone, on_msg,
                     )
                     .await
