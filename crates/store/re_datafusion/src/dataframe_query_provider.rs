@@ -132,11 +132,16 @@ impl Stream for DataframePartitionStream {
                 return Poll::Ready(Some(exec_err!("No tx for chunks from CPU thread")));
             };
 
-            this.io_join_handle = Some(io_handle.spawn(chunk_stream_io_loop(
-                this.client.clone(),
-                this.chunk_infos.clone(),
-                chunk_tx,
-            )));
+            let client = this.client.clone();
+            let chunk_infos = this.chunk_infos.clone();
+            let current_span = tracing::Span::current();
+
+            this.io_join_handle = Some(
+                io_handle.spawn(
+                    async move { chunk_stream_io_loop(client, chunk_infos, chunk_tx).await }
+                        .instrument(current_span.clone()),
+                ),
+            );
         }
 
         let result = this
@@ -407,7 +412,7 @@ async fn chunk_store_cpu_worker_thread(
 /// a *single partition*. We also expect these to be previously sorted by partition id, otherwise
 /// our suggestion to the query planner that inputs are sorted by partition id will be incorrect.
 /// See `group_chunk_infos_by_partition_id` and `execute` for more details.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "info", skip_all)]
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,

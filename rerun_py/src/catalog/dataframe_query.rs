@@ -19,16 +19,16 @@ use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
-use re_perf_telemetry::{HashMapExtractor, extract_trace_context_from_contextvar};
+use re_perf_telemetry::extract_trace_context_from_contextvar;
 
 /// Create a tracing span with optional distributed tracing context propagation
 macro_rules! with_trace_span {
     ($py:expr, $span_name:expr, $body:block) => {{
         let trace_headers = extract_trace_context_from_contextvar($py);
-        if !trace_headers.is_empty() {
+        if !trace_headers.traceparent.is_empty() {
             let parent_ctx =
                 re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(
-                    |prop| prop.extract(&HashMapExtractor(&trace_headers)),
+                    |prop| prop.extract(&trace_headers),
                 );
             let _guard = parent_ctx.attach();
             let _span = tracing::span!(tracing::Level::INFO, $span_name).entered();
@@ -479,13 +479,22 @@ impl PyDataframeQueryView {
         let dataset_id = dataset.entry_id();
         let connection = dataset.client().borrow(py).connection().clone();
 
-        wait_for_future(py, async {
+        // Capture trace context to propagate into async query execution
+        let trace_headers = extract_trace_context_from_contextvar(py);
+        let trace_headers_opt = if trace_headers.traceparent.is_empty() {
+            None
+        } else {
+            Some(trace_headers)
+        };
+
+        wait_for_future(py, async move {
             DataframeQueryTableProvider::new(
                 connection.origin().clone(),
                 connection.connection_registry().clone(),
                 dataset_id,
                 &self.query_expression,
                 &self.partition_ids,
+                trace_headers_opt,
             )
             .await
         })

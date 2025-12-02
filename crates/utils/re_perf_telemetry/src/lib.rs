@@ -239,39 +239,43 @@ pub fn get_trace_context_var(py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::Bound
 
 #[cfg(feature = "pyo3")]
 /// Extract trace context from Python `ContextVar` for cross-boundary propagation.
-pub fn extract_trace_context_from_contextvar(
-    py: pyo3::Python<'_>,
-) -> std::collections::HashMap<String, String> {
+pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> TraceHeaders {
     use pyo3::prelude::*;
     use pyo3::types::PyDict;
 
-    let result = (|| -> PyResult<std::collections::HashMap<String, String>> {
+    let result = (|| -> PyResult<TraceHeaders> {
         let context_var = get_trace_context_var(py)?;
 
         match context_var.call_method0("get") {
             Ok(trace_data) => {
-                let mut headers = std::collections::HashMap::new();
-
                 if let Ok(dict) = trace_data.downcast::<PyDict>() {
-                    for (key, value) in dict {
-                        if let (Ok(key_str), Ok(value_str)) =
-                            (key.extract::<String>(), value.extract::<String>())
-                        {
-                            headers.insert(key_str, value_str);
-                        }
-                    }
+                    let traceparent = dict
+                        .get_item(TraceHeaders::TRACEPARENT_KEY)?
+                        .and_then(|v| v.extract::<String>().ok())
+                        .unwrap_or_default();
+
+                    let tracestate = dict
+                        .get_item(TraceHeaders::TRACESTATE_KEY)?
+                        .and_then(|v| v.extract::<String>().ok());
+
+                    let headers = TraceHeaders {
+                        traceparent,
+                        tracestate,
+                    };
 
                     tracing::debug!("Trace headers: {:?}", headers);
+                    Ok(headers)
+                } else {
+                    Ok(TraceHeaders::empty())
                 }
-                Ok(headers)
             }
-            Err(_) => Ok(std::collections::HashMap::default()),
+            Err(_) => Ok(TraceHeaders::empty()),
         }
     })();
 
     result.unwrap_or_else(|err| {
         tracing::debug!("Failed to extract trace context: {}", err);
-        std::collections::HashMap::default()
+        TraceHeaders::empty()
     })
 }
 
