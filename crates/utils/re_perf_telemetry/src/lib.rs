@@ -192,10 +192,10 @@ impl From<&TraceHeaders> for opentelemetry::Context {
 
 // ---
 
-/// Simple extractor for HashMap<String, String> to work with OpenTelemetry propagation
+/// Simple extractor for `HashMap<String, String>` to work with `OpenTelemetry` propagation
 pub struct HashMapExtractor<'a>(pub &'a std::collections::HashMap<String, String>);
 
-impl<'a> opentelemetry::propagation::Extractor for HashMapExtractor<'a> {
+impl opentelemetry::propagation::Extractor for HashMapExtractor<'_> {
     fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).map(|s| s.as_str())
     }
@@ -205,18 +205,40 @@ impl<'a> opentelemetry::propagation::Extractor for HashMapExtractor<'a> {
     }
 }
 
+/// The name of the `ContextVar` used for trace context propagation
+pub const TRACE_CONTEXT_VAR_NAME: &str = "TRACE_CONTEXT";
+
 #[cfg(feature = "pyo3")]
-/// Extract trace context from Python ContextVar for cross-boundary propagation
+/// Get the trace context `ContextVar` object.
 ///
-/// This function reads trace context headers stored in a Python ContextVar named "TRACE_CONTEXT"
-/// from the standardized "tracecontext" module. This enables distributed tracing across Python→Rust
-/// boundaries in PyO3 applications.
-///
-/// The Python application should create a `tracecontext.py` module containing:
-/// ```python
-/// import contextvars
-/// TRACE_CONTEXT = contextvars.ContextVar("trace_context")
-/// ```
+/// This returns the same Python `ContextVar` instance every time, ensuring that
+/// values set on it can be read back later. It is up to the caller to ensure trace context
+/// is reset and cleared as needed.
+pub fn get_trace_context_var(py: pyo3::Python<'_>) -> pyo3::PyResult<pyo3::Bound<'_, pyo3::PyAny>> {
+    use pyo3::prelude::*;
+
+    static CONTEXT_VAR: parking_lot::Mutex<Option<pyo3::Py<pyo3::PyAny>>> =
+        parking_lot::Mutex::new(None);
+
+    let mut guard = CONTEXT_VAR.lock();
+
+    if let Some(var) = guard.as_ref() {
+        return Ok(var.bind(py).clone());
+    }
+
+    // Create the trace context ContextVar
+    let module = py.import("contextvars")?;
+    let contextvar_class = module.getattr("ContextVar")?;
+    let trace_ctx_var = contextvar_class.call1((TRACE_CONTEXT_VAR_NAME,))?;
+    let trace_ctx_unbound = trace_ctx_var.clone().unbind();
+
+    *guard = Some(trace_ctx_unbound);
+
+    Ok(trace_ctx_var)
+}
+
+#[cfg(feature = "pyo3")]
+/// Extract trace context from Python `ContextVar` for cross-boundary propagation.
 pub fn extract_trace_context_from_contextvar(
     py: pyo3::Python<'_>,
 ) -> std::collections::HashMap<String, String> {
@@ -224,12 +246,12 @@ pub fn extract_trace_context_from_contextvar(
     use pyo3::types::PyDict;
 
     let result = (|| -> PyResult<std::collections::HashMap<String, String>> {
-        let tracecontext_module = py.import("tracecontext")?;
-        let context_var = tracecontext_module.getattr("TRACE_CONTEXT")?;
+        let context_var = get_trace_context_var(py)?;
 
         match context_var.call_method0("get") {
             Ok(trace_data) => {
                 let mut headers = std::collections::HashMap::new();
+
                 if let Ok(dict) = trace_data.downcast::<PyDict>() {
                     for (key, value) in dict {
                         if let (Ok(key_str), Ok(value_str)) =
@@ -239,7 +261,7 @@ pub fn extract_trace_context_from_contextvar(
                         }
                     }
 
-                    tracing::debug!("🔍 Trace headers: {:?}", headers);
+                    tracing::debug!("Trace headers: {:?}", headers);
                 }
                 Ok(headers)
             }

@@ -313,12 +313,11 @@ impl PyDataframeQueryView {
         py: Python<'_>,
         values: crate::dataframe::IndexValuesLike<'_>,
     ) -> PyResult<Self> {
-        with_trace_span!(py, "filter_index_values", {
-            let values = values.to_index_values()?;
-            Ok(self.clone_with_new_query(py, |query_expression| {
-                query_expression.filtered_index_values = Some(values);
-            }))
-        })
+        let values = values.to_index_values()?;
+
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.filtered_index_values = Some(values);
+        }))
     }
 
     /// Filter the view to only include rows where the given component column is not null.
@@ -389,10 +388,8 @@ impl PyDataframeQueryView {
     ///
     ///     The original view will not be modified.
     fn fill_latest_at(&self, py: Python<'_>) -> Self {
-        with_trace_span!(py, "fill_latest_at", {
-            self.clone_with_new_query(py, |query_expression| {
-                query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
-            })
+        self.clone_with_new_query(py, |query_expression| {
+            query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
         })
     }
 

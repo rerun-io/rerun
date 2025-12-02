@@ -14,6 +14,7 @@ from rerun_bindings import (
     Task as Task,
     Tasks as Tasks,
     VectorDistanceMetric as VectorDistanceMetric,
+    _rerun_trace_context as _rerun_trace_context,
 )
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,
