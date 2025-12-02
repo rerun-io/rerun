@@ -175,7 +175,7 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
         }
 
         let schema = arrow::datatypes::Schema::new_with_metadata(fields, schema.metadata().clone());
-        #[expect(clippy::disallowed_methods)] // it's for tests
+        #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
         Some(Self::try_new(Arc::new(schema), arrays).expect("creating record batch"))
     }
 
@@ -210,7 +210,7 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
         if schema.fields().is_empty() {
             Self::new_empty(schema)
         } else {
-            #[expect(clippy::disallowed_methods)] // it's for tests
+            #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
             Self::try_new(schema, arrays).expect("creation should succeed")
         }
     }
@@ -310,7 +310,7 @@ impl RecordBatchTestExt for arrow::array::RecordBatch {
         if schema.fields().is_empty() {
             Self::new_empty(schema.clone())
         } else {
-            #[expect(clippy::disallowed_methods)] // it's for tests
+            #[cfg_attr(not(target_arch = "wasm32"), expect(clippy::disallowed_methods))] // tests
             Self::try_new(schema.clone(), arrays).expect("creation should succeed")
         }
     }
