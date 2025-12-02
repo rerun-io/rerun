@@ -27,3 +27,4 @@ all-features = true
 arrow.workspace = true
 half.workspace = true
 smallvec.workspace = true
+glam.workspace = true

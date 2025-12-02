@@ -8518,6 +8518,7 @@ name = "re_byte_size"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "glam",
  "half",
  "smallvec",
 ]
