@@ -5,6 +5,7 @@ mod batches;
 mod compare;
 mod format;
 mod format_data_type;
+mod test_extensions;
 
 pub use self::arrays::*;
 pub use self::batches::*;
@@ -14,6 +15,7 @@ pub use self::format::{
     format_record_batch_with_width,
 };
 pub use self::format_data_type::*;
+pub use self::test_extensions::*;
 
 // ----------------------------------------------------------------
 

@@ -578,7 +578,6 @@ impl TransformsForChildFrame {
             *pose_transform =
                 CachedTransformValue::Resident(query_and_resolve_instance_poses_at_entity(
                     &self.associated_entity_path,
-                    self.child_frame, // TODO(RR-2627): We're not handling this correctly yet.
                     entity_db,
                     query,
                 ));

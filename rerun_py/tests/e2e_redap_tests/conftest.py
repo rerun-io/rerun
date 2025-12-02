@@ -20,7 +20,7 @@ from rerun.server import Server
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rerun.catalog import DatasetEntry, Entry, TableEntry
+    from rerun.catalog import DatasetEntry, TableEntry
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -170,7 +170,7 @@ class EntryFactory:
     def __init__(self, client: CatalogClient, prefix: str) -> None:
         self._client = client
         self._prefix = prefix
-        self._created_entries: list[Entry] = []
+        self._created_entries: list[DatasetEntry | TableEntry] = []
 
     @property
     def client(self) -> CatalogClient:

@@ -64,6 +64,12 @@ impl SelectionPanel {
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
+                inner_margin: egui::Margin {
+                    // TODO(emilk/egui#7749): This is a workaround to prevent flicker between
+                    // the time panel resize handle and our scroll bar.
+                    bottom: 4,
+                    ..Default::default()
+                },
                 ..Default::default()
             });
 

@@ -1219,6 +1219,23 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+
+            SystemCommand::SetAuthCredentials {
+                access_token,
+                email,
+            } => {
+                let credentials =
+                    match re_auth::oauth::Credentials::try_new(access_token, None, email) {
+                        Ok(credentials) => credentials,
+                        Err(err) => {
+                            re_log::error!("Failed to create credentials: {err}");
+                            return;
+                        }
+                    };
+                if let Err(err) = credentials.ensure_stored() {
+                    re_log::error!("Failed to store credentials: {err}");
+                }
+            }
         }
     }
 
@@ -2279,6 +2296,11 @@ impl App {
             };
 
             match msg {
+                DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                    let entity_db = store_hub.entity_db_mut(&store_id);
+                    entity_db.add_chunk_index_message(chunk_index);
+                }
+
                 DataSourceMessage::LogMsg(msg) => {
                     self.receive_log_msg(&msg, store_hub, egui_ctx, &channel_source);
                 }

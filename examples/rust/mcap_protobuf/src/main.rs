@@ -2,7 +2,7 @@ use arrow::array::{Float32Array, Float64Array, ListArray};
 
 use re_log_types::TimeType;
 use rerun::{
-    EncodedImage, InstancePoses3D, Transform3D, TransformAxes3D, VideoStream,
+    CoordinateFrame, EncodedImage, InstancePoses3D, Transform3D, TransformAxes3D, VideoStream,
     dataframe::EntityPathFilter,
     external::re_log,
     lenses::{Lens, LensesSink, Op, OpError},
@@ -180,6 +180,10 @@ fn main() -> anyhow::Result<()> {
                         Op::access_field("orientation"),
                         Op::func(list_xyzw_struct_to_list_fixed),
                     ],
+                )
+                .component(
+                    CoordinateFrame::descriptor_frame(),
+                    [Op::access_field("frame_id")],
                 )
             })?
             .output_static_columns(|out| {

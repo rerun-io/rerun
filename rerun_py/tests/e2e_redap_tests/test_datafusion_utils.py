@@ -16,8 +16,8 @@ def test_url_generation(readonly_test_dataset: DatasetEntry) -> None:
     results = (
         readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
         .df()
-        .with_column("url", udf(col("rerun_partition_id"), col("time_1")))
-        .sort(col("rerun_partition_id"), col("time_1"))
+        .with_column("url", udf(col("rerun_segment_id"), col("time_1")))
+        .sort(col("rerun_segment_id"), col("time_1"))
         .limit(1)
         .select("url")
         .collect()

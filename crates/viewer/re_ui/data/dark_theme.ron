@@ -143,7 +143,7 @@
     },
     "table_interaction_row_selection_fill": {
       "color": "{Blue.750}",
-      "alpha": 10
+      "alpha": 25
     },
     "table_sort_icon_color": {
       "color": "{Blue.450}"

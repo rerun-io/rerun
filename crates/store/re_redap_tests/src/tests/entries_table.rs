@@ -8,7 +8,7 @@ use re_protos::cloud::v1alpha1::{
 };
 
 use crate::tests::common::RerunCloudServiceExt as _;
-use crate::{RecordBatchExt as _, SchemaExt as _};
+use crate::{RecordBatchTestExt as _, SchemaTestExt as _};
 
 /// We want to make sure that the "__entries" table is present and has the expected schema and data.
 pub async fn list_entries_table(service: impl RerunCloudService) {

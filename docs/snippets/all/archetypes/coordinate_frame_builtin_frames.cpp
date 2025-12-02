@@ -1,5 +1,4 @@
 // Demonstrates using explicit `CoordinateFrame` with implicit transform frames only.
-// TODO(RR-2777): This is still an experimental feature.
 
 #include <rerun.hpp>
 
