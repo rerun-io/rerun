@@ -3,6 +3,8 @@ title: Transforms & Transform Frames
 order: 300
 ---
 
+<!-- Figma file for diagrams in this article: https://www.figma.com/board/PTwJKgi9kQOqG7ZgzdhrDL/Transforms-doc-page-graphs?t=fWkOGxxn6mZkkCON-1 -->
+
 Rerun comes with built-in support for modeling spatial relationships between entities.
 This page details how the [different archetypes](https://rerun.io/docs/reference/types/archetypes#transforms) involved interact with each other and explains how geometric transforms are set up in Rerun.
 
@@ -143,6 +145,13 @@ rr.log("robot/arm/gripper",
 )
 ```
 
+<picture>
+  <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/1024w.png">
+</picture>
+
 ### Mixing explicit and implicit transform frames
 
 We generally do not recommend mixing explicit and implicit transform frames since it can get confusing,
@@ -159,7 +168,12 @@ rr.log("arm",
 rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```
 
-TODO: show a graph
+<picture>
+  <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/1024w.png">
+</picture>
 
 ## Pinhole projections
 
