@@ -16,11 +16,8 @@ from rerun_bindings import (
     VectorDistanceMetric as VectorDistanceMetric,
 )
 
-try:
-    from rerun_bindings import _rerun_trace_context as _rerun_trace_context  # type: ignore[attr-defined]
-except ImportError:
-    # perf_telemetry feature not enabled
-    _rerun_trace_context = None  # type: ignore[assignment]
+# Conditionally compiled function - always exists at runtime but mypy can't verify
+from rerun_bindings import _rerun_trace_context as _rerun_trace_context  # type: ignore[attr-defined]
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,
     VectorDistanceMetricLike as VectorDistanceMetricLike,
