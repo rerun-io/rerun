@@ -86,7 +86,9 @@ pub enum DecoderState {
     ///
     /// The [`MessageHeader`] indicates what kind of payload this is and how large it is.
     ///
-    /// We will rebound indefinitely
+    /// After the [`StreamHeader`] is read once, the state machine will only ever switch between
+    /// [`Self::WaitingForMessageHeader`] and [`Self::WaitingForMessagePayload`], until either a
+    /// footer or another concatenated RRD stream shows up.
     WaitingForMessageHeader,
 
     /// A [`MessageHeader`] was parsed, now we're waiting for the associated payload.
@@ -194,7 +196,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             } else {
                                 // A bunch of weird trailing bytes means we're now in an irrecoverable state, but
                                 // it doesn't change the fact that we've just successfully yielded an entire stream's
-                                // worth of data. So, instead of bubling up errors all the way to the end user,
+                                // worth of data. So, instead of bubbling up errors all the way to the end user,
                                 // merely log one here stop the state machine forever.
                                 re_log::error!(
                                     is_first_header,
@@ -367,7 +369,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                         Err(err) => {
                             // A corrupt footer means we're now in an irrecoverable state, but it doesn't change the
                             // fact that we've just successfully yielded an entire stream's worth of data. So, instead
-                            // of bubling up errors all the way to the end user, merely log one here stop the state
+                            // of bubbling up errors all the way to the end user, merely log one here stop the state
                             // machine forever.
                             re_log::error!(
                                 position = self.byte_chunks.num_read(),

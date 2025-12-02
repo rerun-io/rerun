@@ -1,5 +1,7 @@
 /// This is the message type that is passed in the footer of RRD streams.
 ///
+/// During normal operations, there can only be a single [`RrdFooter`] per RRD stream.
+///
 /// It is possible to break that invariant by concatenating streams using external tools,
 /// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
 /// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd route > all_my_recordings.rrd`,
