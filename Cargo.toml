@@ -82,6 +82,7 @@ re_query = { path = "crates/store/re_query", version = "=0.28.0-alpha.1", defaul
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.28.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.28.0-alpha.1", default-features = false }
+re_smart_channel = { path = "crates/store/re_smart_channel", version = "=0.28.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
@@ -109,7 +110,6 @@ re_log = { path = "crates/utils/re_log", version = "=0.28.0-alpha.1", default-fe
 re_memory = { path = "crates/utils/re_memory", version = "=0.28.0-alpha.1", default-features = false }
 re_perf_telemetry = { path = "crates/utils/re_perf_telemetry", version = "=0.28.0-alpha.1", default-features = false }
 re_ros_msg = { path = "crates/utils/re_ros_msg", version = "=0.28.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.28.0-alpha.1", default-features = false }
 re_span = { path = "crates/utils/re_span", version = "=0.28.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.28.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.28.0-alpha.1", default-features = false }
