@@ -26,5 +26,3 @@ pub use table_entry_provider::TableEntryTableProvider;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) type TraceHeaders = re_perf_telemetry::TraceHeaders;
-#[cfg(target_arch = "wasm32")]
-pub(crate) type TraceHeaders = ();

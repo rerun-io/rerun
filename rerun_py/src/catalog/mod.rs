@@ -12,6 +12,7 @@ mod errors;
 mod indexes;
 mod table_entry;
 mod task;
+#[cfg(feature = "perf_telemetry")]
 mod trace_context;
 
 use errors::{AlreadyExistsError, NotFoundError};
@@ -60,6 +61,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add("NotFoundError", _py.get_type::<NotFoundError>())?;
     m.add("AlreadyExistsError", _py.get_type::<AlreadyExistsError>())?;
 
+    #[cfg(feature = "perf_telemetry")]
     m.add_function(wrap_pyfunction!(trace_context::_rerun_trace_context, m)?)?;
 
     Ok(())

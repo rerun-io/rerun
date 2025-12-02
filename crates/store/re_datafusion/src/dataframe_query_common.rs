@@ -52,6 +52,7 @@ pub struct DataframeQueryTableProvider {
 
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
+    #[cfg(not(target_arch = "wasm32"))]
     trace_headers: Option<crate::TraceHeaders>,
 }
 
@@ -66,6 +67,7 @@ impl DataframeQueryTableProvider {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         partition_ids: &[impl AsRef<str> + Sync],
+        #[cfg(not(target_arch = "wasm32"))]
         trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
@@ -169,6 +171,7 @@ impl DataframeQueryTableProvider {
             sort_index: query_expression.filtered_index,
             chunk_info_batches,
             client,
+            #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
         })
     }
@@ -265,6 +268,7 @@ impl TableProvider for DataframeQueryTableProvider {
             Arc::clone(&self.chunk_info_batches),
             query_expression,
             self.client.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
             self.trace_headers.clone(),
         )
         .map(Arc::new)

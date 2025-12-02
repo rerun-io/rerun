@@ -14,8 +14,13 @@ from rerun_bindings import (
     Task as Task,
     Tasks as Tasks,
     VectorDistanceMetric as VectorDistanceMetric,
-    _rerun_trace_context as _rerun_trace_context,
 )
+
+try:
+    from rerun_bindings import _rerun_trace_context as _rerun_trace_context  # type: ignore[attr-defined]
+except ImportError:
+    # perf_telemetry feature not enabled
+    _rerun_trace_context = None  # type: ignore[assignment]
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,
     VectorDistanceMetricLike as VectorDistanceMetricLike,

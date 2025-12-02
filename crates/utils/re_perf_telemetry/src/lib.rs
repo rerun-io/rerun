@@ -230,7 +230,7 @@ pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> TraceHeade
     use pyo3::prelude::*;
     use pyo3::types::PyDict;
 
-    let result = (|| -> PyResult<TraceHeaders> {
+    fn try_extract(py: pyo3::Python<'_>) -> PyResult<TraceHeaders> {
         let context_var = get_trace_context_var(py)?;
 
         match context_var.call_method0("get") {
@@ -258,9 +258,9 @@ pub fn extract_trace_context_from_contextvar(py: pyo3::Python<'_>) -> TraceHeade
             }
             Err(_) => Ok(TraceHeaders::empty()),
         }
-    })();
+    }
 
-    result.unwrap_or_else(|err| {
+    try_extract(py).unwrap_or_else(|err| {
         tracing::debug!("Failed to extract trace context: {}", err);
         TraceHeaders::empty()
     })

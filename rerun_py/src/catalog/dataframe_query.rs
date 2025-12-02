@@ -18,10 +18,12 @@ use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
+#[cfg(feature = "perf_telemetry")]
 use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
+#[cfg(feature = "perf_telemetry")]
 use crate::catalog::trace_context::with_trace_span;
 use crate::catalog::{PyDatasetEntryInternal, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
@@ -408,7 +410,24 @@ impl PyDataframeQueryView {
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
-        with_trace_span!(py, "df", {
+        // TODO(zehiko) this will go away asap as we're enabling perf telemetry by default
+        #[cfg(feature = "perf_telemetry")]
+        {
+            with_trace_span!(py, "df", {
+                let dataset = self_.dataset.borrow(py);
+                let client = dataset.client().borrow(py);
+                let ctx = client.ctx(py)?;
+                let ctx = ctx.bind(py);
+
+                drop(client);
+                drop(dataset);
+
+                let df = ctx.call_method1("read_table", (self_,))?;
+                Ok(df)
+            })
+        }
+        #[cfg(not(feature = "perf_telemetry"))]
+        {
             let dataset = self_.dataset.borrow(py);
             let client = dataset.client().borrow(py);
             let ctx = client.ctx(py)?;
@@ -419,7 +438,7 @@ impl PyDataframeQueryView {
 
             let df = ctx.call_method1("read_table", (self_,))?;
             Ok(df)
-        })
+        }
     }
 
     /// Get the relevant chunk_ids for this view.
@@ -461,12 +480,17 @@ impl PyDataframeQueryView {
         let connection = dataset.client().borrow(py).connection().clone();
 
         // Capture trace context to propagate into async query execution
-        let trace_headers = extract_trace_context_from_contextvar(py);
-        let trace_headers_opt = if trace_headers.traceparent.is_empty() {
-            None
-        } else {
-            Some(trace_headers)
+        #[cfg(all(feature = "perf_telemetry", not(target_arch = "wasm32")))]
+        let trace_headers_opt = {
+            let trace_headers = extract_trace_context_from_contextvar(py);
+            if trace_headers.traceparent.is_empty() {
+                None
+            } else {
+                Some(trace_headers)
+            }
         };
+        #[cfg(not(all(feature = "perf_telemetry", not(target_arch = "wasm32"))))]
+        let trace_headers_opt = None;
 
         wait_for_future(py, async move {
             DataframeQueryTableProvider::new(
@@ -475,6 +499,7 @@ impl PyDataframeQueryView {
                 dataset_id,
                 &self.query_expression,
                 &self.partition_ids,
+                #[cfg(not(target_arch = "wasm32"))]
                 trace_headers_opt,
             )
             .await
