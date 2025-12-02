@@ -1,0 +1,33 @@
+---
+source: crates/store/re_log_encoding/tests/footer_roundtrip.rs
+expression: schema_to_comparable_string(&rrd_manifest_blueprint_sequential.data.schema())
+---
+TimePanelBlueprint:fps:has_static_data: bool [
+    rerun:archetype:rerun.blueprint.archetypes.TimePanelBlueprint
+    rerun:component:TimePanelBlueprint:fps
+    rerun:component_type:rerun.blueprint.components.Fps
+    rerun:index:rerun:static
+]
+chunk_byte_offset: u64
+chunk_byte_size: u64
+chunk_entity_path: Utf8
+chunk_id: FixedSizeBinary[16]
+chunk_is_static: bool
+frame_nr:TimePanelBlueprint:fps:end: i64 [
+    rerun:archetype:rerun.blueprint.archetypes.TimePanelBlueprint
+    rerun:component:TimePanelBlueprint:fps
+    rerun:component_type:rerun.blueprint.components.Fps
+    rerun:index:frame_nr
+]
+frame_nr:TimePanelBlueprint:fps:start: i64 [
+    rerun:archetype:rerun.blueprint.archetypes.TimePanelBlueprint
+    rerun:component:TimePanelBlueprint:fps
+    rerun:component_type:rerun.blueprint.components.Fps
+    rerun:index:frame_nr
+]
+frame_nr:end: i64 [
+    rerun:index:frame_nr
+]
+frame_nr:start: i64 [
+    rerun:index:frame_nr
+]
