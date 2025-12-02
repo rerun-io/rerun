@@ -104,7 +104,8 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::new(None, false),
+            // use_stored_credentials is true so we can read the email in the welcome screen
+            auth: Authentication::new(None, true),
             port: 443,
         }
     }
