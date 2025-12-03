@@ -56,7 +56,40 @@ impl ToTransport for crate::RrdFooter {
     type Context<'a> = ();
 
     fn to_transport(&self, _: Self::Context<'_>) -> Result<Self::Output, CodecError> {
-        Ok(Self::Output {})
+        let manifests: Result<Vec<_>, _> = self
+            .manifests
+            .values()
+            .map(|manifest| manifest.to_transport(()))
+            .collect();
+
+        Ok(Self::Output {
+            manifests: manifests?,
+        })
+    }
+}
+
+impl ToTransport for crate::RrdManifest {
+    type Output = re_protos::log_msg::v1alpha1::RrdManifest;
+    type Context<'a> = ();
+
+    fn to_transport(&self, (): Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        {
+            self.sanity_check_cheap()?;
+
+            // that will only work for tests local to this crate, but that's better than nothing.
+            #[cfg(test)]
+            self.sanity_check_heavy()?;
+        }
+
+        let sorbet_schema = re_protos::common::v1alpha1::Schema::try_from(&self.sorbet_schema)
+            .map_err(CodecError::ArrowSerialization)?;
+
+        Ok(Self::Output {
+            store_id: Some(self.store_id.clone().into()),
+            sorbet_schema_sha256: Some(self.sorbet_schema_sha256.to_vec().into()),
+            sorbet_schema: Some(sorbet_schema),
+            data: Some(self.data.clone().into()),
+        })
     }
 }
 
@@ -122,7 +155,67 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdFooter {
     type Context<'a> = ();
 
     fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
-        Ok(Self::Output {})
+        let manifests: Result<std::collections::HashMap<_, _>, _> = self
+            .manifests
+            .iter()
+            .map(|manifest| {
+                let manifest = manifest.to_application(())?;
+                Ok::<_, CodecError>((manifest.store_id.clone(), manifest))
+            })
+            .collect();
+
+        Ok(Self::Output {
+            manifests: manifests?,
+        })
+    }
+}
+
+impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
+    type Output = crate::RrdManifest;
+    type Context<'a> = ();
+
+    fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let store_id = self
+            .store_id
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "store_id"))?;
+
+        let sorbet_schema = self
+            .sorbet_schema
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema"))?;
+
+        let sorbet_schema_sha256 = self
+            .sorbet_schema_sha256
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema_sha256"))?;
+        let sorbet_schema_sha256: [u8; 32] = (**sorbet_schema_sha256)
+            .try_into()
+            .map_err(|err| re_protos::invalid_field!(Self, "sorbet_schema_sha256", err))?;
+
+        let data = self
+            .data
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "data"))?;
+
+        let rrd_manifest = Self::Output {
+            store_id: store_id.clone().try_into()?,
+            sorbet_schema: sorbet_schema
+                .try_into()
+                .map_err(CodecError::ArrowDeserialization)?,
+            sorbet_schema_sha256,
+            data: data.try_into()?,
+        };
+
+        {
+            rrd_manifest.sanity_check_cheap()?;
+
+            // that will only work for tests local to this crate, but that's better than nothing
+            #[cfg(test)]
+            rrd_manifest.sanity_check_heavy()?;
+        }
+
+        Ok(rrd_manifest)
     }
 }
 
