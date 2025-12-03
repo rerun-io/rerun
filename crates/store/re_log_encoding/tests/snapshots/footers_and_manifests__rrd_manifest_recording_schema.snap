@@ -7,35 +7,35 @@ chunk_byte_size: u64
 chunk_entity_path: Utf8
 chunk_id: FixedSizeBinary[16]
 chunk_is_static: bool
-elapsed:end: Duration(ns) [
-    rerun:index:elapsed
+elapsed_time:end: Duration(ns) [
+    rerun:index:elapsed time
 ]
-elapsed:example_MyPoints:colors:end: Duration(ns) [
+elapsed_time:example_MyPoints:colors:end: Duration(ns) [
     rerun:archetype:example.MyPoints
     rerun:component:example.MyPoints:colors
     rerun:component_type:example.MyColor
-    rerun:index:elapsed
+    rerun:index:elapsed time
 ]
-elapsed:example_MyPoints:colors:start: Duration(ns) [
+elapsed_time:example_MyPoints:colors:start: Duration(ns) [
     rerun:archetype:example.MyPoints
     rerun:component:example.MyPoints:colors
     rerun:component_type:example.MyColor
-    rerun:index:elapsed
+    rerun:index:elapsed time
 ]
-elapsed:example_MyPoints:points:end: Duration(ns) [
+elapsed_time:example_MyPoints:points:end: Duration(ns) [
     rerun:archetype:example.MyPoints
     rerun:component:example.MyPoints:points
     rerun:component_type:example.MyPoint
-    rerun:index:elapsed
+    rerun:index:elapsed time
 ]
-elapsed:example_MyPoints:points:start: Duration(ns) [
+elapsed_time:example_MyPoints:points:start: Duration(ns) [
     rerun:archetype:example.MyPoints
     rerun:component:example.MyPoints:points
     rerun:component_type:example.MyPoint
-    rerun:index:elapsed
+    rerun:index:elapsed time
 ]
-elapsed:start: Duration(ns) [
-    rerun:index:elapsed
+elapsed_time:start: Duration(ns) [
+    rerun:index:elapsed time
 ]
 example_MyPoints:colors:has_static_data: bool [
     rerun:archetype:example.MyPoints
