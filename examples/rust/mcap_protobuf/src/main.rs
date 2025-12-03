@@ -307,7 +307,7 @@ fn main() -> anyhow::Result<()> {
             .build();
 
     // Simple pinhole camera calibration lens, setting `image_from_camera` from the `K` matrix.
-    // TODO(michael): set child_frame of Pinhole?
+    // TODO(michael): set child_frame of Pinhole and matching CoordinateFrame for the image to show both in the 3D view.
     let pinhole_lens = Lens::for_input_column(
         EntityPathFilter::all(),
         "foxglove.CameraCalibration:message",
