@@ -4,7 +4,8 @@ use itertools::Itertools as _;
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{
-    Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, ToApplication as _,
+    Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, StreamFooter,
+    StreamFooterEntry, ToApplication as _,
 };
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
@@ -83,23 +84,21 @@ fn footer_roundtrip() {
         re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
             .unwrap();
 
-    let rrd_footer_range = stream_footer
-        .rrd_footer_byte_span_from_start_excluding_header
+    let StreamFooterEntry {
+        rrd_footer_byte_span_from_start_excluding_header,
+        crc_excluding_header,
+    } = stream_footer.entries[0];
+
+    let rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
         .try_cast::<usize>()
         .unwrap()
         .range();
     let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
 
-    {
-        let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-            stream_footer
-                .rrd_footer_byte_span_from_start_excluding_header
-                .start,
-            rrd_footer_bytes,
-        )
-        .crc_excluding_header;
-        similar_asserts::assert_eq!(stream_footer.crc_excluding_header, crc);
-    }
+    similar_asserts::assert_eq!(
+        crc_excluding_header,
+        StreamFooter::compute_crc(rrd_footer_bytes)
+    );
 
     let rrd_footer =
         re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes).unwrap();
@@ -221,23 +220,21 @@ fn footer_roundtrip() {
         )
         .unwrap();
 
-        let reencoded_rrd_footer_range = reencoded_stream_footer
-            .rrd_footer_byte_span_from_start_excluding_header
+        let StreamFooterEntry {
+            rrd_footer_byte_span_from_start_excluding_header,
+            crc_excluding_header,
+        } = reencoded_stream_footer.entries[0];
+
+        let reencoded_rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
             .try_cast::<usize>()
             .unwrap()
             .range();
         let reencoded_rrd_footer_bytes = &msgs_reencoded[reencoded_rrd_footer_range];
 
-        {
-            let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-                reencoded_stream_footer
-                    .rrd_footer_byte_span_from_start_excluding_header
-                    .start,
-                reencoded_rrd_footer_bytes,
-            )
-            .crc_excluding_header;
-            similar_asserts::assert_eq!(reencoded_stream_footer.crc_excluding_header, crc);
-        }
+        similar_asserts::assert_eq!(
+            crc_excluding_header,
+            StreamFooter::compute_crc(reencoded_rrd_footer_bytes)
+        );
 
         let reencoded_rrd_footer =
             re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(reencoded_rrd_footer_bytes)
@@ -310,23 +307,27 @@ fn footer_empty() {
         re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
             .unwrap();
 
-    let rrd_footer_range = stream_footer
-        .rrd_footer_byte_span_from_start_excluding_header
+    assert_eq!(
+        1,
+        stream_footer.entries.len(),
+        "Stream footers always point to exactly 1 RRD footer at the moment"
+    );
+
+    let StreamFooterEntry {
+        rrd_footer_byte_span_from_start_excluding_header,
+        crc_excluding_header,
+    } = stream_footer.entries[0];
+
+    let rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
         .try_cast::<usize>()
         .unwrap()
         .range();
     let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
 
-    {
-        let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-            stream_footer
-                .rrd_footer_byte_span_from_start_excluding_header
-                .start,
-            rrd_footer_bytes,
-        )
-        .crc_excluding_header;
-        similar_asserts::assert_eq!(stream_footer.crc_excluding_header, crc);
-    }
+    similar_asserts::assert_eq!(
+        crc_excluding_header,
+        StreamFooter::compute_crc(rrd_footer_bytes)
+    );
 
     let rrd_footer =
         re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes).unwrap();

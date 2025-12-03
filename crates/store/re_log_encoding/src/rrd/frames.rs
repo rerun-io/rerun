@@ -206,7 +206,7 @@ impl Decodable for StreamHeader {
 
 // ---
 
-/// The closing frame in an RRD stream. Keeps track of where the [`RrdFooter`] can be found.
+/// The closing frame in an RRD stream. Keeps track of where the [`RrdFooter`]s can be found.
 ///
 /// During normal operations, there can only be a single [`StreamFooter`] per RRD stream.
 /// It is possible to break that invariant by concatenating streams using external tools,
@@ -216,7 +216,7 @@ impl Decodable for StreamHeader {
 /// I.e. that invariant holds as long as one stays within our ecosystem of tools.
 ///
 /// [`RrdFooter`]: [crate::RrdFooter]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamFooter {
     /// Same as the one in the [`StreamHeader`], i.e. [`crate::rrd::RRD_FOURCC`].
     ///
@@ -228,13 +228,32 @@ pub struct StreamFooter {
     /// Always set to [`Self::RRD_IDENTIFIER`].
     pub identifier: [u8; 4], // FOOT
 
+    /// One entry per RRD footer that is pointed at from this stream footer.
+    ///
+    /// The stream footer supports pointing to an arbitrary number of RRD footers.
+    /// This variable length allows for incremental RRD manifests, where the manifest for a single
+    /// recording gets built and logged in many chunks rather than all at once when the sink
+    /// finally shuts down.
+    ///
+    /// We do not leverage that feature today, and so the number of entries is always 1 in practice.
+    /// Having this already setup this way means that we will be able to support it in the future without
+    /// having to break the framing protocol (i.e. going from `RRF2/FOOT` to `RRF3/FOOT`).
+    pub entries: Vec<StreamFooterEntry>,
+}
+
+/// One specific entry in the [`StreamFooter`]. Each entry corresponds to an RRD footer.
+///
+/// As of today, there is always one and exactly one entry per [`StreamFooter`], see
+/// [`StreamFooter::entries`] for more information.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StreamFooterEntry {
     /// The span in bytes where the serialized [`RrdFooter`] payload starts end ends, excluding
     /// the message header.
     ///
     /// I.e. a transport-level [`RrdFooter`] can be decoded from the bytes at (pseudo-code):
     /// ```text
-    /// let start = stream_footer.rrd_footer_byte_span_from_start_excluding_header.start;
-    /// let end = stream_footer.rrd_footer_byte_span_from_start_excluding_header.end();
+    /// let start = rrd_footer_byte_span_from_start_excluding_header.start;
+    /// let end = rrd_footer_byte_span_from_start_excluding_header.end();
     /// let bytes = &file[start..end];
     /// let rrd_footer = re_protos::RrdFooter::decode(bytes)?;
     /// let rrd_footer = rrd_footer.to_application()?;
@@ -251,7 +270,7 @@ pub struct StreamFooter {
     ///
     /// For now, the checksum algorithm is hardcoded to `xxh32`, the 32bit variant of the
     /// [`xxhash` family of hashing algorithms](https://xxhash.com/).
-    /// This is fast, HW-accelerated, non-cryptographic hash that is perfect when needing to hash
+    /// This a is fast, HW-accelerated, non-cryptographic hash that is perfect for hashing
     /// RRD footers, which can potentially get very, very large.
     ///
     /// [`RrdFooter`]: [crate::RrdFooter]
@@ -265,7 +284,16 @@ pub struct StreamFooter {
 }
 
 impl StreamFooter {
-    pub const ENCODED_SIZE_BYTES: usize = 28;
+    /// The encoded size in bytes of a [`StreamFooter`].
+    ///
+    /// While [`StreamFooter`]s are technically of variable length, they always contain one and
+    /// exactly one entry as of today. This value represents that.
+    pub const ENCODED_SIZE_BYTES: usize =
+        Self::ENCODED_SIZE_BYTES_IGNORING_ENTRIES + Self::ENCODED_SIZE_BYTES_SINGLE_ENTRY;
+
+    const ENCODED_SIZE_BYTES_IGNORING_ENTRIES: usize = 12;
+    const ENCODED_SIZE_BYTES_SINGLE_ENTRY: usize = 20;
+
     pub const CRC_SEED: u32 = 7850921; // "RERUN" in base 26 (A=0, Z=25)
     pub const RRD_IDENTIFIER: [u8; 4] = *b"FOOT";
 
@@ -276,8 +304,10 @@ impl StreamFooter {
         Self {
             fourcc: crate::RRD_FOURCC,
             identifier: Self::RRD_IDENTIFIER,
-            rrd_footer_byte_span_from_start_excluding_header,
-            crc_excluding_header,
+            entries: vec![StreamFooterEntry {
+                rrd_footer_byte_span_from_start_excluding_header,
+                crc_excluding_header,
+            }],
         }
     }
 
@@ -285,7 +315,7 @@ impl StreamFooter {
         rrd_footer_byte_offset_from_start_excluding_header: u64,
         rrd_footer_bytes: &[u8],
     ) -> Self {
-        let crc_excluding_header = xxhash_rust::xxh32::xxh32(rrd_footer_bytes, Self::CRC_SEED);
+        let crc_excluding_header = Self::compute_crc(rrd_footer_bytes);
         let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
             start: rrd_footer_byte_offset_from_start_excluding_header,
             len: rrd_footer_bytes.len() as u64,
@@ -293,9 +323,15 @@ impl StreamFooter {
         Self {
             fourcc: crate::RRD_FOURCC,
             identifier: Self::RRD_IDENTIFIER,
-            rrd_footer_byte_span_from_start_excluding_header,
-            crc_excluding_header,
+            entries: vec![StreamFooterEntry {
+                rrd_footer_byte_span_from_start_excluding_header,
+                crc_excluding_header,
+            }],
         }
+    }
+
+    pub fn compute_crc(rrd_footer_bytes_excluding_header: &[u8]) -> u32 {
+        xxhash_rust::xxh32::xxh32(rrd_footer_bytes_excluding_header, Self::CRC_SEED)
     }
 }
 
@@ -304,28 +340,41 @@ impl Encodable for StreamFooter {
         let Self {
             fourcc,
             identifier,
-            rrd_footer_byte_span_from_start_excluding_header,
-            crc_excluding_header,
+            entries,
         } = self;
+
+        let num_rrd_footers = entries.len() as u32;
 
         let before = out.len() as u64;
 
+        // We start with the entries first, so that the static part of the stream footer can always
+        // be accessed randomly using a fixed offset from the end of the file.
+        for entry in entries {
+            out.extend_from_slice(
+                &entry
+                    .rrd_footer_byte_span_from_start_excluding_header
+                    .start
+                    .to_le_bytes(),
+            );
+            out.extend_from_slice(
+                &entry
+                    .rrd_footer_byte_span_from_start_excluding_header
+                    .len
+                    .to_le_bytes(),
+            );
+            out.extend_from_slice(&entry.crc_excluding_header.to_le_bytes());
+        }
+
         out.extend_from_slice(fourcc);
         out.extend_from_slice(identifier);
-        out.extend_from_slice(
-            &rrd_footer_byte_span_from_start_excluding_header
-                .start
-                .to_le_bytes(),
-        );
-        out.extend_from_slice(
-            &rrd_footer_byte_span_from_start_excluding_header
-                .len
-                .to_le_bytes(),
-        );
-        out.extend_from_slice(&crc_excluding_header.to_le_bytes());
+        out.extend_from_slice(&num_rrd_footers.to_le_bytes());
 
         let n = out.len() as u64 - before;
-        assert_eq!(Self::ENCODED_SIZE_BYTES as u64, n);
+        assert_eq!(
+            Self::ENCODED_SIZE_BYTES as u64,
+            n,
+            "Stream footers always point to a single RRD footer at the moment"
+        );
 
         Ok(n)
     }
@@ -333,7 +382,7 @@ impl Encodable for StreamFooter {
 
 impl Decodable for StreamFooter {
     fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
-        if data.len() != Self::ENCODED_SIZE_BYTES {
+        if data.len() < Self::ENCODED_SIZE_BYTES {
             return Err(crate::rrd::CodecError::FrameDecoding(format!(
                 "invalid StreamFooter length (expected {} but got {})",
                 Self::ENCODED_SIZE_BYTES,
@@ -341,9 +390,11 @@ impl Decodable for StreamFooter {
             )));
         }
 
+        let fixed_data = &data[data.len() - Self::ENCODED_SIZE_BYTES_IGNORING_ENTRIES..];
+
         let to_array_4b = |slice: &[u8]| slice.try_into().expect("always returns an Ok() variant");
 
-        let fourcc: [u8; 4] = to_array_4b(&data[0..4]);
+        let fourcc: [u8; 4] = to_array_4b(&fixed_data[0..4]);
         if fourcc != crate::RRD_FOURCC {
             return Err(crate::rrd::CodecError::FrameDecoding(format!(
                 "invalid StreamFooter FourCC (expected {:?} but got {:?})",
@@ -352,7 +403,7 @@ impl Decodable for StreamFooter {
             )));
         }
 
-        let identifier: [u8; 4] = to_array_4b(&data[4..8]);
+        let identifier: [u8; 4] = to_array_4b(&fixed_data[4..8]);
         if identifier != Self::RRD_IDENTIFIER {
             return Err(crate::rrd::CodecError::FrameDecoding(format!(
                 "invalid StreamFooter identifier (expected {:?} but got {:?})",
@@ -361,17 +412,53 @@ impl Decodable for StreamFooter {
             )));
         }
 
-        let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
-            start: u64::from_le_bytes(data[8..16].try_into().expect("cannot fail, checked above")),
-            len: u64::from_le_bytes(data[16..24].try_into().expect("cannot fail, checked above")),
-        };
-        let crc = u32::from_le_bytes(data[24..28].try_into().expect("cannot fail, checked above"));
+        let num_rrd_footers = u32::from_le_bytes(
+            fixed_data[8..12]
+                .try_into()
+                .expect("cannot fail, checked above"),
+        );
+        debug_assert_eq!(
+            1, num_rrd_footers,
+            "Stream footers always point to a single RRD footer at the moment"
+        );
+
+        let dynamic_data = &data[data.len() - Self::ENCODED_SIZE_BYTES..];
+
+        let mut pos = 0;
+        let entries = (0..num_rrd_footers)
+            .map(|_| {
+                let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
+                    start: u64::from_le_bytes(
+                        dynamic_data[pos..pos + 8]
+                            .try_into()
+                            .expect("cannot fail, checked above"),
+                    ),
+                    len: u64::from_le_bytes(
+                        dynamic_data[pos + 8..pos + 16]
+                            .try_into()
+                            .expect("cannot fail, checked above"),
+                    ),
+                };
+
+                let crc_excluding_header = u32::from_le_bytes(
+                    dynamic_data[pos + 16..pos + 20]
+                        .try_into()
+                        .expect("cannot fail, checked above"),
+                );
+
+                pos += Self::ENCODED_SIZE_BYTES_SINGLE_ENTRY;
+
+                StreamFooterEntry {
+                    rrd_footer_byte_span_from_start_excluding_header,
+                    crc_excluding_header,
+                }
+            })
+            .collect();
 
         Ok(Self {
             fourcc,
             identifier,
-            rrd_footer_byte_span_from_start_excluding_header,
-            crc_excluding_header: crc,
+            entries,
         })
     }
 }
