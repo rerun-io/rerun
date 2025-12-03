@@ -35,6 +35,7 @@ re_mcap.workspace = true
 re_log_channel.workspace = true
 re_tracing.workspace = true
 re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image", "video"] }
+re_video.workspace = true
 
 ahash.workspace = true
 anyhow.workspace = true
