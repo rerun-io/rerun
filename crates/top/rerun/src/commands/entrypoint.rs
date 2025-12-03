@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 use std::time::Duration;
 
+use crate::external::re_ui::{UICommand, UICommandSender};
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use re_data_source::LogDataSource;
@@ -903,6 +904,25 @@ fn start_native_viewer(
     re_viewer::run_native_app(
         _main_thread_token,
         Box::new(move |cc| {
+            let (tx, rx) = re_viewer::command_channel();
+            {
+                let tx = tx.clone();
+                let egui_ctx = cc.egui_ctx.clone();
+                tokio::spawn(async move {
+                    // We catch ctrl-c commands so we can properly quit.
+                    // Without this, recent state changes might not be persisted.
+                    match tokio::signal::ctrl_c().await {
+                        Ok(()) => {
+                            re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
+                            tx.send_ui(UICommand::Quit);
+                            egui_ctx.request_repaint();
+                        }
+                        Err(err) => {
+                            re_log::error!("Failed to listen for ctrl-c signal: {}", err);
+                        }
+                    }
+                });
+            }
             let mut app = re_viewer::App::with_commands(
                 _main_thread_token,
                 _build_info,
@@ -912,7 +932,7 @@ fn start_native_viewer(
                 Some(connection_registry),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
-                re_viewer::command_channel(),
+                (tx, rx),
             );
             app.set_profiler(profiler);
             for rx in log_receivers {
