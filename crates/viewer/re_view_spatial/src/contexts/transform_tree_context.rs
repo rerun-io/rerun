@@ -236,7 +236,7 @@ impl ViewContextSystem for TransformTreeContext {
                         entity_paths_for_frame.iter().map(move |entity_path_hash| {
                             let transform_info = map_tree_transform_to_transform_info(
                                 ctx,
-                                tree_transform.clone(),
+                                &tree_transform,
                                 transforms,
                                 latest_at_query,
                                 entity_path_hash,
@@ -267,7 +267,7 @@ impl ViewContextSystem for TransformTreeContext {
 
 fn map_tree_transform_to_transform_info(
     ctx: &ViewContext<'_>,
-    tree_transform: Result<TreeTransform, re_tf::TransformFromToError>,
+    tree_transform: &Result<TreeTransform, re_tf::TransformFromToError>,
     transforms: &re_tf::CachedTransformsForTimeline,
     latest_at_query: &LatestAtQuery,
     entity_path_hash: &EntityPathHash,

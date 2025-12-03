@@ -58,8 +58,8 @@ pub enum ViewerOpenUrl {
 
     /// A `rerun://` URI pointing to a recording.
     ///
-    /// See also [`LogDataSource::RedapDatasetPartition`].
-    RedapDatasetPartition(re_uri::DatasetPartitionUri),
+    /// See also [`LogDataSource::RedapDatasetSegment`].
+    RedapDatasetSegment(re_uri::DatasetSegmentUri),
 
     /// A `rerun+http://` URI pointing to a proxy.
     ///
@@ -103,7 +103,7 @@ impl std::fmt::Debug for ViewerOpenUrl {
             Self::RrdHttpUrl(url) => write!(f, "RrdHttpUrl{url}"),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => write!(f, "FilePath({path:?})"),
-            Self::RedapDatasetPartition(uri) => write!(f, "RedapDatasetPartition({uri})"),
+            Self::RedapDatasetSegment(uri) => write!(f, "RedapDatasetSegment({uri})"),
             Self::RedapProxy(uri) => write!(f, "RedapProxy({uri})"),
             Self::RedapCatalog(uri) => write!(f, "RedapCatalog({uri})"),
             Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
@@ -127,7 +127,7 @@ impl From<re_uri::RedapUri> for ViewerOpenUrl {
         match value {
             re_uri::RedapUri::Catalog(uri) => Self::RedapCatalog(uri),
             re_uri::RedapUri::Entry(uri) => Self::RedapEntry(uri),
-            re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetPartition(uri),
+            re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetSegment(uri),
             re_uri::RedapUri::Proxy(uri) => Self::RedapProxy(uri),
         }
     }
@@ -179,10 +179,10 @@ impl std::str::FromStr for ViewerOpenUrl {
                 #[cfg(not(target_arch = "wasm32"))]
                 LogDataSource::Stdin => Err(anyhow::anyhow!("`-` is not a valid URL.")),
 
-                LogDataSource::RedapDatasetPartition {
+                LogDataSource::RedapDatasetSegment {
                     uri,
                     select_when_loaded: _,
-                } => Ok(Self::RedapDatasetPartition(uri)),
+                } => Ok(Self::RedapDatasetSegment(uri)),
 
                 LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
             }
@@ -318,7 +318,7 @@ impl ViewerOpenUrl {
             SmartChannelSource::RedapGrpcStream {
                 uri,
                 select_when_loaded: _,
-            } => Ok(Self::RedapDatasetPartition(uri.clone())),
+            } => Ok(Self::RedapDatasetSegment(uri.clone())),
 
             SmartChannelSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
         }
@@ -400,8 +400,8 @@ impl ViewerOpenUrl {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => vec1![(*path_buf.to_string_lossy()).to_owned()],
 
-            Self::RedapDatasetPartition(dataset_partition_uri) => {
-                vec1![dataset_partition_uri.to_string()]
+            Self::RedapDatasetSegment(dataset_segment_uri) => {
+                vec1![dataset_segment_uri.to_string()]
             }
 
             Self::RedapProxy(proxy_uri) => {
@@ -479,7 +479,7 @@ impl ViewerOpenUrl {
             }),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path_buf) => Some(SmartChannelSource::File(path_buf.clone())),
-            Self::RedapDatasetPartition(uri) => Some(SmartChannelSource::RedapGrpcStream {
+            Self::RedapDatasetSegment(uri) => Some(SmartChannelSource::RedapGrpcStream {
                 uri: uri.clone(),
                 select_when_loaded: false,
             }),
@@ -541,9 +541,9 @@ impl ViewerOpenUrl {
                     path_buf,
                 )));
             }
-            Self::RedapDatasetPartition(uri) => {
+            Self::RedapDatasetSegment(uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::RedapDatasetPartition {
+                    LogDataSource::RedapDatasetSegment {
                         uri,
                         // `select_when_loaded` is not encoded in the url itself right now.
                         select_when_loaded: options.select_redap_source_when_loaded,
@@ -629,7 +629,7 @@ impl ViewerOpenUrl {
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => self,
 
-            Self::RedapDatasetPartition(uri) => Self::RedapDatasetPartition(uri.without_fragment()),
+            Self::RedapDatasetSegment(uri) => Self::RedapDatasetSegment(uri.without_fragment()),
             Self::WebViewerUrl {
                 base_url,
                 mut url_parameters,
@@ -653,7 +653,7 @@ impl ViewerOpenUrl {
             Self::RrdHttpUrl(..) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
-            Self::RedapDatasetPartition(uri) => Some(&mut uri.fragment),
+            Self::RedapDatasetSegment(uri) => Some(&mut uri.fragment),
             Self::RedapProxy(..) => None,
             Self::RedapCatalog(..) => None,
             Self::RedapEntry(..) => None,
@@ -680,7 +680,7 @@ impl ViewerOpenUrl {
             Self::RrdHttpUrl(..) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
-            Self::RedapDatasetPartition(uri) => Some(&mut uri.time_range),
+            Self::RedapDatasetSegment(uri) => Some(&mut uri.time_range),
             Self::RedapProxy(..) => None,
             Self::RedapCatalog(..) => None,
             Self::RedapEntry(..) => None,
@@ -796,7 +796,7 @@ mod tests {
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
     use re_smart_channel::SmartChannelSource;
     use re_uri::{
-        CatalogUri, DatasetPartitionUri, Fragment,
+        CatalogUri, DatasetSegmentUri, Fragment,
         external::url::{self, Url},
     };
 
@@ -819,11 +819,11 @@ mod tests {
             ViewerOpenUrl::RedapEntry(re_uri::EntryUri::from_str(&url).unwrap())
         );
 
-        // DatasetPartitionUri
-        let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        // DatasetSegmentUri
+        let url = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         assert_eq!(
             ViewerOpenUrl::from_str(&url).unwrap(),
-            ViewerOpenUrl::RedapDatasetPartition(url.parse().unwrap())
+            ViewerOpenUrl::RedapDatasetSegment(url.parse().unwrap())
         );
 
         // IntraRecordingSelection
@@ -1049,7 +1049,7 @@ mod tests {
 
         // originating from Redap gRPC stream.
         let entry_id = EntryId::new();
-        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         let id = add_store(
             &mut store_hub,
             Some(SmartChannelSource::RedapGrpcStream {
@@ -1058,12 +1058,12 @@ mod tests {
             }),
         );
 
-        let mut uri: re_uri::DatasetPartitionUri = uri.parse().unwrap();
+        let mut uri: re_uri::DatasetSegmentUri = uri.parse().unwrap();
 
         assert_eq!(
             ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id.clone()))
                 .unwrap(),
-            ViewerOpenUrl::RedapDatasetPartition(uri.clone())
+            ViewerOpenUrl::RedapDatasetSegment(uri.clone())
         );
 
         let fragment = Fragment {
@@ -1089,7 +1089,7 @@ mod tests {
 
         *url.fragment_mut().unwrap() = fragment;
 
-        assert_eq!(url, ViewerOpenUrl::RedapDatasetPartition(uri),);
+        assert_eq!(url, ViewerOpenUrl::RedapDatasetSegment(uri),);
 
         // originating from message proxy.
         let uri = "rerun://localhost:51234/proxy";
@@ -1135,9 +1135,9 @@ mod tests {
         );
 
         let entry_id = EntryId::new();
-        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?partition_id=pid");
+        let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         assert_eq!(
-            ViewerOpenUrl::RedapDatasetPartition(uri.parse().unwrap())
+            ViewerOpenUrl::RedapDatasetSegment(uri.parse().unwrap())
                 .sharable_url(None)
                 .unwrap(),
             uri
@@ -1214,15 +1214,15 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::RedapDatasetPartition(
-                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?partition_id=pid"
+            ViewerOpenUrl::RedapDatasetSegment(
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae?segment_id=pid"
                     .parse()
                     .unwrap()
             )
             .sharable_url(base_url_param)
             .unwrap(),
             format!(
-                "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fpartition_id%3Dpid"
+                "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid"
             )
         );
 
@@ -1292,31 +1292,31 @@ mod tests {
                 }),
             ),
             (
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1",
-                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1",
+                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: None,
                     fragment: Default::default(),
                 }),
             ),
             (
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s",
-                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s",
+                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                     fragment: Default::default(),
                 }),
             ),
             (
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s#when=stable_time@+3.990s",
-                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s#when=stable_time@+3.990s",
+                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                     fragment: re_uri::Fragment {
                         when: Some((
@@ -1329,11 +1329,11 @@ mod tests {
             ),
             (
                 // Test missing `+`, and percent-endoded `+` (%2B):
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?partition_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@1.096s..%2B2.097s#when=stable_time@3.990s",
-                ViewerOpenUrl::RedapDatasetPartition(DatasetPartitionUri {
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@1.096s..%2B2.097s#when=stable_time@3.990s",
+                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    partition_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
                     time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                     fragment: re_uri::Fragment {
                         when: Some((
@@ -1353,7 +1353,7 @@ mod tests {
                     assert_eq!(got, expected);
                 }
                 Err(err) => {
-                    DatasetPartitionUri::from_str(uri).unwrap();
+                    DatasetSegmentUri::from_str(uri).unwrap();
                     panic!("{err}");
                 }
             }

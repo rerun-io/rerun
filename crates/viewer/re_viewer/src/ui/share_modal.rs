@@ -420,17 +420,17 @@ mod tests {
             });
         harness.snapshot("share_modal__server_url");
 
-        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
-            re_uri::DatasetPartitionUri {
+        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetSegment(
+            re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                partition_id: "partition_id".to_owned(),
+                segment_id: "segment_id".to_owned(),
                 time_range: None,
                 fragment: re_uri::Fragment::default(),
             },
         ));
         harness.run_steps(2); // Force running two steps to ensure relayouting happens. TODO(andreas): Why is this needed?
-        harness.snapshot("share_modal__dataset_partition_url");
+        harness.snapshot("share_modal__dataset_segment_url");
 
         // Set the timeline so it shows up on the dialog.
         test_ctx.send_time_commands(
@@ -444,11 +444,11 @@ mod tests {
 
         harness.run();
 
-        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
-            re_uri::DatasetPartitionUri {
+        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetSegment(
+            re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                partition_id: "partition_id".to_owned(),
+                segment_id: "segment_id".to_owned(),
                 time_range: Some(re_uri::TimeSelection {
                     timeline,
                     range: re_log_types::AbsoluteTimeRange::new(0, 1000),
@@ -460,6 +460,6 @@ mod tests {
             },
         ));
         harness.run();
-        harness.snapshot("share_modal__dataset_partition_url_with_time_range");
+        harness.snapshot("share_modal__dataset_segment_url_with_time_range");
     }
 }

@@ -9,6 +9,7 @@ use re_log_types::{
     AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
     LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
+use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::{Origin, TimeSelection};
@@ -296,7 +297,7 @@ where
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_smart_channel::Sender<DataSourceMessage>,
-    uri: re_uri::DatasetPartitionUri,
+    uri: re_uri::DatasetSegmentUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), ApiError> {
     re_log::debug!("Loading {uri}…");
@@ -354,10 +355,10 @@ pub async fn stream_blueprint_and_segment_from_server(
         re_log::debug!("No blueprint dataset found for {uri}");
     }
 
-    let re_uri::DatasetPartitionUri {
+    let re_uri::DatasetSegmentUri {
         origin: _,
         dataset_id,
-        partition_id: segment_id,
+        segment_id,
         time_range,
         fragment,
     } = uri;
@@ -459,14 +460,35 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    // Retrieve the chunk IDs we're interested in (all of them):
+    // Retrieve the chunk IDs we're interested in:
     let chunk_index_messages = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
             segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
-            query: None,
+            query: time_range.map(|time_range| {
+                Query {
+                    // So that we can show the state at the start:
+                    latest_at: Some(QueryLatestAt {
+                        index: Some(time_range.timeline.name().to_string()),
+                        at: time_range.range.min(),
+                    }),
+                    // Show we can show everything in the range:
+                    range: Some(QueryRange {
+                        index: time_range.timeline.name().to_string(),
+                        index_range: time_range.into(),
+                    }),
+                    columns_always_include_everything: false,
+                    columns_always_include_chunk_ids: false,
+                    columns_always_include_byte_offsets: false,
+                    columns_always_include_entity_paths: false,
+                    columns_always_include_static_indexes: false,
+                    columns_always_include_global_indexes: false,
+                    columns_always_include_component_indexes: false,
+                }
+                .into()
+            }),
         })
         .await?;
 

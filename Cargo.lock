@@ -8520,6 +8520,7 @@ name = "re_byte_size"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "glam",
  "half",
  "smallvec",
 ]
@@ -9745,6 +9746,7 @@ dependencies = [
  "nohash-hasher",
  "parking_lot",
  "re_arrow_util",
+ "re_byte_size",
  "re_chunk_store",
  "re_entity_db",
  "re_log",
