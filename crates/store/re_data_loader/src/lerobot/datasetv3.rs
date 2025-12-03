@@ -975,7 +975,7 @@ fn load_episode_video(
     for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
         // make sure we absolutely do not leak any samples from outside the requested time range
         if sample_meta.presentation_timestamp < start_video_time
-            || sample_meta.presentation_timestamp > end_video_time
+            || sample_meta.presentation_timestamp >= end_video_time
         {
             continue;
         }
