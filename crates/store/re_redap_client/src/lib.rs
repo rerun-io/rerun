@@ -193,6 +193,7 @@ impl ApiError {
         }
     }
 
+    #[expect(clippy::needless_pass_by_value)]
     pub fn invalid_server(origin: re_uri::Origin) -> Self {
         Self {
             message: format!("{origin} is not a valid Rerun server"),
