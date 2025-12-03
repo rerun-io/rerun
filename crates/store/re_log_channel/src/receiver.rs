@@ -6,9 +6,9 @@ use std::sync::{
 use crate::{Channel, LogSource, SmartMessage, TryRecvError};
 
 pub struct LogReceiver {
-    pub(crate) rx: crossbeam::channel::Receiver<SmartMessage>,
-    pub(crate) channel: Arc<Channel>,
-    pub(crate) source: Arc<LogSource>,
+    rx: crossbeam::channel::Receiver<SmartMessage>,
+    channel: Arc<Channel>,
+    source: Arc<LogSource>,
     connected: AtomicBool,
 }
 
@@ -84,10 +84,20 @@ impl LogReceiver {
         Ok(msg)
     }
 
+    pub(crate) fn inner(&self) -> &crossbeam::channel::Receiver<SmartMessage> {
+        &self.rx
+    }
+
     /// Where is the data coming from?
     #[inline]
     pub fn source(&self) -> &LogSource {
         &self.source
+    }
+
+    /// Where is the data coming from?
+    #[inline]
+    pub fn source_arc(&self) -> Arc<LogSource> {
+        self.source.clone()
     }
 
     /// Is the channel currently empty of messages?

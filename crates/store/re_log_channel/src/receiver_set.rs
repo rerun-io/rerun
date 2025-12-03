@@ -33,7 +33,7 @@ impl LogReceiverSet {
         self.receivers
             .lock()
             .iter()
-            .any(|src| src.source.is_same_ignoring_uri_fragments(source))
+            .any(|src| src.source().is_same_ignoring_uri_fragments(source))
     }
 
     /// Disconnect from any channel with the given source.
@@ -75,7 +75,7 @@ impl LogReceiverSet {
         re_tracing::profile_function!();
         let mut rx = self.receivers.lock();
         rx.retain(|r| r.is_connected());
-        rx.iter().map(|r| r.source.clone()).collect()
+        rx.iter().map(|r| r.source_arc()).collect()
     }
 
     /// Any connected receivers?
@@ -117,12 +117,12 @@ impl LogReceiverSet {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx);
+            sel.recv(r.inner());
         }
 
         let oper = sel.select();
         let index = oper.index();
-        oper.recv(&rx[index].rx).map_err(|_err| RecvError)
+        oper.recv(rx[index].inner()).map_err(|_err| RecvError)
     }
 
     /// Returns immediately if there is nothing to receive.
@@ -138,20 +138,20 @@ impl LogReceiverSet {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx);
+            sel.recv(r.inner());
         }
 
         let oper = sel.try_select().ok()?;
         let index = oper.index();
-        if let Ok(msg) = oper.recv(&rx[index].rx) {
-            return Some((rx[index].source.clone(), msg));
+        if let Ok(msg) = oper.recv(rx[index].inner()) {
+            return Some((rx[index].source_arc(), msg));
         }
 
         // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
         // Why use `select` first? Because `select` is fair (random) when there is contention.
         for rx in rx.iter() {
             if let Ok(msg) = rx.try_recv() {
-                return Some((rx.source.clone(), msg));
+                return Some((rx.source_arc(), msg));
             }
         }
 
@@ -173,20 +173,20 @@ impl LogReceiverSet {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx);
+            sel.recv(r.inner());
         }
 
         let oper = sel.select_timeout(timeout).ok()?;
         let index = oper.index();
-        if let Ok(msg) = oper.recv(&rx[index].rx) {
-            return Some((rx[index].source.clone(), msg));
+        if let Ok(msg) = oper.recv(rx[index].inner()) {
+            return Some((rx[index].source_arc(), msg));
         }
 
         // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
         // Why use `select` first? Because `select` is fair (random) when there is contention.
         for rx in rx.iter() {
             if let Ok(msg) = rx.try_recv() {
-                return Some((rx.source.clone(), msg));
+                return Some((rx.source_arc(), msg));
             }
         }
 
