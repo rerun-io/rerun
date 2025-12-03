@@ -269,6 +269,32 @@ impl ::prost::Name for StoreVersion {
         "/rerun.log_msg.v1alpha1.StoreVersion".into()
     }
 }
+/// This is the payload that is carried in messages of type `::End` in RRD streams.
+///
+/// It keeps track of various useful information about the associated recording.
+///
+/// During normal operations, there can only be a single `::End` message in an RRD stream, and
+/// therefore a single `RrdFooter`.
+/// It is possible to break that invariant by concatenating streams using external tools,
+/// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
+/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd merge > all_my_recordings.rrd`,
+/// would once again guarantee that only one `::End` message is present though.
+/// I.e. that invariant holds as long as one stays within our ecosystem of tools.
+///
+/// This is a transport-level type, the associated application-level type can be found
+/// in `re_log_encoding::RrdFooter`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RrdFooter {}
+impl ::prost::Name for RrdFooter {
+    const NAME: &'static str = "RrdFooter";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v1alpha1.RrdFooter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v1alpha1.RrdFooter".into()
+    }
+}
 /// The type of compression used on the payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

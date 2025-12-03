@@ -1,8 +1,8 @@
+use std::collections::HashMap;
+
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
-use sha2::Digest as _;
-use std::collections::HashMap;
 
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
@@ -68,6 +68,7 @@ impl Layer {
             schema_ipc
         };
 
+        use sha2::Digest as _;
         let mut hash = [0u8; 32];
         let mut hasher = sha2::Sha256::new();
         hasher.update(&partition_schema_ipc);

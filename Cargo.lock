@@ -9073,6 +9073,7 @@ dependencies = [
  "bytes",
  "criterion",
  "ehttp",
+ "itertools 0.14.0",
  "js-sys",
  "lz4_flex 0.12.0",
  "mimalloc",
@@ -9084,6 +9085,7 @@ dependencies = [
  "re_protos",
  "re_smart_channel",
  "re_sorbet",
+ "re_span",
  "re_tracing",
  "re_types",
  "similar-asserts",
@@ -9095,6 +9097,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
+ "xxhash-rust",
 ]
 
 [[package]]
