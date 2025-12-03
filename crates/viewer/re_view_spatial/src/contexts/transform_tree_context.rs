@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
-use re_log_types::EntityPathHash;
+use re_log_types::{EntityPath, EntityPathHash};
 use re_tf::{TransformFrameId, TransformFrameIdHash};
 use re_types::{archetypes, components::ImagePlaneDistance};
-use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
+use re_view::{
+    DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
+};
 use re_viewer_context::{
-    DataResult, IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
+    IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
     ViewContextSystemOncePerFrameResult, typed_fallback_for,
 };
 use vec1::smallvec_v1::SmallVec1;
@@ -102,9 +104,30 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_forest = static_execution_result.transform_forest.clone();
         self.frame_id_mapping = static_execution_result.frame_id_mapping.clone();
 
+        let results = query
+            .iter_all_data_results()
+            .map(|data_result| {
+                let latest_at_query = ctx.current_query();
+
+                let transform_frame_id_component =
+                    archetypes::CoordinateFrame::descriptor_frame().component;
+
+                let query_shadowed_components = false;
+                latest_at_with_blueprint_resolved_data(
+                    ctx,
+                    None,
+                    &latest_at_query,
+                    data_result,
+                    [transform_frame_id_component],
+                    query_shadowed_components,
+                )
+            })
+            .collect::<Vec<_>>();
+
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
-        self.entity_transform_id_mapping = EntityTransformIdMapping::new(ctx, query);
+        self.entity_transform_id_mapping =
+            EntityTransformIdMapping::new(ctx, &results, query.space_origin);
 
         // Target frame is the coordinate frame of the space origin entity.
         self.target_frame = self.transform_frame_id_for(query.space_origin.hash());
@@ -112,25 +135,17 @@ impl ViewContextSystem for TransformTreeContext {
         let latest_at_query = query.latest_at_query();
 
         // Add overrides to the transform frame id map so we can get back the id for errors.
-        for data_result in query.iter_all_data_results() {
-            let result = re_view::query_overrides(
-                ctx.viewer_ctx,
-                data_result,
-                [archetypes::CoordinateFrame::descriptor_frame().component],
-            );
-
-            let Some(batch) =
-                result.component_batch(archetypes::CoordinateFrame::descriptor_frame().component)
+        for results in results {
+            let Some(frame) =
+                results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
             else {
                 continue;
             };
 
-            for frame in batch {
-                let frame_hash = TransformFrameIdHash::new(&frame);
-                if !self.frame_id_mapping.contains_key(&frame_hash) {
-                    // As overrides are local to this view we need to clone the whole map to add new hashes.
-                    Arc::make_mut(&mut self.frame_id_mapping).insert(frame_hash, frame);
-                }
+            let frame_hash = TransformFrameIdHash::new(&frame);
+            if !self.frame_id_mapping.contains_key(&frame_hash) {
+                // As overrides are local to this view we need to clone the whole map to add new hashes.
+                Arc::make_mut(&mut self.frame_id_mapping).insert(frame_hash, frame);
             }
         }
 
@@ -293,7 +308,11 @@ fn lookup_image_plane_distance(
 
 impl EntityTransformIdMapping {
     /// Build a lookup table from entity paths to their transform frame id hashes.
-    fn new(ctx: &ViewContext<'_>, query: &re_viewer_context::ViewQuery<'_>) -> Self {
+    fn new(
+        ctx: &ViewContext<'_>,
+        results: &[HybridLatestAtResults<'_>],
+        space_origin: &EntityPath,
+    ) -> Self {
         // This is blueprint-dependent data and may also change over recording time,
         // making it non-trivial to cache.
         // That said, it rarely changes, so there's definitely an opportunity here for lazy updates!
@@ -302,50 +321,58 @@ impl EntityTransformIdMapping {
         let mut mapping = Self::default();
 
         // Determine mapping for all _visible_ data results.
-        for data_result in query.iter_all_data_results() {
-            mapping.determine_frame_id_mapping_for(ctx, data_result);
+        for results in results {
+            mapping.determine_frame_id_mapping_for(ctx, results);
         }
 
         // The origin entity may not be visible, make sure it's included.
         if !mapping
             .entity_path_to_transform_frame_id
-            .contains_key(&query.space_origin.hash())
+            .contains_key(&space_origin.hash())
             && let Some(origin_data_result) = ctx
                 .query_result
                 .tree
-                .lookup_result_by_path(query.space_origin.hash())
+                .lookup_result_by_path(space_origin.hash())
         {
-            mapping.determine_frame_id_mapping_for(ctx, origin_data_result);
+            let latest_at_query = ctx.current_query();
+
+            let transform_frame_id_component =
+                archetypes::CoordinateFrame::descriptor_frame().component;
+
+            let query_shadowed_components = false;
+            let results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &latest_at_query,
+                origin_data_result,
+                [transform_frame_id_component],
+                query_shadowed_components,
+            );
+
+            mapping.determine_frame_id_mapping_for(ctx, &results);
         }
 
         mapping
     }
 
-    fn determine_frame_id_mapping_for(&mut self, ctx: &ViewContext<'_>, data_result: &DataResult) {
-        let latest_at_query = ctx.current_query();
-
+    fn determine_frame_id_mapping_for(
+        &mut self,
+        ctx: &ViewContext<'_>,
+        results: &HybridLatestAtResults<'_>,
+    ) {
         let transform_frame_id_component =
             archetypes::CoordinateFrame::descriptor_frame().component;
-
-        let query_shadowed_components = false;
-        let results = latest_at_with_blueprint_resolved_data(
-            ctx,
-            None,
-            &latest_at_query,
-            data_result,
-            [transform_frame_id_component],
-            query_shadowed_components,
-        );
 
         let frame_id = results
             .get_mono::<TransformFrameId>(transform_frame_id_component)
             .map_or_else(
                 || {
-                    let fallback = TransformFrameIdHash::from_entity_path(&data_result.entity_path);
+                    let fallback =
+                        TransformFrameIdHash::from_entity_path(&results.data_result.entity_path);
                     // Make sure this is the same as the fallback provider (which is a lot slower to run)
                     debug_assert_eq!(
                         TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                            &ctx.query_context(data_result, &latest_at_query),
+                            &ctx.query_context(results.data_result, &results.query),
                             transform_frame_id_component
                         )),
                         fallback
@@ -355,7 +382,7 @@ impl EntityTransformIdMapping {
                 |frame_id| TransformFrameIdHash::new(&frame_id),
             );
 
-        let entity_path_hash = data_result.entity_path.hash();
+        let entity_path_hash = results.data_result.entity_path.hash();
 
         match self.transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {
