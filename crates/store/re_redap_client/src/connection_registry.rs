@@ -340,10 +340,9 @@ impl ConnectionRegistryHandle {
                 }
             }
 
-            Err(err) if err.code() == Code::NotFound => Err(ApiError::tonic(
-                err,
-                format!("{origin} is not a valid Rerun server"),
-            )),
+            Err(err) if err.clone().into_http::<()>().status().as_u16() == 404 => Err(
+                ApiError::tonic(err, format!("{origin} is not a valid Rerun server")),
+            ),
 
             Err(err) => {
                 if let Some(cred_error) = err.source().and_then(|s| {
