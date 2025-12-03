@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_tf::{TransformFrameId, query_view_coordinates};
+use re_tf::query_view_coordinates;
 use re_types::blueprint::archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation};
 use re_types::blueprint::components::Eye3DKind;
 use re_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
