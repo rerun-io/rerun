@@ -10,7 +10,7 @@ use re_types::blueprint::components::Eye3DKind;
 use re_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
 use re_types::datatypes::Vec3D;
 use re_types::view_coordinates::SignedAxis3;
-use re_types::{Component as _, View as _, ViewClassIdentifier, archetypes};
+use re_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -371,7 +371,7 @@ impl ViewClass for SpatialView3D {
         let VisualizedEntities {
             indicated_entities,
             excluded_entities,
-        } = VisualizedEntities::get(
+        } = VisualizedEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
@@ -389,8 +389,8 @@ impl ViewClass for SpatialView3D {
                 ctx.recording().tree().visit_children_recursively(|path| {
                     if let Some(components) = engine.store().all_components_for_entity(path)
                         && components.into_iter().any(|component| {
+                            archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
                             // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
-                            component == archetypes::Pinhole::descriptor_camera_xyz().component
                                 || component
                                     == archetypes::ViewCoordinates::descriptor_xyz().component
                         })

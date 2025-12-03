@@ -22,7 +22,7 @@ pub struct VisualizedEntities {
 }
 
 impl VisualizedEntities {
-    pub fn get(
+    pub fn new(
         ctx: &ViewerContext<'_>,
         view_class_identifier: ViewClassIdentifier,
         visualizer_kind: SpatialViewKind,

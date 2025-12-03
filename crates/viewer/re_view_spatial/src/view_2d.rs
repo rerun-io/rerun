@@ -154,7 +154,7 @@ impl ViewClass for SpatialView2D {
         let VisualizedEntities {
             indicated_entities,
             excluded_entities,
-        } = VisualizedEntities::get(
+        } = VisualizedEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
