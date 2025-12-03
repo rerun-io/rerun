@@ -1,7 +1,6 @@
 """Logs a simple transform hierarchy with named frames."""
 
 import rerun as rr
-import numpy as np
 
 rr.init("rerun_example_transform3d_hierarchy_named_frames", spawn=True)
 
