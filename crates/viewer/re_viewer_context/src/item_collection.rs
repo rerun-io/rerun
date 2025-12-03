@@ -203,6 +203,8 @@ impl ItemCollection {
             return;
         }
 
+        use re_log_channel::LogSource;
+
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
         enum ClipboardTextDesc {
             FilePath,
@@ -226,22 +228,20 @@ impl ItemCollection {
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
-                    re_log_channel::LogSource::File(path) => {
+                    LogSource::File(path) => {
                         Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
                     }
-                    re_log_channel::LogSource::RrdHttpStream { url, follow: _ } => {
+                    LogSource::RrdHttpStream { url, follow: _ } => {
                         Some((ClipboardTextDesc::Url, url.clone()))
                     }
-                    re_log_channel::LogSource::RrdWebEvent => None,
-                    re_log_channel::LogSource::JsChannel { .. } => None,
-                    re_log_channel::LogSource::Sdk => None,
-                    re_log_channel::LogSource::Stdin => None,
-                    re_log_channel::LogSource::RedapGrpcStream { uri, .. } => {
+                    LogSource::RrdWebEvent => None,
+                    LogSource::JsChannel { .. } => None,
+                    LogSource::Sdk => None,
+                    LogSource::Stdin => None,
+                    LogSource::RedapGrpcStream { uri, .. } => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
-                    re_log_channel::LogSource::MessageProxy(uri) => {
-                        Some((ClipboardTextDesc::Url, uri.to_string()))
-                    }
+                    LogSource::MessageProxy(uri) => Some((ClipboardTextDesc::Url, uri.to_string())),
                 },
 
                 Item::AppId(id) => Some((ClipboardTextDesc::AppId, id.to_string())),
