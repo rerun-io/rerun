@@ -6,19 +6,20 @@ mod ros2_reflection;
 mod schema;
 mod stats;
 
-use re_chunk::{Chunk, EntityPath, external::nohash_hasher::IntMap};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub use self::{
-    protobuf::McapProtobufLayer, raw::McapRawLayer, recording_info::McapRecordingInfoLayer,
-    ros2::McapRos2Layer, ros2_reflection::McapRos2ReflectionLayer, schema::McapSchemaLayer,
-    stats::McapStatisticLayer,
-};
+use re_chunk::external::nohash_hasher::IntMap;
+use re_chunk::{Chunk, EntityPath};
 
-use crate::{
-    Error,
-    parsers::{ChannelId, MessageParser, ParserContext},
-};
+pub use self::protobuf::McapProtobufLayer;
+pub use self::raw::McapRawLayer;
+pub use self::recording_info::McapRecordingInfoLayer;
+pub use self::ros2::McapRos2Layer;
+pub use self::ros2_reflection::McapRos2ReflectionLayer;
+pub use self::schema::McapSchemaLayer;
+pub use self::stats::McapStatisticLayer;
+use crate::Error;
+use crate::parsers::{ChannelId, MessageParser, ParserContext};
 
 /// Globally unique identifier for a layer.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -231,7 +232,7 @@ impl Layer for MessageLayerRunner {
                 match msg {
                     Ok(message) => {
                         if let Err(err) = decoder.decode_next(&message) {
-                            re_log::error!(
+                            re_log::error_once!(
                                 "Failed to decode message on channel {}: {err}",
                                 message.channel.topic
                             );

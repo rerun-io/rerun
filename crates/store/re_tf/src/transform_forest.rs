@@ -1,5 +1,7 @@
 use nohash_hasher::{IntMap, IntSet};
-use vec1::smallvec_v1::SmallVec1;
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::EntityDb;
+use re_types::components::TransformFrameId;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -8,14 +10,9 @@ use crate::{
     TransformResolutionCache, image_view_coordinates,
 };
 
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath};
-use re_types::ArchetypeName;
-use re_types::components::TransformFrameId;
-
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
-pub struct TransformInfo {
+pub struct TreeTransform {
     /// Root frame this transform belongs to.
     ///
     /// ⚠️ This is the root of the tree this transform belongs to,
@@ -25,67 +22,23 @@ pub struct TransformInfo {
     /// We could add target and maybe even source to this, but we want to keep this struct small'ish.
     /// On that note, it may be good to split this in the future, as most of the time we're only interested in the
     /// source->target affine transform.
-    root: TransformFrameIdHash,
+    pub root: TransformFrameIdHash,
 
     /// The transform from this frame to the target's space.
     ///
-    /// ⚠️ Does not include per instance poses! ⚠️
     /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
-    target_from_source: glam::DAffine3,
-
-    /// List of transforms per instance including poses.
-    ///
-    /// If no poses are present, this is always the same as [`Self::target_from_source`].
-    /// (also implying that in this case there is only a single element).
-    /// If there are poses, there may be more than one element.
-    target_from_instances: SmallVec1<[glam::DAffine3; 1]>,
+    pub target_from_source: glam::DAffine3,
 }
 
-impl TransformInfo {
+impl TreeTransform {
     fn new_root(root: TransformFrameIdHash) -> Self {
         Self {
             root,
             target_from_source: glam::DAffine3::IDENTITY,
-            target_from_instances: SmallVec1::new(glam::DAffine3::IDENTITY),
         }
     }
 
-    /// Returns the root frame of the tree this transform belongs to.
-    ///
-    /// This is **not** necessarily the transform's target frame.
-    #[inline]
-    pub fn tree_root(&self) -> TransformFrameIdHash {
-        self.root
-    }
-
-    /// Warns that multiple transforms on an entity are not supported.
-    #[inline]
-    fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
-        if self.target_from_instances.len() > 1 {
-            re_log::warn_once!(
-                "There are multiple poses for entity {entity_name:?}'s transform frame. {archetype:?} supports only one transform per entity. Using the first one."
-            );
-        }
-    }
-
-    /// Returns the first instance transform and warns if there are multiple.
-    #[inline]
-    pub fn single_transform_required_for_entity(
-        &self,
-        entity_name: &EntityPath,
-        archetype: ArchetypeName,
-    ) -> glam::DAffine3 {
-        self.warn_on_per_instance_transform(entity_name, archetype);
-        *self.target_from_instances.first()
-    }
-
-    /// Returns the target from instance transforms.
-    #[inline]
-    pub fn target_from_instances(&self) -> &SmallVec1<[glam::DAffine3; 1]> {
-        &self.target_from_instances
-    }
-
-    /// Multiplies all transforms from the left by `target_from_reference`
+    /// Multiplies the transform from the left by `target_from_reference`
     ///
     /// Or in other words:
     /// `reference_from_source = self`
@@ -94,19 +47,13 @@ impl TransformInfo {
         let Self {
             root,
             target_from_source: reference_from_source,
-            target_from_instances: reference_from_source_instances,
         } = self;
 
         let target_from_source = target_from_reference * reference_from_source;
-        let target_from_source_instances = left_multiply_smallvec1_of_transforms(
-            target_from_reference,
-            reference_from_source_instances,
-        );
 
         Self {
             root: *root,
             target_from_source,
-            target_from_instances: target_from_source_instances,
         }
     }
 }
@@ -152,7 +99,7 @@ struct TargetInfo {
 struct SourceInfo<'a> {
     id: TransformFrameIdHash,
     root: TransformFrameIdHash,
-    root_from_source: &'a TransformInfo,
+    root_from_source: &'a TreeTransform,
 }
 
 /// Properties of a pinhole transform tree root.
@@ -198,7 +145,7 @@ pub struct TransformForest {
     ///
     /// Roots are also contained, targeting themselves with identity.
     /// This simplifies lookups.
-    root_from_frame: IntMap<TransformFrameIdHash, TransformInfo>,
+    root_from_frame: IntMap<TransformFrameIdHash, TreeTransform>,
     //
     // TODO(RR-2667): Store errors that occur during the graph walk
 }
@@ -299,7 +246,7 @@ impl TransformForest {
                 // That parent apparently won't show up in any transform stack (we didn't walk there because there was no information about it!)
                 // So if we don't add this root now to our `root_from_frame` map, we'd never fill out the required self-reference!
                 self.root_from_frame
-                    .insert(parent_frame, TransformInfo::new_root(parent_frame));
+                    .insert(parent_frame, TreeTransform::new_root(parent_frame));
 
                 (parent_frame, glam::DAffine3::IDENTITY)
             }
@@ -355,15 +302,9 @@ impl TransformForest {
                 root_from_current_frame = glam::DAffine3::IDENTITY;
             }
 
-            // Collect & compute poses.
-            let pose_transforms = &transforms.child_from_instance_poses;
-            let root_from_instances =
-                compute_root_from_poses(root_from_current_frame, pose_transforms);
-
-            let transform_root_from_current = TransformInfo {
+            let transform_root_from_current = TreeTransform {
                 root: root_frame,
                 target_from_source: root_from_current_frame,
-                target_from_instances: root_from_instances,
             };
 
             let previous_transform = self
@@ -463,7 +404,7 @@ impl TransformForest {
 
     /// Returns the transform information of how to get from a given frame to its tree root.
     #[inline]
-    pub fn root_from_frame(&self, frame: TransformFrameIdHash) -> Option<&TransformInfo> {
+    pub fn root_from_frame(&self, frame: TransformFrameIdHash) -> Option<&TreeTransform> {
         self.root_from_frame.get(&frame)
     }
 
@@ -487,7 +428,7 @@ impl TransformForest {
     ) -> impl Iterator<
         Item = (
             TransformFrameIdHash,
-            Result<TransformInfo, TransformFromToError>,
+            Result<TreeTransform, TransformFromToError>,
         ),
     > {
         // We're looking for a common root between source and target.
@@ -504,11 +445,9 @@ impl TransformForest {
 
         // Invert `root_from_target` to get `target.from_root`.
         let target = {
-            let TransformInfo {
+            let TreeTransform {
                 root: target_root,
                 target_from_source: root_from_entity,
-                // Don't care about instance transforms on the target frame, as they don't tree-propagate.
-                target_from_instances: _,
             } = &root_from_target;
 
             TargetInfo {
@@ -588,7 +527,7 @@ fn from_2d_source_to_3d_target(
     source_pinhole_tree_root: &PinholeTreeRoot,
     lookup_image_plane_distance: &dyn Fn(TransformFrameIdHash) -> f64,
     target_from_image_plane_cache: &mut IntMap<TransformFrameIdHash, glam::DAffine3>,
-) -> Result<TransformInfo, TransformFromToError> {
+) -> Result<TreeTransform, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
         pinhole_projection,
@@ -624,7 +563,7 @@ fn from_3d_source_to_2d_target(
     source: &SourceInfo<'_>,
     target_pinhole_tree_root: &PinholeTreeRoot,
     target_from_source_root_cache: &mut IntMap<TransformFrameIdHash, glam::DAffine3>,
-) -> Result<TransformInfo, TransformFromToError> {
+) -> Result<TreeTransform, TransformFromToError> {
     let PinholeTreeRoot {
         parent_tree_root,
         pinhole_projection,
@@ -663,36 +602,6 @@ fn from_3d_source_to_2d_target(
 
     // target_from_source = target_from_root * root_from_source
     Ok(source.root_from_source.left_multiply(*target_from_root))
-}
-
-fn left_multiply_smallvec1_of_transforms(
-    target_from_reference: glam::DAffine3,
-    reference_from_source: &SmallVec1<[glam::DAffine3; 1]>,
-) -> SmallVec1<[glam::DAffine3; 1]> {
-    // Easiest to deal with SmallVec1 in-place.
-    let mut target_from_source = reference_from_source.clone();
-    for transform in &mut target_from_source {
-        *transform = target_from_reference * *transform;
-    }
-    target_from_source
-}
-
-fn compute_root_from_poses(
-    root_from_entity: glam::DAffine3,
-    instance_from_poses: &[glam::DAffine3],
-) -> SmallVec1<[glam::DAffine3; 1]> {
-    let Ok(mut reference_from_poses) =
-        SmallVec1::<[glam::DAffine3; 1]>::try_from_slice(instance_from_poses)
-    else {
-        return SmallVec1::new(root_from_entity);
-    };
-
-    // Until now `reference_from_poses` is actually `reference_from_entity`.
-    for reference_from_pose in &mut reference_from_poses {
-        let entity_from_pose = *reference_from_pose;
-        *reference_from_pose = root_from_entity * entity_from_pose;
-    }
-    reference_from_poses
 }
 
 fn pinhole3d_from_image_plane(
@@ -743,7 +652,6 @@ struct ParentChildTransforms {
     parent_frame: Option<TransformFrameIdHash>,
     child_frame: TransformFrameIdHash,
     parent_from_child: Option<ParentFromChildTransform>,
-    child_from_instance_poses: Vec<glam::DAffine3>,
     pinhole_projection: Option<ResolvedPinholeProjection>,
 }
 
@@ -755,16 +663,13 @@ fn transforms_at(
     transforms_for_timeline: &CachedTransformsForTimeline,
 ) -> ParentChildTransforms {
     let mut parent_from_child;
-    let child_from_instance_poses;
     let pinhole_projection;
 
     if let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) {
         parent_from_child = source_transforms.latest_at_transform(entity_db, query);
-        child_from_instance_poses = source_transforms.latest_at_instance_poses(entity_db, query);
         pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
     } else {
         parent_from_child = None;
-        child_from_instance_poses = Vec::new();
         pinhole_projection = None;
     }
 
@@ -808,7 +713,6 @@ fn transforms_at(
         parent_frame,
         child_frame,
         parent_from_child,
-        child_from_instance_poses,
         pinhole_projection,
     }
 }
@@ -818,14 +722,13 @@ mod tests {
     use std::sync::Arc;
 
     use itertools::Itertools as _;
-
-    use super::*;
-
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
-    use re_log_types::{StoreInfo, TimeCell, TimePoint, Timeline, TimelineName};
+    use re_log_types::{EntityPath, StoreInfo, TimeCell, TimePoint, Timeline, TimelineName};
     use re_types::components::TransformFrameId;
     use re_types::{RowId, archetypes, components};
+
+    use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
@@ -1388,13 +1291,10 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("new_top"),
-                    Ok(TransformInfo {
+                    Ok(TreeTransform {
                         root: TransformFrameIdHash::from_str("new_top"),
                         target_from_source: glam::DAffine3::from_translation(glam::dvec3(
                             -5.0, 0.0, 0.0
-                        )),
-                        target_from_instances: SmallVec1::new(glam::DAffine3::from_translation(
-                            glam::dvec3(-5.0, 0.0, 0.0)
                         )),
                     })
                 )]

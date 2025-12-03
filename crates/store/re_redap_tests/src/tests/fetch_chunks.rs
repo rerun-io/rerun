@@ -1,15 +1,12 @@
-use futures::StreamExt as _;
-use itertools::Itertools as _;
 use std::collections::HashSet;
 
-use re_protos::{
-    cloud::v1alpha1::{
-        FetchChunksRequest, QueryDatasetResponse, ext::QueryDatasetRequest,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::ext::ScanParameters,
-    headers::RerunHeadersInjectorExt as _,
-};
+use futures::StreamExt as _;
+use itertools::Itertools as _;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
+use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::external::re_log_encoding::ToApplication as _;
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;

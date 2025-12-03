@@ -1,4 +1,6 @@
-use std::{collections::HashMap, path::PathBuf, task::Poll};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::task::Poll;
 
 use parking_lot::Mutex;
 use poll_promise::Promise;

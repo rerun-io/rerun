@@ -14,7 +14,8 @@
 use std::path::PathBuf;
 
 use bytes::Bytes;
-use rerun::{Color, Mesh3D, RecordingStream, Rgba32, external::re_log};
+use rerun::external::re_log;
+use rerun::{Color, Mesh3D, RecordingStream, Rgba32};
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
 

@@ -8,16 +8,11 @@ use arrow::datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
-
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        EntryKind,
-        ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry},
-    },
-    common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId},
-};
+use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_tuid::Tuid;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
@@ -365,7 +360,8 @@ impl InMemoryStore {
     fn update_entries_table(&mut self) -> Result<(), Error> {
         use std::sync::Arc;
 
-        use re_protos::cloud::v1alpha1::{SystemTableKind, ext::SystemTable};
+        use re_protos::cloud::v1alpha1::SystemTableKind;
+        use re_protos::cloud::v1alpha1::ext::SystemTable;
 
         let entries_table_id = *self
             .id_by_name

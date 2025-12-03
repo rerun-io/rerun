@@ -1,17 +1,16 @@
-use arrow::{
-    array::{
-        ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
-        Float64Builder, Int32Builder, Int64Builder, ListBuilder, StringBuilder, StructBuilder,
-        UInt32Builder, UInt64Builder,
-    },
-    datatypes::{DataType, Field, Fields},
+use arrow::array::{
+    ArrayBuilder, BinaryBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
+    Float64Builder, Int32Builder, Int64Builder, ListBuilder, StringBuilder, StructBuilder,
+    UInt32Builder, UInt64Builder,
 };
+use arrow::datatypes::{DataType, Field, Fields};
 use prost_reflect::{
     DescriptorPool, DynamicMessage, FieldDescriptor, Kind, MessageDescriptor, ReflectMessage as _,
     Value,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
+use re_types::ComponentDescriptor;
+use re_types::reflection::ComponentDescriptorExt as _;
 
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{Error, LayerIdentifier, MessageLayer};
@@ -473,17 +472,16 @@ impl MessageLayer for McapProtobufLayer {
 mod test {
     use std::io;
 
-    use prost_reflect::{
-        DescriptorPool, DynamicMessage, MessageDescriptor,
-        prost::Message as _,
-        prost_types::{
-            DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-            FileDescriptorProto, FileDescriptorSet, field_descriptor_proto,
-        },
+    use prost_reflect::prost::Message as _;
+    use prost_reflect::prost_types::{
+        DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+        FileDescriptorProto, FileDescriptorSet, field_descriptor_proto,
     };
+    use prost_reflect::{DescriptorPool, DynamicMessage, MessageDescriptor};
     use re_chunk::Chunk;
 
-    use crate::{LayerRegistry, layers::McapProtobufLayer};
+    use crate::LayerRegistry;
+    use crate::layers::McapProtobufLayer;
 
     fn create_pool() -> DescriptorPool {
         let status = EnumDescriptorProto {

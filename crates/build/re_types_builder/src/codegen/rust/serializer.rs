@@ -1,19 +1,14 @@
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::{
-    Object, Objects, TypeRegistry,
-    data_type::{AtomicDataType, DataType, UnionMode},
-    objects::EnumIntegerType,
+use super::arrow::{
+    ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
+    quoted_arrow_primitive_type,
 };
-
-use super::{
-    arrow::{
-        ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
-        quoted_arrow_primitive_type,
-    },
-    util::{is_tuple_struct_from_obj, quote_comment},
-};
+use super::util::{is_tuple_struct_from_obj, quote_comment};
+use crate::data_type::{AtomicDataType, DataType, UnionMode};
+use crate::objects::EnumIntegerType;
+use crate::{Object, Objects, TypeRegistry};
 
 // ---
 

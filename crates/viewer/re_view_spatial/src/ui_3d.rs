@@ -1,20 +1,14 @@
-use egui::{Modifiers, NumExt as _, emath::RectTransform};
+use egui::emath::RectTransform;
+use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
-
 use macaw::BoundingBox;
 use re_log_types::Instance;
-use re_renderer::{
-    LineDrawableBuilder, Size,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
-};
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
+use re_renderer::{LineDrawableBuilder, Size};
 use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
-use re_types::{
-    blueprint::{
-        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
-        components::{Enabled, GridSpacing},
-    },
-    components::{ViewCoordinates, Visible},
-};
+use re_types::blueprint::archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation};
+use re_types::blueprint::components::{Enabled, GridSpacing};
+use re_types::components::{ViewCoordinates, Visible};
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
@@ -26,16 +20,13 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    SpatialView3D,
-    eye::find_camera,
-    pinhole_wrapper::PinholeWrapper,
-    ui::{SpatialViewState, create_labels},
-    view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, collect_ui_labels},
-};
-
 use super::eye::{Eye, EyeState};
+use crate::SpatialView3D;
+use crate::eye::find_camera;
+use crate::pinhole_wrapper::PinholeWrapper;
+use crate::ui::{SpatialViewState, create_labels};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{CamerasVisualizer, collect_ui_labels};
 
 // ---
 

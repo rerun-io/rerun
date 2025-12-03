@@ -2,24 +2,20 @@ use std::iter;
 
 use ordered_float::NotNan;
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
-use re_types::{
-    ArrowString,
-    archetypes::Capsules3D,
-    components,
-    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
-};
+use re_types::archetypes::Capsules3D;
+use re_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
+use re_types::{ArrowString, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
-
-use super::{
-    SpatialViewVisualizerData,
-    utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
-};
+use super::SpatialViewVisualizerData;
+use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::proc_mesh;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 pub struct Capsules3DVisualizer(SpatialViewVisualizerData);

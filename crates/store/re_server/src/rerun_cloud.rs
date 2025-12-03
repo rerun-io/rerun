@@ -8,41 +8,35 @@ use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
+use re_arrow_util::RecordBatchExt as _;
+use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
+use re_log_encoding::ToTransport as _;
+use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::{
+    self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+    CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate, ProviderDetails,
+    QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+};
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
+    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+    RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse,
+};
+use re_protos::common::v1alpha1::TaskId;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::headers::RerunHeadersExtractorExt as _;
+use re_protos::missing_field;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
-use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
-use re_log_encoding::ToTransport as _;
-use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
-        GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-        QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-        QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanSegmentTableResponse, ScanTableResponse,
-        ext::{
-            self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-            CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate,
-            ProviderDetails, QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            TableInsertMode, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-            UpdateEntryRequest, UpdateEntryResponse,
-        },
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, SegmentId},
-    },
-    headers::RerunHeadersExtractorExt as _,
-    missing_field,
-};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -1039,7 +1033,7 @@ impl RerunCloudService for RerunCloudHandler {
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
-            re_log::warn_once!(
+            re_log::info_once!(
                 "query_dataset: scan_parameters are not yet implemented and will be ignored"
             );
         }

@@ -5,17 +5,14 @@ use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
 use re_types::ViewClassIdentifier;
 
+use super::view_class_placeholder::ViewClassPlaceholder;
+use super::visualizer_entity_subscriber::VisualizerEntitySubscriber;
+use crate::component_fallbacks::FallbackProviderRegistry;
+use crate::view::view_context_system::ViewContextSystemOncePerFrameResult;
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryContext, ViewClass,
     ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizerCollection, VisualizerSystem,
-    component_fallbacks::FallbackProviderRegistry,
-    view::view_context_system::ViewContextSystemOncePerFrameResult,
-};
-
-use super::{
-    view_class_placeholder::ViewClassPlaceholder,
-    visualizer_entity_subscriber::VisualizerEntitySubscriber,
 };
 
 #[derive(Debug, thiserror::Error)]

@@ -2,11 +2,11 @@
 
 use itertools::Itertools as _;
 use rand::Rng as _;
+use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{
     Color32, GpuReadbackIdentifier, PickingLayerId, PickingLayerInstanceId, PickingLayerProcessor,
     PointCloudBuilder, RectInt, Size, ViewPickingConfiguration,
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
 
 mod framework;

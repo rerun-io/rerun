@@ -1,17 +1,14 @@
 use arrow::datatypes::{DataType, Field, Schema};
-
 use re_log_types::EntryId;
-use re_protos::{
-    cloud::v1alpha1::{
-        EntryFilter, EntryKind, FindEntriesRequest, ReadDatasetEntryRequest,
-        ext::{
-            CreateDatasetEntryRequest, CreateTableEntryRequest, DatasetDetails, DatasetEntry,
-            EntryDetails, LanceTable, ProviderDetails,
-        },
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::ext::{
+    CreateDatasetEntryRequest, CreateTableEntryRequest, DatasetDetails, DatasetEntry, EntryDetails,
+    LanceTable, ProviderDetails,
 };
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    EntryFilter, EntryKind, FindEntriesRequest, ReadDatasetEntryRequest,
+};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 pub async fn create_dataset_tests(service: impl RerunCloudService) {
     //

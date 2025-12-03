@@ -1,13 +1,13 @@
 use std::collections::VecDeque;
-use std::io::Cursor;
-use std::io::Read as _;
+use std::io::{Cursor, Read as _};
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 
-use crate::CachingApplicationIdInjector;
-use crate::rrd::{
-    CodecError, Decodable as _, DecodeError, DecoderEntrypoint, EncodingOptions, Serializer,
-    StreamHeader,
+use crate::rrd::MessageHeader;
+use crate::{
+    CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
+    EncodingOptions, RrdManifest, Serializer, StreamFooter, StreamHeader, ToApplication as _,
 };
 
 // ---
@@ -54,39 +54,62 @@ pub struct Decoder<T> {
     /// The application id cache used for migrating old data.
     pub(crate) app_id_cache: CachingApplicationIdInjector,
 
-    pub(crate) _decodable: std::marker::PhantomData<T>,
+    /// All the RRD manifests accumulated so far by parsing incoming footers in the RRD stream.
+    ///
+    /// Transport-level types to keep decoding cheap.
+    rrd_manifests: Vec<re_protos::log_msg::v1alpha1::RrdManifest>,
+
+    _decodable: std::marker::PhantomData<T>,
 }
 
-///
 /// ```text,ignore
-/// StreamHeader
-///      |
-///      v
-/// MessageHeader
-/// ^           |
-/// |           |
-/// ---Message<--
+///  +--> WaitingForStreamHeader -----> Aborted
+///  |        |
+///  |        v
+///  +--- WaitingForMessageHeader <---+
+///  |        |                       |
+///  |        v                       |
+///  |    WaitingForMessagePayload ---+
+///  |        |
+///  |        v
+///  +--- WaitingForStreamFooter
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DecoderState {
-    /// The beginning of the stream.
+    /// The beginning of a stream.
     ///
-    /// The stream header contains the magic bytes (e.g. `RRF2`), the encoded version, and the
+    /// The [`StreamHeader`] contains the magic bytes (e.g. `RRF2`), the encoded version, and the
     /// encoding options.
     ///
-    /// After the stream header is read once, the state machine will only ever switch between
-    /// `MessageHeader` and `Message`
-    StreamHeader,
+    /// We can come back to this state at any point because multiple RRD streams might have been
+    /// concatenated together (e.g. `cat *.rrd | rerun`).
+    WaitingForStreamHeader,
 
-    /// The beginning of a Protobuf message.
-    MessageHeader,
+    /// Stream in progress.
+    ///
+    /// The [`MessageHeader`] indicates what kind of payload this is and how large it is.
+    ///
+    /// After the [`StreamHeader`] is read once, the state machine will only ever switch between
+    /// [`Self::WaitingForMessageHeader`] and [`Self::WaitingForMessagePayload`], until either a
+    /// footer or another concatenated RRD stream shows up.
+    WaitingForMessageHeader,
 
-    /// The message content, serialized using `Protobuf`.
+    /// A [`MessageHeader`] was parsed, now we're waiting for the associated payload.
     ///
     /// Compression is only applied to individual `ArrowMsg`s, instead of the entire stream.
-    Message(crate::rrd::MessageHeader),
+    WaitingForMessagePayload(MessageHeader),
 
-    /// Stop reading.
+    /// We hit a message of kind `MessageKind::End`, which means a footer must be following it.
+    ///
+    /// The [`StreamFooter`] contains information about where the RRD manifests can be found, but we
+    /// won't be doing anything with it in this case since we're just going through the data in order.
+    ///
+    /// Once the footer is parsed, we can wait for a new stream to begin.
+    WaitingForStreamFooter,
+
+    /// The stream entered an irrecoverable state and cannot yield data anymore. However, most of the
+    /// valuable data was already decoded, so we merely log an error and stop yielding more
+    /// messages rather than bubbling up the error all the way to the end user.
     Aborted,
 }
 
@@ -98,8 +121,9 @@ impl<T: DecoderEntrypoint> Decoder<T> {
             // Note: `options` are filled in once we read `FileHeader`, so this value does not matter.
             options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
             byte_chunks: ByteChunkBuffer::new(),
-            state: DecoderState::StreamHeader,
+            state: DecoderState::WaitingForStreamHeader,
             app_id_cache: CachingApplicationIdInjector::default(),
+            rrd_manifests: Vec::new(),
             _decodable: std::marker::PhantomData::<T>,
         }
     }
@@ -107,6 +131,20 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// Feed a bunch of bytes to the decoding state machine.
     pub fn push_byte_chunk(&mut self, byte_chunk: Vec<u8>) {
         self.byte_chunks.push(byte_chunk);
+    }
+
+    /// Returns all the RRD manifests accumulated _so far_.
+    ///
+    /// RRD manifests are parsed from footers, of which there might be more than one e.g. in the
+    /// case of concatenated streams.
+    ///
+    /// This is not cheap: it automatically performs the transport to app level conversion.
+    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        re_tracing::profile_function!();
+        self.rrd_manifests
+            .iter()
+            .map(|m| m.to_application(()).map_err(Into::into))
+            .collect()
     }
 
     /// Read the next message in the stream, dropping messages missing application id that cannot
@@ -121,7 +159,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
             })) = result
             {
                 re_log::warn_once!(
-                    "Dropping message without application id which arrived before `SetStoreInfo` \
+                    "dropping message without application id which arrived before `SetStoreInfo` \
                     (kind: {store_kind}, recording id: {recording_id}."
                 );
             } else {
@@ -132,29 +170,56 @@ impl<T: DecoderEntrypoint> Decoder<T> {
 
     /// Read the next message in the stream.
     fn try_read_impl(&mut self) -> Result<Option<T>, DecodeError> {
+        // Enable this for easy debugging of the state machine.
+        if false {
+            use bytes::Buf as _;
+            let num_bytes = self
+                .byte_chunks
+                .queue
+                .iter()
+                .map(|v| v.remaining())
+                .sum::<usize>();
+
+            eprintln!("state: {:?} (bytes available: {num_bytes})", self.state);
+
+            let mut peeked = [0u8; 32];
+            self.byte_chunks.try_peek(&mut peeked);
+            let peeked = peeked
+                .into_iter()
+                .map(|b| match b {
+                    b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' => String::from(b as char),
+                    v => v.to_string(),
+                })
+                .join(", ");
+
+            eprintln!("upcoming 32 bytes: [{peeked}]");
+        }
+
         match self.state {
-            DecoderState::StreamHeader => {
+            DecoderState::WaitingForStreamHeader => {
                 let is_first_header = self.byte_chunks.num_read() == 0;
                 let position = self.byte_chunks.num_read();
                 if let Some(header_data) =
                     self.byte_chunks.try_read(StreamHeader::ENCODED_SIZE_BYTES)
                 {
-                    re_log::trace!(?header_data, "Decoding StreamHeader");
-
                     // header contains version and compression options
                     let version_and_options = StreamHeader::from_rrd_bytes(&header_data)
                         .and_then(|h| h.to_version_and_options());
                     let (version, options) = match version_and_options {
                         Ok(ok) => ok,
                         Err(err) => {
-                            // We expected a header, but didn't find one!
                             if is_first_header {
+                                // We expected a header, but didn't find one!
                                 return Err(err.into());
                             } else {
+                                // A bunch of weird trailing bytes means we're now in an irrecoverable state, but
+                                // it doesn't change the fact that we've just successfully yielded an entire stream's
+                                // worth of data. So, instead of bubbling up errors all the way to the end user,
+                                // merely log one here stop the state machine forever.
                                 re_log::error!(
                                     is_first_header,
                                     position,
-                                    "Trailing bytes in rrd stream: {header_data:?} ({err})"
+                                    "trailing bytes in rrd stream: {header_data:?} ({err})"
                                 );
                                 self.state = DecoderState::Aborted;
                                 return Ok(None);
@@ -165,34 +230,38 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                     re_log::trace!(
                         version = version.to_string(),
                         ?options,
-                        "Found Stream Header"
+                        "found StreamHeader"
                     );
 
                     self.version = Some(version);
                     self.options = options;
 
                     match self.options.serializer {
-                        Serializer::Protobuf => self.state = DecoderState::MessageHeader,
+                        Serializer::Protobuf => self.state = DecoderState::WaitingForMessageHeader,
                     }
 
                     // we might have data left in the current byte chunk, immediately try to read
                     // length of the next message.
                     return self.try_read();
                 }
+
+                // Not enough data yet -- wait to be fed and called back once again.
             }
 
-            DecoderState::MessageHeader => {
-                let mut peeked = [0u8; crate::rrd::MessageHeader::ENCODED_SIZE_BYTES];
+            DecoderState::WaitingForMessageHeader => {
+                let mut peeked = [0u8; MessageHeader::ENCODED_SIZE_BYTES];
                 if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
-                    let header = match crate::rrd::MessageHeader::from_rrd_bytes(&peeked) {
+                    let header = match MessageHeader::from_rrd_bytes(&peeked) {
                         Ok(header) => header,
 
-                        Err(crate::rrd::CodecError::HeaderDecoding(_)) => {
-                            // We failed to decode a `MessageHeader`: it might be because the
-                            // stream is corrupt, or it might be because it just switched to a
-                            // different, concatenated recording without having the courtesy of
-                            // announcing it via an EOS marker.
-                            self.state = DecoderState::StreamHeader;
+                        Err(crate::rrd::CodecError::FrameDecoding(_)) => {
+                            // We failed to decode a `MessageHeader`: it might be because the stream is corrupt,
+                            // or it might be because it just switched to a different, concatenated recording
+                            // without having the courtesy of announcing it via an EOS marker.
+                            //
+                            // TODO(cmc): These kinds of peeking shenanigans should never be necessary, need to
+                            // write a proposal for RRF3 that addresses these issues and more.
+                            self.state = DecoderState::WaitingForStreamHeader;
                             return self.try_read();
                         }
 
@@ -200,68 +269,143 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                     };
 
                     self.byte_chunks
-                        .try_read(crate::rrd::MessageHeader::ENCODED_SIZE_BYTES)
+                        .try_read(MessageHeader::ENCODED_SIZE_BYTES)
                         .expect("reading cannot fail if peeking worked");
 
-                    re_log::trace!(?header, "MessageHeader");
+                    re_log::trace!(?header, "found MessageHeader");
 
-                    self.state = DecoderState::Message(header);
-                    // we might have data left in the current byte chunk, immediately try to read
-                    // the message content.
+                    self.state = DecoderState::WaitingForMessagePayload(header);
                     return self.try_read();
                 }
+
+                // Not enough data yet -- wait to be fed and called back once again.
             }
 
-            DecoderState::Message(header) => {
+            DecoderState::WaitingForMessagePayload(header) => {
                 let start_offset = self.byte_chunks.num_read() as u64;
 
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
-                    re_log::trace!(?header, "Read message");
-
                     let bytes_len = bytes.len() as u64;
                     let byte_span = re_chunk::Span {
                         start: start_offset,
                         len: bytes_len,
                     };
                     let message = match T::decode(
-                        bytes,
+                        bytes.clone(),
                         byte_span,
                         header.kind,
                         &mut self.app_id_cache,
                         self.version,
                     ) {
                         Ok(msg) => msg,
+
                         Err(err) => {
                             // We successfully parsed a header, but decided to drop the message altogether.
                             // We must go back to looking for headers, or the decoder will just be stuck in a dead
                             // state forever.
-                            self.state = DecoderState::MessageHeader;
+                            self.state = DecoderState::WaitingForMessageHeader;
                             return Err(err.into());
                         }
                     };
 
                     if let Some(message) = message {
-                        re_log::trace!("Decoded new message");
-
-                        self.state = DecoderState::MessageHeader;
+                        self.state = DecoderState::WaitingForMessageHeader;
                         return Ok(Some(message));
                     } else {
-                        re_log::trace!("End of stream - expecting a new Streamheader");
+                        re_log::trace!(
+                            "End of stream - expecting either a StreamFooter or a new Streamheader"
+                        );
 
-                        // `None` means an end-of-stream marker was hit, but there might be another concatenated
-                        // stream behind, so try to start all over again.
-                        self.state = DecoderState::StreamHeader;
+                        if !bytes.is_empty() {
+                            let rrd_footer =
+                                re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&bytes)?;
+                            self.rrd_manifests.extend(rrd_footer.manifests);
+
+                            // A non-empty ::End message means there must be a footer ahead, no exception.
+                            self.state = DecoderState::WaitingForStreamFooter;
+                        } else {
+                            // There are 2 possible scenarios where we can end up here:
+                            // * The recording doesn't contain any data messages (e.g. it's empty except for
+                            //   a `SetStoreInfo` message).
+                            // * Backward compatibility: the payload is empty (i.e. `header.len == 0`) because the
+                            //   `End` message was written by a legacy encoder that predates the introduction of footers.
+                            //
+                            // Either way, we have to expect a footer next, since we don't know for sure which scenario
+                            // we're in. We could check the encoder version and such, but that's just superfluous complexity
+                            // since `WaitingForStreamFooter` already knows how to deal with optional footers anyway.
+                            self.state = DecoderState::WaitingForStreamFooter;
+                        }
+
                         return self.try_read();
                     }
                 }
+
+                // Not enough data yet -- wait to be fed and called back once again.
             }
 
-            DecoderState::Aborted => {
-                return Ok(None);
+            DecoderState::WaitingForStreamFooter => {
+                // NOTE: We're not peeking here! If we enter this state, then there must be a footer
+                // ahead, no exception, otherwise that's a violation of the framing protocol.
+                let position = self.byte_chunks.num_read();
+                if let Some(bytes) = self
+                    .byte_chunks
+                    .try_read(crate::rrd::StreamFooter::ENCODED_SIZE_BYTES)
+                {
+                    match crate::rrd::StreamFooter::from_rrd_bytes(&bytes) {
+                        Ok(footer) => {
+                            re_log::trace!(?footer, "found StreamFooter");
+
+                            let StreamFooter {
+                                fourcc: _,
+                                identifier: _,
+                                rrd_footer_byte_span_from_start_excluding_header,
+                                crc_excluding_header: _,
+                            } = footer;
+
+                            let rrd_footer_end =
+                                rrd_footer_byte_span_from_start_excluding_header.end();
+
+                            if rrd_footer_end > position as u64 {
+                                // The RRD footer cannot possibly end after the stream footer starts, since it must
+                                // be part of an ::End message.
+                                re_log::error!(
+                                    position,
+                                    bytes = ?bytes,
+                                    ?footer,
+                                    err = "offsets are invalid",
+                                    "corrupt footer in rrd stream"
+                                );
+                            }
+
+                            // And now we start all over.
+                            self.state = DecoderState::WaitingForStreamHeader;
+                            return self.try_read();
+                        }
+
+                        Err(err) => {
+                            // A corrupt footer means we're now in an irrecoverable state, but it doesn't change the
+                            // fact that we've just successfully yielded an entire stream's worth of data. So, instead
+                            // of bubbling up errors all the way to the end user, merely log one here stop the state
+                            // machine forever.
+                            re_log::error!(
+                                position,
+                                bytes = ?bytes,
+                                %err,
+                                "corrupt footer in rrd stream"
+                            );
+                            self.state = DecoderState::Aborted;
+                            return Ok(None);
+                        }
+                    }
+                }
+
+                // Not enough data yet -- wait to be fed and called back once again.
             }
+
+            DecoderState::Aborted => return Ok(None),
         }
 
-        Ok(None)
+        Ok(None) // Not enough data yet -- wait to be fed and called back once again.
     }
 }
 
@@ -401,17 +545,16 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
 
+    use super::*;
     use crate::Encoder;
     use crate::rrd::EncodingOptions;
-
-    use super::*;
 
     fn fake_log_msg() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::ZERO,
             info: StoreInfo {
                 store_version: Some(CrateVersion::LOCAL), // Encoder sets the crate version
-                ..StoreInfo::testing()
+                ..StoreInfo::testing_with_recording_id("test_recording")
             },
         })
     }

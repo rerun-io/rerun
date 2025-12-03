@@ -1,7 +1,6 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::TextDocument,
-    components::MediaType,
-};
+use re_types::archetypes::TextDocument;
+use re_types::components::MediaType;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {

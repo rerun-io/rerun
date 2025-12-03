@@ -73,7 +73,8 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             .and_then(|auth| auth.to_str().ok()?.strip_prefix("Bearer "))
             .and_then(|token| token.split('.').skip(1).take(1).next())
             .and_then(|data| {
-                use base64::{Engine as _, engine::general_purpose};
+                use base64::Engine as _;
+                use base64::engine::general_purpose;
                 general_purpose::STANDARD_NO_PAD.decode(data).ok()
             })
             .and_then(|data| {
@@ -786,9 +787,11 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
 // ---
 
 use opentelemetry::trace::TraceContextExt as _;
-use tracing::{Span, Subscriber, span::Id};
+use tracing::span::Id;
+use tracing::{Span, Subscriber};
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-use tracing_subscriber::{Layer, layer::Context};
+use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
 
 /// A `tracing_subscriber::Layer` that injects the opentelemetry `trace_id` as a `benchmark_id` field
 /// top level field on every span.

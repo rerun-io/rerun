@@ -7,7 +7,6 @@ use numpy::PyArrayMethods as _;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, FromPyObject, PyAny, PyResult, pyclass, pymethods};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sorbet::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
 

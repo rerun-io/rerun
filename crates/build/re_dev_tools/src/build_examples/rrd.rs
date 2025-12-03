@@ -1,11 +1,11 @@
-use super::{Channel, Example, wait_for_output};
-use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator as _;
-use rayon::prelude::ParallelIterator as _;
 use std::fs::create_dir_all;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use indicatif::MultiProgress;
+use rayon::prelude::{IntoParallelIterator as _, ParallelIterator as _};
+
+use super::{Channel, Example, wait_for_output};
 
 /// Collect examples in the repository and run them to produce `.rrd` files.
 #[derive(argh::FromArgs)]

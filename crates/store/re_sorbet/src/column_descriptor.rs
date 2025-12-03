@@ -2,7 +2,6 @@ use arrow::datatypes::{
     DataType as ArrowDatatype, Field as ArrowField, FieldRef as ArrowFieldRef,
     Fields as ArrowFields,
 };
-
 use re_log_types::EntityPath;
 use re_types_core::{ArchetypeName, ComponentType};
 

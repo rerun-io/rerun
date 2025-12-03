@@ -1,4 +1,5 @@
-use crate::{Objects, Reporter, codegen::Target};
+use crate::codegen::Target;
+use crate::{Objects, Reporter};
 
 /// A high-level representation of the contents of a flatbuffer docstring.
 #[derive(Debug, Clone, Default)]
@@ -212,9 +213,8 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
-    use crate::{ObjectKind, Objects, Reporter};
-
     use super::Target;
+    use crate::{ObjectKind, Objects, Reporter};
 
     /// Convert Rerun-style doclinks to the target language.
     pub fn translate_doc_line(
@@ -474,12 +474,10 @@ mod doclink_translation {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Attributes, Docs, Object, ObjectKind, Objects,
-        codegen::Target,
-        docs::doclink_translation::{tokenize, translate_doc_line},
-        objects::State,
-    };
+    use crate::codegen::Target;
+    use crate::docs::doclink_translation::{tokenize, translate_doc_line};
+    use crate::objects::State;
+    use crate::{Attributes, Docs, Object, ObjectKind, Objects};
 
     fn test_objects() -> Objects {
         Objects {

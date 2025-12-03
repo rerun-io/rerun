@@ -8,10 +8,10 @@
 //! Press arrow left/right to increase/decrease the near plane distance.
 
 use re_renderer::Hsva;
-use re_renderer::{
-    renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
-    view_builder::{self, Projection, ViewBuilder},
+use re_renderer::renderer::{
+    ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect,
 };
+use re_renderer::view_builder::{self, Projection, ViewBuilder};
 use winit::keyboard;
 
 mod framework;

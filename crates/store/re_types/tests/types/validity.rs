@@ -1,7 +1,5 @@
-use re_types::{
-    DeserializationError, Loggable as _,
-    components::{self, Position2D},
-};
+use re_types::components::{self, Position2D};
+use re_types::{DeserializationError, Loggable as _};
 
 #[test]
 fn validity_checks() {

@@ -1,19 +1,16 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use arrow::array::ArrayRef as ArrowArrayRef;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_types_core::{
-    Component, archetypes, components::ClearIsRecursive, external::arrow::array::ArrayRef,
-};
+use re_types_core::components::ClearIsRecursive;
+use re_types_core::external::arrow::array::ArrayRef;
+use re_types_core::{Component, archetypes};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
 

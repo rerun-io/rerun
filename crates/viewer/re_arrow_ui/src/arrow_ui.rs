@@ -1,5 +1,5 @@
-use arrow::{array::Array, error::ArrowError};
-
+use arrow::array::Array;
+use arrow::error::ArrowError;
 use re_log_types::TimestampFormat;
 use re_ui::list_item::list_item_scope;
 use re_ui::{UiExt as _, UiLayout};

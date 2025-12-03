@@ -11,21 +11,15 @@ use arrow::datatypes::{Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
 use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
-use datafusion::execution::{RecordBatchStream, TaskContext};
+use datafusion::error::DataFusionError;
+use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
     EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use datafusion::{error::DataFusionError, execution::SendableRecordBatchStream};
 use futures_util::{Stream, StreamExt as _};
-use tokio::runtime::Handle;
-use tokio::sync::Notify;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::task::JoinHandle;
-use tracing::Instrument as _;
-
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
@@ -35,6 +29,11 @@ use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanSegmentTableResponse};
 use re_redap_client::ConnectionClient;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
+use tokio::runtime::Handle;
+use tokio::sync::Notify;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::task::JoinHandle;
+use tracing::Instrument as _;
 
 use crate::dataframe_query_common::{
     align_record_batch_to_schema, group_chunk_infos_by_partition_id, prepend_string_column_schema,

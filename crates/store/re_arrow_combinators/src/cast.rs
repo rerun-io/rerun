@@ -1,7 +1,10 @@
 //! Transforms that cast arrays to different types.
 
+use std::sync::Arc;
+
 use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
 use arrow::compute::cast;
+use arrow::datatypes::Field;
 
 use crate::{Error, Transform};
 
@@ -81,5 +84,56 @@ where
                 context: "downcast_ref".to_owned(),
             })
             .cloned()
+    }
+}
+
+/// Casts a `ListArray` to a `FixedSizeListArray` with the specified value length.
+///
+/// The source `ListArray` must have lists of exactly that length (or null).
+#[derive(Clone)]
+pub struct ListToFixedSizeList {
+    value_length: i32,
+}
+
+impl ListToFixedSizeList {
+    /// Create a new `ListToFixedSizeList` transformation with an expected value length.
+    pub fn new(value_length: i32) -> Self {
+        Self { value_length }
+    }
+}
+
+impl Transform for ListToFixedSizeList {
+    type Source = arrow::array::ListArray;
+    type Target = arrow::array::FixedSizeListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+        // Check that each list has exactly the expected length (or is null).
+        let offsets = source.value_offsets();
+        let expected_length = self.value_length as usize;
+        for list_index in 0..source.len() {
+            if source.is_valid(list_index) {
+                let start = offsets[list_index] as usize;
+                let end = offsets[list_index + 1] as usize;
+                let list_length = end - start;
+                if list_length != expected_length {
+                    return Err(Error::UnexpectedListValueLength {
+                        expected: expected_length,
+                        actual: list_length,
+                    });
+                }
+            }
+        }
+
+        // Build the FixedSizeListArray.
+        let field = Arc::new(Field::new_list_field(
+            source.value_type().clone(),
+            source.is_nullable(),
+        ));
+        Ok(arrow::array::FixedSizeListArray::try_new(
+            field,
+            self.value_length,
+            source.values().clone(),
+            source.nulls().cloned(),
+        )?)
     }
 }

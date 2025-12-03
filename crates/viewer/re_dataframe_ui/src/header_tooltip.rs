@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use arrow::datatypes::Field;
-
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 
 pub fn column_header_tooltip_ui(

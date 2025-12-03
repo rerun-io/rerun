@@ -1,21 +1,16 @@
 use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
-
-use re_data_ui::{
-    DataUi as _,
-    item_ui::{entity_db_button_ui, table_id_button_ui},
-};
+use re_data_ui::DataUi as _;
+use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
+use re_log_channel::LogSource;
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
-use re_smart_channel::SmartChannelSource;
-use re_ui::{
-    OnResponseExt as _, UiExt as _, UiLayout, icons, list_item,
-    list_item::{LabelContent, ListItemContentButtonsExt as _},
-};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
-    open_url::ViewerOpenUrl,
 };
 
 use crate::RecordingPanelCommand;
@@ -641,7 +636,7 @@ fn table_item_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table_id: &TableId)
 fn loading_receivers_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    loading_receivers: &Vec<Arc<SmartChannelSource>>,
+    loading_receivers: &Vec<Arc<LogSource>>,
 ) {
     for receiver in loading_receivers {
         receiver_ui(ctx, ui, receiver, false);
@@ -651,7 +646,7 @@ fn loading_receivers_ui(
 fn receiver_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    receiver: &SmartChannelSource,
+    receiver: &LogSource,
     show_hierarchal: bool,
 ) {
     let Some(name) = receiver.loading_name() else {

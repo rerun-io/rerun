@@ -1,11 +1,8 @@
-use std::{
-    fmt,
-    path::PathBuf,
-    sync::mpsc::{Receiver, RecvTimeoutError, SendError, Sender, SyncSender},
-};
+use std::fmt;
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, RecvTimeoutError, SendError, Sender, SyncSender};
 
 use parking_lot::Mutex;
-
 use re_log_types::LogMsg;
 
 /// An error that can occur when flushing.

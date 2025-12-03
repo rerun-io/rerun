@@ -12,14 +12,10 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use rerun::{
-    ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId,
-    external::{
-        anyhow, re_build_info, re_chunk_store, re_log,
-        re_log_types::{AbsoluteTimeRange, TimelineName},
-    },
-    time::{TimeInt, TimeType},
-};
+use rerun::external::re_log_types::{AbsoluteTimeRange, TimelineName};
+use rerun::external::{anyhow, re_build_info, re_chunk_store, re_log};
+use rerun::time::{TimeInt, TimeType};
+use rerun::{ChunkStoreEvent, ChunkStoreSubscriber, ComponentDescriptor, EntityPath, StoreId};
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
     let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();

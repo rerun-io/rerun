@@ -1,10 +1,8 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-};
+use re_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -12,16 +10,14 @@ use re_viewer_context::{
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::{
-    contexts::register_spatial_contexts,
-    heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::{ImageTypes, MaxDimensions},
-    shared_fallbacks,
-    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::register_2d_spatial_visualizers,
-};
+use crate::contexts::register_spatial_contexts;
+use crate::heuristics::default_visualized_entities_for_visualizer_kind;
+use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
+use crate::shared_fallbacks;
+use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::register_2d_spatial_visualizers;
 
 #[derive(Default)]
 pub struct SpatialView2D;

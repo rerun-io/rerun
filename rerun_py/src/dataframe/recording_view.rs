@@ -6,7 +6,6 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::{PyAnyMethods as _, PyTupleMethods as _};
 use pyo3::types::PyTuple;
 use pyo3::{Bound, PyRef, PyResult, Python, pyclass, pymethods};
-
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};

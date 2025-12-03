@@ -1,10 +1,10 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_types::{archetypes::McapStatistics, components, datatypes};
+use re_types::archetypes::McapStatistics;
+use re_types::{components, datatypes};
 use saturating_cast::SaturatingCast as _;
 
-use crate::Error;
-
 use super::{Layer, LayerIdentifier};
+use crate::Error;
 
 /// Extracts [`mcap::records::Statistics`], such as message count, from an MCAP file.
 ///

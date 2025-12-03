@@ -3,15 +3,12 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use egui::NumExt as _;
-
 use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, TimelineName};
-use re_types::{
-    archetypes::RecordingInfo,
-    components::{Name, Timestamp},
-};
+use re_types::archetypes::RecordingInfo;
+use re_types::components::{Name, Timestamp};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -633,7 +630,7 @@ pub fn app_id_button_ui(
 pub fn data_source_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    data_source: &re_smart_channel::SmartChannelSource,
+    data_source: &re_log_channel::LogSource,
 ) -> egui::Response {
     let item = Item::DataSource(data_source.clone());
 

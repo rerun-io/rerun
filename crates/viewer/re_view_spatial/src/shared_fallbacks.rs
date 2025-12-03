@@ -1,4 +1,5 @@
-use re_types::{archetypes, components, image::ImageKind};
+use re_types::image::ImageKind;
+use re_types::{archetypes, components};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
 

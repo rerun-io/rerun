@@ -1,11 +1,10 @@
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayRef, FixedSizeListArray, Float32Array},
-    datatypes::Field,
-};
+use arrow::array::{ArrayRef, FixedSizeListArray, Float32Array};
+use arrow::datatypes::Field;
 use itertools::Itertools as _;
-
 use re_log_types::{TimePoint, TimeType, Timeline};
 use re_sdk::RecordingStreamBuilder;
 use re_tuid::Tuid;
@@ -65,10 +64,8 @@ pub fn create_simple_recording_in(
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
     use re_chunk::{Chunk, TimePoint};
-    use re_log_types::{
-        EntityPath, TimeInt, build_frame_nr,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
 
     if !std::fs::metadata(in_dir)?.is_dir() {
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
@@ -209,10 +206,8 @@ pub fn create_nasty_recording(
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
     use re_chunk::{Chunk, TimePoint};
-    use re_log_types::{
-        EntityPath, TimeInt, build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, build_frame_nr, build_log_time};
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;

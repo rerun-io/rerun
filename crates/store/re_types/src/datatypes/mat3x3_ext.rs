@@ -1,5 +1,4 @@
 use super::Mat3x3;
-
 use crate::datatypes::Vec3D;
 
 impl Mat3x3 {

@@ -1,36 +1,31 @@
 use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
-
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
-use re_data_ui::{
-    DataUi,
-    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
+use re_data_ui::DataUi;
+use re_data_ui::item_ui::{
+    self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity,
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_types::{ComponentDescriptor, TransformFrameIdHash};
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    SyntaxHighlighting as _, UiExt as _, icons,
-    list_item::{self, PropertyContent},
-};
+use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
     ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
+use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::show_add_view_or_container_modal;
 
-use crate::{
-    defaults_ui::view_components_defaults_section_ui,
-    item_heading_no_breadcrumbs::item_title_list_item,
-    item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
-    view_entity_picker::ViewEntityPicker,
-    visible_time_range_ui::{
-        visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
-    },
-    visualizer_ui::visualizer_ui,
+use crate::defaults_ui::view_components_defaults_section_ui;
+use crate::item_heading_no_breadcrumbs::item_title_list_item;
+use crate::item_heading_with_breadcrumbs::item_heading_with_breadcrumbs;
+use crate::view_entity_picker::ViewEntityPicker;
+use crate::visible_time_range_ui::{
+    visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
 };
+use crate::visualizer_ui::visualizer_ui;
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
@@ -612,18 +607,24 @@ fn frame_id_edit(
     frame_id: &mut String,
     frame_id_before: &String,
 ) {
-    let (frame_exists, mut suggestions) = {
+    let (mut suggestions, response) = {
         // In a scope to not hold the lock for longer than needed.
         let caches = ctx.viewer_ctx.store_context.caches;
         let transform_cache =
             caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                c.lock_transform_cache(ctx.recording())
+                c.read_lock_transform_cache(ctx.recording())
             });
 
         let frame_exists = transform_cache
             .frame_id_registry()
             .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
             .is_some();
+
+        let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
+        if !frame_exists {
+            text_edit = text_edit.text_color(ui.tokens().error_fg_color);
+        }
+        let response = ui.add(text_edit);
 
         let suggestions = transform_cache
             .frame_id_registry()
@@ -635,16 +636,10 @@ fn frame_id_edit(
             .map(|rest| rest.to_owned())
             .collect::<Vec<_>>();
 
-        (frame_exists, suggestions)
+        (suggestions, response)
     };
 
     suggestions.sort_unstable();
-
-    let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
-    if !frame_exists {
-        text_edit = text_edit.text_color(ui.tokens().error_fg_color);
-    }
-    let response = ui.add(text_edit);
 
     let suggestions_open =
         (response.has_focus() || response.lost_focus()) && !suggestions.is_empty();
@@ -1301,11 +1296,10 @@ fn visible_interactive_toggle_ui(
 #[cfg(test)]
 mod tests {
     use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
-    use re_log_types::{
-        TimeType,
-        example_components::{MyPoint, MyPoints},
-    };
-    use re_test_context::{TestContext, external::egui_kittest::kittest::Queryable as _};
+    use re_log_types::TimeType;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_test_context::TestContext;
+    use re_test_context::external::egui_kittest::kittest::Queryable as _;
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1314,7 +1308,9 @@ mod tests {
     use super::*;
 
     fn get_test_context() -> TestContext {
-        let mut test_context = TestContext::new();
+        let mut test_context = TestContext::new_with_store_info(
+            re_log_types::StoreInfo::testing_with_recording_id("test_recording"),
+        );
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
         test_context

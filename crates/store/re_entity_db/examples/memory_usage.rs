@@ -1,7 +1,8 @@
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 
-use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 thread_local! {
     static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };
@@ -51,10 +52,8 @@ fn live_bytes() -> usize {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{
-    StoreId, StoreKind, entity_path,
-    example_components::{MyPoint, MyPoints},
-};
+use re_log_types::example_components::{MyPoint, MyPoints};
+use re_log_types::{StoreId, StoreKind, entity_path};
 
 fn main() {
     log_messages();

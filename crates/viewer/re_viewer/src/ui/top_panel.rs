@@ -1,13 +1,13 @@
 use egui::NumExt as _;
 use itertools::Itertools as _;
-
 use re_format::format_uint;
+use re_log_channel::{LogReceiverSet, LogSource};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::{StoreContext, StoreHub};
 
-use crate::{App, app_blueprint::AppBlueprint};
+use crate::App;
+use crate::app_blueprint::AppBlueprint;
 
 pub fn top_panel(
     frame: &eframe::Frame,
@@ -303,23 +303,23 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     );
 }
 
-fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSourceMessage>) {
+fn connection_status_ui(ui: &mut egui::Ui, rx: &LogReceiverSet) {
     let sources = rx
         .sources()
         .into_iter()
         .filter(|source| {
             match source.as_ref() {
-                SmartChannelSource::File(_)
-                | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RedapGrpcStream { .. }
-                | SmartChannelSource::Stdin => {
+                LogSource::File(_)
+                | LogSource::RrdHttpStream { .. }
+                | LogSource::RedapGrpcStream { .. }
+                | LogSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
 
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::MessageProxy { .. }
-                | SmartChannelSource::JsChannel { .. } => true,
+                LogSource::RrdWebEvent
+                | LogSource::Sdk
+                | LogSource::MessageProxy { .. }
+                | LogSource::JsChannel { .. } => true,
             }
         })
         .collect_vec();
@@ -342,21 +342,19 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSou
         }
     }
 
-    fn source_label(ui: &mut egui::Ui, source: &SmartChannelSource) -> egui::Response {
+    fn source_label(ui: &mut egui::Ui, source: &LogSource) -> egui::Response {
         let response = ui.label(source.status_string());
 
         let tooltip = match source {
-            SmartChannelSource::File(_)
-            | SmartChannelSource::Stdin
-            | SmartChannelSource::RrdHttpStream { .. }
-            | SmartChannelSource::RedapGrpcStream { .. }
-            | SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::Sdk => None,
+            LogSource::File(_)
+            | LogSource::Stdin
+            | LogSource::RrdHttpStream { .. }
+            | LogSource::RedapGrpcStream { .. }
+            | LogSource::RrdWebEvent
+            | LogSource::JsChannel { .. }
+            | LogSource::Sdk => None,
 
-            SmartChannelSource::MessageProxy { .. } => {
-                Some("Waiting for an SDK to connect".to_owned())
-            }
+            LogSource::MessageProxy { .. } => Some("Waiting for an SDK to connect".to_owned()),
         };
 
         if let Some(tooltip) = tooltip {

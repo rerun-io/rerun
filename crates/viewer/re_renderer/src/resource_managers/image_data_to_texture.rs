@@ -3,11 +3,9 @@
 use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
-use crate::{
-    DebugLabel, RenderContext, Texture2DBufferInfo,
-    renderer::DrawError,
-    wgpu_resources::{GpuTexture, TextureDesc},
-};
+use crate::renderer::DrawError;
+use crate::wgpu_resources::{GpuTexture, TextureDesc};
+use crate::{DebugLabel, RenderContext, Texture2DBufferInfo};
 
 /// Image data format that can be converted to a wgpu texture.
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.

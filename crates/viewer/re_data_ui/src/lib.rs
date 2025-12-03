@@ -30,7 +30,6 @@ mod video;
 mod extra_data_ui;
 pub mod item_ui;
 
-pub use crate::tensor::tensor_summary_ui_grid_contents;
 pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
 pub use image::image_preview_ui;
@@ -38,6 +37,8 @@ pub use instance_path::archetype_label_list_item_ui;
 use re_chunk_store::UnitChunkShared;
 use re_types_core::reflection::Reflection;
 use re_types_core::{ArchetypeName, Component};
+
+pub use crate::tensor::tensor_summary_ui_grid_contents;
 
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;

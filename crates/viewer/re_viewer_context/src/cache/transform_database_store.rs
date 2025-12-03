@@ -1,11 +1,12 @@
-use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
-use re_byte_size::SizeBytes;
 use std::sync::Arc;
 
-use super::{Cache, CacheMemoryReport};
+use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
+use re_byte_size::SizeBytes;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_tf::TransformResolutionCache;
+
+use super::{Cache, CacheMemoryReport};
 
 /// Stores a [`TransformResolutionCache`] for each recording.
 ///
@@ -13,25 +14,25 @@ use re_tf::TransformResolutionCache;
 #[derive(Default)]
 pub struct TransformDatabaseStoreCache {
     initialized: bool,
-    transform_cache: Arc<Mutex<TransformResolutionCache>>,
+    transform_cache: Arc<RwLock<TransformResolutionCache>>,
 }
 
 impl TransformDatabaseStoreCache {
     /// Gets access to the transform cache.
     ///
     /// If the cache was newly added, will make sure that all existing chunks in the entity db are processed.
-    pub fn lock_transform_cache(
+    pub fn read_lock_transform_cache(
         &mut self,
         entity_db: &EntityDb,
-    ) -> ArcMutexGuard<RawMutex, TransformResolutionCache> {
+    ) -> ArcRwLockReadGuard<RawRwLock, TransformResolutionCache> {
         if !self.initialized {
-            self.initialized = true;
+            self.initialized = true; // There can't be a race here since we have `&mut self``.
             self.transform_cache
-                .lock()
+                .write()
                 .add_chunks(entity_db.storage_engine().store().iter_chunks());
         }
 
-        self.transform_cache.lock_arc()
+        self.transform_cache.read_arc()
     }
 }
 
@@ -41,9 +42,8 @@ impl SizeBytes for TransformDatabaseStoreCache {
             initialized,
             transform_cache,
         } = self;
-        let cache = transform_cache.lock();
 
-        initialized.heap_size_bytes() + cache.total_size_bytes()
+        initialized.heap_size_bytes() + transform_cache.read().heap_size_bytes()
     }
 }
 
@@ -69,12 +69,12 @@ impl Cache for TransformDatabaseStoreCache {
         re_tracing::profile_function!();
 
         debug_assert!(
-            self.transform_cache.try_lock().is_some(),
+            self.transform_cache.try_write().is_some(),
             "Transform cache is still locked on processing store events. This should never happen."
         );
 
         self.transform_cache
-            .lock()
+            .write()
             .process_store_events(events.iter().copied());
     }
 

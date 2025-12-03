@@ -1,18 +1,15 @@
 use smallvec::smallvec;
 
-use crate::{
-    DrawableCollector, RenderContext,
-    allocator::create_and_fill_uniform_buffer,
-    include_shader_module,
-    renderer::{
-        DrawData, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
-        screen_triangle_vertex_shader,
-    },
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-    },
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::renderer::{
+    DrawData, DrawError, DrawInstruction, DrawableCollectionViewInfo, Renderer,
+    screen_triangle_vertex_shader,
 };
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{DrawableCollector, RenderContext, include_shader_module};
 
 /// Supported chroma subsampling input formats.
 ///

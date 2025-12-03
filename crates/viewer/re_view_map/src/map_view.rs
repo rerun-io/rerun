@@ -1,21 +1,14 @@
 use egui::{Context, Modifiers, NumExt as _, Rect, Response};
-use re_view::AnnotationSceneContext;
-use walkers::{HttpTiles, Map, MapMemory, Tiles};
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
-use re_renderer::{
-    RenderContext, ViewBuilder, ViewPickingConfiguration, view_builder::ViewBuilderError,
-};
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{MapBackground, MapZoom},
-        components::{MapProvider, ZoomLevel},
-    },
-};
+use re_renderer::view_builder::ViewBuilderError;
+use re_renderer::{RenderContext, ViewBuilder, ViewPickingConfiguration};
+use re_types::blueprint::archetypes::{MapBackground, MapZoom};
+use re_types::blueprint::components::{MapProvider, ZoomLevel};
+use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
+use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
     SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
@@ -23,6 +16,7 @@ use re_viewer_context::{
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
+use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use crate::map_overlays;
 use crate::visualizers::{GeoLineStringsVisualizer, GeoPointsVisualizer, update_span};

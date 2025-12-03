@@ -1,6 +1,6 @@
 use ahash::HashMap;
-
-use re_types::{ComponentIdentifier, components::Color};
+use re_types::ComponentIdentifier;
+use re_types::components::Color;
 use re_viewer_context::{Annotations, QueryContext, ResolvedAnnotationInfos, typed_fallback_for};
 
 use crate::clamped_or_nothing;

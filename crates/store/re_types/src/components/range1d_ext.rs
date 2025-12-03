@@ -1,7 +1,8 @@
-use crate::datatypes;
-use std::{fmt::Display, ops::RangeInclusive};
+use std::fmt::Display;
+use std::ops::RangeInclusive;
 
 use super::Range1D;
+use crate::datatypes;
 
 impl Range1D {
     /// Create a new range.

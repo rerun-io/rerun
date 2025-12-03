@@ -1,11 +1,8 @@
 use itertools::Itertools as _;
-
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Points2D,
-    components::{ClassId, Color, KeypointId, Position2D, Radius, ShowLabels},
-};
+use re_types::archetypes::Points2D;
+use re_types::components::{ClassId, Color, KeypointId, Position2D, Radius, ShowLabels};
+use re_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -13,16 +10,11 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{load_keypoint_connections, process_radius_slice},
-};
-
-use super::{
-    SpatialViewVisualizerData,
-    utilities::{LabeledBatch, process_labels_2d},
-};
+use super::SpatialViewVisualizerData;
+use super::utilities::{LabeledBatch, process_labels_2d};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 

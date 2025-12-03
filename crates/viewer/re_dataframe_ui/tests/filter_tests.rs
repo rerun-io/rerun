@@ -16,13 +16,12 @@ use arrow::record_batch::RecordBatch;
 use datafusion::catalog::MemTable;
 use datafusion::prelude::{DataFrame, SessionContext};
 use jiff::ToSpan as _;
-use strum::VariantArray as _;
-
 use re_dataframe_ui::{
     ColumnFilter, ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
 };
 use re_viewer_context::external::tokio;
+use strum::VariantArray as _;
 
 const COLUMN_NAME: &str = "column";
 const SOME_TIMESTAMP: &str = "2025-09-23T11:47Z";

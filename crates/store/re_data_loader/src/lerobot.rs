@@ -626,8 +626,9 @@ pub struct LeRobotDatasetTask {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json;
+
+    use super::*;
 
     #[test]
     fn test_deserialize_flat_list() {

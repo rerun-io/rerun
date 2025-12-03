@@ -36,28 +36,30 @@ mod tuid;
 mod view;
 mod wrapper_component;
 
-pub use self::{
-    archetype::{Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier},
-    arrow_string::ArrowString,
-    as_components::AsComponents,
-    chunk_index_message::ChunkIndexMessage,
-    component_batch::{ComponentBatch, SerializedComponentBatch, SerializedComponentColumn},
-    component_descriptor::{
-        ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
-        FIELD_METADATA_KEY_COMPONENT_TYPE,
-    },
-    id::{ChunkId, RowId},
-    loggable::{
-        Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
-    },
-    result::{
-        _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
-        SerializationResult,
-    },
-    tuid::tuids_to_arrow,
-    view::{View, ViewClassIdentifier},
-    wrapper_component::WrapperComponent,
+pub use self::archetype::{
+    Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
 };
+pub use self::arrow_string::ArrowString;
+pub use self::as_components::AsComponents;
+pub use self::chunk_index_message::ChunkIndexMessage;
+pub use self::component_batch::{
+    ComponentBatch, SerializedComponentBatch, SerializedComponentColumn,
+};
+pub use self::component_descriptor::{
+    ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
+    FIELD_METADATA_KEY_COMPONENT_TYPE,
+};
+pub use self::id::{ChunkId, RowId};
+pub use self::loggable::{
+    Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
+};
+pub use self::result::{
+    _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
+    SerializationResult,
+};
+pub use self::tuid::tuids_to_arrow;
+pub use self::view::{View, ViewClassIdentifier};
+pub use self::wrapper_component::WrapperComponent;
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
@@ -87,9 +89,7 @@ pub mod macros {
 }
 
 pub mod external {
-    pub use anyhow;
-    pub use arrow;
-    pub use re_tuid;
+    pub use {anyhow, arrow, re_tuid};
 }
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.

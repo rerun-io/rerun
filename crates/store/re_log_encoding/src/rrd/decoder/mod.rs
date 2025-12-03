@@ -5,11 +5,9 @@ pub mod state_machine;
 mod iterator;
 mod stream;
 
-pub use self::{
-    iterator::DecoderIterator,
-    state_machine::{Decoder, DecoderApp, DecoderTransport},
-    stream::DecoderStream,
-};
+pub use self::iterator::DecoderIterator;
+pub use self::state_machine::{Decoder, DecoderApp, DecoderTransport};
+pub use self::stream::DecoderStream;
 
 /// On failure to decode or serialize a `LogMsg`.
 #[derive(thiserror::Error, Debug)]
@@ -30,10 +28,8 @@ const _: () = assert!(
 
 use re_build_info::CrateVersion;
 
-use crate::ApplicationIdInjector;
-use crate::MessageKind;
-use crate::ToApplication as _;
 use crate::rrd::Decodable as _;
+use crate::{ApplicationIdInjector, MessageKind, ToApplication as _};
 
 /// Implemented for top-level types that can kickoff decoding.
 ///

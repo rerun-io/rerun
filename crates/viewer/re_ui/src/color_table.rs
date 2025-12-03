@@ -1,7 +1,5 @@
-use std::{
-    fmt::{Display, Formatter},
-    str::FromStr,
-};
+use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
 use strum::{EnumCount, EnumIter, IntoEnumIterator as _};
 

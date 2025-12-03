@@ -1,6 +1,5 @@
-use crate::datatypes::Vec3D;
-
 use super::HalfSize3D;
+use crate::datatypes::Vec3D;
 
 impl HalfSize3D {
     /// Create a new half-extent from half-width, half-height, half-depth.

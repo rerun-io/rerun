@@ -1,10 +1,10 @@
-use indicatif::ProgressBar;
 use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::io;
 use std::path::Path;
-use std::process::Command;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
+
+use indicatif::ProgressBar;
 
 pub trait CommandExt {
     fn with_cwd<P>(self, cwd: P) -> Self

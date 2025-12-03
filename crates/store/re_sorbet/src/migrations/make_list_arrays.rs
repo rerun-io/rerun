@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch,
-        RecordBatchOptions,
-    },
-    datatypes::{FieldRef as ArrowFieldRef, Schema as ArrowSchema},
+use arrow::array::{
+    ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch,
+    RecordBatchOptions,
 };
-
+use arrow::datatypes::{FieldRef as ArrowFieldRef, Schema as ArrowSchema};
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_log::ResultExt as _;
 

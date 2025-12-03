@@ -1,7 +1,6 @@
-use re_log_encoding::Decoder;
-
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
+use re_log_encoding::Decoder;
 use re_log_types::ApplicationId;
 
 use crate::{DataLoader as _, LoadedData};

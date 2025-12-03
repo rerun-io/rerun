@@ -4,10 +4,8 @@ use std::thread::JoinHandle;
 
 use crossbeam::channel::{Receiver, Sender};
 
-use crate::{
-    TrackingStatistics,
-    accounting_allocator::{self, is_tracking_callstacks},
-};
+use crate::TrackingStatistics;
+use crate::accounting_allocator::{self, is_tracking_callstacks};
 
 struct Shutdown;
 

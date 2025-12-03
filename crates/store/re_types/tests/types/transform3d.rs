@@ -1,11 +1,11 @@
 use std::f32::consts::TAU;
 
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
-    archetypes::Transform3D,
-    components::{RotationAxisAngle, Scale3D, TransformMat3x3, TransformRelation, Translation3D},
-    datatypes::Angle,
+use re_types::archetypes::Transform3D;
+use re_types::components::{
+    RotationAxisAngle, Scale3D, TransformMat3x3, TransformRelation, Translation3D,
 };
+use re_types::datatypes::Angle;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {

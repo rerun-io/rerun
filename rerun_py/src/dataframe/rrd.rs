@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::{PyResult, pyclass, pyfunction, pymethods};
-
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::StoreId;
 

@@ -1046,10 +1046,8 @@ impl std::hash::Hash for ResolvedEntityPathRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        EntityPath, EntityPathFilter, EntityPathSubs, RuleEffect,
-        path::entity_path_filter::{ResolvedEntityPathRule, split_whitespace_smart},
-    };
+    use crate::path::entity_path_filter::{ResolvedEntityPathRule, split_whitespace_smart};
+    use crate::{EntityPath, EntityPathFilter, EntityPathSubs, RuleEffect};
 
     #[test]
     fn test_resolved_rule_order() {
