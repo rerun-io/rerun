@@ -79,7 +79,6 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 let shape = tensor.shape();
                 if let Some(&length) = shape.first() {
                     // Set all widths to 1.0
-                    #[expect(clippy::cast_possible_wrap)]
                     let tensor_data = datatypes::TensorData::new(
                         vec![length],
                         datatypes::TensorBuffer::F32(vec![1.0; length as usize].into()),
