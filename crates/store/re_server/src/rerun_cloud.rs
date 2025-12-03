@@ -936,7 +936,7 @@ impl RerunCloudService for RerunCloudHandler {
         let request = request.into_inner();
         let segment_id = request
             .segment_id
-            .ok_or_else(|| tonic::Status::invalid_argument("no data frame in WriteTableRequest"))?
+            .ok_or_else(|| tonic::Status::invalid_argument("Missing segment_id"))?
             .try_into()?;
 
         let dataset = store.dataset(entry_id)?;

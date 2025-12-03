@@ -373,7 +373,7 @@ impl Dataset {
                     .to_chunk_batch()
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
-                // TODO(cmc): add an alternate RrdManifestBuilder builder for chunk keys.
+                // TODO(RR-3110): add an alternate RrdManifestBuilder builder with chunk keys instead of byte spans.
                 let dummy_byte_span = re_span::Span::default();
                 rrd_manifest_builder
                     .append(&chunk_batch, dummy_byte_span)
