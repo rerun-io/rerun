@@ -1,7 +1,7 @@
 use std::net::IpAddr;
 use std::time::Duration;
 
-use crate::external::re_ui::{UICommand, UICommandSender};
+use crate::external::re_ui::{UICommand, UICommandSender as _};
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use re_data_source::LogDataSource;
