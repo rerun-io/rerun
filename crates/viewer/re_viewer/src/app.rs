@@ -1323,7 +1323,7 @@ impl App {
                 }
             }
 
-            LogDataSource::RedapDatasetPartition {
+            LogDataSource::RedapDatasetSegment {
                 uri,
                 select_when_loaded,
             } => {

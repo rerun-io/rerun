@@ -5,30 +5,30 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
 /// URI pointing at the data underlying a dataset.
 ///
 /// Currently, the following format is supported:
-/// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID&time_range=$TIME_RANGE`
+/// `<origin>/dataset/$DATASET_ID/data?segment_id=$SEGMENT_ID&time_range=$TIME_RANGE`
 ///
-/// `partition_id` is currently mandatory, and `time_range` is optional.
+/// `segment_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DatasetPartitionUri {
+pub struct DatasetSegmentUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
-    pub partition_id: String,
+    pub segment_id: String,
     pub time_range: Option<TimeSelection>,
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
 }
 
-impl std::fmt::Display for DatasetPartitionUri {
+impl std::fmt::Display for DatasetSegmentUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         } = self;
@@ -37,7 +37,7 @@ impl std::fmt::Display for DatasetPartitionUri {
 
         // ?query:
         {
-            write!(f, "?partition_id={partition_id}")?;
+            write!(f, "?segment_id={segment_id}")?;
         }
         if let Some(time_range) = time_range {
             write!(f, "&time_range={time_range}")?;
@@ -53,15 +53,21 @@ impl std::fmt::Display for DatasetPartitionUri {
     }
 }
 
-impl DatasetPartitionUri {
+impl DatasetSegmentUri {
     pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
-        let mut partition_id = None;
+        let mut segment_id = None;
+        let mut legacy_partition_id = None;
         let mut time_range = None;
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
+                // Accept legacy `partition_id` query parameter.
                 "partition_id" => {
-                    partition_id = Some(value.to_string());
+                    legacy_partition_id = Some(value.to_string());
+                }
+
+                "segment_id" => {
+                    segment_id = Some(value.to_string());
                 }
                 "time_range" => {
                     // `+` means whitespace in URLs.
@@ -75,8 +81,16 @@ impl DatasetPartitionUri {
             }
         }
 
-        let Some(partition_id) = partition_id else {
-            return Err(Error::MissingPartitionId);
+        let segment_id = match (segment_id, legacy_partition_id) {
+            (Some(s), None) | (None, Some(s)) => s,
+
+            (None, None) => {
+                return Err(Error::MissingSegmentId);
+            }
+
+            (Some(_), Some(_)) => {
+                return Err(Error::AmbiguousSegmentId);
+            }
         };
 
         let mut fragment = Fragment::default();
@@ -87,7 +101,7 @@ impl DatasetPartitionUri {
         Ok(Self {
             origin,
             dataset_id,
-            partition_id,
+            segment_id,
             time_range,
             fragment,
         })
@@ -96,9 +110,9 @@ impl DatasetPartitionUri {
     /// Returns [`Self`] without any (optional) `?query` or `#fragment`.
     pub fn without_query_and_fragment(mut self) -> Self {
         let Self {
-            origin: _,       // Mandatory
-            dataset_id: _,   // Mandatory
-            partition_id: _, // Mandatory
+            origin: _,     // Mandatory
+            dataset_id: _, // Mandatory
+            segment_id: _, // Mandatory
             time_range,
             fragment,
         } = &mut self;
@@ -112,9 +126,9 @@ impl DatasetPartitionUri {
     /// Returns [`Self`] without any (optional) `#fragment`.
     pub fn without_fragment(mut self) -> Self {
         let Self {
-            origin: _,       // Mandatory
-            dataset_id: _,   // Mandatory
-            partition_id: _, // Mandatory
+            origin: _,     // Mandatory
+            dataset_id: _, // Mandatory
+            segment_id: _, // Mandatory
             time_range: _,
             fragment,
         } = &mut self;
@@ -128,12 +142,12 @@ impl DatasetPartitionUri {
         StoreId::new(
             re_log_types::StoreKind::Recording,
             self.dataset_id.to_string(),
-            self.partition_id.clone(),
+            self.segment_id.clone(),
         )
     }
 }
 
-impl std::str::FromStr for DatasetPartitionUri {
+impl std::str::FromStr for DatasetSegmentUri {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -148,7 +162,7 @@ impl std::str::FromStr for DatasetPartitionUri {
 // --------------------------------
 
 // Serialize as string:
-impl serde::Serialize for DatasetPartitionUri {
+impl serde::Serialize for DatasetSegmentUri {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -157,7 +171,7 @@ impl serde::Serialize for DatasetPartitionUri {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for DatasetPartitionUri {
+impl<'de> serde::Deserialize<'de> for DatasetSegmentUri {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

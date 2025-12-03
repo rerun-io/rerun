@@ -35,8 +35,8 @@ pub enum LogDataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording.
-    RedapDatasetPartition {
-        uri: re_uri::DatasetPartitionUri,
+    RedapDatasetSegment {
+        uri: re_uri::DatasetSegmentUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
@@ -117,8 +117,8 @@ impl LogDataSource {
             }
         }
 
-        if let Ok(uri) = url.parse::<re_uri::DatasetPartitionUri>() {
-            Some(Self::RedapDatasetPartition {
+        if let Ok(uri) = url.parse::<re_uri::DatasetSegmentUri>() {
+            Some(Self::RedapDatasetSegment {
                 uri,
                 select_when_loaded: true,
             })
@@ -208,7 +208,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapDatasetPartition {
+            Self::RedapDatasetSegment {
                 uri,
                 select_when_loaded,
             } => {
@@ -220,7 +220,7 @@ impl LogDataSource {
 
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
-                let stream_partition = async move {
+                let stream_segment = async move {
                     let client = connection_registry
                         .client(uri_clone.origin.clone())
                         .await
@@ -230,7 +230,7 @@ impl LogDataSource {
                 };
 
                 spawn_future(async move {
-                    if let Err(err) = stream_partition.await {
+                    if let Err(err) = stream_segment.await {
                         re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });
@@ -290,9 +290,12 @@ mod tests {
             "www.foo.zip/blueprint.rbl",
         ];
         let grpc = [
+            // segment_id (new)
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1230ms..1m12s",
+            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid",
+            // partition_id (legacy, for backward compatibility)
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
-            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
         ];
 
         let proxy = [
@@ -328,12 +331,9 @@ mod tests {
 
         for uri in grpc {
             let data_source = LogDataSource::from_uri(file_source.clone(), uri);
-            if !matches!(
-                data_source,
-                Some(LogDataSource::RedapDatasetPartition { .. })
-            ) {
+            if !matches!(data_source, Some(LogDataSource::RedapDatasetSegment { .. })) {
                 eprintln!(
-                    "Expected {uri:?} to be categorized as readp dataset. Instead it got parsed as {data_source:?}"
+                    "Expected {uri:?} to be categorized as redap dataset segment. Instead it got parsed as {data_source:?}"
                 );
                 failed = true;
             }

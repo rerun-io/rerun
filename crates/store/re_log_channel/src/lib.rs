@@ -68,7 +68,7 @@ pub enum LogSource {
     /// The data is streaming in directly from a Rerun Data Platform server,
     /// over `rerun://` gRPC interface.
     RedapGrpcStream {
-        uri: re_uri::DatasetPartitionUri,
+        uri: re_uri::DatasetSegmentUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
@@ -151,7 +151,7 @@ impl LogSource {
             // We only show things we know are very-soon-to-be recordings:
             Self::File(path) => Some(path.to_string_lossy().into_owned()),
             Self::RrdHttpStream { url, .. } => Some(url.clone()),
-            Self::RedapGrpcStream { uri, .. } => Some(uri.partition_id.clone()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
 
             Self::RrdWebEvent
             | Self::JsChannel { .. }
