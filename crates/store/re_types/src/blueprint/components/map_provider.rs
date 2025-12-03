@@ -148,8 +148,8 @@ impl ::re_types_core::reflection::Enum for MapProvider {
             Self::OpenStreetMap,
             Self::MapboxStreets,
             Self::MapboxDark,
-            Self::MapboxLight,
             Self::MapboxSatellite,
+            Self::MapboxLight,
         ]
     }
 
