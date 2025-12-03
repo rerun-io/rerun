@@ -16,6 +16,7 @@ use re_viewer_context::{
 #[derive(Default)]
 pub struct BarChartData {
     pub abscissa: datatypes::TensorData,
+    pub widths: datatypes::TensorData,
     pub values: datatypes::TensorData,
     pub color: components::Color,
 }
@@ -59,12 +60,15 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let abscissa: components::TensorData =
                     results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
                 let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
+                let widths: components::TensorData =
+                    results.get_mono_with_fallback(BarChart::descriptor_widths().component);
                 self.charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {
                         abscissa: abscissa.0.clone(),
                         values: tensor.0.clone(),
                         color,
+                        widths: widths.0.clone(),
                     },
                 );
             }

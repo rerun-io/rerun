@@ -225,6 +225,7 @@ impl ViewClass for BarChartView {
                 fn create_bar_chart<N: Into<f64>>(
                     ent_path: &EntityPath,
                     indexes: impl Iterator<Item = f64>,
+                    widths: impl Iterator<Item = f64>,
                     values: impl Iterator<Item = N>,
                     color: &re_types::components::Color,
                     background_color: egui::Color32,
@@ -240,10 +241,11 @@ impl ViewClass for BarChartView {
                         "bar_chart",
                         values
                             .zip(indexes)
+                            .zip(widths)
                             .enumerate()
-                            .map(|(i, (value, index))| {
+                            .map(|(i, ((value, index), width))| {
                                 Bar::new(index + 0.5, value.into())
-                                    .width(1.0) // No gaps
+                                    .width(width)
                                     .name(format!("{ent_path} #{i}"))
                                     .fill(fill)
                                     .stroke((1.0, stroke_color))
@@ -260,10 +262,24 @@ impl ViewClass for BarChartView {
                         abscissa,
                         values: tensor,
                         color,
+                        widths,
                     },
                 ) in charts
                 {
                     let arg: ::arrow::buffer::ScalarBuffer<f64> = match &abscissa.buffer {
+                        TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U16(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U32(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::U64(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I8(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I16(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I32(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::I64(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::F16(data) => data.iter().map(|v| f64::from(*v)).collect(),
+                        TensorBuffer::F32(data) => data.iter().map(|v| *v as f64).collect(),
+                        TensorBuffer::F64(data) => data.iter().copied().collect(),
+                    };
+                    let widths: ::arrow::buffer::ScalarBuffer<f64> = match &widths.buffer {
                         TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::U16(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::U32(data) => data.iter().map(|v| *v as f64).collect(),
@@ -281,6 +297,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::U8(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -288,6 +305,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::U16(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -295,6 +313,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::U32(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -302,6 +321,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::U64(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied().map(|v| v as f64),
                             color,
                             background_color,
@@ -309,6 +329,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::I8(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -316,6 +337,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::I16(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -323,6 +345,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::I32(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -330,6 +353,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::I64(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied().map(|v| v as f64),
                             color,
                             background_color,
@@ -337,6 +361,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::F16(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().map(|f| f.to_f32()),
                             color,
                             background_color,
@@ -344,6 +369,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::F32(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
@@ -351,6 +377,7 @@ impl ViewClass for BarChartView {
                         TensorBuffer::F64(data) => create_bar_chart(
                             ent_path,
                             arg.iter().copied(),
+                            widths.iter().copied(),
                             data.iter().copied(),
                             color,
                             background_color,
