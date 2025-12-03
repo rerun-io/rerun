@@ -582,7 +582,7 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
     } else {
         re_crash_handler::install_crash_handlers(build_info.clone());

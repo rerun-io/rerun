@@ -22,7 +22,7 @@ extra = []
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "nasm", "web_viewer", "server"]
+pypi = ["extension-module", "nasm", "web_viewer", "server", "perf_telemetry"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -35,7 +35,7 @@ extension-module = ["pyo3/extension-module"]
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
 
-## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
 ##
 ## This only works on native.
 perf_telemetry = [
@@ -113,7 +113,7 @@ thiserror.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-re_perf_telemetry = { workspace = true, features = ["tracy", "pyo3"], optional = true }
+re_perf_telemetry = { workspace = true, features = ["pyo3"], optional = true }
 
 
 [build-dependencies]
