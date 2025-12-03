@@ -250,7 +250,7 @@ impl LogDataSource {
                     .and_then(|e| e.to_str())
                     .map(|s| s.to_lowercase());
                 LogDataSourceAnalytics {
-                    source_type: "http",
+                    source_type: "rrd_http_url",
                     file_extension,
                     file_source: None,
                 }
@@ -263,7 +263,7 @@ impl LogDataSource {
                     .and_then(|e| e.to_str())
                     .map(|s| s.to_lowercase());
                 LogDataSourceAnalytics {
-                    source_type: "file",
+                    source_type: "file_path",
                     file_extension,
                     file_source: Some(Self::file_source_to_analytics_str(file_src)),
                 }
@@ -289,7 +289,7 @@ impl LogDataSource {
             },
 
             Self::RedapDatasetSegment { .. } => LogDataSourceAnalytics {
-                source_type: "redap_grpc",
+                source_type: "redap_dataset_segment",
                 file_extension: None,
                 file_source: None,
             },
