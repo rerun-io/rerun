@@ -82,7 +82,8 @@ mesa.7z
 mesa.tar.xz
 icd.json
 
-*.rrd
+# Temporary RRD files. Don't blanket ignore them since we check in some for backwards compatibility tests.
+docs/snippets/**/*.rrd
 
 /meilisearch
 
