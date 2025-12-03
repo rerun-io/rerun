@@ -3928,6 +3928,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection {
+                        name: "target_frame",
+                        display_name: "Target frame",
+                        component_type: "rerun.components.TransformFrameId".into(),
+                        docstring_md: "The target reference frame for all transformations.\n\nDefaults to the coordinate frame used by the space origin entity.",
+                        is_required: false,
+                    },
+                    ArchetypeFieldReflection {
                         name: "show_axes",
                         display_name: "Show axes",
                         component_type: "rerun.blueprint.components.Enabled".into(),

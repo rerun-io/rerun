@@ -63,6 +63,10 @@ pub struct SpatialViewState {
     pub pinhole_at_origin: Option<Pinhole>,
 
     pub visual_bounds_2d: Option<VisualBounds2D>,
+
+    /// The target frame, i.e., the coordinate frame that transforms are resolved to.
+    /// Computed from the space origin via the transform tree.
+    pub target_frame: Option<String>,
 }
 
 impl ViewState for SpatialViewState {

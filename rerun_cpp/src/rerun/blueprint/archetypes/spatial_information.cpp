@@ -8,6 +8,9 @@
 namespace rerun::blueprint::archetypes {
     SpatialInformation SpatialInformation::clear_fields() {
         auto archetype = SpatialInformation();
+        archetype.target_frame =
+            ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_target_frame)
+                .value_or_throw();
         archetype.show_axes =
             ComponentBatch::empty<rerun::blueprint::components::Enabled>(Descriptor_show_axes)
                 .value_or_throw();
@@ -20,7 +23,10 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> SpatialInformation::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(2);
+        columns.reserve(3);
+        if (target_frame.has_value()) {
+            columns.push_back(target_frame.value().partitioned(lengths_).value_or_throw());
+        }
         if (show_axes.has_value()) {
             columns.push_back(show_axes.value().partitioned(lengths_).value_or_throw());
         }
@@ -31,6 +37,9 @@ namespace rerun::blueprint::archetypes {
     }
 
     Collection<ComponentColumn> SpatialInformation::columns() {
+        if (target_frame.has_value()) {
+            return columns(std::vector<uint32_t>(target_frame.value().length(), 1));
+        }
         if (show_axes.has_value()) {
             return columns(std::vector<uint32_t>(show_axes.value().length(), 1));
         }
@@ -49,8 +58,11 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
+        if (archetype.target_frame.has_value()) {
+            cells.push_back(archetype.target_frame.value());
+        }
         if (archetype.show_axes.has_value()) {
             cells.push_back(archetype.show_axes.value());
         }
