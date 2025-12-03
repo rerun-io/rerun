@@ -765,7 +765,6 @@ fn load_episode(
     dataset: &LeRobotDatasetV3,
     episode: EpisodeIndex,
 ) -> Result<Vec<Chunk>, DataLoaderError> {
-    println!("Loading LeRobot episode {}", episode.0);
     let data = dataset
         .read_episode_data(episode)
         .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
