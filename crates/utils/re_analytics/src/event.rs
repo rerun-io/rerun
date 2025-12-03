@@ -443,7 +443,7 @@ pub struct SetPersonProperty {
     pub email: String,
 
     /// The user's organization ID, from [`re_auth::oauth::RerunCloudClaims::org_id`].
-    pub organization_id: Option<String>,
+    pub organization_id: String,
 }
 
 impl Event for SetPersonProperty {
@@ -459,7 +459,7 @@ impl Properties for SetPersonProperty {
             organization_id,
         } = self;
         event.insert("email", email);
-        event.insert_opt("organization_id", organization_id);
+        event.insert("organization_id", organization_id);
     }
 }
 

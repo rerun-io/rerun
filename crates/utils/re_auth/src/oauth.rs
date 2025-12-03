@@ -216,6 +216,7 @@ pub struct Credentials {
     refresh_token: Option<RefreshToken>,
 
     access_token: AccessToken,
+    claims: RerunCloudClaims,
 }
 
 pub struct InMemoryCredentials(Credentials);
@@ -230,12 +231,10 @@ impl InMemoryCredentials {
         storage::store(&self.0)?;
 
         // Link the analytics ID to the authenticated user
-        if let Some(analytics) = re_analytics::Analytics::global_get() {
-            analytics.record(re_analytics::event::SetPersonProperty {
-                email: self.0.user.email.clone(),
-                organization_id: self.0.user.organization_id.clone(),
-            });
-        }
+        re_analytics::record(|| re_analytics::event::SetPersonProperty {
+            email: self.0.user.email.clone(),
+            organization_id: self.0.claims.org_id.clone(),
+        });
 
         Ok(self.0)
     }
@@ -251,16 +250,18 @@ impl Credentials {
     pub fn from_auth_response(
         res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
-        let access_token = AccessToken::try_from_unverified_jwt(Jwt(res.access_token))?;
+        let jwt = Jwt(res.access_token);
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
+        let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
         let user = User {
             id: res.user.id,
             email: res.user.email,
-            organization_id: res.organization_id,
         };
         Ok(InMemoryCredentials(Self {
             user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
+            claims,
         }))
     }
 
@@ -275,9 +276,8 @@ impl Credentials {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&Jwt(access_token.clone()))?;
 
         let user = User {
-            id: claims.sub,
+            id: claims.sub.clone(),
             email,
-            organization_id: Some(claims.org_id),
         };
         let access_token = AccessToken {
             token: access_token,
@@ -289,6 +289,7 @@ impl Credentials {
             user,
             access_token,
             refresh_token,
+            claims,
         }))
     }
 
@@ -306,7 +307,6 @@ impl Credentials {
 pub struct User {
     pub id: String,
     pub email: String,
-    pub organization_id: Option<String>,
 }
 
 /// An access token which was valid at some point in the past.
