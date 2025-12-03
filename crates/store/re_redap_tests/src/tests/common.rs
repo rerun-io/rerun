@@ -227,18 +227,18 @@ impl LayerType {
     fn into_recording(
         self,
         tuid_prefix: TuidPrefix,
-        partition_id: &str,
+        segment_id: &str,
     ) -> anyhow::Result<TempPath> {
         match self {
             Self::Simple { entities } => {
-                create_simple_recording(tuid_prefix, partition_id, entities)
+                create_simple_recording(tuid_prefix, segment_id, entities)
             }
 
-            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, partition_id, entities),
+            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
             Self::Properties { properties } => create_recording_with_properties(
                 tuid_prefix,
-                partition_id,
+                segment_id,
                 // TODO(ab): avoid this annoying conversion (this requires a change to
                 // `create_recording_with_properties` which needs to be propagated to
                 // `dataplatform`.
@@ -248,45 +248,45 @@ impl LayerType {
                     .collect(),
             ),
 
-            Self::Scalars { n } => create_recording_with_scalars(tuid_prefix, partition_id, n),
+            Self::Scalars { n } => create_recording_with_scalars(tuid_prefix, segment_id, n),
 
-            Self::Text => create_recording_with_text(tuid_prefix, partition_id),
+            Self::Text => create_recording_with_text(tuid_prefix, segment_id),
 
             Self::Embeddings {
                 embeddings,
                 embeddings_per_row,
             } => create_recording_with_embeddings(
                 tuid_prefix,
-                partition_id,
+                segment_id,
                 embeddings,
                 embeddings_per_row,
             ),
 
-            Self::SimpleBlueprint => crate::create_simple_blueprint(tuid_prefix, partition_id),
+            Self::SimpleBlueprint => crate::create_simple_blueprint(tuid_prefix, segment_id),
         }
     }
 }
 
 pub struct LayerDefinition {
-    pub partition_id: &'static str,
+    pub segment_id: &'static str,
     pub layer_name: Option<&'static str>,
     pub layer_type: LayerType,
 }
 
 impl LayerDefinition {
     /// A simple layer with the provided entities
-    pub fn simple(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+    pub fn simple(segment_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::simple(entities),
         }
     }
 
     /// A layer with a nasty chunk representation for the provided entities.
-    pub fn nasty(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+    pub fn nasty(segment_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::nasty(entities),
         }
@@ -294,20 +294,20 @@ impl LayerDefinition {
 
     /// A layer with just the provided properties.
     pub fn properties(
-        partition_id: &'static str,
+        segment_id: &'static str,
         properties: impl IntoIterator<Item = (String, Box<dyn AsComponents>)>,
     ) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::properties(properties),
         }
     }
 
     /// A simple layer with a bunch of scalars, for testing B-Tree indexes.
-    pub fn scalars(partition_id: &'static str) -> Self {
+    pub fn scalars(segment_id: &'static str) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             // TODO(cmc): we can always expose `n` later, if and when it's useful.
             layer_type: LayerType::scalars(10),
@@ -315,9 +315,9 @@ impl LayerDefinition {
     }
 
     /// A simple layer with a bunch of text, for testing FTS indexes.
-    pub fn text(partition_id: &'static str) -> Self {
+    pub fn text(segment_id: &'static str) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::text(),
         }
@@ -325,20 +325,20 @@ impl LayerDefinition {
 
     /// A simple layer with a bunch of embeddings, for testing Vector indexes.
     pub fn embeddings(
-        partition_id: &'static str,
+        segment_id: &'static str,
         embeddings: u32,
         embeddings_per_row: u32,
     ) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::embeddings(embeddings, embeddings_per_row),
         }
     }
 
-    pub fn simple_blueprint(partition_id: &'static str) -> Self {
+    pub fn simple_blueprint(segment_id: &'static str) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::simple_blueprint(),
         }
@@ -388,7 +388,7 @@ impl DataSourcesDefinition {
                             .layer_type
                             .into_recording(
                                 tuid_prefix.saturating_add(tuid_prefix_increment as _),
-                                layer.partition_id,
+                                layer.segment_id,
                             )
                             .unwrap(),
                     )

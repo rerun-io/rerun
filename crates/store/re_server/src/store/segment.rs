@@ -6,32 +6,32 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 
 use crate::store::{Error, Layer, Tracked};
 
-/// The mutable inner state of a [`Partition`], wrapped in [`Tracked`] for automatic timestamp updates.
+/// The mutable inner state of a [`Segment`], wrapped in [`Tracked`] for automatic timestamp updates.
 #[derive(Clone)]
-pub struct PartitionInner {
-    /// The layers of this partition.
+pub struct SegmentInner {
+    /// The layers of this segment.
     layers: HashMap<String, Layer>,
 }
 
 #[derive(Clone)]
-pub struct Partition {
-    inner: Tracked<PartitionInner>,
+pub struct Segment {
+    inner: Tracked<SegmentInner>,
 }
 
-impl Default for Partition {
+impl Default for Segment {
     fn default() -> Self {
         Self {
-            inner: Tracked::new(PartitionInner {
+            inner: Tracked::new(SegmentInner {
                 layers: HashMap::default(),
             }),
         }
     }
 }
 
-impl Partition {
+impl Segment {
     pub fn from_layer_data(layer_name: &str, chunk_store_handle: ChunkStoreHandle) -> Self {
         Self {
-            inner: Tracked::new(PartitionInner {
+            inner: Tracked::new(SegmentInner {
                 layers: vec![(layer_name.to_owned(), Layer::new(chunk_store_handle))]
                     .into_iter()
                     .collect(),
@@ -50,7 +50,7 @@ impl Partition {
     /// Iterate over layers.
     ///
     /// Layers are iterated in (registration time, layer name) order, as per how they should appear
-    /// in the partition table.
+    /// in the segment table.
     pub fn iter_layers(&self) -> impl Iterator<Item = (&str, &Layer)> {
         self.inner
             .layers
@@ -86,7 +86,7 @@ impl Partition {
                     Ok(true)
                 }
                 IfDuplicateBehavior::Skip => {
-                    re_log::info!("Ignoring layer '{layer_name}': already exists in partition");
+                    re_log::info!("Ignoring layer '{layer_name}': already exists in segment");
                     // No modification, no timestamp update
                     Ok(true)
                 }

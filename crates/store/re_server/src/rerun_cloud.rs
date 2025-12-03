@@ -117,9 +117,9 @@ impl RerunCloudHandler {
         let dataset = store.dataset(dataset_id)?;
 
         Ok(dataset
-            .partitions_from_ids(segment_ids)?
-            .flat_map(|(segment_id, partition)| {
-                partition.iter_layers().map(|(layer_name, layer)| {
+            .segments_from_ids(segment_ids)?
+            .flat_map(|(segment_id, segment)| {
+                segment.iter_layers().map(|(layer_name, layer)| {
                     (
                         segment_id.clone(),
                         layer_name.to_owned(),
@@ -596,9 +596,9 @@ impl RerunCloudService for RerunCloudHandler {
             on_duplicate,
         } = request.into_inner().try_into()?;
 
-        let mut partition_ids: Vec<String> = vec![];
-        let mut partition_layers: Vec<String> = vec![];
-        let mut partition_types: Vec<String> = vec![];
+        let mut segment_ids: Vec<String> = vec![];
+        let mut segment_layers: Vec<String> = vec![];
+        let mut segment_types: Vec<String> = vec![];
         let mut storage_urls: Vec<String> = vec![];
         let mut task_ids: Vec<String> = vec![];
 
@@ -625,14 +625,14 @@ impl RerunCloudService for RerunCloudHandler {
             }
 
             if let Ok(rrd_path) = storage_url.to_file_path() {
-                let new_partition_ids = dataset
+                let new_segment_ids = dataset
                     .load_rrd(&rrd_path, Some(&layer), on_duplicate, dataset.store_kind())
                     .await?;
 
-                for partition_id in new_partition_ids {
-                    partition_ids.push(partition_id.to_string());
-                    partition_layers.push(layer.clone());
-                    partition_types.push("rrd".to_owned());
+                for segment_id in new_segment_ids {
+                    segment_ids.push(segment_id.to_string());
+                    segment_layers.push(layer.clone());
+                    segment_types.push("rrd".to_owned());
                     // TODO(RR-2289): this should probably be a memory address
                     storage_urls.push(storage_url.to_string());
                     task_ids.push(DUMMY_TASK_ID.to_owned());
@@ -641,9 +641,9 @@ impl RerunCloudService for RerunCloudHandler {
         }
 
         let record_batch = RegisterWithDatasetResponse::create_dataframe(
-            partition_ids,
-            partition_layers,
-            partition_types,
+            segment_ids,
+            segment_layers,
+            segment_types,
             storage_urls,
             task_ids,
         )
@@ -679,13 +679,15 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
                 })?;
 
-            let segment_id: SegmentId = chunk_batch
-                .schema()
-                .metadata()
-                .get("rerun:partition_id")
+            // Support both new "rerun:segment_id" and legacy "rerun:partition_id" keys
+            let schema = chunk_batch.schema();
+            let metadata = schema.metadata();
+            let segment_id: SegmentId = metadata
+                .get("rerun:segment_id")
+                .or_else(|| metadata.get("rerun:partition_id"))
                 .ok_or_else(|| {
                     tonic::Status::invalid_argument(
-                        "Received chunk without 'rerun.partition_id' metadata",
+                        "Received chunk without 'rerun:segment_id' metadata",
                     )
                 })?
                 .clone()
@@ -1086,7 +1088,7 @@ impl RerunCloudService for RerunCloudHandler {
                 let num_chunks = store_handle.read().num_chunks();
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
-                let mut chunk_partition_ids = Vec::with_capacity(num_chunks);
+                let mut chunk_segment_ids = Vec::with_capacity(num_chunks);
                 let mut chunk_keys = Vec::with_capacity(num_chunks);
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
@@ -1123,8 +1125,8 @@ impl RerunCloudService for RerunCloudHandler {
 
                         let timeline_data = timelines.entry(timeline_name).or_insert((
                             timeline_data_type,
-                            vec![None; chunk_partition_ids.len()],
-                            vec![None; chunk_partition_ids.len()],
+                            vec![None; chunk_segment_ids.len()],
+                            vec![None; chunk_segment_ids.len()],
                         ));
 
                         timeline_data.1.push(Some(time_min.as_i64()));
@@ -1139,7 +1141,7 @@ impl RerunCloudService for RerunCloudHandler {
                         timeline_data.2.push(None);
                     }
 
-                    chunk_partition_ids.push(segment_id.id.clone());
+                    chunk_segment_ids.push(segment_id.id.clone());
                     chunk_ids.push(chunk.id());
                     chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
@@ -1158,7 +1160,7 @@ impl RerunCloudService for RerunCloudHandler {
                 let chunk_key_refs = chunk_keys.iter().map(|v| v.as_slice()).collect();
                 let batch = QueryDatasetResponse::create_dataframe(
                     chunk_ids,
-                    chunk_partition_ids,
+                    chunk_segment_ids,
                     chunk_layer_names,
                     chunk_key_refs,
                     chunk_entity_path,

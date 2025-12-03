@@ -44,11 +44,11 @@ fn next_row_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::RowId {
 /// ruled out in snapshots.
 pub fn create_simple_recording(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
     let tmp_dir = tempfile::tempdir()?;
-    let path = create_simple_recording_in(tuid_prefix, partition_id, entity_paths, tmp_dir.path())?;
+    let path = create_simple_recording_in(tuid_prefix, segment_id, entity_paths, tmp_dir.path())?;
     Ok(TempPath::new(tmp_dir, path))
 }
 
@@ -59,7 +59,7 @@ pub fn create_simple_recording(
 /// ruled out in snapshots. The `in_dir` is assumed to exist and not deleted automatically.
 pub fn create_simple_recording_in(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     entity_paths: &[&str],
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
@@ -71,10 +71,10 @@ pub fn create_simple_recording_in(
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
     }
 
-    let tmp_path = in_dir.join(format!("{partition_id}.rrd"));
+    let tmp_path = in_dir.join(format!("{segment_id}.rrd"));
 
-    let rec = RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
-        .recording_id(partition_id)
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
         .send_properties(false)
         .save(tmp_path.clone())?;
 
@@ -160,7 +160,7 @@ pub fn create_simple_recording_in(
 /// Creates a simple blueprint.
 pub fn create_simple_blueprint(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
     use re_log_types::{EntityPath, TimeInt, build_frame_nr};
@@ -168,13 +168,13 @@ pub fn create_simple_blueprint(
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rbl"));
+        let path = dir.path().join(format!("{segment_id}.rbl"));
         TempPath::new(dir, path)
     };
 
-    let rec = RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
         .blueprint()
-        .recording_id(partition_id)
+        .recording_id(segment_id)
         .send_properties(false)
         .save(tmp_path.clone())?;
 
@@ -202,7 +202,7 @@ pub fn create_simple_blueprint(
 /// This makes it a great recording to test things with for most situations.
 pub fn create_nasty_recording(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
     use re_chunk::{Chunk, TimePoint};
@@ -211,12 +211,12 @@ pub fn create_nasty_recording(
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rrd"));
+        let path = dir.path().join(format!("{segment_id}.rrd"));
         TempPath::new(dir, path)
     };
 
-    let rec = RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
-        .recording_id(partition_id)
+    let rec = RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
         // NOTE: Don't send builtin properties (e.g. recording start time): these are non
         // deterministic (neither their values nor their Chunk/Row IDs) and are not what we're
         // trying to test anyhow. We have dedicated, in-depth deterministic test suites for properties.
@@ -465,7 +465,7 @@ pub fn create_nasty_recording(
 /// be optimized by the Lance index.
 pub fn create_recording_with_embeddings(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     embeddings: u32,
     embeddings_per_row: u32,
 ) -> anyhow::Result<TempPath> {
@@ -475,12 +475,12 @@ pub fn create_recording_with_embeddings(
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rrd"));
+        let path = dir.path().join(format!("{segment_id}.rrd"));
         TempPath::new(dir, path)
     };
 
-    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
-        .recording_id(partition_id)
+    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
         // NOTE: Don't send builtin properties (e.g. recording start time): these are non
         // deterministic (neither their values nor their Chunk/Row IDs) and are not what we're
         // trying to test anyhow. We have dedicated, in-depth deterministic test suites for properties.
@@ -591,7 +591,7 @@ pub fn create_recording_with_embeddings(
 
 pub fn create_recording_with_scalars(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     n: usize,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
@@ -600,12 +600,12 @@ pub fn create_recording_with_scalars(
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rrd"));
+        let path = dir.path().join(format!("{segment_id}.rrd"));
         TempPath::new(dir, path)
     };
 
-    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
-        .recording_id(partition_id)
+    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
         // NOTE: Don't send builtin properties (e.g. recording start time): these are non
         // deterministic (neither their values nor their Chunk/Row IDs) and are not what we're
         // trying to test anyhow. We have dedicated, in-depth deterministic test suites for properties.
@@ -640,19 +640,19 @@ pub fn create_recording_with_scalars(
 
 pub fn create_recording_with_text(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
     use re_log_types::{TimeInt, build_log_time};
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rrd"));
+        let path = dir.path().join(format!("{segment_id}.rrd"));
         TempPath::new(dir, path)
     };
 
-    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
-        .recording_id(partition_id)
+    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
         // NOTE: Don't send builtin properties (e.g. recording start time): these are non
         // deterministic (neither their values nor their Chunk/Row IDs) and are not what we're
         // trying to test anyhow. We have dedicated, in-depth deterministic test suites for properties.
@@ -707,19 +707,19 @@ pub fn create_recording_with_text(
 
 pub fn create_recording_with_properties(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     user_defined_properties: BTreeMap<String, Vec<&dyn AsComponents>>,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{partition_id}.rrd"));
+        let path = dir.path().join(format!("{segment_id}.rrd"));
         TempPath::new(dir, path)
     };
 
     let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_properties")
-        .recording_id(partition_id)
+        .recording_id(segment_id)
         // NOTE: Don't send builtin properties (e.g. recording start time): these are non
         // deterministic (neither their values nor their Chunk/Row IDs) and are not what we're
         // trying to test anyhow. We'll be sending our own properties below.
@@ -755,7 +755,7 @@ pub fn create_recording_with_properties(
 /// arrow type of either `List[u8]` or `Binary`.
 pub fn create_minimal_binary_recording_in(
     tuid_prefix: TuidPrefix,
-    partition_id: &str,
+    segment_id: &str,
     entity_path: &str,
     is_binary: bool,
     in_dir: &std::path::Path,
@@ -768,10 +768,10 @@ pub fn create_minimal_binary_recording_in(
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
     }
 
-    let tmp_path = in_dir.join(format!("{partition_id}.rrd"));
+    let tmp_path = in_dir.join(format!("{segment_id}.rrd"));
 
-    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{partition_id}"))
-        .recording_id(partition_id)
+    let rec = re_sdk::RecordingStreamBuilder::new(format!("rerun_example_{segment_id}"))
+        .recording_id(segment_id)
         .send_properties(false)
         .save(tmp_path.clone())?;
 
