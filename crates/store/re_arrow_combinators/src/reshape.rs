@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, FixedSizeListArray, ListArray, StructArray, UInt32Array};
+use arrow::array::{
+    Array, ArrayRef, FixedSizeListArray, ListArray, StructArray, UInt32Array, UInt64Array,
+};
 use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::Field;
 
@@ -380,6 +382,80 @@ impl Transform for Explode {
             OffsetBuffer::new(new_offsets.into()),
             values,
             Some(NullBuffer::from(new_validity)),
+        ))
+    }
+}
+
+/// Reorders a `FixedSizeListArray`, where each `FixedSizeList` stores matrix elements
+/// in flat row-major order, to `FixedSizeList`s in column-major order.
+///
+/// The source array is expected to have a value length of `output_rows * output_columns`.
+#[derive(Clone, Debug)]
+pub struct RowMajorToColumnMajor {
+    output_rows: usize,
+    output_columns: usize,
+    permutation_per_list: Vec<usize>,
+}
+
+impl RowMajorToColumnMajor {
+    /// Create a new row-major to column-major transformation for the desired output shape.
+    pub fn new(output_rows: usize, output_columns: usize) -> Self {
+        let mut permutation = Vec::with_capacity(output_rows * output_columns);
+        for column in 0..output_columns {
+            for row in 0..output_rows {
+                let row_major_pos = row * output_columns + column;
+                permutation.push(row_major_pos);
+            }
+        }
+        Self {
+            output_rows,
+            output_columns,
+            permutation_per_list: permutation,
+        }
+    }
+}
+
+impl Transform for RowMajorToColumnMajor {
+    type Source = FixedSizeListArray;
+    type Target = FixedSizeListArray;
+
+    fn transform(&self, source: &Self::Source) -> Result<Self::Target, Error> {
+        // First, check that the input array has the expected value length.
+        let expected_list_size = self.output_rows * self.output_columns;
+        let value_length = source.value_length() as usize;
+        if value_length != expected_list_size {
+            return Err(Error::UnexpectedListValueLength {
+                expected: expected_list_size,
+                actual: value_length,
+            });
+        }
+
+        // Create indices for extracting column-major values as row-major, for all input lists.
+        let total_values = source.values().len();
+        let indices_to_take: UInt64Array = (0..total_values)
+            .map(|value_index| {
+                let list_index = value_index / expected_list_size;
+                let value_index_within_list = value_index % expected_list_size;
+                let next_index_to_take = list_index * expected_list_size
+                    + self.permutation_per_list[value_index_within_list];
+                next_index_to_take as u64
+            })
+            .collect();
+
+        // Reorder values into a new FixedSizeListArray.
+        // We explicitly allow `take` here because we care about nulls.
+        #[expect(clippy::disallowed_methods)]
+        let reordered_values = arrow::compute::take(source.values(), &indices_to_take, None)?;
+
+        let field = Arc::new(Field::new_list_field(
+            source.value_type().clone(),
+            source.is_nullable(),
+        ));
+        Ok(FixedSizeListArray::new(
+            field,
+            source.value_length(),
+            reordered_values,
+            source.nulls().cloned(),
         ))
     }
 }
