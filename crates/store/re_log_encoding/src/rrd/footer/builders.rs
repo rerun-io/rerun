@@ -71,8 +71,7 @@ impl RrdManifestBuilder {
     pub fn append(
         &mut self,
         chunk_batch: &re_sorbet::ChunkBatch,
-        byte_offset_excluding_header: u64,
-        byte_size_excluding_header: u64,
+        byte_span_excluding_header: re_span::Span<u64>,
     ) -> CodecResult<()> {
         self.sorbet_schema.add_chunk(chunk_batch);
 
@@ -81,9 +80,9 @@ impl RrdManifestBuilder {
         self.column_chunk_ids.push(chunk.id());
         self.column_chunk_is_static.push(chunk.is_static());
         self.column_byte_offsets_excluding_headers
-            .push(byte_offset_excluding_header);
+            .push(byte_span_excluding_header.start);
         self.column_byte_sizes_excluding_headers
-            .push(byte_size_excluding_header);
+            .push(byte_span_excluding_header.len);
         self.column_entity_paths.push(chunk.entity_path().clone());
 
         if chunk.is_static() {

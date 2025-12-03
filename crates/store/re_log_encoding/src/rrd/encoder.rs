@@ -124,7 +124,7 @@ struct ManifestState {
 impl FooterState {
     fn append(
         &mut self,
-        _byte_span_excluding_header: re_span::Span<u64>,
+        byte_span_excluding_header: re_span::Span<u64>,
         msg: &re_log_types::LogMsg,
     ) -> Result<(), EncodeError> {
         match msg {
@@ -161,7 +161,7 @@ impl FooterState {
                 } = self.manifests.entry(recording_id.clone()).or_default();
 
                 recording_ids.push(recording_id);
-                manifest.append(&chunk_batch, byte_offset, byte_size)?;
+                manifest.append(&chunk_batch, byte_span_excluding_header)?;
             }
 
             LogMsg::BlueprintActivationCommand(_) => {}

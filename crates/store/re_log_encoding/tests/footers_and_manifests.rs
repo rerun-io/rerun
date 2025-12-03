@@ -19,8 +19,12 @@ fn simple_manifest() {
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch).unwrap();
             let chunk_byte_size = chunk_batch.heap_size_bytes().unwrap();
 
+            let chunk_byte_span_excluding_header = re_span::Span {
+                start: byte_offset_excluding_header,
+                len: chunk_byte_size,
+            };
             builder
-                .append(&chunk_batch, byte_offset_excluding_header, chunk_byte_size)
+                .append(&chunk_batch, chunk_byte_span_excluding_header)
                 .unwrap();
 
             byte_offset_excluding_header += chunk_byte_size;
@@ -79,16 +83,18 @@ fn footer_roundtrip() {
         re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
             .unwrap();
 
-    let rrd_footer_start =
-        stream_footer.rrd_footer_byte_offset_from_start_excluding_header as usize;
-    let rrd_footer_end = rrd_footer_start
-        .checked_add(stream_footer.rrd_footer_byte_size_excluding_header as usize)
-        .unwrap();
-    let rrd_footer_bytes = &msgs_encoded[rrd_footer_start..rrd_footer_end];
+    let rrd_footer_range = stream_footer
+        .rrd_footer_byte_span_from_start_excluding_header
+        .try_cast::<usize>()
+        .unwrap()
+        .range();
+    let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
 
     {
         let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-            rrd_footer_start as u64,
+            stream_footer
+                .rrd_footer_byte_span_from_start_excluding_header
+                .start,
             rrd_footer_bytes,
         )
         .crc_excluding_header;
@@ -215,17 +221,18 @@ fn footer_roundtrip() {
         )
         .unwrap();
 
-        let reencoded_rrd_footer_start =
-            reencoded_stream_footer.rrd_footer_byte_offset_from_start_excluding_header as usize;
-        let reencoded_rrd_footer_end = reencoded_rrd_footer_start
-            .checked_add(reencoded_stream_footer.rrd_footer_byte_size_excluding_header as usize)
-            .unwrap();
-        let reencoded_rrd_footer_bytes =
-            &msgs_reencoded[reencoded_rrd_footer_start..reencoded_rrd_footer_end];
+        let reencoded_rrd_footer_range = reencoded_stream_footer
+            .rrd_footer_byte_span_from_start_excluding_header
+            .try_cast::<usize>()
+            .unwrap()
+            .range();
+        let reencoded_rrd_footer_bytes = &msgs_reencoded[reencoded_rrd_footer_range];
 
         {
             let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-                reencoded_rrd_footer_start as u64,
+                reencoded_stream_footer
+                    .rrd_footer_byte_span_from_start_excluding_header
+                    .start,
                 reencoded_rrd_footer_bytes,
             )
             .crc_excluding_header;
