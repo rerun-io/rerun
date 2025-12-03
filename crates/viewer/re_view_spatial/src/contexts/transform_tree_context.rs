@@ -5,7 +5,7 @@ use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_types::components::ImagePlaneDistance;
-use re_types::{ArchetypeName, archetypes};
+use re_types::{ArchetypeName, archetypes, blueprint};
 use re_view::{
     DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
 };
@@ -13,6 +13,7 @@ use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
     ViewContextSystemOncePerFrameResult, typed_fallback_for,
 };
+use re_viewport_blueprint::ViewProperty;
 use vec1::smallvec_v1::SmallVec1;
 
 type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
@@ -209,8 +210,28 @@ impl ViewContextSystem for TransformTreeContext {
         self.entity_transform_id_mapping =
             EntityTransformIdMapping::new(ctx, &results, query.space_origin);
 
-        // Target frame is the coordinate frame of the space origin entity.
-        self.target_frame = self.transform_frame_id_for(query.space_origin.hash());
+        // Target frame - check for blueprint override first, otherwise use space origin's coordinate frame.
+        self.target_frame = {
+            let spatial_info_prop = ViewProperty::from_archetype::<
+                blueprint::archetypes::SpatialInformation,
+            >(
+                ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id
+            );
+
+            let target_frame_component = spatial_info_prop
+                .component_or_fallback::<TransformFrameId>(
+                    ctx,
+                    blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
+                );
+
+            match target_frame_component {
+                Ok(target_frame) => TransformFrameIdHash::from_str(target_frame.as_str()),
+                Err(err) => {
+                    re_log::error_once!("Failed to query target frame: {err}");
+                    self.transform_frame_id_for(query.space_origin.hash())
+                }
+            }
+        };
 
         let latest_at_query = query.latest_at_query();
 
