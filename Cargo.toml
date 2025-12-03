@@ -74,6 +74,7 @@ re_datafusion = { path = "crates/store/re_datafusion", version = "=0.28.0-alpha.
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.28.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.28.0-alpha.1", default-features = false }
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.28.0-alpha.1", default-features = false }
+re_log_channel = { path = "crates/store/re_log_channel", version = "=0.28.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.28.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.28.0-alpha.1", default-features = false }
 re_mcap = { path = "crates/store/re_mcap", version = "=0.28.0-alpha.1", default-features = false }
@@ -82,7 +83,6 @@ re_query = { path = "crates/store/re_query", version = "=0.28.0-alpha.1", defaul
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.28.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.28.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/store/re_smart_channel", version = "=0.28.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
@@ -481,6 +481,7 @@ debug = false
 "re_grpc_server".debug = true
 "re_int_histogram".debug = true
 "re_integration_test".debug = true
+"re_log_channel".debug = true
 "re_log_encoding".debug = true
 "re_log_types".debug = true
 "re_log".debug = true
@@ -498,7 +499,6 @@ debug = false
 "re_sdk".debug = true
 "re_selection_panel".debug = true
 "re_server".debug = true
-"re_smart_channel".debug = true
 "re_sorbet".debug = true
 "re_span".debug = true
 "re_string_interner".debug = true

@@ -1,6 +1,6 @@
-use re_log_types::{DataSourceMessage, RecordingId};
+use re_log_channel::{LogReceiver, LogSource};
+use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
-use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 
@@ -141,13 +141,10 @@ impl LogDataSource {
     /// but the loading is done in a background task.
     ///
     /// `on_cmd` is used to respond to UI commands.
-    ///
-    /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<DataSourceMessage>> {
+    ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
         match self {
@@ -155,16 +152,12 @@ impl LogDataSource {
                 re_log_encoding::rrd::stream_from_http::stream_from_http_to_channel(
                     url.to_string(),
                     follow,
-                    on_msg,
                 ),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::File(path.clone()),
-                    SmartChannelSource::File(path.clone()),
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File(path.clone()));
 
                 // This recording will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -178,20 +171,13 @@ impl LogDataSource {
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
-
                 Ok(rx)
             }
 
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::File(name.clone().into()),
-                    SmartChannelSource::File(name.clone().into()),
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File(name.clone().into()));
 
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -210,25 +196,14 @@ impl LogDataSource {
                     &tx,
                 )?;
 
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
-
                 Ok(rx)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => {
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::Stdin,
-                    SmartChannelSource::Stdin,
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::Stdin);
 
                 crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
-
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
 
                 Ok(rx)
             }
@@ -237,16 +212,11 @@ impl LogDataSource {
                 uri,
                 select_when_loaded,
             } => {
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream {
+                let (tx, rx) =
+                    re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
                         uri: uri.clone(),
                         select_when_loaded,
-                    },
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream {
-                        uri: uri.clone(),
-                        select_when_loaded,
-                    },
-                );
+                    });
 
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
@@ -255,10 +225,8 @@ impl LogDataSource {
                         .client(uri_clone.origin.clone())
                         .await
                         .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
-                    re_redap_client::stream_blueprint_and_segment_from_server(
-                        client, tx, uri_clone, on_msg,
-                    )
-                    .await
+                    re_redap_client::stream_blueprint_and_segment_from_server(client, tx, uri_clone)
+                        .await
                 };
 
                 spawn_future(async move {
@@ -269,7 +237,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri)),
         }
     }
 }

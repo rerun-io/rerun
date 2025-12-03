@@ -58,7 +58,7 @@ pub mod external {
     pub use {eframe, egui};
     pub use {
         re_chunk, re_chunk::external::*, re_chunk_store, re_chunk_store::external::*, re_data_ui,
-        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_smart_channel, re_types,
+        re_entity_db, re_log, re_log_channel, re_log_types, re_memory, re_renderer, re_types,
         re_ui, re_view_spatial, re_viewer_context, re_viewer_context::external::*, re_viewport,
         re_viewport::external::*,
     };
@@ -70,7 +70,7 @@ pub mod external {
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native;
 #[cfg(not(target_arch = "wasm32"))]
-pub use native::{run_native_app, run_native_viewer_with_messages};
+pub use native::run_native_app;
 
 // ----------------------------------------------------------------------------
 // When compiling for web:
@@ -250,59 +250,6 @@ pub fn customize_eframe_and_setup_renderer(
 }
 
 // ---------------------------------------------------------------------------
-
-/// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
-    rx: re_smart_channel::Receiver<T>,
-    ctx: egui::Context,
-) -> re_smart_channel::Receiver<T> {
-    // We need to intercept messages to wake up the ui thread.
-    // For that, we need a new channel.
-    // However, we want to make sure the channel latency numbers are from the start
-    // of the first channel, to the end of the second.
-    // For that we need to use `chained_channel`, `recv_with_send_time` and `send_at`.
-    let (tx, new_rx) = rx.chained_channel();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok(msg) = rx.recv_with_send_time() {
-                if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::trace!("Shutting down ui_waker thread");
-        })
-        .expect("Failed to spawn UI waker thread");
-    new_rx
-}
-
-/// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn wake_up_ui_thread_on_each_msg_crossbeam<T: Send + 'static>(
-    rx: crossbeam::channel::Receiver<T>,
-    ctx: egui::Context,
-) -> crossbeam::channel::Receiver<T> {
-    // We need to intercept messages to wake up the ui thread.
-    // For that, we need a new channel.
-    let (tx, new_rx) = crossbeam::channel::unbounded();
-    std::thread::Builder::new()
-        .name("ui_waker".to_owned())
-        .spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                if tx.send(msg).is_ok() {
-                    ctx.request_repaint();
-                } else {
-                    break;
-                }
-            }
-            re_log::trace!("Shutting down ui_waker thread");
-        })
-        .expect("Failed to spawn UI waker thread");
-    new_rx
-}
 
 /// Reset the viewer state as stored on disk and local storage,
 /// keeping only the analytics state.

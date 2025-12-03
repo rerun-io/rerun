@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use re_data_source::LogDataSource;
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::LogSource;
 use re_uri::{
     Scheme,
     external::url::{self, Url},
@@ -278,16 +278,16 @@ impl ViewerOpenUrl {
     /// Create a link for a channel source.
     ///
     /// Refer to [`Self::from_display_mode`] for more information.
-    pub fn from_data_source(data_source: &SmartChannelSource) -> anyhow::Result<Self> {
+    pub fn from_data_source(data_source: &LogSource) -> anyhow::Result<Self> {
         // Note that some of these data sources aren't actually sharable URLs.
         // But since we have to handles this for `open_url` and `sharable_url` anyways,
         // we just preserve as much as possible here.
         match data_source {
-            SmartChannelSource::RrdHttpStream { url, follow: _ } => {
+            LogSource::RrdHttpStream { url, follow: _ } => {
                 Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
             }
 
-            SmartChannelSource::File(path_buf) => {
+            LogSource::File(path_buf) => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     Ok(Self::FilePath(path_buf.clone()))
@@ -301,26 +301,26 @@ impl ViewerOpenUrl {
                 }
             }
 
-            SmartChannelSource::RrdWebEventListener => Ok(Self::WebEventListener),
+            LogSource::RrdWebEvent => Ok(Self::WebEventListener),
 
-            SmartChannelSource::JsChannel { .. } => Err(anyhow::anyhow!(
+            LogSource::JsChannel { .. } => Err(anyhow::anyhow!(
                 "Can't share links to recordings streamed from the web."
             )),
 
-            SmartChannelSource::Sdk => Err(anyhow::anyhow!(
+            LogSource::Sdk => Err(anyhow::anyhow!(
                 "Can't share links to recordings streamed from the SDKs."
             )),
 
-            SmartChannelSource::Stdin => Err(anyhow::anyhow!(
+            LogSource::Stdin => Err(anyhow::anyhow!(
                 "Can't share links to recordings streamed from stdin."
             )),
 
-            SmartChannelSource::RedapGrpcStream {
+            LogSource::RedapGrpcStream {
                 uri,
                 select_when_loaded: _,
             } => Ok(Self::RedapDatasetSegment(uri.clone())),
 
-            SmartChannelSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
+            LogSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
         }
     }
 
@@ -465,7 +465,7 @@ impl ViewerOpenUrl {
     }
 
     /// Get the data source related to this link, if any.
-    pub fn get_data_source(&self) -> Option<SmartChannelSource> {
+    pub fn get_data_source(&self) -> Option<LogSource> {
         match &self {
             Self::RedapCatalog(_)
             | Self::RedapEntry(_)
@@ -473,18 +473,18 @@ impl ViewerOpenUrl {
             | Self::Settings
             | Self::ChunkStoreBrowser => None,
 
-            Self::RrdHttpUrl(url) => Some(SmartChannelSource::RrdHttpStream {
+            Self::RrdHttpUrl(url) => Some(LogSource::RrdHttpStream {
                 url: url.to_string(),
                 follow: false,
             }),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path_buf) => Some(SmartChannelSource::File(path_buf.clone())),
-            Self::RedapDatasetSegment(uri) => Some(SmartChannelSource::RedapGrpcStream {
+            Self::FilePath(path_buf) => Some(LogSource::File(path_buf.clone())),
+            Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
                 select_when_loaded: false,
             }),
-            Self::RedapProxy(uri) => Some(SmartChannelSource::MessageProxy(uri.clone())),
-            Self::WebEventListener => Some(SmartChannelSource::RrdWebEventListener),
+            Self::RedapProxy(uri) => Some(LogSource::MessageProxy(uri.clone())),
+            Self::WebEventListener => Some(LogSource::RrdWebEvent),
             Self::WebViewerUrl { url_parameters, .. } => (url_parameters.len() == 1)
                 .then(|| url_parameters.first().get_data_source())
                 .flatten(),
@@ -751,10 +751,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
     use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
-    let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RrdWebEventCallback,
-        re_smart_channel::SmartChannelSource::RrdWebEventListener,
-    );
+    let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::RrdWebEvent);
     let egui_ctx = egui_ctx.clone();
     re_log_encoding::rrd::stream_from_http::stream_rrd_from_event_listener(Arc::new({
         move |msg| {
@@ -793,8 +790,8 @@ mod tests {
 
     use crate::{DisplayMode, Item, StoreHub};
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
+    use re_log_channel::LogSource;
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
-    use re_smart_channel::SmartChannelSource;
     use re_uri::{
         CatalogUri, DatasetSegmentUri, Fragment,
         external::url::{self, Url},
@@ -974,7 +971,7 @@ mod tests {
     fn test_viewer_open_url_from_local_recordings_display_mode() {
         let mut store_hub = StoreHub::test_hub();
 
-        fn add_store(store_hub: &mut StoreHub, data_source: Option<SmartChannelSource>) -> StoreId {
+        fn add_store(store_hub: &mut StoreHub, data_source: Option<LogSource>) -> StoreId {
             let store_id = StoreId::random(StoreKind::Recording, "test");
             let mut entity_db = EntityDb::new(store_id.clone());
             entity_db.data_source = data_source;
@@ -986,7 +983,7 @@ mod tests {
         // originating from a file.
         let id = add_store(
             &mut store_hub,
-            Some(SmartChannelSource::File(std::path::PathBuf::from(
+            Some(LogSource::File(std::path::PathBuf::from(
                 "/path/to/test.rrd",
             ))),
         );
@@ -999,7 +996,7 @@ mod tests {
         // originating from HTTP stream.
         let id = add_store(
             &mut store_hub,
-            Some(SmartChannelSource::RrdHttpStream {
+            Some(LogSource::RrdHttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
                 follow: false,
             }),
@@ -1011,24 +1008,21 @@ mod tests {
         );
 
         // originating from SDK (not possible).
-        let id = add_store(&mut store_hub, Some(SmartChannelSource::Sdk));
+        let id = add_store(&mut store_hub, Some(LogSource::Sdk));
         assert!(
             ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .is_err(),
         );
 
         // originating from stdin (not possible).
-        let id = add_store(&mut store_hub, Some(SmartChannelSource::Stdin));
+        let id = add_store(&mut store_hub, Some(LogSource::Stdin));
         assert!(
             ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .is_err(),
         );
 
         // originating from web event listener.
-        let id = add_store(
-            &mut store_hub,
-            Some(SmartChannelSource::RrdWebEventListener),
-        );
+        let id = add_store(&mut store_hub, Some(LogSource::RrdWebEvent));
         assert_eq!(
             ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
                 .unwrap(),
@@ -1038,7 +1032,7 @@ mod tests {
         // originating from JS channel (not possible).
         let id = add_store(
             &mut store_hub,
-            Some(SmartChannelSource::JsChannel {
+            Some(LogSource::JsChannel {
                 channel_name: "test_channel".to_owned(),
             }),
         );
@@ -1052,7 +1046,7 @@ mod tests {
         let uri = format!("rerun://127.0.0.1:1234/dataset/{entry_id}?segment_id=pid");
         let id = add_store(
             &mut store_hub,
-            Some(SmartChannelSource::RedapGrpcStream {
+            Some(LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
                 select_when_loaded: false,
             }),
@@ -1095,7 +1089,7 @@ mod tests {
         let uri = "rerun://localhost:51234/proxy";
         let id = add_store(
             &mut store_hub,
-            Some(SmartChannelSource::MessageProxy(uri.parse().unwrap())),
+            Some(LogSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
             ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))

@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
-use re_log_types::{DataSourceMessage, FileSource, LogMsg};
-use re_smart_channel::Sender;
+use re_log_channel::LogSender;
+use re_log_types::{FileSource, LogMsg};
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
 
@@ -21,7 +21,7 @@ pub fn load_from_path(
     file_source: FileSource,
     path: &std::path::Path,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
-    tx: &Sender<DataSourceMessage>,
+    tx: &LogSender,
 ) -> Result<(), DataLoaderError> {
     use re_log_types::ApplicationId;
 
@@ -71,7 +71,7 @@ pub fn load_from_file_contents(
     filepath: &std::path::Path,
     contents: std::borrow::Cow<'_, [u8]>,
     // NOTE: This channel must be unbounded since we serialize all operations when running on wasm.
-    tx: &Sender<DataSourceMessage>,
+    tx: &LogSender,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!(filepath.to_string_lossy());
 
@@ -271,7 +271,7 @@ pub(crate) fn send(
     settings: crate::DataLoaderSettings,
     file_source: FileSource,
     rx_loader: std::sync::mpsc::Receiver<LoadedData>,
-    tx: &Sender<DataSourceMessage>,
+    tx: &LogSender,
 ) {
     spawn({
         re_tracing::profile_function!();

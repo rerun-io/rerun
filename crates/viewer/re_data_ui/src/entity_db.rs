@@ -4,8 +4,8 @@ use jiff::fmt::friendly::{FractionalUnit, SpanPrinter};
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
+use re_log_channel::LogSource;
 use re_log_types::StoreKind;
-use re_smart_channel::SmartChannelSource;
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -41,7 +41,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-            if let Some(SmartChannelSource::RedapGrpcStream { uri: re_uri::DatasetSegmentUri { segment_id, .. }, .. }) = &self.data_source {
+            if let Some(LogSource::RedapGrpcStream { uri: re_uri::DatasetSegmentUri { segment_id, .. }, .. }) = &self.data_source {
                 ui.grid_left_hand_label("Segment ID");
                 ui.label(segment_id);
                 ui.end_row();

@@ -10,9 +10,9 @@ use itertools::{Either, Itertools as _};
 
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
+use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
-use re_smart_channel::SmartChannelSource;
 use re_types::archetypes::RecordingInfo;
 use re_types::components::{Name, Timestamp};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
@@ -38,7 +38,7 @@ pub struct RecordingPanelData<'a> {
 
     /// Recordings that are currently being loaded that we cannot attribute yet to a specific
     /// section.
-    pub loading_receivers: Vec<Arc<SmartChannelSource>>,
+    pub loading_receivers: Vec<Arc<LogSource>>,
 }
 
 impl<'a> RecordingPanelData<'a> {
@@ -50,12 +50,10 @@ impl<'a> RecordingPanelData<'a> {
         //
 
         let mut loading_receivers = vec![];
-        let mut loading_segments: HashMap<
-            re_uri::Origin,
-            HashMap<EntryId, Vec<Arc<SmartChannelSource>>>,
-        > = HashMap::default();
+        let mut loading_segments: HashMap<re_uri::Origin, HashMap<EntryId, Vec<Arc<LogSource>>>> =
+            HashMap::default();
 
-        let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
+        let sources_with_stores: ahash::HashSet<LogSource> = ctx
             .storage_context
             .bundle
             .recordings()
@@ -68,11 +66,11 @@ impl<'a> RecordingPanelData<'a> {
             }
 
             match source.as_ref() {
-                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                LogSource::File(_) | LogSource::RrdHttpStream { .. } => {
                     loading_receivers.push(source);
                 }
 
-                SmartChannelSource::RedapGrpcStream { uri, .. } => {
+                LogSource::RedapGrpcStream { uri, .. } => {
                     loading_segments
                         .entry(uri.origin.clone())
                         .or_default()
@@ -82,11 +80,11 @@ impl<'a> RecordingPanelData<'a> {
                 }
 
                 // We only show things we know are very-soon-to-be recordings, which these are not.
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::JsChannel { .. }
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::Stdin
-                | SmartChannelSource::MessageProxy(_) => {}
+                LogSource::RrdWebEvent
+                | LogSource::JsChannel { .. }
+                | LogSource::Sdk
+                | LogSource::Stdin
+                | LogSource::MessageProxy(_) => {}
             }
         }
 
@@ -280,7 +278,7 @@ impl<'a> ServerData<'a> {
     fn new(
         ctx: &'a ViewerContext<'_>,
         server: &re_redap_browser::Server,
-        loading_segments: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
+        loading_segments: Option<&HashMap<EntryId, Vec<Arc<LogSource>>>>,
     ) -> Self {
         let origin = server.origin();
         let item = Item::RedapServer(origin.clone());
@@ -328,7 +326,7 @@ impl<'a> ServerEntriesData<'a> {
         ctx: &'a ViewerContext<'a>,
         entries: &Entries,
         origin: &re_uri::Origin,
-        loading_segments: Option<&HashMap<EntryId, Vec<Arc<SmartChannelSource>>>>,
+        loading_segments: Option<&HashMap<EntryId, Vec<Arc<LogSource>>>>,
     ) -> Self {
         match entries.state() {
             Poll::Ready(Ok(entries)) => {
@@ -517,7 +515,7 @@ impl EntryData {
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub enum SegmentData<'a> {
     Loading {
-        receiver: Arc<SmartChannelSource>,
+        receiver: Arc<LogSource>,
     },
     Loaded {
         #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_entity_db"))]
