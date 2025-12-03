@@ -79,6 +79,13 @@ pub struct LeRobotDatasetV3 {
     episode_data_cache: parking_lot::RwLock<HashMap<EpisodeIndex, Arc<RecordBatch>>>,
 }
 
+/// Episode location within a Parquet file
+#[derive(Debug, Clone)]
+struct EpisodeRowRange {
+    start_row: usize,
+    end_row: usize,
+}
+
 impl LeRobotDatasetV3 {
     /// Loads a `LeRobotDataset` from a directory.
     ///
@@ -103,6 +110,7 @@ impl LeRobotDatasetV3 {
     fn load_all_episode_data_files(&self) -> Result<(), LeRobotError> {
         re_tracing::profile_scope!("load_all_episode_data_files");
 
+        // Group episodes by their data file
         let mut files_to_episodes: HashMap<(usize, usize), Vec<EpisodeIndex>> = HashMap::default();
         for episode in self.metadata.episodes.values() {
             files_to_episodes
@@ -133,96 +141,105 @@ impl LeRobotDatasetV3 {
             return Ok(());
         }
 
+        // Check if already cached
         {
             let cache = self.episode_data_cache.read();
-            if episodes_in_file
-                .iter()
-                .all(|episode| cache.contains_key(episode))
-            {
+            if episodes_in_file.iter().all(|ep| cache.contains_key(ep)) {
                 return Ok(());
             }
         }
 
         let episode_data_path = self.metadata.info.episode_data_path(file_metadata);
         let episode_parquet_file = self.path.join(&episode_data_path);
-        re_log::trace!(
-            "Caching {} episodes from file: {episode_data_path:?}",
-            episodes_in_file.len()
-        );
 
         let file = File::open(&episode_parquet_file)
             .map_err(|err| LeRobotError::IO(err, episode_parquet_file.clone()))?;
 
+        // Read all data at once
         let reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
+        let batches: Vec<RecordBatch> = reader
+            .collect::<Result<_, _>>()
+            .map_err(LeRobotError::Arrow)?;
 
-        let mut episode_batches: HashMap<EpisodeIndex, Vec<RecordBatch>> = HashMap::default();
-        let mut schema = None;
-
-        {
-            re_tracing::profile_scope!("filter and group episode data");
-            for batch_result in reader {
-                let batch = batch_result.map_err(LeRobotError::Arrow)?;
-
-                if schema.is_none() {
-                    schema = Some(batch.schema());
-                }
-
-                for &ep_idx in episodes_in_file {
-                    let mask = Self::episode_mask(&batch, ep_idx)?;
-                    let filtered = arrow::compute::filter_record_batch(&batch, &mask)
-                        .map_err(LeRobotError::Arrow)?;
-
-                    if filtered.num_rows() > 0 {
-                        episode_batches.entry(ep_idx).or_default().push(filtered);
-                    }
-                }
-            }
+        if batches.is_empty() {
+            return Ok(());
         }
 
-        let first_episode = episodes_in_file[0];
-        let schema = schema.ok_or(LeRobotError::EmptyEpisode(first_episode))?;
+        let schema = batches[0].schema();
+        let full_data =
+            arrow::compute::concat_batches(&schema, &batches).map_err(LeRobotError::Arrow)?;
 
+        // Build episode row index in a single pass
+        let episode_indices = full_data
+            .column_by_name("episode_index")
+            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+            .ok_or_else(|| {
+                LeRobotError::MissingDatasetInfo(
+                    "`episode_index` column missing or wrong type".into(),
+                )
+            })?;
+
+        let row_ranges = Self::build_episode_row_index(episode_indices);
+
+        // Slice out each episode
         let mut cache = self.episode_data_cache.write();
-
         for &ep_idx in episodes_in_file {
             if cache.contains_key(&ep_idx) {
                 continue;
             }
 
-            if let Some(batches) = episode_batches.remove(&ep_idx) {
-                if !batches.is_empty() {
-                    let concatenated = arrow::compute::concat_batches(&schema, &batches)
-                        .map_err(LeRobotError::Arrow)?;
-                    cache.insert(ep_idx, Arc::new(concatenated));
-                }
+            if let Some(range) = row_ranges.get(&ep_idx) {
+                let sliced = full_data.slice(range.start_row, range.end_row - range.start_row);
+                cache.insert(ep_idx, Arc::new(sliced));
             }
         }
 
         Ok(())
     }
 
-    fn episode_mask(
-        batch: &RecordBatch,
-        episode: EpisodeIndex,
-    ) -> Result<arrow::array::BooleanArray, LeRobotError> {
-        let index = i64::try_from(episode.0).unwrap_or_default();
+    /// Build an index mapping `episode_index` -> row range in a single pass
+    fn build_episode_row_index(
+        episode_indices: &Int64Array,
+    ) -> HashMap<EpisodeIndex, EpisodeRowRange> {
+        let mut ranges: HashMap<EpisodeIndex, EpisodeRowRange> = HashMap::default();
+        let mut current_episode: Option<i64> = None;
+        let mut current_start = 0;
 
-        let episode_indices = batch
-            .column_by_name("episode_index")
-            .ok_or_else(|| {
-                LeRobotError::MissingDatasetInfo(
-                    "`episode_index` column missing in episode data".into(),
-                )
-            })?
-            .downcast_array_ref::<Int64Array>()
-            .ok_or_else(|| {
-                LeRobotError::MissingDatasetInfo("`episode_index` column is of wrong dtype!".into())
-            })?;
+        for (i, ep_idx) in episode_indices.iter().enumerate() {
+            let ep_idx = ep_idx.unwrap_or(-1);
 
-        Ok(episode_indices
-            .iter()
-            .map(|val| Some(val == Some(index)))
-            .collect())
+            if Some(ep_idx) != current_episode {
+                // Finalize previous episode
+                if let Some(prev_ep) = current_episode {
+                    if prev_ep >= 0 {
+                        ranges.insert(
+                            EpisodeIndex(prev_ep as usize),
+                            EpisodeRowRange {
+                                start_row: current_start,
+                                end_row: i,
+                            },
+                        );
+                    }
+                }
+                current_episode = Some(ep_idx);
+                current_start = i;
+            }
+        }
+
+        // Don't forget the last episode
+        if let Some(ep_idx) = current_episode {
+            if ep_idx >= 0 {
+                ranges.insert(
+                    EpisodeIndex(ep_idx as usize),
+                    EpisodeRowRange {
+                        start_row: current_start,
+                        end_row: episode_indices.len(),
+                    },
+                );
+            }
+        }
+
+        ranges
     }
 
     /// Read the Parquet data file for the provided episode.
