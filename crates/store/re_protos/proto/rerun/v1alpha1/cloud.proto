@@ -102,6 +102,9 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
+  // TODO
+  rpc GetRrdManifest(GetRrdManifestRequest) returns (GetRrdManifestResponse) {}
+
   /* Indexing */
 
   // Creates a custom index for a specific column (vector search, full-text search, etc).
@@ -324,6 +327,15 @@ message GetDatasetSchemaRequest {
 
 message GetDatasetSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message GetRrdManifestRequest {
+  rerun.common.v1alpha1.SegmentId segment_id = 1;
+}
+
+message GetRrdManifestResponse {
+  // The contents of the RRD manifest as an Arrow RecordBatch.
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 /* Indexing */
