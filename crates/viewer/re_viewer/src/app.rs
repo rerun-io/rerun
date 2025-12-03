@@ -1375,7 +1375,7 @@ impl App {
         match stream {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
-                re_log::error!("Failed to open data source: {}", re_error::format(err));
+                re_log::error!("Failed to open data source: {}", re_error::format(err))
             }
         };
     }
