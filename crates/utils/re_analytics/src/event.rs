@@ -442,7 +442,7 @@ impl Properties for SettingsOpened {
 pub struct SetPersonProperty {
     pub email: String,
 
-    /// The user's organization ID, from [`re_auth::oauth::RerunCloudClaims::org_id`].
+    /// The user's organization ID from the JWT claims.
     pub organization_id: String,
 }
 
