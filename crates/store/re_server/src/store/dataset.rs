@@ -6,7 +6,7 @@ use arrow::array::{RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
 use parking_lot::Mutex;
-use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt};
+use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
 use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
@@ -373,10 +373,10 @@ impl Dataset {
                     .to_chunk_batch()
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
-                // TODO: that's where we need an alternate builder for chunk keys.
-                let byte_span_excluding_header = re_span::Span { start: 0, len: 0 };
+                // TODO(cmc): add an alternate RrdManifestBuilder builder for chunk keys.
+                let dummy_byte_span = re_span::Span::default();
                 rrd_manifest_builder
-                    .append(&chunk_batch, byte_span_excluding_header)
+                    .append(&chunk_batch, dummy_byte_span)
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
                 chunk_keys.push(

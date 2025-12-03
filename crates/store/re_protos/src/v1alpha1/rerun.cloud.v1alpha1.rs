@@ -2295,7 +2295,9 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// TODO
+        /// Get the RRD Footer manifest.
+        ///
+        /// This includes details about what chunks there are, and what kind of data they contain.
         pub async fn get_rrd_manifest(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRrdManifestRequest>,
@@ -2771,7 +2773,9 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
-        /// TODO
+        /// Get the RRD Footer manifest.
+        ///
+        /// This includes details about what chunks there are, and what kind of data they contain.
         async fn get_rrd_manifest(
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,

@@ -102,7 +102,9 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers.
   rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
 
-  // TODO
+  // Get the RRD Footer manifest.
+  //
+  // This includes details about what chunks there are, and what kind of data they contain.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (GetRrdManifestResponse) {}
 
   /* Indexing */
