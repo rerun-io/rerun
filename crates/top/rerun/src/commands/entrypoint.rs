@@ -1,7 +1,6 @@
 use std::net::IpAddr;
 use std::time::Duration;
 
-use crate::external::re_ui::{UICommand, UICommandSender as _};
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use re_data_source::LogDataSource;
@@ -9,6 +8,7 @@ use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 use re_log_types::DataSourceMessage;
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
+use re_viewer::external::re_ui::{UICommand, UICommandSender as _};
 use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
