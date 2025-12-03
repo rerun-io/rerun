@@ -82,6 +82,11 @@ impl LogSender {
     ///
     /// Using a [`LogSender`] after calling `quit` is undefined behavior: the receiving end is free
     /// to silently drop those messages (or worse).
+    ///
+    /// This is an _explicit_ quit.
+    /// Dropping all senders will also close the channel and notify the receiver,
+    /// but calling `quit` has the benefit of the receiver knowing
+    /// that we reached the end (or there was an error).
     pub fn quit(
         &self,
         err: Option<Box<dyn std::error::Error + Send>>,
