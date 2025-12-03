@@ -369,7 +369,8 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ty
 
     fn build_elapsed(value: i64) -> (Timeline, TimeInt) {
         (
-            Timeline::new("elapsed", TimeType::DurationNs),
+            // Intentionally bringing some whitespaces into the mix 🫠
+            Timeline::new("elapsed time", TimeType::DurationNs),
             TimeInt::saturated_temporal(value * 1e9 as i64),
         )
     }
