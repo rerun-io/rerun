@@ -30,8 +30,7 @@ fn create_nasty_component_column() -> ListArray {
     // Middle struct schema: {poses: List<Struct<x: Float32>>}
     let middle_struct_fields = Fields::from(vec![Field::new(
         "poses",
-        DataType::List(Arc::new(Field::new(
-            "item",
+        DataType::List(Arc::new(Field::new_list_field(
             DataType::Struct(inner_struct_fields.clone()),
             false,
         ))),
@@ -47,11 +46,9 @@ fn create_nasty_component_column() -> ListArray {
         ],
     );
 
-    let list_builder = ListBuilder::new(inner_struct_builder).with_field(Arc::new(Field::new(
-        "item",
-        DataType::Struct(inner_struct_fields),
-        false,
-    )));
+    let list_builder = ListBuilder::new(inner_struct_builder).with_field(Arc::new(
+        Field::new_list_field(DataType::Struct(inner_struct_fields), false),
+    ));
 
     let struct_builder = StructBuilder::new(middle_struct_fields, vec![Box::new(list_builder)]);
 
