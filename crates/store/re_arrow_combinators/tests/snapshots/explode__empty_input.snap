@@ -1,5 +1,5 @@
 ---
-source: crates/utils/re_arrow_combinators/tests/explode.rs
+source: crates/store/re_arrow_combinators/tests/explode.rs
 expression: "format!(\"{}\", DisplayRB(result))"
 ---
 ┌───────────────────────────────────┐

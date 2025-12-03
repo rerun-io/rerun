@@ -53,6 +53,9 @@ tokio-stream.workspace = true
 tonic.workspace = true
 tracing.workspace = true
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_perf_telemetry.workspace = true
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 futures.workspace = true
 wasm-bindgen-futures.workspace = true

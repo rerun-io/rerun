@@ -5,6 +5,7 @@ use itertools::Itertools as _;
 
 use re_chunk::ChunkId;
 use re_chunk_store::ChunkStoreEvent;
+use re_log_types::StoreKind;
 use re_types_core::ChunkIndexMessage;
 
 /// Info about a single chunk that we know ahead of loading it.
@@ -23,6 +24,11 @@ pub struct ChunkInfo {
 /// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
 pub struct ChunkIndex {
+    /// Set if we have received an index.
+    ///
+    /// This only happens for some data sources.
+    has_index: bool,
+
     /// These are the chunks known to exist in the data source (e.g. remote server).
     ///
     /// The chunk store may split large chunks and merge (compact) small ones,
@@ -43,6 +49,7 @@ impl ChunkIndex {
     #[expect(clippy::needless_pass_by_value)] // In the future we may want to store them as record batches
     pub fn append(&mut self, msg: ChunkIndexMessage) {
         re_tracing::profile_function!();
+        self.has_index = true;
         for chunk_id in msg.chunk_ids() {
             match self.remote_chunks.entry(*chunk_id) {
                 Entry::Occupied(_occupied_entry) => {
@@ -57,20 +64,19 @@ impl ChunkIndex {
         }
     }
 
-    /// How many chunks are in the index?
-    ///
-    /// Not all of them are necessarily loaded.
-    pub fn num_chunks(&self) -> usize {
-        self.remote_chunks.len()
-    }
-
     /// [0, 1], how many chunks have been loaded?
     ///
     /// Returns `None` if we have already started garbage-collecting some chunks.
     pub fn progress(&self) -> Option<f32> {
+        if !self.has_index {
+            return None;
+        }
+
+        let num_remote_chunks = self.remote_chunks.len();
+
         if self.has_deleted {
             None
-        } else if self.num_chunks() == 0 {
+        } else if num_remote_chunks == 0 {
             Some(1.0)
         } else {
             let num_loaded = self
@@ -78,7 +84,7 @@ impl ChunkIndex {
                 .values()
                 .filter(|c| c.fully_loaded)
                 .count();
-            Some(num_loaded as f32 / self.num_chunks() as f32)
+            Some(num_loaded as f32 / num_remote_chunks as f32)
         }
     }
 
@@ -90,7 +96,12 @@ impl ChunkIndex {
     pub fn on_events(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
+        if !self.has_index {
+            return;
+        }
+
         for event in store_events {
+            let store_kind = event.store_id.kind();
             let chunk_id = event.chunk.id();
             match event.kind {
                 re_chunk_store::ChunkStoreDiffKind::Addition => {
@@ -100,17 +111,20 @@ impl ChunkIndex {
                         // The added chunk was the result of splitting another chunk:
                         self.parents.entry(chunk_id).or_default().insert(source);
                     } else {
-                        re_log::warn!("Added chunk that was not part of the index");
+                        warn_when_editing_recording(
+                            store_kind,
+                            "Added chunk that was not part of the chunk index",
+                        );
                     }
                 }
                 re_chunk_store::ChunkStoreDiffKind::Deletion => {
-                    self.mark_deleted(&chunk_id);
+                    self.mark_deleted(store_kind, &chunk_id);
                 }
             }
         }
     }
 
-    fn mark_deleted(&mut self, chunk_id: &ChunkId) {
+    fn mark_deleted(&mut self, store_kind: StoreKind, chunk_id: &ChunkId) {
         self.has_deleted = true;
 
         if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
@@ -125,11 +139,30 @@ impl ChunkIndex {
                 } else if let Some(grandparents) = self.parents.get(&chunk_id) {
                     ancestors.extend(grandparents);
                 } else {
-                    re_log::warn!("Removed chunk that was not part of the index");
+                    warn_when_editing_recording(
+                        store_kind,
+                        "Removed ancestor chunk that was not part of the index",
+                    );
                 }
             }
         } else {
-            re_log::warn!("Removed chunk that was not part of the index");
+            warn_when_editing_recording(store_kind, "Removed chunk that was not part of the index");
+        }
+    }
+}
+
+#[track_caller]
+fn warn_when_editing_recording(store_kind: StoreKind, warning: &str) {
+    match store_kind {
+        StoreKind::Recording => {
+            if cfg!(debug_assertions) {
+                re_log::warn_once!("[DEBUG] {warning}");
+            } else {
+                re_log::debug_once!("{warning}");
+            }
+        }
+        StoreKind::Blueprint => {
+            // We edit blueprint by generating new chunks in the viewer.
         }
     }
 }

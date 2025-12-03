@@ -1,5 +1,6 @@
 //! A Rerun server implementation backed by an in-memory store.
 
+mod chunk_index;
 mod entrypoint;
 mod rerun_cloud;
 mod server;
