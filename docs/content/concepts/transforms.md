@@ -48,7 +48,7 @@ However, currently once a relation between two frames has been logged to an enti
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* which entity is associated with which frame may change over time (it can also be [overridden via blueprint](..concepts/visualizers-and-overrides.md))
+* which entity is associated with which frame may change over time (it can also be [overridden via blueprint](../concepts/visualizers-and-overrides.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
