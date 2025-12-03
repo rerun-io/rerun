@@ -1,25 +1,25 @@
 ---
-title: Transforms & Transform Frames
+title: Transforms & Coordinate Frames
 order: 300
 ---
 
 <!-- Figma file for diagrams in this article: https://www.figma.com/board/PTwJKgi9kQOqG7ZgzdhrDL/Transforms-doc-page-graphs?t=fWkOGxxn6mZkkCON-1 -->
 
 Rerun comes with built-in support for modeling spatial relationships between entities.
-This page details how the [different archetypes](https://rerun.io/docs/reference/types/archetypes#transforms) involved interact with each other and explains how geometric transforms are set up in Rerun.
+This page details how the [different archetypes](https://rerun.io/docs/reference/types/archetypes#transforms) involved interact with each other and explains how transforms are set up in Rerun.
 
 ## Transform hierarchies with entity paths
 
 The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
 The simplest way to use transforms is through entity path hierarchies, where each transform describes the relationship between an entity and its parent path.
-Note that by default, all entities are connected via identity transforms (to opt out of that, you have to use named transform frames, more on that later).
+Note that by default, all entities are connected via identity transforms.
 
 snippet: concepts/transform3d_hierarchy_simple
 
 In this hierarchy:
 - The `sun` entity exists at the origin of its own coordinate system
-- The `sun/planet` transform places the planet 6 units along x away from the sun
+- The `sun/planet` transform places the planet 6 units from the sun, along the x-axis
 - The `sun/planet/moon` transform places the moon 3 units along x away from the planet
 
 This creates a transform hierarchy where transforms propagate down the entity tree. The moon's final position in the sun's coordinate system is 9 units away (6 + 3),
@@ -31,9 +31,9 @@ While entity path hierarchies work well for many cases, sometimes you need more 
 In particular for anyone familiar with ROS we recommend using named transform frames as it allows you to model
 your data much closer to how it would be defined when using ROS' [tf2](https://wiki.ros.org/tf2) library.
 
-In a nutshell, by explicitly specifying transform frames, you can decouple the spatial relationships from the entity hierarchy.
+By explicitly specifying transform frames, you can decouple spatial relationships from the entity hierarchy.
 
-Instead of relying on the path relationships of entities, each entity is first associated with a named transform frame using
+Instead of relying on entity path relationships, each entity is first associated with a named transform frame using
 the [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) archetype.
 
 The relationship between transform frames is then determined by logging [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
@@ -72,7 +72,7 @@ rr.log("moon_transform", rr.Transform3D(
 ```
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
-However, currently once an entity specified the relation between two frames, this relation may no longer be logged on any other entity.
+However, currently once a relation between two frames has been logged to an entity, this relation may no longer be logged on any other entity.
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
@@ -141,7 +141,7 @@ rr.log("robot/arm/gripper",
 ### Mixing named and implicit transform frames
 
 We generally do not recommend mixing named and implicit transform frames since it can get confusing,
-but doing so works seamlessly and can be useful in some situations.
+but doing so works seamlessly and can be useful if necessary.
 
 Example:
 TODO: xlanguage please.
@@ -165,7 +165,7 @@ rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 
 In Rerun, pinhole cameras are not merely another archetype that can be visualized,
 they are also treated as spatial relationships that define projections from 3D spaces to 2D subspaces.
-This unified approach allows the to handle both traditional 3D-to-3D transforms and 3D-to-2D projections.
+This unified approach allows the Viewer to handle both traditional 3D-to-3D transforms and 3D-to-2D projections.
 
 The [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) archetype defines this projection relationship through its intrinsic matrix (`image_from_camera`) and resolution.
 Both implicit & named coordinate frames are supported, exactly as on [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
