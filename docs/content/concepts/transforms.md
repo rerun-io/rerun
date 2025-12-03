@@ -39,37 +39,7 @@ the [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordin
 The relationship between transform frames is then determined by logging [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
 with `child_frame` and `parent_frame` parameters to define the geometric relationship between two transform frames.
 
-TODO: make tested cross language snippet
-```python
-import rerun as rr
-import numpy as np
-
-rr.init("named_frames_example", spawn=True)
-rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
-
-# Define entities with named coordinate frames
-rr.log("sun", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[1, 1, 1], colors=[255, 200, 10]),
-       rr.CoordinateFrame("sun_frame"))
-rr.log("planet", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[0.4, 0.4, 0.4], colors=[40, 80, 200]),
-       rr.CoordinateFrame("planet_frame"))
-rr.log("moon", rr.Ellipsoids3D(centers=[0, 0, 0], half_sizes=[0.15, 0.15, 0.15], colors=[180, 180, 180]),
-       rr.CoordinateFrame("moon_frame"))
-
-# Connect the viewer to the sun's coordinate frame
-rr.log("/", rr.CoordinateFrame("sun_frame"))
-
-# Define frame relationships
-rr.log("planet_transform", rr.Transform3D(
-    translation=[6.0, 0.0, 0.0],
-    child_frame="planet_frame",
-    parent_frame="sun_frame"
-))
-rr.log("moon_transform", rr.Transform3D(
-    translation=[3.0, 0.0, 0.0],
-    child_frame="moon_frame",
-    parent_frame="planet_frame"
-))
-```
+snippet: concepts/transform3d_hierarchy_named_frames
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
 However, currently once a relation between two frames has been logged to an entity, this relation may no longer be logged on any other entity.
@@ -98,7 +68,6 @@ have implicit identity relationships.
 ### Example
 
 Given these entities:
-TODO: xlanguage please
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
 rr.log("robot/arm", rr.Transform3D(translation=[0, 1, 0]))
@@ -107,7 +76,6 @@ rr.log("robot/arm/gripper", rr.Points3D([0, 0, 0]))
 
 Rerun will interpret this _as-if_ it was logged with the named transform frames like so:
 
-TODO: xlanguage please
 ```python
 rr.log("robot",
     rr.CoordinateFrame("tf#/robot"),
@@ -132,10 +100,7 @@ rr.log("robot/arm/gripper",
 ```
 
 <picture>
-  <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/1024w.png">
+  <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png" alt="">
 </picture>
 
 ### Mixing named and implicit transform frames
@@ -144,7 +109,6 @@ We generally do not recommend mixing named and implicit transform frames since i
 but doing so works seamlessly and can be useful if necessary.
 
 Example:
-TODO: xlanguage please.
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
 rr.log("arm",
@@ -155,10 +119,7 @@ rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```
 
 <picture>
-  <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/1024w.png">
+  <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png" alt="">
 </picture>
 
 ## Pinhole projections
