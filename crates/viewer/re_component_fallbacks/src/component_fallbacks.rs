@@ -64,8 +64,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     registry.register_component_fallback_provider(
         archetypes::BarChart::descriptor_widths().component,
         |ctx| {
-            // This fallback is for abscissa - generate a sequence from 0 to n-1
-            // where n is the length of the values tensor
+            // This fallback is for widths - set all widths to 1.0
 
             // Try to get the values tensor to determine the length
             if let Some(((_time, _row_id), tensor)) = ctx
