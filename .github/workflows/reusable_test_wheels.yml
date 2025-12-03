@@ -65,6 +65,14 @@ jobs:
       TARGET: ${{ steps.set-config.outputs.target }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
     steps:
+      - name: Login to GHCR (with retries)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 10
+          max_attempts: 12
+          retry_on: timeout
+          warning_on_retry: true
+          command: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Set runner and target based on platform
         id: set-config
 
