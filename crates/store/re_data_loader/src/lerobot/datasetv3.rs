@@ -11,8 +11,9 @@ use std::sync::mpsc::Sender;
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
-use arrow::array::{Int64Array, RecordBatch, StringArray};
+use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
 use arrow::buffer::ScalarBuffer;
+use arrow::compute::concat_batches;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
 use re_types::archetypes::VideoStream;
@@ -166,8 +167,7 @@ impl LeRobotDatasetV3 {
         }
 
         let schema = batches[0].schema();
-        let full_data =
-            arrow::compute::concat_batches(&schema, &batches).map_err(LeRobotError::Arrow)?;
+        let full_data = concat_batches(&schema, &batches).map_err(LeRobotError::Arrow)?;
 
         // Build episode row index in a single pass
         let episode_indices = full_data
@@ -420,74 +420,30 @@ impl LeRobotEpisodeData {
                         .build()?;
 
                         let episode_data: Vec<_> = chunk_parquet
-                            .filter_map(|b| {
-                                let b = b.ok()?;
+                            .filter_map(|batch| {
+                                let batch = batch.ok()?;
 
-                                let episode_index = b
+                                let episode_index = batch
                                     .column_by_name("episode_index")?
                                     .as_any()
-                                    .downcast_ref::<arrow::array::Int64Array>()?;
+                                    .downcast_ref::<Int64Array>()?;
 
-                                let data_chunk_index = b
+                                let data_chunk_index = batch
                                     .column_by_name("data/chunk_index")?
                                     .as_any()
-                                    .downcast_ref::<arrow::array::Int64Array>()?;
+                                    .downcast_ref::<Int64Array>()?;
 
-                                let data_file_index = b
+                                let data_file_index = batch
                                     .column_by_name("data/file_index")?
                                     .as_any()
-                                    .downcast_ref::<arrow::array::Int64Array>()?;
+                                    .downcast_ref::<Int64Array>()?;
 
-                                // Parse feature-specific file metadata (videos, images)
-                                // Pattern: "videos/{feature_name}/{field}" where field is chunk_index, file_index, from_timestamp, to_timestamp
-                                let feature_metadata = Self::parse_feature_metadata(&b);
-
-                                let mut episodes = Vec::with_capacity(b.num_rows());
-                                for i in 0..b.num_rows() {
-                                    // Build feature_files map for this episode
-                                    let feature_files = feature_metadata
-                                        .iter()
-                                        .filter_map(|(feature_name, metadata)| {
-                                            // Only include if both chunk_index and file_index are present
-                                            let chunk_index = metadata.chunk_index.as_ref()?;
-                                            let file_index = metadata.file_index.as_ref()?;
-
-                                            Some((
-                                                feature_name.to_string(),
-                                                FeatureFileMetadata {
-                                                    chunk_index: chunk_index.value(i) as usize,
-                                                    file_index: file_index.value(i) as usize,
-                                                    from_timestamp: metadata
-                                                        .from_timestamp
-                                                        .as_ref()
-                                                        .and_then(|timestamps| {
-                                                            timestamps
-                                                                .is_valid(i)
-                                                                .then(|| timestamps.value(i))
-                                                        }),
-                                                    to_timestamp: metadata
-                                                        .to_timestamp
-                                                        .as_ref()
-                                                        .and_then(|timestamps| {
-                                                            timestamps
-                                                                .is_valid(i)
-                                                                .then(|| timestamps.value(i))
-                                                        }),
-                                                },
-                                            ))
-                                        })
-                                        .collect();
-
-                                    episodes.push(Self {
-                                        episode_index: EpisodeIndex(
-                                            episode_index.value(i) as usize
-                                        ),
-                                        data_chunk_index: data_chunk_index.value(i) as usize,
-                                        data_file_index: data_file_index.value(i) as usize,
-                                        feature_files,
-                                    });
-                                }
-                                Some(episodes)
+                                Some(Self::collect_episode_data(
+                                    &batch,
+                                    episode_index,
+                                    data_chunk_index,
+                                    data_file_index,
+                                ))
                             })
                             .flatten()
                             .collect();
@@ -501,13 +457,57 @@ impl LeRobotEpisodeData {
         Ok(all_episodes)
     }
 
+    fn collect_episode_data(
+        batch: &RecordBatch,
+        episode_index: &Int64Array,
+        data_chunk_index: &Int64Array,
+        data_file_index: &Int64Array,
+    ) -> Vec<Self> {
+        // Parse feature-specific file metadata (videos, images)
+        // Pattern: "videos/{feature_name}/{field}" where field is chunk_index, file_index, from_timestamp, to_timestamp
+        let feature_metadata = Self::parse_feature_metadata(batch);
+
+        let mut episodes = Vec::with_capacity(batch.num_rows());
+        for i in 0..batch.num_rows() {
+            // Build feature_files map for this episode
+            let feature_files = feature_metadata
+                .iter()
+                .filter_map(|(feature_name, metadata)| {
+                    // Only include if both chunk_index and file_index are present
+                    let chunk_index = metadata.chunk_index.as_ref()?;
+                    let file_index = metadata.file_index.as_ref()?;
+
+                    Some((
+                        feature_name.to_string(),
+                        FeatureFileMetadata {
+                            chunk_index: chunk_index.value(i) as usize,
+                            file_index: file_index.value(i) as usize,
+                            from_timestamp: metadata.from_timestamp.as_ref().and_then(
+                                |timestamps| timestamps.is_valid(i).then(|| timestamps.value(i)),
+                            ),
+                            to_timestamp: metadata.to_timestamp.as_ref().and_then(|timestamps| {
+                                timestamps.is_valid(i).then(|| timestamps.value(i))
+                            }),
+                        },
+                    ))
+                })
+                .collect();
+
+            episodes.push(Self {
+                episode_index: EpisodeIndex(episode_index.value(i) as usize),
+                data_chunk_index: data_chunk_index.value(i) as usize,
+                data_file_index: data_file_index.value(i) as usize,
+                feature_files,
+            });
+        }
+        episodes
+    }
+
     /// Parse feature-specific file metadata from a [`RecordBatch`].
     ///
     /// Looks for columns matching pattern `videos/{feature_name}/{field}`
     /// and groups them by feature name.
     fn parse_feature_metadata(batch: &RecordBatch) -> HashMap<Arc<str>, FeatureMetadataColumns> {
-        use arrow::array::Float64Array;
-
         let mut features: HashMap<Arc<str>, FeatureMetadataColumns> = HashMap::default();
         let schema = batch.schema();
 
@@ -720,9 +720,7 @@ impl LeRobotDatasetV3Tasks {
                 let b = b.ok()?;
                 let task_index_col = b.column_by_name("task_index")?;
                 let task_col = b.column_by_name("__index_level_0__")?;
-                let task_index = task_index_col
-                    .as_any()
-                    .downcast_ref::<arrow::array::Int64Array>()?;
+                let task_index = task_index_col.as_any().downcast_ref::<Int64Array>()?;
                 let task = task_col.as_any().downcast_ref::<StringArray>()?;
 
                 let num_rows = b.num_rows();
@@ -933,14 +931,9 @@ fn load_episode_video(
     let timescale = video
         .timescale
         .ok_or_else(|| anyhow!("Video feature '{observation}' is missing timescale information"))?;
-    re_log::trace!("Video '{observation}' timescale: {timescale:?}");
 
     let start_video_time = re_video::Time::from_secs(start_time, timescale);
     let end_video_time = re_video::Time::from_secs(end_time, timescale);
-
-    re_log::debug!(
-        "Video '{observation}': start_time={start_time}s, end_time={end_time}s, start_video_time={start_video_time:?}, end_video_time={end_video_time:?}"
-    );
 
     // Find the GOPs (Group of Pictures) that contain our time range
     let start_gop = video
@@ -951,21 +944,11 @@ fn load_episode_video(
         .gop_index_containing_presentation_timestamp(end_video_time)
         .unwrap_or(video.gops.num_elements() - 1);
 
-    re_log::debug!(
-        "Video '{observation}': start_gop={start_gop}, end_gop={end_gop}, num_gops={}",
-        video.gops.num_elements()
-    );
-
     // Determine the sample range to extract from the video
     let start_sample = video.gops[start_gop].sample_range.start;
     let end_sample = video.gops[end_gop].sample_range.end;
 
     let sample_range = start_sample..end_sample;
-
-    re_log::debug!(
-        "Video '{observation}': sample_range={start_sample}..{end_sample} (length={})",
-        sample_range.len()
-    );
 
     // Extract all video samples in this range
     let mut samples = Vec::with_capacity(sample_range.len());
