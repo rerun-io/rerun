@@ -122,7 +122,7 @@ Set the displayed dimensions in a selection panel.",
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
@@ -144,7 +144,7 @@ Set the displayed dimensions in a selection panel.",
         });
 
         list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<TensorScalarMapping>(&ctx, ui);
             view_property_ui::<TensorViewFit>(&ctx, ui);
         });
@@ -238,7 +238,14 @@ Set the displayed dimensions in a selection panel.",
                     });
             } else if let Some(tensor_view) = tensors.first() {
                 state.tensor = Some(tensor_view.clone());
-                self.view_tensor(ctx, &mut ui, state, query.view_id, &tensor_view.tensor)?;
+                self.view_tensor(
+                    ctx,
+                    &mut ui,
+                    state,
+                    query.view_id,
+                    query.space_origin,
+                    &tensor_view.tensor,
+                )?;
             } else {
                 ui.centered_and_justified(|ui| ui.label("(empty)"));
             }
@@ -266,6 +273,7 @@ impl TensorView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         view_id: ViewId,
+        space_origin: &EntityPath,
         tensor: &TensorData,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -318,7 +326,7 @@ impl TensorView {
         ];
 
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             if let Err(err) =
                 Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
             {

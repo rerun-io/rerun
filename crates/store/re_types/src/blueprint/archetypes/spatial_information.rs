@@ -26,6 +26,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct SpatialInformation {
+    /// The target reference frame for all transformations.
+    ///
+    /// Defaults to the coordinate frame used by the space origin entity.
+    pub target_frame: Option<SerializedComponentBatch>,
+
     /// Whether axes should be shown at the origin.
     pub show_axes: Option<SerializedComponentBatch>,
 
@@ -34,6 +39,18 @@ pub struct SpatialInformation {
 }
 
 impl SpatialInformation {
+    /// Returns the [`ComponentDescriptor`] for [`Self::target_frame`].
+    ///
+    /// The corresponding component is [`crate::components::TransformFrameId`].
+    #[inline]
+    pub fn descriptor_target_frame() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+            component: "SpatialInformation:target_frame".into(),
+            component_type: Some("rerun.components.TransformFrameId".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::show_axes`].
     ///
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
@@ -65,25 +82,27 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
+            SpatialInformation::descriptor_target_frame(),
             SpatialInformation::descriptor_show_axes(),
             SpatialInformation::descriptor_show_bounding_box(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
+            SpatialInformation::descriptor_target_frame(),
             SpatialInformation::descriptor_show_axes(),
             SpatialInformation::descriptor_show_bounding_box(),
         ]
     });
 
 impl SpatialInformation {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 2usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 impl ::re_types_core::Archetype for SpatialInformation {
@@ -124,6 +143,11 @@ impl ::re_types_core::Archetype for SpatialInformation {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
+        let target_frame = arrays_by_descr
+            .get(&Self::descriptor_target_frame())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_target_frame())
+            });
         let show_axes = arrays_by_descr
             .get(&Self::descriptor_show_axes())
             .map(|array| {
@@ -135,6 +159,7 @@ impl ::re_types_core::Archetype for SpatialInformation {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_show_bounding_box())
             });
         Ok(Self {
+            target_frame,
             show_axes,
             show_bounding_box,
         })
@@ -145,10 +170,14 @@ impl ::re_types_core::AsComponents for SpatialInformation {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        [self.show_axes.clone(), self.show_bounding_box.clone()]
-            .into_iter()
-            .flatten()
-            .collect()
+        [
+            self.target_frame.clone(),
+            self.show_axes.clone(),
+            self.show_bounding_box.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 
@@ -157,8 +186,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for SpatialInformation {}
 impl SpatialInformation {
     /// Create a new `SpatialInformation`.
     #[inline]
-    pub fn new() -> Self {
+    pub fn new(target_frame: impl Into<crate::components::TransformFrameId>) -> Self {
         Self {
+            target_frame: try_serialize_field(Self::descriptor_target_frame(), [target_frame]),
             show_axes: None,
             show_bounding_box: None,
         }
@@ -175,6 +205,10 @@ impl SpatialInformation {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
+            target_frame: Some(SerializedComponentBatch::new(
+                crate::components::TransformFrameId::arrow_empty(),
+                Self::descriptor_target_frame(),
+            )),
             show_axes: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Enabled::arrow_empty(),
                 Self::descriptor_show_axes(),
@@ -184,6 +218,18 @@ impl SpatialInformation {
                 Self::descriptor_show_bounding_box(),
             )),
         }
+    }
+
+    /// The target reference frame for all transformations.
+    ///
+    /// Defaults to the coordinate frame used by the space origin entity.
+    #[inline]
+    pub fn with_target_frame(
+        mut self,
+        target_frame: impl Into<crate::components::TransformFrameId>,
+    ) -> Self {
+        self.target_frame = try_serialize_field(Self::descriptor_target_frame(), [target_frame]);
+        self
     }
 
     /// Whether axes should be shown at the origin.
@@ -211,6 +257,8 @@ impl SpatialInformation {
 impl ::re_byte_size::SizeBytes for SpatialInformation {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.show_axes.heap_size_bytes() + self.show_bounding_box.heap_size_bytes()
+        self.target_frame.heap_size_bytes()
+            + self.show_axes.heap_size_bytes()
+            + self.show_bounding_box.heap_size_bytes()
     }
 }

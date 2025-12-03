@@ -153,6 +153,7 @@ impl SpatialView2D {
             viewer_ctx: ctx,
             view_id: query.view_id,
             view_class_identifier: Self::identifier(),
+            space_origin: query.space_origin,
             view_state: state,
             query_result: ctx.lookup_query_result(query.view_id),
         };
@@ -202,7 +203,7 @@ impl SpatialView2D {
 
         // Convert ui coordinates to/from scene coordinates.
         let ui_from_scene = {
-            let view_ctx = self.view_context(ctx, query.view_id, state);
+            let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
             let mut new_state = state.clone();
             let ui_from_scene =
                 ui_from_scene(&view_ctx, &response, &mut new_state, &bounds_property);
@@ -212,7 +213,7 @@ impl SpatialView2D {
         };
         let scene_from_ui = ui_from_scene.inverse();
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
             .component_or_fallback(
                 &view_ctx,
@@ -279,7 +280,7 @@ impl SpatialView2D {
         };
         let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin); // Recreate view state to handle context editing during picking.
 
         for draw_data in system_output.drain_draw_data() {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);

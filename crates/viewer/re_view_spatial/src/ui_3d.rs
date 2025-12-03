@@ -145,7 +145,7 @@ impl SpatialView3D {
 
         let mut state_3d = state.state_3d.clone();
 
-        let view_context = self.view_context(ctx, query.view_id, state);
+        let view_context = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         let information_property = ViewProperty::from_archetype::<SpatialInformation>(
             ctx.blueprint_db(),
@@ -321,7 +321,7 @@ impl SpatialView3D {
                 } else {
                     state.state_3d.eye_state.start_interpolation();
                     state.state_3d.eye_state.focus_entity(
-                        &self.view_context(ctx, query.view_id, state),
+                        &self.view_context(ctx, query.view_id, state, query.space_origin),
                         space_cameras,
                         &state.bounding_boxes,
                         &eye_property,
@@ -394,7 +394,7 @@ impl SpatialView3D {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         // Optional 3D line grid.
         let grid_config = ViewProperty::from_archetype::<LineGrid3D>(

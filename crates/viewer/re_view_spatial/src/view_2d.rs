@@ -222,7 +222,7 @@ impl ViewClass for SpatialView2D {
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
@@ -232,7 +232,7 @@ impl ViewClass for SpatialView2D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<VisualBounds2D>(&view_ctx, ui);
             view_property_ui::<NearClipPlane>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);

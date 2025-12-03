@@ -292,6 +292,9 @@ impl Chunk {
     ///
     /// Useful for tests.
     pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(lhs.num_rows() == rhs.num_rows());
+        anyhow::ensure!(lhs.num_columns() == rhs.num_columns());
+
         let Self {
             id: _,
             entity_path,

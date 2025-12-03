@@ -73,6 +73,7 @@ class Spatial3DView(View):
                 color=[255, 255, 255, 128],  # Colors the grid a half-transparent white.
             ),
             spatial_information=rrb.SpatialInformation(
+                target_frame="tf#/",
                 show_axes=True,
                 show_bounding_box=True,
             ),

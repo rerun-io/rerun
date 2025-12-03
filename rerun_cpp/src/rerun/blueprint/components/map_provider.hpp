@@ -34,6 +34,9 @@ namespace rerun::blueprint::components {
 
         /// Mapbox Satellite is a satellite map designed by Mapbox.
         MapboxSatellite = 4,
+
+        /// Mapbox Light is a light-themed map designed by Mapbox.
+        MapboxLight = 5,
     };
 } // namespace rerun::blueprint::components
 

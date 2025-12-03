@@ -4,6 +4,11 @@ namespace rerun.blueprint.archetypes;
 table SpatialInformation (
     "attr.rerun.scope": "blueprint"
 ) {
+  /// The target reference frame for all transformations.
+  ///
+  /// Defaults to the coordinate frame used by the space origin entity.
+  target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", order: 50);
+
   /// Whether axes should be shown at the origin.
   show_axes: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 

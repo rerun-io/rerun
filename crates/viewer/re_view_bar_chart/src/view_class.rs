@@ -140,11 +140,11 @@ impl ViewClass for BarChartView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
         });
@@ -173,7 +173,7 @@ impl ViewClass for BarChartView {
             .get::<BarChartVisualizerSystem>()?
             .charts;
 
-        let ctx = self.view_context(ctx, view_id, state);
+        let ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(
             blueprint_db,
             ctx.blueprint_query(),
