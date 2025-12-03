@@ -22,7 +22,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::contexts::{TransformTreeContext, UNKNOWN_SPACE_ORIGIN, register_spatial_contexts};
+use crate::contexts::register_spatial_contexts;
 use crate::heuristics::default_visualized_entities_for_visualizer_kind;
 use crate::shared_fallbacks;
 use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
@@ -241,24 +241,6 @@ impl ViewClass for SpatialView3D {
                 let eye_up = glam::Vec3::from(scene_up).normalize_or(Vec3::Z);
 
                 Vector3D(Vec3D::new(eye_up.x, eye_up.y, eye_up.z))
-            },
-        );
-
-        system_registry.register_fallback_provider(
-            SpatialInformation::descriptor_target_frame().component,
-            |ctx| {
-                let unknown_space_origin = || TransformFrameId(UNKNOWN_SPACE_ORIGIN.into());
-
-                let Ok(state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
-                    return unknown_space_origin();
-                };
-
-                // Return the computed target frame from the view state
-                state
-                    .target_frame
-                    .as_ref()
-                    .map(|frame_str| TransformFrameId(frame_str.clone().into()))
-                    .unwrap_or_else(unknown_space_origin)
             },
         );
 
@@ -548,11 +530,6 @@ impl ViewClass for SpatialView3D {
 
         let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialViewKind::ThreeD);
-
-        // Store the target frame for display in the selection panel
-        if let Ok(transforms) = system_output.context_systems.get::<TransformTreeContext>() {
-            state.target_frame = Some(transforms.format_frame(transforms.target_frame()));
-        }
 
         self.view_3d(ctx, ui, state, query, system_output)
     }

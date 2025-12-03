@@ -16,12 +16,6 @@ use vec1::smallvec_v1::SmallVec1;
 
 type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
 
-/// Currently, there is no straightforward way to retrieve the space origin
-/// when registering fallbacks. So, if unknown we set the target frame to a
-/// dummy string and rely on the view to supply that information after the
-/// first frame.
-pub const UNKNOWN_SPACE_ORIGIN: &str = "<unknown space origin>";
-
 /// Details on how to transform an entity (!) to the origin of the view's space.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransformInfo {
@@ -229,14 +223,7 @@ impl ViewContextSystem for TransformTreeContext {
                 );
 
             match target_frame_component {
-                Ok(target_frame) => {
-                    let target_frame_str = target_frame.as_str();
-                    if target_frame_str == UNKNOWN_SPACE_ORIGIN {
-                        self.transform_frame_id_for(query.space_origin.hash())
-                    } else {
-                        TransformFrameIdHash::from_str(target_frame.as_str())
-                    }
-                }
+                Ok(target_frame) => TransformFrameIdHash::from_str(target_frame.as_str()),
                 Err(err) => {
                     re_log::error_once!("Failed to query target frame: {err}");
                     self.transform_frame_id_for(query.space_origin.hash())

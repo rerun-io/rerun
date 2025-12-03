@@ -10,7 +10,7 @@ use re_viewer_context::{
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::contexts::{TransformTreeContext, register_spatial_contexts};
+use crate::contexts::register_spatial_contexts;
 use crate::heuristics::default_visualized_entities_for_visualizer_kind;
 use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
 use crate::shared_fallbacks;
@@ -254,11 +254,6 @@ impl ViewClass for SpatialView2D {
 
         let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialViewKind::TwoD);
-
-        // Store the target frame for display in the selection panel
-        if let Ok(transforms) = system_output.context_systems.get::<TransformTreeContext>() {
-            state.target_frame = Some(transforms.format_frame(transforms.target_frame()));
-        }
 
         self.view_2d(ctx, ui, state, query, system_output)
     }
