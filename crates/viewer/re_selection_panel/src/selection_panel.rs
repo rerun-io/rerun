@@ -612,7 +612,7 @@ fn frame_id_edit(
         let caches = ctx.viewer_ctx.store_context.caches;
         let transform_cache =
             caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                c.lock_transform_cache(ctx.recording())
+                c.read_lock_transform_cache(ctx.recording())
             });
 
         let frame_exists = transform_cache
@@ -1308,7 +1308,9 @@ mod tests {
     use super::*;
 
     fn get_test_context() -> TestContext {
-        let mut test_context = TestContext::new();
+        let mut test_context = TestContext::new_with_store_info(
+            re_log_types::StoreInfo::testing_with_recording_id("test_recording"),
+        );
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
         test_context
