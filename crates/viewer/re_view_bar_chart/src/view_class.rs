@@ -244,7 +244,7 @@ impl ViewClass for BarChartView {
                             .zip(widths)
                             .enumerate()
                             .map(|(i, ((value, index), width))| {
-                                Bar::new(index + 0.5, value.into())
+                                Bar::new(index + 0.5 * width, value.into())
                                     .width(width)
                                     .name(format!("{ent_path} #{i}"))
                                     .fill(fill)
