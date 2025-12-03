@@ -537,11 +537,14 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 * `--full-metadata <FULL_METADATA>`
 > If true, includes `rerun.` prefixes on keys.
 
-* `--transposed <TRANSPOSED>`
-> Transpose record batches before printing them?
-
 * `--entity <ENTITY>`
 > Show only chunks belonging to this entity.
+
+* `--footers <FOOTERS>`
+> If true, displays all the parsed footers at the end.
+
+* `--transposed <TRANSPOSED>`
+> Transpose record batches before printing them?
 
 ## rerun rrd route
 
@@ -575,6 +578,13 @@ Note: Because the payload of the messages is never decoded, no migration or veri
 > If set, specifies the recording id of the output.
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
+
+* `--recompute-manifests <RECOMPUTE_MANIFESTS>`
+> If set, this will compute an RRD footer with the appropriate manifest for the routed data.
+>
+> By default, `rerun rrd route` will always drop all existing RRD manifests when routing data, as doing so invalidates their contents. This flag makes it possible to recompute an RRD manifest for the routed data, but beware that it has to decode the data, which means it is A) much slower and B) will migrate the data to the latest Sorbet specification automatically.
+>
+> [Default: `false`]
 
 ## rerun rrd stats
 

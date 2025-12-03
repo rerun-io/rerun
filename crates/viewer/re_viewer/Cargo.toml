@@ -56,7 +56,7 @@ re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true
 re_capabilities.workspace = true
-re_redap_browser.workspace = true
+re_chunk_store_ui.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_component_fallbacks.workspace = true
@@ -65,20 +65,20 @@ re_dataframe_ui.workspace = true
 re_data_loader.workspace = true
 re_data_source.workspace = true
 re_data_ui.workspace = true
-re_chunk_store_ui.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
 re_format.workspace = true
-re_redap_client.workspace = true
 re_log = { workspace = true, features = ["setup"] }
+re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder", "encoder", "stream_from_http"] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
 re_recording_panel.workspace = true
+re_redap_browser.workspace = true
+re_redap_client.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
-re_smart_channel.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 re_types_core.workspace = true
@@ -113,7 +113,6 @@ anyhow.workspace = true
 arrow.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
-crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",

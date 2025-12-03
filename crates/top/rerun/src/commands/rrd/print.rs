@@ -2,6 +2,7 @@ use anyhow::Context as _;
 use arrow::array::RecordBatch;
 use itertools::Itertools as _;
 
+use re_arrow_util::RecordBatchExt as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{LogMsg, SetStoreInfo};
 use re_sdk::EntityPath;
@@ -43,13 +44,17 @@ pub struct PrintCommand {
     #[clap(long, default_missing_value="true", num_args=0..=1)]
     full_metadata: Option<bool>,
 
-    /// Transpose record batches before printing them?
-    #[clap(long, default_missing_value="true", num_args=0..=1)]
-    transposed: Option<bool>,
-
     /// Show only chunks belonging to this entity.
     #[clap(long)]
     entity: Option<String>,
+
+    /// If true, displays all the parsed footers at the end.
+    #[clap(long, default_missing_value="true", num_args=0..=1)]
+    footers: Option<bool>,
+
+    /// Transpose record batches before printing them?
+    #[clap(long, default_missing_value="true", num_args=0..=1)]
+    transposed: Option<bool>,
 }
 
 impl PrintCommand {
@@ -60,15 +65,17 @@ impl PrintCommand {
             verbose,
             migrate,
             full_metadata,
-            transposed,
             entity,
+            footers,
+            transposed,
         } = self;
         let continue_on_error = continue_on_error.unwrap_or(true);
 
         let migrate = migrate.unwrap_or(true);
-        let transposed = transposed.unwrap_or(false);
         let full_metadata = full_metadata.unwrap_or(false);
         let entity = entity.map(|e| EntityPath::parse_forgiving(&e));
+        let footers = footers.unwrap_or(false);
+        let transposed = transposed.unwrap_or(false);
 
         let options = Options {
             verbose,
@@ -87,7 +94,7 @@ impl PrintCommand {
             );
         }
 
-        let (rx, _) = read_rrd_streams_from_file_or_stdin(&path_to_input_rrds);
+        let (rx, rx_done) = read_rrd_streams_from_file_or_stdin(&path_to_input_rrds);
 
         for (_source, res) in rx {
             let mut is_success = true;
@@ -110,6 +117,35 @@ impl PrintCommand {
                 anyhow::bail!(
                     "one or more IO and/or decoding failures in the input stream (check logs)"
                 )
+            }
+        }
+
+        if footers {
+            for (_, rrd_manifests) in rx_done {
+                for (source, mut rrd_manifest) in rrd_manifests? {
+                    // Just to be nice: this will display the origin of the data in the header.
+                    rrd_manifest
+                        .data
+                        .schema_metadata_mut()
+                        .insert("rerun:source".to_owned(), source.to_string());
+
+                    // Drop all per-entity and/or per-component columns to keep things readable.
+                    //
+                    // TODO(cmc): more config flags for columns to show etc.
+                    let filtered = rrd_manifest
+                        .data
+                        .filter_columns_by(|f| f.name().starts_with("chunk_"))?;
+
+                    let formatted = re_arrow_util::format_record_batch_opts(
+                        &filtered,
+                        &re_arrow_util::RecordBatchFormatOpts {
+                            max_cell_content_width: 32,
+                            ..Default::default()
+                        },
+                    );
+
+                    println!("{formatted}");
+                }
             }
         }
 

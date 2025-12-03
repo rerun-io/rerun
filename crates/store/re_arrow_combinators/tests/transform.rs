@@ -6,13 +6,16 @@ use std::sync::Arc;
 
 use re_arrow_combinators::{
     Transform as _,
-    cast::PrimitiveCast,
+    cast::{ListToFixedSizeList, PrimitiveCast},
     map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull},
-    reshape::{Flatten, GetField, StructToFixedList},
+    reshape::{Flatten, GetField, RowMajorToColumnMajor, StructToFixedList},
 };
 
 use arrow::{
-    array::{Float32Array, Float64Array, Float64Builder, ListArray, ListBuilder, StructBuilder},
+    array::{
+        Float32Array, Float64Array, Float64Builder, Int32Builder, ListArray, ListBuilder,
+        StructBuilder,
+    },
     datatypes::{DataType, Field, Fields},
 };
 
@@ -292,6 +295,72 @@ fn test_flatten_multiple_elements() {
 
     insta::assert_snapshot!(
         "flatten_multiple_elements",
+        format!("{}", DisplayRB(result.clone()))
+    );
+}
+
+#[test]
+fn test_row_major_to_col_major() {
+    let inner_builder = Int32Builder::new();
+    let mut outer_builder = ListBuilder::new(inner_builder);
+
+    // First list represents a 4x3 matrix in row-major order with some null elements.
+    // Row 0
+    outer_builder.values().append_value(1);
+    outer_builder.values().append_null();
+    outer_builder.values().append_value(3);
+    // Row 1
+    outer_builder.values().append_value(4);
+    outer_builder.values().append_value(5);
+    outer_builder.values().append_value(6);
+    // Row 2
+    outer_builder.values().append_value(7);
+    outer_builder.values().append_value(8);
+    outer_builder.values().append_null();
+    // Row 3
+    outer_builder.values().append_value(10);
+    outer_builder.values().append_value(11);
+    outer_builder.values().append_value(12);
+    outer_builder.append(true);
+
+    // Second list is invalid / null.
+    for _ in 0..12 {
+        // Add dummy values for Arrow's fixed-size requirements.
+        // See: https://docs.rs/arrow/latest/arrow/array/struct.FixedSizeListArray.html#representation
+        outer_builder.values().append_value(0);
+    }
+    outer_builder.append(false);
+
+    // Third list represents a 4x3 matrix in row-major order without null elements.
+    // Row 0
+    outer_builder.values().append_value(13);
+    outer_builder.values().append_value(14);
+    outer_builder.values().append_value(15);
+    // Row 1
+    outer_builder.values().append_value(16);
+    outer_builder.values().append_value(17);
+    outer_builder.values().append_value(18);
+    // Row 2
+    outer_builder.values().append_value(19);
+    outer_builder.values().append_value(20);
+    outer_builder.values().append_value(21);
+    // Row 3
+    outer_builder.values().append_value(22);
+    outer_builder.values().append_value(23);
+    outer_builder.values().append_value(24);
+    outer_builder.append(true);
+
+    let input_array = outer_builder.finish();
+
+    // Cast to `FixedSizeListArray` and convert to column-major order.
+    let fixed_size_list_array = ListToFixedSizeList::new(12)
+        .transform(&input_array)
+        .unwrap();
+    let result = RowMajorToColumnMajor::new(4, 3)
+        .transform(&fixed_size_list_array)
+        .unwrap();
+    insta::assert_snapshot!(
+        "row_major_to_col_major",
         format!("{}", DisplayRB(result.clone()))
     );
 }

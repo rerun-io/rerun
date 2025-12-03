@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
-use re_log_types::EntityPathHash;
-use re_tf::{TransformFrameId, TransformFrameIdHash};
-use re_types::{archetypes, components::ImagePlaneDistance};
+use re_log_types::{EntityPath, EntityPathHash};
+use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
+use re_types::{ArchetypeName, archetypes, components::ImagePlaneDistance};
 use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
@@ -14,6 +14,85 @@ use vec1::smallvec_v1::SmallVec1;
 
 type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
 
+/// Details on how to transform an entity (!) to the origin of the view's space.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TransformInfo {
+    /// Root frame this transform belongs to.
+    ///
+    /// ⚠️ This is the root of the tree this transform belongs to,
+    /// not necessarily what the transform transforms into.
+    ///
+    /// Implementation note:
+    /// We could add target and maybe even source to this, but we want to keep this struct small'ish.
+    /// On that note, it may be good to split this in the future, as most of the time we're only interested in the
+    /// source->target affine transform.
+    root: TransformFrameIdHash,
+
+    /// The transform from this frame to the target's space.
+    ///
+    /// ⚠️ Does not include per instance poses! ⚠️
+    /// Include 3D-from-2D / 2D-from-3D pinhole transform if present.
+    target_from_source: glam::DAffine3,
+
+    /// List of transforms per instance including poses.
+    ///
+    /// If no poses are present, this is always the same as [`Self::target_from_source`].
+    /// (also implying that in this case there is only a single element).
+    /// If there are poses, there may be more than one element.
+    target_from_instances: SmallVec1<[glam::DAffine3; 1]>,
+}
+
+impl TransformInfo {
+    fn new(tree_transform: &TreeTransform, mut pose_transforms: Vec<glam::DAffine3>) -> Self {
+        for pose_transforms in &mut pose_transforms {
+            *pose_transforms = tree_transform.target_from_source * *pose_transforms;
+        }
+        let target_from_instances = SmallVec1::try_from_vec(pose_transforms)
+            .unwrap_or_else(|_| SmallVec1::new(tree_transform.target_from_source));
+
+        Self {
+            root: tree_transform.root,
+            target_from_source: tree_transform.target_from_source,
+            target_from_instances,
+        }
+    }
+
+    /// Returns the root frame of the tree this transform belongs to.
+    ///
+    /// This is **not** necessarily the transform's target frame.
+    #[inline]
+    pub fn tree_root(&self) -> TransformFrameIdHash {
+        self.root
+    }
+
+    /// Warns that multiple transforms on an entity are not supported.
+    #[inline]
+    fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
+        if self.target_from_instances.len() > 1 {
+            re_log::warn_once!(
+                "There are multiple poses for entity {entity_name:?}'s transform frame. {archetype:?} supports only one transform per entity. Using the first one."
+            );
+        }
+    }
+
+    /// Returns the first instance transform and warns if there are multiple.
+    #[inline]
+    pub fn single_transform_required_for_entity(
+        &self,
+        entity_name: &EntityPath,
+        archetype: ArchetypeName,
+    ) -> glam::DAffine3 {
+        self.warn_on_per_instance_transform(entity_name, archetype);
+        *self.target_from_instances.first()
+    }
+
+    /// Returns the target from instance transforms.
+    #[inline]
+    pub fn target_from_instances(&self) -> &SmallVec1<[glam::DAffine3; 1]> {
+        &self.target_from_instances
+    }
+}
+
 /// Provides a transform tree for the view & time it operates on.
 ///
 /// Will do the necessary bulk processing of transform information and make it available
@@ -21,8 +100,7 @@ type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
 #[derive(Clone)]
 pub struct TransformTreeContext {
     transform_forest: Arc<re_tf::TransformForest>,
-    transform_infos:
-        IntMap<EntityPathHash, Result<re_tf::TransformInfo, re_tf::TransformFromToError>>,
+    transform_infos: IntMap<EntityPathHash, Result<TransformInfo, re_tf::TransformFromToError>>,
     target_frame: TransformFrameIdHash,
     target_frame_pinhole_root: Option<TransformFrameIdHash>,
     entity_transform_id_mapping: EntityTransformIdMapping,
@@ -72,8 +150,9 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let transform_cache = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.lock_transform_cache(ctx.recording()));
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
 
         let transform_forest =
             re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
@@ -111,7 +190,7 @@ impl ViewContextSystem for TransformTreeContext {
 
         let latest_at_query = query.latest_at_query();
 
-        let transform_infos_per_frame = self
+        let tree_transforms_per_frame = self
             .transform_forest
             .transform_from_to(
                 self.target_frame,
@@ -138,17 +217,34 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            transform_infos_per_frame
+            let caches = ctx.viewer_ctx.store_context.caches;
+            let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+                c.read_lock_transform_cache(ctx.recording())
+            });
+            let transforms = transform_cache.transforms_for_timeline(query.timeline);
+
+            let latest_at_query = &query.latest_at_query();
+
+            tree_transforms_per_frame
                 .into_iter()
-                .filter_map(|(transform_frame_id_hash, transform_info)| {
-                    self.entity_transform_id_mapping
+                .filter_map(|(transform_frame_id_hash, tree_transform)| {
+                    let entity_paths_for_frame = self
+                        .entity_transform_id_mapping
                         .transform_frame_id_to_entity_path
-                        .get(&transform_frame_id_hash)
-                        .map(|entity_path_hashes| {
-                            entity_path_hashes.iter().map(move |entity_path_hash| {
-                                (*entity_path_hash, transform_info.clone())
-                            })
-                        })
+                        .get(&transform_frame_id_hash)?;
+                    let transform_infos =
+                        entity_paths_for_frame.iter().map(move |entity_path_hash| {
+                            let transform_info = map_tree_transform_to_transform_info(
+                                ctx,
+                                &tree_transform,
+                                transforms,
+                                latest_at_query,
+                                entity_path_hash,
+                            );
+                            (*entity_path_hash, transform_info)
+                        });
+
+                    Some(transform_infos)
                 })
                 .flatten()
                 .collect()
@@ -159,8 +255,8 @@ impl ViewContextSystem for TransformTreeContext {
             .root_from_frame(self.target_frame)
             .and_then(|info| {
                 self.transform_forest
-                    .pinhole_tree_root_info(info.tree_root())
-                    .map(|_pinhole_info| info.tree_root())
+                    .pinhole_tree_root_info(info.root)
+                    .map(|_pinhole_info| info.root)
             });
     }
 
@@ -169,13 +265,31 @@ impl ViewContextSystem for TransformTreeContext {
     }
 }
 
+fn map_tree_transform_to_transform_info(
+    ctx: &ViewContext<'_>,
+    tree_transform: &Result<TreeTransform, re_tf::TransformFromToError>,
+    transforms: &re_tf::CachedTransformsForTimeline,
+    latest_at_query: &LatestAtQuery,
+    entity_path_hash: &EntityPathHash,
+) -> Result<TransformInfo, re_tf::TransformFromToError> {
+    let tree_transform = tree_transform.as_ref().map_err(|err| err.clone())?;
+    let poses = transforms
+        .pose_transforms(*entity_path_hash)
+        .map(|pose_transforms| {
+            pose_transforms.latest_at_instance_poses(ctx.recording(), latest_at_query)
+        })
+        .unwrap_or_default();
+
+    Ok(TransformInfo::new(tree_transform, poses))
+}
+
 impl TransformTreeContext {
     /// Returns a transform info describing how to get to the view's target frame for the given entity.
     #[inline]
     pub fn target_from_entity_path(
         &self,
         entity_path_hash: EntityPathHash,
-    ) -> Option<&Result<re_tf::TransformInfo, re_tf::TransformFromToError>> {
+    ) -> Option<&Result<TransformInfo, re_tf::TransformFromToError>> {
         self.transform_infos.get(&entity_path_hash)
     }
 
@@ -236,7 +350,7 @@ impl TransformTreeContext {
 
 fn lookup_image_plane_distance(
     ctx: &ViewContext<'_>,
-    entity_path_hashes: &SmallVec1<[EntityPathHash; 1]>,
+    entity_path: &SmallVec1<[EntityPathHash; 1]>,
     latest_at_query: &LatestAtQuery,
 ) -> f32 {
     // If there's several entity paths (with pinhole cameras) for the same transform id,
@@ -247,7 +361,7 @@ fn lookup_image_plane_distance(
     // we don't know the full entity path names.
     //
     // We're letting it slide for now since it's kinda hard to get into that situation.
-    let entity_path_hash = *entity_path_hashes.first();
+    let entity_path_hash = *entity_path.first();
 
     ctx.query_result
         .tree

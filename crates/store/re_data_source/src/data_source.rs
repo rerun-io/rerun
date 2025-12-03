@@ -1,6 +1,6 @@
-use re_log_types::{DataSourceMessage, RecordingId};
+use re_log_channel::{LogReceiver, LogSource};
+use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
-use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
 use crate::FileContents;
 
@@ -35,8 +35,8 @@ pub enum LogDataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording.
-    RedapDatasetPartition {
-        uri: re_uri::DatasetPartitionUri,
+    RedapDatasetSegment {
+        uri: re_uri::DatasetSegmentUri,
 
         /// Switch to this recording once it has been loaded?
         select_when_loaded: bool,
@@ -117,8 +117,8 @@ impl LogDataSource {
             }
         }
 
-        if let Ok(uri) = url.parse::<re_uri::DatasetPartitionUri>() {
-            Some(Self::RedapDatasetPartition {
+        if let Ok(uri) = url.parse::<re_uri::DatasetSegmentUri>() {
+            Some(Self::RedapDatasetSegment {
                 uri,
                 select_when_loaded: true,
             })
@@ -141,13 +141,10 @@ impl LogDataSource {
     /// but the loading is done in a background task.
     ///
     /// `on_cmd` is used to respond to UI commands.
-    ///
-    /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
         connection_registry: &ConnectionRegistryHandle,
-        on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-    ) -> anyhow::Result<Receiver<DataSourceMessage>> {
+    ) -> anyhow::Result<LogReceiver> {
         re_tracing::profile_function!();
 
         match self {
@@ -155,16 +152,12 @@ impl LogDataSource {
                 re_log_encoding::rrd::stream_from_http::stream_from_http_to_channel(
                     url.to_string(),
                     follow,
-                    on_msg,
                 ),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::File(path.clone()),
-                    SmartChannelSource::File(path.clone()),
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File(path.clone()));
 
                 // This recording will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -178,20 +171,13 @@ impl LogDataSource {
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
-
                 Ok(rx)
             }
 
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
                 let name = file_contents.name.clone();
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::File(name.clone().into()),
-                    SmartChannelSource::File(name.clone().into()),
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File(name.clone().into()));
 
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -210,66 +196,48 @@ impl LogDataSource {
                     &tx,
                 )?;
 
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
-
                 Ok(rx)
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => {
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::Stdin,
-                    SmartChannelSource::Stdin,
-                );
+                let (tx, rx) = re_log_channel::log_channel(LogSource::Stdin);
 
                 crate::load_stdin::load_stdin(tx).with_context(|| "stdin".to_owned())?;
-
-                if let Some(on_msg) = on_msg {
-                    on_msg();
-                }
 
                 Ok(rx)
             }
 
-            Self::RedapDatasetPartition {
+            Self::RedapDatasetSegment {
                 uri,
                 select_when_loaded,
             } => {
-                let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream {
+                let (tx, rx) =
+                    re_log_channel::log_channel(re_log_channel::LogSource::RedapGrpcStream {
                         uri: uri.clone(),
                         select_when_loaded,
-                    },
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream {
-                        uri: uri.clone(),
-                        select_when_loaded,
-                    },
-                );
+                    });
 
                 let connection_registry = connection_registry.clone();
                 let uri_clone = uri.clone();
-                let stream_partition = async move {
+                let stream_segment = async move {
                     let client = connection_registry
                         .client(uri_clone.origin.clone())
                         .await
                         .map_err(|err| ApiError::connection(err, "failed to connect to server"))?;
-                    re_redap_client::stream_blueprint_and_segment_from_server(
-                        client, tx, uri_clone, on_msg,
-                    )
-                    .await
+                    re_redap_client::stream_blueprint_and_segment_from_server(client, tx, uri_clone)
+                        .await
                 };
 
                 spawn_future(async move {
-                    if let Err(err) = stream_partition.await {
+                    if let Err(err) = stream_segment.await {
                         re_log::warn!("Error while streaming: {}", re_error::format_ref(&err));
                     }
                 });
                 Ok(rx)
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri, on_msg)),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri)),
         }
     }
 
@@ -408,9 +376,12 @@ mod tests {
             "www.foo.zip/blueprint.rbl",
         ];
         let grpc = [
+            // segment_id (new)
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1230ms..1m12s",
+            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid",
+            // partition_id (legacy, for backward compatibility)
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
-            "rerun+http://example.com/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid",
         ];
 
         let proxy = [
@@ -446,12 +417,9 @@ mod tests {
 
         for uri in grpc {
             let data_source = LogDataSource::from_uri(file_source.clone(), uri);
-            if !matches!(
-                data_source,
-                Some(LogDataSource::RedapDatasetPartition { .. })
-            ) {
+            if !matches!(data_source, Some(LogDataSource::RedapDatasetSegment { .. })) {
                 eprintln!(
-                    "Expected {uri:?} to be categorized as readp dataset. Instead it got parsed as {data_source:?}"
+                    "Expected {uri:?} to be categorized as redap dataset segment. Instead it got parsed as {data_source:?}"
                 );
                 failed = true;
             }
