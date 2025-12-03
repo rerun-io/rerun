@@ -1,19 +1,16 @@
-use prost::Name as _;
 use std::sync::Arc;
 
 use arrow::array::{
-    BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatchOptions,
-    StringBuilder, UInt8Array, UInt64Array,
+    Array, ArrayRef, BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatch,
+    RecordBatchOptions, StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array,
+    UInt64Array,
 };
-use arrow::datatypes::FieldRef;
-use arrow::{
-    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
-    datatypes::{DataType, Field, Schema, TimeUnit},
-    error::ArrowError,
-};
+use arrow::datatypes::{DataType, Field, FieldRef, Schema, TimeUnit};
+use arrow::error::ArrowError;
+use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::external::re_types_core::ComponentBatch as _;
+use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
@@ -22,10 +19,8 @@ use crate::cloud::v1alpha1::{
     QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
     ScanSegmentTableResponse, VectorDistanceMetric,
 };
-use crate::common::v1alpha1::{
-    ComponentDescriptor, DataframePart, TaskId,
-    ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
-};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -1341,6 +1336,26 @@ pub struct Query {
     pub columns_always_include_component_indexes: bool,
 }
 
+impl Query {
+    /// Create a query that returns everything that is needed to view every time point
+    /// in the given range with latest-at semantics.
+    pub fn latest_at_range(timeline_name: &TimelineName, time_range: AbsoluteTimeRange) -> Self {
+        Self {
+            // So that we can show the state at the start:
+            latest_at: Some(QueryLatestAt {
+                index: Some(timeline_name.to_string()),
+                at: time_range.min,
+            }),
+            // Show we can show everything in the range:
+            range: Some(QueryRange {
+                index: timeline_name.to_string(),
+                index_range: time_range.into(),
+            }),
+            ..Self::default()
+        }
+    }
+}
+
 impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
     type Error = tonic::Status;
 
@@ -2459,8 +2474,9 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::datatypes::ToByteSlice as _;
+
+    use super::*;
 
     #[test]
     fn test_query_dataset_response_create_dataframe() {

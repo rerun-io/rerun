@@ -1,41 +1,40 @@
+use std::str::FromStr as _;
+use std::sync::Arc;
+
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
-use std::{str::FromStr as _, sync::Arc};
-
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
-use re_entity_db::{InstancePath, entity_db::EntityDb};
+use re_entity_db::InstancePath;
+use re_entity_db::entity_db::EntityDb;
+use re_log_channel::{LogReceiver, LogReceiverSet, LogSource};
 use re_log_types::{
     ApplicationId, DataSourceMessage, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg,
 };
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
+use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
+use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
     CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
-    command_channel,
-    open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
-    sanitize_file_name,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    command_channel, sanitize_file_name,
 };
 
-use crate::{
-    AppState,
-    app_blueprint::{AppBlueprint, PanelStateOverrides},
-    app_blueprint_ctx::AppBlueprintCtx,
-    app_state::WelcomeScreenState,
-    background_tasks::BackgroundTasks,
-    event::ViewerEventDispatcher,
-    startup_options::StartupOptions,
-};
+use crate::AppState;
+use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
+use crate::app_blueprint_ctx::AppBlueprintCtx;
+use crate::app_state::WelcomeScreenState;
+use crate::background_tasks::BackgroundTasks;
+use crate::event::ViewerEventDispatcher;
+use crate::startup_options::StartupOptions;
 
 // ----------------------------------------------------------------------------
 
@@ -84,7 +83,7 @@ pub struct App {
     component_ui_registry: ComponentUiRegistry,
     component_fallback_registry: FallbackProviderRegistry,
 
-    rx_log: ReceiveSet<DataSourceMessage>,
+    rx_log: LogReceiverSet,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -522,18 +521,24 @@ impl App {
     }
 
     #[expect(clippy::needless_pass_by_ref_mut)]
-    pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<DataSourceMessage>) {
+    pub fn add_log_receiver(&mut self, rx: LogReceiver) {
         re_log::debug!("Adding new log receiver: {}", rx.source());
 
-        // Make sure we wake up when a message is sent.
-        #[cfg(not(target_arch = "wasm32"))]
-        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
+        // Make sure we wake up when a new message is available:
+        rx.set_waker({
+            let egui_ctx = self.egui_ctx.clone();
+            move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            }
+        });
 
         // Add unknown redap servers.
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
-        if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
+        if let LogSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.command_sender
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
         }
@@ -633,7 +638,7 @@ impl App {
         }
     }
 
-    pub fn msg_receive_set(&self) -> &ReceiveSet<DataSourceMessage> {
+    pub fn msg_receive_set(&self) -> &LogReceiverSet {
         &self.rx_log
     }
 
@@ -922,21 +927,21 @@ impl App {
                     #[expect(clippy::match_same_arms)]
                     let should_close = match &data_source {
                         // Specific files should stop streaming when closing them.
-                        SmartChannelSource::File(_) => true,
+                        LogSource::File(_) => true,
 
                         // Specific HTTP streams should stop streaming when closing them.
-                        SmartChannelSource::RrdHttpStream { .. } => true,
+                        LogSource::RrdHttpStream { .. } => true,
 
                         // Specific GRPC streams should stop streaming when closing them.
                         // TODO(#10967): We still stream in some data after that.
-                        SmartChannelSource::RedapGrpcStream { .. } => true,
+                        LogSource::RedapGrpcStream { .. } => true,
 
                         // Don't close generic connections (like to an SDK) that may feed in different recordings over time.
-                        SmartChannelSource::RrdWebEventListener
-                        | SmartChannelSource::JsChannel { .. }
-                        | SmartChannelSource::Sdk
-                        | SmartChannelSource::Stdin
-                        | SmartChannelSource::MessageProxy(_) => false,
+                        LogSource::RrdWebEvent
+                        | LogSource::JsChannel { .. }
+                        | LogSource::Sdk
+                        | LogSource::Stdin
+                        | LogSource::MessageProxy(_) => false,
                     };
 
                     if should_close {
@@ -954,17 +959,17 @@ impl App {
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
                 // button in the browser, and there is still a connection downloading an .rrd.
-                // That's the case of `SmartChannelSource::RrdHttpStream`.
+                // That's the case of `LogSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx_log.retain(|r| match r.source() {
-                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+                    LogSource::File(_) | LogSource::RrdHttpStream { .. } => false,
 
-                    SmartChannelSource::JsChannel { .. }
-                    | SmartChannelSource::RrdWebEventListener
-                    | SmartChannelSource::Sdk
-                    | SmartChannelSource::RedapGrpcStream { .. }
-                    | SmartChannelSource::MessageProxy { .. }
-                    | SmartChannelSource::Stdin => true,
+                    LogSource::JsChannel { .. }
+                    | LogSource::RrdWebEvent
+                    | LogSource::Sdk
+                    | LogSource::RedapGrpcStream { .. }
+                    | LogSource::MessageProxy { .. }
+                    | LogSource::Stdin => true,
                 });
             }
 
@@ -1280,7 +1285,7 @@ impl App {
 
         match data_source {
             LogDataSource::RrdHttpUrl { url, follow } => {
-                let new_source = SmartChannelSource::RrdHttpStream {
+                let new_source = LogSource::RrdHttpStream {
                     url: url.to_string(),
                     follow: *follow,
                 };
@@ -1308,7 +1313,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             LogDataSource::FilePath(_file_source, path) => {
-                let new_source = SmartChannelSource::File(path.clone());
+                let new_source = LogSource::File(path.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
                     self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
@@ -1322,7 +1327,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             LogDataSource::Stdin => {
-                let new_source = SmartChannelSource::Stdin;
+                let new_source = LogSource::Stdin;
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
                     self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
@@ -1330,11 +1335,11 @@ impl App {
                 }
             }
 
-            LogDataSource::RedapDatasetPartition {
+            LogDataSource::RedapDatasetSegment {
                 uri,
                 select_when_loaded,
             } => {
-                let new_source = SmartChannelSource::RedapGrpcStream {
+                let new_source = LogSource::RedapGrpcStream {
                     uri: uri.clone(),
                     select_when_loaded: *select_when_loaded,
                 };
@@ -1358,7 +1363,7 @@ impl App {
             }
 
             LogDataSource::RedapProxy(uri) => {
-                let new_source = SmartChannelSource::MessageProxy(uri.clone());
+                let new_source = LogSource::MessageProxy(uri.clone());
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
                     self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);
@@ -1366,22 +1371,8 @@ impl App {
                 }
             }
         }
-        // On native, `add_receiver` spawns a thread that wakes up the ui thread
-        // on any new message. On web we cannot spawn threads, so instead we need
-        // to supply a waker that is called when new messages arrive in background tasks
-        let waker = {
-            let egui_ctx = egui_ctx.clone();
-            Box::new(move || {
-                // Spend a few more milliseconds decoding incoming messages,
-                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
-                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-            })
-        };
 
-        match data_source
-            .clone()
-            .stream(&self.connection_registry, Some(waker))
-        {
+        match data_source.clone().stream(&self.connection_registry) {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -2296,14 +2287,14 @@ impl App {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
             let msg = match msg.payload {
-                re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
+                re_log_channel::SmartMessagePayload::Msg(msg) => msg,
 
-                re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
                     on_flush_done();
                     continue;
                 }
 
-                re_smart_channel::SmartMessagePayload::Quit(err) => {
+                re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
                         re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
@@ -2348,7 +2339,7 @@ impl App {
         msg: &LogMsg,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
-        channel_source: &SmartChannelSource,
+        channel_source: &LogSource,
     ) {
         let store_id = msg.store_id();
 
@@ -2392,7 +2383,7 @@ impl App {
         if was_empty && !entity_db.is_empty() {
             // Hack: we cannot go to a specific timeline or entity until we know about it.
             // Now we _hopefully_ do.
-            if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source {
+            if let LogSource::RedapGrpcStream { uri, .. } = channel_source {
                 self.go_to_dataset_data(uri.store_id(), uri.fragment.clone());
             }
         }
@@ -2494,7 +2485,7 @@ impl App {
         &self,
         egui_ctx: &egui::Context,
         store_id: &StoreId,
-        channel_source: &SmartChannelSource,
+        channel_source: &LogSource,
         store_hub: &mut StoreHub,
     ) {
         if channel_source.select_when_loaded() {
@@ -2555,7 +2546,7 @@ impl App {
     fn receive_data_source_ui_command(
         &self,
         ui_command: re_log_types::DataSourceUiCommand,
-        channel_source: &SmartChannelSource,
+        channel_source: &LogSource,
     ) {
         match ui_command {
             re_log_types::DataSourceUiCommand::AddValidTimeRange {
@@ -2595,7 +2586,7 @@ impl App {
         &self,
         egui_ctx: &egui::Context,
         store_hub: &mut StoreHub,
-        new_source: &SmartChannelSource,
+        new_source: &LogSource,
     ) {
         if let Some(entity_db) = store_hub.find_recording_store_by_source(new_source) {
             let store_id = entity_db.store_id().clone();
@@ -2832,17 +2823,17 @@ impl App {
 
         for source in self.rx_log.sources() {
             match &*source {
-                SmartChannelSource::File(_)
-                | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RedapGrpcStream { .. }
-                | SmartChannelSource::Stdin
-                | SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::JsChannel { .. } => {
+                LogSource::File(_)
+                | LogSource::RrdHttpStream { .. }
+                | LogSource::RedapGrpcStream { .. }
+                | LogSource::Stdin
+                | LogSource::RrdWebEvent
+                | LogSource::Sdk
+                | LogSource::JsChannel { .. } => {
                     return true; // We expect data soon, so fade-in
                 }
 
-                SmartChannelSource::MessageProxy { .. } => {
+                LogSource::MessageProxy { .. } => {
                     // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
                     // and in that case fading in the welcome screen would be slightly annoying.
                     // However, we also use the gRPC server for sending data from the logging SDKs
@@ -3109,7 +3100,7 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
 
         if let Some(seconds) = frame.info().cpu_usage {

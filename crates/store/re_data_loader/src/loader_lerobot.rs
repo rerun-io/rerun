@@ -1,33 +1,27 @@
 #![expect(clippy::cast_possible_wrap)] // usize -> i64
 
-use std::{
-    sync::{Arc, mpsc::Sender},
-    thread,
-};
+use std::sync::Arc;
+use std::sync::mpsc::Sender;
+use std::thread;
 
 use anyhow::{Context as _, anyhow};
-use arrow::{
-    array::{
-        ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray,
-        StructArray,
-    },
-    compute::cast,
-    datatypes::{DataType, Field},
+use arrow::array::{
+    ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray, StructArray,
 };
+use arrow::compute::cast;
+use arrow::datatypes::{DataType, Field};
 use itertools::Either;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
-    TimelineName, external::nohash_hasher::IntMap,
+    TimelineName,
 };
 use re_log_types::{ApplicationId, StoreId};
-use re_types::{
-    archetypes::{
-        self, AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
-    },
-    components::VideoTimestamp,
+use re_types::archetypes::{
+    self, AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
 };
+use re_types::components::VideoTimestamp;
 
 use crate::lerobot::{
     DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex, is_lerobot_dataset,

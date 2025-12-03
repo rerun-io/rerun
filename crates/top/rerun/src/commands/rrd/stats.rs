@@ -1,6 +1,5 @@
 use ahash::{HashMap, HashMapExt as _};
 use itertools::Itertools as _;
-
 use re_log_encoding::ToApplication as _;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 

@@ -5,7 +5,6 @@
 use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
-
 use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewId;
 

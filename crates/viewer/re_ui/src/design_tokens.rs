@@ -4,11 +4,8 @@
 use anyhow::Context as _;
 use egui::{Color32, Margin, Stroke, Theme, Vec2};
 
-use crate::{
-    CUSTOM_WINDOW_DECORATIONS,
-    color_table::{ColorTable, ColorToken, Hue, Scale},
-    format_with_decimals_in_range,
-};
+use crate::color_table::{ColorTable, ColorToken, Hue, Scale};
+use crate::{CUSTOM_WINDOW_DECORATIONS, format_with_decimals_in_range};
 
 #[derive(Debug)]
 pub struct AlertVisuals {

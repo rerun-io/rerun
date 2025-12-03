@@ -3,9 +3,10 @@ mod index;
 #[cfg(feature = "lance")]
 mod search;
 
-use crate::rerun_cloud::SearchDatasetResponseStream;
-use crate::store::Dataset;
-use crate::store::Error as StoreError;
+use std::ops::Deref as _;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
+
 use ahash::{HashMap, HashMapExt as _};
 use futures::StreamExt as _;
 use re_chunk_store::ChunkStoreHandle;
@@ -20,10 +21,10 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_tuid::Tuid;
 use re_types_core::ComponentIdentifier;
-use std::ops::Deref as _;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
 use tracing::instrument;
+
+use crate::rerun_cloud::SearchDatasetResponseStream;
+use crate::store::{Dataset, Error as StoreError};
 // Fields in an index table
 
 pub const FIELD_RERUN_PARTITION_ID: &str = "rerun_partition_id"; // aka "segment"
@@ -348,7 +349,6 @@ mod tests {
     //! Simple test for vector search. More extensive tests are in the `redap_tests` package that
     //! also tests consistency between this local server and Rerun Cloud.
 
-    use super::*;
     use arrow::array::{
         ArrayRef, FixedSizeBinaryArray, FixedSizeListArray, FixedSizeListBuilder, Float32Array,
         Float32Builder, ListBuilder, RecordBatch,
@@ -364,6 +364,8 @@ mod tests {
     use re_protos::cloud::v1alpha1::ext::{IndexColumn, IndexProperties, IndexQueryProperties};
     use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
     use re_types_core::{ChunkId, ComponentDescriptor, Loggable as _, SerializedComponentColumn};
+
+    use super::*;
 
     #[tokio::test]
     async fn test_vector_search() -> anyhow::Result<()> {

@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
-use arrow::{array::RecordBatch, error::ArrowError};
+use arrow::array::RecordBatch;
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
-
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
     AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
     LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
+use re_protos::cloud::v1alpha1::ext::Query;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::{Origin, TimeSelection};
-
 use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};
@@ -295,9 +295,8 @@ where
 /// with the server's version.
 pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
-    tx: re_smart_channel::Sender<DataSourceMessage>,
-    uri: re_uri::DatasetPartitionUri,
-    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+    tx: re_log_channel::LogSender,
+    uri: re_uri::DatasetSegmentUri,
 ) -> Result<(), ApiError> {
     re_log::debug!("Loading {uri}…");
 
@@ -332,7 +331,6 @@ pub async fn stream_blueprint_and_segment_from_server(
             blueprint_segment,
             None,
             re_uri::Fragment::default(),
-            on_msg.as_deref(),
         )
         .await?;
 
@@ -354,10 +352,10 @@ pub async fn stream_blueprint_and_segment_from_server(
         re_log::debug!("No blueprint dataset found for {uri}");
     }
 
-    let re_uri::DatasetPartitionUri {
+    let re_uri::DatasetSegmentUri {
         origin: _,
         dataset_id,
-        partition_id: segment_id,
+        segment_id,
         time_range,
         fragment,
     } = uri;
@@ -378,7 +376,6 @@ pub async fn stream_blueprint_and_segment_from_server(
         segment_id.into(),
         time_range,
         fragment,
-        on_msg.as_deref(),
     )
     .await?;
 
@@ -386,16 +383,14 @@ pub async fn stream_blueprint_and_segment_from_server(
 }
 
 /// Low-level function to stream data as a chunk store from a server.
-#[expect(clippy::too_many_arguments)]
 async fn stream_segment_from_server(
     client: &mut ConnectionClient,
     store_info: StoreInfo,
-    tx: &re_smart_channel::Sender<DataSourceMessage>,
+    tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
     segment_id: SegmentId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
-    on_msg: Option<&(dyn Fn() + Send + Sync)>,
 ) -> Result<(), ApiError> {
     let store_id = store_info.store_id.clone();
 
@@ -459,14 +454,16 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    // Retrieve the chunk IDs we're interested in (all of them):
+    // Retrieve the chunk IDs we're interested in:
     let chunk_index_messages = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
             segment_id: segment_id.clone(),
             include_static_data: true,
             include_temporal_data: true,
-            query: None,
+            query: time_range.map(|time_range| {
+                Query::latest_at_range(time_range.timeline.name(), time_range.range).into()
+            }),
         })
         .await?;
 
@@ -502,15 +499,13 @@ async fn stream_segment_from_server(
 
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
 
-    // TODO(#10229): this looks to be converting back and forth?
     while let Some(chunks) = chunk_stream.next().await {
-        for chunk in chunks? {
-            let (chunk, _partition_id) = chunk;
-
+        for (chunk, _partition_id) in chunks? {
             if tx
                 .send(
                     LogMsg::ArrowMsg(
                         store_id.clone(),
+                        // TODO(#10229): this looks to be converting back and forth?
                         chunk.to_arrow_msg().map_err(|err| {
                             ApiError::serialization(
                                 err,
@@ -524,10 +519,6 @@ async fn stream_segment_from_server(
             {
                 re_log::debug!("Receiver disconnected");
                 return Ok(()); // cancelled
-            }
-
-            if let Some(on_msg) = &on_msg {
-                on_msg();
             }
         }
     }

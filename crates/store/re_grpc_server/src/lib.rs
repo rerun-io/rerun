@@ -2,34 +2,29 @@
 
 pub mod shutdown;
 
-use std::{collections::VecDeque, net::SocketAddr, pin::Pin};
-
-use tokio::{
-    net::TcpListener,
-    sync::{broadcast, mpsc, oneshot},
-};
-use tokio_stream::{Stream, StreamExt as _, wrappers::BroadcastStream};
-use tonic::transport::{Server, server::TcpIncoming};
-use tower_http::cors::CorsLayer;
+use std::collections::VecDeque;
+use std::net::SocketAddr;
+use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::{DataSourceMessage, TableMsg};
+use re_protos::common::v1alpha1::{
+    DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
+};
+use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 use re_protos::sdk_comms::v1alpha1::{
-    ReadTablesRequest, ReadTablesResponse, WriteMessagesRequest, WriteTableRequest,
-    WriteTableResponse,
+    ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
+    WriteMessagesRequest, WriteMessagesResponse, WriteTableRequest, WriteTableResponse,
+    message_proxy_service_server,
 };
-
-use re_protos::{
-    common::v1alpha1::{
-        DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
-    },
-    log_msg::v1alpha1::LogMsg as LogMsgProto,
-    sdk_comms::v1alpha1::{
-        ReadMessagesRequest, ReadMessagesResponse, WriteMessagesResponse,
-        message_proxy_service_server,
-    },
-};
+use tokio::net::TcpListener;
+use tokio::sync::{broadcast, mpsc, oneshot};
+use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::{Stream, StreamExt as _};
+use tonic::transport::Server;
+use tonic::transport::server::TcpIncoming;
+use tower_http::cors::CorsLayer;
 
 use crate::priority_stream::PriorityMerge;
 
@@ -210,13 +205,13 @@ pub async fn serve_from_channel(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    channel_rx: re_smart_channel::Receiver<DataSourceMessage>,
+    channel_rx: re_log_channel::LogReceiver,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
 
     tokio::task::spawn_blocking(move || {
-        use re_smart_channel::SmartMessagePayload;
+        use re_log_channel::SmartMessagePayload;
 
         loop {
             let msg = if let Ok(msg) = channel_rx.recv() {
@@ -275,7 +270,7 @@ pub async fn serve_from_channel(
 
 /// Start a Rerun server, listening on `addr`.
 ///
-/// This function additionally accepts a `ReceiveSet`, from which the
+/// This function additionally accepts a [`re_log_channel::LogReceiverSet`], from which the
 /// server will read all messages. It is similar to creating a client
 /// and sending messages through `WriteMessages`, but without the overhead
 /// of a localhost connection.
@@ -285,7 +280,7 @@ pub fn spawn_from_rx_set(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    rxs: re_smart_channel::ReceiveSet<re_log_types::DataSourceMessage>,
+    rxs: re_log_channel::LogReceiverSet,
 ) {
     let message_proxy = MessageProxy::new(options);
     let event_tx = message_proxy.event_tx.clone();
@@ -297,7 +292,7 @@ pub fn spawn_from_rx_set(
     });
 
     tokio::task::spawn_blocking(move || {
-        use re_smart_channel::SmartMessagePayload;
+        use re_log_channel::SmartMessagePayload;
 
         loop {
             let msg = if let Ok(msg) = rxs.recv() {
@@ -372,16 +367,14 @@ pub fn spawn_with_recv(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-) -> re_smart_channel::Receiver<re_log_types::DataSourceMessage> {
+) -> re_log_channel::LogReceiver {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
     ));
 
-    let (channel_log_tx, channel_log_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
-        re_smart_channel::SmartChannelSource::MessageProxy(uri),
-    );
+    let (channel_log_tx, channel_log_rx) =
+        re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri));
 
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options);
 
@@ -993,20 +986,16 @@ mod tests {
     use std::time::Duration;
 
     use itertools::{Itertools as _, chain};
-    use similar_asserts::assert_eq;
-    use tokio::net::TcpListener;
-    use tokio_util::sync::CancellationToken;
-    use tonic::transport::Channel;
-    use tonic::transport::Endpoint;
-    use tonic::transport::server::TcpIncoming;
-
     use re_chunk::RowId;
     use re_log_encoding::rrd::Compression;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-    use re_protos::sdk_comms::v1alpha1::{
-        message_proxy_service_client::MessageProxyServiceClient,
-        message_proxy_service_server::MessageProxyServiceServer,
-    };
+    use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+    use re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer;
+    use similar_asserts::assert_eq;
+    use tokio::net::TcpListener;
+    use tokio_util::sync::CancellationToken;
+    use tonic::transport::server::TcpIncoming;
+    use tonic::transport::{Channel, Endpoint};
 
     use super::*;
 

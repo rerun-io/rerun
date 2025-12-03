@@ -1,5 +1,4 @@
 use super::Mat4x4;
-
 use crate::datatypes::Vec4D;
 
 impl Mat4x4 {

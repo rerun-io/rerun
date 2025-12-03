@@ -296,12 +296,11 @@ impl tonic::service::Interceptor for RerunVersionInterceptor {
 
 use std::collections::HashSet;
 use std::future::Future;
-use std::{
-    pin::Pin,
-    task::{Context, Poll, ready},
-};
+use std::pin::Pin;
+use std::task::{Context, Poll, ready};
 
-use http::{HeaderValue, Request, Response, header::HeaderName};
+use http::header::HeaderName;
+use http::{HeaderValue, Request, Response};
 use pin_project_lite::pin_project;
 use tower::Service;
 use tower::layer::Layer;

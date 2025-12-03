@@ -1,14 +1,14 @@
-use std::collections::{HashMap, hash_map::Entry};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::error::Error as _;
 use std::sync::Arc;
 
 use itertools::Itertools as _;
+use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
+use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
 use tokio::sync::RwLock;
 use tonic::Code;
-
-use re_auth::Jwt;
-use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
 
 use crate::connection_client::GenericConnectionClient;
 use crate::grpc::{RedapClient, RedapClientInner};

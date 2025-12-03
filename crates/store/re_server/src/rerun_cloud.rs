@@ -8,41 +8,35 @@ use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
+use re_arrow_util::RecordBatchExt as _;
+use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
+use re_log_encoding::ToTransport as _;
+use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::{
+    self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+    CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate, ProviderDetails,
+    QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+};
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
+    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+    RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse,
+};
+use re_protos::common::v1alpha1::TaskId;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::headers::RerunHeadersExtractorExt as _;
+use re_protos::missing_field;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
-use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
-use re_log_encoding::ToTransport as _;
-use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
-        GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-        QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-        QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanSegmentTableResponse, ScanTableResponse,
-        ext::{
-            self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-            CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate,
-            ProviderDetails, QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            TableInsertMode, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-            UpdateEntryRequest, UpdateEntryResponse,
-        },
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, SegmentId},
-    },
-    headers::RerunHeadersExtractorExt as _,
-    missing_field,
-};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -1030,13 +1024,19 @@ impl RerunCloudService for RerunCloudHandler {
             select_all_entity_paths,
 
             //TODO(RR-2613): we must do a much better job at handling these
-            chunk_ids: _,
+            chunk_ids: requested_chunk_ids,
             fuzzy_descriptors: _,
-            exclude_static_data: _,
-            exclude_temporal_data: _,
-            scan_parameters: _,
+            exclude_static_data,
+            exclude_temporal_data,
+            scan_parameters,
             query: _,
         } = request.into_inner().try_into()?;
+
+        if scan_parameters.is_some() {
+            re_log::info_once!(
+                "query_dataset: scan_parameters are not yet implemented and will be ignored"
+            );
+        }
 
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
         if select_all_entity_paths && !entity_paths.is_empty() {
@@ -1073,6 +1073,19 @@ impl RerunCloudService for RerunCloudHandler {
 
                 for chunk in store_handle.read().iter_chunks() {
                     if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
+                        continue;
+                    }
+
+                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&chunk.id())
+                    {
+                        continue;
+                    }
+
+                    // Filter by static/temporal data
+                    if exclude_static_data && chunk.is_static() {
+                        continue;
+                    }
+                    if exclude_temporal_data && !chunk.is_static() {
                         continue;
                     }
 

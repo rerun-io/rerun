@@ -1,5 +1,4 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
-
 use re_log_types::EntityPath;
 
 use crate::{

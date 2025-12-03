@@ -2,10 +2,9 @@ use std::time::Duration;
 
 use indicatif::ProgressBar;
 
-use crate::OauthLoginFlow;
 pub use crate::callback_server::Error;
-use crate::oauth;
 use crate::oauth::login_flow::OauthLoginFlowState;
+use crate::{OauthLoginFlow, oauth};
 
 pub struct LoginOptions {
     pub open_browser: bool,

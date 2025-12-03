@@ -1,10 +1,10 @@
-use std::{ops::RangeInclusive, sync::Arc};
+use std::ops::RangeInclusive;
+use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
 
-use crate::{AbsoluteTimeRange, TimestampFormat};
-
 use super::TimeInt;
+use crate::{AbsoluteTimeRange, TimestampFormat};
 
 /// The type of a [`TimeInt`] or [`crate::Timeline`].
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]

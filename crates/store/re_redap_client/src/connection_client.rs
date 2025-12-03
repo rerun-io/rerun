@@ -1,42 +1,36 @@
-use crate::ApiError;
-use arrow::datatypes::SchemaRef;
-use arrow::{array::RecordBatch, datatypes::Schema as ArrowSchema};
+use arrow::array::RecordBatch;
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, ProviderDetails, TableInsertMode};
-use re_protos::{
-    TypeConversionError,
-    cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
-        FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
-        QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
-        ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
-        ScanSegmentTableRequest, ScanSegmentTableResponse,
-        ext::{
-            CreateDatasetEntryResponse, DataSource, DataSourceKind, DatasetDetails, DatasetEntry,
-            EntryDetails, EntryDetailsUpdate, LanceTable, QueryDatasetRequest,
-            QueryTasksOnCompletionRequest, QueryTasksRequest, ReadDatasetEntryResponse,
-            ReadTableEntryResponse, RegisterTableResponse, RegisterWithDatasetRequest,
-            RegisterWithDatasetTaskDescriptor, TableEntry, UpdateDatasetEntryRequest,
-            UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-        },
-        rerun_cloud_service_client::RerunCloudServiceClient,
-    },
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, ScanParameters, SegmentId},
-    },
-    external::prost::bytes::Bytes,
-    headers::RerunHeadersInjectorExt as _,
-    invalid_schema, missing_column, missing_field,
+use re_protos::cloud::v1alpha1::ext::{
+    CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
+    DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
+    QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
+    ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
+    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
+    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
 };
-use re_protos::{cloud::v1alpha1::WriteTableRequest, common::v1alpha1::DataframePart};
+use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::cloud::v1alpha1::{
+    CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
+    FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
+    GetDatasetSchemaRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
+    QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
+    ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
+    ScanSegmentTableRequest, ScanSegmentTableResponse, WriteTableRequest,
+};
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
+use re_protos::common::v1alpha1::{DataframePart, TaskId};
+use re_protos::external::prost::bytes::Bytes;
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
 use re_types_core::ChunkIndexMessage;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
 use url::Url;
+
+use crate::ApiError;
 
 pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = Result<T, tonic::Status>> + Send>>;
 

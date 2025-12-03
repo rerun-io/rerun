@@ -14,30 +14,26 @@
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::resource_managers::GpuTexture2D;
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
 use crate::{
     Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerObjectId,
-    PickingLayerProcessor,
-    allocator::create_and_fill_uniform_buffer_batch,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
-    include_shader_module,
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    resource_managers::GpuTexture2D,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
+    PickingLayerProcessor, include_shader_module,
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 // ---
 
 mod gpu_data {
-    use crate::{PickingLayerObjectId, wgpu_buffer_types};
-
     use super::DepthCloudDrawDataError;
+    use crate::{PickingLayerObjectId, wgpu_buffer_types};
 
     // Keep in sync with mirror in `depth_cloud.wgsl.`
 

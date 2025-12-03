@@ -14,7 +14,9 @@ use re_chunk::ComponentIdentifier;
 pub use self::cache::{QueryCache, QueryCacheHandle, QueryCacheKey};
 pub use self::cache_stats::{QueryCacheStats, QueryCachesStats};
 pub use self::clamped_zip::*;
+pub(crate) use self::latest_at::LatestAtCache;
 pub use self::latest_at::LatestAtResults;
+pub(crate) use self::range::RangeCache;
 pub use self::range::RangeResults;
 pub use self::range_zip::*;
 pub use self::storage_engine::{
@@ -22,12 +24,8 @@ pub use self::storage_engine::{
     StorageEngineWriteGuard,
 };
 
-pub(crate) use self::latest_at::LatestAtCache;
-pub(crate) use self::range::RangeCache;
-
 pub mod external {
-    pub use paste;
-    pub use seq_macro;
+    pub use {paste, seq_macro};
 }
 
 // ---

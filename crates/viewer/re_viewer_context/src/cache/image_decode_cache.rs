@@ -1,19 +1,15 @@
 use ahash::HashMap;
-
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_types::{
-    ComponentIdentifier,
-    components::{ImageBuffer, MediaType},
-    image::{ImageKind, ImageLoadError},
-};
+use re_types::ComponentIdentifier;
+use re_types::components::{ImageBuffer, MediaType};
+use re_types::image::{ImageKind, ImageLoadError};
 
-use crate::{
-    Cache, CacheMemoryReport, CacheMemoryReportItem, ImageInfo, cache::filter_blob_removed_events,
-    image_info::StoredBlobCacheKey,
-};
+use crate::cache::filter_blob_removed_events;
+use crate::image_info::StoredBlobCacheKey;
+use crate::{Cache, CacheMemoryReport, CacheMemoryReportItem, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image

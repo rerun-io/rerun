@@ -3,16 +3,12 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
-        ListArray as ArrowListArray,
-    },
-    buffer::NullBuffer as ArrowNullBuffer,
-    buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::DataType as ArrowDataType,
+use arrow::array::{
+    Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
+    ListArray as ArrowListArray,
 };
-
+use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
+use arrow::datatypes::DataType as ArrowDataType;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
@@ -140,8 +136,9 @@ impl ComponentData {
 /// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
 /// are hashed.
 fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
-    use ahash::AHasher;
     use std::hash::{Hash as _, Hasher as _};
+
+    use ahash::AHasher;
 
     re_tracing::profile_function!();
 

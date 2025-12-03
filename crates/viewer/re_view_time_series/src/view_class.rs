@@ -1,42 +1,34 @@
-use egui::{
-    NumExt as _, Vec2, Vec2b,
-    ahash::{HashMap, HashSet},
-};
+use egui::ahash::{HashMap, HashSet};
+use egui::{NumExt as _, Vec2, Vec2b};
 use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use nohash_hasher::IntSet;
+use re_chunk_store::TimeType;
+use re_format::time::next_grid_tick_magnitude_nanos;
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
+use re_types::archetypes::{SeriesLines, SeriesPoints};
+use re_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
+use re_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
+use re_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
+use re_types::datatypes::TimeRange;
+use re_types::{ComponentBatch as _, View as _, ViewClassIdentifier};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
+use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
+use re_view::view_property_ui;
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     BlueprintContext as _, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer,
     PerVisualizerInViewClass, QueryRange, RecommendedView, SmallVisualizerSet,
     SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, external::re_entity_db::InstancePath,
+    VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
 
-use crate::{
-    PlotSeriesKind, line_visualizer_system::SeriesLinesSystem,
-    point_visualizer_system::SeriesPointsSystem,
-};
-use re_chunk_store::TimeType;
-use re_format::time::next_grid_tick_magnitude_nanos;
-use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_types::{
-    ComponentBatch as _, View as _, ViewClassIdentifier,
-    archetypes::{SeriesLines, SeriesPoints},
-    blueprint::{
-        archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis},
-        components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom},
-    },
-    components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible},
-    datatypes::TimeRange,
-};
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
-use re_view::{
-    controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON},
-    view_property_ui,
-};
+use crate::PlotSeriesKind;
+use crate::line_visualizer_system::SeriesLinesSystem;
+use crate::point_visualizer_system::SeriesPointsSystem;
 
 // ---
 
@@ -264,13 +256,13 @@ impl ViewClass for TimeSeriesView {
         viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            let ctx = self.view_context(viewer_ctx, view_id, state);
+            let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
 
@@ -510,7 +502,7 @@ impl ViewClass for TimeSeriesView {
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
-        let view_ctx = self.view_context(ctx, view_id, state);
+        let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(
             blueprint_db,
             ctx.blueprint_query,
@@ -563,6 +555,7 @@ impl ViewClass for TimeSeriesView {
                         viewer_ctx: ctx,
                         view_id: re_viewer_context::GLOBAL_VIEW_ID,
                         view_class_identifier: Self::identifier(),
+                        space_origin: query.space_origin,
                         view_state: state,
                         query_result: &query_result,
                     },

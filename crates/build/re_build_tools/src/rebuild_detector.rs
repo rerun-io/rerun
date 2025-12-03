@@ -1,11 +1,10 @@
 #![expect(clippy::unwrap_used)]
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-};
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
-use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId, camino::Utf8Path};
+use cargo_metadata::camino::Utf8Path;
+use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
 use crate::should_output_cargo_build_instructions;
 

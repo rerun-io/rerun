@@ -1,11 +1,9 @@
 use nohash_hasher::IntSet;
-
 use re_byte_size::SizeBytes;
-
-use crate::{ComponentIdentifier, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{Archetype, ComponentBatch};
+use crate::{ComponentIdentifier, DeserializationResult, SerializationResult};
 
 // ---
 

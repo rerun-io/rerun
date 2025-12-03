@@ -9,7 +9,6 @@ use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
 use lance::deps::arrow_array::UInt8Array;
-
 use re_chunk_store::Chunk;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
@@ -20,8 +19,7 @@ use crate::chunk_index::{
     ArcCell, FIELD_CHUNK_ID, FIELD_INSTANCE, FIELD_INSTANCE_ID, FIELD_RERUN_PARTITION_ID,
     FIELD_RERUN_PARTITION_LAYER, FIELD_TIMEPOINT,
 };
-use crate::store::Dataset;
-use crate::store::Error as StoreError;
+use crate::store::{Dataset, Error as StoreError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IndexType {

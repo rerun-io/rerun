@@ -9,24 +9,24 @@
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
-use crate::{
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
-    allocator::create_and_fill_uniform_buffer,
-    global_bindings::FrameUniformBuffer,
-    include_shader_module,
-    rect::RectF32,
-    texture_info::Texture2DBufferInfo,
-    transform::{RectTransform, ndc_from_pixel},
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
-        GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, TextureDesc,
-    },
-};
-
 use parking_lot::Mutex;
 use smallvec::smallvec;
+
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::global_bindings::FrameUniformBuffer;
+use crate::rect::RectF32;
+use crate::texture_info::Texture2DBufferInfo;
+use crate::transform::{RectTransform, ndc_from_pixel};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
+    GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
+    RenderPipelineDesc, TextureDesc,
+};
+use crate::{
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
+    include_shader_module,
+};
 
 /// GPU retrieved & processed picking data result.
 pub struct PickingResult {

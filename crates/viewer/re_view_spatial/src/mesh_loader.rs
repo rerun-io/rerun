@@ -1,12 +1,13 @@
 use itertools::Itertools as _;
+use re_renderer::RenderContext;
+use re_renderer::mesh::GpuMesh;
+use re_types::components::MediaType;
+use re_types::datatypes;
+use re_viewer_context::gpu_bridge::texture_creation_desc_from_color_image;
+use re_viewer_context::{ImageInfo, StoredBlobCacheKey};
 
-use re_renderer::{RenderContext, mesh::GpuMesh};
-use re_types::{components::MediaType, datatypes};
-use re_viewer_context::{
-    ImageInfo, StoredBlobCacheKey, gpu_bridge::texture_creation_desc_from_color_image,
-};
-
-use crate::{caches::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
+use crate::caches::AnyMesh;
+use crate::visualizers::entity_iterator::clamped_vec_or;
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {

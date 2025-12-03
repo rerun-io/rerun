@@ -1,17 +1,15 @@
 //! General H.264 utilities.
 
-use h264_reader::{
-    annexb::AnnexBReader,
-    nal::{self, Nal as _},
-    push::NalInterest,
-};
+use h264_reader::annexb::AnnexBReader;
+use h264_reader::nal::{self, Nal as _};
+use h264_reader::push::NalInterest;
 
+use crate::nalu::{
+    ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
+    write_length_prefixed_nalus_to_annexb_stream,
+};
 use crate::{
     ChromaSubsamplingModes, Chunk, DetectGopStartError, GopStartDetection, VideoEncodingDetails,
-    nalu::{
-        ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
-        write_length_prefixed_nalus_to_annexb_stream,
-    },
 };
 
 /// Retrieve [`VideoEncodingDetails`] from a H.264 SPS.

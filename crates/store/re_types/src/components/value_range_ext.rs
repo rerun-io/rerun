@@ -1,7 +1,7 @@
-use crate::datatypes;
 use std::fmt::Display;
 
 use super::ValueRange;
+use crate::datatypes;
 
 impl ValueRange {
     /// Create a new range.

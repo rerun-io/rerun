@@ -1,14 +1,9 @@
 #![expect(clippy::redundant_clone)]
 
-use re_types::{
-    Archetype as _, AsComponents as _,
-    testing::{
-        archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4},
-        components, datatypes,
-    },
-};
-
 use half::f16;
+use re_types::testing::archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4};
+use re_types::testing::{components, datatypes};
+use re_types::{Archetype as _, AsComponents as _};
 
 #[test]
 fn roundtrip() {

@@ -1,4 +1,5 @@
-use re_types::{ViewClassIdentifier, blueprint::archetypes::EyeControls3D};
+use re_types::ViewClassIdentifier;
+use re_types::blueprint::archetypes::EyeControls3D;
 use re_viewer_context::{Item, ViewId};
 use re_viewport_blueprint::ViewProperty;
 

@@ -2,9 +2,9 @@
 
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
+use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
-    example_components::{MyPoint, MyPoints},
 };
 use re_test_context::TestContext;
 use re_time_panel::TimePanel;

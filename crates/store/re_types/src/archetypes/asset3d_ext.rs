@@ -1,6 +1,5 @@
-use crate::components::MediaType;
-
 use super::Asset3D;
+use crate::components::MediaType;
 
 impl Asset3D {
     /// Creates a new [`Asset3D`] from the file contents at `path`.

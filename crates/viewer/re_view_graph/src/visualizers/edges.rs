@@ -1,10 +1,7 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
-use re_types::{
-    self,
-    archetypes::{self, GraphEdges},
-    components, datatypes,
-};
+use re_types::archetypes::{self, GraphEdges};
+use re_types::{self, components, datatypes};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,

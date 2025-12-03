@@ -1,9 +1,7 @@
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
-use re_types::{
-    ComponentDescriptor, TransformFrameIdHash, archetypes,
-    components::{self, TransformFrameId},
-};
+use re_types::components::{self, TransformFrameId};
+use re_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, TransformDatabaseStoreCache, ViewerContext,
@@ -74,8 +72,9 @@ impl TransformFramesUi {
         let mut frame_id_hash = TransformFrameIdHash::new(&frame_id);
 
         let caches = ctx.store_context.caches;
-        let transform_cache = caches
-            .entry(|c: &mut TransformDatabaseStoreCache| c.lock_transform_cache(ctx.recording()));
+        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
+            c.read_lock_transform_cache(ctx.recording())
+        });
 
         let frame_ids = transform_cache.frame_id_registry();
         let transforms = transform_cache.transforms_for_timeline(*ctx.time_ctrl.timeline().name());

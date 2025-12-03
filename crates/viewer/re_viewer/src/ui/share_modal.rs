@@ -1,16 +1,12 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
-
 use re_log_types::AbsoluteTimeRange;
 use re_redap_browser::EXAMPLES_ORIGIN;
-use re_ui::{
-    UiExt as _, icons,
-    list_item::PropertyContent,
-    modal::{ModalHandler, ModalWrapper},
-};
+use re_ui::list_item::PropertyContent;
+use re_ui::modal::{ModalHandler, ModalWrapper};
+use re_ui::{UiExt as _, icons};
 use re_uri::Fragment;
-use re_viewer_context::{
-    DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext, open_url::ViewerOpenUrl,
-};
+use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::{DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext};
 
 pub struct ShareModal {
     modal: ModalHandler,
@@ -361,15 +357,16 @@ fn time_cursor_ui(
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr as _, sync::Arc};
+    use std::str::FromStr as _;
+    use std::sync::Arc;
 
     use parking_lot::Mutex;
     use re_chunk::EntityPath;
-    use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
+    use re_log_types::external::re_tuid;
+    use re_log_types::{AbsoluteTimeRangeF, TimeCell};
     use re_test_context::TestContext;
-    use re_viewer_context::{
-        DisplayMode, Item, ItemCollection, TimeControlCommand, open_url::ViewerOpenUrl,
-    };
+    use re_viewer_context::open_url::ViewerOpenUrl;
+    use re_viewer_context::{DisplayMode, Item, ItemCollection, TimeControlCommand};
 
     use crate::ui::ShareModal;
 
@@ -420,17 +417,17 @@ mod tests {
             });
         harness.snapshot("share_modal__server_url");
 
-        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
-            re_uri::DatasetPartitionUri {
+        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetSegment(
+            re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                partition_id: "partition_id".to_owned(),
+                segment_id: "segment_id".to_owned(),
                 time_range: None,
                 fragment: re_uri::Fragment::default(),
             },
         ));
         harness.run_steps(2); // Force running two steps to ensure relayouting happens. TODO(andreas): Why is this needed?
-        harness.snapshot("share_modal__dataset_partition_url");
+        harness.snapshot("share_modal__dataset_segment_url");
 
         // Set the timeline so it shows up on the dialog.
         test_ctx.send_time_commands(
@@ -444,11 +441,11 @@ mod tests {
 
         harness.run();
 
-        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetPartition(
-            re_uri::DatasetPartitionUri {
+        modal.lock().url = Some(ViewerOpenUrl::RedapDatasetSegment(
+            re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                partition_id: "partition_id".to_owned(),
+                segment_id: "segment_id".to_owned(),
                 time_range: Some(re_uri::TimeSelection {
                     timeline,
                     range: re_log_types::AbsoluteTimeRange::new(0, 1000),
@@ -460,6 +457,6 @@ mod tests {
             },
         ));
         harness.run();
-        harness.snapshot("share_modal__dataset_partition_url_with_time_range");
+        harness.snapshot("share_modal__dataset_segment_url_with_time_range");
     }
 }

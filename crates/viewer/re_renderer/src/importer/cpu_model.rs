@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use slotmap::{SecondaryMap, SlotMap};
 
-use crate::{
-    RenderContext,
-    mesh::{CpuMesh, GpuMesh, MeshError},
-    renderer::GpuMeshInstance,
-};
+use crate::RenderContext;
+use crate::mesh::{CpuMesh, GpuMesh, MeshError};
+use crate::renderer::GpuMeshInstance;
 
 slotmap::new_key_type! {
     /// Key for identifying a cpu mesh in a model.

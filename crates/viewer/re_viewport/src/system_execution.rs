@@ -1,18 +1,18 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
-
 use re_viewer_context::{
     PerSystemDataResults, PerVisualizerInViewClass, SystemExecutionOutput, ViewContextCollection,
     ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
     VisualizerExecutionOutput,
 };
+use re_viewport_blueprint::ViewBlueprint;
 
 use crate::view_highlights::highlights_for_view;
-use re_viewport_blueprint::ViewBlueprint;
 
 fn run_view_systems(
     ctx: &ViewerContext<'_>,

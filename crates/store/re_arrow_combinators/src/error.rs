@@ -43,6 +43,9 @@ pub enum Error {
     #[error("List contains unexpected value type: expected {expected}, got {actual:?}")]
     UnexpectedListValueType { expected: String, actual: DataType },
 
+    #[error("Expected list with {expected} elements, got {actual}")]
+    UnexpectedListValueLength { expected: usize, actual: usize },
+
     #[error("Fixed-size list contains unexpected value type: expected {expected}, got {actual:?}")]
     UnexpectedFixedSizeListValueType { expected: String, actual: DataType },
 

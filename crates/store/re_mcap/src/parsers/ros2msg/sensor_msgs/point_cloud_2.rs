@@ -1,32 +1,27 @@
+use std::collections::HashMap;
 use std::io::Cursor;
 
-use super::super::definitions::sensor_msgs::{self, PointField, PointFieldDatatype};
 use anyhow::Context as _;
-use arrow::{
-    array::{
-        ArrayBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder, Float64Builder,
-        Int8Builder, Int16Builder, Int32Builder, ListBuilder, StringBuilder, StructBuilder,
-        UInt8Builder, UInt16Builder, UInt32Builder,
-    },
-    datatypes::{DataType, Field, Fields},
+use arrow::array::{
+    ArrayBuilder, BooleanBuilder, FixedSizeListBuilder, Float32Builder, Float64Builder,
+    Int8Builder, Int16Builder, Int32Builder, ListBuilder, StringBuilder, StructBuilder,
+    UInt8Builder, UInt16Builder, UInt32Builder,
 };
+use arrow::datatypes::{DataType, Field, Fields};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
+use re_types::reflection::ComponentDescriptorExt as _;
 use re_types::{
     Archetype as _, AsComponents as _, Component as _, ComponentDescriptor,
-    SerializedComponentColumn, archetypes, components, reflection::ComponentDescriptorExt as _,
+    SerializedComponentColumn, archetypes, components,
 };
-use std::collections::HashMap;
 
 use super::super::Ros2MessageParser;
-use crate::{
-    Error,
-    parsers::{
-        cdr,
-        decode::{MessageParser, ParserContext},
-        util::{blob_list_builder, fixed_size_list_builder},
-    },
-};
+use super::super::definitions::sensor_msgs::{self, PointField, PointFieldDatatype};
+use crate::Error;
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
+use crate::parsers::util::{blob_list_builder, fixed_size_list_builder};
 
 pub struct PointCloud2MessageParser {
     num_rows: usize,

@@ -3,48 +3,44 @@ use std::sync::Arc;
 use crossbeam::channel::Select;
 use parking_lot::Mutex;
 
-use crate::{Receiver, RecvError, SmartChannelSource, SmartMessage};
+use super::LogReceiver;
+use crate::{LogSource, RecvError, SmartMessage};
 
-/// A set of connected [`Receiver`]s.
+/// A set of connected [`LogReceiver`]s.
 ///
 /// Any receiver that gets disconnected is automatically removed from the set.
-pub struct ReceiveSet<T: Send> {
-    receivers: Mutex<Vec<Receiver<T>>>,
+#[derive(Default)]
+pub struct LogReceiverSet {
+    receivers: Mutex<Vec<LogReceiver>>,
 }
 
-impl<T: Send> Default for ReceiveSet<T> {
-    fn default() -> Self {
-        Self::new(Vec::new())
-    }
-}
-
-impl<T: Send> ReceiveSet<T> {
-    pub fn new(receivers: Vec<Receiver<T>>) -> Self {
+impl LogReceiverSet {
+    pub fn new(receivers: Vec<LogReceiver>) -> Self {
         Self {
             receivers: Mutex::new(receivers),
         }
     }
 
-    pub fn add(&self, r: Receiver<T>) {
+    pub fn add(&self, r: LogReceiver) {
         re_tracing::profile_function!();
         let mut rx = self.receivers.lock();
         rx.push(r);
     }
 
     /// Are we currently receiving this source?
-    pub fn contains(&self, source: &SmartChannelSource) -> bool {
+    pub fn contains(&self, source: &LogSource) -> bool {
         self.receivers
             .lock()
             .iter()
-            .any(|src| src.source.is_same_ignoring_uri_fragments(source))
+            .any(|src| src.source().is_same_ignoring_uri_fragments(source))
     }
 
     /// Disconnect from any channel with the given source.
-    pub fn remove(&self, source: &SmartChannelSource) {
+    pub fn remove(&self, source: &LogSource) {
         self.receivers.lock().retain(|r| r.source() != source);
     }
 
-    pub fn retain(&self, mut f: impl FnMut(&Receiver<T>) -> bool) {
+    pub fn retain(&self, mut f: impl FnMut(&LogReceiver) -> bool) {
         self.receivers.lock().retain(|r| f(r));
     }
 
@@ -59,26 +55,26 @@ impl<T: Send> ReceiveSet<T> {
             // retain only sources which:
             // - aren't network sources
             // - don't point at the given `needle`
-            SmartChannelSource::RrdHttpStream { url, .. } => url != needle,
-            SmartChannelSource::MessageProxy(url) => url.to_string() != needle,
-            SmartChannelSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
+            LogSource::RrdHttpStream { url, .. } => url != needle,
+            LogSource::MessageProxy(url) => url.to_string() != needle,
+            LogSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
 
-            SmartChannelSource::File(_)
-            | SmartChannelSource::Stdin
-            | SmartChannelSource::Sdk
-            | SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. } => true,
+            LogSource::File(_)
+            | LogSource::Stdin
+            | LogSource::Sdk
+            | LogSource::RrdWebEvent
+            | LogSource::JsChannel { .. } => true,
         });
     }
 
     /// List of connected receiver sources.
     ///
     /// This gets culled after calling one of the `recv` methods.
-    pub fn sources(&self) -> Vec<Arc<SmartChannelSource>> {
+    pub fn sources(&self) -> Vec<Arc<LogSource>> {
         re_tracing::profile_function!();
         let mut rx = self.receivers.lock();
         rx.retain(|r| r.is_connected());
-        rx.iter().map(|r| r.source.clone()).collect()
+        rx.iter().map(|r| r.source_arc()).collect()
     }
 
     /// Any connected receivers?
@@ -98,17 +94,6 @@ impl<T: Send> ReceiveSet<T> {
         rx.is_empty()
     }
 
-    /// Maximum latency among all receivers (or 0, if none).
-    pub fn latency_nanos(&self) -> u64 {
-        re_tracing::profile_function!();
-        let mut latency_nanos = 0;
-        let rx = self.receivers.lock();
-        for r in rx.iter() {
-            latency_nanos = r.latency_nanos().max(latency_nanos);
-        }
-        latency_nanos
-    }
-
     /// Sum queue length of all receivers.
     pub fn queue_len(&self) -> usize {
         re_tracing::profile_function!();
@@ -118,7 +103,7 @@ impl<T: Send> ReceiveSet<T> {
 
     /// Blocks until a message is ready to be received,
     /// or we are empty.
-    pub fn recv(&self) -> Result<SmartMessage<T>, RecvError> {
+    pub fn recv(&self) -> Result<SmartMessage, RecvError> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -131,16 +116,16 @@ impl<T: Send> ReceiveSet<T> {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx);
+            sel.recv(r.inner());
         }
 
         let oper = sel.select();
         let index = oper.index();
-        oper.recv(&rx[index].rx).map_err(|_err| RecvError)
+        oper.recv(rx[index].inner()).map_err(|_err| RecvError)
     }
 
     /// Returns immediately if there is nothing to receive.
-    pub fn try_recv(&self) -> Option<(Arc<SmartChannelSource>, SmartMessage<T>)> {
+    pub fn try_recv(&self) -> Option<(Arc<LogSource>, SmartMessage)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -152,20 +137,20 @@ impl<T: Send> ReceiveSet<T> {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx);
+            sel.recv(r.inner());
         }
 
         let oper = sel.try_select().ok()?;
         let index = oper.index();
-        if let Ok(msg) = oper.recv(&rx[index].rx) {
-            return Some((rx[index].source.clone(), msg));
+        if let Ok(msg) = oper.recv(rx[index].inner()) {
+            return Some((rx[index].source_arc(), msg));
         }
 
         // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
         // Why use `select` first? Because `select` is fair (random) when there is contention.
         for rx in rx.iter() {
             if let Ok(msg) = rx.try_recv() {
-                return Some((rx.source.clone(), msg));
+                return Some((rx.source_arc(), msg));
             }
         }
 
@@ -175,7 +160,7 @@ impl<T: Send> ReceiveSet<T> {
     pub fn recv_timeout(
         &self,
         timeout: std::time::Duration,
-    ) -> Option<(Arc<SmartChannelSource>, SmartMessage<T>)> {
+    ) -> Option<(Arc<LogSource>, SmartMessage)> {
         re_tracing::profile_function!();
 
         let mut rx = self.receivers.lock();
@@ -187,20 +172,20 @@ impl<T: Send> ReceiveSet<T> {
 
         let mut sel = Select::new();
         for r in rx.iter() {
-            sel.recv(&r.rx);
+            sel.recv(r.inner());
         }
 
         let oper = sel.select_timeout(timeout).ok()?;
         let index = oper.index();
-        if let Ok(msg) = oper.recv(&rx[index].rx) {
-            return Some((rx[index].source.clone(), msg));
+        if let Ok(msg) = oper.recv(rx[index].inner()) {
+            return Some((rx[index].source_arc(), msg));
         }
 
         // Nothing ready to receive, but we must poll all receivers to update their `connected` status.
         // Why use `select` first? Because `select` is fair (random) when there is contention.
         for rx in rx.iter() {
             if let Ok(msg) = rx.try_recv() {
-                return Some((rx.source.clone(), msg));
+                return Some((rx.source_arc(), msg));
             }
         }
 
@@ -210,62 +195,68 @@ impl<T: Send> ReceiveSet<T> {
 
 #[test]
 fn test_receive_set() {
-    use crate::{SmartMessageSource, smart_channel};
+    use re_log_types::StoreId;
+
+    use crate::{LogSource, log_channel};
 
     let timeout = std::time::Duration::from_millis(100);
 
-    let (tx_file, rx_file) = smart_channel::<i32>(
-        SmartMessageSource::File("path".into()),
-        SmartChannelSource::File("path".into()),
-    );
-    let (tx_sdk, rx_sdk) = smart_channel::<i32>(SmartMessageSource::Sdk, SmartChannelSource::Sdk);
+    let (tx_file, rx_file) = log_channel(LogSource::File("path".into()));
+    let (tx_sdk, rx_sdk) = log_channel(LogSource::Sdk);
 
-    let set = ReceiveSet::default();
+    let set = LogReceiverSet::default();
 
-    assert_eq!(set.try_recv(), None);
-    assert_eq!(set.recv_timeout(timeout), None);
+    assert!(set.try_recv().is_none());
+    assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(set.sources(), vec![]);
 
     set.add(rx_file);
 
-    assert_eq!(set.try_recv(), None);
-    assert_eq!(set.recv_timeout(timeout), None);
+    assert!(set.try_recv().is_none());
+    assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
-        vec![Arc::new(SmartChannelSource::File("path".into()))]
+        vec![Arc::new(LogSource::File("path".into()))]
     );
 
     set.add(rx_sdk);
 
-    assert_eq!(set.try_recv(), None);
-    assert_eq!(set.recv_timeout(timeout), None);
+    assert!(set.try_recv().is_none());
+    assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
         vec![
-            Arc::new(SmartChannelSource::File("path".into())),
-            Arc::new(SmartChannelSource::Sdk)
+            Arc::new(LogSource::File("path".into())),
+            Arc::new(LogSource::Sdk)
         ]
     );
 
-    tx_sdk.send(42).unwrap();
-    assert_eq!(set.try_recv().unwrap().0, Arc::new(SmartChannelSource::Sdk));
+    tx_sdk
+        .send(re_log_types::DataSourceMessage::UiCommand(
+            re_log_types::DataSourceUiCommand::SetUrlFragment {
+                store_id: StoreId::empty_recording(),
+                fragment: "#foo".into(),
+            },
+        ))
+        .unwrap();
+    assert_eq!(set.try_recv().unwrap().0, Arc::new(LogSource::Sdk));
 
-    assert_eq!(set.try_recv(), None);
-    assert_eq!(set.recv_timeout(timeout), None);
+    assert!(set.try_recv().is_none());
+    assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(set.sources().len(), 2);
 
     drop(tx_sdk);
 
-    assert_eq!(set.try_recv(), None);
-    assert_eq!(set.recv_timeout(timeout), None);
+    assert!(set.try_recv().is_none());
+    assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(
         set.sources(),
-        vec![Arc::new(SmartChannelSource::File("path".into()))]
+        vec![Arc::new(LogSource::File("path".into()))]
     );
 
     drop(tx_file);
 
-    assert_eq!(set.try_recv(), None);
-    assert_eq!(set.recv_timeout(timeout), None);
+    assert!(set.try_recv().is_none());
+    assert!(set.recv_timeout(timeout).is_none());
     assert_eq!(set.sources(), vec![]);
 }

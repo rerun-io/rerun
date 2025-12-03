@@ -1,3 +1,5 @@
+use std::str::FromStr as _;
+
 use egui::RichText;
 use re_auth::Jwt;
 use re_redap_client::ConnectionRegistryHandle;
@@ -5,9 +7,9 @@ use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
-use std::str::FromStr as _;
 
-use crate::{context::Context, servers::Command};
+use crate::context::Context;
+use crate::servers::Command;
 
 mod login_flow;
 use login_flow::{LoginFlow, LoginFlowResult};

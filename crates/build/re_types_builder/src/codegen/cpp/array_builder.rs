@@ -1,9 +1,8 @@
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
 
-use crate::{Object, ObjectClass, Objects, Type};
-
 use super::forward_decl::{ForwardDecl, ForwardDecls};
+use crate::{Object, ObjectClass, Objects, Type};
 
 pub fn arrow_array_builder_type(typ: &Type, objects: &Objects) -> Ident {
     arrow_array_builder_type_and_declaration(typ, objects, &mut ForwardDecls::default())

@@ -1,10 +1,12 @@
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
+use re_log_channel::LogReceiver;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{AuthContext, RecordingOrTable, time_control::TimeControlCommand};
+use crate::{AuthContext, RecordingOrTable};
+use crate::time_control::TimeControlCommand;
 
 // ----------------------------------------------------------------------------
 
@@ -24,7 +26,7 @@ pub enum SystemCommand {
     LoadDataSource(LogDataSource),
 
     /// Add a new receiver for log messages.
-    AddReceiver(re_smart_channel::Receiver<re_log_types::DataSourceMessage>),
+    AddReceiver(LogReceiver),
 
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),

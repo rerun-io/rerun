@@ -1,7 +1,5 @@
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use tokio_stream::Stream;
 

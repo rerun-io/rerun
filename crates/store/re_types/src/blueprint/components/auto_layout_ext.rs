@@ -1,6 +1,5 @@
-use crate::datatypes::Bool;
-
 use super::AutoLayout;
+use crate::datatypes::Bool;
 
 impl Default for AutoLayout {
     #[inline]

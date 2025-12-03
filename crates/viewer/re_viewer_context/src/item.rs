@@ -1,7 +1,8 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 
-use crate::{BlueprintId, ContainerId, Contents, ViewId, blueprint_id::ViewIdRegistry};
+use crate::blueprint_id::ViewIdRegistry;
+use crate::{BlueprintId, ContainerId, Contents, ViewId};
 
 /// One "thing" in the UI.
 ///
@@ -12,7 +13,7 @@ pub enum Item {
     AppId(re_log_types::ApplicationId),
 
     /// A place where data comes from, e.g. the path to a .rrd or a gRPC URL.
-    DataSource(re_smart_channel::SmartChannelSource),
+    DataSource(re_log_channel::LogSource),
 
     /// A recording (or blueprint)
     StoreId(re_log_types::StoreId),

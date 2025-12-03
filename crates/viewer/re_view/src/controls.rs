@@ -1,6 +1,7 @@
 //! For zooming and panning we use the modifiers in the default [`egui::InputOptions`].
 
-use egui::{Key, KeyboardShortcut, Modifiers, PointerButton, os::OperatingSystem};
+use egui::os::OperatingSystem;
+use egui::{Key, KeyboardShortcut, Modifiers, PointerButton};
 
 /// Which mouse button to drag for panning a 2D view.
 pub const DRAG_PAN2D_BUTTON: PointerButton = PointerButton::Primary;

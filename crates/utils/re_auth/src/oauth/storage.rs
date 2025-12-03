@@ -38,14 +38,14 @@ pub enum StoreError {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use file::{load, store};
-
 #[cfg(target_arch = "wasm32")]
 pub use web::{load, store};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod file {
-    use super::{Credentials, LoadError, StoreError};
     use std::path::PathBuf;
+
+    use super::{Credentials, LoadError, StoreError};
 
     fn credentials_path() -> Option<PathBuf> {
         directories::ProjectDirs::from("", "", "rerun")

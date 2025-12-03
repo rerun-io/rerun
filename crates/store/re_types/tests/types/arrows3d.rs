@@ -1,9 +1,7 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
-    archetypes::Arrows3D,
-    components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D},
-    datatypes::Vec3D,
-};
+use re_types::archetypes::Arrows3D;
+use re_types::components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D};
+use re_types::datatypes::Vec3D;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {

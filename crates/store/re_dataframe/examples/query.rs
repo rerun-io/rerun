@@ -1,7 +1,6 @@
 #![expect(clippy::unwrap_used)]
 
 use itertools::Itertools as _;
-
 use re_arrow_util::format_record_batch;
 use re_dataframe::{
     AbsoluteTimeRange, ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression,

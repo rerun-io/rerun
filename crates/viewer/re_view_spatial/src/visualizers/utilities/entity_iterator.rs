@@ -6,11 +6,9 @@ use re_viewer_context::{
     ViewSystemExecutionError, VisualizerExecutionOutput,
 };
 
-use crate::{
-    contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext},
-    view_kind::SpatialViewKind,
-    visualizers::utilities::transform_info_for_archetype_or_report_error,
-};
+use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::utilities::transform_info_for_archetype_or_report_error;
 
 // ---
 

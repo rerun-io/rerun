@@ -3,14 +3,12 @@ use std::str::FromStr as _;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::{IntoPyObjectExt as _, Py, PyObject, PyRef, PyRefMut, PyResult, pyclass, pymethods};
-
 use re_log_types::EntityPath;
 use re_sorbet::{ColumnDescriptor, ComponentColumnSelector, SorbetColumnDescriptors};
 
-use super::{
-    AnyComponentColumn, component_columns::PyComponentColumnDescriptor,
-    index_columns::PyIndexColumnDescriptor,
-};
+use super::AnyComponentColumn;
+use super::component_columns::PyComponentColumnDescriptor;
+use super::index_columns::PyIndexColumnDescriptor;
 use crate::catalog::to_py_err;
 
 #[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation

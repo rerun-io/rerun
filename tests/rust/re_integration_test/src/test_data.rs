@@ -1,5 +1,6 @@
+use std::error::Error;
 use std::str::FromStr as _;
-use std::{error::Error, time::Duration};
+use std::time::Duration;
 
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};

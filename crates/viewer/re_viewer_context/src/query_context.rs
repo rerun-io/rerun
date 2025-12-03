@@ -1,10 +1,9 @@
 use std::sync::LazyLock;
 
 use ahash::HashMap;
+use re_log_types::{EntityPath, EntityPathHash};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
-
-use re_log_types::{EntityPath, EntityPathHash};
 
 use crate::{
     DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,

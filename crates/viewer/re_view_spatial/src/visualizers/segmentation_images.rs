@@ -1,21 +1,17 @@
-use re_types::{
-    Archetype as _,
-    archetypes::SegmentationImage,
-    components::{ImageFormat, Opacity},
-    image::ImageKind,
-};
+use re_types::Archetype as _;
+use re_types::archetypes::SegmentationImage;
+use re_types::components::{ImageFormat, Opacity};
+use re_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect, view_kind::SpatialViewKind,
-    visualizers::textured_rect_from_image,
-};
-
 use super::SpatialViewVisualizerData;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::textured_rect_from_image;
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct SegmentationImageVisualizer {
     pub data: SpatialViewVisualizerData,

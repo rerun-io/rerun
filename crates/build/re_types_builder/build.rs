@@ -2,9 +2,8 @@
 
 use std::path::Path;
 
-use xshell::{Shell, cmd};
-
 use re_build_tools::{compute_file_hash, read_versioning_hash, write_versioning_hash};
+use xshell::{Shell, cmd};
 
 // ---
 

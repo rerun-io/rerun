@@ -1,5 +1,6 @@
-use crate::menu::menu_style;
 use egui::{InnerResponse, Popup, Response, SetOpenCommand};
+
+use crate::menu::menu_style;
 
 pub trait ResponseExt {
     fn _self(&self) -> &Response;

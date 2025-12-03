@@ -5,16 +5,12 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
-use re_types::{
-    Component as _, View as _, ViewClassIdentifier, archetypes,
-    blueprint::{
-        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
-        components::Eye3DKind,
-    },
-    components::{LinearSpeed, Plane3D, Position3D, Vector3D},
-    datatypes::Vec3D,
-    view_coordinates::SignedAxis3,
-};
+use re_types::blueprint::archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation};
+use re_types::blueprint::components::Eye3DKind;
+use re_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
+use re_types::datatypes::Vec3D;
+use re_types::view_coordinates::SignedAxis3;
+use re_types::{Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -26,17 +22,14 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    contexts::register_spatial_contexts,
-    heuristics::default_visualized_entities_for_visualizer_kind,
-    spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::register_3d_spatial_visualizers,
-};
-use crate::{
-    shared_fallbacks,
-    visualizers::{CamerasVisualizer, TransformAxes3DVisualizer},
+use crate::contexts::register_spatial_contexts;
+use crate::heuristics::default_visualized_entities_for_visualizer_kind;
+use crate::shared_fallbacks;
+use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{
+    CamerasVisualizer, TransformAxes3DVisualizer, register_3d_spatial_visualizers,
 };
 
 #[derive(Default)]
@@ -514,11 +507,11 @@ impl ViewClass for SpatialView3D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
             view_property_ui::<EyeControls3D>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
             view_property_ui_grid3d(&view_ctx, ui);
-            view_property_ui::<SpatialInformation>(&view_ctx, ui);
         });
 
         Ok(())

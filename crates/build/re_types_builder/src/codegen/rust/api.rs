@@ -1,7 +1,5 @@
-use std::{
-    collections::{BTreeMap, HashMap, HashSet},
-    str::FromStr as _,
-};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::str::FromStr as _;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -9,33 +7,25 @@ use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
+use super::arrow::quote_fqname_as_type_path;
+use super::blueprint_validation::generate_blueprint_validation;
+use super::reflection::generate_reflection;
+use super::util::{append_tokens, doc_as_lines, quote_doc_lines};
+use crate::codegen::rust::arrow::ArrowDataTypeTokenizer;
+use crate::codegen::rust::deserializer::{
+    quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
+    should_optimize_buffer_slice_deserialize,
+};
+use crate::codegen::rust::serializer::quote_arrow_serializer;
+use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
+use crate::codegen::{Target, autogen_warning};
+use crate::objects::{EnumIntegerType, ObjectClass};
 use crate::{
     ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
     ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
     CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    TypeRegistry,
-    codegen::{
-        Target, autogen_warning,
-        rust::{
-            arrow::ArrowDataTypeTokenizer,
-            deserializer::{
-                quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
-                should_optimize_buffer_slice_deserialize,
-            },
-            serializer::quote_arrow_serializer,
-            util::{is_tuple_struct_from_obj, quote_doc_line},
-        },
-    },
-    format_path,
-    objects::{EnumIntegerType, ObjectClass},
-};
-
-use super::{
-    arrow::quote_fqname_as_type_path,
-    blueprint_validation::generate_blueprint_validation,
-    reflection::generate_reflection,
-    util::{append_tokens, doc_as_lines, quote_doc_lines},
+    TypeRegistry, format_path,
 };
 
 // ---

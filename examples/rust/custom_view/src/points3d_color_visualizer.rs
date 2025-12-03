@@ -1,12 +1,10 @@
+use rerun::external::egui;
+use rerun::external::re_log_types::{EntityPath, Instance};
 use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
-use rerun::external::{
-    egui,
-    re_log_types::{EntityPath, Instance},
-    re_viewer_context::{
-        IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
-        ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput,
-        VisualizerQueryInfo, VisualizerSystem,
-    },
+use rerun::external::re_viewer_context::{
+    IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.

@@ -1,10 +1,10 @@
 use nohash_hasher::IntSet;
-
 use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewerContext;
 
-use crate::{view_kind::SpatialViewKind, visualizers::SpatialViewVisualizerData};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
 
 /// Returns all entities for which a visualizer of the given kind would be picked.
 ///

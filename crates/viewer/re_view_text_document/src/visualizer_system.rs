@@ -1,8 +1,6 @@
 use re_chunk_store::LatestAtQuery;
-use re_types::{
-    archetypes::TextDocument,
-    components::{self},
-};
+use re_types::archetypes::TextDocument;
+use re_types::components::{self};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,

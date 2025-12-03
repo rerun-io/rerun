@@ -1,23 +1,18 @@
-use std::{
-    sync::Arc,
-    thread::{self, JoinHandle},
-    time::Duration,
-};
-
-use tokio::{
-    runtime,
-    sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
-};
-use tonic::transport::Endpoint;
-use web_time::Instant;
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 use re_chunk::external::crossbeam::atomic::AtomicCell;
-use re_log_encoding::{ToTransport as _, rrd::Compression};
+use re_log_encoding::ToTransport as _;
+use re_log_encoding::rrd::Compression;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::{
-    WriteMessagesRequest, message_proxy_service_client::MessageProxyServiceClient,
-};
+use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_uri::ProxyUri;
+use tokio::runtime;
+use tokio::sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender};
+use tonic::transport::Endpoint;
+use web_time::Instant;
 
 use crate::TonicStatusError;
 

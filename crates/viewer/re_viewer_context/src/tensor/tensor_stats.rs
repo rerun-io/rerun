@@ -1,6 +1,5 @@
 use half::f16;
 use ndarray::ArrayViewD;
-
 use re_types::tensor_data::TensorDataType;
 
 /// Stats about a tensor or image.

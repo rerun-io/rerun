@@ -1,16 +1,12 @@
 use arrow::buffer::ScalarBuffer;
-
 use re_types_core::ArrowString;
 
-use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
-
-#[cfg(feature = "image")]
-use crate::tensor_data::TensorImageLoadError;
-
+use super::{TensorBuffer, TensorData};
 #[expect(unused_imports)] // Used for docstring links
 use crate::archetypes::EncodedImage;
-
-use super::{TensorBuffer, TensorData};
+#[cfg(feature = "image")]
+use crate::tensor_data::TensorImageLoadError;
+use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
 // ----------------------------------------------------------------------------
 

@@ -4,7 +4,6 @@ use std::sync::atomic::AtomicU64;
 
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
-
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};

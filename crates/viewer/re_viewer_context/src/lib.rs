@@ -45,85 +45,91 @@ mod viewer_context;
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
-pub use self::{
-    annotations::{
-        AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
-        ResolvedAnnotationInfos,
-    },
-    app_options::AppOptions,
-    async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
-    blueprint_helpers::{BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes},
-    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId},
-    cache::{
-        Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
-        SharablePlayableVideoStream, TensorStatsCache, TransformDatabaseStoreCache,
-        VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
-    },
-    collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
-    command_sender::{
-        CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
-    },
-    component_fallbacks::{ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for},
-    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
-    contents::{Contents, ContentsName, blueprint_id_to_tile_id},
-    display_mode::DisplayMode,
-    drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
-    file_dialog::sanitize_file_name,
-    global_context::{AuthContext, GlobalContext},
-    heuristics::suggest_view_for_each_entity,
-    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at},
-    item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item},
-    item_collection::{ItemCollection, ItemContext},
-    maybe_mut_ref::MaybeMutRef,
-    query_context::{
-        DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
-    },
-    query_range::QueryRange,
-    recording_or_table::RecordingOrTable,
-    selection_state::{
-        ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
-        SelectionHighlight,
-    },
-    storage_context::StorageContext,
-    store_context::StoreContext,
-    store_hub::StoreHub,
-    tables::{TableStore, TableStores},
-    tensor::{ImageStats, TensorStats},
-    time_control::{
-        TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse, TimeView,
-        time_panel_blueprint_entity_path,
-    },
-    typed_entity_collections::{
-        IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, VisualizableEntities,
-    },
-    undo::BlueprintUndoState,
-    utils::{
-        auto_color_egui, auto_color_for_entity_path, level_to_rich_text,
-        video_stream_time_from_query, video_timestamp_component_to_video_time,
-    },
-    view::{
-        DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, OverridePath,
-        PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedView,
-        RequiredComponents, SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt,
-        ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
-        ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
-        ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
-        ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
-        ViewSystemRegistrator, VisualizerCollection, VisualizerExecutionErrorState,
-        VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    },
-    viewer_context::ViewerContext,
-    visitor_flow_control::VisitorControlFlow,
-};
+pub use re_ui::UiLayout;
 
-pub use re_ui::UiLayout; // Historical reasons
+pub use self::annotations::{
+    AnnotationContextStoreSubscriber, AnnotationMap, Annotations, ResolvedAnnotationInfo,
+    ResolvedAnnotationInfos,
+};
+pub use self::app_options::AppOptions;
+pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
+pub use self::blueprint_helpers::{
+    BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
+};
+pub use self::blueprint_id::{
+    BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
+};
+pub use self::cache::{
+    Cache, CacheMemoryReport, CacheMemoryReportItem, Caches, ImageDecodeCache, ImageStatsCache,
+    SharablePlayableVideoStream, TensorStatsCache, TransformDatabaseStoreCache, VideoAssetCache,
+    VideoStreamCache, VideoStreamProcessingError,
+};
+pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
+pub use self::command_sender::{
+    CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
+};
+pub use self::component_fallbacks::{
+    ComponentFallbackError, FallbackProviderRegistry, typed_fallback_for,
+};
+pub use self::component_ui_registry::{
+    ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName,
+};
+pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
+pub use self::display_mode::DisplayMode;
+pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
+pub use self::file_dialog::sanitize_file_name;
+pub use self::global_context::GlobalContext;
+pub use self::heuristics::suggest_view_for_each_entity;
+pub use self::image_info::{
+    ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,
+};
+pub use self::item::{Item, resolve_mono_instance_path, resolve_mono_instance_path_item};
+pub use self::item_collection::{ItemCollection, ItemContext};
+pub use self::maybe_mut_ref::MaybeMutRef;
+pub use self::query_context::{
+    DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
+};
+pub use self::query_range::QueryRange;
+pub use self::recording_or_table::RecordingOrTable;
+pub use self::selection_state::{
+    ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
+    SelectionHighlight,
+};
+pub use self::storage_context::StorageContext;
+pub use self::store_context::StoreContext;
+pub use self::store_hub::StoreHub;
+pub use self::tables::{TableStore, TableStores};
+pub use self::tensor::{ImageStats, TensorStats};
+pub use self::time_control::{
+    TIME_PANEL_PATH, TimeControl, TimeControlCommand, TimeControlResponse, TimeView,
+    time_panel_blueprint_entity_path,
+};
+pub use self::typed_entity_collections::{
+    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, VisualizableEntities,
+};
+pub use self::undo::BlueprintUndoState;
+pub use self::utils::{
+    auto_color_egui, auto_color_for_entity_path, level_to_rich_text, video_stream_time_from_query,
+    video_timestamp_component_to_video_time,
+};
+pub use self::view::{
+    DataResult, IdentifiedViewSystem, OptionalViewEntityHighlight, OverridePath,
+    PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedView,
+    RequiredComponents, SmallVisualizerSet, SystemExecutionOutput, ViewClass, ViewClassExt,
+    ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry, ViewClassRegistryError,
+    ViewContext, ViewContextCollection, ViewContextSystem, ViewContextSystemOncePerFrameResult,
+    ViewEntityHighlight, ViewHighlights, ViewOutlineMasks, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, VisualizerCollection, VisualizerExecutionErrorState,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+};
+pub use self::viewer_context::ViewerContext;
+pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
 
 pub mod external {
-    pub use nohash_hasher;
-    pub use {re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
-
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
+    pub use {nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
 }
 
 // ---------------------------------------------------------------------------

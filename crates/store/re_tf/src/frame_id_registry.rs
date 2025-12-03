@@ -1,6 +1,7 @@
 use std::collections::hash_map::Entry;
 
 use nohash_hasher::IntMap;
+use re_byte_size::SizeBytes;
 use re_log_types::EntityPath;
 use re_types::components::TransformFrameId;
 use re_types::{TransformFrameIdHash, archetypes};
@@ -22,6 +23,16 @@ impl Default for FrameIdRegistry {
             ))
             .collect(),
         }
+    }
+}
+
+impl SizeBytes for FrameIdRegistry {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            frame_id_lookup_table,
+        } = self;
+
+        frame_id_lookup_table.total_size_bytes()
     }
 }
 
@@ -126,11 +137,12 @@ impl FrameIdRegistry {
 
 #[cfg(test)]
 mod tests {
-    use crate::frame_id_registry::FrameIdRegistry;
     use re_chunk_store::Chunk;
     use re_log_types::{EntityPath, TimePoint};
     use re_types::components::TransformFrameId;
     use re_types::{TransformFrameIdHash, archetypes};
+
+    use crate::frame_id_registry::FrameIdRegistry;
 
     #[test]
     fn test_entity_path_derived_frame_in_data() {

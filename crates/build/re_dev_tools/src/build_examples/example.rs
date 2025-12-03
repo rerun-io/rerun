@@ -2,8 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Display;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::Context as _;

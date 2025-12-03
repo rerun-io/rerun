@@ -1,6 +1,7 @@
+use egui::{InnerResponse, Response, Ui, Vec2};
+
 use crate::design_tokens::AlertVisuals;
 use crate::{Icon, UiExt as _, icons};
-use egui::{InnerResponse, Response, Ui, Vec2};
 
 enum AlertKind {
     Info,
@@ -128,8 +129,9 @@ impl Alert {
 
 #[cfg(test)]
 mod tests {
-    use crate::UiExt as _;
     use egui_kittest::Harness;
+
+    use crate::UiExt as _;
 
     #[test]
     fn test_alert() {
