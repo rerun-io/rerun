@@ -259,11 +259,18 @@ pub struct StreamFooter {
     /// to make sure that we didn't just get "lucky" (or unlucky, rather) when jumping around and
     /// parsing random bytes.
     ///
+    /// For now, the checksum algorithm is hardcoded to `xxh32`, the 32bit variant of the
+    /// [`xxhash` family of hashing algorithms](https://xxhash.com/).
+    /// This is fast, HW-accelerated, non-cryptographic hash that is perfect when needing to hash
+    /// RRD footers, which can potentially get very, very large.
+    ///
     /// [`RrdFooter`]: [crate::RrdFooter]
     //
     // TODO(cmc): It shouldn't be the job of the StreamFooter to carry checksums for a specific
     // message's payload. All frames should have identifiers and CRCs for both themselves and their
     // payloads, in which case this CRC would belong in the MessageHeader.
+    // TODO(cmc): In a potential future RRF3, we might make the choice of checksum algorithm
+    // configurable via flag.
     pub crc_excluding_header: u32,
 }
 
