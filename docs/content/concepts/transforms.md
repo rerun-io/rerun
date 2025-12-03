@@ -8,7 +8,9 @@ order: 300
 Rerun comes with built-in support for modeling spatial relationships between entities.
 This page details how the [different archetypes](https://rerun.io/docs/reference/types/archetypes#transforms) involved interact with each other and explains how transforms are set up in Rerun.
 
-## Transform hierarchies with entity paths
+# Transforms
+
+## Entity path transforms
 
 The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
@@ -50,7 +52,7 @@ Named transform frames have several advantages over entity path based hierarchie
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
-## Entity hierarchy based transforms under the hood - implicit transform frames
+## Entity hierarchy based transforms under the hood
 
 Under the hood, Rerun's entity path hierarchies actually use the same transform frame system as named frames.
 For each entity path, an associated transform frame with the prefix `tf#` is automatically created:
@@ -121,6 +123,8 @@ rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 <picture>
   <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png" alt="">
 </picture>
+
+# Other transform types
 
 ## Pinhole projections
 
