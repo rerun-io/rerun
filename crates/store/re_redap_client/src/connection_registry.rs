@@ -340,6 +340,11 @@ impl ConnectionRegistryHandle {
                 }
             }
 
+            Err(err) if err.code() == Code::NotFound => Err(ApiError::tonic(
+                err,
+                format!("{origin} is not a valid Rerun server"),
+            )),
+
             Err(err) => {
                 if let Some(cred_error) = err.source().and_then(|s| {
                     s.downcast_ref::<re_auth::credentials::CredentialsProviderError>()
