@@ -441,6 +441,9 @@ impl Properties for SettingsOpened {
 /// pre-login anonymous activity with their authenticated identity.
 pub struct SetPersonProperty {
     pub email: String,
+
+    /// The user's organization ID, from [`re_auth::oauth::RerunCloudClaims::org_id`].
+    pub organization_id: Option<String>,
 }
 
 impl Event for SetPersonProperty {
@@ -451,8 +454,12 @@ impl Event for SetPersonProperty {
 
 impl Properties for SetPersonProperty {
     fn serialize(self, event: &mut AnalyticsEvent) {
-        let Self { email } = self;
+        let Self {
+            email,
+            organization_id,
+        } = self;
         event.insert("email", email);
+        event.insert_opt("organization_id", organization_id);
     }
 }
 

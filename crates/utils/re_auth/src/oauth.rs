@@ -233,6 +233,7 @@ impl InMemoryCredentials {
         if let Some(analytics) = re_analytics::Analytics::global_get() {
             analytics.record(re_analytics::event::SetPersonProperty {
                 email: self.0.user.email.clone(),
+                organization_id: self.0.user.organization_id.clone(),
             });
         }
 
@@ -251,8 +252,13 @@ impl Credentials {
         res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
         let access_token = AccessToken::try_from_unverified_jwt(Jwt(res.access_token))?;
+        let user = User {
+            id: res.user.id,
+            email: res.user.email,
+            organization_id: res.organization_id,
+        };
         Ok(InMemoryCredentials(Self {
-            user: res.user,
+            user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
         }))
@@ -271,6 +277,7 @@ impl Credentials {
         let user = User {
             id: claims.sub,
             email,
+            organization_id: Some(claims.org_id),
         };
         let access_token = AccessToken {
             token: access_token,
@@ -299,6 +306,7 @@ impl Credentials {
 pub struct User {
     pub id: String,
     pub email: String,
+    pub organization_id: Option<String>,
 }
 
 /// An access token which was valid at some point in the past.
