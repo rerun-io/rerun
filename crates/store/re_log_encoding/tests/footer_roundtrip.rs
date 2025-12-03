@@ -33,16 +33,18 @@ fn footer_empty() {
         re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
             .unwrap();
 
-    let rrd_footer_start =
-        stream_footer.rrd_footer_byte_offset_from_start_excluding_header as usize;
-    let rrd_footer_end = rrd_footer_start
-        .checked_add(stream_footer.rrd_footer_byte_size_excluding_header as usize)
-        .unwrap();
-    let rrd_footer_bytes = &msgs_encoded[rrd_footer_start..rrd_footer_end];
+    let rrd_footer_range = stream_footer
+        .rrd_footer_byte_span_from_start_excluding_header
+        .try_cast::<usize>()
+        .unwrap()
+        .range();
+    let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
 
     {
         let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-            rrd_footer_start as u64,
+            stream_footer
+                .rrd_footer_byte_span_from_start_excluding_header
+                .start,
             rrd_footer_bytes,
         )
         .crc_excluding_header;

@@ -229,29 +229,20 @@ pub struct StreamFooter {
     /// Always set to [`Self::RRD_IDENTIFIER`].
     pub identifier: [u8; 4], // FOOT
 
-    /// The position in bytes where the serialized [`RrdFooter`] payload starts, excluding the
-    /// message header.
+    /// The span in bytes where the serialized [`RrdFooter`] payload starts end ends, excluding
+    /// the message header.
     ///
     /// I.e. a transport-level [`RrdFooter`] can be decoded from the bytes at (pseudo-code):
     /// ```text
-    /// let start = stream_footer.rrd_footer_byte_offset_from_start_excluding_header;
-    /// let end = start + stream_footer.rrd_footer_byte_size_excluding_header;
+    /// let start = stream_footer.rrd_footer_byte_span_from_start_excluding_header.start;
+    /// let end = stream_footer.rrd_footer_byte_span_from_start_excluding_header.end();
     /// let bytes = &file[start..end];
     /// let rrd_footer = re_protos::RrdFooter::decode(bytes)?;
     /// let rrd_footer = rrd_footer.to_application()?;
     /// ```
     ///
     /// [`RrdFooter`]: [crate::RrdFooter]
-    pub rrd_footer_byte_offset_from_start_excluding_header: u64,
-
-    /// The size in bytes of the serialized [`RrdFooter`] payload, excluding the message header.
-    ///
-    /// This is guaranteed to be the same value as the `len` found in the associated message
-    /// header, but duplicating it here makes it possible for decoders to get everything they
-    /// need using a single IO.
-    ///
-    /// [`RrdFooter`]: [crate::RrdFooter]
-    pub rrd_footer_byte_size_excluding_header: u64,
+    pub rrd_footer_byte_span_from_start_excluding_header: re_span::Span<u64>,
 
     /// Checksum for the [`RrdFooter`] payload.
     ///
@@ -280,15 +271,13 @@ impl StreamFooter {
     pub const RRD_IDENTIFIER: [u8; 4] = *b"FOOT";
 
     pub fn new(
-        rrd_footer_byte_offset_from_start_excluding_header: u64,
-        rrd_footer_byte_size_excluding_header: u64,
+        rrd_footer_byte_span_from_start_excluding_header: re_span::Span<u64>,
         crc_excluding_header: u32,
     ) -> Self {
         Self {
             fourcc: crate::RRD_FOURCC,
             identifier: Self::RRD_IDENTIFIER,
-            rrd_footer_byte_offset_from_start_excluding_header,
-            rrd_footer_byte_size_excluding_header,
+            rrd_footer_byte_span_from_start_excluding_header,
             crc_excluding_header,
         }
     }
@@ -298,11 +287,14 @@ impl StreamFooter {
         rrd_footer_bytes: &[u8],
     ) -> Self {
         let crc_excluding_header = xxhash_rust::xxh32::xxh32(rrd_footer_bytes, Self::CRC_SEED);
+        let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
+            start: rrd_footer_byte_offset_from_start_excluding_header,
+            len: rrd_footer_bytes.len() as u64,
+        };
         Self {
             fourcc: crate::RRD_FOURCC,
             identifier: Self::RRD_IDENTIFIER,
-            rrd_footer_byte_offset_from_start_excluding_header,
-            rrd_footer_byte_size_excluding_header: rrd_footer_bytes.len() as u64,
+            rrd_footer_byte_span_from_start_excluding_header,
             crc_excluding_header,
         }
     }
@@ -313,18 +305,25 @@ impl Encodable for StreamFooter {
         let Self {
             fourcc,
             identifier,
-            rrd_footer_byte_offset_from_start_excluding_header,
-            rrd_footer_byte_size_excluding_header,
-            crc_excluding_header: crc,
+            rrd_footer_byte_span_from_start_excluding_header,
+            crc_excluding_header,
         } = self;
 
         let before = out.len() as u64;
 
         out.extend_from_slice(fourcc);
         out.extend_from_slice(identifier);
-        out.extend_from_slice(&rrd_footer_byte_offset_from_start_excluding_header.to_le_bytes());
-        out.extend_from_slice(&rrd_footer_byte_size_excluding_header.to_le_bytes());
-        out.extend_from_slice(&crc.to_le_bytes());
+        out.extend_from_slice(
+            &rrd_footer_byte_span_from_start_excluding_header
+                .start
+                .to_le_bytes(),
+        );
+        out.extend_from_slice(
+            &rrd_footer_byte_span_from_start_excluding_header
+                .len
+                .to_le_bytes(),
+        );
+        out.extend_from_slice(&crc_excluding_header.to_le_bytes());
 
         let n = out.len() as u64 - before;
         assert_eq!(Self::ENCODED_SIZE_BYTES as u64, n);
@@ -363,17 +362,16 @@ impl Decodable for StreamFooter {
             )));
         }
 
-        let rrd_footer_byte_offset_from_start_excluding_header =
-            u64::from_le_bytes(data[8..16].try_into().expect("cannot fail, checked above"));
-        let rrd_footer_byte_size_excluding_header =
-            u64::from_le_bytes(data[16..24].try_into().expect("cannot fail, checked above"));
+        let rrd_footer_byte_span_from_start_excluding_header = re_span::Span {
+            start: u64::from_le_bytes(data[8..16].try_into().expect("cannot fail, checked above")),
+            len: u64::from_le_bytes(data[16..24].try_into().expect("cannot fail, checked above")),
+        };
         let crc = u32::from_le_bytes(data[24..28].try_into().expect("cannot fail, checked above"));
 
         Ok(Self {
             fourcc,
             identifier,
-            rrd_footer_byte_offset_from_start_excluding_header,
-            rrd_footer_byte_size_excluding_header,
+            rrd_footer_byte_span_from_start_excluding_header,
             crc_excluding_header: crc,
         })
     }

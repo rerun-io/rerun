@@ -109,8 +109,7 @@ impl FooterState {
     #[expect(clippy::unnecessary_wraps)] // won't stay for long
     fn append(
         &mut self,
-        _byte_offset: u64,
-        _byte_size: u64,
+        _byte_span_excluding_header: re_span::Span<u64>,
         msg: &re_log_types::LogMsg,
     ) -> Result<(), EncodeError> {
         match msg {
@@ -224,12 +223,13 @@ impl<W: std::io::Write> Encoder<W> {
 
         let byte_size_excluding_header = n - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
+        let byte_span_excluding_header = re_span::Span {
+            start: byte_offset_excluding_header,
+            len: byte_size_excluding_header,
+        };
+
         if let Some(footer_state) = self.footer_state.as_mut() {
-            footer_state.append(
-                byte_offset_excluding_header,
-                byte_size_excluding_header,
-                message,
-            )?;
+            footer_state.append(byte_span_excluding_header, message)?;
         }
 
         Ok(n)

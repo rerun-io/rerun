@@ -340,15 +340,12 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             let StreamFooter {
                                 fourcc: _,
                                 identifier: _,
-                                rrd_footer_byte_offset_from_start_excluding_header,
-                                rrd_footer_byte_size_excluding_header,
+                                rrd_footer_byte_span_from_start_excluding_header,
                                 crc_excluding_header: _,
                             } = footer;
 
-                            let rrd_footer_start =
-                                rrd_footer_byte_offset_from_start_excluding_header;
                             let rrd_footer_end =
-                                rrd_footer_start + rrd_footer_byte_size_excluding_header;
+                                rrd_footer_byte_span_from_start_excluding_header.end();
 
                             if rrd_footer_end > position as u64 {
                                 // The RRD footer cannot possibly end after the stream footer starts, since it must
