@@ -44,7 +44,6 @@ re_uri.workspace = true
 
 arrow.workspace = true
 ehttp.workspace = true
-http.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 serde.workspace = true
