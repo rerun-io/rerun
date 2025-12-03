@@ -23,6 +23,8 @@ use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
 /// Used in `re_crash_handler`.
 pub struct CrashPanic {
     pub build_info: BuildInfo,
+
+    /// Anonymized
     pub callstack: String,
     pub message: Option<String>,
     pub file_line: Option<String>,
