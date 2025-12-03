@@ -45,8 +45,8 @@ pub enum EntityDbClass<'a> {
     /// This is an official rerun example recording.
     ExampleRecording,
 
-    /// This is a recording loaded from a remote dataset partition.
-    DatasetPartition(&'a re_uri::DatasetPartitionUri),
+    /// This is a recording loaded from a remote dataset segment.
+    DatasetSegment(&'a re_uri::DatasetSegmentUri),
 
     /// This is a blueprint.
     Blueprint,
@@ -293,7 +293,7 @@ impl EntityDb {
                 }
 
                 Some(SmartChannelSource::RedapGrpcStream { uri, .. }) => {
-                    EntityDbClass::DatasetPartition(uri)
+                    EntityDbClass::DatasetSegment(uri)
                 }
 
                 _ => EntityDbClass::LocalRecording,

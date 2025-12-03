@@ -3,13 +3,14 @@ use arrow::ffi_stream::ArrowArrayStreamReader;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    Bound, Py, PyAny, PyResult, Python,
+    Bound, Py, PyAny, PyErr, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
 };
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
@@ -91,41 +92,19 @@ impl PyCatalogClientInternal {
             .and_then(|datafusion| datafusion.getattr("dataframe_formatter"))
             .and_then(|df_formatter| df_formatter.getattr("set_formatter"));
 
-        let client = wait_for_future(py, connection.client())?;
-        let runtime = get_tokio_runtime().handle();
-        let provider_names = get_all_catalog_names(&client, runtime).map_err(to_py_err)?;
-        let mut providers = provider_names
-            .iter()
-            .map(|p| p.as_str())
-            .collect::<Vec<_>>();
-        if !providers.contains(&DEFAULT_CATALOG_NAME) {
-            providers.push(DEFAULT_CATALOG_NAME);
-        }
-
-        if let Some(ctx) = datafusion_ctx.as_ref() {
-            for provider_name in providers {
-                let catalog_provider = PyDataFusionCatalogProvider::new(
-                    Some(provider_name.to_owned()),
-                    client.clone(),
-                );
-
-                ctx.call_method1(
-                    py,
-                    "register_catalog_provider",
-                    (provider_name, catalog_provider),
-                )?;
-            }
-        }
-
         if let Ok(format_fn) = format_fn {
             let _ = format_fn.call1((html_renderer,))?;
         }
 
-        Ok(Self {
+        let ret = Self {
             origin,
             connection,
             datafusion_ctx,
-        })
+        };
+
+        ret.update_catalog_providers(py, true)?;
+
+        Ok(ret)
     }
 
     /// Get the URL of the catalog (a `rerun+http` URL).
@@ -276,6 +255,8 @@ impl PyCatalogClientInternal {
 
         let table_entry = connection.register_table(py, name, url)?;
 
+        self_.borrow(py).update_catalog_providers(py, false)?;
+
         Py::new(
             py,
             PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
@@ -297,6 +278,8 @@ impl PyCatalogClientInternal {
 
         let schema = Arc::new(schema.0);
         let table_entry = connection.create_table_entry(py, name, schema, &url)?;
+
+        self_.borrow(py).update_catalog_providers(py, false)?;
 
         Py::new(
             py,
@@ -364,5 +347,45 @@ impl PyCatalogClientInternal {
         }
 
         Py::new(py, PyEntryId::from(entry_details[0].id))
+    }
+}
+
+impl PyCatalogClientInternal {
+    fn update_catalog_providers(&self, py: Python<'_>, force_register: bool) -> Result<(), PyErr> {
+        let client = wait_for_future(py, self.connection.client())?;
+        let runtime = get_tokio_runtime().handle();
+
+        let provider_names = get_all_catalog_names(&client, runtime).map_err(to_py_err)?;
+        let mut providers = provider_names
+            .iter()
+            .map(|p| p.as_str())
+            .collect::<Vec<_>>();
+        if !providers.contains(&DEFAULT_CATALOG_NAME) {
+            providers.push(DEFAULT_CATALOG_NAME);
+        }
+
+        if let Some(ctx) = self.datafusion_ctx.as_ref() {
+            let existing_catalogs: HashSet<String> =
+                ctx.call_method0(py, "catalog_names")?.extract(py)?;
+
+            for provider_name in providers {
+                if !force_register && existing_catalogs.contains(provider_name) {
+                    continue;
+                }
+
+                let catalog_provider = PyDataFusionCatalogProvider::new(
+                    Some(provider_name.to_owned()),
+                    client.clone(),
+                );
+
+                ctx.call_method1(
+                    py,
+                    "register_catalog_provider",
+                    (provider_name, catalog_provider),
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }

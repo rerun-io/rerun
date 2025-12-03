@@ -285,10 +285,10 @@ impl PyDatasetEntryInternal {
                         .unwrap_or(re_log_types::NonMinI64::MAX),
                 ),
             });
-        Ok(re_uri::DatasetPartitionUri {
+        Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
-            partition_id,
+            segment_id: partition_id, // Python API still uses partition_id for now
 
             time_range,
             //TODO(ab): add support for this
