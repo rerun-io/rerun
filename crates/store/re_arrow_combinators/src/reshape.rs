@@ -447,10 +447,9 @@ impl Transform for RowMajorToColumnMajor {
         #[expect(clippy::disallowed_methods)]
         let reordered_values = arrow::compute::take(source.values(), &indices_to_take, None)?;
 
-        let field = Arc::new(Field::new(
-            "item",
-            source.values().data_type().clone(),
-            true,
+        let field = Arc::new(Field::new_list_field(
+            source.value_type().clone(),
+            source.is_nullable(),
         ));
         Ok(FixedSizeListArray::new(
             field,

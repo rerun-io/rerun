@@ -1,7 +1,10 @@
 //! Transforms that cast arrays to different types.
 
+use std::sync::Arc;
+
 use arrow::array::{Array, ArrayRef, ArrowPrimitiveType, PrimitiveArray};
 use arrow::compute::cast;
+use arrow::datatypes::Field;
 
 use crate::{Error, Transform};
 
@@ -121,13 +124,11 @@ impl Transform for ListToFixedSizeList {
             }
         }
 
-        // We know that `source` is a `ListArray` by it's type. But Arrow won't expose its field directly.
-        let field = match source.data_type() {
-            arrow::datatypes::DataType::List(f) => f.clone(),
-            _ => unreachable!(),
-        };
-
         // Build the FixedSizeListArray.
+        let field = Arc::new(Field::new_list_field(
+            source.value_type().clone(),
+            source.is_nullable(),
+        ));
         Ok(arrow::array::FixedSizeListArray::try_new(
             field,
             self.value_length,
