@@ -1,17 +1,14 @@
-use arrow::datatypes::Schema;
-use arrow::ffi_stream::ArrowArrayStreamReader;
-use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyValueError;
-use pyo3::{
-    Bound, Py, PyAny, PyErr, PyResult, Python,
-    exceptions::{PyLookupError, PyRuntimeError},
-    pyclass, pymethods,
-    types::PyAnyMethods as _,
-};
-use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use std::collections::HashSet;
 use std::sync::Arc;
+
+use arrow::datatypes::Schema;
+use arrow::ffi_stream::ArrowArrayStreamReader;
+use arrow::pyarrow::{FromPyArrow as _, PyArrowType};
+use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
+use pyo3::types::PyAnyMethods as _;
+use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
+use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
 use crate::catalog::table_entry::PyTableInsertMode;
@@ -20,7 +17,6 @@ use crate::catalog::{
     to_py_err,
 };
 use crate::utils::{get_tokio_runtime, wait_for_future};
-use arrow::pyarrow::FromPyArrow as _;
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(  // NOLINT: ignore[py-cls-eq] non-trivial implementation

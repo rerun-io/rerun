@@ -1,6 +1,5 @@
-use crate::datatypes::Vec3D;
-
 use super::PoseScale3D;
+use crate::datatypes::Vec3D;
 
 impl PoseScale3D {
     /// Scale the same amount along all axis.

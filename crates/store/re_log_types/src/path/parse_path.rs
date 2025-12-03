@@ -335,10 +335,8 @@ pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fmt::{Debug, Display},
-        str::FromStr,
-    };
+    use std::fmt::{Debug, Display};
+    use std::str::FromStr;
 
     use re_types_core::ComponentIdentifier;
 

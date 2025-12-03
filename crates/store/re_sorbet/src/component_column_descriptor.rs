@@ -1,5 +1,4 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
-
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType};
 

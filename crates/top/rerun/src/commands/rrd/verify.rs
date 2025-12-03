@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use arrow::array::AsArray as _;
-
 use itertools::Itertools as _;
 use re_log_types::LogMsg;
 use re_types::reflection::{ComponentDescriptorExt as _, Reflection};

@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{RecordBatch, RecordBatchOptions},
-    datatypes::{Field, Fields, Schema},
-};
+use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Field, Fields, Schema};
 use re_log::ResultExt as _;
 
 pub struct Migration;

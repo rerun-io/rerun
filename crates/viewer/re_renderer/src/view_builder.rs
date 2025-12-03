@@ -1,20 +1,19 @@
-use parking_lot::RwLock;
 use std::sync::Arc;
 
-use crate::{
-    DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba,
-    allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer},
-    context::RenderContext,
-    draw_phases::{
-        DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
-        ScreenshotProcessor,
-    },
-    global_bindings::FrameUniformBuffer,
-    queueable_draw_data::QueueableDrawData,
-    renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo},
-    transform::RectTransform,
-    wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
+use parking_lot::RwLock;
+
+use crate::allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer};
+use crate::context::RenderContext;
+use crate::draw_phases::{
+    DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
+    ScreenshotProcessor,
 };
+use crate::global_bindings::FrameUniformBuffer;
+use crate::queueable_draw_data::QueueableDrawData;
+use crate::renderer::{CompositorDrawData, DebugOverlayDrawData, DrawableCollectionViewInfo};
+use crate::transform::RectTransform;
+use crate::wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc};
+use crate::{DebugLabel, DrawPhaseManager, MsaaMode, RectInt, RenderConfig, Rgba};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewBuilderError {

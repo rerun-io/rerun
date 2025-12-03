@@ -1,7 +1,7 @@
-use arrow::{array::ArrayRef, datatypes::DataType as ArrowDatatype};
+use arrow::array::ArrayRef;
+use arrow::datatypes::DataType as ArrowDatatype;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-
 use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 

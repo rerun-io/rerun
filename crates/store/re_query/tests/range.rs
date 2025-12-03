@@ -4,16 +4,13 @@
 use std::sync::Arc;
 
 use itertools::Itertools as _;
-
 use re_chunk::{RowId, TimelineName};
+use re_chunk_store::external::re_chunk::Chunk;
 use re_chunk_store::{
     AbsoluteTimeRange, ChunkStore, ChunkStoreSubscriber as _, RangeQuery, TimeInt,
-    external::re_chunk::Chunk,
 };
-use re_log_types::{
-    EntityPath, TimePoint, build_frame_nr,
-    example_components::{MyColor, MyPoint, MyPoints},
-};
+use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+use re_log_types::{EntityPath, TimePoint, build_frame_nr};
 use re_query::QueryCache;
 use re_types_core::{Archetype as _, ComponentBatch as _};
 

@@ -1,5 +1,6 @@
-use super::Angle;
 use std::fmt::Formatter;
+
+use super::Angle;
 
 impl Angle {
     /// Zero angle, often used for representing no rotation.

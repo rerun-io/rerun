@@ -1,13 +1,10 @@
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, LazyLock},
-};
+use std::collections::BTreeMap;
+use std::sync::{Arc, LazyLock};
 
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use anyhow::Context as _;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-
 use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
@@ -16,7 +13,8 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_channel::LogSource;
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
-use re_types::{archetypes, components::Timestamp};
+use re_types::archetypes;
+use re_types::components::Timestamp;
 
 use crate::{
     BlueprintUndoState, CacheMemoryReport, Caches, RecordingOrTable, StorageContext, StoreContext,

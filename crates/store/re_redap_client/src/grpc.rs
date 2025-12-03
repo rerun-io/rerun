@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use arrow::{array::RecordBatch, error::ArrowError};
+use arrow::array::RecordBatch;
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
-
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_types::{
@@ -13,7 +13,6 @@ use re_protos::cloud::v1alpha1::ext::{Query, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::{Origin, TimeSelection};
-
 use tokio_stream::{Stream, StreamExt as _};
 
 use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};

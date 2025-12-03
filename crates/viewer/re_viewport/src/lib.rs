@@ -11,8 +11,7 @@ mod viewport_ui;
 pub use viewport_ui::ViewportUi;
 
 pub mod external {
-    pub use re_types;
-    pub use re_view;
+    pub use {re_types, re_view};
 }
 
 // TODO(andreas): cfg test this only?

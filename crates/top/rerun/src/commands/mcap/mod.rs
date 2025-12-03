@@ -1,12 +1,14 @@
-use std::{collections::BTreeSet, fs::File, io::BufWriter, sync::mpsc::Receiver};
+use std::collections::BTreeSet;
+use std::fs::File;
+use std::io::BufWriter;
+use std::sync::mpsc::Receiver;
 
 use clap::Subcommand;
 use re_log_encoding::Encoder;
 use re_log_types::{LogMsg, RecordingId};
 use re_mcap::{LayerIdentifier, SelectedLayers};
-use re_sdk::{
-    ApplicationId, DataLoader, DataLoaderSettings, LoadedData, external::re_data_loader::McapLoader,
-};
+use re_sdk::external::re_data_loader::McapLoader;
+use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct ConvertCommand {

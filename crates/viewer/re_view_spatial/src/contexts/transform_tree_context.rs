@@ -4,7 +4,8 @@ use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
-use re_types::{ArchetypeName, archetypes, components::ImagePlaneDistance};
+use re_types::components::ImagePlaneDistance;
+use re_types::{ArchetypeName, archetypes};
 use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     DataResult, IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,

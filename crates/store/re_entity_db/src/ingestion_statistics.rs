@@ -1,9 +1,8 @@
 use emath::History;
 use parking_lot::Mutex;
-use saturating_cast::SaturatingCast as _;
-
 use re_chunk_store::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 use re_sorbet::TimestampMetadata;
+use saturating_cast::SaturatingCast as _;
 
 /// Statistics about the latency of incoming data to a store.
 #[derive(Default)]

@@ -9,14 +9,11 @@ use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj, Simulation};
 use re_log::error_once;
 
+use super::params::ForceLayoutParams;
+use super::request::NodeTemplate;
+use super::slots::{Slot, SlotKind, slotted_edges};
+use super::{EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry};
 use crate::graph::{EdgeId, NodeId};
-
-use super::{
-    EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
-    params::ForceLayoutParams,
-    request::NodeTemplate,
-    slots::{Slot, SlotKind, slotted_edges},
-};
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
     fn from(node: &'a NodeTemplate) -> Self {

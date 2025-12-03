@@ -3,11 +3,9 @@ use gltf::texture::WrappingMode;
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
-use crate::{
-    CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul,
-    mesh::{CpuMesh, Material, MeshError},
-    resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D},
-};
+use crate::mesh::{CpuMesh, Material, MeshError};
+use crate::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D};
+use crate::{CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul};
 
 #[derive(thiserror::Error, Debug)]
 pub enum GltfImportError {

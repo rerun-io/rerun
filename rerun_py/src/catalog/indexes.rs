@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
-use arrow::array::RecordBatchOptions;
-use arrow::{
-    array::{Float32Array, RecordBatch},
-    datatypes::Field,
-};
-use pyo3::{
-    FromPyObject, PyErr, PyResult, exceptions::PyRuntimeError, prelude::*, pyclass, pymethods,
-    types::PyDict,
-};
-
+use arrow::array::{Float32Array, RecordBatch, RecordBatchOptions};
+use arrow::datatypes::Field;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::prelude::*;
+use pyo3::types::PyDict;
+use pyo3::{FromPyObject, PyErr, PyResult, pyclass, pymethods};
 use re_protos::cloud::v1alpha1::ext::IndexProperties;
 use re_sorbet::ComponentColumnSelector;
 

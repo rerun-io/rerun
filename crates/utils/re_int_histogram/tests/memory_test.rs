@@ -1,4 +1,5 @@
-use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 thread_local! {
     static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };

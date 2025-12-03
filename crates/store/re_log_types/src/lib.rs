@@ -34,29 +34,23 @@ mod vec_deque_ext;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::{
-    arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    data_source_message::{DataSourceMessage, DataSourceUiCommand},
-    entry_id::{EntryId, EntryIdOrName},
-    index::{
-        AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TimestampFormatKind, TryFromIntError,
-    },
-    instance::Instance,
-    path::*,
-    vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
+pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
+pub use self::entry_id::{EntryId, EntryIdOrName};
+pub use self::index::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
+    TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TimestampFormatKind,
+    TryFromIntError,
 };
+pub use self::instance::Instance;
+pub use self::path::*;
+pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
-    pub use arrow;
-
-    pub use re_tuid;
-    pub use re_types_core;
+    pub use {arrow, re_tuid, re_types_core};
 }
 
 #[macro_export]

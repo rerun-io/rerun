@@ -1,8 +1,8 @@
-use fixed::{FixedI128, traits::LossyInto as _};
-
-use crate::TimeInt;
+use fixed::FixedI128;
+use fixed::traits::LossyInto as _;
 
 use super::NonMinI64;
+use crate::TimeInt;
 
 /// Either nanoseconds or sequence numbers.
 ///

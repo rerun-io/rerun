@@ -18,14 +18,11 @@ mod rrd;
 mod snippets;
 mod wait_for_output;
 
-use example::Channel;
-use wait_for_output::wait_for_output;
-
-pub use example::{Example, ExamplesManifest, Language};
-
 // -----------------------------------------------------------------------------
-
 use argh::FromArgs;
+use example::Channel;
+pub use example::{Example, ExamplesManifest, Language};
+use wait_for_output::wait_for_output;
 
 /// Build examples and their manifest.
 #[derive(FromArgs)]

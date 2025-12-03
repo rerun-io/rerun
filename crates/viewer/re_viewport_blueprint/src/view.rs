@@ -3,14 +3,10 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
-use re_types::{
-    ViewClassIdentifier,
-    blueprint::{
-        archetypes::{self as blueprint_archetypes},
-        components::{self as blueprint_components, ViewOrigin},
-    },
-    components::{Name, Visible},
-};
+use re_types::ViewClassIdentifier;
+use re_types::blueprint::archetypes::{self as blueprint_archetypes};
+use re_types::blueprint::components::{self as blueprint_components, ViewOrigin};
+use re_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
@@ -451,14 +447,13 @@ impl ViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     use ahash::HashSet;
     use re_chunk::{ComponentIdentifier, RowId};
-    use re_log_types::{
-        StoreKind, TimePoint,
-        example_components::{MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
+    use re_log_types::{StoreKind, TimePoint};
     use re_test_context::TestContext;
     use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{

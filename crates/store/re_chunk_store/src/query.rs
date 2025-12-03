@@ -1,22 +1,18 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
+use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
+use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
 use saturating_cast::SaturatingCast as _;
 
-use re_chunk::{Chunk, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
-use re_log_types::AbsoluteTimeRange;
-use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
-
-use crate::{ChunkStore, store::ChunkIdSetPerTime};
-
+use crate::ChunkStore;
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
+use crate::store::ChunkIdSetPerTime;
 
 // ---
 

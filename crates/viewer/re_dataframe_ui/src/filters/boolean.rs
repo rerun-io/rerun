@@ -4,10 +4,9 @@ use arrow::datatypes::{DataType, Field};
 use datafusion::common::Column;
 use datafusion::logical_expr::{Expr, col, lit, not};
 use datafusion::prelude::{array_element, array_has, array_sort};
-use strum::VariantArray as _;
-
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUiAction};
 

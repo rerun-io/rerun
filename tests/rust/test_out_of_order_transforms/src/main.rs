@@ -4,9 +4,10 @@
 
 use std::f32::consts::TAU;
 
+use rerun::external::re_log;
 use rerun::{
     Angle, Color, EntityPath, LineStrips3D, Points3D, Position3D, RecordingStream,
-    RotationAxisAngle, Transform3D, TransformRelation, ViewCoordinates, external::re_log,
+    RotationAxisAngle, Transform3D, TransformRelation, ViewCoordinates,
 };
 
 const SUN_TO_PLANET_DISTANCE: f32 = 6.0;

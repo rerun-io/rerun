@@ -27,28 +27,21 @@ mod setup;
 #[cfg(all(feature = "setup", target_arch = "wasm32"))]
 mod web_logger;
 
+pub use channel_logger::*;
 pub use log::{Level, LevelFilter};
-
-pub use result_extensions::ResultExt;
-
-// The tracing macros support more syntax features than the log, that's why we use them:
-pub use tracing::{debug, error, info, trace, warn};
-
 // The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
 // In the future we should implement our own macros to de-duplicate based on the callsite,
 // similar to how the log console in a browser will automatically suppress duplicates.
 pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
-
-pub use channel_logger::*;
-
 #[cfg(feature = "setup")]
 pub use multi_logger::{MultiLoggerNotSetupError, add_boxed_logger, add_logger};
-
-#[cfg(feature = "setup")]
-pub use setup::{setup_logging, setup_logging_with_filter};
-
+pub use result_extensions::ResultExt;
 #[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
 pub use setup::PanicOnWarnScope;
+#[cfg(feature = "setup")]
+pub use setup::{setup_logging, setup_logging_with_filter};
+// The tracing macros support more syntax features than the log, that's why we use them:
+pub use tracing::{debug, error, info, trace, warn};
 
 /// Re-exports of other crates.
 pub mod external {

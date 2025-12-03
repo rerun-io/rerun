@@ -1,12 +1,11 @@
 use egui::NumExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeType};
-use re_types::{
-    blueprint::components::TimeRange,
-    datatypes::{TimeInt, TimeRangeBoundary},
-};
+use re_types::blueprint::components::TimeRange;
+use re_types::datatypes::{TimeInt, TimeRangeBoundary};
+use re_ui::list_item::LabelContent;
 use re_ui::{
-    RelativeTimeRange, TimeDragValue, UiExt as _, list_item::LabelContent,
-    relative_time_range_boundary_label_text, relative_time_range_label_text,
+    RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_boundary_label_text,
+    relative_time_range_label_text,
 };
 use re_viewer_context::{MaybeMutRef, TimeControlCommand};
 

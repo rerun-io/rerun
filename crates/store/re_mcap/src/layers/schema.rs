@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimePoint};
-use re_types::{
-    AsComponents as _,
-    archetypes::{McapChannel, McapSchema},
-    components,
-};
-
-use crate::Error;
+use re_types::archetypes::{McapChannel, McapSchema};
+use re_types::{AsComponents as _, components};
 
 use super::{Layer, LayerIdentifier};
+use crate::Error;
 
 /// Extracts a static summary of channel and schema information.
 ///

@@ -128,12 +128,12 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
+    use core::net::Ipv4Addr;
+
     use re_log_types::DataPath;
 
-    use crate::{DatasetSegmentUri, Fragment, Scheme, TimeSelection};
-
     use super::*;
-    use core::net::Ipv4Addr;
+    use crate::{DatasetSegmentUri, Fragment, Scheme, TimeSelection};
 
     #[test]
     fn scheme_conversion() {

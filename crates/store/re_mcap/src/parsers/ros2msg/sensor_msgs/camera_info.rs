@@ -1,15 +1,11 @@
-use super::super::definitions::sensor_msgs;
 use re_chunk::{Chunk, ChunkId};
 use re_types::archetypes::Pinhole;
 
 use super::super::Ros2MessageParser;
-use crate::{
-    Error,
-    parsers::{
-        cdr,
-        decode::{MessageParser, ParserContext},
-    },
-};
+use super::super::definitions::sensor_msgs;
+use crate::Error;
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
 
 /// Plugin that parses `sensor_msgs/msg/CameraInfo` messages.
 #[derive(Default)]

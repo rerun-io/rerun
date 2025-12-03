@@ -5,10 +5,8 @@
 //! - G: Toggle camera mode
 // TODO(#1426): unify camera logic between examples and add a free camera.
 
-use re_renderer::{
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
-};
+use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use winit::event::ElementState;
 
 mod framework;

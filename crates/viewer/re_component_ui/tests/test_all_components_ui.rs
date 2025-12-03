@@ -1,27 +1,28 @@
 #![expect(clippy::unwrap_used)]
 
-use std::{collections::HashSet, fmt::Formatter, fs, sync::Arc};
+use std::collections::HashSet;
+use std::fmt::Formatter;
+use std::fs;
+use std::sync::Arc;
 
-use arrow::{array::ArrayRef, datatypes::DataType};
+use arrow::array::ArrayRef;
+use arrow::datatypes::DataType;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
 use re_test_context::TestContext;
-use re_types::{
-    ComponentDescriptor,
-    blueprint::components::{ComponentColumnSelector, QueryExpression},
-    components::{self, GraphEdge, GraphNode, ImageFormat, Text},
-    datatypes::{ChannelDatatype, PixelFormat},
-};
-use re_types_core::{Component, ComponentBatch, ComponentType, reflection::Reflection};
+use re_types::ComponentDescriptor;
+use re_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
+use re_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
+use re_types::datatypes::{ChannelDatatype, PixelFormat};
+use re_types_core::reflection::Reflection;
+use re_types_core::{Component, ComponentBatch, ComponentType};
 use re_ui::{UiExt as _, list_item};
-use re_viewer_context::{
-    UiLayout, ViewerContext,
-    external::re_chunk_store::{LatestAtQuery, external::re_chunk},
-};
+use re_viewer_context::external::re_chunk_store::LatestAtQuery;
+use re_viewer_context::external::re_chunk_store::external::re_chunk;
+use re_viewer_context::{UiLayout, ViewerContext};
 
 /// Test case master list.
 ///

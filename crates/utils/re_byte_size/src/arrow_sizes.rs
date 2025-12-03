@@ -1,8 +1,6 @@
-use arrow::{
-    array::{Array, ArrayRef, ListArray, RecordBatch},
-    buffer::ScalarBuffer,
-    datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields},
-};
+use arrow::array::{Array, ArrayRef, ListArray, RecordBatch};
+use arrow::buffer::ScalarBuffer;
+use arrow::datatypes::{ArrowNativeType, DataType, Field, Fields, Schema, UnionFields};
 
 use super::SizeBytes;
 

@@ -2,32 +2,27 @@
 
 mod views;
 
-use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    iter,
-    ops::Deref,
-};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::iter;
+use std::ops::Deref;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::{Itertools as _, chain};
 use unindent::unindent;
 
+use self::views::code_for_view;
+use super::Target;
+use super::common::ExampleInfo;
+use crate::codegen::common::{Example, collect_snippets_for_api_docs};
+use crate::codegen::{StringExt as _, autogen_warning};
+use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
+use crate::objects::{ObjectClass, State};
 use crate::{
     ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
     GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
-    codegen::{
-        StringExt as _, autogen_warning,
-        common::{Example, collect_snippets_for_api_docs},
-    },
-    data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
-    objects::{ObjectClass, State},
 };
-
-use self::views::code_for_view;
-
-use super::{Target, common::ExampleInfo};
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";

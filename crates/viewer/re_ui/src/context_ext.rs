@@ -1,4 +1,5 @@
-use egui::{Align2, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
+use egui::emath::Float as _;
+use egui::{Align2, Mesh, Rect, Shape, Vec2, pos2};
 
 use crate::{DesignTokens, TopBarStyle};
 
@@ -112,8 +113,9 @@ pub trait ContextExt {
 
         #[cfg(target_os = "macos")]
         let native_buttons_size_in_native_scale = if make_room_for_window_buttons {
-            use crate::egui_ext::WindowChromeMetrics;
             use raw_window_handle::HasWindowHandle as _;
+
+            use crate::egui_ext::WindowChromeMetrics;
 
             let metrics = _frame
                 .window_handle()

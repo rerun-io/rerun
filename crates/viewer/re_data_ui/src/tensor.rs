@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
-
-use re_log_types::{EntityPath, hash::Hash64};
-use re_types::{ComponentDescriptor, RowId, datatypes::TensorData};
+use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
+use re_types::datatypes::TensorData;
+use re_types::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{TensorStats, TensorStatsCache, UiLayout, ViewerContext};
 

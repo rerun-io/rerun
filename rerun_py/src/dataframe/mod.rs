@@ -8,21 +8,16 @@ mod rrd;
 mod schema;
 mod type_aliases;
 
-pub use self::{
-    component_columns::{PyComponentColumnDescriptor, PyComponentColumnSelector},
-    index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector},
-    recording::{PyRecording, PyRecordingHandle},
-    recording_view::PyRecordingView,
-    rrd::{PyRRDArchive, load_archive, load_recording},
-    schema::PySchema,
-    type_aliases::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyIndexValuesLike},
-};
+use pyo3::types::{PyModule, PyModuleMethods as _};
+use pyo3::{Bound, PyResult, wrap_pyfunction};
 
-use pyo3::{
-    Bound, PyResult,
-    types::{PyModule, PyModuleMethods as _},
-    wrap_pyfunction,
-};
+pub use self::component_columns::{PyComponentColumnDescriptor, PyComponentColumnSelector};
+pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
+pub use self::recording::{PyRecording, PyRecordingHandle};
+pub use self::recording_view::PyRecordingView;
+pub use self::rrd::{PyRRDArchive, load_archive, load_recording};
+pub use self::schema::PySchema;
+pub use self::type_aliases::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyIndexValuesLike};
 
 /// Register the `rerun.dataframe` module.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

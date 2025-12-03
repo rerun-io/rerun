@@ -3,35 +3,32 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
-use pyo3::{Bound, PyErr};
-use pyo3::{
-    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
-    exceptions::PyValueError, pyclass, pymethods,
-};
-use tokio_stream::StreamExt as _;
-use tracing::instrument;
-
+use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateIndexRequest, DeleteIndexesRequest, IndexConfig, IndexQueryProperties,
-        InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
-        ext::{DatasetDetails, DatasetEntry, EntryDetails, IndexProperties},
-        index_query_properties,
-    },
-    common::v1alpha1::ext::DatasetHandle,
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, DatasetEntry, EntryDetails, IndexProperties,
 };
+use re_protos::cloud::v1alpha1::{
+    CreateIndexRequest, DeleteIndexesRequest, IndexConfig, IndexQueryProperties,
+    InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
+    index_query_properties,
+};
+use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::fetch_chunks_response_to_chunk_and_segment_id;
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
+use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
+use super::dataframe_query::PyDataframeQueryView;
+use super::task::PyTasks;
 use super::{
     PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
-    PyIndexingResult, VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView,
-    task::PyTasks, to_py_err,
+    PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
 use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};

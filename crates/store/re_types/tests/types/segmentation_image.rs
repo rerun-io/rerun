@@ -1,9 +1,7 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
-    archetypes::SegmentationImage,
-    components::{ImageBuffer, ImageFormat},
-    datatypes::{self, ChannelDatatype},
-};
+use re_types::archetypes::SegmentationImage;
+use re_types::components::{ImageBuffer, ImageFormat};
+use re_types::datatypes::{self, ChannelDatatype};
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn segmentation_image_roundtrip() {

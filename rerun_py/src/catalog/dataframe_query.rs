@@ -12,8 +12,6 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
-use tracing::instrument;
-
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
@@ -22,6 +20,7 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathFilter};
 use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
+use tracing::instrument;
 
 #[cfg(feature = "perf_telemetry")]
 use crate::catalog::trace_context::with_trace_span;

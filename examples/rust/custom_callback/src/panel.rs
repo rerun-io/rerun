@@ -1,13 +1,12 @@
 use std::time::Instant;
 
-use crate::comms::{protocol::Message, viewer::ControlViewerHandle};
-use rerun::external::{
-    eframe,
-    egui::{self, ScrollArea},
-    re_log::ResultExt,
-    re_ui::{UiExt, list_item},
-    re_viewer,
-};
+use rerun::external::egui::{self, ScrollArea};
+use rerun::external::re_log::ResultExt;
+use rerun::external::re_ui::{UiExt, list_item};
+use rerun::external::{eframe, re_viewer};
+
+use crate::comms::protocol::Message;
+use crate::comms::viewer::ControlViewerHandle;
 
 #[derive(Default)]
 pub struct ControlStates {

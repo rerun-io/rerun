@@ -1,11 +1,12 @@
-use std::{hash::Hash, path::PathBuf};
+use std::hash::Hash;
+use std::path::PathBuf;
 
 use ahash::HashSet;
 use anyhow::Context as _;
 
-use crate::{FileResolver, FileSystem, RenderContext, debug_label::DebugLabel};
-
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
+use crate::debug_label::DebugLabel;
+use crate::{FileResolver, FileSystem, RenderContext};
 
 // ---
 

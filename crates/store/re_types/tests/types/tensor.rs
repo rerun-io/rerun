@@ -1,9 +1,7 @@
-use re_types::{
-    Archetype as _, AsComponents as _, Loggable as _,
-    archetypes::Tensor,
-    datatypes::{TensorBuffer, TensorData},
-    tensor_data::TensorCastError,
-};
+use re_types::archetypes::Tensor;
+use re_types::datatypes::{TensorBuffer, TensorData};
+use re_types::tensor_data::TensorCastError;
+use re_types::{Archetype as _, AsComponents as _, Loggable as _};
 
 #[test]
 fn tensor_buffer_roundtrip() {

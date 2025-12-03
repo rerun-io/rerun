@@ -2,25 +2,20 @@
 
 use std::borrow::Cow;
 
-use arrow::{
-    array::{
-        ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
-        make_array,
-    },
-    buffer::OffsetBuffer as ArrowOffsetBuffer,
-    datatypes::Field as ArrowField,
-    pyarrow::PyArrowType,
+use arrow::array::{
+    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, make_array,
 };
-use pyo3::{
-    Bound, PyAny, PyResult,
-    exceptions::PyRuntimeError,
-    types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
-};
-
+use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+use arrow::datatypes::Field as ArrowField;
+use arrow::pyarrow::PyArrowType;
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
+use pyo3::{Bound, PyAny, PyResult};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
-use re_sdk::{ComponentDescriptor, EntityPath, Timeline, external::nohash_hasher::IntMap};
+use re_sdk::external::nohash_hasher::IntMap;
+use re_sdk::{ComponentDescriptor, EntityPath, Timeline};
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {

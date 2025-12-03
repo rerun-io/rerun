@@ -37,20 +37,17 @@ use datatype_uis::{
     edit_view_enum_with_variant_available, edit_view_range1d, view_timestamp, view_uuid,
     view_view_id,
 };
-
-use re_types::{
-    blueprint::components::{
-        AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
-        ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
-        RootContainer, ViewFit, ViewMaximized,
-    },
-    components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
-        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Position3D, Range1D, Scale3D,
-        SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
-        ValueRange, Vector3D, VideoCodec, Visible,
-    },
+use re_types::blueprint::components::{
+    AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
+    ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
+    RootContainer, ViewFit, ViewMaximized,
+};
+use re_types::components::{
+    AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
+    GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed, MagnificationFilter, MarkerSize,
+    Name, Opacity, Position2D, Position3D, Range1D, Scale3D, SeriesVisible, ShowLabels,
+    StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D,
+    VideoCodec, Visible,
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 

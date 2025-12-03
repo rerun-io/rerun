@@ -1,4 +1,5 @@
-use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::Clear};
+use re_types::archetypes::Clear;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {

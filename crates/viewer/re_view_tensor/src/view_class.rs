@@ -1,16 +1,16 @@
-use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
+use egui::epaint::TextShape;
+use egui::{Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::{EntityPath, hash::Hash64};
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{self, TensorScalarMapping, TensorViewFit},
-        components::ViewFit,
-    },
-    components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
-    datatypes::TensorData,
+use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
+use re_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
+use re_types::blueprint::components::ViewFit;
+use re_types::components::{
+    Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
+use re_types::datatypes::TensorData;
+use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -22,12 +22,10 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    TensorDimension,
-    dimension_mapping::TensorSliceSelection,
-    tensor_dimension_mapper::dimension_mapping_ui,
-    visualizer_system::{TensorSystem, TensorVisualization},
-};
+use crate::TensorDimension;
+use crate::dimension_mapping::TensorSliceSelection;
+use crate::tensor_dimension_mapper::dimension_mapping_ui;
+use crate::visualizer_system::{TensorSystem, TensorVisualization};
 
 #[derive(Default)]
 pub struct TensorView;

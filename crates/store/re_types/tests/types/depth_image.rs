@@ -1,9 +1,7 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
-    archetypes::DepthImage,
-    components::{DepthMeter, ImageBuffer, ImageFormat},
-    datatypes::{self, ChannelDatatype},
-};
+use re_types::archetypes::DepthImage;
+use re_types::components::{DepthMeter, ImageBuffer, ImageFormat};
+use re_types::datatypes::{self, ChannelDatatype};
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn depth_image_roundtrip() {

@@ -1,7 +1,6 @@
 use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response};
-
 use re_entity_db::TimeHistogram;
 use re_log_types::{TimeInt, TimeType, TimestampFormat};
 

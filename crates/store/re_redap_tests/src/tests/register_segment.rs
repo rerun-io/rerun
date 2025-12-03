@@ -4,18 +4,16 @@ use arrow::array::{ListArray, RecordBatch, StringArray, TimestampNanosecondArray
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-use url::Url;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
-        GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
-        ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
-        ext::DatasetDetails, rerun_cloud_service_server::RerunCloudService,
-    },
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::ext::DatasetDetails;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    CreateDatasetEntryRequest, DataSource, DataSourceKind, GetDatasetManifestSchemaRequest,
+    GetSegmentTableSchemaRequest, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
 };
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use url::Url;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop};
 use crate::{

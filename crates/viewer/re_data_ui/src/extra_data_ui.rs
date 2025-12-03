@@ -1,8 +1,9 @@
-use crate::{blob, image, transform_frames, video};
 use re_chunk_store::UnitChunkShared;
 use re_types_core::ComponentDescriptor;
 use re_ui::{UiLayout, list_item};
 use re_viewer_context::ViewerContext;
+
+use crate::{blob, image, transform_frames, video};
 
 pub enum ExtraDataUi {
     Video(video::VideoUi),

@@ -1,17 +1,16 @@
 //! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Write as _,
-};
+use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write as _;
 
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
+use crate::codegen::common::ExampleInfo;
+use crate::codegen::{Target, autogen_warning};
+use crate::objects::{FieldKind, ViewReference};
 use crate::{
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    codegen::{Target, autogen_warning, common::ExampleInfo},
-    objects::{FieldKind, ViewReference},
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";

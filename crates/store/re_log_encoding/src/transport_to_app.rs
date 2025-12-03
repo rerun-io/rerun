@@ -235,7 +235,8 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
 ) -> Result<re_log_types::LogMsg, CodecError> {
     re_tracing::profile_function!();
 
-    use re_protos::{log_msg::v1alpha1::log_msg::Msg, missing_field};
+    use re_protos::log_msg::v1alpha1::log_msg::Msg;
+    use re_protos::missing_field;
 
     match message {
         Msg::SetStoreInfo(set_store_info) => {

@@ -1,14 +1,13 @@
 use re_chunk::EntityPath;
+// Used all over in docstrings.
+#[expect(unused_imports)]
+use re_chunk_store::ComponentColumnDescriptor;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression};
 use re_log_types::EntityPathFilter;
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
 use re_sorbet::ChunkColumnDescriptors;
 
 use crate::QueryHandle;
-
-// Used all over in docstrings.
-#[expect(unused_imports)]
-use re_chunk_store::ComponentColumnDescriptor;
 
 // --- Queries ---
 

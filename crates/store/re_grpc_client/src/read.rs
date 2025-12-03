@@ -1,13 +1,9 @@
+use re_log_encoding::ToApplication as _;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::sdk_comms::v1alpha1::{ReadMessagesRequest, ReadMessagesResponse};
 use tokio_stream::StreamExt as _;
 
-use re_log_encoding::ToApplication as _;
-use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
-use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
-
-use crate::MAX_DECODING_MESSAGE_SIZE;
-use crate::StreamError;
-use crate::TonicStatusError;
+use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, TonicStatusError};
 
 /// Read log messages from a proxy server.
 ///

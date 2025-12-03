@@ -1,7 +1,9 @@
+use std::process::Command;
+
+use indicatif::MultiProgress;
+
 use super::Channel;
 use crate::build_examples::wait_for_output::wait_for_output;
-use indicatif::MultiProgress;
-use std::process::Command;
 
 /// Install the selected examples in the current environment.
 #[derive(argh::FromArgs)]

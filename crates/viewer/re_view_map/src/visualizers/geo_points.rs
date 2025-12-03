@@ -1,6 +1,8 @@
 use re_log_types::EntityPath;
-use re_renderer::{PickingLayerInstanceId, renderer::PointCloudDrawDataError};
-use re_types::{archetypes::GeoPoints, components::Radius};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::PointCloudDrawDataError;
+use re_types::archetypes::GeoPoints;
+use re_types::components::Radius;
 use re_view::{
     AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
     process_color_slice,

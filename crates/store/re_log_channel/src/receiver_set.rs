@@ -3,9 +3,8 @@ use std::sync::Arc;
 use crossbeam::channel::Select;
 use parking_lot::Mutex;
 
-use crate::{LogSource, RecvError, SmartMessage};
-
 use super::LogReceiver;
+use crate::{LogSource, RecvError, SmartMessage};
 
 /// A set of connected [`LogReceiver`]s.
 ///
@@ -196,8 +195,9 @@ impl LogReceiverSet {
 
 #[test]
 fn test_receive_set() {
-    use crate::{LogSource, log_channel};
     use re_log_types::StoreId;
+
+    use crate::{LogSource, log_channel};
 
     let timeout = std::time::Duration::from_millis(100);
 

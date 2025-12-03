@@ -5,7 +5,8 @@ use re_log_channel::LogReceiver;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{RecordingOrTable, time_control::TimeControlCommand};
+use crate::RecordingOrTable;
+use crate::time_control::TimeControlCommand;
 
 // ----------------------------------------------------------------------------
 

@@ -1,7 +1,6 @@
 use std::ops::ControlFlow;
 
 use egui::{Key, NumExt as _, Ui};
-
 use re_log_types::EntityPath;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item};
 use re_viewer_context::ViewerContext;
