@@ -1,10 +1,10 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use re_chunk::Chunk;
 use re_log_types::StoreId;
 
 use crate::ChunkStoreGeneration;
-
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 
@@ -218,15 +218,12 @@ mod tests {
     use std::collections::BTreeMap;
 
     use re_chunk::{RowId, TimelineName};
-    use re_log_types::{
-        EntityPath, TimeInt, TimePoint, Timeline,
-        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
     use re_types::ComponentDescriptor;
 
-    use crate::{ChunkStore, GarbageCollectionOptions};
-
     use super::*;
+    use crate::{ChunkStore, GarbageCollectionOptions};
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store at the lowest level of detail.

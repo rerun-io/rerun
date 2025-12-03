@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use arrow::datatypes::Field;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::Archetype as _;
-use std::collections::HashMap;
 
 use crate::{BatchType, ChunkBatch, ColumnDescriptor, ComponentColumnDescriptor};
 

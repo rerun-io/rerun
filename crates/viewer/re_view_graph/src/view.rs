@@ -1,17 +1,14 @@
 use re_log_types::EntityPath;
-use re_types::{
-    ViewClassIdentifier,
-    blueprint::{
-        self,
-        archetypes::{
-            ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
-            GraphBackground, VisualBounds2D,
-        },
-    },
-    components::Color,
+use re_types::ViewClassIdentifier;
+use re_types::blueprint::archetypes::{
+    ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition, GraphBackground,
+    VisualBounds2D,
 };
+use re_types::blueprint::{self};
+use re_types::components::Color;
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
-use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
+use re_view::controls::DRAG_PAN2D_BUTTON;
+use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, RecommendedView, SystemCommand, SystemCommandSender as _,
     SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
@@ -20,12 +17,10 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    graph::Graph,
-    layout::{ForceLayoutParams, LayoutRequest},
-    ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui},
-    visualizers::{EdgesVisualizer, NodeVisualizer, merge},
-};
+use crate::graph::Graph;
+use crate::layout::{ForceLayoutParams, LayoutRequest};
+use crate::ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui};
+use crate::visualizers::{EdgesVisualizer, NodeVisualizer, merge};
 
 #[derive(Default)]
 pub struct GraphView;

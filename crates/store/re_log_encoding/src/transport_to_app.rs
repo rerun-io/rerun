@@ -35,7 +35,7 @@ impl ToTransport for re_log_types::LogMsg {
     type Context<'a> = crate::rrd::Compression;
 
     fn to_transport(&self, compression: Self::Context<'_>) -> Result<Self::Output, CodecError> {
-        log_msg_to_proto(self, compression)
+        log_msg_app_to_transport(self, compression)
     }
 }
 
@@ -47,7 +47,49 @@ impl ToTransport for re_log_types::ArrowMsg {
         &self,
         (store_id, compression): Self::Context<'_>,
     ) -> Result<Self::Output, CodecError> {
-        arrow_msg_to_proto(self, store_id, compression)
+        arrow_msg_app_to_transport(self, store_id, compression)
+    }
+}
+
+impl ToTransport for crate::RrdFooter {
+    type Output = re_protos::log_msg::v1alpha1::RrdFooter;
+    type Context<'a> = ();
+
+    fn to_transport(&self, _: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let manifests: Result<Vec<_>, _> = self
+            .manifests
+            .values()
+            .map(|manifest| manifest.to_transport(()))
+            .collect();
+
+        Ok(Self::Output {
+            manifests: manifests?,
+        })
+    }
+}
+
+impl ToTransport for crate::RrdManifest {
+    type Output = re_protos::log_msg::v1alpha1::RrdManifest;
+    type Context<'a> = ();
+
+    fn to_transport(&self, (): Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        {
+            self.sanity_check_cheap()?;
+
+            // that will only work for tests local to this crate, but that's better than nothing.
+            #[cfg(test)]
+            self.sanity_check_heavy()?;
+        }
+
+        let sorbet_schema = re_protos::common::v1alpha1::Schema::try_from(&self.sorbet_schema)
+            .map_err(CodecError::ArrowSerialization)?;
+
+        Ok(Self::Output {
+            store_id: Some(self.store_id.clone().into()),
+            sorbet_schema_sha256: Some(self.sorbet_schema_sha256.to_vec().into()),
+            sorbet_schema: Some(sorbet_schema),
+            data: Some(self.data.clone().into()),
+        })
     }
 }
 
@@ -67,7 +109,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::log_msg::Msg {
         &self,
         (app_id_injector, patched_version): Self::Context<'_>,
     ) -> Result<Self::Output, CodecError> {
-        let mut log_msg = log_msg_to_app(app_id_injector, self)?;
+        let mut log_msg = log_msg_transport_to_app(app_id_injector, self)?;
 
         if let Some(patched_version) = patched_version
             && let re_log_types::LogMsg::SetStoreInfo(msg) = &mut log_msg
@@ -104,7 +146,76 @@ impl ToApplication for re_protos::log_msg::v1alpha1::ArrowMsg {
     type Context<'a> = ();
 
     fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
-        arrow_msg_to_app(self)
+        arrow_msg_transport_to_app(self)
+    }
+}
+
+impl ToApplication for re_protos::log_msg::v1alpha1::RrdFooter {
+    type Output = crate::RrdFooter;
+    type Context<'a> = ();
+
+    fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let manifests: Result<std::collections::HashMap<_, _>, _> = self
+            .manifests
+            .iter()
+            .map(|manifest| {
+                let manifest = manifest.to_application(())?;
+                Ok::<_, CodecError>((manifest.store_id.clone(), manifest))
+            })
+            .collect();
+
+        Ok(Self::Output {
+            manifests: manifests?,
+        })
+    }
+}
+
+impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
+    type Output = crate::RrdManifest;
+    type Context<'a> = ();
+
+    fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let store_id = self
+            .store_id
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "store_id"))?;
+
+        let sorbet_schema = self
+            .sorbet_schema
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema"))?;
+
+        let sorbet_schema_sha256 = self
+            .sorbet_schema_sha256
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema_sha256"))?;
+        let sorbet_schema_sha256: [u8; 32] = (**sorbet_schema_sha256)
+            .try_into()
+            .map_err(|err| re_protos::invalid_field!(Self, "sorbet_schema_sha256", err))?;
+
+        let data = self
+            .data
+            .as_ref()
+            .ok_or_else(|| re_protos::missing_field!(Self, "data"))?;
+
+        let rrd_manifest = Self::Output {
+            store_id: store_id.clone().try_into()?,
+            sorbet_schema: sorbet_schema
+                .try_into()
+                .map_err(CodecError::ArrowDeserialization)?,
+            sorbet_schema_sha256,
+            data: data.try_into()?,
+        };
+
+        {
+            rrd_manifest.sanity_check_cheap()?;
+
+            // that will only work for tests local to this crate, but that's better than nothing
+            #[cfg(test)]
+            rrd_manifest.sanity_check_heavy()?;
+        }
+
+        Ok(rrd_manifest)
     }
 }
 
@@ -118,13 +229,14 @@ impl ToApplication for re_protos::log_msg::v1alpha1::ArrowMsg {
 ///
 /// The provided [`ApplicationIdInjector`] must be shared across all calls for the same stream.
 #[tracing::instrument(level = "trace", skip_all)]
-fn log_msg_to_app<I: ApplicationIdInjector + ?Sized>(
+fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
     app_id_injector: &mut I,
     message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
 ) -> Result<re_log_types::LogMsg, CodecError> {
     re_tracing::profile_function!();
 
-    use re_protos::{log_msg::v1alpha1::log_msg::Msg, missing_field};
+    use re_protos::log_msg::v1alpha1::log_msg::Msg;
+    use re_protos::missing_field;
 
     match message {
         Msg::SetStoreInfo(set_store_info) => {
@@ -134,7 +246,7 @@ fn log_msg_to_app<I: ApplicationIdInjector + ?Sized>(
         }
 
         Msg::ArrowMsg(arrow_msg) => {
-            let encoded = arrow_msg_to_app(arrow_msg)?;
+            let encoded = arrow_msg_transport_to_app(arrow_msg)?;
 
             //TODO(#10730): clean that up when removing 0.24 back compat
             let store_id: re_log_types::StoreId = match arrow_msg
@@ -194,7 +306,7 @@ fn log_msg_to_app<I: ApplicationIdInjector + ?Sized>(
 
 /// Converts a transport-level `ArrowMsg` to its application-level counterpart.
 #[tracing::instrument(level = "trace", skip_all)]
-fn arrow_msg_to_app(
+fn arrow_msg_transport_to_app(
     arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
 ) -> Result<re_log_types::ArrowMsg, CodecError> {
     re_tracing::profile_function!();
@@ -239,7 +351,7 @@ fn arrow_msg_to_app(
 
 /// Converts an application-level `LogMsg` to its transport-level counterpart.
 #[tracing::instrument(level = "trace", skip_all)]
-fn log_msg_to_proto(
+fn log_msg_app_to_transport(
     message: &re_log_types::LogMsg,
     compression: crate::rrd::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::log_msg::Msg, CodecError> {
@@ -251,7 +363,7 @@ fn log_msg_to_proto(
         }
 
         re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
-            let arrow_msg = arrow_msg_to_proto(arrow_msg, store_id.clone(), compression)?;
+            let arrow_msg = arrow_msg_app_to_transport(arrow_msg, store_id.clone(), compression)?;
             re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(arrow_msg)
         }
 
@@ -267,7 +379,7 @@ fn log_msg_to_proto(
 
 /// Converts an application-level `ArrowMsg` to its transport-level counterpart.
 #[tracing::instrument(level = "trace", skip_all)]
-fn arrow_msg_to_proto(
+fn arrow_msg_app_to_transport(
     arrow_msg: &re_log_types::ArrowMsg,
     store_id: re_log_types::StoreId,
     compression: crate::rrd::Compression,

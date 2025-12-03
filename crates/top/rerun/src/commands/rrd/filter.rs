@@ -1,16 +1,14 @@
-use std::{collections::HashSet, io::IsTerminal as _};
+use std::collections::HashSet;
+use std::io::IsTerminal as _;
 
 use anyhow::Context as _;
-use arrow::array::RecordBatchOptions;
-use arrow::{
-    array::RecordBatch as ArrowRecordBatch,
-    datatypes::{Field as ArrowField, Schema as ArrowSchema},
-};
+use arrow::array::{RecordBatch as ArrowRecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use itertools::Either;
-
 use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
-use re_sdk::{EntityPath, external::arrow};
+use re_sdk::EntityPath;
+use re_sdk::external::arrow;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -176,7 +174,7 @@ impl FilterCommand {
             .join()
             .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
 
-        let rrds_in_size = rx_size_bytes.recv().ok();
+        let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
         let size_reduction =
             if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
                 format!(

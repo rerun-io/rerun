@@ -3,10 +3,8 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{Array, ArrayRef, RecordBatch, RecordBatchOptions},
-    datatypes::{Field, Schema},
-};
+use arrow::array::{Array, ArrayRef, RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Field, Schema};
 
 /// Helper function to wrap an [`ArrayRef`] into a [`RecordBatch`] for easier printing.
 fn wrap_in_record_batch(array: ArrayRef) -> RecordBatch {

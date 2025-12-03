@@ -1,6 +1,5 @@
-use crate::components::MediaType;
-
 use super::TextDocument;
+use crate::components::MediaType;
 
 impl TextDocument {
     /// Creates a new [`TextDocument`] from a utf8 file.

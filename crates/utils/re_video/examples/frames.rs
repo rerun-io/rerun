@@ -2,13 +2,11 @@
 
 #![expect(clippy::unwrap_used)]
 
-use std::{
-    fs::{File, OpenOptions},
-    io::Write as _,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::fs::{File, OpenOptions};
+use std::io::Write as _;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use indicatif::ProgressBar;
 use parking_lot::Mutex;

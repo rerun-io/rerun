@@ -1,5 +1,6 @@
-use crate::Item;
 use re_log_types::{StoreId, TableId};
+
+use crate::Item;
 
 /// Which display mode are we currently in?
 #[derive(Clone, PartialEq, Eq)]
@@ -12,7 +13,7 @@ pub enum DisplayMode {
     // TODO(isse): It would be nice to only switch to newly loaded items if we
     // are on the loading screen for that specific item.
     /// A loading screen to some source.
-    Loading(Box<re_smart_channel::SmartChannelSource>),
+    Loading(Box<re_log_channel::LogSource>),
 
     /// Regular view of the local recordings, including the current recording's viewport.
     LocalRecordings(StoreId),

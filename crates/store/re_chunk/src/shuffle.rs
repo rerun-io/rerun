@@ -1,9 +1,6 @@
-use arrow::{
-    array::{Array as ArrowArray, ListArray as ArrowListArray},
-    buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer},
-};
+use arrow::array::{Array as ArrowArray, ListArray as ArrowListArray};
+use arrow::buffer::{OffsetBuffer as ArrowOffsets, ScalarBuffer as ArrowScalarBuffer};
 use itertools::Itertools as _;
-
 use re_log_types::TimelineName;
 
 use crate::{Chunk, TimeColumn};
@@ -164,7 +161,8 @@ impl Chunk {
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
-        use rand::{SeedableRng as _, seq::SliceRandom as _};
+        use rand::SeedableRng as _;
+        use rand::seq::SliceRandom as _;
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let swaps = {
@@ -306,14 +304,11 @@ impl TimeColumn {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::{
-        EntityPath, Timeline,
-        example_components::{MyColor, MyPoint, MyPoints},
-    };
-
-    use crate::{ChunkId, RowId};
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, Timeline};
 
     use super::*;
+    use crate::{ChunkId, RowId};
 
     #[test]
     fn sort() -> anyhow::Result<()> {

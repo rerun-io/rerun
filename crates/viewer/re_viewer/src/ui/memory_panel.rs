@@ -1,14 +1,15 @@
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
-use re_memory::{MemoryLimit, MemoryUse, util::sec_since_start};
+use re_memory::util::sec_since_start;
+use re_memory::{MemoryLimit, MemoryUse};
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
-use re_viewer_context::{CacheMemoryReport, store_hub::StoreHubStats};
-
-use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
+use re_viewer_context::CacheMemoryReport;
+use re_viewer_context::store_hub::StoreHubStats;
 
 use super::memory_history::MemoryHistory;
+use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
 // ----------------------------------------------------------------------------
 

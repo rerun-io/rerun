@@ -1,8 +1,6 @@
 use re_chunk::{Chunk, RangeQuery, RowId, Timeline, TimelineName};
-use re_log_types::{
-    AbsoluteTimeRange,
-    example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-};
+use re_log_types::AbsoluteTimeRange;
+use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 
 // ---
 

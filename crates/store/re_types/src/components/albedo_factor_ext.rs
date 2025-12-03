@@ -1,6 +1,5 @@
-use crate::datatypes::Rgba32;
-
 use super::AlbedoFactor;
+use crate::datatypes::Rgba32;
 
 impl Default for AlbedoFactor {
     #[inline]

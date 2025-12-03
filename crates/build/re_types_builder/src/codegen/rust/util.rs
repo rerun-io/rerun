@@ -4,14 +4,10 @@ use camino::Utf8Path;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{
-    ATTR_RUST_TUPLE_STRUCT, Docs, Object, ObjectKind, Objects, Reporter,
-    codegen::{
-        Target,
-        common::{ExampleInfo, collect_snippets_for_api_docs},
-    },
-    objects::State,
-};
+use crate::codegen::Target;
+use crate::codegen::common::{ExampleInfo, collect_snippets_for_api_docs};
+use crate::objects::State;
+use crate::{ATTR_RUST_TUPLE_STRUCT, Docs, Object, ObjectKind, Objects, Reporter};
 
 // ---
 

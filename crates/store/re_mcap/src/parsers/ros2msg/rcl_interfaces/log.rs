@@ -1,22 +1,16 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, StringBuilder, UInt32Builder};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
-use re_types::{
-    ComponentDescriptor, SerializedComponentColumn,
-    archetypes::TextLog,
-    components::{Color, Text, TextLogLevel},
-    datatypes::Rgba32,
-};
+use re_types::archetypes::TextLog;
+use re_types::components::{Color, Text, TextLogLevel};
+use re_types::datatypes::Rgba32;
+use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
-    ros2msg::{
-        Ros2MessageParser,
-        definitions::rcl_interfaces::{self, LogLevel},
-    },
-    util::fixed_size_list_builder,
-};
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
+use crate::parsers::ros2msg::Ros2MessageParser;
+use crate::parsers::ros2msg::definitions::rcl_interfaces::{self, LogLevel};
+use crate::parsers::util::fixed_size_list_builder;
 
 /// Plugin that parses `rcl_interfaces/msg/Log` messages.
 #[derive(Default)]

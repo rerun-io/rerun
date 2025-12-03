@@ -1,16 +1,13 @@
 //! Track allocations and memory use.
 
-use std::sync::{
-    LazyLock,
-    atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
-};
+use std::sync::LazyLock;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use parking_lot::Mutex;
 
-use crate::{
-    CountAndSize,
-    allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
-};
+use crate::CountAndSize;
+use crate::allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash};
 
 // TODO(emilk): yet another tier would maybe make sense, with a different stochastic rate.
 

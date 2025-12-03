@@ -2,9 +2,8 @@ use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_types::archetypes::RecordingInfo;
 use saturating_cast::SaturatingCast as _;
 
-use crate::Error;
-
 use super::Layer;
+use crate::Error;
 
 /// Build the [`RecordingInfo`] chunk using the message statistics from a [`mcap::Summary`].
 #[derive(Debug, Default)]

@@ -5,7 +5,6 @@
 use std::sync::OnceLock;
 
 use egui::Popup;
-
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
 use re_ui::UiExt as _;
@@ -19,17 +18,15 @@ mod actions;
 pub mod collapse_expand;
 mod sub_menu;
 
-use actions::{
-    CopyEntityPathToClipboard, TrackEntity,
-    add_container::AddContainerAction,
-    add_entities_to_new_view::AddEntitiesToNewViewAction,
-    add_view::AddViewAction,
-    clone_view::CloneViewAction,
-    collapse_expand_all::CollapseExpandAllAction,
-    move_contents_to_new_container::MoveContentsToNewContainerAction,
-    remove::RemoveAction,
-    show_hide::{HideAction, ShowAction},
-};
+use actions::add_container::AddContainerAction;
+use actions::add_entities_to_new_view::AddEntitiesToNewViewAction;
+use actions::add_view::AddViewAction;
+use actions::clone_view::CloneViewAction;
+use actions::collapse_expand_all::CollapseExpandAllAction;
+use actions::move_contents_to_new_container::MoveContentsToNewContainerAction;
+use actions::remove::RemoveAction;
+use actions::show_hide::{HideAction, ShowAction};
+use actions::{CopyEntityPathToClipboard, TrackEntity};
 use re_ui::menu::menu_style;
 use sub_menu::SubMenu;
 
@@ -401,7 +398,7 @@ trait ContextMenuAction {
     fn process_data_source(
         &self,
         _ctx: &ContextMenuContext<'_>,
-        _data_source: &re_smart_channel::SmartChannelSource,
+        _data_source: &re_log_channel::LogSource,
     ) {
     }
 

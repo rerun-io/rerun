@@ -1,20 +1,20 @@
 use re_chunk_store::RowId;
-use re_log_types::{Instance, TimeInt, hash::Hash64};
-use re_renderer::{RenderContext, renderer::GpuMeshInstance};
-use re_types::{archetypes::Mesh3D, components::ImageFormat};
+use re_log_types::hash::Hash64;
+use re_log_types::{Instance, TimeInt};
+use re_renderer::RenderContext;
+use re_renderer::renderer::GpuMeshInstance;
+use re_types::archetypes::Mesh3D;
+use re_types::components::ImageFormat;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
-
-use crate::{
-    caches::{AnyMesh, MeshCache, MeshCacheKey},
-    contexts::SpatialSceneEntityContext,
-    mesh_loader::NativeMesh3D,
-    view_kind::SpatialViewKind,
-};
+use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::mesh_loader::NativeMesh3D;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 

@@ -1,13 +1,11 @@
 use egui::{NumExt as _, Vec2, color_picker};
 use itertools::Itertools as _;
 use re_log_types::EntityPath;
-use re_types::{
-    Component as _, ComponentDescriptor, RowId,
-    components::{self, AnnotationContext},
-    datatypes::{
-        AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
-    },
+use re_types::components::{self, AnnotationContext};
+use re_types::datatypes::{
+    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
+use re_types::{Component as _, ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};

@@ -3,7 +3,7 @@ source: crates/store/re_tf/src/transform_forest.rs
 expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_frame,\n&transform_cache)"
 ---
 {
-    top: TransformInfo {
+    top: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -29,34 +29,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    1.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    tf#/: TransformInfo {
+    tf#/: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -82,34 +56,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    0.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    tf#/tf: TransformInfo {
+    tf#/tf: TreeTransform {
         root: tf#/,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -135,34 +83,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    0.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    child0: TransformInfo {
+    child0: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -188,34 +110,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    3.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    root: TransformInfo {
+    root: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -241,34 +137,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    0.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    child2d: TransformInfo {
+    child2d: TreeTransform {
         root: pinhole,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -294,34 +164,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    0.0,
-                    2.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    child1: TransformInfo {
+    child1: TreeTransform {
         root: root,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -347,34 +191,8 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    4.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
-    pinhole: TransformInfo {
+    pinhole: TreeTransform {
         root: pinhole,
         target_from_source: DAffine3 {
             matrix3: DMat3 {
@@ -400,31 +218,5 @@ expression: "pretty_print_transform_frame_ids_in(&transform_forest.root_from_fra
                 0.0,
             ),
         },
-        target_from_instances: [
-            DAffine3 {
-                matrix3: DMat3 {
-                    x_axis: DVec3(
-                        1.0,
-                        0.0,
-                        0.0,
-                    ),
-                    y_axis: DVec3(
-                        0.0,
-                        1.0,
-                        0.0,
-                    ),
-                    z_axis: DVec3(
-                        0.0,
-                        0.0,
-                        1.0,
-                    ),
-                },
-                translation: DVec3(
-                    0.0,
-                    0.0,
-                    0.0,
-                ),
-            },
-        ],
     },
 }

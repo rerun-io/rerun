@@ -1,13 +1,10 @@
 use arrow::datatypes::{DataType, Field, Schema};
-
-use re_protos::cloud::v1alpha1::{
-    ext::{
-        CreateDatasetEntryRequest, CreateTableEntryRequest, CreateTableEntryResponse, DatasetEntry,
-        EntryDetailsUpdate, LanceTable, ProviderDetails, TableEntry, UpdateEntryRequest,
-        UpdateEntryResponse,
-    },
-    rerun_cloud_service_server::RerunCloudService,
+use re_protos::cloud::v1alpha1::ext::{
+    CreateDatasetEntryRequest, CreateTableEntryRequest, CreateTableEntryResponse, DatasetEntry,
+    EntryDetailsUpdate, LanceTable, ProviderDetails, TableEntry, UpdateEntryRequest,
+    UpdateEntryResponse,
 };
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 
 pub async fn update_entry_tests(service: impl RerunCloudService) {
     //

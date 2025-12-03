@@ -1,9 +1,9 @@
 use re_log_types::EntityPath;
-use re_tf::TransformInfo;
 use re_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput};
 
-use crate::{contexts::TransformTreeContext, view_kind::SpatialViewKind};
+use crate::contexts::{TransformInfo, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
 
 /// Derive the spatial view kind from the view class identifier.
 pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialViewKind {
@@ -93,7 +93,7 @@ pub fn transform_info_for_entity_or_report_error<'a>(
 fn is_valid_space_for_content(
     entity_path: &EntityPath,
     transform_context: &TransformTreeContext,
-    transform: &re_tf::TransformInfo,
+    transform: &TransformInfo,
     content_kind: Option<SpatialViewKind>,
     view_kind: SpatialViewKind,
     output: &mut VisualizerExecutionOutput,

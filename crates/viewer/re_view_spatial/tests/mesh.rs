@@ -1,7 +1,8 @@
 use re_log_types::TimePoint;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{RowId, archetypes::Mesh3D};
+use re_types::RowId;
+use re_types::archetypes::Mesh3D;
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 

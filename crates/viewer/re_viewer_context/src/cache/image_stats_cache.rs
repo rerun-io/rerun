@@ -1,12 +1,13 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
-use re_types::{Component as _, components, image::ImageKind};
+use re_types::image::ImageKind;
+use re_types::{Component as _, components};
 
-use crate::{Cache, CacheMemoryReport, ImageInfo, ImageStats, image_info::StoredBlobCacheKey};
+use crate::image_info::StoredBlobCacheKey;
+use crate::{Cache, CacheMemoryReport, ImageInfo, ImageStats};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]

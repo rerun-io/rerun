@@ -1,8 +1,7 @@
-use std::{
-    io::Read as _,
-    path::PathBuf,
-    sync::{Arc, LazyLock, atomic::AtomicBool},
-};
+use std::io::Read as _;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, LazyLock};
 
 use ahash::HashMap;
 use indexmap::IndexSet;

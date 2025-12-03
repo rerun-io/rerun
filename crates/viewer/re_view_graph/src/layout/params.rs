@@ -1,12 +1,10 @@
 use re_chunk::ComponentIdentifier;
-use re_types::{
-    Archetype, Component,
-    blueprint::{
-        archetypes::{ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition},
-        components::{Enabled, ForceDistance, ForceIterations, ForceStrength},
-    },
-    components::Position2D,
+use re_types::blueprint::archetypes::{
+    ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
 };
+use re_types::blueprint::components::{Enabled, ForceDistance, ForceIterations, ForceStrength};
+use re_types::components::Position2D;
+use re_types::{Archetype, Component};
 use re_viewer_context::ViewContext;
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 

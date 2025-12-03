@@ -7,7 +7,8 @@
 
 pub mod mp4;
 
-use std::{collections::BTreeMap, ops::Range};
+use std::collections::BTreeMap;
+use std::ops::Range;
 
 use bit_vec::BitVec;
 use itertools::Itertools as _;
@@ -15,10 +16,10 @@ use re_span::Span;
 use web_time::Instant;
 
 use super::{Time, Timescale};
-
+use crate::nalu::AnnexBStreamWriteError;
 use crate::{
-    Chunk, StableIndexDeque, TrackId, TrackKind, nalu::AnnexBStreamWriteError,
-    write_avc_chunk_to_annexb, write_hevc_chunk_to_annexb,
+    Chunk, StableIndexDeque, TrackId, TrackKind, write_avc_chunk_to_annexb,
+    write_hevc_chunk_to_annexb,
 };
 
 /// Chroma subsampling mode.

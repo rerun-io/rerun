@@ -1,6 +1,5 @@
-use crate::datatypes;
-
 use super::PoseRotationAxisAngle;
+use crate::datatypes;
 
 impl PoseRotationAxisAngle {
     /// The identity rotation, representing no rotation.

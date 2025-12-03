@@ -1,14 +1,12 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::{BufRead as _, BufReader, Seek as _, Write as _},
-    sync::Arc,
-    time::Duration,
-};
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead as _, BufReader, Seek as _, Write as _};
+use std::sync::Arc;
+use std::time::Duration;
 
 use crossbeam::{channel, select};
 
-use super::{AbortSignal, sink::PostHogSink};
-
+use super::AbortSignal;
+use super::sink::PostHogSink;
 use crate::{AnalyticsEvent, Config, FlushError};
 
 pub enum PipelineEvent {

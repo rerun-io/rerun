@@ -1,9 +1,10 @@
 use std::str::FromStr as _;
 
-use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
-
+use pyo3::exceptions::PyTypeError;
+use pyo3::{Py, PyErr, PyResult, Python, pyclass, pymethods};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::{EntryKind, ext::EntryDetails};
+use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext::EntryDetails;
 
 use crate::catalog::PyCatalogClientInternal;
 

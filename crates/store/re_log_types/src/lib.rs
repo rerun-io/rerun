@@ -34,29 +34,23 @@ mod vec_deque_ext;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::{
-    arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    data_source_message::{DataSourceMessage, DataSourceUiCommand},
-    entry_id::{EntryId, EntryIdOrName},
-    index::{
-        AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TimestampFormatKind, TryFromIntError,
-    },
-    instance::Instance,
-    path::*,
-    vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
+pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
+pub use self::entry_id::{EntryId, EntryIdOrName};
+pub use self::index::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
+    TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TimestampFormatKind,
+    TryFromIntError,
 };
+pub use self::instance::Instance;
+pub use self::path::*;
+pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
-    pub use arrow;
-
-    pub use re_tuid;
-    pub use re_types_core;
+    pub use {arrow, re_tuid, re_types_core};
 }
 
 #[macro_export]
@@ -617,9 +611,21 @@ impl StoreInfo {
 
     /// Creates a new store info for testing purposes.
     pub fn testing() -> Self {
-        // Don't use a version for testing since it may show up in snapshots that then would change on every version.
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
         Self::new_unversioned(
-            StoreId::new(StoreKind::Recording, "test_app", "test_recording"),
+            StoreId::random(StoreKind::Recording, "test_app"),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
+
+    /// Creates a new store info for testing purposes with a fixed store id.
+    ///
+    /// Most of the time we don't want to fix the store id since it is used as a key in static store subscribers, which might not get teared down after every test.
+    /// Use this only if the recording id may show up somewhere in the test output.
+    pub fn testing_with_recording_id(recording_id: impl Into<RecordingId>) -> Self {
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
+        Self::new_unversioned(
+            StoreId::new(StoreKind::Recording, "test_app", recording_id),
             StoreSource::Other("test".to_owned()),
         )
     }

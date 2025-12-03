@@ -1,6 +1,5 @@
-use crate::tensor_data::TensorDataType;
-
 use super::TensorBuffer;
+use crate::tensor_data::TensorDataType;
 
 impl TensorBuffer {
     /// The underlying data type of the buffer.

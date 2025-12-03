@@ -1,9 +1,8 @@
-use std::sync::OnceLock;
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::{Arc, OnceLock};
 
 use ahash::HashMap;
 use nohash_hasher::IntSet;
-
 use re_chunk::RowId;
 use re_chunk_store::{
     ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriberHandle, LatestAtQuery,
@@ -11,11 +10,9 @@ use re_chunk_store::{
 };
 use re_entity_db::EntityPath;
 use re_log_types::StoreId;
-use re_types::{
-    archetypes,
-    components::AnnotationContext,
-    datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8},
-};
+use re_types::archetypes;
+use re_types::components::AnnotationContext;
+use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
 use super::{ViewerContext, auto_color_egui};
 

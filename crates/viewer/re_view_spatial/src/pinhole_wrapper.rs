@@ -1,6 +1,5 @@
 use glam::Vec3;
 use macaw::IsoTransform;
-
 use re_log_types::EntityPath;
 use re_tf::image_view_coordinates;
 use re_types::components::ViewCoordinates;

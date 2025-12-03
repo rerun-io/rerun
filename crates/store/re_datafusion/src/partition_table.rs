@@ -1,19 +1,15 @@
 use std::sync::Arc;
 
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use arrow::array::RecordBatch;
+use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
-use datafusion::{
-    catalog::TableProvider,
-    error::{DataFusionError, Result as DataFusionResult},
-};
-use tracing::instrument;
-
+use datafusion::catalog::TableProvider;
+use datafusion::error::{DataFusionError, Result as DataFusionResult};
 use re_log_types::EntryId;
-use re_protos::{
-    cloud::v1alpha1::{ScanSegmentTableRequest, ScanSegmentTableResponse},
-    headers::RerunHeadersInjectorExt as _,
-};
+use re_protos::cloud::v1alpha1::{ScanSegmentTableRequest, ScanSegmentTableResponse};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::ConnectionClient;
+use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;

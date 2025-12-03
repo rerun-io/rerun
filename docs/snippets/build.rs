@@ -9,7 +9,8 @@
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
 
-use std::{fs, path::Path};
+use std::fs;
+use std::path::Path;
 
 use itertools::Itertools as _;
 

@@ -15,24 +15,23 @@ mod task;
 mod trace_context;
 
 use errors::{AlreadyExistsError, NotFoundError};
-use pyo3::{Bound, PyResult, prelude::*};
+use pyo3::prelude::*;
+use pyo3::{Bound, PyResult};
 
-pub use self::{
-    catalog_client::PyCatalogClientInternal,
-    connection_handle::ConnectionHandle,
-    dataframe_query::PyDataframeQueryView,
-    dataframe_rendering::PyRerunHtmlTable,
-    datafusion_table::PyDataFusionTable,
-    dataset_entry::PyDatasetEntryInternal,
-    entry::{PyEntryDetails, PyEntryId, PyEntryKind},
-    errors::to_py_err,
-    indexes::{
-        PyIndexConfig, PyIndexProperties, PyIndexingResult, PyVectorDistanceMetric,
-        VectorDistanceMetricLike, VectorLike,
-    },
-    table_entry::{PyTableEntryInternal, PyTableInsertMode},
-    task::{PyTask, PyTasks},
+pub use self::catalog_client::PyCatalogClientInternal;
+pub use self::connection_handle::ConnectionHandle;
+pub use self::dataframe_query::PyDataframeQueryView;
+pub use self::dataframe_rendering::PyRerunHtmlTable;
+pub use self::datafusion_table::PyDataFusionTable;
+pub use self::dataset_entry::PyDatasetEntryInternal;
+pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
+pub use self::errors::to_py_err;
+pub use self::indexes::{
+    PyIndexConfig, PyIndexProperties, PyIndexingResult, PyVectorDistanceMetric,
+    VectorDistanceMetricLike, VectorLike,
 };
+pub use self::table_entry::{PyTableEntryInternal, PyTableInsertMode};
+pub use self::task::{PyTask, PyTasks};
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {

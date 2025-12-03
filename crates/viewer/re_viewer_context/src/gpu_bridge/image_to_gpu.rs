@@ -3,29 +3,24 @@
 use std::borrow::Cow;
 
 use anyhow::Context as _;
-use egui::{Rangef, util::hash};
+use egui::Rangef;
+use egui::util::hash;
 use half::f16;
-use wgpu::TextureFormat;
-
-use re_renderer::{
-    RenderContext,
-    device_caps::DeviceCaps,
-    pad_rgb_to_rgba,
-    renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha},
-    resource_managers::{
-        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
-    },
+use re_renderer::device_caps::DeviceCaps;
+use re_renderer::renderer::{ColorMapper, ColormappedTexture, ShaderDecoding, TextureAlpha};
+use re_renderer::resource_managers::{
+    ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
+use re_renderer::{RenderContext, pad_rgb_to_rgba};
 use re_types::components::ClassId;
 use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_types::image::ImageKind;
-
-use crate::{
-    Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
-    image_info::ColormapWithRange,
-};
+use wgpu::TextureFormat;
 
 use super::get_or_create_texture;
+use crate::gpu_bridge::colormap::colormap_to_re_renderer;
+use crate::image_info::ColormapWithRange;
+use crate::{Annotations, ImageInfo, ImageStats};
 
 // ----------------------------------------------------------------------------
 

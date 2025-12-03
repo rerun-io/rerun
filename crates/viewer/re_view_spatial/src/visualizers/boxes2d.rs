@@ -1,10 +1,8 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Boxes2D,
-    components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels},
-};
+use re_types::archetypes::Boxes2D;
+use re_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels};
+use re_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -12,16 +10,12 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{UiLabelTarget, entity_iterator::clamped_or},
-};
-
-use super::{
-    SpatialViewVisualizerData, process_radius_slice,
-    utilities::{LabeledBatch, process_labels},
-};
+use super::utilities::{LabeledBatch, process_labels};
+use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::UiLabelTarget;
+use crate::visualizers::entity_iterator::clamped_or;
 
 // ---
 

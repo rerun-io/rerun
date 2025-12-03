@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use egui_extras::{Column, TableRow};
 use itertools::{Either, Itertools as _};
-
 use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{
     AbsoluteTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,

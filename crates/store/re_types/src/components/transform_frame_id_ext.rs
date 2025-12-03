@@ -49,8 +49,9 @@ impl std::fmt::Display for TransformFrameId {
 
 #[cfg(test)]
 mod tests {
-    use crate::components::TransformFrameId;
     use re_log_types::EntityPath;
+
+    use crate::components::TransformFrameId;
 
     #[test]
     fn test_new_frame_id() {

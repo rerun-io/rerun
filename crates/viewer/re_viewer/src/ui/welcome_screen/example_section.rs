@@ -2,7 +2,6 @@ use egui::{Color32, NumExt as _, Theme, Ui};
 use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
-
 use re_ui::{DesignTokens, UiExt as _};
 
 #[derive(Debug, serde::Deserialize)]

@@ -1,6 +1,5 @@
-use crate::components;
-
 use super::Capsules3D;
+use crate::components;
 
 impl Capsules3D {
     /// Creates a new [`Capsules3D`] with the given axis-aligned lengths and radii.
@@ -67,8 +66,9 @@ impl Capsules3D {
 #[cfg(test)]
 #[cfg(feature = "glam")]
 mod tests {
-    use super::*;
     use glam::vec3;
+
+    use super::*;
 
     #[test]
     fn endpoints_equivalent_to_rotation() {

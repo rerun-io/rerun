@@ -4,10 +4,8 @@ use std::f32::consts::TAU;
 
 use itertools::Itertools as _;
 use rand::Rng as _;
-use rerun::{
-    demo_util::{bounce_lerp, color_spiral},
-    external::glam,
-};
+use rerun::demo_util::{bounce_lerp, color_spiral};
+use rerun::external::glam;
 
 const NUM_POINTS: usize = 100;
 

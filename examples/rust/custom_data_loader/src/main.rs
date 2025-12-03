@@ -6,11 +6,9 @@
 //! $ cargo r -p custom_data_loader -- path/to/some/file
 //! ```
 
-use rerun::{
-    DataLoader as _, EntityPath, LoadedData, TimePoint,
-    external::{anyhow, re_build_info, re_data_loader, re_log},
-    log::{Chunk, RowId},
-};
+use rerun::external::{anyhow, re_build_info, re_data_loader, re_log};
+use rerun::log::{Chunk, RowId};
+use rerun::{DataLoader as _, EntityPath, LoadedData, TimePoint};
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
     let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();

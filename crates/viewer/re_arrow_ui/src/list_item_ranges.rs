@@ -1,7 +1,6 @@
 use std::ops::Range;
 
 use egui::Ui;
-
 use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
 

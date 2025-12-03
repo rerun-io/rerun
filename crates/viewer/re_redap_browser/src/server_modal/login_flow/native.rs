@@ -1,13 +1,10 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+use std::time::Duration;
 
 use egui::mutex::Mutex;
-use re_auth::{
-    callback_server::OauthCallbackServer,
-    oauth::{
-        Credentials,
-        api::{AuthenticateWithCode, Pkce, send_native},
-    },
-};
+use re_auth::callback_server::OauthCallbackServer;
+use re_auth::oauth::Credentials;
+use re_auth::oauth::api::{AuthenticateWithCode, Pkce, send_native};
 use re_ui::icons;
 
 use super::ActionButton;

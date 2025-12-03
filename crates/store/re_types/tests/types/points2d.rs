@@ -1,8 +1,6 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
-    archetypes::Points2D,
-    components::{self, ShowLabels},
-};
+use re_types::archetypes::Points2D;
+use re_types::components::{self, ShowLabels};
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {

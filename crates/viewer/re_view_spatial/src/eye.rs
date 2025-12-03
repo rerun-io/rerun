@@ -1,16 +1,10 @@
 use egui::{NumExt as _, Rect};
 use glam::{Mat4, Quat, Vec3, vec3};
-
 use macaw::IsoTransform;
-
 use re_log_types::EntityPath;
-use re_types::{
-    blueprint::{
-        archetypes::EyeControls3D,
-        components::{AngularSpeed, Eye3DKind},
-    },
-    components::{LinearSpeed, Position3D, Vector3D},
-};
+use re_types::blueprint::archetypes::EyeControls3D;
+use re_types::blueprint::components::{AngularSpeed, Eye3DKind};
+use re_types::components::{LinearSpeed, Position3D, Vector3D};
 use re_ui::ContextExt as _;
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
@@ -19,7 +13,8 @@ use re_view::controls::{
 use re_viewer_context::{ViewContext, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-use crate::{pinhole_wrapper::PinholeWrapper, scene_bounding_boxes::SceneBoundingBoxes};
+use crate::pinhole_wrapper::PinholeWrapper;
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
 
 /// An eye in a 3D view.
 ///

@@ -1,11 +1,9 @@
 //! Demonstrates outline rendering.
 
 use itertools::Itertools as _;
-use re_renderer::{
-    Color32, OutlineConfig, OutlineMaskPreference,
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
-};
+use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
+use re_renderer::{Color32, OutlineConfig, OutlineMaskPreference};
 use winit::event::ElementState;
 
 mod framework;

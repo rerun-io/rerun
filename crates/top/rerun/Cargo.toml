@@ -66,7 +66,7 @@ ecolor = ["re_types?/ecolor"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 ## Only relevant if feature `sdk` is enabled.
-glam = ["re_types?/glam"]
+glam = ["re_types?/glam", "re_byte_size/glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
 image = ["re_types?/image"]
@@ -149,7 +149,7 @@ re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
-re_smart_channel.workspace = true
+re_log_channel.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
 re_uri.workspace = true

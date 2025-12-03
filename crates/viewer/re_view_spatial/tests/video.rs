@@ -2,13 +2,12 @@
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
-use re_types::{
-    archetypes::{AssetVideo, VideoFrameReference, VideoStream},
-    components::{self, MediaType, VideoTimestamp},
-    datatypes,
-};
+use re_types::archetypes::{AssetVideo, VideoFrameReference, VideoStream};
+use re_types::components::{self, MediaType, VideoTimestamp};
+use re_types::datatypes;
 use re_video::{VideoCodec, VideoDataDescription};
 use re_viewer_context::{TimeControlCommand, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;

@@ -7,6 +7,12 @@ mod format;
 mod format_data_type;
 mod test_extensions;
 
+// ----------------------------------------------------------------
+use std::sync::Arc;
+
+use arrow::array::{Array as _, AsArray as _, ListArray};
+use arrow::datatypes::{DataType, Field};
+
 pub use self::arrays::*;
 pub use self::batches::*;
 pub use self::compare::*;
@@ -16,15 +22,6 @@ pub use self::format::{
 };
 pub use self::format_data_type::*;
 pub use self::test_extensions::*;
-
-// ----------------------------------------------------------------
-
-use std::sync::Arc;
-
-use arrow::{
-    array::{Array as _, AsArray as _, ListArray},
-    datatypes::{DataType, Field},
-};
 
 /// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logivally the same
 pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
@@ -48,8 +45,9 @@ pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::array::{BinaryBuilder, ListBuilder};
+
+    use super::*;
 
     #[test]
     fn test_widen_list_binary() {

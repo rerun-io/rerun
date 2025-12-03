@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use egui::emath::Rangef;
+use egui::scroll_area::ScrollSource;
 use egui::{
     Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    Shape, Ui, Vec2, pos2, scroll_area::ScrollSource,
+    Shape, Ui, Vec2, WidgetInfo, WidgetType, pos2,
 };
-use egui::{WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
 use re_data_ui::item_ui::guess_instance_path_icon;
@@ -16,8 +16,10 @@ use re_log_types::{
 use re_types::ComponentIdentifier;
 use re_types::blueprint::components::PanelState;
 use re_types::reflection::ComponentDescriptorExt as _;
-use re_ui::{ContextExt as _, DesignTokens, Help, UiExt as _, filter_widget, icons, list_item};
-use re_ui::{IconText, filter_widget::format_matching_text};
+use re_ui::filter_widget::format_matching_text;
+use re_ui::{
+    ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget, icons, list_item,
+};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
@@ -26,15 +28,12 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
-use crate::{
-    MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks,
-    recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    streams_tree_data::{EntityData, StreamsTreeData, components_for_entity},
-    time_axis::TimelineAxis,
-    time_control_ui::TimeControlUi,
-    time_ranges_ui::{self, TimeRangesUi},
-    time_selection_ui,
-};
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
+use crate::streams_tree_data::{EntityData, StreamsTreeData, components_for_entity};
+use crate::time_axis::TimelineAxis;
+use crate::time_control_ui::TimeControlUi;
+use crate::time_ranges_ui::{self, TimeRangesUi};
+use crate::{MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks, time_selection_ui};
 
 #[derive(Debug, Clone)]
 pub struct TimePanelItem {

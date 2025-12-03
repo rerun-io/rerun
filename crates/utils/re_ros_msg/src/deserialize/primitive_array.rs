@@ -1,6 +1,8 @@
-use crate::message_spec::BuiltInType;
-use serde::de::{self, DeserializeSeed, Visitor};
 use std::fmt;
+
+use serde::de::{self, DeserializeSeed, Visitor};
+
+use crate::message_spec::BuiltInType;
 
 #[derive(Clone, PartialEq)]
 pub enum PrimitiveArray {

@@ -1,11 +1,8 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Context as _;
 use itertools::{Itertools as _, izip};
-
 use re_chunk::Chunk;
 
 // ---

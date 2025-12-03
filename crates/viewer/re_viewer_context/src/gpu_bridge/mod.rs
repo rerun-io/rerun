@@ -9,12 +9,7 @@ pub use image_to_gpu::{
     image_data_range_heuristic, image_to_gpu, required_shader_decode,
     texture_creation_desc_from_color_image,
 };
-pub use re_renderer_callback::new_renderer_callback;
-
-use crate::TensorStats;
-
 // ----------------------------------------------------------------------------
-
 use re_renderer::{
     RenderContext, ViewBuilder,
     renderer::{ColormappedTexture, RectangleOptions},
@@ -22,6 +17,9 @@ use re_renderer::{
         GpuTexture2D, ImageDataDesc, ImageDataToTextureError, TextureManager2DError,
     },
 };
+pub use re_renderer_callback::new_renderer_callback;
+
+use crate::TensorStats;
 
 // ----------------------------------------------------------------------------
 

@@ -1,22 +1,19 @@
+use std::iter;
+
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
-use re_types::{
-    ArrowString,
-    archetypes::Boxes3D,
-    components,
-    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
-};
+use re_types::archetypes::Boxes3D;
+use re_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_types::{ArrowString, components};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
-use std::iter;
 
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
-
-use super::{
-    SpatialViewVisualizerData,
-    utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
-};
+use super::SpatialViewVisualizerData;
+use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::proc_mesh;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);

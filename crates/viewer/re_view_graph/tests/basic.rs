@@ -1,7 +1,6 @@
 //! Basic tests for the graph view, mostly focused on edge cases (pun intended).
 
 use egui::Vec2;
-
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_test_context::TestContext;
