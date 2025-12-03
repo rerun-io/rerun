@@ -508,7 +508,7 @@ fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
     if let Entry::Vacant(vacant_entry) = entry {
         vacant_entry.insert(CachedTransformValue::Invalidated);
     } else if let Entry::Occupied(mut occupied_entry) = entry
-        && occupied_entry.get() == &CachedTransformValue::Cleared
+        && occupied_entry.get() != &CachedTransformValue::Cleared
     {
         occupied_entry.insert(CachedTransformValue::Invalidated);
     }
