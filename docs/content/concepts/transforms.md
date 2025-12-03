@@ -30,7 +30,7 @@ because the transforms are applied sequentially.
 ### Named transform frames
 
 While entity path hierarchies work well for many cases, sometimes you need more flexibility in organizing your transforms.
-In particular for anyone familiar with ROS we recommend using named transform frames as it allows you to model
+In particular, for anyone familiar with ROS, we recommend using named transform frames as it allows you to model
 your data much closer to how it would be defined when using ROS' [tf2](https://wiki.ros.org/tf2) library.
 
 By explicitly specifying transform frames, you can decouple spatial relationships from the entity hierarchy.
@@ -38,17 +38,17 @@ By explicitly specifying transform frames, you can decouple spatial relationship
 Instead of relying on entity path relationships, each entity is first associated with a named transform frame using
 the [`CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) archetype.
 
-The relationship between transform frames is then determined by logging [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
-with `child_frame` and `parent_frame` parameters to define the geometric relationship between two transform frames.
+The geometric relationship between two transform frames is then determined by logging [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
+with `child_frame` and `parent_frame` parameters set to their respective names.
 
 snippet: concepts/transform3d_hierarchy_named_frames
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
-However, currently once a relation between two frames has been logged to an entity, this relation may no longer be logged on any other entity.
+**Note:** A current limitation to this is that once a `Transform3D` relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* which entity is associated with which frame may change over time (it can also be [overridden via blueprint](../concepts/visualizers-and-overrides.md))
+* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../concepts/visualizers-and-overrides.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
@@ -141,7 +141,7 @@ With the right setup, pinholes allow a bunch of powerful visualizations:
 * 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
     * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
 
-If a transform frame relationship has both a pinhole projection & regular transforms (in this context often regarded as the camera extrinsics)
+If a transform frame relationship has both a pinhole projection & regular transforms (in this context often regarded as the camera extrinsics),
 the regular transform is applied first.
 
 #### Example: 3D scene with 2D projections
@@ -173,7 +173,7 @@ Note that in this example the archetype is logged at the root path, this will ma
 [Pinholes](https://rerun.io/docs/reference/types/archetypes/view_coordinates) have a view coordinates field integrated as a shortcut.
 The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 
-WARNING: unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
+>  ⚠️ Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
