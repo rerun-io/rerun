@@ -232,7 +232,7 @@ impl Layer for MessageLayerRunner {
                 match msg {
                     Ok(message) => {
                         if let Err(err) = decoder.decode_next(&message) {
-                            re_log::error!(
+                            re_log::error_once!(
                                 "Failed to decode message on channel {}: {err}",
                                 message.channel.topic
                             );

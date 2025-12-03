@@ -197,6 +197,27 @@ fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> boo
     metadata.level() <= filter
 }
 
+/// Check if an environment variable is set to a truthy value.
+///
+/// Returns `true` if the environment variable is set to "1", "true", or "yes" (case-insensitive).
+/// Returns `false` otherwise (including when the variable is not set).
+///
+/// # Example
+///
+/// ```ignore
+/// if env_var_is_truthy("TELEMETRY_ENABLED") {
+///     // enable telemetry
+/// }
+/// ```
+pub fn env_var_is_truthy(var_name: &str) -> bool {
+    std::env::var(var_name)
+        .map(|v| {
+            let v = v.to_lowercase();
+            v == "1" || v == "true" || v == "yes"
+        })
+        .unwrap_or(false)
+}
+
 /// Shorten a path to a Rust source file.
 ///
 /// Example input:
