@@ -8,7 +8,6 @@ use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 use re_log_types::DataSourceMessage;
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-use re_viewer::external::re_ui::{UICommand, UICommandSender as _};
 use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
@@ -19,6 +18,7 @@ use crate::commands::AnalyticsCommands;
 #[cfg(feature = "data_loaders")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
+use crate::external::re_ui::{UICommand, UICommandSender as _};
 
 // ---
 
