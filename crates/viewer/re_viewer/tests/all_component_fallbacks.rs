@@ -9,10 +9,12 @@ fn test_all_component_fallbacks() {
 
     test_context.run(&egui::Context::default(), |viewer_context| {
         // Create a dummy view context
+        let space_origin = "/".into();
         let view_context = ViewContext {
             viewer_ctx: viewer_context,
             view_id: BlueprintId::invalid(),
             view_class_identifier: ViewClassIdentifier::invalid(),
+            space_origin: &space_origin,
             view_state: &(),
             query_result: &DataQueryResult::default(),
         };

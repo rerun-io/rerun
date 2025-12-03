@@ -70,9 +70,21 @@ impl ChunkStore {
             return Ok(all_events);
         }
 
-        if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
-            // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::warn_once!("Chunk was inserted more than once (this has no effect)");
+        if let Some(prev_chunk) = self.chunks_per_chunk_id.get(&chunk.id()) {
+            if cfg!(debug_assertions) {
+                if let Err(difference) = Chunk::ensure_similar(prev_chunk, chunk) {
+                    re_log::error_once!(
+                        "The chunk id {} was used twice for two _different_ chunks. Difference: {difference}",
+                        chunk.id()
+                    );
+                } else {
+                    re_log::warn_once!("The same chunk was inserted twice (this has no effect)");
+                }
+            } else {
+                re_log::debug_once!("The same chunk was inserted twice (this has no effect)");
+            }
+
+            // We assume that chunk IDs are unique, and so inserting the same chunk twice has no effect.
             return Ok(Vec::new());
         }
 
@@ -378,7 +390,7 @@ impl ChunkStore {
                 .is_some()
         {
             re_log::warn_once!(
-                "detected duplicated RowId in the data, this will lead to undefined behavior"
+                "Detected duplicated RowId in the data, this will lead to undefined behavior"
             );
         }
 

@@ -439,6 +439,7 @@ impl ViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_class_identifier: self.class_identifier,
+            space_origin: &self.space_origin,
             view_state,
             query_result: ctx.lookup_query_result(self.id),
         }

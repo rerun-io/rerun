@@ -256,13 +256,13 @@ impl ViewClass for TimeSeriesView {
         viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
 
         list_item::list_item_scope(ui, "time_series_selection_ui", |ui| {
-            let ctx = self.view_context(viewer_ctx, view_id, state);
+            let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
 
@@ -502,7 +502,7 @@ impl ViewClass for TimeSeriesView {
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
-        let view_ctx = self.view_context(ctx, view_id, state);
+        let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(
             blueprint_db,
             ctx.blueprint_query,
@@ -555,6 +555,7 @@ impl ViewClass for TimeSeriesView {
                         viewer_ctx: ctx,
                         view_id: re_viewer_context::GLOBAL_VIEW_ID,
                         view_class_identifier: Self::identifier(),
+                        space_origin: query.space_origin,
                         view_state: state,
                         query_result: &query_result,
                     },

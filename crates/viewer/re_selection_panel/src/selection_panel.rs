@@ -607,7 +607,7 @@ fn frame_id_edit(
     frame_id: &mut String,
     frame_id_before: &String,
 ) {
-    let (frame_exists, mut suggestions) = {
+    let (mut suggestions, response) = {
         // In a scope to not hold the lock for longer than needed.
         let caches = ctx.viewer_ctx.store_context.caches;
         let transform_cache =
@@ -620,6 +620,12 @@ fn frame_id_edit(
             .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
             .is_some();
 
+        let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
+        if !frame_exists {
+            text_edit = text_edit.text_color(ui.tokens().error_fg_color);
+        }
+        let response = ui.add(text_edit);
+
         let suggestions = transform_cache
             .frame_id_registry()
             .iter_frame_ids()
@@ -630,16 +636,10 @@ fn frame_id_edit(
             .map(|rest| rest.to_owned())
             .collect::<Vec<_>>();
 
-        (frame_exists, suggestions)
+        (suggestions, response)
     };
 
     suggestions.sort_unstable();
-
-    let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
-    if !frame_exists {
-        text_edit = text_edit.text_color(ui.tokens().error_fg_color);
-    }
-    let response = ui.add(text_edit);
 
     let suggestions_open =
         (response.has_focus() || response.lost_focus()) && !suggestions.is_empty();

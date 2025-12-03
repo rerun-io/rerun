@@ -18,6 +18,9 @@ pub struct ViewContext<'a> {
     pub viewer_ctx: &'a crate::ViewerContext<'a>,
     pub view_id: ViewId,
     pub view_class_identifier: ViewClassIdentifier,
+    // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
+    // Until then, we make this available here so that fallback providers have access to it.
+    pub space_origin: &'a EntityPath,
     pub view_state: &'a dyn crate::ViewState,
     pub query_result: &'a DataQueryResult,
 }

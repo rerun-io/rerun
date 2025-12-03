@@ -1,5 +1,5 @@
 use re_types::image::ImageKind;
-use re_types::{archetypes, components};
+use re_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
 
@@ -122,6 +122,32 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
         |_ctx| {
             // We don't show the label with the frame id by default.
             components::ShowLabels(false.into())
+        },
+    );
+
+    system_registry.register_fallback_provider(
+        blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
+        |ctx| {
+            let space_origin = ctx.view_ctx.space_origin;
+            let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
+
+            if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
+            {
+                let results = data_result
+                    .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
+                        ctx.view_ctx,
+                        ctx.query,
+                    );
+
+                if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
+                    archetypes::CoordinateFrame::descriptor_frame().component,
+                ) {
+                    return frame_id;
+                }
+            }
+
+            // Fallback to entity path if no explicit CoordinateFrame
+            components::TransformFrameId::from_entity_path(space_origin)
         },
     );
 }

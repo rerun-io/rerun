@@ -507,11 +507,11 @@ impl ViewClass for SpatialView3D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
             view_property_ui::<EyeControls3D>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
             view_property_ui_grid3d(&view_ctx, ui);
-            view_property_ui::<SpatialInformation>(&view_ctx, ui);
         });
 
         Ok(())

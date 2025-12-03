@@ -10,7 +10,7 @@ use arrow::error::ArrowError;
 use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
-use re_log_types::external::re_types_core::ComponentBatch as _;
+use re_log_types::{AbsoluteTimeRange, external::re_types_core::ComponentBatch as _};
 use re_log_types::{EntityPath, EntryId, TimeInt};
 use re_sorbet::ComponentColumnDescriptor;
 
@@ -1334,6 +1334,26 @@ pub struct Query {
     pub columns_always_include_static_indexes: bool,
     pub columns_always_include_global_indexes: bool,
     pub columns_always_include_component_indexes: bool,
+}
+
+impl Query {
+    /// Create a query that returns everything that is needed to view every time point
+    /// in the given range with latest-at semantics.
+    pub fn latest_at_range(timeline_name: &TimelineName, time_range: AbsoluteTimeRange) -> Self {
+        Self {
+            // So that we can show the state at the start:
+            latest_at: Some(QueryLatestAt {
+                index: Some(timeline_name.to_string()),
+                at: time_range.min,
+            }),
+            // Show we can show everything in the range:
+            range: Some(QueryRange {
+                index: timeline_name.to_string(),
+                index_range: time_range.into(),
+            }),
+            ..Self::default()
+        }
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
