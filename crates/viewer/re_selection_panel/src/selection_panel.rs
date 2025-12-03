@@ -346,7 +346,6 @@ impl SelectionPanel {
                         let view_ctx = view.bundle_context_with_states(ctx, view_states);
                         visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
 
-                        // TODO(RR-2700): Come up with something non-experimental.
                         let is_spatial_view =
                             view.class_identifier() == "3D" || view.class_identifier() == "2D";
                         if is_spatial_view {
@@ -613,41 +612,49 @@ fn frame_id_edit(
     frame_id: &mut String,
     frame_id_before: &String,
 ) {
-    let caches = ctx.viewer_ctx.store_context.caches;
-    let transform_cache = caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-        c.lock_transform_cache(ctx.recording())
-    });
+    let (frame_exists, mut suggestions) = {
+        // In a scope to not hold the lock for longer than needed.
+        let caches = ctx.viewer_ctx.store_context.caches;
+        let transform_cache =
+            caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                c.lock_transform_cache(ctx.recording())
+            });
 
-    let frame_exists = transform_cache
-        .frame_id_registry()
-        .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
-        .is_some();
+        let frame_exists = transform_cache
+            .frame_id_registry()
+            .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
+            .is_some();
+
+        let suggestions = transform_cache
+            .frame_id_registry()
+            .iter_frame_ids()
+            // Only show named frames.
+            .filter(|(_, id)| !id.is_entity_path_derived())
+            .filter_map(|(_, id)| id.strip_prefix(&*frame_id))
+            .filter(|rest| !rest.is_empty())
+            .map(|rest| rest.to_owned())
+            .collect::<Vec<_>>();
+
+        (frame_exists, suggestions)
+    };
+
+    suggestions.sort_unstable();
+
     let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
     if !frame_exists {
         text_edit = text_edit.text_color(ui.tokens().error_fg_color);
     }
     let response = ui.add(text_edit);
 
-    let mut suggestions = transform_cache
-        .frame_id_registry()
-        .iter_frame_ids()
-        // Only show named frames.
-        .filter(|(_, id)| !id.is_entity_path_derived())
-        .filter_map(|(_, id)| id.strip_prefix(&*frame_id))
-        .filter(|rest| !rest.is_empty())
-        .collect::<Vec<_>>();
-
     let suggestions_open =
         (response.has_focus() || response.lost_focus()) && !suggestions.is_empty();
-
-    suggestions.sort_unstable();
 
     let width = response.rect.width();
 
     let suggestions_ui = |ui: &mut egui::Ui| {
         for rest in suggestions {
-            let mut job = egui::text::LayoutJob::default();
-            job.append(
+            let mut layout_job = egui::text::LayoutJob::default();
+            layout_job.append(
                 &*frame_id,
                 0.0,
                 egui::TextFormat::simple(
@@ -655,8 +662,8 @@ fn frame_id_edit(
                     ui.tokens().text_default,
                 ),
             );
-            job.append(
-                rest,
+            layout_job.append(
+                &rest,
                 0.0,
                 egui::TextFormat::simple(
                     ui.style().text_styles[&egui::TextStyle::Body].clone(),
@@ -665,10 +672,10 @@ fn frame_id_edit(
             );
 
             if ui
-                .add(egui::Button::new(job).min_size(egui::vec2(width, 0.0)))
+                .add(egui::Button::new(layout_job).min_size(egui::vec2(width, 0.0)))
                 .clicked()
             {
-                frame_id.push_str(rest);
+                frame_id.push_str(&rest);
             }
         }
     };
