@@ -112,7 +112,10 @@ impl Transform for Flatten {
                 new_offsets.push(inner_offset);
             }
 
-            let field = Arc::new(Field::new("item", inner_values.data_type().clone(), true));
+            let field = Arc::new(Field::new_list_field(
+                inner_values.data_type().clone(),
+                true,
+            ));
             let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
 
             return Ok(ListArray::new(
@@ -184,7 +187,10 @@ impl Transform for Flatten {
             re_arrow_util::concat_arrays(&refs)?
         };
 
-        let field = Arc::new(Field::new("item", inner_values.data_type().clone(), true));
+        let field = Arc::new(Field::new_list_field(
+            inner_values.data_type().clone(),
+            true,
+        ));
         let offsets = arrow::buffer::OffsetBuffer::new(new_offsets.into());
 
         Ok(ListArray::new(
@@ -266,7 +272,7 @@ impl Transform for StructToFixedList {
         let refs: Vec<&dyn Array> = concatenated_arrays.iter().map(|a| a.as_ref()).collect();
         let values = re_arrow_util::concat_arrays(&refs)?;
 
-        let field = Arc::new(Field::new("item", element_type, true));
+        let field = Arc::new(Field::new_list_field(element_type, true));
 
         let list_size = self.field_names.len();
         let list_size = i32::try_from(list_size).map_err(|err| Error::InvalidNumberOfFields {
@@ -369,12 +375,7 @@ impl Transform for Explode {
             arrow::compute::take(values_array.as_ref(), &indices_array, None)?
         };
 
-        // We know that `source` is a `ListArray` by it's type. But Arrow won't expose its field directly.
-        let field = match source.data_type() {
-            arrow::datatypes::DataType::List(f) => f.clone(),
-            _ => unreachable!(),
-        };
-
+        let field = Arc::new(Field::new_list_field(source.value_type(), true));
         Ok(ListArray::new(
             field,
             OffsetBuffer::new(new_offsets.into()),
