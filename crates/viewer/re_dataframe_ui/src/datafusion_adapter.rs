@@ -120,7 +120,7 @@ impl DataFusionQuery {
         if let Some(partition_links) = partition_links {
             //TODO(ab): we should get this from `re_uri::DatasetDataUri` instead of hardcoding
             let uri = format!(
-                "{}/dataset/{}/data?partition_id=",
+                "{}/dataset/{}/data?segment_id=",
                 partition_links.origin, partition_links.dataset_id
             );
 

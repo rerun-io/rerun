@@ -11,6 +11,7 @@ use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
+use re_log_channel::LogSender;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_types::blueprint::components::PlayState;
@@ -25,10 +26,6 @@ use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
 static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
-struct Channel {
-    log_tx: re_smart_channel::Sender<re_log_types::DataSourceMessage>,
-}
-
 #[wasm_bindgen]
 pub struct WebHandle {
     runner: eframe::WebRunner,
@@ -37,7 +34,7 @@ pub struct WebHandle {
     ///
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
-    tx_channels: HashMap<String, Channel>,
+    log_senders: HashMap<String, LogSender>,
 
     /// The connection registry to use for the viewer.
     connection_registry: re_redap_client::ConnectionRegistryHandle,
@@ -63,7 +60,7 @@ impl WebHandle {
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
-            tx_channels: Default::default(),
+            log_senders: Default::default(),
             connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
@@ -249,20 +246,17 @@ impl WebHandle {
             return;
         };
 
-        if self.tx_channels.contains_key(id) {
+        if self.log_senders.contains_key(id) {
             re_log::warn!("Channel with id '{}' already exists.", id);
             return;
         }
 
-        let (log_tx, log_rx) = re_smart_channel::smart_channel(
-            re_smart_channel::SmartMessageSource::JsChannelPush,
-            re_smart_channel::SmartChannelSource::JsChannel {
-                channel_name: channel_name.to_owned(),
-            },
-        );
+        let (log_tx, log_rx) = re_log_channel::log_channel(re_log_channel::LogSource::JsChannel {
+            channel_name: channel_name.to_owned(),
+        });
 
         app.add_log_receiver(log_rx);
-        self.tx_channels.insert(id.to_owned(), Channel { log_tx });
+        self.log_senders.insert(id.to_owned(), log_tx);
     }
 
     /// Close an existing channel for streaming data.
@@ -274,7 +268,7 @@ impl WebHandle {
             return;
         };
 
-        if let Some(Channel { log_tx }) = self.tx_channels.remove(id) {
+        if let Some(log_tx) = self.log_senders.remove(id) {
             log_tx
                 .quit(None)
                 .warn_on_err_once("Failed to send quit marker");
@@ -293,8 +287,8 @@ impl WebHandle {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.log_tx.clone();
+        if let Some(log_tx) = self.log_senders.get(id) {
+            let log_tx = log_tx.clone();
             let data: Vec<u8> = data.to_vec();
 
             let egui_ctx = app.egui_ctx.clone();
@@ -313,7 +307,7 @@ impl WebHandle {
                         use re_log_encoding::rrd::stream_from_http::HttpMessage;
                         match msg {
                             HttpMessage::LogMsg(msg) => {
-                                if tx.send(msg.into()).is_ok() {
+                                if log_tx.send(msg.into()).is_ok() {
                                     ControlFlow::Continue(())
                                 } else {
                                     re_log::info_once!("Failed to dispatch log message to viewer.");
@@ -323,7 +317,8 @@ impl WebHandle {
                             // TODO(jleibs): Unclear what we want to do here. More data is coming.
                             HttpMessage::Success => ControlFlow::Continue(()),
                             HttpMessage::Failure(err) => {
-                                tx.quit(Some(err))
+                                log_tx
+                                    .quit(Some(err))
                                     .warn_on_err_once("Failed to send quit marker");
                                 ControlFlow::Break(())
                             }
@@ -340,8 +335,8 @@ impl WebHandle {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.get(id) {
-            let tx = channel.log_tx.clone();
+        if let Some(log_tx) = self.log_senders.get(id) {
+            let log_tx = log_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
             let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
@@ -377,7 +372,7 @@ impl WebHandle {
 
             let egui_ctx = app.egui_ctx.clone();
 
-            match tx.send(msg.into()) {
+            match log_tx.send(msg.into()) {
                 Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
                 Err(err) => {
                     re_log::info_once!("Failed to dispatch log message to viewer: {err}");

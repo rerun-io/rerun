@@ -176,7 +176,7 @@ impl FilterCommand {
             .join()
             .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
 
-        let rrds_in_size = rx_size_bytes.recv().ok();
+        let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
         let size_reduction =
             if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
                 format!(

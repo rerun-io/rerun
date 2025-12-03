@@ -24,11 +24,11 @@ re_byte_size.workspace = true
 re_chunk.workspace = true
 re_format.workspace = true
 re_log = { workspace = true, features = ["setup"] }
+re_log_channel.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder", "decoder"] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
-re_smart_channel.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true

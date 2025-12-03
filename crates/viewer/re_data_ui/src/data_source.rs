@@ -4,7 +4,7 @@ use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
 
-impl crate::DataUi for re_smart_channel::SmartChannelSource {
+impl crate::DataUi for re_log_channel::LogSource {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,

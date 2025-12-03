@@ -1,4 +1,7 @@
 use re_build_info::CrateVersion;
+use re_chunk::ChunkError;
+
+pub type CodecResult<T> = Result<T, CodecError>;
 
 /// Possible errors when encoding and decoding RRD data.
 ///
@@ -25,8 +28,17 @@ pub enum CodecError {
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
 
-    #[error("Failed to decode message header {0}")]
-    HeaderDecoding(String),
+    /// Something went wrong when attempting to decode any kind of RRD frame.
+    ///
+    /// There are 3 kinds of RRD frames:
+    /// * [`crate::StreamHeader`]
+    /// * [`crate::MessageHeader`]
+    /// * [`crate::StreamFooter`]
+    #[error("Failed to decode frame: {0}")]
+    FrameDecoding(String),
+
+    #[error("CRC check failed: expected {expected:08x} but got {got:08x}")]
+    CrcMismatch { expected: u32, got: u32 },
 
     #[error("Arrow IPC deserialization error: {0}")]
     ArrowDeserialization(::arrow::error::ArrowError),
@@ -42,6 +54,9 @@ pub enum CodecError {
 
     #[error("Could not convert type from protobuf: {0}")]
     TypeConversion(Box<re_protos::TypeConversionError>),
+
+    #[error("Invalid chunk: {0}")]
+    Chunk(Box<ChunkError>),
 
     /// This is returned when `ArrowMsg` or `BlueprintActivationCommand` are received with a legacy
     /// store id (missing the application id) before the corresponding `SetStoreInfo` message. In
@@ -76,6 +91,12 @@ const _: () = assert!(
 impl From<re_protos::TypeConversionError> for CodecError {
     fn from(value: re_protos::TypeConversionError) -> Self {
         Self::TypeConversion(Box::new(value))
+    }
+}
+
+impl From<ChunkError> for CodecError {
+    fn from(value: ChunkError) -> Self {
+        Self::Chunk(Box::new(value))
     }
 }
 

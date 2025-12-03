@@ -44,8 +44,7 @@ where
                 })?;
 
         let transformed = self.transform.transform(downcast)?;
-        let new_field = Arc::new(Field::new(
-            "item",
+        let new_field = Arc::new(Field::new_list_field(
             transformed.data_type().clone(),
             transformed.is_nullable(),
         ));

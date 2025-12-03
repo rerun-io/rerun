@@ -25,8 +25,13 @@ pub enum Error {
     #[error("URL {url:?} cannot be loaded as a recording")]
     CannotLoadUrlAsRecording { url: String },
 
-    #[error("Dataset data URL required a `?partition_id` query parameter")]
-    MissingPartitionId,
+    #[error("Dataset data URL requires a `?segment_id` query parameter")]
+    MissingSegmentId,
+
+    #[error(
+        "Dataset data URL cannot contain both `?segment_id` and legacy `?partition_id` query parameters"
+    )]
+    AmbiguousSegmentId,
 
     #[error("Invalid TUID: {0}")]
     InvalidTuid(<re_tuid::Tuid as FromStr>::Err),

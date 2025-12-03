@@ -35,6 +35,16 @@ pub struct RouteCommand {
     /// output.
     #[clap(long = "recording-id")]
     recording_id: Option<String>,
+
+    /// If set, this will compute an RRD footer with the appropriate manifest for the routed data.
+    ///
+    /// By default, `rerun rrd route` will always drop all existing RRD manifests when routing data,
+    /// as doing so invalidates their contents.
+    /// This flag makes it possible to recompute an RRD manifest for the routed data, but beware
+    /// that it has to decode the data, which means it is A) much slower and B) will migrate
+    /// the data to the latest Sorbet specification automatically.
+    #[clap(long = "recompute-manifests", default_value_t = false)]
+    recompute_manifests: bool,
 }
 
 struct Rewrites {
@@ -50,6 +60,7 @@ impl RouteCommand {
             continue_on_error,
             application_id,
             recording_id,
+            recompute_manifests,
         } = self;
 
         let rewrites = Rewrites {
@@ -70,6 +81,7 @@ impl RouteCommand {
         if let Some(path) = path_to_output_rrd {
             let writer = BufWriter::new(File::create(path)?);
             process_messages(
+                *recompute_manifests,
                 &rewrites,
                 *continue_on_error,
                 writer,
@@ -81,6 +93,7 @@ impl RouteCommand {
             let lock = stdout.lock();
             let writer = BufWriter::new(lock);
             process_messages(
+                *recompute_manifests,
                 &rewrites,
                 *continue_on_error,
                 writer,
@@ -93,7 +106,9 @@ impl RouteCommand {
     }
 }
 
+#[expect(clippy::fn_params_excessive_bools)]
 fn process_messages<W: std::io::Write>(
+    recompute_manifests: bool,
     rewrites: &Rewrites,
     continue_on_error: bool,
     writer: W,
@@ -104,6 +119,9 @@ fn process_messages<W: std::io::Write>(
     let mut num_total_msgs = 0;
     let mut num_unexpected_msgs = 0;
     let mut num_blueprint_activations = 0;
+
+    // Only used if recomputing manifests.
+    let mut app_id_injector = re_log_encoding::CachingApplicationIdInjector::default();
 
     // TODO(grtlr): encoding should match the original (just like in `rrd stats`).
     let options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
@@ -173,11 +191,18 @@ fn process_messages<W: std::io::Write>(
                     }
                 }
 
-                // Safety: we're just forwarding an existing message, we didn't change its payload
-                // in any meaningful way.
-                #[expect(unsafe_code)]
-                unsafe {
-                    encoder.append_transport(&msg)?;
+                if recompute_manifests {
+                    use re_log_encoding::ToApplication as _;
+                    let msg = msg.to_application((&mut app_id_injector, None))?;
+                    encoder.append(&msg)?;
+                } else {
+                    // Safety: we're just forwarding an existing message, we didn't change its payload
+                    // in any meaningful way.
+                    #[expect(unsafe_code)]
+                    unsafe {
+                        // Reminder: this will implicitly discard RRD footers.
+                        encoder.append_transport(&msg)?;
+                    }
                 }
             }
             Err(err) => {

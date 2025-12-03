@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow
-import pytest
 from datafusion import col
-from rerun.server import Server
 
 if TYPE_CHECKING:
     from rerun.catalog import DatasetEntry
@@ -89,27 +87,9 @@ def readonly_test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -
         assert partition_batch.num_rows > 0
 
 
-# TODO(#11852): fix this
-@pytest.mark.skip(reason="This currently fails because of #11852")
 def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:
     for table_entry in prefilled_catalog.client.table_entries():
         assert pyarrow.Table.from_batches(table_entry.to_arrow_reader()).num_rows > 0
-
-
-# TODO(#11852): this demonstrates a working version of the previous test, to be removed once fixed
-@pytest.mark.local_only
-def test_tables_to_arrow_reader_patched() -> None:
-    from .conftest import TABLE_FILEPATH
-
-    with Server(
-        tables={
-            "simple_datatypes": TABLE_FILEPATH,
-            "second_schema.second_table": TABLE_FILEPATH,
-            "alternate_catalog.third_schema.third_table": TABLE_FILEPATH,
-        },
-    ) as server:
-        for table_entry in server.client().table_entries():
-            assert pyarrow.Table.from_batches(table_entry.to_arrow_reader()).num_rows > 0
 
 
 def test_query_view_from_schema(readonly_test_dataset: DatasetEntry) -> None:
@@ -133,7 +113,7 @@ def test_query_view_from_schema(readonly_test_dataset: DatasetEntry) -> None:
             assert contents.count() > 0
 
 
-def readonly_test_dataset_schema_comparison_self_consistent(readonly_test_dataset: DatasetEntry) -> None:
+def test_readonly_dataset_schema_comparison_self_consistent(readonly_test_dataset: DatasetEntry) -> None:
     schema_0 = readonly_test_dataset.schema()
     schema_1 = readonly_test_dataset.schema()
     set_diff = set(schema_0).symmetric_difference(schema_1)

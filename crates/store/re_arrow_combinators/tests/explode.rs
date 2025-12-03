@@ -56,11 +56,11 @@ fn test_explode_nested_lists() {
     // Manually build List<List<Int32>>
     let inner_values = Int32Array::from(vec![1, 2, 3, 4, 5, 6]);
     let inner_offsets = OffsetBuffer::new(vec![0, 2, 3, 6].into());
-    let inner_field = Arc::new(Field::new("item", DataType::Int32, true));
+    let inner_field = Arc::new(Field::new_list_field(DataType::Int32, true));
     let inner_list = ListArray::new(inner_field, inner_offsets, Arc::new(inner_values), None);
 
     let outer_offsets = OffsetBuffer::new(vec![0, 2, 3].into());
-    let outer_field = Arc::new(Field::new("item", inner_list.data_type().clone(), true));
+    let outer_field = Arc::new(Field::new_list_field(inner_list.data_type().clone(), true));
     let input = ListArray::new(
         outer_field,
         outer_offsets,
@@ -101,7 +101,7 @@ fn test_explode_with_skips_in_offset_buffer() {
     let values = Int32Array::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     let offsets = OffsetBuffer::new(vec![0, 2, 7, 10].into());
     let validity = arrow::buffer::NullBuffer::from(vec![true, false, true]);
-    let field = Arc::new(Field::new("item", DataType::Int32, true));
+    let field = Arc::new(Field::new_list_field(DataType::Int32, true));
 
     let input = ListArray::new(field, offsets, Arc::new(values), Some(validity));
     println!("Input:\n{}", DisplayRB(input.clone()));

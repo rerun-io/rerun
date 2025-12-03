@@ -1030,13 +1030,19 @@ impl RerunCloudService for RerunCloudHandler {
             select_all_entity_paths,
 
             //TODO(RR-2613): we must do a much better job at handling these
-            chunk_ids: _,
+            chunk_ids: requested_chunk_ids,
             fuzzy_descriptors: _,
-            exclude_static_data: _,
-            exclude_temporal_data: _,
-            scan_parameters: _,
+            exclude_static_data,
+            exclude_temporal_data,
+            scan_parameters,
             query: _,
         } = request.into_inner().try_into()?;
+
+        if scan_parameters.is_some() {
+            re_log::info_once!(
+                "query_dataset: scan_parameters are not yet implemented and will be ignored"
+            );
+        }
 
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
         if select_all_entity_paths && !entity_paths.is_empty() {
@@ -1073,6 +1079,19 @@ impl RerunCloudService for RerunCloudHandler {
 
                 for chunk in store_handle.read().iter_chunks() {
                     if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
+                        continue;
+                    }
+
+                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&chunk.id())
+                    {
+                        continue;
+                    }
+
+                    // Filter by static/temporal data
+                    if exclude_static_data && chunk.is_static() {
+                        continue;
+                    }
+                    if exclude_temporal_data && !chunk.is_static() {
                         continue;
                     }
 
