@@ -56,7 +56,7 @@ jobs:
         run: |
           pixi run rerun-build-native-and-web-release
 
-      - name: Copy rerun-cli to wheel foldcer
+      - name: Copy rerun-cli to wheel folder
         run: |
           cp target/release/rerun rerun_py/rerun_sdk/rerun_cli
 
