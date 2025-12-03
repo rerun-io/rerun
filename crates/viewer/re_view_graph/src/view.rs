@@ -171,7 +171,7 @@ impl ViewClass for GraphView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphViewState>()?;
@@ -182,7 +182,7 @@ impl ViewClass for GraphView {
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<GraphBackground>(&ctx, ui);
             view_property_ui::<VisualBounds2D>(&ctx, ui);
             view_property_force_ui::<ForceLink>(&ctx, ui);
@@ -217,7 +217,7 @@ impl ViewClass for GraphView {
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let params = ForceLayoutParams::get(&view_ctx)?;
 
         let background = ViewProperty::from_archetype::<GraphBackground>(
