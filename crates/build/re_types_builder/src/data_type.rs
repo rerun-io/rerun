@@ -1,6 +1,7 @@
 //! This is a limited subset of arrow datatypes.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::TypeRegistry;
 

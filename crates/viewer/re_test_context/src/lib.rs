@@ -837,9 +837,10 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use re_entity_db::InstancePath;
     use re_viewer_context::Item;
+
+    use super::*;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.

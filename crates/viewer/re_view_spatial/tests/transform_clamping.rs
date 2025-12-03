@@ -2,7 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_types::blueprint::archetypes::EyeControls3D;
+use re_types::components::Position3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 

@@ -1,6 +1,5 @@
-use crate::datatypes::Vec2D;
-
 use super::Position2D;
+use crate::datatypes::Vec2D;
 
 // ---
 

@@ -1,8 +1,6 @@
 use re_test_context::TestContext;
-use re_types::{
-    ViewClassIdentifier,
-    external::arrow::util::display::{ArrayFormatter, FormatOptions},
-};
+use re_types::ViewClassIdentifier;
+use re_types::external::arrow::util::display::{ArrayFormatter, FormatOptions};
 use re_viewer_context::{BlueprintId, DataQueryResult, QueryContext, ViewContext};
 
 #[test]

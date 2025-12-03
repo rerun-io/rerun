@@ -1,19 +1,17 @@
 #![expect(clippy::disallowed_methods)] // It's just an example
 
-use rerun::external::{
-    egui,
-    re_data_ui::{DataUi, item_ui},
-    re_entity_db::InstancePath,
-    re_log_types::EntityPath,
-    re_types::ViewClassIdentifier,
-    re_ui::{self, Help},
-    re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
-        PerVisualizerInViewClass, SelectionHighlight, SmallVisualizerSet, SystemExecutionOutput,
-        UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-        ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-        ViewSystemRegistrator, ViewerContext, VisualizableEntities,
-    },
+use rerun::external::egui;
+use rerun::external::re_data_ui::{DataUi, item_ui};
+use rerun::external::re_entity_db::InstancePath;
+use rerun::external::re_log_types::EntityPath;
+use rerun::external::re_types::ViewClassIdentifier;
+use rerun::external::re_ui::{self, Help};
+use rerun::external::re_viewer_context::{
+    HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
+    PerVisualizerInViewClass, SelectionHighlight, SmallVisualizerSet, SystemExecutionOutput,
+    UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, VisualizableEntities,
 };
 
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};

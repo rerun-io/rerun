@@ -3,8 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::PostHogBatch;
-use crate::{AnalyticsEvent, Config, PostHogEvent};
+use crate::{AnalyticsEvent, Config, PostHogBatch, PostHogEvent};
 
 #[derive(thiserror::Error, Debug)]
 pub enum PipelineError {

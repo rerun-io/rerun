@@ -70,7 +70,6 @@ mod workspace_shaders;
 // Exports
 
 use allocator::GpuReadbackBuffer;
-
 pub use allocator::{
     CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
     create_and_fill_uniform_buffer_batch,
@@ -91,6 +90,8 @@ pub use draw_phases::{
     OutlineMaskProcessor, PickingLayerId, PickingLayerInstanceId, PickingLayerObjectId,
     PickingLayerProcessor, ScreenshotProcessor,
 };
+// Re-export used color types directly.
+pub use ecolor::{Color32, Hsva, Rgba};
 pub use global_bindings::GlobalBindings;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
@@ -108,25 +109,17 @@ pub use wgpu_resources::{
     RenderPipelineDesc, ShaderModuleDesc, VertexBufferLayout, WgpuResourcePoolStatistics,
 };
 
-pub use self::file_system::{FileSystem, get_filesystem};
-#[allow(clippy::allow_attributes, unused_imports)] // they can be handy from time to time
-use self::file_system::{MemFileSystem, OsFileSystem};
-
 pub use self::file_resolver::{
     FileResolver, ImportClause, RecommendedFileResolver, SearchPath,
     new_recommended as new_recommended_file_resolver,
 };
 pub use self::file_server::FileServer;
-
-// Re-export used color types directly.
-pub use ecolor::{Color32, Hsva, Rgba};
+pub use self::file_system::{FileSystem, get_filesystem};
+#[allow(clippy::allow_attributes, unused_imports)] // they can be handy from time to time
+use self::file_system::{MemFileSystem, OsFileSystem};
 
 pub mod external {
-    pub use anyhow;
-    pub use bytemuck;
-    pub use re_video;
-    pub use smallvec;
-    pub use wgpu;
+    pub use {anyhow, bytemuck, re_video, smallvec, wgpu};
 }
 
 // ---------------------------------------------------------------------------

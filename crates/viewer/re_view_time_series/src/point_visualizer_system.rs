@@ -1,28 +1,22 @@
 use itertools::Itertools as _;
-
 use re_chunk_store::LatestAtQuery;
-use re_types::{
-    Archetype as _, archetypes,
-    components::{Color, MarkerShape, MarkerSize},
-};
+use re_types::components::{Color, MarkerShape, MarkerSize};
+use re_types::{Archetype as _, archetypes};
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    external::re_entity_db::InstancePath, typed_fallback_for,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewPropertyQueryError;
 
-use crate::{
-    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
-    series_query::{
-        all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui,
-        collect_scalars, collect_series_name, collect_series_visibility, determine_num_series,
-    },
-    util,
+use crate::series_query::{
+    all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
+    collect_series_name, collect_series_visibility, determine_num_series,
 };
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util};
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
 #[derive(Default, Debug)]

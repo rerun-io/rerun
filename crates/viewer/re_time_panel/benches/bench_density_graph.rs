@@ -4,15 +4,11 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Duration;
 
-use criterion::Bencher;
-use criterion::Criterion;
 use criterion::measurement::WallTime;
+use criterion::{Bencher, Criterion};
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
-use re_log_types::AbsoluteTimeRange;
-use re_log_types::StoreId;
-use re_log_types::StoreKind;
-use re_log_types::Timeline;
+use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, Timeline};
 use re_time_panel::__bench::{
     DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi, build_density_graph,
 };
@@ -96,7 +92,8 @@ fn add_data(
         log_times.push(time);
 
         if !sorted {
-            use rand::{SeedableRng as _, seq::SliceRandom as _};
+            use rand::SeedableRng as _;
+            use rand::seq::SliceRandom as _;
             let mut rng = rand::rngs::StdRng::seed_from_u64(0xbadf00d);
             log_times.shuffle(&mut rng);
         }

@@ -1,4 +1,5 @@
-use std::{hash::Hash, str::FromStr};
+use std::hash::Hash;
+use std::str::FromStr;
 
 use re_chunk::RowId;
 use re_log_types::{DataPath, EntityPath, EntityPathHash, Instance, PathParseError};

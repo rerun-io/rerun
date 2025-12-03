@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
-
 use re_chunk::{ComponentIdentifier, RowId, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt};
@@ -265,10 +264,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{
-        EntityPath, StoreId, TimePoint, Timeline,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};
 
     use crate::EntityDb;
 

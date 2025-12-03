@@ -3,10 +3,9 @@ use std::pin::Pin;
 use tokio::io::AsyncBufRead;
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{
-    RrdManifest,
-    rrd::{DecodeError, Decoder, DecoderEntrypoint, decoder::state_machine::DecoderState},
-};
+use crate::RrdManifest;
+use crate::rrd::decoder::state_machine::DecoderState;
+use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
 // ---
 
@@ -199,16 +198,13 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
 
 #[cfg(all(test, feature = "encoder"))]
 mod tests {
-    use tokio_stream::StreamExt as _;
-
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+    use tokio_stream::StreamExt as _;
 
-    use crate::{
-        DecoderApp,
-        rrd::{Compression, EncodingOptions, Serializer},
-    };
+    use crate::DecoderApp;
+    use crate::rrd::{Compression, EncodingOptions, Serializer};
 
     #[expect(clippy::unwrap_used)] // acceptable for tests
     fn fake_log_messages() -> Vec<LogMsg> {

@@ -1,16 +1,17 @@
-use crate::chunk_index::{FIELD_INSTANCE, Index};
-use crate::store::Error as StoreError;
+use std::sync::Arc;
+
 use arrow::array::{RecordBatch, StringArray};
 use datafusion::common::ScalarValue;
 use futures::{Stream, StreamExt as _};
 use itertools::Itertools as _;
 use lance_index::scalar::FullTextSearchQuery;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_protos::cloud::v1alpha1::ext::{IndexQueryProperties, SearchDatasetRequest};
 use re_protos::common::v1alpha1::ext::ScanParameters;
-use std::sync::Arc;
 use tracing::info;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
+use crate::chunk_index::{FIELD_INSTANCE, Index};
+use crate::store::Error as StoreError;
 
 pub async fn search_index(
     index: Arc<Index>,

@@ -1,11 +1,10 @@
+#[cfg(not(target_arch = "wasm32"))]
+use anyhow::Context as _;
 use re_log_channel::{LogReceiver, LogSource};
 use re_log_types::RecordingId;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
 
 use crate::FileContents;
-
-#[cfg(not(target_arch = "wasm32"))]
-use anyhow::Context as _;
 
 /// Somewhere we can get Rerun logging data from.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -266,8 +265,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use re_log_types::FileSource;
+
+    use super::*;
 
     #[cfg(not(target_arch = "wasm32"))]
     #[test]

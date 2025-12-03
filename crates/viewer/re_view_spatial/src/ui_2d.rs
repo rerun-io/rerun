@@ -1,19 +1,13 @@
-use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
+use egui::emath::RectTransform;
+use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
-
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
-use re_renderer::{
-    ViewPickingConfiguration,
-    view_builder::{TargetConfiguration, ViewBuilder},
-};
-use re_types::{
-    Archetype as _, archetypes,
-    blueprint::{
-        archetypes::{Background, NearClipPlane, VisualBounds2D},
-        components as blueprint_components,
-    },
-};
+use re_renderer::ViewPickingConfiguration;
+use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+use re_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_types::blueprint::components as blueprint_components;
+use re_types::{Archetype as _, archetypes};
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
@@ -22,12 +16,13 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::{eye::Eye, ui::create_labels};
+use super::eye::Eye;
+use super::ui::create_labels;
 use crate::contexts::TransformTreeContext;
-use crate::{
-    Pinhole, SpatialView2D, ui::SpatialViewState, view_kind::SpatialViewKind,
-    visualizers::collect_ui_labels,
-};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::collect_ui_labels;
+use crate::{Pinhole, SpatialView2D};
 // ---
 
 /// Pan and zoom, and return the current transform.

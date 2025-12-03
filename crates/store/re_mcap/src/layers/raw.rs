@@ -1,11 +1,11 @@
 use arrow::array::{ListBuilder, UInt8Builder};
-use re_chunk::{ChunkId, external::arrow::array::FixedSizeListBuilder};
+use re_chunk::ChunkId;
+use re_chunk::external::arrow::array::FixedSizeListBuilder;
 use re_types::archetypes::McapMessage;
 
-use crate::{
-    Error, LayerIdentifier, MessageLayer,
-    parsers::{MessageParser, ParserContext, util::blob_list_builder},
-};
+use crate::parsers::util::blob_list_builder;
+use crate::parsers::{MessageParser, ParserContext};
+use crate::{Error, LayerIdentifier, MessageLayer};
 
 struct RawMcapMessageParser {
     data: FixedSizeListBuilder<ListBuilder<UInt8Builder>>,

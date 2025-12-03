@@ -2,12 +2,11 @@ use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::{self, timeline_button};
 use re_log_types::{EntityPath, TimelineName};
-use re_types::ViewClassIdentifier;
 use re_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_types::blueprint::datatypes as bp_datatypes;
 use re_types::components::TextLogLevel;
-use re_types::{View as _, datatypes};
+use re_types::{View as _, ViewClassIdentifier, datatypes};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
 use re_viewer_context::{

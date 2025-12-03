@@ -1,10 +1,9 @@
 use re_log_types::Instance;
-use re_renderer::{PickingLayerInstanceId, renderer::LineStripFlags};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::LineStrips3D,
-    components::{ClassId, Color, Radius, ShowLabels},
-};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::LineStripFlags;
+use re_types::archetypes::LineStrips3D;
+use re_types::components::{ClassId, Color, Radius, ShowLabels};
+use re_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -12,13 +11,10 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::utilities::{LabeledBatch, process_labels_3d},
-};
-
 use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::utilities::{LabeledBatch, process_labels_3d};
 
 // ---
 

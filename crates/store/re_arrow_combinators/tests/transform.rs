@@ -4,21 +4,14 @@ mod util;
 
 use std::sync::Arc;
 
-use re_arrow_combinators::{
-    Transform as _,
-    cast::{ListToFixedSizeList, PrimitiveCast},
-    map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull},
-    reshape::{Flatten, GetField, RowMajorToColumnMajor, StructToFixedList},
+use arrow::array::{
+    Float32Array, Float64Array, Float64Builder, Int32Builder, ListArray, ListBuilder, StructBuilder,
 };
-
-use arrow::{
-    array::{
-        Float32Array, Float64Array, Float64Builder, Int32Builder, ListArray, ListBuilder,
-        StructBuilder,
-    },
-    datatypes::{DataType, Field, Fields},
-};
-
+use arrow::datatypes::{DataType, Field, Fields};
+use re_arrow_combinators::Transform as _;
+use re_arrow_combinators::cast::{ListToFixedSizeList, PrimitiveCast};
+use re_arrow_combinators::map::{MapFixedSizeList, MapList, MapPrimitive, ReplaceNull};
+use re_arrow_combinators::reshape::{Flatten, GetField, RowMajorToColumnMajor, StructToFixedList};
 use util::DisplayRB;
 
 fn create_nasty_component_column() -> ListArray {

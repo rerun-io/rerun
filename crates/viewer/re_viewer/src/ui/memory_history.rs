@@ -1,7 +1,6 @@
 #![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
 
 use emath::History;
-
 use re_renderer::WgpuResourcePoolStatistics;
 use re_viewer_context::store_hub::{StoreHubStats, StoreStats};
 

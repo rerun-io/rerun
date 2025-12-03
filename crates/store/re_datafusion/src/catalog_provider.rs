@@ -7,9 +7,8 @@ use async_trait::async_trait;
 use datafusion::catalog::{CatalogProvider, SchemaProvider, TableProvider};
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use parking_lot::Mutex;
-use tokio::runtime::Handle as RuntimeHandle;
-
 use re_redap_client::ConnectionClient;
+use tokio::runtime::Handle as RuntimeHandle;
 
 use crate::TableEntryTableProvider;
 

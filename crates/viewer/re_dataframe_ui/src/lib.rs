@@ -13,18 +13,15 @@ mod requested_object;
 mod table_blueprint;
 mod table_selection;
 
-pub use self::{
-    datafusion_table_widget::{DataFusionTableWidget, TableStatus},
-    display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError},
-    header_tooltip::column_header_tooltip_ui,
-    requested_object::RequestedObject,
-    table_blueprint::{
-        ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
-    },
-};
-
+pub use self::datafusion_table_widget::{DataFusionTableWidget, TableStatus};
+pub use self::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 // for testing purposes
 pub use self::filters::{
     ColumnFilter, ComparisonOperator, Filter, FloatFilter, IntFilter, NonNullableBooleanFilter,
     Nullability, NullableBooleanFilter, StringFilter, StringOperator, TimestampFilter, TypedFilter,
+};
+pub use self::header_tooltip::column_header_tooltip_ui;
+pub use self::requested_object::RequestedObject;
+pub use self::table_blueprint::{
+    ColumnBlueprint, SortBy, SortDirection, TableBlueprint, default_display_name_for_column,
 };

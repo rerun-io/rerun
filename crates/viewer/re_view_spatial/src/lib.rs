@@ -25,22 +25,17 @@ mod view_2d;
 mod view_3d;
 mod visualizers;
 
+pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
+pub(crate) use pinhole::Pinhole;
+use re_types::blueprint::archetypes::Background;
+use re_types::blueprint::components::BackgroundKind;
+use re_types::components::Color;
+// ---
+use re_viewer_context::ViewContext;
+use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
-
-pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
-pub(crate) use pinhole::Pinhole;
-
-// ---
-
-use re_viewer_context::ViewContext;
-
-use re_types::{
-    blueprint::{archetypes::Background, components::BackgroundKind},
-    components::Color,
-};
-use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

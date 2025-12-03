@@ -2,13 +2,15 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::{Time, VideoDataDescription, decode::FrameResult};
 use dav1d::{PixelLayout, PlanarImageComponent};
 
+use super::async_decoder_wrapper::SyncDecoder;
 use super::{
     Chunk, DecodeError, Frame, FrameContent, FrameInfo, PixelFormat, Result, YuvMatrixCoefficients,
-    YuvPixelLayout, YuvRange, async_decoder_wrapper::SyncDecoder,
+    YuvPixelLayout, YuvRange,
 };
+use crate::decode::FrameResult;
+use crate::{Time, VideoDataDescription};
 
 pub struct SyncDav1dDecoder {
     decoder: dav1d::Decoder,

@@ -1,12 +1,8 @@
 use re_log_types::{EntityPath, Instance};
-use re_renderer::{
-    PickingLayerInstanceId,
-    renderer::{LineDrawDataError, LineStripFlags},
-};
-use re_types::{
-    archetypes::GeoLineStrings,
-    components::{Color, Radius},
-};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
+use re_types::archetypes::GeoLineStrings;
+use re_types::components::{Color, Radius};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,

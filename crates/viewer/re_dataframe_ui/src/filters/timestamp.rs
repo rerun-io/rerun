@@ -23,13 +23,12 @@ use arrow::datatypes::{DataType, Field, TimeUnit};
 use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
-use strum::VariantArray as _;
-
 use re_log_types::TimestampFormat;
 use re_types_core::Loggable as _;
 use re_types_core::datatypes::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
@@ -809,9 +808,9 @@ impl FilterUdf for ResolvedTimestampFilter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use jiff::civil::date;
+
+    use super::*;
 
     #[test]
     fn test_before_filter() {

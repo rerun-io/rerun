@@ -1,8 +1,7 @@
 //! Tests for adding entities to new views. Checks whether the origin and entity path filter are set correctly.
 
 use egui::accesskit::Role;
-use egui_kittest::kittest::NodeT as _;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;

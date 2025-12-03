@@ -2,7 +2,6 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
-
 use re_chunk::{
     Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
     TimePoint, Timeline, TimelineName,
@@ -21,9 +20,9 @@ use re_query::{
 };
 use re_types_core::ChunkIndexMessage;
 
-use crate::{
-    Error, TimesPerTimeline, chunk_index::ChunkIndex, ingestion_statistics::IngestionStatistics,
-};
+use crate::chunk_index::ChunkIndex;
+use crate::ingestion_statistics::IngestionStatistics;
+use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -985,10 +984,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{
-        StoreId, TimePoint, Timeline,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{StoreId, TimePoint, Timeline};
 
     use super::*;
 

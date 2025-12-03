@@ -1,6 +1,5 @@
-use crate::components::{HalfSize3D, PoseTranslation3D};
-
 use super::Ellipsoids3D;
+use crate::components::{HalfSize3D, PoseTranslation3D};
 
 impl Ellipsoids3D {
     /// Creates a new [`Ellipsoids3D`] for spheres with the given radii.

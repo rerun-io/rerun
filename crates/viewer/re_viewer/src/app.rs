@@ -1,12 +1,14 @@
+use std::str::FromStr as _;
+use std::sync::Arc;
+
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
-use std::{str::FromStr as _, sync::Arc};
-
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
-use re_entity_db::{InstancePath, entity_db::EntityDb};
+use re_entity_db::InstancePath;
+use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{LogReceiver, LogReceiverSet, LogSource};
 use re_log_types::{
     ApplicationId, DataSourceMessage, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg,
@@ -16,26 +18,23 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
+use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
+use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
-    command_channel,
-    open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
-    sanitize_file_name,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    command_channel, sanitize_file_name,
 };
 
-use crate::{
-    AppState,
-    app_blueprint::{AppBlueprint, PanelStateOverrides},
-    app_blueprint_ctx::AppBlueprintCtx,
-    app_state::WelcomeScreenState,
-    background_tasks::BackgroundTasks,
-    event::ViewerEventDispatcher,
-    startup_options::StartupOptions,
-};
+use crate::AppState;
+use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
+use crate::app_blueprint_ctx::AppBlueprintCtx;
+use crate::app_state::WelcomeScreenState;
+use crate::background_tasks::BackgroundTasks;
+use crate::event::ViewerEventDispatcher;
+use crate::startup_options::StartupOptions;
 
 // ----------------------------------------------------------------------------
 

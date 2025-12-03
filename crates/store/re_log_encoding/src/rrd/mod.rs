@@ -33,25 +33,22 @@ mod file_sink;
 #[cfg(feature = "stream_from_http")]
 pub mod stream_from_http;
 
-pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
-pub use self::footer::{RrdFooter, RrdManifest, RrdManifestBuilder};
-pub use self::frames::{
-    Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
-    StreamFooter, StreamHeader,
-};
-
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
     DecodeError, Decoder, DecoderApp, DecoderEntrypoint, DecoderIterator, DecoderStream,
     DecoderTransport,
 };
-
 #[cfg(feature = "encoder")]
 pub use self::encoder::{EncodeError, Encoder};
-
+pub use self::errors::{CodecError, CodecResult, NotAnRrdError, OptionsError};
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::file_sink::{FileFlushError, FileSink, FileSinkError};
+pub use self::footer::{RrdFooter, RrdManifest, RrdManifestBuilder};
+pub use self::frames::{
+    Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
+    StreamFooter, StreamHeader,
+};
 
 // ---
 

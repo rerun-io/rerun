@@ -1,5 +1,4 @@
 use itertools::Itertools as _;
-
 use re_log_types::{StoreId, StoreKind};
 
 use crate::EntityDb;

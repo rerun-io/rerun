@@ -1,10 +1,7 @@
-use crate::callback_server::Error;
-use crate::callback_server::OauthCallbackServer;
+use crate::callback_server::{Error, OauthCallbackServer};
 use crate::oauth;
 use crate::oauth::Credentials;
-use crate::oauth::api::AuthenticateWithCode;
-use crate::oauth::api::Pkce;
-use crate::oauth::api::send_async;
+use crate::oauth::api::{AuthenticateWithCode, Pkce, send_async};
 
 pub enum OauthLoginFlowState {
     AlreadyLoggedIn(Credentials),

@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{Array as _, ArrayRef, FixedSizeListArray, ListArray, RecordBatch, RecordBatchOptions},
-    datatypes::{Field, Schema},
-    error::ArrowError,
+use arrow::array::{
+    Array as _, ArrayRef, FixedSizeListArray, ListArray, RecordBatch, RecordBatchOptions,
 };
+use arrow::datatypes::{Field, Schema};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, TimeInt, TimelineName};

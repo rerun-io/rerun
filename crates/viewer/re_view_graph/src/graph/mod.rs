@@ -10,15 +10,12 @@ use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
 mod ids;
 pub(crate) use ids::{EdgeId, NodeId};
-
 use re_chunk::EntityPath;
 use re_types::components::{self, GraphType};
 
-use crate::{
-    layout::EdgeTemplate,
-    ui::DrawableLabel,
-    visualizers::{EdgeData, NodeData, NodeInstance},
-};
+use crate::layout::EdgeTemplate;
+use crate::ui::DrawableLabel;
+use crate::visualizers::{EdgeData, NodeData, NodeInstance};
 
 /// Describes the different kind of nodes that we can have in a graph.
 pub enum Node {

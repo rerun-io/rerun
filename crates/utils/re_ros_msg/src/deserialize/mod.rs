@@ -2,10 +2,8 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde::de::{self, DeserializeSeed};
 
-use crate::{
-    deserialize::primitive_array::PrimitiveArraySeed,
-    message_spec::{ComplexType, MessageSpecification, Type},
-};
+use crate::deserialize::primitive_array::PrimitiveArraySeed;
+use crate::message_spec::{ComplexType, MessageSpecification, Type};
 
 pub mod primitive;
 pub mod primitive_array;
@@ -200,14 +198,12 @@ impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
     where
         D: de::Deserializer<'de>,
     {
-        use crate::message_spec::{
-            ArraySize::{Bounded, Fixed, Unbounded},
-            BuiltInType::{
-                Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8,
-                UInt16, UInt32, UInt64, WString,
-            },
-            Type,
+        use crate::message_spec::ArraySize::{Bounded, Fixed, Unbounded};
+        use crate::message_spec::BuiltInType::{
+            Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8, UInt16,
+            UInt32, UInt64, WString,
         };
+        use crate::message_spec::Type;
 
         match self.ty {
             Type::BuiltIn(primitive_type) => match primitive_type {

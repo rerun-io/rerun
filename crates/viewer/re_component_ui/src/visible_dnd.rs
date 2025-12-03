@@ -1,6 +1,6 @@
-use re_ui::{HasDesignTokens as _, UiExt as _};
-
 use std::hash::Hash;
+
+use re_ui::{HasDesignTokens as _, UiExt as _};
 
 /// A shared utility for a drag and drop ui with a visibility button for each item.
 pub fn visible_dnd<T: Hash>(

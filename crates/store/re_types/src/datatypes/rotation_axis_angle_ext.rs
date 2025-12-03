@@ -1,5 +1,4 @@
 use super::RotationAxisAngle;
-
 use crate::datatypes::{Angle, Vec3D};
 
 impl RotationAxisAngle {

@@ -7,7 +7,6 @@ use std::task::Poll;
 
 use ahash::HashMap;
 use itertools::{Either, Itertools as _};
-
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
 use re_log_channel::LogSource;

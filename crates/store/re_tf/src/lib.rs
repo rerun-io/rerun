@@ -146,15 +146,14 @@ mod transform_resolution_cache;
 
 pub mod convert;
 
+// Re-export the transform frame id types from re_types.
+pub use re_types::TransformFrameIdHash;
+pub use re_types::components::TransformFrameId;
 pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TreeTransform};
 pub use transform_queries::{query_view_coordinates, query_view_coordinates_at_closest_ancestor};
 pub use transform_resolution_cache::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,
 };
-
-// Re-export the transform frame id types from re_types.
-pub use re_types::TransformFrameIdHash;
-pub use re_types::components::TransformFrameId;
 
 /// Returns the view coordinates used for 2D (image) views.
 ///

@@ -2,14 +2,12 @@ use std::ops::Range;
 
 use re_log::ResultExt as _;
 
+use crate::allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError};
+use crate::renderer::gpu_data::{LineStripInfo, LineVertex};
+use crate::renderer::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 use crate::{
     Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId,
     PickingLayerObjectId, RenderContext, Size,
-    allocator::{CpuWriteGpuReadError, DataTextureSource, DataTextureSourceWriteError},
-    renderer::{
-        LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags,
-        gpu_data::{LineStripInfo, LineVertex},
-    },
 };
 
 /// Builder for a vector of line strips, making it easy to create [`crate::renderer::LineDrawData`].

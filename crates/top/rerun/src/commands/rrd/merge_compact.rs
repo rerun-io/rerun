@@ -2,7 +2,6 @@ use std::io::{IsTerminal as _, Write as _};
 
 use anyhow::Context as _;
 use itertools::Either;
-
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreError};
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;

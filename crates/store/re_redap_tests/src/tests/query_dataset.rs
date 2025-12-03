@@ -1,12 +1,8 @@
 use futures::StreamExt as _;
-
-use re_protos::{
-    cloud::v1alpha1::{
-        QueryDatasetResponse, ext::QueryDatasetRequest,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    headers::RerunHeadersInjectorExt as _,
-};
+use re_protos::cloud::v1alpha1::QueryDatasetResponse;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,

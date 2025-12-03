@@ -59,8 +59,9 @@ impl Radius {
 
 #[cfg(test)]
 mod tests {
-    use super::Radius;
     use re_types_core::datatypes::Float32;
+
+    use super::Radius;
 
     #[test]
     fn scene_point_distinction() {

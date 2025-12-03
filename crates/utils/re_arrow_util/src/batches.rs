@@ -1,10 +1,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayRef, RecordBatch, RecordBatchOptions},
-    datatypes::{Field, Schema, SchemaBuilder},
-};
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Field, Schema, SchemaBuilder};
 use itertools::Itertools as _;
 
 // ---
@@ -287,14 +285,11 @@ mod tests {
 
     use std::sync::Arc;
 
-    use arrow::{
-        array::{
-            BooleanArray, Float64Array, Int32Array, RecordBatch, StringArray, StructArray,
-            UInt64Array,
-        },
-        datatypes::{DataType, Field, Schema},
-        error::ArrowError,
+    use arrow::array::{
+        BooleanArray, Float64Array, Int32Array, RecordBatch, StringArray, StructArray, UInt64Array,
     };
+    use arrow::datatypes::{DataType, Field, Schema};
+    use arrow::error::ArrowError;
 
     use super::*;
 

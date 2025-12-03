@@ -1,7 +1,6 @@
 use std::any::Any;
 
 use ahash::HashMap;
-
 use re_types::ViewClassIdentifier;
 
 use crate::{

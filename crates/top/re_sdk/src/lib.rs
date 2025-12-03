@@ -46,13 +46,12 @@ pub fn default_server_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }
 
+pub use global::cleanup_if_forked_child;
 pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathFilter, EntityPathPart, Instance, StoreId, StoreKind,
     entity_path,
 };
 pub use re_types::archetypes::RecordingInfo;
-
-pub use global::cleanup_if_forked_child;
 
 #[cfg(not(target_arch = "wasm32"))]
 impl crate::sink::LogSink for re_log_encoding::FileSink {
@@ -83,16 +82,14 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// This is how you select whether the log stream ends up
 /// sent over gRPC, written to file, etc.
 pub mod sink {
-    pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
-    pub use crate::log_sink::{
-        BufferedSink, CallbackSink, IntoMultiSink, LogSink, MemorySink, MemorySinkStorage,
-        MultiSink, SinkFlushError,
-    };
-
-    pub use crate::log_sink::{GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState};
-
     #[cfg(not(target_arch = "wasm32"))]
     pub use re_log_encoding::{FileSink, FileSinkError};
+
+    pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
+    pub use crate::log_sink::{
+        BufferedSink, CallbackSink, GrpcSink, GrpcSinkConnectionFailure, GrpcSinkConnectionState,
+        IntoMultiSink, LogSink, MemorySink, MemorySinkStorage, MultiSink, SinkFlushError,
+    };
 }
 
 /// Things directly related to logging.
@@ -108,14 +105,13 @@ pub mod log {
 pub mod time {
     pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
 }
-pub use time::{TimeCell, TimePoint, Timeline};
-
 pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
     Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
     SerializedComponentColumn,
 };
+pub use time::{TimeCell, TimePoint, Timeline};
 
 /// Transformation and reinterpretation of components.
 ///
@@ -125,7 +121,6 @@ pub use re_types::{
 pub mod lenses;
 
 pub use re_byte_size::SizeBytes;
-
 #[cfg(feature = "data_loaders")]
 pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
 
@@ -142,19 +137,12 @@ pub use re_grpc_server::{MemoryLimit, PlaybackBehavior, ServerOptions};
 
 /// Re-exports of other crates.
 pub mod external {
-    pub use re_grpc_client;
-    pub use re_grpc_server;
-    pub use re_log;
-    pub use re_log_encoding;
-    pub use re_log_types;
-    pub use re_uri;
-
     pub use re_chunk::external::*;
-    pub use re_log::external::*;
-    pub use re_log_types::external::*;
-
     #[cfg(feature = "data_loaders")]
     pub use re_data_loader::{self, external::*};
+    pub use re_log::external::*;
+    pub use re_log_types::external::*;
+    pub use {re_grpc_client, re_grpc_server, re_log, re_log_encoding, re_log_types, re_uri};
 }
 
 #[cfg(feature = "web_viewer")]

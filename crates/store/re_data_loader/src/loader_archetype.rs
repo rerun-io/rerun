@@ -1,5 +1,4 @@
 use itertools::Either;
-
 use re_chunk::{Chunk, RowId};
 use re_log_types::{ApplicationId, EntityPath, TimePoint};
 use re_types::ComponentBatch;

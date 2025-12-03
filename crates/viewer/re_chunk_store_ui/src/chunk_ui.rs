@@ -4,7 +4,6 @@ use std::sync::Arc;
 use arrow::array::{Array as _, RecordBatch as ArrowRecordBatch};
 use egui_extras::{Column, TableRow};
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
 use re_log_types::{TimeInt, Timeline, TimestampFormat};

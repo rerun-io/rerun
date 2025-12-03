@@ -1,4 +1,5 @@
-use std::{ops::Range, sync::mpsc};
+use std::ops::Range;
+use std::sync::mpsc;
 
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};

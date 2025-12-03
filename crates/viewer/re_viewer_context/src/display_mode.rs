@@ -1,5 +1,6 @@
-use crate::Item;
 use re_log_types::{StoreId, TableId};
+
+use crate::Item;
 
 /// Which display mode are we currently in?
 #[derive(Clone, PartialEq, Eq)]

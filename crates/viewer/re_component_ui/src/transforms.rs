@@ -1,4 +1,5 @@
-use re_types::{components::TransformMat3x3, datatypes::Mat3x3};
+use re_types::components::TransformMat3x3;
+use re_types::datatypes::Mat3x3;
 use re_ui::UiExt as _;
 use re_viewer_context::MaybeMutRef;
 

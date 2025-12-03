@@ -1,6 +1,5 @@
-use crate::datatypes::DVec2D;
-
 use super::LatLon;
+use crate::datatypes::DVec2D;
 
 // ---
 

@@ -1,5 +1,6 @@
-use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
-use crate::table_selection::TableSelectionState;
+use std::iter;
+use std::sync::Arc;
+
 use egui::emath::GuiRounding as _;
 use egui::text_selection::LabelSelectionState;
 use egui::{
@@ -10,8 +11,9 @@ use egui_table::{CellInfo, HeaderCellInfo, PrefetchInfo};
 use re_format::format_uint;
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::{TableStyle, UiExt as _};
-use std::iter;
-use std::sync::Arc;
+
+use crate::re_table_utils::{TableConfig, apply_table_style_fixes, cell_ui, header_ui};
+use crate::table_selection::TableSelectionState;
 
 /// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
 pub struct ReTable<'a> {

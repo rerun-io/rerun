@@ -4,10 +4,10 @@ use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
+use crate::chunk_columns::ChunkColumnDescriptors;
 use crate::{
     ArrowBatchMetadata, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
     RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetError, SorbetSchema,
-    chunk_columns::ChunkColumnDescriptors,
 };
 
 /// The parsed schema of a Rerun chunk, i.e. multiple columns of data for a single entity.

@@ -1,14 +1,11 @@
 use std::collections::HashMap;
-use std::fs::create_dir_all;
-use std::fs::read_to_string;
-use std::path::Path;
-use std::path::PathBuf;
+use std::fs::{create_dir_all, read_to_string};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use camino::Utf8Path;
 use indicatif::MultiProgress;
-use rayon::prelude::IntoParallelIterator as _;
-use rayon::prelude::ParallelIterator as _;
+use rayon::prelude::{IntoParallelIterator as _, ParallelIterator as _};
 
 use super::wait_for_output;
 

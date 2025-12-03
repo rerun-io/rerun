@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use arrow::array::ArrayRef;
 use rand::Rng as _;
-
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
 };
@@ -10,14 +9,10 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, ChunkStoreDiffKind, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
-use re_log_types::{
-    AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-};
-use re_types::{
-    ComponentDescriptor,
-    testing::{build_some_large_structs, large_struct_descriptor},
-};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+use re_log_types::{AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time};
+use re_types::ComponentDescriptor;
+use re_types::testing::{build_some_large_structs, large_struct_descriptor};
 
 // ---
 

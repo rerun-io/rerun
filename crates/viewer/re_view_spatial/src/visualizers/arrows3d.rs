@@ -1,10 +1,9 @@
 use re_log_types::Instance;
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, renderer::LineStripFlags};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Arrows3D,
-    components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D},
-};
+use re_renderer::renderer::LineStripFlags;
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
+use re_types::archetypes::Arrows3D;
+use re_types::components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D};
+use re_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -12,12 +11,11 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind};
-
-use super::{
-    SpatialViewVisualizerData, entity_iterator::clamped_or, process_labels_3d,
-    process_radius_slice, utilities::LabeledBatch,
-};
+use super::entity_iterator::clamped_or;
+use super::utilities::LabeledBatch;
+use super::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 

@@ -1,16 +1,12 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
-
 use re_log_types::AbsoluteTimeRange;
 use re_redap_browser::EXAMPLES_ORIGIN;
-use re_ui::{
-    UiExt as _, icons,
-    list_item::PropertyContent,
-    modal::{ModalHandler, ModalWrapper},
-};
+use re_ui::list_item::PropertyContent;
+use re_ui::modal::{ModalHandler, ModalWrapper};
+use re_ui::{UiExt as _, icons};
 use re_uri::Fragment;
-use re_viewer_context::{
-    DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext, open_url::ViewerOpenUrl,
-};
+use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::{DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext};
 
 pub struct ShareModal {
     modal: ModalHandler,
@@ -361,15 +357,16 @@ fn time_cursor_ui(
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr as _, sync::Arc};
+    use std::str::FromStr as _;
+    use std::sync::Arc;
 
     use parking_lot::Mutex;
     use re_chunk::EntityPath;
-    use re_log_types::{AbsoluteTimeRangeF, TimeCell, external::re_tuid};
+    use re_log_types::external::re_tuid;
+    use re_log_types::{AbsoluteTimeRangeF, TimeCell};
     use re_test_context::TestContext;
-    use re_viewer_context::{
-        DisplayMode, Item, ItemCollection, TimeControlCommand, open_url::ViewerOpenUrl,
-    };
+    use re_viewer_context::open_url::ViewerOpenUrl;
+    use re_viewer_context::{DisplayMode, Item, ItemCollection, TimeControlCommand};
 
     use crate::ui::ShareModal;
 

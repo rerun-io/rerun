@@ -1,7 +1,6 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering::Relaxed},
-};
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 
 use crate::{Channel, LogSource, SmartMessage, TryRecvError};
 

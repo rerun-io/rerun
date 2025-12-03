@@ -1,10 +1,9 @@
-use re_types::{ColormapCategory, reflection::Enum as _};
+use re_types::ColormapCategory;
+use re_types::reflection::Enum as _;
 use re_ui::list_item;
 
-use crate::{
-    MaybeMutRef,
-    gpu_bridge::{get_or_create_texture, render_image},
-};
+use crate::MaybeMutRef;
+use crate::gpu_bridge::{get_or_create_texture, render_image};
 
 const MIN_WIDTH: f32 = 150.0;
 

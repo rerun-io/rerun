@@ -11,10 +11,10 @@ use re_viewer_context::{
     ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::{
-    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
-    visualizer_system::EmptySystem,
-};
+use crate::dataframe_ui::dataframe_ui;
+use crate::expanded_rows::ExpandedRowsCache;
+use crate::view_query;
+use crate::visualizer_system::EmptySystem;
 
 #[derive(Default)]
 struct DataframeViewState {

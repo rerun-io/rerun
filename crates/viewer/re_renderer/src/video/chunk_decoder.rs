@@ -5,15 +5,11 @@ use std::collections::BTreeMap;
 use crossbeam::channel::{Receiver, Sender};
 use re_video::{Chunk, Frame, FrameContent, Time, VideoDataDescription};
 
-use crate::{
-    RenderContext,
-    resource_managers::{GpuTexture2D, SourceImageDataFormat},
-    video::{
-        VideoPlayerError,
-        player::{TimedDecodingError, VideoTexture},
-    },
-    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
-};
+use crate::RenderContext;
+use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
+use crate::video::VideoPlayerError;
+use crate::video::player::{TimedDecodingError, VideoTexture};
+use crate::wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc};
 
 #[derive(Default)]
 struct DecoderOutput {

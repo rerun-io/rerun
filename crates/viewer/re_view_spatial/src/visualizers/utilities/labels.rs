@@ -2,7 +2,6 @@ use std::iter;
 
 use egui::Color32;
 use itertools::{Either, izip};
-
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_viewer_context::ResolvedAnnotationInfos;

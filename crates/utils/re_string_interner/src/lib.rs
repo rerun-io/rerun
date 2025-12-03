@@ -10,7 +10,6 @@
 
 pub mod external {
     pub use nohash_hasher;
-
     #[cfg(feature = "serde")]
     pub use serde;
 }

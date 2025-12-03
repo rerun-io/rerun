@@ -1,15 +1,13 @@
 use std::collections::VecDeque;
-use std::io::Cursor;
-use std::io::Read as _;
+use std::io::{Cursor, Read as _};
 
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 
-use crate::StreamFooter;
 use crate::rrd::MessageHeader;
 use crate::{
     CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
-    EncodingOptions, RrdManifest, Serializer, StreamHeader, ToApplication as _,
+    EncodingOptions, RrdManifest, Serializer, StreamFooter, StreamHeader, ToApplication as _,
 };
 
 // ---
@@ -547,10 +545,9 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
 
+    use super::*;
     use crate::Encoder;
     use crate::rrd::EncodingOptions;
-
-    use super::*;
 
     fn fake_log_msg() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {

@@ -1,4 +1,6 @@
-use re_types::{Archetype as _, archetypes::VideoStream, components::Opacity};
+use re_types::Archetype as _;
+use re_types::archetypes::VideoStream;
+use re_types::components::Opacity;
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
@@ -7,21 +9,17 @@ use re_viewer_context::{
     video_stream_time_from_query,
 };
 
-use crate::{
-    PickableTexturedRect, SpatialView2D,
-    contexts::{EntityDepthOffsets, TransformTreeContext},
-    view_kind::SpatialViewKind,
-    visualizers::{
-        SpatialViewVisualizerData,
-        utilities::{
-            spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
-        },
-        video::{
-            VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
-            visualize_video_frame_texture,
-        },
-    },
+use crate::contexts::{EntityDepthOffsets, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
+use crate::visualizers::utilities::{
+    spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
 };
+use crate::visualizers::video::{
+    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+    visualize_video_frame_texture,
+};
+use crate::{PickableTexturedRect, SpatialView2D};
 
 pub struct VideoStreamVisualizer {
     pub data: SpatialViewVisualizerData,

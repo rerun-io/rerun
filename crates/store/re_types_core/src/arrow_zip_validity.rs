@@ -6,7 +6,8 @@
 //!
 //! Adapted by Rerun to work with `arrow` crate.
 
-use arrow::{buffer::NullBuffer, util::bit_iterator::BitIterator};
+use arrow::buffer::NullBuffer;
+use arrow::util::bit_iterator::BitIterator;
 
 /// An [`Iterator`] over validity and values.
 #[derive(Debug, Clone)]

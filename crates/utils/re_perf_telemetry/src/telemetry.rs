@@ -1,15 +1,16 @@
+use std::sync::Arc;
+
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithTonicConfig as _;
-use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor};
-use opentelemetry_sdk::{
-    logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
-};
-use std::sync::Arc;
+use opentelemetry_sdk::logs::SdkLoggerProvider;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
 
-use crate::{LogFormat, TelemetryArgs, TraceIdLayer, shared_reader::SharedManualReader};
+use crate::shared_reader::SharedManualReader;
+use crate::{LogFormat, TelemetryArgs, TraceIdLayer};
 
 // ---
 
