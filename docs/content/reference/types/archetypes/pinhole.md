@@ -7,7 +7,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 If [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).
 
-If you use explicit transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)
+If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)
 as it is the case with other visualizations: for any entity with an [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) the viewer will always visualize it
 directly without needing a [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) to refer to the pinhole's child/parent frame.
 
