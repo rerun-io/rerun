@@ -684,6 +684,9 @@ impl EyeState {
         // to stop tracking.
         eye_controller.handle_input(self, response, drag_threshold);
 
+        // Handle spinning after saving to blueprint to not continuously write to the blueprint.
+        self.handle_spinning(ctx, eye_property, &mut eye_controller)?;
+
         eye_controller.save_to_blueprint(
             ctx.viewer_ctx,
             eye_property,
@@ -691,9 +694,6 @@ impl EyeState {
             old_look_target,
             old_eye_up,
         );
-
-        // Handle spinning after saving to blueprint to not continuously write to the blueprint.
-        self.handle_spinning(ctx, eye_property, &mut eye_controller)?;
 
         if let Some(tracked_eye) = self.handle_tracking_entity(
             ctx,
@@ -869,13 +869,9 @@ impl EyeState {
             ctx,
             EyeControls3D::descriptor_spin_speed().component,
         )?;
-        if spin_speed != 0.0 {
-            let spin = self.spin.get_or_insert_default();
 
-            *spin += spin_speed * ctx.egui_ctx().input(|i| i.stable_dt as f64).at_most(0.1);
-            *spin %= std::f64::consts::TAU;
-
-            let quat = Quat::from_axis_angle(eye_controller.up(), *spin as f32);
+        let mut apply_spin = |spin| {
+            let quat = Quat::from_axis_angle(eye_controller.up(), spin as f32);
 
             let fwd = quat * eye_controller.fwd();
 
@@ -888,11 +884,28 @@ impl EyeState {
                     eye_controller.pos = eye_controller.look_target - fwd * d;
                 }
             }
+        };
+
+        if spin_speed != 0.0 {
+            let spin = self.spin.get_or_insert_default();
+
+            *spin += spin_speed * ctx.egui_ctx().input(|i| i.stable_dt as f64).at_most(0.1);
+            *spin %= std::f64::consts::TAU;
+
+            apply_spin(*spin);
+
+            // If we interact we write to the blueprint so reset spin offset.
+            if eye_controller.did_interact {
+                self.spin = None;
+            }
 
             // Request repaint if we're spinning.
             ctx.egui_ctx().request_repaint();
-        } else {
-            self.spin = None;
+        }
+        // If we just stopped spinning write new position to the blueprint.
+        else if let Some(spin) = self.spin.take() {
+            apply_spin(spin);
+            eye_controller.did_interact = true;
         }
 
         Ok(())
