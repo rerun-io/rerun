@@ -1,4 +1,5 @@
 use parking_lot::{ArcMutexGuard, Mutex, RawMutex};
+use re_byte_size::SizeBytes;
 use std::sync::Arc;
 
 use super::{Cache, CacheMemoryReport};
@@ -34,6 +35,18 @@ impl TransformDatabaseStoreCache {
     }
 }
 
+impl SizeBytes for TransformDatabaseStoreCache {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            initialized,
+            transform_cache,
+        } = self;
+        let cache = transform_cache.lock();
+
+        initialized.heap_size_bytes() + cache.total_size_bytes()
+    }
+}
+
 impl Cache for TransformDatabaseStoreCache {
     fn purge_memory(&mut self) {
         // Can't purge memory from the transform cache right now and even if we could, there's
@@ -42,8 +55,7 @@ impl Cache for TransformDatabaseStoreCache {
 
     fn memory_report(&self) -> CacheMemoryReport {
         CacheMemoryReport {
-            // TODO(RR-2517): Implement SizeBytes for TransformResolutionCache.
-            bytes_cpu: 0, //self.transform_cache.total_size_bytes(),
+            bytes_cpu: self.total_size_bytes(),
             bytes_gpu: None,
             per_cache_item_info: Vec::new(),
         }

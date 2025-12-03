@@ -5,6 +5,7 @@ use glam::DAffine3;
 use itertools::{Either, izip};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
+use re_byte_size::SizeBytes;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::{
@@ -17,8 +18,7 @@ use crate::{
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::external::arrow;
-use re_chunk_store::{Chunk, LatestAtQuery};
+use re_chunk_store::{Chunk, LatestAtQuery, external::arrow};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::{ComponentIdentifier, archetypes, components};
@@ -61,6 +61,20 @@ impl Default for TransformResolutionCache {
     }
 }
 
+impl SizeBytes for TransformResolutionCache {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            frame_id_registry,
+            per_timeline,
+            static_timeline,
+        } = self;
+
+        frame_id_registry.heap_size_bytes()
+            + per_timeline.heap_size_bytes()
+            + static_timeline.heap_size_bytes()
+    }
+}
+
 /// A transform from a child frame to a parent frame.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParentFromChildTransform {
@@ -69,6 +83,14 @@ pub struct ParentFromChildTransform {
 
     /// The transform from the child frame to the parent frame.
     pub transform: DAffine3,
+}
+
+impl SizeBytes for ParentFromChildTransform {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { parent, transform } = self;
+
+        parent.heap_size_bytes() + transform.heap_size_bytes()
+    }
 }
 
 /// Cached transforms for a single timeline.
@@ -243,6 +265,20 @@ impl CachedTransformsForTimeline {
     }
 }
 
+impl SizeBytes for CachedTransformsForTimeline {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            per_child_frame_transforms,
+            non_recursive_clears,
+            recursive_clears,
+        } = self;
+
+        per_child_frame_transforms.heap_size_bytes()
+            + non_recursive_clears.heap_size_bytes()
+            + recursive_clears.heap_size_bytes()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 enum CachedTransformValue<T> {
     /// Cache is invalidated, we don't know what state we're in.
@@ -253,6 +289,15 @@ enum CachedTransformValue<T> {
 
     /// The value has been cleared out at this time.
     Cleared,
+}
+
+impl<T: SizeBytes> SizeBytes for CachedTransformValue<T> {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Resident(item) => item.heap_size_bytes(),
+            Self::Invalidated | Self::Cleared => 0,
+        }
+    }
 }
 
 type FrameTransformTimeMap = BTreeMap<TimeInt, CachedTransformValue<ParentFromChildTransform>>;
@@ -344,6 +389,20 @@ impl TransformsForChildFrameEvents {
     }
 }
 
+impl SizeBytes for TransformsForChildFrameEvents {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            frame_transforms,
+            pose_transforms,
+            pinhole_projections,
+        } = self;
+
+        frame_transforms.heap_size_bytes()
+            + pose_transforms.heap_size_bytes()
+            + pinhole_projections.heap_size_bytes()
+    }
+}
+
 /// Cached transforms from a single child frame to a (potentially changing) parent frame over time.
 ///
 /// Incorporates any static transforms that may apply to this entity.
@@ -391,6 +450,23 @@ impl PartialEq for TransformsForChildFrame {
     }
 }
 
+impl SizeBytes for TransformsForChildFrame {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            associated_entity_path,
+            child_frame,
+            events,
+
+            #[cfg(debug_assertions)]
+                timeline: _,
+        } = self;
+
+        associated_entity_path.heap_size_bytes()
+            + child_frame.heap_size_bytes()
+            + events.lock().heap_size_bytes()
+    }
+}
+
 fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
     transforms: &mut BTreeMap<TimeInt, CachedTransformValue<T>>,
     time: TimeInt,
@@ -422,6 +498,22 @@ pub struct ResolvedPinholeProjection {
     /// (answering questions like which axis is distance to viewer increasing).
     /// If no view coordinates were logged, this is set to [`archetypes::Pinhole::DEFAULT_CAMERA_XYZ`].
     pub view_coordinates: components::ViewCoordinates,
+}
+
+impl SizeBytes for ResolvedPinholeProjection {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            parent,
+            image_from_camera,
+            resolution,
+            view_coordinates,
+        } = self;
+
+        parent.heap_size_bytes()
+            + image_from_camera.heap_size_bytes()
+            + resolution.heap_size_bytes()
+            + view_coordinates.heap_size_bytes()
+    }
 }
 
 impl TransformsForChildFrame {
