@@ -330,12 +330,12 @@ impl ConnectionRegistryHandle {
                 if credentials.is_none() {
                     Err(ApiError::credentials(
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
-                        "verifying credentials",
+                        "verifying connection to server",
                     ))
                 } else {
                     Err(ApiError::credentials(
                         ClientCredentialsError::UnauthenticatedBadToken(err.into()),
-                        "verifying credentials",
+                        "verifying connection to server",
                     ))
                 }
             }
@@ -355,7 +355,7 @@ impl ConnectionRegistryHandle {
                         )),
                     }
                 } else {
-                    Err(ApiError::tonic(err, "verifying credentials"))
+                    Err(ApiError::tonic(err, "verifying connection to server"))
                 }
             }
 
