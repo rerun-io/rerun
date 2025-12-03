@@ -23,3 +23,6 @@ pub use dataset_manifest::DatasetManifestProvider;
 pub use partition_table::SegmentTableProvider;
 pub use search_provider::SearchResultsTableProvider;
 pub use table_entry_provider::TableEntryTableProvider;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type TraceHeaders = re_perf_telemetry::TraceHeaders;

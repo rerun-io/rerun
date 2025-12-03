@@ -26,6 +26,7 @@ use crate::common::v1alpha1::{
     ComponentDescriptor, DataframePart, TaskId,
     ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
 };
+use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 /// Helper to simplify writing `field_XXX() -> FieldRef` methods.
@@ -35,6 +36,28 @@ macro_rules! lazy_field_ref {
         let field = FIELD.get_or_init(|| Arc::new($fld));
         Arc::clone(field)
     }};
+}
+
+// --- CreateIndexRequest
+#[derive(Debug)]
+pub struct CreateIndexRequest {
+    pub config: IndexConfig,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::CreateIndexRequest> for CreateIndexRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::CreateIndexRequest) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::CreateIndexRequest { config } = value;
+
+        Ok(CreateIndexRequest {
+            config: config
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::CreateIndexRequest, "config")
+                })?
+                .try_into()?,
+        })
+    }
 }
 
 // --- RegisterWithDatasetRequest ---
@@ -2276,6 +2299,47 @@ impl From<IndexConfig> for crate::cloud::v1alpha1::IndexConfig {
             column: Some(value.column.into()),
             time_index: Some(value.time_index.into()),
         }
+    }
+}
+
+// ---
+
+#[derive(Debug, Clone)]
+pub struct SearchDatasetRequest {
+    pub column: IndexColumn,
+    pub query: RecordBatch,
+    pub properties: IndexQueryProperties,
+    pub scan_parameters: ScanParameters,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::SearchDatasetRequest> for SearchDatasetRequest {
+    type Error = TypeConversionError;
+    fn try_from(value: crate::cloud::v1alpha1::SearchDatasetRequest) -> Result<Self, Self::Error> {
+        Ok(SearchDatasetRequest {
+            column: value
+                .column
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::SearchDatasetRequest, "column")
+                })?
+                .try_into()?,
+            query: value
+                .query
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::SearchDatasetRequest, "query")
+                })?
+                .try_into()?,
+            properties: value
+                .properties
+                .ok_or_else(|| {
+                    missing_field!(crate::cloud::v1alpha1::SearchDatasetRequest, "properties")
+                })?
+                .try_into()?,
+            scan_parameters: value
+                .scan_parameters
+                .map(ScanParameters::try_from)
+                .transpose()?
+                .unwrap_or_default(),
+        })
     }
 }
 

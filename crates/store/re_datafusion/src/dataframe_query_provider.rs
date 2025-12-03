@@ -45,6 +45,27 @@ use crate::dataframe_query_common::{
 /// the IO stream.
 const CPU_THREAD_IO_CHANNEL_SIZE: usize = 32;
 
+/// Helper to attach parent trace context if available.
+/// Returns a guard that must be kept alive for the duration of the traced scope.
+/// We can use this to ensure all phases of table provider's execution pipeline are
+/// parented by a single trace.
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+fn attach_trace_context(
+    trace_headers: &Option<crate::TraceHeaders>,
+) -> Option<re_perf_telemetry::external::opentelemetry::ContextGuard> {
+    let headers = trace_headers.as_ref()?;
+    if !headers.traceparent.is_empty() {
+        let parent_ctx =
+            re_perf_telemetry::external::opentelemetry::global::get_text_map_propagator(|prop| {
+                prop.extract(headers)
+            });
+        Some(parent_ctx.attach())
+    } else {
+        None
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct PartitionStreamExec {
     props: PlanProperties,
@@ -61,6 +82,10 @@ pub(crate) struct PartitionStreamExec {
     target_partitions: usize,
     worker_runtime: Arc<CpuRuntime>,
     client: ConnectionClient,
+
+    /// passing trace headers between phases of execution pipeline helps keep
+    /// the entire operation under a single trace.
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 type ChunksWithPartition = Vec<(Chunk, Option<String>)>;
@@ -79,6 +104,10 @@ pub struct DataframePartitionStreamInner {
     /// so that our worker does not shut down unexpectedly.
     cpu_runtime: Arc<CpuRuntime>,
     cpu_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
+
+    /// passing trace headers between phases of execution pipeline helps keep
+    /// the entire operation under a single trace.
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 /// This is a temporary fix to minimize the impact of leaking memory
@@ -96,12 +125,15 @@ pub struct DataframePartitionStream {
 impl Stream for DataframePartitionStream {
     type Item = Result<RecordBatch, DataFusionError>;
 
-    #[tracing::instrument(level = "info", skip_all)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this_outer = self.get_mut();
         let Some(this) = this_outer.inner.as_mut() else {
             return Poll::Ready(None);
         };
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let _trace_guard = attach_trace_context(&this.trace_headers);
+        let _span = tracing::info_span!("poll_next").entered();
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.
@@ -132,11 +164,16 @@ impl Stream for DataframePartitionStream {
                 return Poll::Ready(Some(exec_err!("No tx for chunks from CPU thread")));
             };
 
-            this.io_join_handle = Some(io_handle.spawn(chunk_stream_io_loop(
-                this.client.clone(),
-                this.chunk_infos.clone(),
-                chunk_tx,
-            )));
+            let client = this.client.clone();
+            let chunk_infos = this.chunk_infos.clone();
+            let current_span = tracing::Span::current();
+
+            this.io_join_handle = Some(
+                io_handle.spawn(
+                    async move { chunk_stream_io_loop(client, chunk_infos, chunk_tx).await }
+                        .instrument(current_span.clone()),
+                ),
+            );
         }
 
         let result = this
@@ -163,6 +200,7 @@ impl RecordBatchStream for DataframePartitionStream {
 
 impl PartitionStreamExec {
     #[tracing::instrument(level = "info", skip_all)]
+    #[expect(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
@@ -171,6 +209,7 @@ impl PartitionStreamExec {
         chunk_info_batches: Arc<Vec<RecordBatch>>,
         mut query_expression: QueryExpression,
         client: ConnectionClient,
+        trace_headers: Option<crate::TraceHeaders>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -270,6 +309,7 @@ impl PartitionStreamExec {
             target_partitions: num_partitions,
             worker_runtime,
             client,
+            trace_headers,
         })
     }
 }
@@ -476,12 +516,15 @@ impl ExecutionPlan for PartitionStreamExec {
         }
     }
 
-    #[tracing::instrument(level = "info", skip_all)]
     fn execute(
         &self,
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
+        #[cfg(not(target_arch = "wasm32"))]
+        let _trace_guard = attach_trace_context(&self.trace_headers);
+        let _span = tracing::info_span!("execute").entered();
+
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
@@ -526,6 +569,7 @@ impl ExecutionPlan for PartitionStreamExec {
             io_join_handle: None,
             cpu_join_handle,
             cpu_runtime: Arc::clone(&self.worker_runtime),
+            trace_headers: self.trace_headers.clone(),
         };
         let stream = DataframePartitionStream {
             inner: Some(stream),
@@ -552,6 +596,7 @@ impl ExecutionPlan for PartitionStreamExec {
             target_partitions,
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
+            trace_headers: self.trace_headers.clone(),
         };
 
         plan.props.partitioning = match plan.props.partitioning {
