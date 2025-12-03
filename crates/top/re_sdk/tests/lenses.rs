@@ -3,13 +3,12 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder},
-    datatypes::{DataType, Field},
-};
+use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder};
+use arrow::datatypes::{DataType, Field};
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
 use re_sdk::lenses::{Lens, Lenses, Op};
-use re_types::{ComponentDescriptor, archetypes::Scalars};
+use re_types::ComponentDescriptor;
+use re_types::archetypes::Scalars;
 
 /// Helper to convert serializable data to a `ListArray` using Arrow's JSON decoder
 fn to_list_array<T: serde::Serialize>(data: &[T], inner_field: Arc<Field>) -> ListArray {
@@ -443,13 +442,17 @@ fn test_scatter_columns() {
 
     // Helper to extract value field from structs: List<Struct> -> List<String>
     let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
+        use re_arrow_combinators::Transform as _;
+        use re_arrow_combinators::map::MapList;
+        use re_arrow_combinators::reshape::GetField;
         Ok(MapList::new(GetField::new("value")).transform(list_array)?)
     };
 
     // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
     let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
+        use re_arrow_combinators::Transform as _;
+        use re_arrow_combinators::map::MapList;
+        use re_arrow_combinators::reshape::GetField;
         Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
     };
 
@@ -542,13 +545,17 @@ fn test_scatter_columns_static() {
 
     // Helper to extract value field from structs: List<Struct> -> List<String>
     let extract_value = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
+        use re_arrow_combinators::Transform as _;
+        use re_arrow_combinators::map::MapList;
+        use re_arrow_combinators::reshape::GetField;
         Ok(MapList::new(GetField::new("value")).transform(list_array)?)
     };
 
     // Helper to extract timestamp field from structs: List<Struct> -> List<Int64>
     let extract_timestamp = |list_array: &ListArray| -> Result<ListArray, OpError> {
-        use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
+        use re_arrow_combinators::Transform as _;
+        use re_arrow_combinators::map::MapList;
+        use re_arrow_combinators::reshape::GetField;
         Ok(MapList::new(GetField::new("timestamp")).transform(list_array)?)
     };
 

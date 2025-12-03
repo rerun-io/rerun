@@ -1,5 +1,4 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
-
 use re_log_types::{Timeline, TimelineName};
 
 use crate::MetadataExt as _;

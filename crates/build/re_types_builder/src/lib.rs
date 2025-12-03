@@ -130,13 +130,12 @@ use re_build_tools::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
 };
 
-use crate::format::NoopCodeFormatter;
-
 pub use self::reflection::reflection::{
     BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal, Field as FbsField,
     KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema, Type as FbsType,
     root_as_schema,
 };
+use crate::format::NoopCodeFormatter;
 
 mod codegen;
 mod format;
@@ -154,19 +153,17 @@ pub mod report;
 /// etc), and finally written to disk by the I/O pass.
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
-pub use self::{
-    codegen::{
-        CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
-        SnippetsRefCodeGenerator,
-    },
-    docs::Docs,
-    format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
-    objects::{
-        Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
-    },
-    report::{Report, Reporter},
-    type_registry::TypeRegistry,
+pub use self::codegen::{
+    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+    SnippetsRefCodeGenerator,
 };
+pub use self::docs::Docs;
+pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
+pub use self::objects::{
+    Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
+};
+pub use self::report::{Report, Reporter};
+pub use self::type_registry::TypeRegistry;
 
 // --- Attributes ---
 

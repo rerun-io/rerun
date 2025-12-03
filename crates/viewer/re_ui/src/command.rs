@@ -1,4 +1,5 @@
-use egui::{Id, Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
+use egui::os::OperatingSystem;
+use egui::{Id, Key, KeyboardShortcut, Modifiers};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;

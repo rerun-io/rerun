@@ -25,22 +25,7 @@ mod store;
 mod subscribers;
 mod writes;
 
-pub use self::{
-    dataframe::{
-        Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
-        ViewContentsSelector,
-    },
-    events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
-    gc::{GarbageCollectionOptions, GarbageCollectionTarget},
-    properties::ExtractPropertiesError,
-    stats::{ChunkStoreChunkStats, ChunkStoreStats},
-    store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata},
-    subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber},
-};
 pub use re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
-
-pub(crate) use self::store::ColumnMetadataState;
-
 // Re-exports
 #[doc(no_inline)]
 pub use {
@@ -51,10 +36,26 @@ pub use {
     re_log_types::{AbsoluteTimeRange, TimeInt, TimeType, Timeline},
 };
 
-pub mod external {
-    pub use arrow;
+pub use self::dataframe::{
+    Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
+    ViewContentsSelector,
+};
+pub use self::events::{
+    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+};
+pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
+pub use self::properties::ExtractPropertiesError;
+pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
+pub(crate) use self::store::ColumnMetadataState;
+pub use self::store::{
+    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
+};
+pub use self::subscribers::{
+    ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
+};
 
-    pub use re_chunk;
+pub mod external {
+    pub use {arrow, re_chunk};
 }
 
 // ---

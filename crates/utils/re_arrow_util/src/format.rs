@@ -2,14 +2,11 @@
 
 use std::fmt::Formatter;
 
-use arrow::{
-    array::{Array, ArrayRef, AsArray as _, ListArray},
-    datatypes::{DataType, Field, Fields},
-    util::display::{ArrayFormatter, FormatOptions},
-};
+use arrow::array::{Array, ArrayRef, AsArray as _, ListArray};
+use arrow::datatypes::{DataType, Field, Fields};
+use arrow::util::display::{ArrayFormatter, FormatOptions};
 use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
-
 use re_tuid::Tuid;
 
 use crate::{ArrowArrayDowncastRef as _, format_field_datatype};

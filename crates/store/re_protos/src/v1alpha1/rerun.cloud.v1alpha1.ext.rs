@@ -1,16 +1,13 @@
-use prost::Name as _;
 use std::sync::Arc;
 
 use arrow::array::{
-    BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatchOptions,
-    StringBuilder, UInt8Array, UInt64Array,
+    Array, ArrayRef, BinaryArray, BooleanArray, FixedSizeBinaryBuilder, ListBuilder, RecordBatch,
+    RecordBatchOptions, StringArray, StringBuilder, TimestampNanosecondArray, UInt8Array,
+    UInt64Array,
 };
-use arrow::datatypes::FieldRef;
-use arrow::{
-    array::{Array, ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
-    datatypes::{DataType, Field, Schema, TimeUnit},
-    error::ArrowError,
-};
+use arrow::datatypes::{DataType, Field, FieldRef, Schema, TimeUnit};
+use arrow::error::ArrowError;
+use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::external::re_types_core::ComponentBatch as _;
@@ -22,10 +19,8 @@ use crate::cloud::v1alpha1::{
     QueryTasksResponse, RegisterWithDatasetResponse, ScanDatasetManifestResponse,
     ScanSegmentTableResponse, VectorDistanceMetric,
 };
-use crate::common::v1alpha1::{
-    ComponentDescriptor, DataframePart, TaskId,
-    ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
-};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+use crate::common::v1alpha1::{ComponentDescriptor, DataframePart, TaskId};
 use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -2459,8 +2454,9 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::datatypes::ToByteSlice as _;
+
+    use super::*;
 
     #[test]
     fn test_query_dataset_response_create_dataframe() {

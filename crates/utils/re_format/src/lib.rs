@@ -5,9 +5,10 @@
 mod duration;
 pub mod time;
 
-pub use self::duration::DurationFormatOptions;
+use std::cmp::PartialOrd;
+use std::fmt::Display;
 
-use std::{cmp::PartialOrd, fmt::Display};
+pub use self::duration::DurationFormatOptions;
 
 // --- Numbers ---
 

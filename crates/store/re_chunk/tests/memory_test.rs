@@ -5,10 +5,9 @@
 // https://github.com/rust-lang/rust-clippy/issues/10011
 #![cfg(test)]
 
-use std::{
-    iter::repeat_n,
-    sync::atomic::{AtomicUsize, Ordering::Relaxed},
-};
+use std::iter::repeat_n;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 thread_local! {
     static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };
@@ -58,14 +57,12 @@ fn memory_use<R>(run: impl Fn() -> R) -> (R, usize) {
 
 // ----------------------------------------------------------------------------
 
-use arrow::{
-    array::{
-        Array as ArrowArray, BooleanArray as ArrowBooleanArray, Int32Array as ArrowInt32Array,
-        Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
-    },
-    buffer::OffsetBuffer as ArrowOffsetBuffer,
-    datatypes::Field as ArrowField,
+use arrow::array::{
+    Array as ArrowArray, BooleanArray as ArrowBooleanArray, Int32Array as ArrowInt32Array,
+    Int64Array as ArrowInt64Array, ListArray as ArrowListArray,
 };
+use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
+use arrow::datatypes::Field as ArrowField;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::arrow_helpers::as_array_ref;

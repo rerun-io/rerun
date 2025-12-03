@@ -1,6 +1,5 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::LineStrips2D, components,
-};
+use re_types::archetypes::LineStrips2D;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
 
 #[test]
 fn roundtrip() {

@@ -7,9 +7,6 @@ use std::str::FromStr as _;
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use serde::Deserialize;
-use wasm_bindgen::prelude::*;
-
 use re_log::ResultExt as _;
 use re_log_channel::LogSender;
 use re_log_types::{TableId, TableMsg};
@@ -18,6 +15,8 @@ use re_types::blueprint::components::PlayState;
 use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
+use serde::Deserialize;
+use wasm_bindgen::prelude::*;
 
 use crate::web_history::install_popstate_listener;
 use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
@@ -282,7 +281,8 @@ impl WebHandle {
     /// Add an rrd to the viewer directly from a byte array.
     #[wasm_bindgen]
     pub fn send_rrd_to_channel(&self, id: &str, data: &[u8]) {
-        use std::{ops::ControlFlow, sync::Arc};
+        use std::ops::ControlFlow;
+        use std::sync::Arc;
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -856,9 +856,10 @@ fn table_msg_from_record_batch(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::ArrowError;
     use arrow::array::{RecordBatch, RecordBatchOptions};
+
+    use super::*;
 
     /// Returns the [`TableMsg`] encoded as a record batch.
     // This is required to send bytes to a viewer running in a notebook.
@@ -884,10 +885,8 @@ mod tests {
 
     #[test]
     fn table_msg_encoded_roundtrip() {
-        use arrow::{
-            array::{ArrayRef, StringArray, UInt64Array},
-            datatypes::{DataType, Field, Schema},
-        };
+        use arrow::array::{ArrayRef, StringArray, UInt64Array};
+        use arrow::datatypes::{DataType, Field, Schema};
 
         let data = {
             let schema = Arc::new(Schema::new_with_metadata(

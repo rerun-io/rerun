@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateIndexRequest, DeleteIndexesRequest, IndexColumn, IndexConfig, IndexProperties,
-        InvertedIndex, ListIndexesRequest, SearchDatasetRequest, VectorIvfPqIndex,
-        index_properties::Props, rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline},
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::index_properties::Props;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    CreateIndexRequest, DeleteIndexesRequest, IndexColumn, IndexConfig, IndexProperties,
+    InvertedIndex, ListIndexesRequest, SearchDatasetRequest, VectorIvfPqIndex,
 };
+use re_protos::common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 
@@ -382,14 +381,11 @@ fn generate_create_index_requests() -> Vec<CreateIndexRequest> {
 fn generate_search_dataset_requests() -> Vec<SearchDatasetRequest> {
     use std::sync::Arc;
 
-    use arrow::{
-        array::{Float32Array, RecordBatch, StringArray},
-        datatypes::Field,
-    };
-
+    use arrow::array::{Float32Array, RecordBatch, StringArray};
+    use arrow::datatypes::Field;
+    use re_protos::cloud::v1alpha1::index_query_properties::Props;
     use re_protos::cloud::v1alpha1::{
         BTreeIndexQuery, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
-        index_query_properties::Props,
     };
 
     let mut create_index_requests = generate_create_index_requests().into_iter();

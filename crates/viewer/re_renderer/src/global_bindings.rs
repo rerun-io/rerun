@@ -1,13 +1,11 @@
-use crate::{
-    wgpu_buffer_types,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
-    },
-};
-
 use bytemuck::{Pod, Zeroable};
 use smallvec::smallvec;
+
+use crate::wgpu_buffer_types;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuSamplerHandle, SamplerDesc, WgpuResourcePools,
+};
 
 /// Mirrors the GPU contents of a frame-global uniform buffer.
 ///

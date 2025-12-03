@@ -1,5 +1,6 @@
 use re_log_types::StoreKind;
-use re_types::{archetypes::RecordingInfo, components::Timestamp};
+use re_types::archetypes::RecordingInfo;
+use re_types::components::Timestamp;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;

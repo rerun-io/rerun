@@ -1,6 +1,7 @@
+use std::ops::Sub as _;
+
 use re_format::format_plural_s;
 use re_log_types::{Timestamp, TimestampFormat};
-use std::ops::Sub as _;
 
 /// Formats a duration in a short, readable format, e.g. ("1 hour ago" or "2 minutes ago")
 ///

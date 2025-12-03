@@ -41,17 +41,16 @@ mod redap_uri;
 mod scheme;
 mod time_selection;
 
-pub use self::{
-    endpoints::{
-        catalog::CatalogUri, dataset::DatasetSegmentUri, entry::EntryUri, proxy::ProxyUri,
-    },
-    error::Error,
-    fragment::Fragment,
-    origin::Origin,
-    redap_uri::RedapUri,
-    scheme::Scheme,
-    time_selection::TimeSelection,
-};
+pub use self::endpoints::catalog::CatalogUri;
+pub use self::endpoints::dataset::DatasetSegmentUri;
+pub use self::endpoints::entry::EntryUri;
+pub use self::endpoints::proxy::ProxyUri;
+pub use self::error::Error;
+pub use self::fragment::Fragment;
+pub use self::origin::Origin;
+pub use self::redap_uri::RedapUri;
+pub use self::scheme::Scheme;
+pub use self::time_selection::TimeSelection;
 
 pub mod external {
     pub use url;

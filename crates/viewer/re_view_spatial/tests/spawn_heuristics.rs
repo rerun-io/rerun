@@ -1,12 +1,11 @@
 #![expect(clippy::tuple_array_conversions)]
 #![expect(clippy::unwrap_used)]
 
+use ndarray::{Array, ShapeBuilder as _};
 use re_log_types::{EntityPath, Timeline};
 use re_test_context::TestContext;
 use re_types::{AsComponents, archetypes};
 use re_viewer_context::ViewClass as _;
-
-use ndarray::{Array, ShapeBuilder as _};
 
 enum ImageSize {
     Small,
@@ -116,7 +115,8 @@ fn run_heuristics_snapshot_test(name: &str, test_context: &TestContext) {
 
 #[test]
 fn test_spatial_view_2d_spawn_heuristics_like_detect_and_track_objects() {
-    use {ImageSize::*, ImageType::*};
+    use ImageSize::*;
+    use ImageType::*;
 
     // Creates A 2D scene that mimics the `detect_and_track_objects` example.
     let test_context = build_test_scene(&[
@@ -140,7 +140,8 @@ fn test_spatial_view_2d_spawn_heuristics_like_detect_and_track_objects() {
 
 #[test]
 fn test_differing_image_sizes() {
-    use {ImageSize::*, ImageType::*};
+    use ImageSize::*;
+    use ImageType::*;
 
     let test_context = build_test_scene(&[
         ("image", EntityKind::Image(Color, Large)),
@@ -158,7 +159,8 @@ fn test_differing_image_sizes() {
 
 #[test]
 fn test_not_stacking_color_images() {
-    use {ImageSize::*, ImageType::*};
+    use ImageSize::*;
+    use ImageType::*;
 
     let test_context = build_test_scene(&[
         ("image/a", EntityKind::Image(Color, Medium)),
@@ -173,7 +175,8 @@ fn test_not_stacking_color_images() {
 
 #[test]
 fn test_stacking_color_and_seg() {
-    use {ImageSize::*, ImageType::*};
+    use ImageSize::*;
+    use ImageType::*;
 
     let test_context = build_test_scene(&[
         ("image/color", EntityKind::Image(Color, Medium)),
@@ -186,7 +189,8 @@ fn test_stacking_color_and_seg() {
 
 #[test]
 fn test_mixed_2d_and_3d() {
-    use {ImageSize::*, ImageType::*};
+    use ImageSize::*;
+    use ImageType::*;
 
     let test_context = build_test_scene(&[
         ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
@@ -202,7 +206,8 @@ fn test_mixed_2d_and_3d() {
 
 #[test]
 fn test_mixed_images() {
-    use {ImageSize::*, ImageType::*};
+    use ImageSize::*;
+    use ImageType::*;
 
     let test_context = build_test_scene(&[
         ("image1", EntityKind::Image(Color, Small)),

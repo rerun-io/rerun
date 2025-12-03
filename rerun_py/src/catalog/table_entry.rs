@@ -2,21 +2,16 @@ use std::sync::Arc;
 
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
-use pyo3::{
-    Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python,
-    exceptions::PyRuntimeError,
-    pyclass, pymethods,
-    types::{PyAnyMethods as _, PyCapsule},
-};
-use tracing::instrument;
-
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::types::{PyAnyMethods as _, PyCapsule};
+use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_datafusion::TableEntryTableProvider;
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry, TableInsertMode};
+use tracing::instrument;
 
-use crate::{
-    catalog::{PyCatalogClientInternal, PyEntryDetails, entry::update_entry, to_py_err},
-    utils::{get_tokio_runtime, wait_for_future},
-};
+use crate::catalog::entry::update_entry;
+use crate::catalog::{PyCatalogClientInternal, PyEntryDetails, to_py_err};
+use crate::utils::{get_tokio_runtime, wait_for_future};
 
 /// A table entry in the catalog.
 ///

@@ -2,7 +2,6 @@ use std::borrow::Cow;
 
 use ahash::HashMap;
 use arrow::array::{ArrayRef, NullArray};
-
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
 use re_types::{Component, ComponentType, SerializationError, ViewClassIdentifier};

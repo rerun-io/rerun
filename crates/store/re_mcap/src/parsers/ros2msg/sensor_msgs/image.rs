@@ -1,16 +1,12 @@
 use anyhow::Context as _;
 use re_chunk::{Chunk, ChunkId};
-use re_types::{
-    archetypes::{DepthImage, Image},
-    datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat},
-};
+use re_types::archetypes::{DepthImage, Image};
+use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 use super::super::Ros2MessageParser;
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
-    ros2msg::definitions::sensor_msgs,
-};
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
+use crate::parsers::ros2msg::definitions::sensor_msgs;
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.
 #[derive(Default)]

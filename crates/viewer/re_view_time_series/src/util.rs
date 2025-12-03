@@ -1,18 +1,14 @@
 use re_log_types::AbsoluteTimeRange;
-use re_types::{
-    blueprint::{archetypes::TimeAxis, components::LinkAxis},
-    components::AggregationPolicy,
-    datatypes::{TimeRange, TimeRangeBoundary},
-};
-use re_viewer_context::{
-    ViewContext, ViewQuery, ViewerContext, external::re_entity_db::InstancePath,
-};
+use re_types::blueprint::archetypes::TimeAxis;
+use re_types::blueprint::components::LinkAxis;
+use re_types::components::AggregationPolicy;
+use re_types::datatypes::{TimeRange, TimeRangeBoundary};
+use re_viewer_context::external::re_entity_db::InstancePath;
+use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-use crate::{
-    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
-    aggregation::{AverageAggregator, MinMaxAggregator},
-};
+use crate::aggregation::{AverageAggregator, MinMaxAggregator};
+use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
 
 /// Find the number of time units per physical pixel.
 pub fn determine_time_per_pixel(

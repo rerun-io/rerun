@@ -1,4 +1,5 @@
-use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
+use re_chunk_store::RowId;
+use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;

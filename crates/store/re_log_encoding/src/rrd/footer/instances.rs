@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use arrow::array::{BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
-
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, StoreId};

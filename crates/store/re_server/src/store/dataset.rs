@@ -2,25 +2,21 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
-use arrow::{
-    array::{RecordBatch, RecordBatchOptions},
-    datatypes::{Fields, Schema},
-};
+use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
 use parking_lot::Mutex;
-
-use crate::chunk_index::DatasetChunkIndexes;
-use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_log_types::{EntryId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
-        ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails},
-    },
-    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
+use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
+use re_protos::cloud::v1alpha1::{
+    EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
 };
+use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+
+use crate::chunk_index::DatasetChunkIndexes;
+use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {

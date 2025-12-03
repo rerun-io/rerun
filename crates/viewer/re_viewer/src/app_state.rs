@@ -1,7 +1,10 @@
-use std::{borrow::Cow, str::FromStr as _};
+use std::borrow::Cow;
+use std::str::FromStr as _;
 
 use ahash::HashMap;
-use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
+use egui::Ui;
+use egui::text_edit::TextEditState;
+use egui::text_selection::LabelSelectionState;
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
@@ -11,6 +14,7 @@ use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
+use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
@@ -18,15 +22,17 @@ use re_viewer_context::{
     SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
     ViewId, ViewStates, ViewerContext, blueprint_timeline,
-    open_url::{self, ViewerOpenUrl},
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::{ViewportBlueprint, ui::add_view_or_container_modal_ui};
+use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
-use crate::{
-    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx, history,
-    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
-};
+use crate::app_blueprint::AppBlueprint;
+use crate::app_blueprint_ctx::AppBlueprintCtx;
+use crate::navigation::Navigation;
+use crate::open_url_description::ViewerOpenUrlDescription;
+use crate::ui::settings_screen_ui;
+use crate::{StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
 

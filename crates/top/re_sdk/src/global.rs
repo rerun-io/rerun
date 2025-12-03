@@ -1,7 +1,8 @@
 //! Keeps track of global and thread-local [`RecordingStream`]s and handles fallback logic between
 //! them.
 
-use std::{cell::RefCell, sync::OnceLock};
+use std::cell::RefCell;
+use std::sync::OnceLock;
 
 use parking_lot::RwLock;
 
@@ -286,9 +287,8 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use crate::RecordingStreamBuilder;
-
     use super::*;
+    use crate::RecordingStreamBuilder;
 
     #[test]
     fn fallbacks() {

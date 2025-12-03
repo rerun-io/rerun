@@ -1,13 +1,13 @@
 #![expect(clippy::unwrap_used)]
 
 use itertools::Itertools as _;
-
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{
     Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, ToApplication as _,
 };
-use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time, external::re_tuid::Tuid};
+use re_log_types::external::re_tuid::Tuid;
+use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
 use re_protos::external::prost::Message as _;
 
 #[test]
@@ -364,10 +364,8 @@ fn generate_recording(
 }
 
 fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
-    use re_log_types::{
-        TimeInt, TimeType, Timeline, build_frame_nr,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{TimeInt, TimeType, Timeline, build_frame_nr};
 
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);

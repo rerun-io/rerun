@@ -2,16 +2,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
 use anyhow::Context as _;
-use arrow::{
-    array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
-        ListArray as ArrowListArray,
-    },
-    buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
+    ListArray as ArrowListArray,
 };
+use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{

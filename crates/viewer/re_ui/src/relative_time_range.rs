@@ -1,12 +1,8 @@
-use re_log_types::{
-    AbsoluteTimeRange, TimeType, TimestampFormat,
-    external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-};
+use re_log_types::external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_log_types::{AbsoluteTimeRange, TimeType, TimestampFormat};
 
-use crate::{
-    TimeDragValue, UiExt as _,
-    list_item::{self, LabelContent},
-};
+use crate::list_item::{self, LabelContent};
+use crate::{TimeDragValue, UiExt as _};
 
 /// A time range that can be relative to the time cursor.
 pub struct RelativeTimeRange<'a> {
@@ -270,14 +266,11 @@ mod tests {
     use std::ops::RangeInclusive;
 
     use egui_kittest::Harness;
-    use re_log_types::{
-        TimeType, TimestampFormat,
-        external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-    };
-
-    use crate::{TimeDragValue, UiExt as _};
+    use re_log_types::external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+    use re_log_types::{TimeType, TimestampFormat};
 
     use super::RelativeTimeRange;
+    use crate::{TimeDragValue, UiExt as _};
 
     struct SnapshotOptions {
         name: &'static str,

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use egui::epaint::CubicBezierShape;
 use egui::{
     Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2, Rect, Response, RichText,
-    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText, epaint::CubicBezierShape,
+    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
 use re_data_ui::{DataUi as _, item_ui};
@@ -14,11 +15,9 @@ use re_viewer_context::{
     SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery, ViewerContext,
 };
 
-use crate::{
-    graph::{Graph, Node},
-    layout::{EdgeGeometry, Layout, PathGeometry},
-    visualizers::Label,
-};
+use crate::graph::{Graph, Node};
+use crate::layout::{EdgeGeometry, Layout, PathGeometry};
+use crate::visualizers::Label;
 
 pub enum DrawableLabel {
     Circle(CircleLabel),

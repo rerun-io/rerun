@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
 

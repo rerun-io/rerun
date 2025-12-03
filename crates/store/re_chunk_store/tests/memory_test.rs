@@ -4,10 +4,9 @@
 #![cfg(test)]
 #![expect(clippy::cast_possible_wrap)]
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering::Relaxed},
-};
+use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::Relaxed;
 
 static LIVE_BYTES_GLOBAL: AtomicUsize = AtomicUsize::new(0);
 
@@ -68,13 +67,12 @@ fn memory_use<R>(run: impl Fn() -> R) -> (usize, usize) {
 
 // ----------------------------------------------------------------------------
 
-use re_chunk::{
-    BatcherHooks, ChunkBatcher, ChunkBatcherConfig, PendingRow,
-    external::crossbeam::channel::TryRecvError,
-};
+use re_chunk::external::crossbeam::channel::TryRecvError;
+use re_chunk::{BatcherHooks, ChunkBatcher, ChunkBatcherConfig, PendingRow};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, Timeline};
-use re_types::{Loggable as _, SerializedComponentBatch, archetypes, components::Scalar};
+use re_types::components::Scalar;
+use re_types::{Loggable as _, SerializedComponentBatch, archetypes};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]

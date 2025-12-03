@@ -1,9 +1,9 @@
 use ahash::HashMap;
 use parking_lot::Mutex;
 
+use super::handle_async_error;
+use super::wgpu_core_error::WgpuCoreWrappedContextError;
 use crate::device_caps::WgpuBackendType;
-
-use super::{handle_async_error, wgpu_core_error::WgpuCoreWrappedContextError};
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum ContextError {

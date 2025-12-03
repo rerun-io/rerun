@@ -1,18 +1,14 @@
 #![expect(clippy::let_underscore_untyped)]
 #![expect(clippy::let_underscore_must_use)]
 
-use std::net::SocketAddr;
-use std::net::ToSocketAddrs as _;
+use std::net::{SocketAddr, ToSocketAddrs as _};
 
 use tokio::net::TcpListener;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt as _;
-use tonic::service::Routes;
-use tonic::service::RoutesBuilder;
-use tracing::error;
-use tracing::info;
+use tonic::service::{Routes, RoutesBuilder};
+use tracing::{error, info};
 
 // ---
 

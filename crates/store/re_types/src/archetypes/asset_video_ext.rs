@@ -1,6 +1,5 @@
-use crate::components::MediaType;
-
 use super::AssetVideo;
+use crate::components::MediaType;
 
 impl AssetVideo {
     /// Creates a new [`AssetVideo`] from the file contents at `path`.
@@ -46,8 +45,9 @@ impl AssetVideo {
     /// Panics if the serialized blob data doesn't have the right datatype.
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_nanos(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {
-        use crate::datatypes::Blob;
         use re_types_core::Loggable as _;
+
+        use crate::datatypes::Blob;
 
         re_tracing::profile_function!();
 

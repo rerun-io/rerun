@@ -1,31 +1,23 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
-use egui::Modifiers;
-use egui::PointerButton;
-use egui::accesskit::Role;
-use egui::accesskit::Toggled;
-use egui_kittest::kittest::NodeT as _;
-use egui_kittest::kittest::Queryable as _;
+use egui::accesskit::{Role, Toggled};
+use egui::{Modifiers, PointerButton};
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use parking_lot::Mutex;
+use re_sdk::external::re_log_types::{SetStoreInfo, StoreInfo};
+use re_sdk::external::re_tuid::Tuid;
+use re_sdk::log::Chunk;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
     StoreKind,
-    external::{
-        re_log_types::{SetStoreInfo, StoreInfo},
-        re_tuid::Tuid,
-    },
-    log::Chunk,
 };
-use re_viewer::{
-    SystemCommand, SystemCommandSender as _,
-    external::{
-        re_chunk::{ChunkBuilder, LatestAtQuery},
-        re_entity_db::EntityDb,
-        re_types,
-        re_viewer_context::{self, ViewerContext, blueprint_timeline},
-    },
-    viewer_test_utils::AppTestingExt as _,
-};
+use re_viewer::external::re_chunk::{ChunkBuilder, LatestAtQuery};
+use re_viewer::external::re_entity_db::EntityDb;
+use re_viewer::external::re_types;
+use re_viewer::external::re_viewer_context::{self, ViewerContext, blueprint_timeline};
+use re_viewer::viewer_test_utils::AppTestingExt as _;
+use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 

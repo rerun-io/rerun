@@ -2,7 +2,6 @@ use std::collections::hash_map::Entry;
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
 use re_chunk::ChunkId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::StoreKind;

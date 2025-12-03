@@ -1,20 +1,18 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use arrow::buffer::Buffer as ArrowBuffer;
 use egui::NumExt as _;
 use parking_lot::RwLock;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPathHash, TimeType};
-use re_types::{archetypes::VideoStream, components};
+use re_types::archetypes::VideoStream;
+use re_types::components;
 use re_video::{DecodeSettings, StableIndexDeque};
 
 use crate::{Cache, CacheMemoryReport};
@@ -741,7 +739,8 @@ mod tests {
     use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
     use re_chunk_store::ChunkStoreDiff;
     use re_log_types::StoreId;
-    use re_types::{archetypes::VideoStream, components::VideoCodec};
+    use re_types::archetypes::VideoStream;
+    use re_types::components::VideoCodec;
     use re_video::{VideoDataDescription, VideoEncodingDetails};
 
     use super::*;

@@ -1,19 +1,19 @@
 use re_chunk_store::RowId;
-use re_log_types::{Instance, TimeInt, hash::Hash64};
+use re_log_types::hash::Hash64;
+use re_log_types::{Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{ArrowString, archetypes::Asset3D, components::AlbedoFactor};
+use re_types::ArrowString;
+use re_types::archetypes::Asset3D;
+use re_types::components::AlbedoFactor;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
-
-use crate::{
-    caches::{AnyMesh, MeshCache, MeshCacheKey},
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-};
+use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
 
 pub struct Asset3DVisualizer(SpatialViewVisualizerData);
 

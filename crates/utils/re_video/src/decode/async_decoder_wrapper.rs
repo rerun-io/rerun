@@ -1,14 +1,11 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crossbeam::channel::{Receiver, Sender, unbounded};
 
+use super::{AsyncDecoder, Chunk, Result};
 #[cfg(with_dav1d)]
 use crate::{VideoDataDescription, decode::FrameResult};
-
-use super::{AsyncDecoder, Chunk, Result};
 
 enum Command {
     Chunk(Chunk),

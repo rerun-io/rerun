@@ -1,26 +1,23 @@
-use std::{net::IpAddr, time::Duration};
+use std::net::IpAddr;
+use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use tokio::runtime::Runtime;
-
 use re_data_source::LogDataSource;
 use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 use re_log_types::DataSourceMessage;
-
-use crate::{CallSource, commands::RrdCommands};
-
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-
-#[cfg(feature = "data_loaders")]
-use crate::commands::McapCommands;
-
-#[cfg(feature = "analytics")]
-use crate::commands::AnalyticsCommands;
+use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
 use super::auth::AuthCommands;
+use crate::CallSource;
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+use crate::commands::RrdCommands;
 
 // ---
 
@@ -585,7 +582,7 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
     } else {
         re_crash_handler::install_crash_handlers(build_info.clone());

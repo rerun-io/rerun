@@ -2,11 +2,10 @@
 
 use std::sync::Arc;
 
+pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
 use re_log_types::DataSourceMessage;
 use re_uri::RedapUri;
-
-pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 
 mod receiver;
 mod receiver_set;

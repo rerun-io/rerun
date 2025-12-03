@@ -1,7 +1,6 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
-
 use re_log_types::{Timestamp, TimestampFormat};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
@@ -244,8 +243,9 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
-    use re_video::{FFmpegVersion, FFmpegVersionParseError};
     use std::task::Poll;
+
+    use re_video::{FFmpegVersion, FFmpegVersionParseError};
 
     let path = app_options
         .video_decoder_override_ffmpeg_path

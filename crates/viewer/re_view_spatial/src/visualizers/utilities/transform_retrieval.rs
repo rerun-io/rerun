@@ -2,10 +2,8 @@ use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput};
 
-use crate::{
-    contexts::{TransformInfo, TransformTreeContext},
-    view_kind::SpatialViewKind,
-};
+use crate::contexts::{TransformInfo, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
 
 /// Derive the spatial view kind from the view class identifier.
 pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialViewKind {

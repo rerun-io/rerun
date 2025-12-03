@@ -1,5 +1,4 @@
 use re_data_ui::item_ui::timeline_button;
-
 use re_log_types::TimelineName;
 use re_types::blueprint::components::TimelineColumn;
 use re_viewer_context::{MaybeMutRef, ViewerContext};

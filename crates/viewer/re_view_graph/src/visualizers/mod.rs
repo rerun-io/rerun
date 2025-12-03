@@ -5,7 +5,6 @@ use std::collections::BTreeSet;
 
 pub use edges::{EdgeData, EdgesVisualizer};
 pub use nodes::{Label, NodeData, NodeInstance, NodeVisualizer};
-
 use re_chunk::EntityPath;
 
 /// Iterates over all entities and joins the node and edge data.
