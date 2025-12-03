@@ -6,7 +6,9 @@ use re_log_types::{EntityPath, EntityPathHash};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_types::components::ImagePlaneDistance;
 use re_types::{ArchetypeName, archetypes, blueprint};
-use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
+use re_view::{
+    DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
+};
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
     ViewContextSystemOncePerFrameResult, typed_fallback_for,
