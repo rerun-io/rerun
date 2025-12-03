@@ -309,6 +309,20 @@ impl ConnectionRegistryHandle {
                 None => None,
             };
 
+        // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+        // so if what we're trying to connect to is not a valid Rerun server, then cut out
+        // a layer of noise:
+        {
+            let Ok(res) =
+                ehttp::fetch_async(ehttp::Request::get(format!("{origin}/version"))).await
+            else {
+                return Err(ApiError::invalid_server(origin));
+            };
+            if !res.ok {
+                return Err(ApiError::invalid_server(origin));
+            }
+        }
+
         let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
 
         // Call the version endpoint to check that authentication is successful. It's ok to do this
@@ -339,10 +353,6 @@ impl ConnectionRegistryHandle {
                     ))
                 }
             }
-
-            Err(err) if err.clone().into_http::<()>().status().as_u16() == 404 => Err(
-                ApiError::tonic(err, format!("{origin} is not a valid Rerun server")),
-            ),
 
             Err(err) => {
                 if let Some(cred_error) = err.source().and_then(|s| {
