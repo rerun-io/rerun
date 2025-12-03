@@ -1,6 +1,6 @@
 ---
 source: crates/store/re_log_encoding/tests/footers_and_manifests.rs
-expression: rrd_manifest_batch.format_schema_snapshot()
+expression: rrd_manifest_recording_sequential.data.format_schema_snapshot()
 ---
 chunk_byte_offset: u64
 chunk_byte_size: u64

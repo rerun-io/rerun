@@ -3,7 +3,10 @@ use std::pin::Pin;
 use tokio::io::AsyncBufRead;
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint, decoder::state_machine::DecoderState};
+use crate::{
+    RrdManifest,
+    rrd::{DecodeError, Decoder, DecoderEntrypoint, decoder::state_machine::DecoderState},
+};
 
 // ---
 
@@ -105,6 +108,18 @@ pub struct DecoderStream<T, R: AsyncBufRead> {
 
     /// See [`Decoder::decode_eager`] for more information.
     pub first_msg: Option<T>,
+}
+
+impl<T: DecoderEntrypoint, R: AsyncBufRead> DecoderStream<T, R> {
+    /// Returns all the RRD manifests accumulated _so far_.
+    ///
+    /// RRD manifests are parsed from footers, of which there might be more than one e.g. in the
+    /// case of concatenated streams.
+    ///
+    /// This is not cheap: it automatically performs the transport to app level conversion.
+    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        self.decoder.rrd_manifests()
+    }
 }
 
 // NOTE: This is the exact same implementation as `impl Iterator for DecoderIterator`, just asyncified.
