@@ -43,6 +43,9 @@ jobs:
     timeout-minutes: 60
     container:
       image: ghcr.io/rerun-io/ci_docker:0.16.0
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
