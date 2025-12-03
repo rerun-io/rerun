@@ -141,7 +141,7 @@ pub fn query_archetype_with_history<'a>(
     }
 }
 
-fn query_overrides(
+pub fn query_overrides(
     ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,

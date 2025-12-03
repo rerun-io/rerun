@@ -111,6 +111,29 @@ impl ViewContextSystem for TransformTreeContext {
 
         let latest_at_query = query.latest_at_query();
 
+        // Add overrides to the transform frame id map so we can get back the id for errors.
+        for data_result in query.iter_all_data_results() {
+            let result = re_view::query_overrides(
+                ctx.viewer_ctx,
+                data_result,
+                [archetypes::CoordinateFrame::descriptor_frame().component],
+            );
+
+            let Some(batch) =
+                result.component_batch(archetypes::CoordinateFrame::descriptor_frame().component)
+            else {
+                continue;
+            };
+
+            for frame in batch {
+                let frame_hash = TransformFrameIdHash::new(&frame);
+                if !self.frame_id_mapping.contains_key(&frame_hash) {
+                    // As overrides are local to this view we need to clone the whole map to add new hashes.
+                    Arc::make_mut(&mut self.frame_id_mapping).insert(frame_hash, frame);
+                }
+            }
+        }
+
         let transform_infos_per_frame = self
             .transform_forest
             .transform_from_to(
