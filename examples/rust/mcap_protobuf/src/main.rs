@@ -1,4 +1,4 @@
-use arrow::array::{Float32Array, Float64Array, ListArray};
+use arrow::array::{Float32Array, Float64Array, ListArray, UInt32Array};
 // `re_arrow_combinators` provides the building blocks from which we compose the conversions.
 use re_arrow_combinators::{
     Transform as _,
@@ -14,7 +14,8 @@ use rerun::external::re_log;
 use rerun::lenses::{Lens, LensesSink, Op, OpError};
 use rerun::sink::GrpcSink;
 use rerun::{
-    CoordinateFrame, EncodedImage, InstancePoses3D, Transform3D, TransformAxes3D, VideoStream,
+    CoordinateFrame, EncodedImage, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
+    VideoStream,
 };
 
 /// Foxglove timestamp fields are by definition relative to a custom epoch.
