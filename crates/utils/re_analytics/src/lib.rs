@@ -397,7 +397,8 @@ pub fn record<E: Event>(cb: impl FnOnce() -> E) {
     }
 }
 
-pub fn record_and_flush<E: Event>(cb: impl FnOnce() -> E) {
+#[cfg(not(target_arch = "wasm32"))]
+pub fn record_and_flush_blocking<E: Event>(cb: impl FnOnce() -> E) {
     if let Some(analytics) = Analytics::global_or_init() {
         analytics.record(cb());
         if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
@@ -407,6 +408,7 @@ pub fn record_and_flush<E: Event>(cb: impl FnOnce() -> E) {
         }
     }
 }
+
 /// An analytics event.
 ///
 /// This trait requires an implementation of [`Properties`].

@@ -70,7 +70,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
             );
 
             #[cfg(feature = "analytics")]
-            re_analytics::record_and_flush(|| re_analytics::event::CrashPanic {
+            re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashPanic {
                 build_info: _build_info.clone(),
                 callstack,
                 message: None,
@@ -192,7 +192,7 @@ fn install_signal_handler(build_info: BuildInfo) {
 
     #[cfg(feature = "analytics")]
     fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        re_analytics::record_and_flush(|| re_analytics::event::CrashSignal {
+        re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashSignal {
             build_info,
             signal: signal_name.to_owned(),
             callstack,
