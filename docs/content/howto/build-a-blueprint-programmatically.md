@@ -3,12 +3,12 @@ title: Building blueprints programmatically
 order: 400
 ---
 
-
 For maximum control and automation, you can define [Blueprints](../concepts/blueprints.md) in code using the Python Blueprint API. This is ideal for:
-- Creating layouts dynamically based on your data
-- Ensuring consistent views for specific debugging scenarios
-- Generating complex layouts that would be tedious to build manually
-- Sending different blueprints based on runtime conditions
+
+-   Creating layouts dynamically based on your data
+-   Ensuring consistent views for specific debugging scenarios
+-   Generating complex layouts that would be tedious to build manually
+-   Sending different blueprints based on runtime conditions
 
 ### Getting started example
 
@@ -19,6 +19,7 @@ This walkthrough demonstrates the Blueprint API using stock market data. We'll s
 First, create a virtual environment and install dependencies:
 
 **Linux/Mac:**
+
 ```bash
 python -m venv venv
 source venv/bin/activate
@@ -26,6 +27,7 @@ pip install rerun-sdk humanize yfinance
 ```
 
 **Windows:**
+
 ```bash
 python -m venv venv
 .\venv\Scripts\activate
@@ -347,6 +349,18 @@ blueprint.save("rerun_example_blueprint_stocks", "my_blueprint.rbl")
 rr.log_file_from_path("my_blueprint.rbl")
 ```
 
+#### Loading blueprints from any language
+
+The programmatic way works by calling `log_file_from_path`:
+
+-   [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
+-   [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
+-   [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
+
+This method allows you to log any file that contains data that Rerun understands (in this case, blueprint data) as part of your current recording:
+
+snippet: tutorials/visualization/load_blueprint
+
 This enables reusing blueprints across different programming languages. See the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for complete details.
 
 ### Advanced customization
@@ -390,7 +404,6 @@ See [Visualizers and Overrides](../concepts/visualizers-and-overrides.md) for in
 While some people might want to read through the documentation on this page, others might prefer to watch a video! If you would like to follow along with the Youtube video, you can find the code used in the video below.
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-
 
 ```python
 from __future__ import annotations
