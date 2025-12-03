@@ -16,16 +16,26 @@ const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 #[derive(Debug, Clone)]
 pub struct GrpcMakeSpan {
     gauge: opentelemetry::metrics::Gauge<u64>,
+    // unfortunately we can't have different implementation of `MakeSpan` as that creates a ripple effect
+    // through the entire hierarchy of types of the RedapClient and its usage, hence to disable the span
+    // creation, we create noop spans instead if telemetry is disabled at runtime
+    create_noop_spans: bool,
 }
 
 impl GrpcMakeSpan {
     pub fn new() -> Self {
+        let create_noop_spans = !std::env::var("TELEMETRY_ENABLED")
+            .is_ok_and(|v| v == "1" || v.to_lowercase() == "true" || v.to_lowercase() == "yes");
+
         let meter = opentelemetry::global::meter("grpc");
         let gauge = meter
             .u64_gauge("grpc_make_span_state_size")
             .with_description("Size of the SpanMetadata state")
             .build();
-        Self { gauge }
+        Self {
+            gauge,
+            create_noop_spans,
+        }
     }
 }
 
@@ -37,6 +47,10 @@ impl Default for GrpcMakeSpan {
 
 impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
     fn make_span(&mut self, request: &http::Request<B>) -> tracing::Span {
+        if self.create_noop_spans {
+            return tracing::Span::none();
+        }
+
         // Extract `OpenTelemetry` context from headers before creating the span
         let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
             prop.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
