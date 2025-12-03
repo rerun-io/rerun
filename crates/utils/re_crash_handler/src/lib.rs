@@ -171,7 +171,11 @@ fn install_signal_handler(build_info: BuildInfo) {
         // Send analytics - this also sleeps a while to give the analytics time to send the event.
         #[cfg(feature = "analytics")]
         if let Some(build_info) = BUILD_INFO.lock().clone() {
-            send_signal_analytics(build_info, signal_name, callstack);
+            re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashSignal {
+                build_info,
+                signal: signal_name.to_owned(),
+                callstack,
+            });
         }
 
         // We are done!
@@ -188,15 +192,6 @@ fn install_signal_handler(build_info: BuildInfo) {
         unsafe {
             libc::write(libc::STDERR_FILENO, text.as_ptr().cast(), text.len());
         }
-    }
-
-    #[cfg(feature = "analytics")]
-    fn send_signal_analytics(build_info: BuildInfo, signal_name: &str, callstack: String) {
-        re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashSignal {
-            build_info,
-            signal: signal_name.to_owned(),
-            callstack,
-        });
     }
 
     fn callstack() -> String {
