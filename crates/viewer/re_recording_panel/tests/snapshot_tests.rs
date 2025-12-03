@@ -1,13 +1,14 @@
 #![cfg(feature = "testing")]
 
 use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind};
+use re_log_types::{StoreId, StoreInfo, StoreKind};
 use re_recording_panel::data::RecordingPanelData;
 use re_test_context::TestContext;
 
 #[test]
 fn empty_context_test() {
-    let test_context = TestContext::new();
+    let test_context =
+        TestContext::new_with_store_info(StoreInfo::testing_with_recording_id("test_recording"));
     let servers = re_redap_browser::RedapServers::default();
 
     test_context.run_once_in_egui_central_panel(|ctx, _| {
@@ -19,7 +20,8 @@ fn empty_context_test() {
 
 #[test]
 fn fake_local_and_example_recordings_test() {
-    let test_context = TestContext::new();
+    let test_context =
+        TestContext::new_with_store_info(StoreInfo::testing_with_recording_id("test_recording"));
     let servers = re_redap_browser::RedapServers::default();
 
     let mut store_hub = test_context.store_hub.lock();

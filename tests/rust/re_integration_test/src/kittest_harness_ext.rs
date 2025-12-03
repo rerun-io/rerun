@@ -245,7 +245,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
         let app = self.state_mut();
         let store_hub = app.testonly_get_store_hub();
 
-        let store_info = StoreInfo::testing();
+        let store_info = StoreInfo::testing_with_recording_id("test_recording"); // Fixed id shouldn't cause any problems with store subscribers here since we tear down the entire application for every test.
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
