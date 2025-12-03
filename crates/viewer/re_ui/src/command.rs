@@ -158,7 +158,7 @@ impl UICommand {
             ),
 
             Self::Open => (
-                "Open…",
+                "Open file…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
             ),
             Self::OpenUrl => (
