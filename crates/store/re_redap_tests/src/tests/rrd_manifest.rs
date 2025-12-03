@@ -26,8 +26,19 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
         .await;
 
     let segment_id = SegmentId::new("my_segment".to_owned());
-    let rrd_manifest_batch =
+    let rrd_manifest_batch_result =
         dataset_rrd_manifest_snapshot(&service, segment_id, dataset_name).await;
+
+    let rrd_manifest_batch = match rrd_manifest_batch_result {
+        Ok(rrd_manifest_batch) => rrd_manifest_batch,
+        Err(status) => {
+            if status.code() == tonic::Code::Unimplemented {
+                return; // TODO(RR-3110): implemented this endpoint on Rerun Cloud
+            } else {
+                panic!("tonic error: {status}");
+            }
+        }
+    };
 
     use futures::StreamExt as _;
     let mut chunks = service
@@ -59,7 +70,7 @@ async fn dataset_rrd_manifest_snapshot(
     service: &impl RerunCloudService,
     segment_id: SegmentId,
     dataset_name: &str,
-) -> RecordBatch {
+) -> tonic::Result<RecordBatch> {
     let rrd_manifest_batch: RecordBatch = service
         .get_rrd_manifest(
             tonic::Request::new(GetRrdManifestRequest {
@@ -68,8 +79,7 @@ async fn dataset_rrd_manifest_snapshot(
             .with_entry_name(dataset_name)
             .unwrap(),
         )
-        .await
-        .unwrap()
+        .await?
         .into_inner()
         .data
         .unwrap()
@@ -78,5 +88,5 @@ async fn dataset_rrd_manifest_snapshot(
 
     insta::assert_snapshot!("rrd_manifest", rrd_manifest_batch.format_snapshot(true));
 
-    rrd_manifest_batch
+    Ok(rrd_manifest_batch)
 }
