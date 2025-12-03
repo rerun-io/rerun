@@ -142,6 +142,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     ///
     /// This is not cheap: it automatically performs the transport to app level conversion.
     pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        re_tracing::profile_function!();
         self.rrd_manifests
             .iter()
             .map(|m| m.to_application(()).map_err(Into::into))

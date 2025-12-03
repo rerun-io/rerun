@@ -112,6 +112,8 @@ struct FooterState {
 struct ManifestState {
     /// The accumulated recording IDs of each individual chunk, extracted from their `LogMsg`.
     ///
+    /// In most normal scenarios, this will just be the same value repeated N times.
+    ///
     /// This will only be used if [`FooterState::recording_id_scope`] is empty.
     recording_ids: Vec<re_log_types::StoreId>,
 
