@@ -462,14 +462,14 @@ impl Properties for SetPersonProperty {
 ///
 /// This is sent when a user opens a file, URL, or other data source.
 pub struct LoadDataSource {
-    /// The type of data source being loaded (e.g., "file", "http", "redap_grpc", "stdin").
+    /// The type of data source being loaded (e.g., "file", "http" etc.).
     pub source_type: &'static str,
 
     /// The file extension if applicable (e.g., "rrd", "png", "glb").
     /// None for non-file sources like stdin or gRPC streams.
     pub file_extension: Option<String>,
 
-    /// How the file was opened (e.g., "cli", "file_dialog", "drag_and_drop").
+    /// How the file was opened (e.g., "cli", "`file_dialog`" etc.).
     /// Only applicable for file-based sources.
     pub file_source: Option<&'static str>,
 
