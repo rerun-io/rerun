@@ -441,9 +441,13 @@ impl RrdManifest {
             .collect();
 
         for sorbet_index in &sorbet_indexes {
+            // We must account for the fact that names in the Sorbet schema are not normalized yet.
+            let sorbet_index_name_normalized =
+                Self::compute_column_name(None, None, None, Some(sorbet_index.name()), None);
+
             // All global indexes should have :start and :end columns of the right type.
             for suffix in ["start", "end"] {
-                let field = rrd_manifest_fields.remove(&format!("{}:{suffix}", sorbet_index.name()))
+                let field = rrd_manifest_fields.remove(&format!("{sorbet_index_name_normalized}:{suffix}"))
                     .ok_or_else(|| {
                         crate::CodecError::from(ChunkError::Malformed {
                             reason: format!(
