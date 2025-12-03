@@ -12,7 +12,7 @@ This page details how the [different archetypes](https://rerun.io/docs/reference
 
 The [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) archetype allows you to specify how one coordinate system relates to another through translation, rotation, and scaling.
 
-The simplest way to use transforms is through entity path hierarchies, where each transform describes the relationship between an entity and its parent path.
+The simplest way to use transforms is through [entity path hierarchies](../concepts/entity-path.md), where each transform describes the relationship between an entity and its parent path.
 Note that by default, all entities are connected via identity transforms.
 
 snippet: concepts/transform3d_hierarchy_simple
