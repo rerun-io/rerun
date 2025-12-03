@@ -617,7 +617,7 @@ fn frame_id_edit(
         let caches = ctx.viewer_ctx.store_context.caches;
         let transform_cache =
             caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                c.lock_transform_cache(ctx.recording())
+                c.read_lock_transform_cache(ctx.recording())
             });
 
         let frame_exists = transform_cache
