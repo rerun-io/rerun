@@ -57,6 +57,7 @@ class BarChart(BarChartExt, Archetype):
         *,
         color: datatypes.Rgba32Like | None = None,
         abscissa: datatypes.TensorDataLike | None = None,
+        widths: datatypes.TensorDataLike | None = None,
     ) -> None:
         """
         Create a new instance of the BarChart archetype.
@@ -69,12 +70,14 @@ class BarChart(BarChartExt, Archetype):
             The color of the bar chart
         abscissa:
             The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        widths:
+            The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(values=values, color=color, abscissa=abscissa)
+            self.__attrs_init__(values=values, color=color, abscissa=abscissa, widths=widths)
             return
         self.__attrs_clear__()
 
@@ -84,6 +87,7 @@ class BarChart(BarChartExt, Archetype):
             values=None,
             color=None,
             abscissa=None,
+            widths=None,
         )
 
     @classmethod
@@ -101,6 +105,7 @@ class BarChart(BarChartExt, Archetype):
         values: datatypes.TensorDataLike | None = None,
         color: datatypes.Rgba32Like | None = None,
         abscissa: datatypes.TensorDataLike | None = None,
+        widths: datatypes.TensorDataLike | None = None,
     ) -> BarChart:
         """
         Update only some specific fields of a `BarChart`.
@@ -115,6 +120,8 @@ class BarChart(BarChartExt, Archetype):
             The color of the bar chart
         abscissa:
             The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        widths:
+            The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -124,6 +131,7 @@ class BarChart(BarChartExt, Archetype):
                 "values": values,
                 "color": color,
                 "abscissa": abscissa,
+                "widths": widths,
             }
 
             if clear_unset:
@@ -147,6 +155,7 @@ class BarChart(BarChartExt, Archetype):
         values: datatypes.TensorDataArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
         abscissa: datatypes.TensorDataArrayLike | None = None,
+        widths: datatypes.TensorDataArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -164,6 +173,8 @@ class BarChart(BarChartExt, Archetype):
             The color of the bar chart
         abscissa:
             The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        widths:
+            The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -173,13 +184,19 @@ class BarChart(BarChartExt, Archetype):
                 values=values,
                 color=color,
                 abscissa=abscissa,
+                widths=widths,
             )
 
         batches = inst.as_component_batches()
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"BarChart:values": values, "BarChart:color": color, "BarChart:abscissa": abscissa}
+        kwargs = {
+            "BarChart:values": values,
+            "BarChart:color": color,
+            "BarChart:abscissa": abscissa,
+            "BarChart:widths": widths,
+        }
         columns = []
 
         for batch in batches:
@@ -233,6 +250,15 @@ class BarChart(BarChartExt, Archetype):
         converter=components.TensorDataBatch._converter,  # type: ignore[misc]
     )
     # The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    widths: components.TensorDataBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.TensorDataBatch._converter,  # type: ignore[misc]
+    )
+    # The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

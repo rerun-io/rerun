@@ -53,6 +53,9 @@ namespace rerun::archetypes {
         /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         std::optional<ComponentBatch> abscissa;
 
+        /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        std::optional<ComponentBatch> widths;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.BarChart";
@@ -69,6 +72,10 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_abscissa = ComponentDescriptor(
             ArchetypeName, "BarChart:abscissa",
             Loggable<rerun::components::TensorData>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `widths` field.
+        static constexpr auto Descriptor_widths = ComponentDescriptor(
+            ArchetypeName, "BarChart:widths", Loggable<rerun::components::TensorData>::ComponentType
         );
 
       public: // START of extensions from bar_chart_ext.cpp:
@@ -252,6 +259,21 @@ namespace rerun::archetypes {
         BarChart with_many_abscissa(const Collection<rerun::components::TensorData>& _abscissa) && {
             abscissa =
                 ComponentBatch::from_loggable(_abscissa, Descriptor_abscissa).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        BarChart with_widths(const rerun::components::TensorData& _widths) && {
+            widths = ComponentBatch::from_loggable(_widths, Descriptor_widths).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `widths` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_widths` should
+        /// be used when logging a single row's worth of data.
+        BarChart with_many_widths(const Collection<rerun::components::TensorData>& _widths) && {
+            widths = ComponentBatch::from_loggable(_widths, Descriptor_widths).value_or_throw();
             return std::move(*this);
         }
 

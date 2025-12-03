@@ -1567,6 +1567,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         docstring_md: "The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
                         is_required: false,
                     },
+                    ArchetypeFieldReflection {
+                        name: "widths",
+                        display_name: "Widths",
+                        component_type: "rerun.components.TensorData".into(),
+                        docstring_md: "The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
+                        is_required: false,
+                    },
                 ],
             },
         ),

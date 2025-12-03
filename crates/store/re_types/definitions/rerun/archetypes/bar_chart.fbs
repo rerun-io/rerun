@@ -25,4 +25,7 @@ table BarChart (
 
   /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
   abscissa: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+  widths: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 4000);
 }
