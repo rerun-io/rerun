@@ -680,7 +680,7 @@ impl EyeState {
             }
         }
 
-        // Handle spinning after saving to blueprint to not continuously write to the blueprint.
+        // Handle spinning before inputs because some inputs depend on view direction.
         self.handle_spinning(ctx, eye_property, &mut eye_controller)?;
 
         // We do input before tracking entity, because the input can cause the eye
