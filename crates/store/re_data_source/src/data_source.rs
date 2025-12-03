@@ -288,7 +288,7 @@ impl LogDataSource {
                 file_source: None,
             },
 
-            Self::RedapDatasetPartition { .. } => LogDataSourceAnalytics {
+            Self::RedapDatasetSegment { .. } => LogDataSourceAnalytics {
                 source_type: "redap_grpc",
                 file_extension: None,
                 file_source: None,
