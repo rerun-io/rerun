@@ -1365,7 +1365,7 @@ impl App {
             })
         };
 
-        let started_successfully = match data_source
+        let _started_successfully = match data_source
             .clone()
             .stream(&self.connection_registry, Some(waker))
         {
@@ -1386,7 +1386,7 @@ impl App {
                 source_type: data_source_analytics.source_type,
                 file_extension: data_source_analytics.file_extension,
                 file_source: data_source_analytics.file_source,
-                started_successfully,
+                started_successfully: _started_successfully,
             });
         }
     }
