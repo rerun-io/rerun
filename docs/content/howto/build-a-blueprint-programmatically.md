@@ -357,9 +357,7 @@ The programmatic way works by calling `log_file_from_path`:
 -   [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 -   [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
-This method allows you to log any file that contains data that Rerun understands (in this case, blueprint data) as part of your current recording:
-
-snippet: tutorials/visualization/load_blueprint
+This method allows you to log any file that contains data that Rerun understands (in this case, blueprint data) as part of your current recording.
 
 This enables reusing blueprints across different programming languages. See the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for complete details.
 
