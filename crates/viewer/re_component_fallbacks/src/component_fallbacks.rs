@@ -61,6 +61,40 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             components::TensorData(tensor_data)
         },
     );
+    registry.register_component_fallback_provider(
+        archetypes::BarChart::descriptor_widths().component,
+        |ctx| {
+            // This fallback is for abscissa - generate a sequence from 0 to n-1
+            // where n is the length of the values tensor
+
+            // Try to get the values tensor to determine the length
+            if let Some(((_time, _row_id), tensor)) = ctx
+                .recording()
+                .latest_at_component::<components::TensorData>(
+                    ctx.target_entity_path,
+                    ctx.query,
+                    archetypes::BarChart::descriptor_values().component,
+                )
+                && tensor.is_vector()
+            {
+                let shape = tensor.shape();
+                if let Some(&length) = shape.first() {
+                    // Set all widths to 1.0
+                    #[expect(clippy::cast_possible_wrap)]
+                    let tensor_data = datatypes::TensorData::new(
+                        vec![length],
+                        datatypes::TensorBuffer::F32(vec![1.0; length as usize].into()),
+                    );
+                    return components::TensorData(tensor_data);
+                }
+            }
+
+            // Fallback to empty tensor if we can't determine the values length
+            let tensor_data =
+                datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
+            components::TensorData(tensor_data)
+        },
+    );
 
     // GraphNodes
     registry.register_component_fallback_provider(
