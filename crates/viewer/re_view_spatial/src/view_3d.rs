@@ -23,7 +23,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::contexts::register_spatial_contexts;
-use crate::heuristics::default_visualized_entities_for_visualizer_kind;
+use crate::heuristics::VisualizedEntities;
 use crate::shared_fallbacks;
 use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
 use crate::ui::SpatialViewState;
@@ -368,33 +368,38 @@ impl ViewClass for SpatialView3D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let VisualizedEntities {
+            indicated_entities,
+            excluded_entities,
+        } = VisualizedEntities::get(
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
             include_entity,
+            |indicated_entities| {
+                // ViewCoordinates is a strong indicator that a 3D view is needed.
+                // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
+                // from splitting the root space into several subspaces.
+                //
+                // TODO(andreas):
+                // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
+                // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
+                // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
+                let engine = ctx.recording_engine();
+                ctx.recording().tree().visit_children_recursively(|path| {
+                    if let Some(components) = engine.store().all_components_for_entity(path)
+                        && components.into_iter().any(|component| {
+                            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
+                            component == archetypes::Pinhole::descriptor_camera_xyz().component
+                                || component
+                                    == archetypes::ViewCoordinates::descriptor_xyz().component
+                        })
+                    {
+                        indicated_entities.insert(path.clone());
+                    }
+                });
+            },
         );
-
-        // ViewCoordinates is a strong indicator that a 3D view is needed.
-        // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
-        // from splitting the root space into several subspaces.
-        //
-        // TODO(andreas):
-        // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
-        // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
-        // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        let engine = ctx.recording_engine();
-        ctx.recording().tree().visit_children_recursively(|path| {
-            if let Some(components) = engine.store().all_components_for_entity(path)
-                && components.into_iter().any(|component| {
-                    // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
-                    component == archetypes::Pinhole::descriptor_camera_xyz().component
-                        || component == archetypes::ViewCoordinates::descriptor_xyz().component
-                })
-            {
-                indicated_entities.insert(path.clone());
-            }
-        });
 
         // Spawn a view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
@@ -455,7 +460,13 @@ impl ViewClass for SpatialView3D {
                             origins.push(subspace.origin.clone());
                         }
 
-                        Some(origins.into_iter().map(RecommendedView::new_subtree))
+                        Some(origins.into_iter().map(RecommendedView::new_subtree).map(
+                            |mut subtree| {
+                                subtree.exclude_entities(&excluded_entities);
+
+                                subtree
+                            },
+                        ))
                     })
                     .flatten(),
             )

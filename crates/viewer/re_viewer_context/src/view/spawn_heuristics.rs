@@ -1,5 +1,5 @@
 use re_log_types::hash::Hash64;
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule};
 use re_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
@@ -85,5 +85,14 @@ impl RecommendedView {
         Hash64::hash((origin, query_filter, class_id))
             .hash64()
             .into()
+    }
+
+    pub fn exclude_entities(&mut self, excluded: &[EntityPath]) {
+        for e in excluded {
+            self.query_filter.insert_rule(
+                re_log_types::RuleEffect::Exclude,
+                EntityPathRule::including_entity_subtree(e),
+            );
+        }
     }
 }

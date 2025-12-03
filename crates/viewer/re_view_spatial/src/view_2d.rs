@@ -11,7 +11,7 @@ use re_viewer_context::{
 };
 
 use crate::contexts::register_spatial_contexts;
-use crate::heuristics::default_visualized_entities_for_visualizer_kind;
+use crate::heuristics::VisualizedEntities;
 use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
 use crate::shared_fallbacks;
 use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
@@ -151,11 +151,15 @@ impl ViewClass for SpatialView2D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let VisualizedEntities {
+            indicated_entities,
+            excluded_entities,
+        } = VisualizedEntities::get(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
             include_entity,
+            |_| {},
         );
 
         let image_dimensions =
@@ -209,6 +213,10 @@ impl ViewClass for SpatialView2D {
                 if recommended_views.is_empty() {
                     // There were apparently no images, so just create a single space-view at the common root:
                     recommended_views.push(RecommendedView::new_subtree(recommended_root));
+                }
+
+                for recommended_view in &mut recommended_views {
+                    recommended_view.exclude_entities(&excluded_entities);
                 }
 
                 recommended_views
