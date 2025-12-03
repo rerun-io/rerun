@@ -63,6 +63,22 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
             "single_entity",
         ),
         //TODO(RR-2613): add more test cases here when they are supported by OSS server
+        (
+            // Test exclude_static_data
+            QueryDatasetRequest {
+                exclude_static_data: true,
+                ..Default::default()
+            },
+            "exclude_static",
+        ),
+        (
+            // Test exclude_temporal_data
+            QueryDatasetRequest {
+                exclude_temporal_data: true,
+                ..Default::default()
+            },
+            "exclude_temporal",
+        ),
     ];
 
     for (request, snapshot_name) in requests {
