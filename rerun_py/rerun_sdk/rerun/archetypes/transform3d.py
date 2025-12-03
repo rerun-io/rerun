@@ -27,7 +27,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     From the point of view of the entity's coordinate system,
     all components are applied in the inverse order they are listed here.
-    E.g. if both a translation and a max3x3 transform are present,
+    E.g. if both a translation and a mat3x3 transform are present,
     the 3x3 matrix is applied first, followed by the translation.
 
     Whenever you log this archetype, the state of the resulting transform relationship is fully reset to the new archetype.
