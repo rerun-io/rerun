@@ -300,6 +300,277 @@ impl LeRobotDatasetV3 {
     pub fn task_by_index(&self, task: TaskIndex) -> Option<&LeRobotDatasetTask> {
         self.metadata.tasks.tasks.get(&task)
     }
+
+    /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
+    ///
+    /// This function processes an episode from the dataset by extracting the relevant data columns and
+    /// converting them into appropriate Rerun data structures. It handles different types of data
+    /// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
+    fn load_episode(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError> {
+        let data = self
+            .read_episode_data(episode)
+            .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
+
+        let frame_indices = data
+            .column_by_name("frame_index")
+            .ok_or_else(|| anyhow!("Failed to get frame index column in LeRobot dataset"))?
+            .clone();
+
+        let timeline = re_log_types::Timeline::new_sequence("frame_index");
+        let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
+            .downcast_array_ref::<Int64Array>()
+            .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
+            .values();
+
+        let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
+        let timelines = std::iter::once((*timeline.name(), time_column.clone())).collect();
+
+        let mut chunks = Vec::new();
+
+        for (feature_key, feature) in self
+            .metadata
+            .info
+            .features
+            .iter()
+            .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
+        {
+            match feature.dtype {
+                DType::Video => {
+                    chunks.extend(self.load_episode_video(
+                        feature_key,
+                        episode,
+                        &timeline,
+                        &time_column,
+                    )?);
+                }
+
+                DType::Image => {
+                    let num_channels = feature.channel_dim();
+
+                    match num_channels {
+                        1 => {
+                            chunks.extend(load_episode_depth_images(
+                                feature_key,
+                                &timeline,
+                                &data,
+                            )?);
+                        }
+                        3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
+                        _ => re_log::warn_once!(
+                            "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
+                            feature.shape
+                        ),
+                    }
+                }
+                DType::Int64 if feature_key == "task_index" => {
+                    // special case int64 task_index columns
+                    // this always refers to the task description in the dataset metadata.
+                    chunks.extend(self.log_episode_task(&timeline, &data)?);
+                }
+                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
+                    re_log::warn_once!(
+                        "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
+                        feature.dtype
+                    );
+                }
+                DType::Float32 | DType::Float64 => {
+                    chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
+                }
+            }
+        }
+
+        Ok(chunks)
+    }
+
+    fn log_episode_task(
+        &self,
+        timeline: &Timeline,
+        data: &RecordBatch,
+    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
+        let task_indices = data
+            .column_by_name("task_index")
+            .and_then(|c| c.downcast_array_ref::<Int64Array>())
+            .with_context(|| "Failed to get task_index field from dataset!")?;
+
+        let mut chunk = Chunk::builder("task");
+        let mut row_id = RowId::new();
+
+        for (frame_idx, task_index_opt) in task_indices.iter().enumerate() {
+            let Some(task_idx) = task_index_opt
+                .and_then(|i| usize::try_from(i).ok())
+                .map(TaskIndex)
+            else {
+                continue;
+            };
+
+            if let Some(task) = self.task_by_index(task_idx) {
+                let frame_idx = i64::try_from(frame_idx)
+                    .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
+
+                let timepoint = TimePoint::default().with(*timeline, frame_idx);
+                let text = TextDocument::new(task.task.clone());
+                chunk = chunk.with_archetype(row_id, timepoint, &text);
+                row_id = row_id.next();
+            }
+        }
+
+        Ok(std::iter::once(chunk.build()?))
+    }
+
+    /// Extract feature-specific timestamp metadata for a given episode and observation.
+    ///
+    /// Returns (`start_time`, `end_time`) in seconds, defaulting to (0.0, 0.0) if not found.
+    fn get_feature_timestamps(&self, episode: EpisodeIndex, observation: &str) -> (f64, f64) {
+        self.metadata
+            .get_episode_data(episode)
+            .and_then(|ep_data| ep_data.feature_files.get(observation))
+            .map(|file_meta| {
+                (
+                    file_meta.from_timestamp.unwrap_or(0.0),
+                    file_meta.to_timestamp.unwrap_or(0.0),
+                )
+            })
+            .unwrap_or((0.0, 0.0))
+    }
+
+    fn load_episode_video(
+        &self,
+        observation: &str,
+        episode: EpisodeIndex,
+        timeline: &Timeline,
+        time_column: &TimeColumn,
+    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
+        let contents = self
+            .read_episode_video_contents(observation, episode)
+            .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
+
+        let entity_path = observation;
+        let video_bytes: &[u8] = &contents;
+
+        // Parse the video to get its structure
+        let video = VideoDataDescription::load_from_bytes(video_bytes, "video/mp4", observation)
+            .map_err(|err| {
+                anyhow!("Failed to read video data description for feature '{observation}': {err}")
+            })?;
+
+        let (start_time, end_time) = self.get_feature_timestamps(episode, observation);
+
+        if video.samples.is_empty() {
+            return Err(DataLoaderError::Other(anyhow!(
+                "Video feature '{observation}' for episode {episode:?} did not contain any samples"
+            )));
+        }
+
+        // Convert timestamps to video time
+        let timescale = video.timescale.ok_or_else(|| {
+            anyhow!("Video feature '{observation}' is missing timescale information")
+        })?;
+
+        let start_video_time = re_video::Time::from_secs(start_time, timescale);
+        let end_video_time = re_video::Time::from_secs(end_time, timescale);
+
+        // Find the GOPs that contain our time range
+        let start_gop = video
+            .gop_index_containing_presentation_timestamp(start_video_time)
+            .unwrap_or(0);
+
+        let end_gop = video
+            .gop_index_containing_presentation_timestamp(end_video_time)
+            .unwrap_or(video.gops.num_elements() - 1);
+
+        // Determine the sample range to extract from the video
+        let start_sample = video.gops[start_gop].sample_range.start;
+        let end_sample = video.gops[end_gop].sample_range.end;
+
+        let sample_range = start_sample..end_sample;
+
+        // Extract all video samples in this range
+        let mut samples = Vec::with_capacity(sample_range.len());
+        let mut buffers = StableIndexDeque::new();
+        buffers.push_back(video_bytes);
+
+        for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
+            // make sure we absolutely do not leak any samples from outside the requested time range
+            if sample_meta.presentation_timestamp < start_video_time
+                || sample_meta.presentation_timestamp >= end_video_time
+            {
+                continue;
+            }
+
+            let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
+                anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
+            })?;
+
+            let sample_bytes = video
+            .sample_data_in_stream_format(&chunk)
+            .with_context(|| {
+                format!(
+                    "Failed to convert sample {sample_idx} for feature '{observation}' to the expected codec stream format"
+                )
+            })?;
+
+            samples.push((sample_meta.clone(), sample_bytes));
+        }
+
+        let (samples_meta, samples): (Vec<_>, Vec<_>) = samples.into_iter().unzip();
+
+        let samples_column = VideoStream::update_fields()
+            .with_many_sample(samples)
+            .columns_of_unit_batches()
+            .with_context(|| "Failed to create VideoStream")?;
+
+        // Map video samples to episode frame indices
+        //
+        // Video samples may not align 1:1 with episode frames. We distribute samples uniformly
+        // across the frame timeline. When there are more samples than frames, multiple samples
+        // map to the same frame index; when there are fewer samples, some frames have no samples.
+        let num_samples = samples_meta.len();
+        let frame_count = time_column.num_rows();
+
+        let uniform_times: Vec<i64> = (0..num_samples)
+            .map(|i| i64::try_from((i * frame_count) / num_samples).unwrap_or_default())
+            .collect();
+
+        let uniform_time_column = TimeColumn::new(
+            Some(true), // is_sorted
+            *timeline,
+            ScalarBuffer::from(uniform_times),
+        );
+
+        let codec = re_types::components::VideoCodec::try_from(video.codec).map_err(|err| {
+            anyhow!(
+                "Unsupported video codec {:?} for feature: '{observation}': {err}",
+                video.codec
+            )
+        })?;
+
+        let codec_chunk = Chunk::builder(entity_path)
+            .with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &VideoStream::update_fields().with_codec(codec),
+            )
+            .build()?;
+
+        let samples_chunk = Chunk::from_auto_row_ids(
+            ChunkId::new(),
+            entity_path.into(),
+            std::iter::once((timeline.name().to_owned(), uniform_time_column)).collect(),
+            samples_column.collect(),
+        )?;
+
+        Ok([samples_chunk, codec_chunk].into_iter())
+    }
+}
+
+impl LeRobotDataset for LeRobotDatasetV3 {
+    fn iter_episode_indices(&self) -> impl std::iter::Iterator<Item = EpisodeIndex> {
+        self.metadata.iter_episode_indices()
+    }
+
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError> {
+        self.load_episode(episode)
+    }
 }
 
 /// Metadata for a `LeRobot` dataset.
@@ -562,13 +833,13 @@ impl LeRobotEpisodeData {
     }
 }
 
-/// Temporary structure to hold Arrow arrays for feature metadata during parsing.
+/// Structure to hold Arrow arrays for feature metadata during parsing.
 #[derive(Default)]
 struct FeatureMetadataColumns {
     chunk_index: Option<Int64Array>,
     file_index: Option<Int64Array>,
-    from_timestamp: Option<arrow::array::Float64Array>,
-    to_timestamp: Option<arrow::array::Float64Array>,
+    from_timestamp: Option<Float64Array>,
+    to_timestamp: Option<Float64Array>,
 }
 
 /// `LeRobot` dataset metadata.
@@ -752,279 +1023,4 @@ pub fn load_and_stream(
     loader_name: &str,
 ) {
     load_and_stream_versioned(dataset, application_id, tx, loader_name);
-}
-
-/// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
-///
-/// This function processes an episode from the dataset by extracting the relevant data columns and
-/// converting them into appropriate Rerun data structures. It handles different types of data
-/// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
-fn load_episode(
-    dataset: &LeRobotDatasetV3,
-    episode: EpisodeIndex,
-) -> Result<Vec<Chunk>, DataLoaderError> {
-    let data = dataset
-        .read_episode_data(episode)
-        .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
-
-    let frame_indices = data
-        .column_by_name("frame_index")
-        .ok_or_else(|| anyhow!("Failed to get frame index column in LeRobot dataset"))?
-        .clone();
-
-    let timeline = re_log_types::Timeline::new_sequence("frame_index");
-    let times: &arrow::buffer::ScalarBuffer<i64> = frame_indices
-        .downcast_array_ref::<Int64Array>()
-        .ok_or_else(|| anyhow!("LeRobot dataset frame indices are of an unexpected type"))?
-        .values();
-
-    let time_column = re_chunk::TimeColumn::new(None, timeline, times.clone());
-    let timelines = std::iter::once((*timeline.name(), time_column.clone())).collect();
-
-    let mut chunks = Vec::new();
-
-    for (feature_key, feature) in dataset
-        .metadata
-        .info
-        .features
-        .iter()
-        .filter(|(key, _)| !LEROBOT_DATASET_IGNORED_COLUMNS.contains(&key.as_str()))
-    {
-        match feature.dtype {
-            DType::Video => {
-                chunks.extend(load_episode_video(
-                    dataset,
-                    feature_key,
-                    episode,
-                    &timeline,
-                    &time_column,
-                )?);
-            }
-
-            DType::Image => {
-                let num_channels = feature.channel_dim();
-
-                match num_channels {
-                    1 => chunks.extend(load_episode_depth_images(feature_key, &timeline, &data)?),
-                    3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
-                    _ => re_log::warn_once!(
-                        "Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported",
-                        feature.shape
-                    ),
-                }
-            }
-            DType::Int64 if feature_key == "task_index" => {
-                // special case int64 task_index columns
-                // this always refers to the task description in the dataset metadata.
-                chunks.extend(log_episode_task(dataset, &timeline, &data)?);
-            }
-            DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
-                re_log::warn_once!(
-                    "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
-                    feature.dtype
-                );
-            }
-            DType::Float32 | DType::Float64 => {
-                chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
-            }
-        }
-    }
-
-    Ok(chunks)
-}
-
-impl LeRobotDataset for LeRobotDatasetV3 {
-    fn iter_episode_indices(&self) -> impl std::iter::Iterator<Item = EpisodeIndex> {
-        self.metadata.iter_episode_indices()
-    }
-
-    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, DataLoaderError> {
-        load_episode(self, episode)
-    }
-}
-
-fn log_episode_task(
-    dataset: &LeRobotDatasetV3,
-    timeline: &Timeline,
-    data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
-    let task_indices = data
-        .column_by_name("task_index")
-        .and_then(|c| c.downcast_array_ref::<Int64Array>())
-        .with_context(|| "Failed to get task_index field from dataset!")?;
-
-    let mut chunk = Chunk::builder("task");
-    let mut row_id = RowId::new();
-
-    for (frame_idx, task_index_opt) in task_indices.iter().enumerate() {
-        let Some(task_idx) = task_index_opt
-            .and_then(|i| usize::try_from(i).ok())
-            .map(TaskIndex)
-        else {
-            continue;
-        };
-
-        if let Some(task) = dataset.task_by_index(task_idx) {
-            let frame_idx = i64::try_from(frame_idx)
-                .map_err(|err| anyhow!("Frame index exceeds max value: {err}"))?;
-
-            let timepoint = TimePoint::default().with(*timeline, frame_idx);
-            let text = TextDocument::new(task.task.clone());
-            chunk = chunk.with_archetype(row_id, timepoint, &text);
-            row_id = row_id.next();
-        }
-    }
-
-    Ok(std::iter::once(chunk.build()?))
-}
-
-/// Extract feature-specific timestamp metadata for a given episode and observation.
-///
-/// Returns (`start_time`, `end_time`) in seconds, defaulting to (0.0, 0.0) if not found.
-fn get_feature_timestamps(
-    dataset: &LeRobotDatasetV3,
-    episode: EpisodeIndex,
-    observation: &str,
-) -> (f64, f64) {
-    dataset
-        .metadata
-        .get_episode_data(episode)
-        .and_then(|ep_data| ep_data.feature_files.get(observation))
-        .map(|file_meta| {
-            (
-                file_meta.from_timestamp.unwrap_or(0.0),
-                file_meta.to_timestamp.unwrap_or(0.0),
-            )
-        })
-        .unwrap_or((0.0, 0.0))
-}
-
-fn load_episode_video(
-    dataset: &LeRobotDatasetV3,
-    observation: &str,
-    episode: EpisodeIndex,
-    timeline: &Timeline,
-    time_column: &TimeColumn,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
-    let contents = dataset
-        .read_episode_video_contents(observation, episode)
-        .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
-
-    let entity_path = observation;
-    let video_bytes: &[u8] = &contents;
-
-    // Parse the video to get its structure
-    let video = VideoDataDescription::load_from_bytes(video_bytes, "video/mp4", observation)
-        .map_err(|err| {
-            anyhow!("Failed to read video data description for feature '{observation}': {err}")
-        })?;
-
-    let (start_time, end_time) = get_feature_timestamps(dataset, episode, observation);
-
-    if video.samples.is_empty() {
-        return Err(DataLoaderError::Other(anyhow!(
-            "Video feature '{observation}' for episode {episode:?} did not contain any samples"
-        )));
-    }
-
-    // Convert timestamps to video time
-    let timescale = video
-        .timescale
-        .ok_or_else(|| anyhow!("Video feature '{observation}' is missing timescale information"))?;
-
-    let start_video_time = re_video::Time::from_secs(start_time, timescale);
-    let end_video_time = re_video::Time::from_secs(end_time, timescale);
-
-    // Find the GOPs (Group of Pictures) that contain our time range
-    let start_gop = video
-        .gop_index_containing_presentation_timestamp(start_video_time)
-        .unwrap_or(0);
-
-    let end_gop = video
-        .gop_index_containing_presentation_timestamp(end_video_time)
-        .unwrap_or(video.gops.num_elements() - 1);
-
-    // Determine the sample range to extract from the video
-    let start_sample = video.gops[start_gop].sample_range.start;
-    let end_sample = video.gops[end_gop].sample_range.end;
-
-    let sample_range = start_sample..end_sample;
-
-    // Extract all video samples in this range
-    let mut samples = Vec::with_capacity(sample_range.len());
-    let mut buffers = StableIndexDeque::new();
-    buffers.push_back(video_bytes);
-
-    for (sample_idx, sample_meta) in video.samples.iter_index_range_clamped(&sample_range) {
-        // make sure we absolutely do not leak any samples from outside the requested time range
-        if sample_meta.presentation_timestamp < start_video_time
-            || sample_meta.presentation_timestamp >= end_video_time
-        {
-            continue;
-        }
-
-        let chunk = sample_meta.get(&buffers, sample_idx).ok_or_else(|| {
-            anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
-        })?;
-
-        let sample_bytes = video
-            .sample_data_in_stream_format(&chunk)
-            .with_context(|| {
-                format!(
-                    "Failed to convert sample {sample_idx} for feature '{observation}' to the expected codec stream format"
-                )
-            })?;
-
-        samples.push((sample_meta.clone(), sample_bytes));
-    }
-
-    let (samples_meta, samples): (Vec<_>, Vec<_>) = samples.into_iter().unzip();
-
-    let samples_column = VideoStream::update_fields()
-        .with_many_sample(samples)
-        .columns_of_unit_batches()
-        .with_context(|| "Failed to create VideoStream")?;
-
-    // Map video samples to episode frame indices
-    //
-    // Video samples may not align 1:1 with episode frames. We distribute samples uniformly
-    // across the frame timeline. When there are more samples than frames, multiple samples
-    // map to the same frame index; when there are fewer samples, some frames have no samples.
-    let num_samples = samples_meta.len();
-    let frame_count = time_column.num_rows();
-
-    println!("num samples: {num_samples}, frame_count: {frame_count}");
-    let uniform_times: Vec<i64> = (0..num_samples)
-        .map(|i| i64::try_from((i * frame_count) / num_samples).unwrap_or_default())
-        .collect();
-
-    let uniform_time_column = TimeColumn::new(
-        Some(true), // is_sorted
-        *timeline,
-        ScalarBuffer::from(uniform_times),
-    );
-
-    let codec = re_types::components::VideoCodec::try_from(video.codec).map_err(|err| {
-        anyhow!(
-            "Unsupported video codec {:?} for feature: '{observation}': {err}",
-            video.codec
-        )
-    })?;
-
-    let codec_chunk = Chunk::builder(entity_path)
-        .with_archetype(
-            RowId::new(),
-            TimePoint::default(),
-            &VideoStream::update_fields().with_codec(codec),
-        )
-        .build()?;
-
-    let samples_chunk = Chunk::from_auto_row_ids(
-        ChunkId::new(),
-        entity_path.into(),
-        std::iter::once((timeline.name().to_owned(), uniform_time_column)).collect(),
-        samples_column.collect(),
-    )?;
-
-    Ok([samples_chunk, codec_chunk].into_iter())
 }
