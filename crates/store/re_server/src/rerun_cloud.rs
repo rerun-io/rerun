@@ -1039,7 +1039,7 @@ impl RerunCloudService for RerunCloudHandler {
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
-            re_log::warn_once!(
+            re_log::info_once!(
                 "query_dataset: scan_parameters are not yet implemented and will be ignored"
             );
         }
