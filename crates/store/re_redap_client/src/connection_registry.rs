@@ -314,7 +314,8 @@ impl ConnectionRegistryHandle {
         // a layer of noise:
         {
             let Ok(res) =
-                ehttp::fetch_async(ehttp::Request::get(format!("{origin}/version"))).await
+                ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
+                    .await
             else {
                 return Err(ApiError::invalid_server(origin));
             };
