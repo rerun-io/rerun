@@ -465,7 +465,7 @@ async fn stream_segment_from_server(
             if tx
                 .send(DataSourceMessage::RrdManifestMessage(
                     store_id.clone(),
-                    rrd_manifest,
+                    rrd_manifest.into(),
                 ))
                 .is_err()
             {

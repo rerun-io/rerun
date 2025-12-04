@@ -13,7 +13,7 @@ pub enum DataSourceMessage {
     /// The index of all the chunks in a recording.
     ///
     /// Some sources may send this, others may not.
-    RrdManifestMessage(StoreId, RrdManifestMessage),
+    RrdManifestMessage(StoreId, Box<RrdManifestMessage>),
 
     /// See [`LogMsg`].
     LogMsg(LogMsg),
