@@ -120,10 +120,7 @@ impl Dataset {
             }
 
             Ok(Either::Right(segment_ids.iter().filter_map(|id| {
-                self.inner
-                    .segments
-                    .get(id)
-                    .map(|segment| (id, segment))
+                self.inner.segments.get(id).map(|segment| (id, segment))
             })))
         }
     }
@@ -285,12 +282,7 @@ impl Dataset {
     }
 
     pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        let row_count = self
-            .inner
-            .segments
-            .values()
-            .map(|s| s.layer_count())
-            .sum();
+        let row_count = self.inner.segments.values().map(|s| s.layer_count()).sum();
 
         let mut layer_names = Vec::with_capacity(row_count);
         let mut segment_ids = Vec::with_capacity(row_count);
@@ -359,7 +351,7 @@ impl Dataset {
     }
 
     pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RecordBatch, Error> {
-        let partition = self.partition(segment_id)?;
+        let partition = self.segment(segment_id)?;
 
         let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
 
