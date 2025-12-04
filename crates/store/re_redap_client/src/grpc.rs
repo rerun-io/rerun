@@ -463,22 +463,15 @@ async fn stream_segment_from_server(
         .await;
     match manifest_result {
         Ok(rrd_manifest) => {
-            match RrdManifestMessage::from_record_batch(rrd_manifest) {
-                Ok(rrd_manifest) => {
-                    if tx
-                        .send(DataSourceMessage::RrdManifestMessage(
-                            store_id.clone(),
-                            rrd_manifest,
-                        ))
-                        .is_err()
-                    {
-                        re_log::debug!("Receiver disconnected");
-                        return Ok(()); // cancelled
-                    }
-                }
-                Err(err) => {
-                    re_log::warn!("Failed to parse RRD manifest: {err}");
-                }
+            if tx
+                .send(DataSourceMessage::RrdManifestMessage(
+                    store_id.clone(),
+                    rrd_manifest,
+                ))
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(()); // cancelled
             }
         }
         Err(err) => {
