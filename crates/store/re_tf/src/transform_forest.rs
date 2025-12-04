@@ -942,8 +942,6 @@ mod tests {
     /// └── pinhole
     ///      └── child2d
     /// ```
-    ///
-    /// TODO(RR-2627): Add instances poses into the mix.
     fn simple_frame_hierarchy_test_scene(
         multiple_entities: bool,
     ) -> Result<EntityDb, Box<dyn std::error::Error>> {
