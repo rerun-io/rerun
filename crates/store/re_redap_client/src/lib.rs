@@ -83,6 +83,9 @@ pub struct ApiError {
     pub source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
+/// Convenience for `Result<T, ApiError>`
+pub type ApiResult<T = ()> = Result<T, ApiError>;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ApiErrorKind {
     NotFound,

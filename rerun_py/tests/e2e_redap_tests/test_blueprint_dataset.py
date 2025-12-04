@@ -42,12 +42,12 @@ def test_configure_blueprint_dataset(entry_factory: EntryFactory, tmp_path: Path
     bds = ds.blueprint_dataset()
     assert bds is not None
 
-    blueprint_partition_id = bds.register(rbl_path.absolute().as_uri())
+    blueprint_segment_id = bds.register(rbl_path.absolute().as_uri())
 
     # Set our newly registered blueprint as default for our dataset
-    ds.set_default_blueprint_partition_id(blueprint_partition_id)
+    ds.set_default_blueprint_segment_id(blueprint_segment_id)
 
     # Uncomment this line for a chance to connect to this server using the viewer
     # input(f"Server running on {server.address()}. Press enter to continue…"
 
-    assert ds.default_blueprint_partition_id() == blueprint_partition_id
+    assert ds.default_blueprint_segment_id() == blueprint_segment_id

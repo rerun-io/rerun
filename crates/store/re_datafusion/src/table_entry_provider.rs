@@ -297,7 +297,7 @@ impl ExecutionPlan for TableEntryWriterExec {
 pub struct RecordBatchGrpcOutputStream {
     input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
-    thread_status: tokio::sync::oneshot::Receiver<Result<(), re_redap_client::ApiError>>,
+    thread_status: tokio::sync::oneshot::Receiver<re_redap_client::ApiResult>,
     complete: bool,
     grpc_error: Option<tonic::Status>,
 }

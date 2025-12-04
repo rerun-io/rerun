@@ -334,6 +334,9 @@ pub struct NavSatStatus {
 #[serde(from = "i8", into = "i8")]
 #[repr(i8)]
 pub enum NavSatFixStatus {
+    /// Status is unknown.
+    Unknown = -2,
+
     /// Unable to fix position.
     NoFix = -1,
 
@@ -350,10 +353,11 @@ pub enum NavSatFixStatus {
 impl From<i8> for NavSatFixStatus {
     fn from(value: i8) -> Self {
         match value {
+            -1 => Self::NoFix,
             0 => Self::Fix,
             1 => Self::SbasFix,
             2 => Self::GbasFix,
-            _ => Self::NoFix,
+            _ => Self::Unknown,
         }
     }
 }
@@ -366,25 +370,24 @@ impl From<NavSatFixStatus> for i8 {
 
 /// Navigation satellite service type values.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(try_from = "u16", into = "u16")]
+#[serde(from = "u16", into = "u16")]
 #[repr(u16)]
 pub enum NavSatService {
+    Unknown = 0,
     Gps = 1,
     Glonass = 2,
     Compass = 4,
     Galileo = 8,
 }
 
-impl TryFrom<u16> for NavSatService {
-    type Error = u16;
-
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl From<u16> for NavSatService {
+    fn from(value: u16) -> Self {
         match value {
-            1 => Ok(Self::Gps),
-            2 => Ok(Self::Glonass),
-            4 => Ok(Self::Compass),
-            8 => Ok(Self::Galileo),
-            _ => Err(value),
+            1 => Self::Gps,
+            2 => Self::Glonass,
+            4 => Self::Compass,
+            8 => Self::Galileo,
+            _ => Self::Unknown,
         }
     }
 }

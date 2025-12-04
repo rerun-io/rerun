@@ -18,7 +18,7 @@ use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
 
-pub type EntryResult<T> = Result<T, ApiError>;
+pub type EntryResult<T = ()> = Result<T, ApiError>;
 
 pub struct Dataset {
     pub dataset_entry: DatasetEntry,

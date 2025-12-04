@@ -1,4 +1,4 @@
-"""Logs a transform hierarchy using explicit transform frame relationships."""
+"""Logs a transform hierarchy using named transform frame relationships."""
 
 import numpy as np
 import rerun as rr

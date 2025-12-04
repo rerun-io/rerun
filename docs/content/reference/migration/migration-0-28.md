@@ -5,6 +5,18 @@ order: 982
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
+## `Pose*` component types have been removed
+
+The following component types have been removed in favor of their more general counterparts:
+
+* `components.PoseTranslation3D` → `components.Translation3D`
+* `components.PoseRotationQuat` → `components.RotationQuat`
+* `components.PoseTransformMat3x3` → `components.TransformMat3x3`
+* `components.PoseRotationAxisAngle` → `components.RotationAxisAngle`
+* `components.PoseScale3D` →  `components.Scale3D`
+
+Existing `.rrd` files will be automatically migrated when opened.
+
 ## `Transform3D` no longer supports `axis_length` for visualizing coordinate axes
 
 The `axis_length` parameter/method has been moved from `Transform3D` to a new `TransformAxes3D` archetype, which you can log alongside of `Transform3D`.
@@ -63,3 +75,44 @@ rotation and scale.
 Naturally, if any update to a transform always changes the same components, this does not cause any changes other than
 the simplification of not having to clear out all other components that may ever be set, thus reducing memory bloat both
 on send and query!
+
+## Python SDK: "partition" renamed to "segment" in catalog APIs
+
+<!-- TODO(ab): as I roll more API updates, I'll keep that section up-to-date -->
+
+In the `rerun.catalog` module, all APIs using "partition" terminology have been renamed to use "segment" instead.
+The old APIs are deprecated and will be removed in a future release.
+
+| Old API | New API |
+|---------|---------|
+| `DatasetEntry.partition_ids()` | `DatasetEntry.segment_ids()` |
+| `DatasetEntry.partition_table()` | `DatasetEntry.segment_table()` |
+| `DatasetEntry.partition_url()` | `DatasetEntry.segment_url()` |
+| `DatasetEntry.download_partition()` | `DatasetEntry.download_segment()` |
+| `DatasetEntry.default_blueprint_partition_id()` | `DatasetEntry.default_blueprint_segment_id()` |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint_segment_id()` |
+| `DataframeQueryView.filter_partition_id()` | `DataframeQueryView.filter_segment_id()` |
+
+The DataFusion utility functions in `rerun.utilities.datafusion.functions.url_generation` have also been renamed:
+
+| Old API | New API |
+|---------|---------|
+| `partition_url()` | `segment_url()` |
+| `partition_url_udf()` | `segment_url_udf()` |
+| `partition_url_with_timeref_udf()` | `segment_url_with_timeref_udf()` |
+
+The partition table columns have also been renamed from `rerun_partition_id` to `rerun_segment_id`.
+
+Additionally, the `partition_id` field on viewer event classes has been renamed to `segment_id`:
+
+```python
+# Before (0.27)
+def on_event(event):
+    print(event.partition_id)
+
+# After (0.28)
+def on_event(event):
+    print(event.segment_id)
+```
+
+This affects `PlayEvent`, `PauseEvent`, `TimeUpdateEvent`, `TimelineChangeEvent`, `SelectionChangeEvent`, and `RecordingOpenEvent`.
