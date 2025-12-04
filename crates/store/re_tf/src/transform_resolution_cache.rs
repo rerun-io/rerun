@@ -144,31 +144,79 @@ impl CachedTransformsForTimeline {
         child_frame: TransformFrameIdHash,
         timeline: TimelineName,
         static_timeline: &mut Self,
+        frame_registry: &FrameIdRegistry,
     ) -> &mut TreeTransformsForChildFrame {
-        self.per_child_frame_transforms
-            .entry(child_frame)
-            .or_insert_with(|| {
-                TreeTransformsForChildFrame::new_temporal(
+        match self.per_child_frame_transforms.entry(child_frame) {
+            std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                let transforms = occupied_entry.into_mut();
+
+                // Make sure we have the right associated path (we may only have a static association so far).
+                match transforms.associated_entity_path_temporal.as_mut() {
+                    Some(existing_path) => {
+                        if existing_path != entity_path {
+                            re_log::error_once!(
+                                "The entity path associated with a child frame mustn't change except for static vs temporal data. The frame {:?} was previously logged temporally at the path {existing_path:?} and was now logged on {entity_path:?}.",
+                                frame_registry.lookup_frame_id(child_frame).map_or_else(
+                                    || format!("{child_frame:?}"),
+                                    ToString::to_string
+                                )
+                            );
+                        }
+                    }
+                    None => {
+                        transforms.associated_entity_path_temporal = Some(entity_path.clone());
+                    }
+                }
+
+                transforms
+            }
+            std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+                vacant_entry.insert(TreeTransformsForChildFrame::new_temporal(
                     entity_path.clone(),
                     child_frame,
                     timeline,
                     static_timeline,
                     &self.non_recursive_clears,
                     &self.recursive_clears,
-                )
-            })
+                ))
+            }
+        }
     }
 
     fn get_or_create_tree_transforms_static(
         &mut self,
         entity_path: &EntityPath,
         child_frame: TransformFrameIdHash,
+        frame_registry: &FrameIdRegistry,
     ) -> &mut TreeTransformsForChildFrame {
-        self.per_child_frame_transforms
-            .entry(child_frame)
-            .or_insert_with(|| {
-                TreeTransformsForChildFrame::new_static(entity_path.clone(), child_frame)
-            })
+        match self.per_child_frame_transforms.entry(child_frame) {
+            std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                let transforms = occupied_entry.into_mut();
+
+                // Make sure we have the right associated path (we may only have a temporal association so far).
+                match transforms.associated_entity_path_static.as_mut() {
+                    Some(existing_path) => {
+                        if existing_path != entity_path {
+                            re_log::error_once!(
+                                "The entity path associated with a child frame mustn't change except for static vs temporal data. The frame {} was previously logged statically at the path {existing_path:?} and was now logged on {entity_path:?}.",
+                                frame_registry.lookup_frame_id(child_frame).map_or_else(
+                                    || format!("{child_frame:?}"),
+                                    ToString::to_string
+                                )
+                            );
+                        }
+                    }
+                    None => {
+                        transforms.associated_entity_path_static = Some(entity_path.clone());
+                    }
+                }
+
+                transforms
+            }
+            std::collections::hash_map::Entry::Vacant(vacant_entry) => vacant_entry.insert(
+                TreeTransformsForChildFrame::new_static(entity_path.clone(), child_frame),
+            ),
+        }
     }
 
     fn get_or_create_pose_transforms_temporal(
@@ -987,6 +1035,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_transform_at(time);
                 }
@@ -1008,6 +1057,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_pinhole_projection_at(time);
                 }
@@ -1057,8 +1107,11 @@ impl TransformResolutionCache {
             ) {
                 debug_assert_eq!(time, TimeInt::STATIC);
 
-                let frame_transforms =
-                    static_timeline.get_or_create_tree_transforms_static(entity_path, frame);
+                let frame_transforms = static_timeline.get_or_create_tree_transforms_static(
+                    entity_path,
+                    frame,
+                    &self.frame_id_registry,
+                );
                 frame_transforms.invalidate_transform_at(TimeInt::STATIC);
 
                 for (timeline, per_timeline) in &mut self.per_timeline {
@@ -1068,6 +1121,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_transform_at(TimeInt::STATIC);
                 }
@@ -1092,8 +1146,11 @@ impl TransformResolutionCache {
             ) {
                 debug_assert_eq!(time, TimeInt::STATIC);
 
-                let frame_transforms =
-                    static_timeline.get_or_create_tree_transforms_static(entity_path, frame);
+                let frame_transforms = static_timeline.get_or_create_tree_transforms_static(
+                    entity_path,
+                    frame,
+                    &self.frame_id_registry,
+                );
                 frame_transforms.invalidate_pinhole_projection_at(TimeInt::STATIC);
 
                 for (timeline, per_timeline) in &mut self.per_timeline {
@@ -1103,6 +1160,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_pinhole_projection_at(TimeInt::STATIC);
                 }
