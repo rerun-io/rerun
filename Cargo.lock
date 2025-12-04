@@ -9411,6 +9411,7 @@ dependencies = [
  "re_types_core",
  "re_uri",
  "serde",
+ "tap",
  "thiserror 2.0.17",
  "tokio",
  "tokio-stream",

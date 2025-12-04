@@ -26,6 +26,7 @@ use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
 use re_types_core::RrdManifestMessage;
+use tap::Pipe as _;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
@@ -388,13 +389,10 @@ where
                 let err = missing_field!(GetRrdManifestResponse, "data");
                 ApiError::serialization(err, "missing field in /GetRrdManifest response")
             })?
-            .try_into()
-            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))
-            .and_then(|rb| {
-                RrdManifestMessage::from_record_batch(rb).map_err(|err| {
-                    ApiError::serialization(err, "failed to parse /GetRrdManifest response")
-                })
-            })
+            .pipe(RecordBatch::try_from)
+            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))?
+            .pipe(RrdManifestMessage::from_record_batch)
+            .map_err(|err| ApiError::serialization(err, "failed to parse /GetRrdManifest response"))
     }
 
     /// Fetches all chunks ids for a specified segment.
