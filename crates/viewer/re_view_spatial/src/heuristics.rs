@@ -106,8 +106,7 @@ fn default_excluded_entities_for_visualizer_kind(
         })
         .collect::<IntSet<_>>();
 
-    let mut excluded_entities: Vec<_> = ctx
-        .view_class_registry()
+    ctx.view_class_registry()
         .new_visualizer_collection(match exclude_kind {
             SpatialViewKind::TwoD => SpatialView2D::identifier(),
             SpatialViewKind::ThreeD => SpatialView3D::identifier(),
@@ -150,18 +149,14 @@ fn default_excluded_entities_for_visualizer_kind(
                     return None;
                 }
 
-                current = p.clone();
-
                 if highest.is_none() && included_ancestors.contains(&p) {
                     highest = Some(current.clone());
                 }
+
+                current = p.clone();
             }
 
             highest
         })
-        .collect();
-
-    excluded_entities.sort_unstable();
-
-    excluded_entities
+        .collect()
 }

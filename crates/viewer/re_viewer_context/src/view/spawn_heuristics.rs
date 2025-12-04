@@ -89,10 +89,12 @@ impl RecommendedView {
 
     pub fn exclude_entities(&mut self, excluded: &[EntityPath]) {
         for e in excluded {
-            self.query_filter.insert_rule(
-                re_log_types::RuleEffect::Exclude,
-                EntityPathRule::including_entity_subtree(e),
-            );
+            if e.is_descendant_of(&self.origin) {
+                self.query_filter.insert_rule(
+                    re_log_types::RuleEffect::Exclude,
+                    EntityPathRule::including_entity_subtree(e),
+                );
+            }
         }
     }
 }
