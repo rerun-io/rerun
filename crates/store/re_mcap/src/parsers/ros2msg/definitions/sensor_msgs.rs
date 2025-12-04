@@ -366,25 +366,24 @@ impl From<NavSatFixStatus> for i8 {
 
 /// Navigation satellite service type values.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-#[serde(try_from = "u16", into = "u16")]
+#[serde(from = "u16", into = "u16")]
 #[repr(u16)]
 pub enum NavSatService {
+    Unknown = 0,
     Gps = 1,
     Glonass = 2,
     Compass = 4,
     Galileo = 8,
 }
 
-impl TryFrom<u16> for NavSatService {
-    type Error = u16;
-
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
+impl From<u16> for NavSatService {
+    fn from(value: u16) -> Self {
         match value {
-            1 => Ok(Self::Gps),
-            2 => Ok(Self::Glonass),
-            4 => Ok(Self::Compass),
-            8 => Ok(Self::Galileo),
-            _ => Err(value),
+            1 => Self::Gps,
+            2 => Self::Glonass,
+            4 => Self::Compass,
+            8 => Self::Galileo,
+            _ => Self::Unknown,
         }
     }
 }
