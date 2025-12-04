@@ -7,11 +7,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from rerun.catalog import CatalogClient
 
 
 @pytest.fixture(scope="function")
-def temp_empty_file() -> str:
+def temp_empty_file() -> Iterator[str]:
     fd, tmp_path = tempfile.mkstemp(suffix=".rrd")
     os.close(fd)
     yield f"file://{tmp_path}"
@@ -19,7 +21,7 @@ def temp_empty_file() -> str:
 
 
 @pytest.fixture(scope="function")
-def temp_empty_directory() -> str:
+def temp_empty_directory() -> Iterator[str]:
     tmp_dir = tempfile.mkdtemp()
     yield f"file://{tmp_dir}"
     os.rmdir(tmp_dir)
