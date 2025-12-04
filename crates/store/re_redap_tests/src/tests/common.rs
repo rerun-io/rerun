@@ -224,15 +224,9 @@ impl LayerType {
         Self::SimpleBlueprint
     }
 
-    fn into_recording(
-        self,
-        tuid_prefix: TuidPrefix,
-        segment_id: &str,
-    ) -> anyhow::Result<TempPath> {
+    fn into_recording(self, tuid_prefix: TuidPrefix, segment_id: &str) -> anyhow::Result<TempPath> {
         match self {
-            Self::Simple { entities } => {
-                create_simple_recording(tuid_prefix, segment_id, entities)
-            }
+            Self::Simple { entities } => create_simple_recording(tuid_prefix, segment_id, entities),
 
             Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
@@ -324,11 +318,7 @@ impl LayerDefinition {
     }
 
     /// A simple layer with a bunch of embeddings, for testing Vector indexes.
-    pub fn embeddings(
-        segment_id: &'static str,
-        embeddings: u32,
-        embeddings_per_row: u32,
-    ) -> Self {
+    pub fn embeddings(segment_id: &'static str, embeddings: u32, embeddings_per_row: u32) -> Self {
         Self {
             segment_id,
             layer_name: None,

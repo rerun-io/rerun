@@ -134,9 +134,8 @@ impl Stream for DataframeSegmentStream {
                 };
 
                 let runtime = Handle::current();
-                let store = runtime.block_on(
-                    this.get_chunk_store_for_single_rerun_segment(segment_id.as_str()),
-                )?;
+                let store = runtime
+                    .block_on(this.get_chunk_store_for_single_rerun_segment(segment_id.as_str()))?;
 
                 let query_engine = QueryEngine::new(store.clone(), QueryCache::new_handle(store));
 

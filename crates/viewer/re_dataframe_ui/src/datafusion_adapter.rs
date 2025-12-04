@@ -125,10 +125,7 @@ impl DataFusionQuery {
 
             dataframe = dataframe.with_column(
                 &segment_links.column_name,
-                concat(vec![
-                    lit(uri),
-                    col(&segment_links.segment_id_column_name),
-                ]),
+                concat(vec![lit(uri), col(&segment_links.segment_id_column_name)]),
             )?;
         }
 
