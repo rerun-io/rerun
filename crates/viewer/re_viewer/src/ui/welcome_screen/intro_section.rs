@@ -1,7 +1,7 @@
 use eframe::epaint::Margin;
 use egui::{Button, Frame, RichText, TextStyle, Theme, Ui};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
-use re_ui::{ReButtonExt, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
+use re_ui::{ReButtonExt as _, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
 use re_viewer_context::{GlobalContext, Item, SystemCommand, SystemCommandSender as _};
 
