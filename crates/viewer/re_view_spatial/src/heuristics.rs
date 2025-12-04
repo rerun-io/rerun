@@ -17,7 +17,7 @@ pub struct VisualizedEntities {
 
     /// Entity paths we know will not work within this visualizer.
     ///
-    /// Right now this excludes things the 2d view would indicate in 3d, and vice versa.
+    /// Right now this excludes things the 2D view would indicate in 3D, and vice versa.
     pub excluded_entities: Vec<EntityPath>,
 }
 
