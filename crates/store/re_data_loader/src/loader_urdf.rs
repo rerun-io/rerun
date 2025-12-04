@@ -509,12 +509,13 @@ fn log_link(
     )?;
 
     // Log coordinate frame ID of the link.
+    let link_name = link.name.clone();
     send_archetype(
         tx,
         store_id,
         link_entity.clone(),
         timepoint,
-        &CoordinateFrame::update_fields().with_frame(link.name.clone()),
+        &CoordinateFrame::update_fields().with_frame(link_name.clone()),
     )?;
 
     for (i, visual) in visual.iter().enumerate() {
@@ -526,6 +527,10 @@ fn log_link(
         } = visual;
         let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let visual_entity = link_entity / EntityPathPart::new(visual_name.clone());
+
+        // We have to make sure that the frame ID is unique, otherwise we might end up with multiple "visual_0" etc.
+        // Prefix with the link name.
+        let visual_frame_id = format!("{link_name}_{visual_name}");
 
         // Prefer inline defined material properties if present, otherwise fall back to global material.
         let material = material.as_ref().and_then(|mat| {
@@ -542,11 +547,11 @@ fn log_link(
             visual_entity.clone(),
             origin,
             timepoint,
-            link.name.clone(),
-            visual_name,
+            link_name.clone(),
+            visual_frame_id.clone(),
         )?;
 
-        let coordinate_frame = CoordinateFrame::update_fields().with_frame(link.name.clone());
+        let coordinate_frame = CoordinateFrame::update_fields().with_frame(visual_frame_id.clone());
         send_archetype(
             tx,
             store_id,
@@ -575,17 +580,22 @@ fn log_link(
         let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(collision_name.clone());
 
+        // We have to make sure that the frame ID is unique, otherwise we might end up with multiple "collision_0" etc.
+        // Prefix with the link name.
+        let collision_frame_id = format!("{link_name}_{collision_name}");
+
         send_transform(
             tx,
             store_id,
             collision_entity.clone(),
             origin,
             timepoint,
-            link.name.clone(),
-            collision_name,
+            link_name.clone(),
+            collision_frame_id.clone(),
         )?;
 
-        let coordinate_frame = CoordinateFrame::update_fields().with_frame(link.name.clone());
+        let coordinate_frame =
+            CoordinateFrame::update_fields().with_frame(collision_frame_id.clone());
         send_archetype(
             tx,
             store_id,
