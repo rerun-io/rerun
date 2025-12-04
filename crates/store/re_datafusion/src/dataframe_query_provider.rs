@@ -231,15 +231,15 @@ impl SegmentStreamExec {
         }
 
         // The output ordering of this table provider should always be rerun
-        // partition ID and then time index. If the output does not have rerun
-        // partition ID included, we cannot specify any output ordering.
+        // segment ID and then time index. If the output does not have rerun
+        // segment ID included, we cannot specify any output ordering.
 
         let orderings = if projected_schema
             .fields()
             .iter()
             .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
         {
-            let partition_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
+            let segment_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
                 as Arc<dyn PhysicalExpr>;
             let order_col = sort_index
                 .and_then(|index| {
@@ -254,7 +254,7 @@ impl SegmentStreamExec {
                 .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
 
             let mut physical_ordering = vec![PhysicalSortExpr::new(
-                partition_col,
+                segment_col,
                 SortOptions::new(false, true),
             )];
             if let Some(col_expr) = order_col {
@@ -477,8 +477,8 @@ async fn chunk_stream_io_loop(
             fetch_chunks_response_stream,
         );
 
-        while let Some(chunk_and_partition_id) = chunk_stream.next().await {
-            if output_channel.send(chunk_and_partition_id).await.is_err() {
+        while let Some(chunk_and_segment_id) = chunk_stream.next().await {
+            if output_channel.send(chunk_and_segment_id).await.is_err() {
                 break;
             }
         }

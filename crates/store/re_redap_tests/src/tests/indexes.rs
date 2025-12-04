@@ -18,9 +18,9 @@ pub async fn index_lifecycle(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::scalars("my_partition_id1").layer_name("scalars"), //
-            LayerDefinition::text("my_partition_id1").layer_name("text"),       //
-            LayerDefinition::embeddings("my_partition_id1", 256, 3).layer_name("embeddings"), //
+            LayerDefinition::scalars("my_segment_id1").layer_name("scalars"), //
+            LayerDefinition::text("my_segment_id1").layer_name("text"),       //
+            LayerDefinition::embeddings("my_segment_id1", 256, 3).layer_name("embeddings"), //
         ],
     );
 
@@ -199,9 +199,9 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::scalars("my_partition_id1").layer_name("scalars"), //
-            LayerDefinition::text("my_partition_id1").layer_name("text"),       //
-            LayerDefinition::embeddings("my_partition_id1", 256, 3).layer_name("embeddings"), //
+            LayerDefinition::scalars("my_segment_id1").layer_name("scalars"), //
+            LayerDefinition::text("my_segment_id1").layer_name("text"),       //
+            LayerDefinition::embeddings("my_segment_id1", 256, 3).layer_name("embeddings"), //
         ],
     );
 
