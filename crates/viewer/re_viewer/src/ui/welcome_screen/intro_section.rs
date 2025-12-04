@@ -29,17 +29,17 @@ impl<'a> IntroItem<'a> {
         vec![
             IntroItem::DocItem {
                 title: "Send data in",
-                url: "",
+                url: "https://rerun.io/docs/getting-started/data-in",
                 body: "Send data to Rerun from your running applications or existing files.",
             },
             IntroItem::DocItem {
                 title: "Explore data",
-                url: "",
+                url: "https://rerun.io/docs/getting-started/configure-the-viewer",
                 body: "Familiarize yourself with the basics of using the Rerun Viewer.",
             },
             IntroItem::DocItem {
                 title: "Query data out",
-                url: "",
+                url: "https://rerun.io/docs/getting-started/data-out",
                 body: "Perform analysis and send back the results to the original recording.",
             },
             IntroItem::CloudLoginItem(login_state),
@@ -100,9 +100,9 @@ impl<'a> IntroItem<'a> {
                     ui.label(
                         "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
                     );
-                    ui.hyperlink_to("here", "");
+                    ui.hyperlink_to("here", "https://rerun.io/");
                     ui.label(" or ");
-                    ui.hyperlink_to("book a demo", "");
+                    ui.hyperlink_to("book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
                     ui.label(".");
                 });
 
