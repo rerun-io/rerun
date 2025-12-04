@@ -1309,7 +1309,7 @@ mod tests {
         PerStoreChunkSubscriber, RowId,
     };
     use re_log_types::{
-        StoreId, TimePoint, Timeline,
+        StoreId, StoreInfo, TimePoint, Timeline,
         example_components::{MyPoint, MyPoints},
     };
     use re_types::{ChunkId, archetypes};
@@ -1434,10 +1434,7 @@ mod tests {
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
-        let entity_db = EntityDb::new(StoreId::random(
-            re_log_types::StoreKind::Recording,
-            "test_app",
-        ));
+        let entity_db = EntityDb::new(StoreInfo::testing().store_id);
         let _ = TestStoreSubscriber::subscription_handle();
         entity_db
     }
@@ -2838,6 +2835,77 @@ mod tests {
         Ok(())
     }
 
+    fn test_error_on_changing_associated_path(
+        time: TimeInt,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Error);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        let mut cache = TransformResolutionCache::default();
+
+        let time_point = if time.is_static() {
+            TimePoint::STATIC
+        } else {
+            [(Timeline::new_sequence("t"), time)].into()
+        };
+
+        // First, create temporal transform
+        let temporal_chunk1 = Chunk::builder(EntityPath::from("entity_a"))
+            .with_archetype_auto_row(
+                time_point.clone(),
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0])
+                    .with_child_frame("my_frame"),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk1))?.iter());
+
+        assert!(log_rx.try_recv().is_err());
+
+        // Try to associate the same frame with a different temporal entity - should log error
+        let temporal_chunk2 = Chunk::builder(EntityPath::from("entity_b"))
+            .with_archetype_auto_row(
+                time_point,
+                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
+                    .with_child_frame("my_frame"),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk2))?.iter());
+
+        let error = log_rx.try_recv().unwrap();
+        assert!(log_rx.try_recv().is_err()); // Exactly one error.
+
+        assert_eq!(error.level, re_log::Level::Error);
+        assert!(
+            error.msg.contains("entity_a"),
+            "Expected to mention previous entity, but msg was {}",
+            error.msg
+        );
+        assert!(
+            error.msg.contains("entity_b"),
+            "Expected to mention new entity, but msg was {}",
+            error.msg
+        );
+        assert!(
+            error.msg.contains("my_frame"),
+            "Expected to mention target, but msg was {}",
+            error.msg
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_on_changing_associated_path_static() -> Result<(), Box<dyn std::error::Error>> {
+        test_error_on_changing_associated_path(TimeInt::STATIC)
+    }
+
+    #[test]
+    fn test_error_on_changing_associated_path_temporal() -> Result<(), Box<dyn std::error::Error>> {
+        test_error_on_changing_associated_path(TimeInt::new_temporal(0))
+    }
+
     #[test]
     fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
@@ -2976,8 +3044,6 @@ mod tests {
         Ok(())
     }
 
-    // TODO: add test for error detection on invalid association movement.
-
     // TODO(andreas): We're missing tests for more corner cases involving child frames and (recursive) clears.
 
     #[test]
@@ -3065,10 +3131,7 @@ mod tests {
 
     #[test]
     fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
-        let mut entity_db = EntityDb::new(StoreId::random(
-            re_log_types::StoreKind::Recording,
-            "test_app",
-        ));
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
         let mut cache = TransformResolutionCache::default();
 
         let timeline = Timeline::new_sequence("t");
