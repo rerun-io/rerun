@@ -487,7 +487,7 @@ async fn stream_segment_from_server(
 
     for msg in chunk_index_messages {
         if tx
-            .send(DataSourceMessage::ChunkIndexMessage(store_id.clone(), msg))
+            .send(DataSourceMessage::RrdManifestMessage(store_id.clone(), msg))
             .is_err()
         {
             re_log::debug!("Receiver disconnected");

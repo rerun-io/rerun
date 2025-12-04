@@ -1,7 +1,7 @@
 // TODO(andreas): Conceptually these should go to `re_data_source`.
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
-use re_types_core::ChunkIndexMessage;
+use re_types_core::RrdManifestMessage;
 
 use re_log_types::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
 
@@ -13,7 +13,7 @@ pub enum DataSourceMessage {
     /// The index of all the chunks in a recording.
     ///
     /// Some sources may send this, others may not.
-    ChunkIndexMessage(StoreId, ChunkIndexMessage),
+    RrdManifestMessage(StoreId, RrdManifestMessage),
 
     /// See [`LogMsg`].
     LogMsg(LogMsg),
@@ -35,7 +35,7 @@ impl DataSourceMessage {
     /// The name of the variant, useful for error message etc
     pub fn variant_name(&self) -> &'static str {
         match self {
-            Self::ChunkIndexMessage { .. } => "ChunkIndexMessage",
+            Self::RrdManifestMessage { .. } => "RrdManifestMessage",
             Self::LogMsg(_) => "LogMsg",
             Self::TableMsg(_) => "TableMsg",
             Self::UiCommand(_) => "UiCommand",
@@ -47,7 +47,7 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.insert_arrow_record_batch_metadata(key, value),
             Self::TableMsg(table_msg) => table_msg.insert_arrow_record_batch_metadata(key, value),
-            Self::ChunkIndexMessage { .. } | Self::UiCommand(_) => {
+            Self::RrdManifestMessage { .. } | Self::UiCommand(_) => {
                 // Not everything needs latency tracking
             }
         }

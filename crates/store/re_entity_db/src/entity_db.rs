@@ -18,10 +18,10 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_types_core::ChunkIndexMessage;
+use re_types_core::RrdManifestMessage;
 
-use crate::chunk_index::ChunkIndex;
 use crate::ingestion_statistics::IngestionStatistics;
+use crate::rrd_manifest_index::RrdManifest;
 use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    chunk_index: ChunkIndex,
+    rrd_manifest_index: RrdManifest,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -145,7 +145,7 @@ impl EntityDb {
         Self {
             store_id,
             data_source: None,
-            chunk_index: Default::default(),
+            rrd_manifest_index: Default::default(),
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
@@ -245,8 +245,8 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn chunk_index(&self) -> &ChunkIndex {
-        &self.chunk_index
+    pub fn rrd_manifest_index(&self) -> &RrdManifest {
+        &self.rrd_manifest_index
     }
 
     #[inline]
@@ -549,8 +549,8 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_chunk_index_message(&mut self, chunk_index: ChunkIndexMessage) {
-        self.chunk_index.append(chunk_index);
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifestMessage) {
+        self.rrd_manifest_index.append(rrd_manifest);
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
@@ -606,7 +606,7 @@ impl EntityDb {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
 
-        self.chunk_index.mark_as_loaded(chunk.id());
+        self.rrd_manifest_index.mark_as_loaded(chunk.id());
 
         self.on_store_events(&store_events);
 
@@ -629,7 +629,7 @@ impl EntityDb {
 
         let engine = engine.downgrade();
 
-        self.chunk_index.on_events(store_events);
+        self.rrd_manifest_index.on_events(store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
         self.times_per_timeline.on_events(store_events);

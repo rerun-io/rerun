@@ -776,7 +776,7 @@ pub fn entity_db_button_ui(
                 );
             });
 
-        if let Some(progress) = entity_db.chunk_index().progress()
+        if let Some(progress) = entity_db.rrd_manifest_index().progress()
             && progress < 1.0
         {
             // Paint a progress bar:
