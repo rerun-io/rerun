@@ -55,10 +55,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
         }
 
         endpoint.connect().await.map_err(|err| {
-            ApiError::connection(
-                err,
-                format!("failed to connect to server at {origin}"),
-            )
+            ApiError::connection(err, format!("failed to connect to server at {origin}"))
         })
     };
 
