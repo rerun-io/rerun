@@ -508,7 +508,7 @@ fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
     if let Entry::Vacant(vacant_entry) = entry {
         vacant_entry.insert(CachedTransformValue::Invalidated);
     } else if let Entry::Occupied(mut occupied_entry) = entry
-        && occupied_entry.get() == &CachedTransformValue::Cleared
+        && occupied_entry.get() != &CachedTransformValue::Cleared
     {
         occupied_entry.insert(CachedTransformValue::Invalidated);
     }
@@ -1211,7 +1211,10 @@ mod tests {
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
     };
-    use re_log_types::{StoreId, TimePoint, Timeline};
+    use re_log_types::{
+        StoreId, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
     use re_types::{ChunkId, archetypes};
 
     use super::*;
@@ -2818,6 +2821,149 @@ mod tests {
                 .recursive_clears
                 .is_empty(),
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(StoreId::random(
+            re_log_types::StoreKind::Recording,
+            "test_app",
+        ));
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+        let frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("my_entity"));
+
+        // Initial chunk with various events, some of which don't do anything about transforms.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+            )
+            .with_archetype_auto_row([(timeline, 2)], &MyPoints::new([MyPoint::new(0.0, 0.0)]))
+            .with_archetype_auto_row(
+                [(timeline, 3)],
+                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0]),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query all transforms, warming the cache.
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, glam::dvec3(1.0, 0.0, 0.0)),
+            (2, glam::dvec3(1.0, 0.0, 0.0)),
+            (3, glam::dvec3(2.0, 0.0, 0.0)),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(expected_translation),
+                }),
+                "querying at time {time}"
+            );
+        }
+
+        // New chunk overriding some of the times and adding new ones.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0]),
+            )
+            .with_archetype_auto_row(
+                [(timeline, 2)],
+                &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0]),
+            )
+            .with_archetype_auto_row(
+                [(timeline, 5)],
+                &archetypes::Transform3D::from_translation([5.0, 0.0, 0.0]),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query again, ensuring we get new transforms.
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, glam::dvec3(3.0, 0.0, 0.0)),
+            (2, glam::dvec3(4.0, 0.0, 0.0)),
+            (3, glam::dvec3(2.0, 0.0, 0.0)),
+            (4, glam::dvec3(2.0, 0.0, 0.0)),
+            (5, glam::dvec3(5.0, 0.0, 0.0)),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(expected_translation),
+                }),
+                "querying at time {time}"
+            );
+        }
+
+        // Add a clear chunk.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row([(timeline, 3)], &archetypes::Clear::new(false))
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query again, ensure the transform is cleared in the right places.
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, Some(glam::dvec3(3.0, 0.0, 0.0))),
+            (2, Some(glam::dvec3(4.0, 0.0, 0.0))),
+            (3, None),
+            (4, None),
+            (5, Some(glam::dvec3(5.0, 0.0, 0.0))),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                expected_translation.map(|translation| ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(translation),
+                }),
+                "querying at time {time}"
+            );
+        }
+
+        // Add a chunk that tries to restore the transform _at_ the clear.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 3)],
+                &archetypes::Transform3D::from_translation([6.0, 0.0, 0.0]),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query again, ensure that the clear "wins" (no change to before)
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, Some(glam::dvec3(3.0, 0.0, 0.0))),
+            (2, Some(glam::dvec3(4.0, 0.0, 0.0))),
+            (3, None),
+            (4, None),
+            (5, Some(glam::dvec3(5.0, 0.0, 0.0))),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                expected_translation.map(|translation| ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(translation),
+                }),
+                "querying at time {time}"
+            );
+        }
 
         Ok(())
     }
