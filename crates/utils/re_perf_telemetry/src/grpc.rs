@@ -24,6 +24,7 @@ pub struct GrpcMakeSpan {
 
 impl GrpcMakeSpan {
     pub fn new() -> Self {
+        // if telemetry is not explicitly enabled through an env var, we create noop spans
         let create_noop_spans = !std::env::var("TELEMETRY_ENABLED")
             .is_ok_and(|v| v == "1" || v.to_lowercase() == "true" || v.to_lowercase() == "yes");
 
