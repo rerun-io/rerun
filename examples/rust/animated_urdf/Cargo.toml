@@ -12,3 +12,4 @@ rerun = { path = "../../../crates/top/rerun", features = ["clap", "data_loaders"
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 emath.workspace = true
+glam.workspace = true
