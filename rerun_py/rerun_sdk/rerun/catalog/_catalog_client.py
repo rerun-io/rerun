@@ -164,17 +164,41 @@ class CatalogClient:
 
     # ---
 
-    def entry_names(self) -> list[str]:
-        """Returns a list of all entry names in the catalog."""
-        return self._internal.entry_names()
+    def entry_names(self, *, include_hidden: bool = False) -> list[str]:
+        """
+        Returns a list of all entry names in the catalog.
 
-    def dataset_names(self) -> list[str]:
-        """Returns a list of all dataset names in the catalog."""
-        return self._internal.dataset_names()
+        Parameters
+        ----------
+        include_hidden
+            If True, include hidden entries (blueprint datasets and system tables like `__entries`).
 
-    def table_names(self) -> list[str]:
-        """Returns a list of all table names in the catalog."""
-        return self._internal.table_names()
+        """
+        return [e.name for e in self.entries(include_hidden=include_hidden)]
+
+    def dataset_names(self, *, include_hidden: bool = False) -> list[str]:
+        """
+        Returns a list of all dataset names in the catalog.
+
+        Parameters
+        ----------
+        include_hidden
+            If True, include blueprint datasets.
+
+        """
+        return [d.name for d in self.datasets(include_hidden=include_hidden)]
+
+    def table_names(self, *, include_hidden: bool = False) -> list[str]:
+        """
+        Returns a list of all table names in the catalog.
+
+        Parameters
+        ----------
+        include_hidden
+            If True, include system tables (e.g., `__entries`).
+
+        """
+        return [t.name for t in self.tables(include_hidden=include_hidden)]
 
     # ---
 

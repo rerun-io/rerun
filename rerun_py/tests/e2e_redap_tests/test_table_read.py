@@ -16,7 +16,7 @@ def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
 
     client = prefilled_catalog.client
     assert expected_table_name in client.table_names()
-    assert entries_table_name in client.table_names()
+    assert entries_table_name in client.table_names(include_hidden=True)
 
     # Check that we have at least the expected tables (may have more on external servers)
     entries = client.tables()

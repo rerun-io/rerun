@@ -15,8 +15,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from syrupy import SnapshotAssertion
-
 from rerun.catalog import CatalogClient
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
@@ -25,6 +23,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from rerun.catalog import DatasetEntry, TableEntry
+    from syrupy import SnapshotAssertion
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

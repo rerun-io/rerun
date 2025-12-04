@@ -164,43 +164,6 @@ impl PyCatalogClientInternal {
 
     // ---
 
-    fn entry_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details = connection.find_entries(py, EntryFilter::new())?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    fn dataset_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    fn table_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Table))?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    // ---
-
     /// Get a dataset by name or id.
     fn get_dataset_entry(
         self_: Py<Self>,
