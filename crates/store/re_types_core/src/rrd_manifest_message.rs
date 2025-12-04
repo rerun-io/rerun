@@ -1,30 +1,23 @@
 #![expect(clippy::mem_forget)] // because of ouroboros
 
-use arrow::array::{Array as _, AsArray as _, BooleanArray, RecordBatch, StringArray};
+use arrow::array::{Array as _, BooleanArray, FixedSizeBinaryArray, RecordBatch, StringArray};
 use arrow::error::ArrowError;
+use itertools::izip;
 use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _, WrongDatatypeError};
 
 use crate::ChunkId;
+
+pub const FIELD_CHUNK_ID: &str = "chunk_id";
+pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
+pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
+pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
+pub const FIELD_CHUNK_KEY: &str = "chunk_key";
 
 // -----------------------------------------------------------------------------------------
 
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkIndexError {
-    #[error("Missing chunk_id column in ChunkIndex")]
-    MissingChunkIdColumn,
-
-    #[error("Expected ChunkId to be encoded as a FixedSizeBinary array")]
-    InvalidChunkIdEncoding,
-
-    #[error("Missing chunk_is_static column in ChunkIndex")]
-    MissingChunkIsStaticColumn,
-
-    #[error("Expected chunk_is_static to be encoded as a Boolean array")]
-    InvalidChunkIsStaticEncoding,
-
-    #[error("Found nulls in chunk_is_static column")]
-    NullsInChunkIsStatic,
-
     #[error(transparent)]
     Arrow(#[from] ArrowError),
 
@@ -33,6 +26,9 @@ pub enum ChunkIndexError {
 
     #[error(transparent)]
     WrongDatatype(#[from] WrongDatatypeError),
+
+    #[error("Found nulls in column {column_name:?}")]
+    UnexpectedNulls { column_name: String },
 }
 
 // -----------------------------------------------------------------------------------------
@@ -43,6 +39,8 @@ pub enum ChunkIndexError {
 ///
 ///
 /// ## Example (transposed)
+/// See schema in `crates/store/re_log_encoding/tests/snapshots/footers_and_manifests__rrd_manifest_blueprint_schema.snap`
+///
 /// ```
 /// ┌─────────────────────────────────────────┬──────────────────────────────────────────┬──────────────────────────────────────────┐
 /// │ chunk_entity_path                       ┆ /my/entity                               ┆ /my/entity                               │
@@ -104,17 +102,33 @@ impl RrdManifestMessage {
         #![expect(clippy::unwrap_used)] // We validate before running the builder
 
         let chunk_entity_path = rb
-            .try_get_column("chunk_entity_path")?
+            .try_get_column(FIELD_CHUNK_ENTITY_PATH)?
             .try_downcast_array_ref::<StringArray>()?
             .clone();
 
         chunk_id_from_rb(&rb)?; // validate
         let chunk_is_static = chunk_is_static_from_rb(&rb)?;
         if chunk_is_static.null_count() != 0 {
-            return Err(ChunkIndexError::NullsInChunkIsStatic);
+            return Err(ChunkIndexError::UnexpectedNulls {
+                column_name: FIELD_CHUNK_IS_STATIC.into(),
+            });
         }
 
         // TODO(emilk): parse all the other columns
+        for (field, column) in izip!(rb.schema().fields(), rb.columns()) {
+            let is_special_field = matches!(
+                field.name().as_str(),
+                FIELD_CHUNK_ENTITY_PATH
+                    | FIELD_CHUNK_ID
+                    | FIELD_CHUNK_IS_STATIC
+                    | FIELD_CHUNK_BYTE_OFFSET
+                    | FIELD_CHUNK_BYTE_SIZE
+                    | FIELD_CHUNK_KEY
+            );
+            if !is_special_field {
+                _ = column; // TODO(emilk): parse and store the time ranges for all the components
+            }
+        }
 
         Ok(RrdManifestMessageBuilder {
             rb,
@@ -152,24 +166,15 @@ impl RrdManifestMessage {
 
 fn chunk_id_from_rb(rb: &RecordBatch) -> Result<&[ChunkId], ChunkIndexError> {
     let chunk_ids = rb
-        .column_by_name("chunk_id")
-        .ok_or(ChunkIndexError::MissingChunkIdColumn)?;
-
-    let chunk_ids = chunk_ids
-        .as_fixed_size_binary_opt()
-        .ok_or(ChunkIndexError::InvalidChunkIdEncoding)?;
+        .try_get_column("chunk_id")?
+        .try_downcast_array_ref::<FixedSizeBinaryArray>()?;
 
     Ok(ChunkId::try_slice_from_arrow(chunk_ids)?)
 }
 
 fn chunk_is_static_from_rb(rb: &RecordBatch) -> Result<BooleanArray, ChunkIndexError> {
-    let chunk_is_static = rb
-        .column_by_name("chunk_is_static")
-        .ok_or(ChunkIndexError::MissingChunkIsStaticColumn)?;
-
-    let chunk_is_static = chunk_is_static
-        .as_boolean_opt()
-        .ok_or(ChunkIndexError::InvalidChunkIsStaticEncoding)?;
-
-    Ok(chunk_is_static.clone())
+    Ok(rb
+        .try_get_column(FIELD_CHUNK_IS_STATIC)?
+        .try_downcast_array_ref::<BooleanArray>()?
+        .clone())
 }
