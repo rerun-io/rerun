@@ -220,7 +220,7 @@ fn test_mixed_2d_and_3d() {
         ("3D/camera", EntityKind::Image(Color, Small)), // should be a separate 2D view
     ]);
 
-    run_heuristics_snapshot_test("should_be_three_space_views", &test_context);
+    run_heuristics_snapshot_test("should_be_three_2d_and_one_3d", &test_context);
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn test_mixed_images() {
         ("image1", EntityKind::Image(Color, Small)),
         ("image2", EntityKind::Image(Color, Small)),
         ("image3", EntityKind::Image(Color, Small)),
-        ("image3/nested", EntityKind::Image(Color, Small)), // Need to be a separate space view, because we don't overlap color images
+        ("image3/nested", EntityKind::Image(Color, Small)), // Need to be a separate 2D view, because we don't overlap color images
         ("segmented/image4", EntityKind::Image(Color, Small)),
         ("segmented/seg", EntityKind::Image(Segmentation, Small)),
     ]);
