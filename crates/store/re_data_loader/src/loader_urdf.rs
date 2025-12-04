@@ -528,8 +528,8 @@ fn log_link(
         let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let visual_entity = link_entity / EntityPathPart::new(visual_name.clone());
 
-        // We have to make sure that the frame ID is unique, otherwise we might end up with multiple "visual_0" etc.
-        // Prefix with the link name.
+        // Prefix with the link name, otherwise we might end up with multiple coordinate frames named "visual_0" etc.
+        // Note that this doesn't apply to the entity path part, there it's fine to have e.g. /base/visual_0 and /base/link1/visual_0.
         let visual_frame_id = format!("{link_name}_{visual_name}");
 
         // Prefer inline defined material properties if present, otherwise fall back to global material.
@@ -580,8 +580,8 @@ fn log_link(
         let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(collision_name.clone());
 
-        // We have to make sure that the frame ID is unique, otherwise we might end up with multiple "collision_0" etc.
-        // Prefix with the link name.
+        // Prefix with the link name, otherwise we might end up with multiple coordinate frames named "collision_0" etc.
+        // Note that this doesn't apply to the entity path part, there it's fine to have e.g. /base/collision_0 and /base/link1/collision_0.
         let collision_frame_id = format!("{link_name}_{collision_name}");
 
         send_transform(
