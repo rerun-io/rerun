@@ -1,5 +1,3 @@
-#![expect(clippy::mem_forget)] // because of ouroboros
-
 use arrow::array::{Array as _, BooleanArray, FixedSizeBinaryArray, RecordBatch, StringArray};
 use arrow::error::ArrowError;
 use itertools::izip;
@@ -70,14 +68,13 @@ pub enum ChunkIndexError {
 /// │ chunk_key                               ┆ 010000000000000001000000000000000a00000… ┆ 010000000000000002000000000000000a00000… │
 /// └─────────────────────────────────────────┴──────────────────────────────────────────┴──────────────────────────────────────────┘
 /// ```
-#[ouroboros::self_referencing]
+#[derive(Clone)]
 pub struct RrdManifestMessage {
     rb: RecordBatch,
 
     chunk_entity_path: StringArray,
 
-    #[borrows(rb)]
-    chunk_id: &'this [ChunkId],
+    chunk_id: FixedSizeBinaryArray,
 
     chunk_is_static: BooleanArray,
 }
@@ -90,24 +87,23 @@ impl std::fmt::Debug for RrdManifestMessage {
     }
 }
 
-impl Clone for RrdManifestMessage {
-    fn clone(&self) -> Self {
-        #![expect(clippy::unwrap_used)] // `self` is existence proof that this cannot fail
-        Self::try_from_record_batch(self.borrow_rb().clone()).unwrap()
-    }
-}
-
 impl RrdManifestMessage {
     pub fn try_from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
-        #![expect(clippy::unwrap_used)] // We validate before running the builder
-
         let chunk_entity_path = rb
             .try_get_column(FIELD_CHUNK_ENTITY_PATH)?
             .try_downcast_array_ref::<StringArray>()?
             .clone();
 
-        chunk_id_from_rb(&rb)?; // validate
-        let chunk_is_static = chunk_is_static_from_rb(&rb)?;
+        let chunk_id = rb
+            .try_get_column("chunk_id")?
+            .try_downcast_array_ref::<FixedSizeBinaryArray>()?
+            .clone();
+        ChunkId::try_slice_from_arrow(&chunk_id)?; // Validate once!
+
+        let chunk_is_static = rb
+            .try_get_column(FIELD_CHUNK_IS_STATIC)?
+            .try_downcast_array_ref::<BooleanArray>()?
+            .clone();
         if chunk_is_static.null_count() != 0 {
             return Err(ChunkIndexError::UnexpectedNulls {
                 column_name: FIELD_CHUNK_IS_STATIC.into(),
@@ -130,51 +126,34 @@ impl RrdManifestMessage {
             }
         }
 
-        Ok(RrdManifestMessageBuilder {
+        Ok(Self {
             rb,
             chunk_entity_path,
-            chunk_id_builder: |rb: &RecordBatch| chunk_id_from_rb(rb).unwrap(),
+            chunk_id,
             chunk_is_static,
-        }
-        .build())
+        })
     }
 
     pub fn record_batch(&self) -> &RecordBatch {
-        self.borrow_rb()
+        &self.rb
     }
 
     pub fn num_rows(&self) -> usize {
-        self.borrow_rb().num_rows()
+        self.rb.num_rows()
     }
 
     pub fn chunk_entity_path(&self) -> &StringArray {
-        self.borrow_chunk_entity_path()
+        &self.chunk_entity_path
     }
 
     /// All the chunks in this index
     pub fn chunk_id(&self) -> &[ChunkId] {
-        self.borrow_chunk_id()
+        #[expect(clippy::unwrap_used)] // Validated in constructor
+        ChunkId::try_slice_from_arrow(&self.chunk_id).unwrap()
     }
 
     /// Is a given chunk static (as opposed to temporal)?
     pub fn chunk_is_static(&self) -> impl Iterator<Item = bool> {
-        self.borrow_chunk_is_static()
-            .iter()
-            .map(|b| b.unwrap_or_default()) // we've validated that there are no nulls
+        self.chunk_is_static.iter().map(|b| b.unwrap_or_default()) // we've validated that there are no nulls
     }
-}
-
-fn chunk_id_from_rb(rb: &RecordBatch) -> Result<&[ChunkId], ChunkIndexError> {
-    let chunk_ids = rb
-        .try_get_column("chunk_id")?
-        .try_downcast_array_ref::<FixedSizeBinaryArray>()?;
-
-    Ok(ChunkId::try_slice_from_arrow(chunk_ids)?)
-}
-
-fn chunk_is_static_from_rb(rb: &RecordBatch) -> Result<BooleanArray, ChunkIndexError> {
-    Ok(rb
-        .try_get_column(FIELD_CHUNK_IS_STATIC)?
-        .try_downcast_array_ref::<BooleanArray>()?
-        .clone())
 }
