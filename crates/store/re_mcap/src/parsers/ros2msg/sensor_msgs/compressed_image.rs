@@ -1,15 +1,11 @@
-use super::super::definitions::sensor_msgs;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_types::{
-    archetypes::{EncodedImage, VideoStream},
-    components::VideoCodec,
-};
+use re_types::archetypes::{EncodedImage, VideoStream};
+use re_types::components::VideoCodec;
 
 use super::super::Ros2MessageParser;
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
-};
+use super::super::definitions::sensor_msgs;
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::util::TimestampCell;
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.

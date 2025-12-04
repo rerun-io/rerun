@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_string_interner::InternedString;
 
-use crate::{EntityPathPart, hash::Hash64};
+use crate::EntityPathPart;
+use crate::hash::Hash64;
 
 // ----------------------------------------------------------------------------
 

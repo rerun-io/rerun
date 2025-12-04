@@ -1,23 +1,17 @@
 use smallvec::smallvec;
 
-use crate::{
-    DrawableCollector,
-    allocator::create_and_fill_uniform_buffer,
-    draw_phases::DrawPhase,
-    include_shader_module,
-    renderer::{
-        DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo,
-        screen_triangle_vertex_shader,
-    },
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
-};
-
 use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer;
+use crate::draw_phases::DrawPhase;
+use crate::renderer::{
+    DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo, screen_triangle_vertex_shader,
+};
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
+use crate::{DrawableCollector, include_shader_module};
 
 /// The type of generic skybox to render.
 ///

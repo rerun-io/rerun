@@ -1,18 +1,18 @@
 //! Tests for time control callbacks and viewer events.
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use egui_kittest::Harness;
 use re_integration_test::HarnessExt as _;
-use re_sdk::{Timeline, external::re_log_types::TimeReal, log::RowId};
-use re_viewer::{
-    App,
-    event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind},
-    external::{
-        re_types::{archetypes::TextLog, blueprint::components::PlayState},
-        re_viewer_context::TimeControlCommand,
-    },
-    viewer_test_utils::{self, HarnessOptions},
-};
+use re_sdk::Timeline;
+use re_sdk::external::re_log_types::TimeReal;
+use re_sdk::log::RowId;
+use re_viewer::App;
+use re_viewer::event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind};
+use re_viewer::external::re_types::archetypes::TextLog;
+use re_viewer::external::re_types::blueprint::components::PlayState;
+use re_viewer::external::re_viewer_context::TimeControlCommand;
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 /// A simple event collector that records viewer events for later inspection.
 struct EventCollector {

@@ -21,10 +21,11 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: One or more transforms between the current entity and its parent. Unlike [`archetypes::Transform3D`][crate::archetypes::Transform3D], it is *not* propagated in the transform hierarchy.
+/// **Archetype**: One or more transforms applied on the current entity's transform frame.
 ///
-/// If both [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D] are present,
-/// first the tree propagating [`archetypes::Transform3D`][crate::archetypes::Transform3D] is applied, then [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
+/// Unlike [`archetypes::Transform3D`][crate::archetypes::Transform3D], it is *not* propagated in the transform hierarchy.
+/// If [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame] is specified, it acts relative to that coordinate frame,
+/// otherwise it is relative to the entity's implicit coordinate frame.
 ///
 /// Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
 /// This means that if you first log a pose with only a translation, and then log one with only a rotation,
@@ -33,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// From the point of view of the entity's coordinate system,
 /// all components are applied in the inverse order they are listed here.
-/// E.g. if both a translation and a max3x3 transform are present,
+/// E.g. if both a translation and a mat3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
 /// Currently, many visualizers support only a single instance transform per entity.

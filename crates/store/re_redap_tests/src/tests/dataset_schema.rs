@@ -1,7 +1,6 @@
-use re_protos::{
-    cloud::v1alpha1::{GetDatasetSchemaRequest, rerun_cloud_service_server::RerunCloudService},
-    headers::RerunHeadersInjectorExt as _,
-};
+use re_protos::cloud::v1alpha1::GetDatasetSchemaRequest;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 use crate::SchemaTestExt as _;

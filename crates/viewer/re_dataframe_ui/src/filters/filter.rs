@@ -1,6 +1,5 @@
 use arrow::datatypes::{DataType, Field, FieldRef};
 use datafusion::logical_expr::Expr;
-
 use re_log_types::TimestampFormat;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
 use re_ui::SyntaxHighlighting;

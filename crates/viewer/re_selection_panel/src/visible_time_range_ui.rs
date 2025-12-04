@@ -1,17 +1,12 @@
 use egui::{NumExt as _, Ui};
-
 use re_chunk::Timeline;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimelineName};
-use re_types::{
-    Archetype as _,
-    blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},
-    datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-};
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    RelativeTimeRange, TimeDragValue, UiExt as _, list_item::LabelContent,
-    relative_time_range_label_text,
-};
+use re_types::Archetype as _;
+use re_types::blueprint::archetypes as blueprint_archetypes;
+use re_types::blueprint::components::VisibleTimeRange;
+use re_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
 use re_viewer_context::{
     BlueprintContext as _, QueryRange, TimeControlCommand, ViewClass, ViewState, ViewerContext,
 };

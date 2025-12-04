@@ -12,7 +12,8 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-use rerun::external::{re_data_loader::UrdfTree, re_log, urdf_rs};
+use rerun::external::re_data_loader::UrdfTree;
+use rerun::external::{re_log, urdf_rs};
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();

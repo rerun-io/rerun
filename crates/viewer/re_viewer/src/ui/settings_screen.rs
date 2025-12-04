@@ -1,7 +1,6 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
-
 use re_log_types::{Timestamp, TimestampFormat};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
@@ -176,26 +175,6 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     separator_with_some_space(ui);
     ui.strong("Video");
     video_section_ui(ui, app_options);
-
-    //
-    // Experimental features
-    //
-
-    //#[cfg(not(target_arch = "wasm32"))]
-    if true {
-        separator_with_some_space(ui);
-        ui.strong("Experimental features");
-
-        ui.re_checkbox(
-            &mut app_options.experimental_coordinate_frame_display_and_override,
-            "Display coordinate frames",
-        )
-        .on_hover_ui(|ui| {
-            ui.markdown_ui(
-                "Every entity is associated with a coordinate frame id. Enabling this shows them in 2D & 3D views and allows blueprint overrides for them.",
-            );
-        });
-    }
 }
 
 fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
@@ -264,8 +243,9 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
-    use re_video::{FFmpegVersion, FFmpegVersionParseError};
     use std::task::Poll;
+
+    use re_video::{FFmpegVersion, FFmpegVersionParseError};
 
     let path = app_options
         .video_decoder_override_ffmpeg_path

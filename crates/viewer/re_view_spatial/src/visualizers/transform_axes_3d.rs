@@ -1,22 +1,20 @@
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
-use re_types::{
-    Archetype as _,
-    archetypes::{CoordinateFrame, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D},
-    components::{AxisLength, ShowLabels},
+use re_types::Archetype as _;
+use re_types::archetypes::{
+    CoordinateFrame, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
 };
+use re_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{
-    contexts::TransformTreeContext, view_kind::SpatialViewKind,
-    visualizers::utilities::transform_info_for_entity_or_report_error,
-};
-
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use crate::contexts::TransformTreeContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::utilities::transform_info_for_entity_or_report_error;
 
 pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
 

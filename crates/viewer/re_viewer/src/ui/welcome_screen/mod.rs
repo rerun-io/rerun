@@ -7,7 +7,7 @@ mod welcome_section;
 use std::sync::Arc;
 
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
-use re_smart_channel::SmartChannelSource;
+use re_log_channel::LogSource;
 
 use crate::app_state::WelcomeScreenState;
 
@@ -30,7 +30,7 @@ impl WelcomeScreen {
         ui: &mut egui::Ui,
         ctx: &GlobalContext<'_>,
         welcome_screen_state: &WelcomeScreenState,
-        log_sources: &[Arc<SmartChannelSource>],
+        log_sources: &[Arc<LogSource>],
         login_state: &CloudState,
     ) {
         if welcome_screen_state.opacity <= 0.0 {

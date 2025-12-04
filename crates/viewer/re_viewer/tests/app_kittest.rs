@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
-
 use re_test_context::TestContext;
 use re_types::components::Colormap;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};

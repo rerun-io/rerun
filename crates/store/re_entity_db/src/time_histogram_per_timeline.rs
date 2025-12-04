@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 use re_chunk::TimelineName;
-use re_chunk_store::ChunkStoreDiffKind;
-use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
+use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 
 // ---
 

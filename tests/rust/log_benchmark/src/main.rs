@@ -136,7 +136,6 @@ fn main() -> anyhow::Result<()> {
     // other end, so make sure we can encode/decode everything that was logged.
     if check && let Some(storage) = storage {
         use rerun::external::re_log_encoding;
-
         use rerun::external::re_log_encoding::ToTransport as _;
         let msgs: anyhow::Result<Vec<_>> = storage
             .take()

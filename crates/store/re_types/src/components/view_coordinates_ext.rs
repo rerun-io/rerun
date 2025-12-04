@@ -2,10 +2,9 @@
 
 // ----------------------------------------------------------------------------
 
+use super::ViewCoordinates;
 use crate::datatypes;
 use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewDir};
-
-use super::ViewCoordinates;
 
 impl ViewCoordinates {
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.

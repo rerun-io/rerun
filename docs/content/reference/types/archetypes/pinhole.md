@@ -7,7 +7,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 If [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).
 
-If you use explicit transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)
+If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)
 as it is the case with other visualizations: for any entity with an [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) the viewer will always visualize it
 directly without needing a [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame) to refer to the pinhole's child/parent frame.
 
@@ -61,5 +61,17 @@ snippet: archetypes/pinhole_perspective
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png">
   <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png">
+</picture>
+
+### Projection setup with blueprints
+
+snippet: archetypes/pinhole_projections
+
+<picture data-inline-viewer="snippets/archetypes/pinhole_projections">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1200w.png">
+  <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png">
 </picture>
 

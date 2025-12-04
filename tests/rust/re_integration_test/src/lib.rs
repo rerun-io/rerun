@@ -4,11 +4,12 @@ mod kittest_harness_ext;
 mod test_data;
 mod viewer_section;
 
+use std::net::TcpListener;
+
 pub use kittest_harness_ext::HarnessExt;
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistry};
+use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
-use std::net::TcpListener;
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
@@ -48,7 +49,7 @@ impl TestServer {
         self.port
     }
 
-    pub async fn client(&self) -> Result<ConnectionClient, ApiError> {
+    pub async fn client(&self) -> ApiResult<ConnectionClient> {
         let origin = re_uri::Origin {
             host: Host::Domain("localhost".to_owned()),
             port: self.port,

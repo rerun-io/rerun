@@ -1,11 +1,13 @@
-use std::{collections::hash_map::Entry, sync::LazyLock};
+use std::collections::hash_map::Entry;
+use std::sync::LazyLock;
 
 use ahash::HashMap;
 use crossbeam::channel::Sender;
 use js_sys::{Function, Uint8Array};
 use re_mp4::StsdBoxContent;
 use smallvec::SmallVec;
-use wasm_bindgen::{JsCast as _, closure::Closure};
+use wasm_bindgen::JsCast as _;
+use wasm_bindgen::closure::Closure;
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,

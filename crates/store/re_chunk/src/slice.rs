@@ -4,7 +4,6 @@ use arrow::array::{
 };
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-
 use re_log_types::TimelineName;
 use re_types_core::{ComponentIdentifier, SerializedComponentColumn};
 
@@ -827,14 +826,11 @@ mod tests {
     #![expect(clippy::cast_possible_wrap)]
 
     use itertools::Itertools as _;
-    use re_log_types::{
-        TimePoint,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
-
-    use crate::{Chunk, RowId, Timeline};
+    use re_log_types::TimePoint;
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 
     use super::*;
+    use crate::{Chunk, RowId, Timeline};
 
     #[test]
     fn cell() -> anyhow::Result<()> {

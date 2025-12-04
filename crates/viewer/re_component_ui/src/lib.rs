@@ -37,20 +37,17 @@ use datatype_uis::{
     edit_view_enum_with_variant_available, edit_view_range1d, view_timestamp, view_uuid,
     view_view_id,
 };
-
-use re_types::{
-    blueprint::components::{
-        AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
-        ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
-        RootContainer, ViewFit, ViewMaximized,
-    },
-    components::{
-        AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed,
-        MagnificationFilter, MarkerSize, Name, Opacity, Position2D, Position3D, Range1D, Scale3D,
-        SeriesVisible, ShowLabels, StrokeWidth, Text, Timestamp, TransformRelation, Translation3D,
-        ValueRange, Vector3D, VideoCodec, Visible,
-    },
+use re_types::blueprint::components::{
+    AngularSpeed, BackgroundKind, Corner2D, Enabled, Eye3DKind, ForceDistance, ForceIterations,
+    ForceStrength, GridSpacing, LinkAxis, LockRangeDuringZoom, MapProvider, NearClipPlane,
+    RootContainer, ViewFit, ViewMaximized,
+};
+use re_types::components::{
+    AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
+    GammaCorrection, GraphType, ImagePlaneDistance, LinearSpeed, MagnificationFilter, MarkerSize,
+    Name, Opacity, Position2D, Position3D, Range1D, Scale3D, SeriesVisible, ShowLabels,
+    StrokeWidth, Text, Timestamp, TransformFrameId, TransformRelation, Translation3D, ValueRange,
+    Vector3D, VideoCodec, Visible,
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
@@ -121,6 +118,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_edit_or_view::<Text>(edit_multiline_string);
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
+    registry.add_singleline_edit_or_view::<TransformFrameId>(edit_singleline_string);
 
     // Enums:
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!

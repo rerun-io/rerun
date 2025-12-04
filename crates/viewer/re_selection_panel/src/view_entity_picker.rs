@@ -2,8 +2,6 @@ use std::ops::Range;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use smallvec::SmallVec;
-
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
@@ -13,6 +11,7 @@ use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
     CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint, create_entity_add_info,
 };
+use smallvec::SmallVec;
 
 /// Window for adding/removing entities from a view.
 ///

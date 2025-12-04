@@ -4,18 +4,13 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
-use arrow::{
-    array::{AsArray as _, Int64Array, ListArray},
-    compute::take,
-    datatypes::DataType,
-};
+use arrow::array::{AsArray as _, Int64Array, ListArray};
+use arrow::compute::take;
+use arrow::datatypes::DataType;
 use itertools::Either;
 use nohash_hasher::IntMap;
-
-use re_arrow_combinators::{
-    Transform as _,
-    reshape::{Explode, Flatten},
-};
+use re_arrow_combinators::Transform as _;
+use re_arrow_combinators::reshape::{Explode, Flatten};
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, ComponentIdentifier, EntityPath, TimeColumn, Timeline,
     TimelineName,
@@ -24,11 +19,9 @@ use re_log_types::{EntityPathFilter, TimeType};
 use re_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
-use super::{
-    LensError,
-    builder::LensBuilder,
-    op::{self, OpError},
-};
+use super::LensError;
+use super::builder::LensBuilder;
+use super::op::{self, OpError};
 
 pub struct InputColumn {
     pub entity_path_filter: EntityPathFilter,

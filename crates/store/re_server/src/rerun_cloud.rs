@@ -8,41 +8,36 @@ use cfg_if::cfg_if;
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
+use re_arrow_util::RecordBatchExt as _;
+use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
+use re_log_encoding::ToTransport as _;
+use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::{
+    self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
+    CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate, ProviderDetails,
+    QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+};
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
+    GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
+    GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
+    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, RegisterWithDatasetResponse,
+    ScanDatasetManifestRequest, ScanDatasetManifestResponse, ScanSegmentTableResponse,
+    ScanTableResponse,
+};
+use re_protos::common::v1alpha1::TaskId;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::headers::RerunHeadersExtractorExt as _;
+use re_protos::missing_field;
 use tokio_stream::StreamExt as _;
 use tonic::{Code, Request, Response, Status};
 
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
-use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
-use re_log_encoding::ToTransport as _;
-use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
-        GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-        GetDatasetSchemaResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
-        QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-        QueryTasksResponse, RegisterTableRequest, RegisterTableResponse,
-        RegisterWithDatasetResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-        ScanSegmentTableResponse, ScanTableResponse,
-        ext::{
-            self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-            CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate,
-            ProviderDetails, QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse,
-            TableInsertMode, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
-            UpdateEntryRequest, UpdateEntryResponse,
-        },
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, SegmentId},
-    },
-    headers::RerunHeadersExtractorExt as _,
-    missing_field,
-};
 
 #[derive(Debug, Default)]
 pub struct RerunCloudHandlerSettings {}
@@ -117,7 +112,7 @@ impl RerunCloudHandler {
         &self,
         dataset_id: EntryId,
         segment_ids: &[SegmentId],
-    ) -> Result<Vec<(SegmentId, String, ChunkStoreHandle)>, tonic::Status> {
+    ) -> tonic::Result<Vec<(SegmentId, String, ChunkStoreHandle)>> {
         let store = self.store.read().await;
         let dataset = store.dataset(dataset_id)?;
 
@@ -135,7 +130,7 @@ impl RerunCloudHandler {
             .collect())
     }
 
-    fn resolve_data_sources(data_sources: &[DataSource]) -> Result<Vec<DataSource>, tonic::Status> {
+    fn resolve_data_sources(data_sources: &[DataSource]) -> tonic::Result<Vec<DataSource>> {
         let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
         for source in data_sources {
             if source.is_prefix {
@@ -216,8 +211,7 @@ macro_rules! decl_stream {
     ($stream:ident<manifest:$resp:ident>) => {
         pub type $stream = std::pin::Pin<
             Box<
-                dyn futures::Stream<Item = Result<re_protos::cloud::v1alpha1::$resp, tonic::Status>>
-                    + Send,
+                dyn futures::Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::$resp>> + Send,
             >,
         >;
     };
@@ -225,8 +219,7 @@ macro_rules! decl_stream {
     ($stream:ident<rerun_cloud:$resp:ident>) => {
         pub type $stream = std::pin::Pin<
             Box<
-                dyn futures::Stream<Item = Result<re_protos::cloud::v1alpha1::$resp, tonic::Status>>
-                    + Send,
+                dyn futures::Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::$resp>> + Send,
             >,
         >;
     };
@@ -234,8 +227,7 @@ macro_rules! decl_stream {
     ($stream:ident<tasks:$resp:ident>) => {
         pub type $stream = std::pin::Pin<
             Box<
-                dyn futures::Stream<Item = Result<re_protos::cloud::v1alpha1::$resp, tonic::Status>>
-                    + Send,
+                dyn futures::Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::$resp>> + Send,
             >,
         >;
     };
@@ -370,8 +362,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn find_entries(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::FindEntriesRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::FindEntriesResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::FindEntriesResponse>> {
         let filter = request.into_inner().filter;
         let entry_id = filter
             .as_ref()
@@ -491,8 +482,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn read_dataset_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ReadDatasetEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::ReadDatasetEntryResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ReadDatasetEntryResponse>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset(entry_id)?;
@@ -552,8 +542,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn delete_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::DeleteEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteEntryResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteEntryResponse>> {
         let entry_id = request.into_inner().try_into()?;
 
         self.store.write().await.delete_entry(entry_id)?;
@@ -564,8 +553,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn update_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>> {
         let UpdateEntryRequest {
             id: entry_id,
             entry_details_update: EntryDetailsUpdate { name },
@@ -665,8 +653,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn write_chunks(
         &self,
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteChunksRequest>>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteChunksResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::WriteChunksResponse>> {
         let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
 
         let mut request = request.into_inner();
@@ -741,8 +728,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn write_table(
         &self,
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteTableRequest>>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::WriteTableResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::WriteTableResponse>> {
         // Limit the scope of the lock here to prevent deadlocks
         // when reading and writing to the same table
         let entry_id = {
@@ -822,7 +808,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn scan_segment_table(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanSegmentTableRequest>,
-    ) -> Result<tonic::Response<Self::ScanSegmentTableStream>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<Self::ScanSegmentTableStream>> {
         let store = self.store.read().await;
         let entry_id = get_entry_id_from_headers(&store, &request)?;
 
@@ -931,6 +917,27 @@ impl RerunCloudService for RerunCloudHandler {
         }))
     }
 
+    async fn get_rrd_manifest(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetRrdManifestRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetRrdManifestResponse>> {
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
+        let request = request.into_inner();
+        let segment_id = request
+            .segment_id
+            .ok_or_else(|| tonic::Status::invalid_argument("Missing segment_id"))?
+            .try_into()?;
+
+        let dataset = store.dataset(entry_id)?;
+        let rrd_manifest_batch = dataset.rrd_manifest(&segment_id)?;
+
+        Ok(tonic::Response::new(GetRrdManifestResponse {
+            data: Some(rrd_manifest_batch.into()),
+        }))
+    }
+
     /* Indexing */
 
     async fn create_index(
@@ -1015,7 +1022,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn query_dataset(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
-    ) -> std::result::Result<tonic::Response<Self::QueryDatasetStream>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<Self::QueryDatasetStream>> {
         if !request.get_ref().chunk_ids.is_empty() {
             return Err(tonic::Status::unimplemented(
                 "query_dataset: querying specific chunk ids is not implemented",
@@ -1030,13 +1037,19 @@ impl RerunCloudService for RerunCloudHandler {
             select_all_entity_paths,
 
             //TODO(RR-2613): we must do a much better job at handling these
-            chunk_ids: _,
+            chunk_ids: requested_chunk_ids,
             fuzzy_descriptors: _,
-            exclude_static_data: _,
-            exclude_temporal_data: _,
-            scan_parameters: _,
+            exclude_static_data,
+            exclude_temporal_data,
+            scan_parameters,
             query: _,
         } = request.into_inner().try_into()?;
+
+        if scan_parameters.is_some() {
+            re_log::info_once!(
+                "query_dataset: scan_parameters are not yet implemented and will be ignored"
+            );
+        }
 
         let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
         if select_all_entity_paths && !entity_paths.is_empty() {
@@ -1073,6 +1086,19 @@ impl RerunCloudService for RerunCloudHandler {
 
                 for chunk in store_handle.read().iter_chunks() {
                     if !entity_paths.is_empty() && !entity_paths.contains(chunk.entity_path()) {
+                        continue;
+                    }
+
+                    if !requested_chunk_ids.is_empty() && !requested_chunk_ids.contains(&chunk.id())
+                    {
+                        continue;
+                    }
+
+                    // Filter by static/temporal data
+                    if exclude_static_data && chunk.is_static() {
+                        continue;
+                    }
+                    if exclude_temporal_data && !chunk.is_static() {
                         continue;
                     }
 
@@ -1149,7 +1175,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn fetch_chunks(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::FetchChunksRequest>,
-    ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<Self::FetchChunksStream>> {
         // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
         let request = request.into_inner();
 
@@ -1238,7 +1264,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn register_table(
         &self,
         request: tonic::Request<RegisterTableRequest>,
-    ) -> Result<tonic::Response<RegisterTableResponse>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<RegisterTableResponse>> {
         #[cfg_attr(not(feature = "lance"), expect(unused_mut))]
         let mut store = self.store.write().await;
         let request = request.into_inner();
@@ -1352,7 +1378,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn query_tasks(
         &self,
         request: tonic::Request<QueryTasksRequest>,
-    ) -> Result<tonic::Response<QueryTasksResponse>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<QueryTasksResponse>> {
         let tasks_id = request.into_inner().ids;
 
         let dummy_task_id = TaskId {
@@ -1394,7 +1420,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn query_tasks_on_completion(
         &self,
         request: tonic::Request<QueryTasksOnCompletionRequest>,
-    ) -> Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status> {
+    ) -> tonic::Result<tonic::Response<Self::QueryTasksOnCompletionStream>> {
         let task_ids = request.into_inner().ids;
 
         // All tasks finish immediately in the OSS server, so we can delegate to `query_tasks
@@ -1416,8 +1442,7 @@ impl RerunCloudService for RerunCloudHandler {
     async fn do_maintenance(
         &self,
         _request: tonic::Request<re_protos::cloud::v1alpha1::DoMaintenanceRequest>,
-    ) -> Result<tonic::Response<re_protos::cloud::v1alpha1::DoMaintenanceResponse>, tonic::Status>
-    {
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DoMaintenanceResponse>> {
         Err(tonic::Status::unimplemented(
             "do_maintenance not implemented",
         ))
@@ -1467,7 +1492,7 @@ impl RerunCloudService for RerunCloudHandler {
 fn get_entry_id_from_headers<T>(
     store: &InMemoryStore,
     req: &tonic::Request<T>,
-) -> Result<EntryId, tonic::Status> {
+) -> tonic::Result<EntryId> {
     if let Some(entry_id) = req.entry_id()? {
         Ok(entry_id)
     } else if let Some(dataset_name) = req.entry_name()? {

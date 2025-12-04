@@ -13,23 +13,21 @@
 use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
+use super::{DrawData, DrawError, RenderContext, Renderer};
+use crate::allocator::create_and_fill_uniform_buffer_batch;
+use crate::depth_offset::DepthOffset;
+use crate::draw_phases::{DrawPhase, OutlineMaskProcessor};
+use crate::renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo};
+use crate::resource_managers::GpuTexture2D;
+use crate::view_builder::ViewBuilder;
+use crate::wgpu_resources::{
+    BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
+    GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
+};
 use crate::{
     Colormap, DrawableCollector, OutlineMaskPreference, PickingLayerProcessor, Rgba,
-    allocator::create_and_fill_uniform_buffer_batch,
-    depth_offset::DepthOffset,
-    draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    renderer::{DrawDataDrawable, DrawInstruction, DrawableCollectionViewInfo},
-    resource_managers::GpuTexture2D,
-    view_builder::ViewBuilder,
-    wgpu_resources::{
-        BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc,
-    },
 };
-
-use super::{DrawData, DrawError, RenderContext, Renderer};
 
 /// Texture filter setting for magnification (a texel covers several pixels).
 #[derive(Debug, Clone, Copy)]
@@ -251,9 +249,8 @@ pub enum RectangleError {
 }
 
 mod gpu_data {
-    use crate::wgpu_buffer_types;
-
     use super::{ColorMapper, RectangleError, TexturedRect};
+    use crate::wgpu_buffer_types;
 
     // Keep in sync with mirror in rectangle.wgsl
 

@@ -3,12 +3,11 @@
 use core::f32;
 use std::f32::consts::{PI, TAU};
 
-use custom_callback::comms::{app::ControlApp, protocol::Message};
-
-use rerun::{
-    RecordingStream,
-    external::{glam::Vec3, re_log, tokio},
-};
+use custom_callback::comms::app::ControlApp;
+use custom_callback::comms::protocol::Message;
+use rerun::RecordingStream;
+use rerun::external::glam::Vec3;
+use rerun::external::{re_log, tokio};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 #[tokio::main]

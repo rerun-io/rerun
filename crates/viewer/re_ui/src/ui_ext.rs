@@ -1,18 +1,15 @@
 use std::hash::Hash;
 
+use egui::emath::{GuiRounding as _, Rot2};
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
-    WidgetInfo, WidgetText,
-    emath::{GuiRounding as _, Rot2},
-    pos2,
+    WidgetInfo, WidgetText, pos2,
 };
 
 use crate::alert::Alert;
 use crate::button::ReButton;
-use crate::{
-    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
-    list_item::{self, LabelContent},
-};
+use crate::list_item::{self, LabelContent};
+use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -1250,8 +1247,9 @@ pub trait UiExt {
 
     /// Show some markdown
     fn markdown_ui(&mut self, markdown: &str) {
-        use parking_lot::Mutex;
         use std::sync::Arc;
+
+        use parking_lot::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {

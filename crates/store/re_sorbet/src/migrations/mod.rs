@@ -8,7 +8,8 @@
 
 use std::cmp::Ordering;
 
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use arrow::array::RecordBatch;
+use arrow::datatypes::SchemaRef;
 
 use crate::{BatchType, SorbetSchema};
 

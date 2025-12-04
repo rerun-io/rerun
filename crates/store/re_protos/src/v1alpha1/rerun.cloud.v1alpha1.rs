@@ -302,6 +302,37 @@ impl ::prost::Name for GetDatasetSchemaResponse {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetRrdManifestRequest {
+    #[prost(message, optional, tag = "1")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for GetRrdManifestRequest {
+    const NAME: &'static str = "GetRrdManifestRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetRrdManifestRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetRrdManifestRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetRrdManifestResponse {
+    /// The contents of the RRD manifest as an Arrow RecordBatch.
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for GetRrdManifestResponse {
+    const NAME: &'static str = "GetRrdManifestResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetRrdManifestResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetRrdManifestResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateIndexRequest {
     #[prost(message, optional, tag = "3")]
     pub config: ::core::option::Option<IndexConfig>,
@@ -2264,6 +2295,28 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Get the RRD Footer manifest.
+        ///
+        /// This includes details about what chunks there are, and what kind of data they contain.
+        pub async fn get_rrd_manifest(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetRrdManifestRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetRrdManifestResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetRrdManifest",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetRrdManifest",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
         ///
         /// This endpoint requires the standard dataset headers.
@@ -2720,6 +2773,13 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
+        /// Get the RRD Footer manifest.
+        ///
+        /// This includes details about what chunks there are, and what kind of data they contain.
+        async fn get_rrd_manifest(
+            &self,
+            request: tonic::Request<super::GetRrdManifestRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetRrdManifestResponse>, tonic::Status>;
         /// Creates a custom index for a specific column (vector search, full-text search, etc).
         ///
         /// This endpoint requires the standard dataset headers.
@@ -3600,6 +3660,48 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetDatasetSchemaSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetRrdManifest" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetRrdManifestSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetRrdManifestRequest>
+                        for GetRrdManifestSvc<T>
+                    {
+                        type Response = super::GetRrdManifestResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetRrdManifestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_rrd_manifest(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetRrdManifestSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

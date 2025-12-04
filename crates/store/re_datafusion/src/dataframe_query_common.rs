@@ -18,19 +18,15 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
-
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
-use re_protos::{
-    cloud::v1alpha1::{
-        FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse,
-        ScanSegmentTableResponse,
-        ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
-    },
-    common::v1alpha1::ext::ScanParameters,
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{
+    FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse, ScanSegmentTableResponse,
 };
+use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
@@ -49,6 +45,11 @@ pub struct DataframeQueryTableProvider {
     sort_index: Option<Index>,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
+
+    /// passing trace headers between phases of execution pipeline helps keep
+    /// the entire operation under a single trace.
+    #[cfg(not(target_arch = "wasm32"))]
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 impl DataframeQueryTableProvider {
@@ -62,6 +63,7 @@ impl DataframeQueryTableProvider {
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         partition_ids: &[impl AsRef<str> + Sync],
+        #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 
@@ -164,6 +166,8 @@ impl DataframeQueryTableProvider {
             sort_index: query_expression.filtered_index,
             chunk_info_batches,
             client,
+            #[cfg(not(target_arch = "wasm32"))]
+            trace_headers,
         })
     }
 
@@ -259,6 +263,8 @@ impl TableProvider for DataframeQueryTableProvider {
             Arc::clone(&self.chunk_info_batches),
             query_expression,
             self.client.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            self.trace_headers.clone(),
         )
         .map(Arc::new)
         .map(|exec| {

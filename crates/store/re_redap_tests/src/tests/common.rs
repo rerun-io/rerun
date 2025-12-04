@@ -3,19 +3,17 @@ use std::collections::BTreeMap;
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use re_protos::cloud::v1alpha1::ext::DatasetEntry;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
+    RegisterWithDatasetRequest, RegisterWithDatasetResponse,
+};
+use re_protos::common::v1alpha1::{IfDuplicateBehavior, TaskId};
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
-
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
-        RegisterWithDatasetRequest, RegisterWithDatasetResponse, ext::DatasetEntry,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    headers::RerunHeadersInjectorExt as _,
-};
-use re_types_core::AsComponents;
 
 use crate::{
     RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,

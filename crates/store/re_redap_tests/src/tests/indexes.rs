@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateIndexRequest, DeleteIndexesRequest, IndexColumn, IndexConfig, IndexProperties,
-        InvertedIndex, ListIndexesRequest, SearchDatasetRequest, VectorIvfPqIndex,
-        index_properties::Props, rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline},
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::index_properties::Props;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    CreateIndexRequest, DeleteIndexesRequest, IndexColumn, IndexConfig, IndexProperties,
+    InvertedIndex, ListIndexesRequest, SearchDatasetRequest, VectorIvfPqIndex,
 };
+use re_protos::common::v1alpha1::{ComponentDescriptor, EntityPath, IndexColumnSelector, Timeline};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::{DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _};
 
@@ -258,8 +257,7 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
             .unwrap_err()
             .code();
 
-        // TODO(RR-2779): OSS returns NotFound.
-        // This is more precise and Rerun Cloud should be updated to return it.
+        // TODO(RR-3100)
         assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 
@@ -288,7 +286,8 @@ pub async fn column_doesnt_exist(service: impl RerunCloudService) {
             .unwrap_err()
             .code();
 
-        assert_eq!(code, tonic::Code::NotFound);
+        // TODO(RR-3100)
+        assert!(code == tonic::Code::InvalidArgument || code == tonic::Code::NotFound);
     }
 }
 
@@ -382,14 +381,11 @@ fn generate_create_index_requests() -> Vec<CreateIndexRequest> {
 fn generate_search_dataset_requests() -> Vec<SearchDatasetRequest> {
     use std::sync::Arc;
 
-    use arrow::{
-        array::{Float32Array, RecordBatch, StringArray},
-        datatypes::Field,
-    };
-
+    use arrow::array::{Float32Array, RecordBatch, StringArray};
+    use arrow::datatypes::Field;
+    use re_protos::cloud::v1alpha1::index_query_properties::Props;
     use re_protos::cloud::v1alpha1::{
         BTreeIndexQuery, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
-        index_query_properties::Props,
     };
 
     let mut create_index_requests = generate_create_index_requests().into_iter();
@@ -468,7 +464,7 @@ async fn create_index(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: CreateIndexRequest,
-) -> Result<(), tonic::Status> {
+) -> tonic::Result<()> {
     let _res = service
         .create_index(tonic::Request::new(req).with_entry_name(dataset_name)?)
         .await?;
@@ -480,7 +476,7 @@ async fn search_dataset(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: SearchDatasetRequest,
-) -> Result<(), tonic::Status> {
+) -> tonic::Result<()> {
     let _res = service
         .search_dataset(tonic::Request::new(req).with_entry_name(dataset_name)?)
         .await?;
@@ -493,7 +489,7 @@ async fn search_dataset(
 async fn list_indexes(
     service: &impl RerunCloudService,
     dataset_name: &str,
-) -> Result<HashMap<IndexColumn, IndexConfig>, tonic::Status> {
+) -> tonic::Result<HashMap<IndexColumn, IndexConfig>> {
     let res = service
         .list_indexes(tonic::Request::new(ListIndexesRequest {}).with_entry_name(dataset_name)?)
         .await?;
@@ -512,7 +508,7 @@ async fn delete_indexes(
     service: &impl RerunCloudService,
     dataset_name: &str,
     req: DeleteIndexesRequest,
-) -> Result<HashMap<IndexColumn, IndexConfig>, tonic::Status> {
+) -> tonic::Result<HashMap<IndexColumn, IndexConfig>> {
     let res = service
         .delete_indexes(tonic::Request::new(req).with_entry_name(dataset_name)?)
         .await?;

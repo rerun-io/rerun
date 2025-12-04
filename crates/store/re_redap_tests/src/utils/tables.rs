@@ -1,9 +1,11 @@
-use crate::TempPath;
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use arrow::array::{RecordBatch, RecordBatchIterator, record_batch};
 use arrow::datatypes as arrow_schema;
 use arrow::datatypes::Schema;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+use crate::TempPath;
 
 fn create_example_record_batch(base: i32) -> RecordBatch {
     let batch = record_batch!(

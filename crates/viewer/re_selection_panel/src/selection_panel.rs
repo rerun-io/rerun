@@ -1,36 +1,31 @@
 use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
-
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
-use re_data_ui::{
-    DataUi,
-    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
+use re_data_ui::DataUi;
+use re_data_ui::item_ui::{
+    self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity,
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_types::ComponentDescriptor;
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    SyntaxHighlighting as _, UiExt as _, icons,
-    list_item::{self, PropertyContent},
-};
+use re_types::{ComponentDescriptor, TransformFrameIdHash};
+use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
     ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
+use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::show_add_view_or_container_modal;
 
-use crate::{
-    defaults_ui::view_components_defaults_section_ui,
-    item_heading_no_breadcrumbs::item_title_list_item,
-    item_heading_with_breadcrumbs::item_heading_with_breadcrumbs,
-    view_entity_picker::ViewEntityPicker,
-    visible_time_range_ui::{
-        visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
-    },
-    visualizer_ui::visualizer_ui,
+use crate::defaults_ui::view_components_defaults_section_ui;
+use crate::item_heading_no_breadcrumbs::item_title_list_item;
+use crate::item_heading_with_breadcrumbs::item_heading_with_breadcrumbs;
+use crate::view_entity_picker::ViewEntityPicker;
+use crate::visible_time_range_ui::{
+    visible_time_range_ui_for_data_result, visible_time_range_ui_for_view,
 };
+use crate::visualizer_ui::visualizer_ui;
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
@@ -346,15 +341,9 @@ impl SelectionPanel {
                         let view_ctx = view.bundle_context_with_states(ctx, view_states);
                         visible_interactive_toggle_ui(&view_ctx, ui, query_result, data_result);
 
-                        // TODO(RR-2700): Come up with something non-experimental.
                         let is_spatial_view =
                             view.class_identifier() == "3D" || view.class_identifier() == "2D";
-                        if ctx
-                            .global_context
-                            .app_options
-                            .experimental_coordinate_frame_display_and_override
-                            && is_spatial_view
-                        {
+                        if is_spatial_view {
                             coordinate_frame_ui(ui, &view_ctx, data_result);
                         }
                     }
@@ -521,7 +510,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
-/// Shows the active coordinate frame.
+/// Shows the active coordinate frame if it isn't the fallback frame.
 ///
 /// This is not technically a visualizer, but it affects visualization, so we show it alongside.
 fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
@@ -543,29 +532,46 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
 
     let override_path = data_result.override_path();
 
-    let frame_id_before = query_result
-        .get_mono_with_fallback::<TransformFrameId>(component)
-        .to_string();
-    let mut frame_id = frame_id_before.clone();
+    let result_override = query_result.overrides.get(component);
+    let raw_override = result_override
+        .and_then(|c| c.non_empty_component_batch_raw(component))
+        .map(|(_, array)| array);
 
-    ui.list_item_flat_noninteractive(
-        list_item::PropertyContent::new("Coordinate frame")
-            .value_text_mut(&mut frame_id)
-            .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-                let result_override = query_result.overrides.get(component);
-                let raw_override = result_override
-                    .and_then(|c| c.non_empty_component_batch_raw(component))
-                    .map(|(_, array)| array);
+    let Some(frame_id_before) = query_result
+        .get_mono::<TransformFrameId>(component)
+        .map(|f| f.to_string())
+        .or_else(|| {
+            if raw_override.is_some() {
+                Some(String::new())
+            } else {
+                None
+            }
+        })
+    else {
+        return;
+    };
 
-                crate::visualizer_ui::remove_and_reset_override_buttons(
-                    ctx,
-                    ui,
-                    component_descr.clone(),
-                    override_path,
-                    &raw_override,
-                );
-            }),
-    )
+    let mut frame_id = if raw_override.is_some() {
+        frame_id_before.clone()
+    } else {
+        String::new()
+    };
+
+    let property_content = list_item::PropertyContent::new("Coordinate frame")
+        .value_fn(|ui, _| {
+            frame_id_edit(ctx, ui, &mut frame_id, &frame_id_before);
+        })
+        .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+            crate::visualizer_ui::remove_and_reset_override_buttons(
+                ctx,
+                ui,
+                component_descr.clone(),
+                override_path,
+                &raw_override,
+            );
+        });
+
+    ui.list_item_flat_noninteractive(property_content)
         .on_hover_ui(|ui| {
             ui.markdown_ui(
                 "The coordinate frame this entity is associated with.
@@ -574,7 +580,18 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             );
         });
 
-    if frame_id_before != frame_id {
+    if raw_override.is_some() {
+        if frame_id.is_empty() {
+            ctx.clear_blueprint_component(override_path.clone(), component_descr);
+        } else if frame_id_before != frame_id {
+            // Save as blueprint override.
+            ctx.save_blueprint_component(
+                override_path.clone(),
+                &component_descr,
+                &TransformFrameId::new(&frame_id),
+            );
+        }
+    } else if !frame_id.is_empty() {
         // Save as blueprint override.
         ctx.save_blueprint_component(
             override_path.clone(),
@@ -582,6 +599,93 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
             &TransformFrameId::new(&frame_id),
         );
     }
+}
+
+fn frame_id_edit(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    frame_id: &mut String,
+    frame_id_before: &String,
+) {
+    let (mut suggestions, response) = {
+        // In a scope to not hold the lock for longer than needed.
+        let caches = ctx.viewer_ctx.store_context.caches;
+        let transform_cache =
+            caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                c.read_lock_transform_cache(ctx.recording())
+            });
+
+        let frame_exists = transform_cache
+            .frame_id_registry()
+            .lookup_frame_id(TransformFrameIdHash::from_str(&*frame_id))
+            .is_some();
+
+        let mut text_edit = egui::TextEdit::singleline(frame_id).hint_text(frame_id_before);
+        if !frame_exists {
+            text_edit = text_edit.text_color(ui.tokens().error_fg_color);
+        }
+        let response = ui.add(text_edit);
+
+        let suggestions = transform_cache
+            .frame_id_registry()
+            .iter_frame_ids()
+            // Only show named frames.
+            .filter(|(_, id)| !id.is_entity_path_derived())
+            .filter_map(|(_, id)| id.strip_prefix(&*frame_id))
+            .filter(|rest| !rest.is_empty())
+            .map(|rest| rest.to_owned())
+            .collect::<Vec<_>>();
+
+        (suggestions, response)
+    };
+
+    suggestions.sort_unstable();
+
+    let suggestions_open =
+        (response.has_focus() || response.lost_focus()) && !suggestions.is_empty();
+
+    let width = response.rect.width();
+
+    let suggestions_ui = |ui: &mut egui::Ui| {
+        for rest in suggestions {
+            let mut layout_job = egui::text::LayoutJob::default();
+            layout_job.append(
+                &*frame_id,
+                0.0,
+                egui::TextFormat::simple(
+                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
+                    ui.tokens().text_default,
+                ),
+            );
+            layout_job.append(
+                &rest,
+                0.0,
+                egui::TextFormat::simple(
+                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
+                    ui.tokens().text_subdued,
+                ),
+            );
+
+            if ui
+                .add(egui::Button::new(layout_job).min_size(egui::vec2(width, 0.0)))
+                .clicked()
+            {
+                frame_id.push_str(&rest);
+            }
+        }
+    };
+
+    egui::Popup::from_response(&response)
+        .style(re_ui::menu::menu_style())
+        .open(suggestions_open)
+        .show(|ui: &mut egui::Ui| {
+            ui.set_width(width);
+
+            egui::ScrollArea::vertical()
+                .min_scrolled_height(350.0)
+                .max_height(350.0)
+                .show(ui, suggestions_ui);
+        });
 }
 
 fn show_recording_properties(
@@ -1192,11 +1296,10 @@ fn visible_interactive_toggle_ui(
 #[cfg(test)]
 mod tests {
     use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
-    use re_log_types::{
-        TimeType,
-        example_components::{MyPoint, MyPoints},
-    };
-    use re_test_context::{TestContext, external::egui_kittest::kittest::Queryable as _};
+    use re_log_types::TimeType;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_test_context::TestContext;
+    use re_test_context::external::egui_kittest::kittest::Queryable as _;
     use re_test_viewport::{TestContextExt as _, TestView};
     use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
@@ -1205,7 +1308,9 @@ mod tests {
     use super::*;
 
     fn get_test_context() -> TestContext {
-        let mut test_context = TestContext::new();
+        let mut test_context = TestContext::new_with_store_info(
+            re_log_types::StoreInfo::testing_with_recording_id("test_recording"),
+        );
         test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
         test_context

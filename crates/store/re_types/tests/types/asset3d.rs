@@ -1,9 +1,7 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
-    archetypes::Asset3D,
-    components::{AlbedoFactor, Blob, MediaType},
-    datatypes::{Rgba32, Utf8},
-};
+use re_types::archetypes::Asset3D;
+use re_types::components::{AlbedoFactor, Blob, MediaType};
+use re_types::datatypes::{Rgba32, Utf8};
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _};
 
 #[test]
 fn roundtrip() {

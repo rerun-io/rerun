@@ -1,16 +1,15 @@
 use itertools::{Itertools as _, izip};
-
 use re_log::ResultExt as _;
 
+use crate::allocator::DataTextureSource;
+use crate::draw_phases::PickingLayerObjectId;
+use crate::renderer::gpu_data::PositionRadius;
+use crate::renderer::{
+    PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+};
 use crate::{
     Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
     PickingLayerInstanceId, RenderContext, Size,
-    allocator::DataTextureSource,
-    draw_phases::PickingLayerObjectId,
-    renderer::{
-        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
-        gpu_data::PositionRadius,
-    },
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].

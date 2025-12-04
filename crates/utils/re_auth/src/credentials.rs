@@ -44,9 +44,10 @@ pub use oauth::CliCredentialsProvider;
 
 #[cfg(feature = "oauth")]
 mod oauth {
+    use tokio::sync::RwLock;
+
     use super::{CredentialsProvider, CredentialsProviderError, Jwt};
     use crate::oauth::{Credentials, load_and_refresh_credentials};
-    use tokio::sync::RwLock;
 
     // We only want to keep a single instance of credentials in memory,
     // so we store them in a static.

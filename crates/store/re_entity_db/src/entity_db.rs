@@ -2,7 +2,6 @@ use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 use nohash_hasher::IntMap;
-
 use re_chunk::{
     Chunk, ChunkBuilder, ChunkId, ChunkResult, ComponentIdentifier, LatestAtQuery, RowId, TimeInt,
     TimePoint, Timeline, TimelineName,
@@ -11,6 +10,7 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
+use re_log_channel::LogSource;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
@@ -18,12 +18,11 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_smart_channel::SmartChannelSource;
 use re_types_core::ChunkIndexMessage;
 
-use crate::{
-    Error, TimesPerTimeline, chunk_index::ChunkIndex, ingestion_statistics::IngestionStatistics,
-};
+use crate::chunk_index::ChunkIndex;
+use crate::ingestion_statistics::IngestionStatistics;
+use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -45,8 +44,8 @@ pub enum EntityDbClass<'a> {
     /// This is an official rerun example recording.
     ExampleRecording,
 
-    /// This is a recording loaded from a remote dataset partition.
-    DatasetPartition(&'a re_uri::DatasetPartitionUri),
+    /// This is a recording loaded from a remote dataset segment.
+    DatasetSegment(&'a re_uri::DatasetSegmentUri),
 
     /// This is a blueprint.
     Blueprint,
@@ -72,7 +71,7 @@ pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
     ///
     /// Clones of an [`EntityDb`] gets a `None` source.
-    pub data_source: Option<re_smart_channel::SmartChannelSource>,
+    pub data_source: Option<re_log_channel::LogSource>,
 
     chunk_index: ChunkIndex,
 
@@ -286,15 +285,13 @@ impl EntityDb {
             StoreKind::Blueprint => EntityDbClass::Blueprint,
 
             StoreKind::Recording => match &self.data_source {
-                Some(SmartChannelSource::RrdHttpStream { url, .. })
+                Some(LogSource::RrdHttpStream { url, .. })
                     if url.starts_with("https://app.rerun.io") =>
                 {
                     EntityDbClass::ExampleRecording
                 }
 
-                Some(SmartChannelSource::RedapGrpcStream { uri, .. }) => {
-                    EntityDbClass::DatasetPartition(uri)
-                }
+                Some(LogSource::RedapGrpcStream { uri, .. }) => EntityDbClass::DatasetSegment(uri),
 
                 _ => EntityDbClass::LocalRecording,
             },
@@ -987,10 +984,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{
-        StoreId, TimePoint, Timeline,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{StoreId, TimePoint, Timeline};
 
     use super::*;
 

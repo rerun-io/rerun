@@ -1,19 +1,13 @@
-use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
+use egui::emath::RectTransform;
+use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
-
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
-use re_renderer::{
-    ViewPickingConfiguration,
-    view_builder::{TargetConfiguration, ViewBuilder},
-};
-use re_types::{
-    Archetype as _, archetypes,
-    blueprint::{
-        archetypes::{Background, NearClipPlane, VisualBounds2D},
-        components as blueprint_components,
-    },
-};
+use re_renderer::ViewPickingConfiguration;
+use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+use re_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_types::blueprint::components as blueprint_components;
+use re_types::{Archetype as _, archetypes};
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
@@ -22,12 +16,13 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::{eye::Eye, ui::create_labels};
+use super::eye::Eye;
+use super::ui::create_labels;
 use crate::contexts::TransformTreeContext;
-use crate::{
-    Pinhole, SpatialView2D, ui::SpatialViewState, view_kind::SpatialViewKind,
-    visualizers::collect_ui_labels,
-};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::collect_ui_labels;
+use crate::{Pinhole, SpatialView2D};
 // ---
 
 /// Pan and zoom, and return the current transform.
@@ -158,6 +153,7 @@ impl SpatialView2D {
             viewer_ctx: ctx,
             view_id: query.view_id,
             view_class_identifier: Self::identifier(),
+            space_origin: query.space_origin,
             view_state: state,
             query_result: ctx.lookup_query_result(query.view_id),
         };
@@ -207,7 +203,7 @@ impl SpatialView2D {
 
         // Convert ui coordinates to/from scene coordinates.
         let ui_from_scene = {
-            let view_ctx = self.view_context(ctx, query.view_id, state);
+            let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
             let mut new_state = state.clone();
             let ui_from_scene =
                 ui_from_scene(&view_ctx, &response, &mut new_state, &bounds_property);
@@ -217,7 +213,7 @@ impl SpatialView2D {
         };
         let scene_from_ui = ui_from_scene.inverse();
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
             .component_or_fallback(
                 &view_ctx,
@@ -284,7 +280,7 @@ impl SpatialView2D {
         };
         let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state); // Recreate view state to handle context editing during picking.
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin); // Recreate view state to handle context editing during picking.
 
         for draw_data in system_output.drain_draw_data() {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);

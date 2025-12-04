@@ -20,19 +20,15 @@ use std::f32::consts::TAU;
 use glam::Vec3;
 use itertools::Itertools as _;
 use macaw::IsoTransform;
-use re_renderer::{
-    Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size,
-    renderer::{
-        ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
-        GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
-    },
-    resource_managers::{GpuTexture2D, ImageDataDesc},
-    view_builder::{self, Projection, ViewBuilder},
+use re_renderer::renderer::{
+    ColormappedTexture, DepthCloud, DepthCloudDrawData, DepthClouds, DrawData,
+    GenericSkyboxDrawData, RectangleDrawData, RectangleOptions, TexturedRect,
 };
-use winit::{
-    event::ElementState,
-    keyboard::{self},
-};
+use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
+use re_renderer::view_builder::{self, Projection, ViewBuilder};
+use re_renderer::{Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size};
+use winit::event::ElementState;
+use winit::keyboard::{self};
 
 mod framework;
 

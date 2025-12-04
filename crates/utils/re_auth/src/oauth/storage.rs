@@ -52,14 +52,14 @@ pub enum ClearError {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use file::{clear, load, store};
-
 #[cfg(target_arch = "wasm32")]
 pub use web::{clear, load, store};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod file {
-    use super::{ClearError, Credentials, LoadError, StoreError};
     use std::path::PathBuf;
+
+    use super::{ClearError, Credentials, LoadError, StoreError};
 
     fn credentials_path() -> Option<PathBuf> {
         directories::ProjectDirs::from("", "", "rerun")

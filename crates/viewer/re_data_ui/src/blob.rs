@@ -1,21 +1,17 @@
+use std::sync::Arc;
+
+use re_chunk_store::UnitChunkShared;
+use re_log_types::EntityPath;
+use re_types::components::{Blob, MediaType, VideoTimestamp};
+use re_types::{ComponentDescriptor, ComponentIdentifier, RowId, archetypes, components};
+use re_types_core::Component as _;
+use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::{UiExt as _, icons};
+use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
+
 use crate::image::ImageUi;
 use crate::video::VideoUi;
 use crate::{EntityDataUi, find_and_deserialize_archetype_mono_component};
-use re_chunk_store::UnitChunkShared;
-use re_log_types::EntityPath;
-use re_types::ComponentIdentifier;
-use re_types::{
-    ComponentDescriptor, RowId, archetypes, components,
-    components::{Blob, MediaType, VideoTimestamp},
-};
-use re_types_core::Component as _;
-use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    UiExt as _, icons,
-    list_item::{self, PropertyContent},
-};
-use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
-use std::sync::Arc;
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(

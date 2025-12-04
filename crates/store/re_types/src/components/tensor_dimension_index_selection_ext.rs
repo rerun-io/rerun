@@ -1,6 +1,5 @@
-use crate::datatypes;
-
 use super::TensorDimensionIndexSelection;
+use crate::datatypes;
 
 impl TensorDimensionIndexSelection {
     /// Creates a new `TensorDimensionIndexSelection` from the given `dimension` and `index`.

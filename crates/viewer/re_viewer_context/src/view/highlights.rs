@@ -1,5 +1,4 @@
 use nohash_hasher::IntMap;
-
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPathHash, Instance};
 use re_renderer::OutlineMaskPreference;

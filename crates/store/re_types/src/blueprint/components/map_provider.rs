@@ -38,6 +38,9 @@ pub enum MapProvider {
 
     /// Mapbox Satellite is a satellite map designed by Mapbox.
     MapboxSatellite = 4,
+
+    /// Mapbox Light is a light-themed map designed by Mapbox.
+    MapboxLight = 5,
 }
 
 impl ::re_types_core::Component for MapProvider {
@@ -113,6 +116,7 @@ impl ::re_types_core::Loggable for MapProvider {
                 Some(2) => Ok(Some(Self::MapboxStreets)),
                 Some(3) => Ok(Some(Self::MapboxDark)),
                 Some(4) => Ok(Some(Self::MapboxSatellite)),
+                Some(5) => Ok(Some(Self::MapboxLight)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -132,6 +136,7 @@ impl std::fmt::Display for MapProvider {
             Self::MapboxStreets => write!(f, "MapboxStreets"),
             Self::MapboxDark => write!(f, "MapboxDark"),
             Self::MapboxSatellite => write!(f, "MapboxSatellite"),
+            Self::MapboxLight => write!(f, "MapboxLight"),
         }
     }
 }
@@ -144,6 +149,7 @@ impl ::re_types_core::reflection::Enum for MapProvider {
             Self::MapboxStreets,
             Self::MapboxDark,
             Self::MapboxSatellite,
+            Self::MapboxLight,
         ]
     }
 
@@ -154,6 +160,7 @@ impl ::re_types_core::reflection::Enum for MapProvider {
             Self::MapboxStreets => "Mapbox Streets is a minimalistic map designed by Mapbox.",
             Self::MapboxDark => "Mapbox Dark is a dark-themed map designed by Mapbox.",
             Self::MapboxSatellite => "Mapbox Satellite is a satellite map designed by Mapbox.",
+            Self::MapboxLight => "Mapbox Light is a light-themed map designed by Mapbox.",
         }
     }
 }

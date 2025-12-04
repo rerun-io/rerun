@@ -1,14 +1,16 @@
 use arrow::array::ArrayRef;
 use re_chunk::{ComponentIdentifier, ComponentType};
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
+use re_entity_db::EntityDb;
+use re_entity_db::external::re_query::LatestAtResults;
 use re_log_types::EntityPath;
 use re_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
+use re_viewer_context::external::re_entity_db::EntityTree;
 use re_viewer_context::{
     BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
-    ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
+    ViewSystemExecutionError, ViewerContext,
 };
 
 #[derive(thiserror::Error, Debug)]

@@ -1,24 +1,23 @@
-use std::{
-    collections::{BTreeSet, btree_map::Entry as BTreeMapEntry, hash_map::Entry as HashMapEntry},
-    time::Duration,
-};
+use std::collections::BTreeSet;
+use std::collections::btree_map::Entry as BTreeMapEntry;
+use std::collections::hash_map::Entry as HashMapEntry;
+use std::time::Duration;
 
 use ahash::{HashMap, HashSet};
 use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
-use web_time::Instant;
-
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-
-use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
-    ChunkStoreStats, store::ChunkIdSetPerTime,
-};
+use web_time::Instant;
 
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
+use crate::store::ChunkIdSetPerTime;
+use crate::{
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreStats,
+};
 
 // ---
 

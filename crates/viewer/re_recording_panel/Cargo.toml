@@ -28,7 +28,7 @@ re_entity_db.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_redap_browser.workspace = true
-re_smart_channel.workspace = true
+re_log_channel.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
@@ -42,7 +42,7 @@ serde = { workspace = true, optional = true }
 
 
 [dev-dependencies]
-re_smart_channel.workspace = true
+re_log_channel.workspace = true
 re_test_context.workspace = true
 
 insta = { workspace = true, features = ["redactions", "yaml"] }

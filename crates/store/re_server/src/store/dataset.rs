@@ -2,25 +2,21 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::Arc;
 
-use arrow::{
-    array::{RecordBatch, RecordBatchOptions},
-    datatypes::{Fields, Schema},
-};
+use arrow::array::{RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{Fields, Schema};
 use itertools::Either;
 use parking_lot::Mutex;
+use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle};
+use re_log_types::{EntryId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails};
+use re_protos::cloud::v1alpha1::{
+    EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
+};
+use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::store::{Error, InMemoryStore, Layer, Partition, Tracked};
-use re_arrow_util::RecordBatchExt as _;
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_log_types::{EntryId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        EntryKind, ScanDatasetManifestResponse, ScanSegmentTableResponse,
-        ext::{DataSource, DatasetDetails, DatasetEntry, EntryDetails},
-    },
-    common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId},
-};
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
 pub struct DatasetInner {
@@ -360,6 +356,71 @@ impl Dataset {
         base_record_batch
             .concat_horizontally_with(&properties_record_batch)
             .map_err(Error::failed_to_extract_properties)
+    }
+
+    pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RecordBatch, Error> {
+        let partition = self.partition(segment_id)?;
+
+        let mut rrd_manifest_builder = re_log_encoding::RrdManifestBuilder::default();
+
+        let mut chunk_keys = Vec::new();
+
+        for (layer_name, layer) in partition.iter_layers() {
+            let store = layer.store_handle();
+
+            for chunk in store.read().iter_chunks() {
+                let chunk_batch = chunk
+                    .to_chunk_batch()
+                    .map_err(|err| Error::RrdLoadingError(err.into()))?;
+
+                // TODO(RR-3110): add an alternate RrdManifestBuilder builder with chunk keys instead of byte spans.
+                let dummy_byte_span = re_span::Span::default();
+                rrd_manifest_builder
+                    .append(&chunk_batch, dummy_byte_span)
+                    .map_err(|err| Error::RrdLoadingError(err.into()))?;
+
+                chunk_keys.push(
+                    crate::store::ChunkKey {
+                        chunk_id: chunk.id(),
+                        segment_id: segment_id.clone(),
+                        layer_name: layer_name.to_owned(),
+                        dataset_id: self.id(),
+                    }
+                    .encode()?,
+                );
+            }
+        }
+
+        let rrd_manifest_batch = rrd_manifest_builder
+            .into_record_batch()
+            .map_err(|err| Error::RrdLoadingError(err.into()))?
+            .remove_columns(&["chunk_byte_offset", "chunk_byte_size"]);
+
+        let (schema, mut columns, num_rows) = rrd_manifest_batch.into_parts();
+
+        let schema = {
+            let mut schema = Arc::unwrap_or_clone(schema);
+            let mut fields = schema.fields.to_vec();
+            fields.push(Arc::new(arrow::datatypes::Field::new(
+                "chunk_key",
+                arrow::datatypes::DataType::Binary,
+                false,
+            )));
+            schema.fields = fields.into();
+            schema
+        };
+        {
+            let chunk_keys = arrow::array::BinaryArray::from_iter_values(chunk_keys.iter());
+            columns.push(Arc::new(chunk_keys));
+        }
+
+        let rrd_manifest_batch = RecordBatch::try_new_with_options(
+            Arc::new(schema),
+            columns,
+            &RecordBatchOptions::new().with_row_count(Some(num_rows)),
+        )?;
+
+        Ok(rrd_manifest_batch)
     }
 
     pub fn layer_store_handle(

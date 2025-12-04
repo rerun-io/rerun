@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-
 use re_chunk::{ComponentIdentifier, RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
@@ -10,7 +9,8 @@ use re_log_types::{Instance, StoreId};
 use re_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{MaybeMutRef, QueryContext, ViewerContext, blueprint_helpers::BlueprintContext as _};
+use crate::blueprint_helpers::BlueprintContext as _;
+use crate::{MaybeMutRef, QueryContext, ViewerContext};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {

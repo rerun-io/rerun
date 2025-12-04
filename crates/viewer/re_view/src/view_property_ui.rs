@@ -1,5 +1,6 @@
 use re_types::{ComponentDescriptor, ComponentIdentifier};
-use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
+use re_types_core::reflection::ArchetypeFieldReflection;
+use re_types_core::{Archetype, ArchetypeReflectionMarker};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
@@ -41,6 +42,7 @@ pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
                 viewer_ctx: ctx.viewer_ctx,
                 view_id: redirect_with_view_id,
                 view_class_identifier: ctx.view_class_identifier,
+                space_origin: ctx.space_origin,
                 view_state: ctx.view_state,
                 query_result: &re_viewer_context::DataQueryResult::default(),
             },

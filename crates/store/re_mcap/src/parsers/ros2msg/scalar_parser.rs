@@ -3,12 +3,11 @@ use arrow::array::{FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
 use re_types::archetypes::{Scalars, SeriesLines};
 
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
-    ros2msg::{Ros2MessageParser, definitions::std_msgs::Header},
-    util::fixed_size_list_builder,
-};
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
+use crate::parsers::ros2msg::Ros2MessageParser;
+use crate::parsers::ros2msg::definitions::std_msgs::Header;
+use crate::parsers::util::fixed_size_list_builder;
 
 /// Trait for extracting scalar values from ROS2 messages.
 ///

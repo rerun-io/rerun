@@ -5,13 +5,12 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::{Modifiers, os};
+use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::notifications::NotificationUi;
 use re_ui::{
     CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _,
-    filter_widget::{FilterState, format_matching_text},
-    icons, list_item,
-    notifications::NotificationUi,
+    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.

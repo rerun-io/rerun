@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use crate::{Backtrace, BacktraceHash};
-
-use crate::CountAndSize;
+use crate::{Backtrace, BacktraceHash, CountAndSize};
 
 // ----------------------------------------------------------------------------
 

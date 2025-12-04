@@ -1,10 +1,8 @@
 //! Generate the snippets reference.
 
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap},
-    path::PathBuf,
-};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};

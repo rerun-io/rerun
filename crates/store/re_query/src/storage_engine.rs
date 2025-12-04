@@ -1,5 +1,4 @@
 use parking_lot::{ArcRwLockReadGuard, RwLockReadGuard};
-
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 
 use crate::{QueryCache, QueryCacheHandle};

@@ -3,18 +3,16 @@ use std::sync::Arc;
 use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
-use re_entity_db::{EntityDb, EntityTree, external::re_chunk_store::LatestAtQuery};
+use re_entity_db::external::re_chunk_store::LatestAtQuery;
+use re_entity_db::{EntityDb, EntityTree};
+use re_log_types::path::RuleEffect;
 use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
-    ResolvedEntityPathRule, Timeline, path::RuleEffect,
+    ResolvedEntityPathRule, Timeline,
 };
-use re_types::{
-    Archetype as _, Loggable as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes as blueprint_archetypes, components as blueprint_components,
-        components::QueryExpression,
-    },
-};
+use re_types::blueprint::components::QueryExpression;
+use re_types::blueprint::{archetypes as blueprint_archetypes, components as blueprint_components};
+use re_types::{Archetype as _, Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass, PropertyOverrides,
@@ -656,10 +654,8 @@ mod tests {
 
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
-    use re_log_types::{
-        StoreId, TimePoint, Timeline,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{StoreId, TimePoint, Timeline};
     use re_viewer_context::{Caches, StoreContext, blueprint_timeline};
 
     use super::*;

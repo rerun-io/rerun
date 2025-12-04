@@ -1,13 +1,14 @@
-use re_auth::oauth::{
-    Credentials,
-    api::{AuthenticateWithCode, Pkce, authorization_url, send_async},
-};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use re_auth::oauth::Credentials;
+use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_async};
 use re_log::ResultExt as _;
 use re_viewer_context::AsyncRuntimeHandle;
-use std::{cell::RefCell, rc::Rc};
 use url::Url;
 use uuid::Uuid;
-use wasm_bindgen::{JsCast as _, prelude::Closure};
+use wasm_bindgen::JsCast as _;
+use wasm_bindgen::prelude::Closure;
 
 #[expect(clippy::needless_pass_by_value)]
 fn js_value_to_string(s: wasm_bindgen::JsValue) -> String {
