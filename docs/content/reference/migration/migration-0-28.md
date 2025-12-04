@@ -144,7 +144,7 @@ The following methods that returned `datafusion.DataFrame` objects have been rem
 | `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries")` filtered by entry kind |
 | `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries")` filtered by entry kind |
 
-<!-- TODO(ab): add `.reader()` to the suggested workaround when that API is updated --> 
+<!-- TODO(ab): add `.reader()` to the suggested workaround when that API is updated -->
 
 The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries")`.
 
