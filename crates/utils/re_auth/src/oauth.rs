@@ -253,12 +253,8 @@ impl Credentials {
         let jwt = Jwt(res.access_token);
         let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
-        let user = User {
-            id: res.user.id,
-            email: res.user.email,
-        };
         Ok(InMemoryCredentials(Self {
-            user,
+            user: res.user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
             claims,
