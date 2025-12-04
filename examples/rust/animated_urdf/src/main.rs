@@ -49,13 +49,28 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                     joint.limit.lower..=joint.limit.upper,
                 );
 
+                // Compute the full rotation for this joint.
+                // TODO(michael): we could make this a bit nicer with a better URDF utility.
+                let rotation = glam::Quat::from_euler(
+                    glam::EulerRot::XYZ,
+                    joint.origin.rpy[0] as f32,
+                    joint.origin.rpy[1] as f32,
+                    joint.origin.rpy[2] as f32,
+                ) * glam::Quat::from_axis_angle(
+                    glam::Vec3::new(
+                        fixed_axis[0] as f32,
+                        fixed_axis[1] as f32,
+                        fixed_axis[2] as f32,
+                    ),
+                    dynamic_angle as f32,
+                );
+
                 // Rerun loads the URDF transforms with child/parent frame relations.
                 // In order to move a joint, we just need to log a new transform between two of those frames.
                 rec.log(
                     "/transforms",
-                    &rerun::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
-                        fixed_axis,
-                        dynamic_angle as f32,
+                    &rerun::Transform3D::from_rotation(rerun::Quaternion::from_xyzw(
+                        rotation.to_array(),
                     ))
                     .with_translation(Translation3D::from(joint.origin.xyz.0))
                     .with_parent_frame(joint.parent.link.clone())
