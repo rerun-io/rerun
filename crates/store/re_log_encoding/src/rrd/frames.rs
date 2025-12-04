@@ -417,10 +417,6 @@ impl Decodable for StreamFooter {
                 .try_into()
                 .expect("cannot fail, checked above"),
         );
-        debug_assert_eq!(
-            1, num_rrd_footers,
-            "Stream footers always point to a single RRD footer at the moment"
-        );
 
         let dynamic_data = &data[data.len() - Self::ENCODED_SIZE_BYTES..];
 
