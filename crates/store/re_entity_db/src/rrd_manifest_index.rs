@@ -49,7 +49,7 @@ impl RrdManifest {
     pub fn append(&mut self, msg: RrdManifestMessage) {
         re_tracing::profile_function!();
         self.has_index = true;
-        for chunk_id in msg.chunk_ids() {
+        for chunk_id in msg.chunk_id() {
             match self.remote_chunks.entry(*chunk_id) {
                 Entry::Occupied(_occupied_entry) => {
                     // TODO(RR-2999): update time range index for the chunk

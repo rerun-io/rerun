@@ -1,6 +1,8 @@
 #![expect(clippy::mem_forget)] // because of ouroboros
 
-use arrow::array::{Array as _, AsArray as _, BooleanArray, RecordBatch};
+use arrow::array::{Array as _, AsArray as _, BooleanArray, RecordBatch, StringArray};
+use arrow::error::ArrowError;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _, WrongDatatypeError};
 
 use crate::ChunkId;
 
@@ -24,7 +26,13 @@ pub enum ChunkIndexError {
     NullsInChunkIsStatic,
 
     #[error(transparent)]
-    WrongDatatype(#[from] re_arrow_util::WrongDatatypeError),
+    Arrow(#[from] ArrowError),
+
+    #[error(transparent)]
+    MissingColumn(#[from] re_arrow_util::MissingColumnError),
+
+    #[error(transparent)]
+    WrongDatatype(#[from] WrongDatatypeError),
 }
 
 // -----------------------------------------------------------------------------------------
@@ -32,12 +40,46 @@ pub enum ChunkIndexError {
 /// Communicates the chunks in a store (recording) without actually holding the chunks.
 ///
 /// This is sent from the server to the client/viewer.
+///
+///
+/// ## Example (transposed)
+/// ```
+/// ┌─────────────────────────────────────────┬──────────────────────────────────────────┬──────────────────────────────────────────┐
+/// │ chunk_entity_path                       ┆ /my/entity                               ┆ /my/entity                               │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_id                                ┆ 00000000000000010000000000000001         ┆ 00000000000000010000000000000002         │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_is_static                         ┆ false                                    ┆ true                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ example_MyPoints:colors:has_static_data ┆ false                                    ┆ false                                    │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ example_MyPoints:labels:has_static_data ┆ false                                    ┆ true                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ example_MyPoints:points:has_static_data ┆ false                                    ┆ false                                    │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:start                          ┆ 10                                       ┆ null                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:end                            ┆ 40                                       ┆ null                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:colors:start  ┆ 10                                       ┆ null                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:colors:end    ┆ 40                                       ┆ null                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:points:start  ┆ 10                                       ┆ null                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ frame_nr:example_MyPoints:points:end    ┆ 40                                       ┆ null                                     │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_key                               ┆ 010000000000000001000000000000000a00000… ┆ 010000000000000002000000000000000a00000… │
+/// └─────────────────────────────────────────┴──────────────────────────────────────────┴──────────────────────────────────────────┘
+/// ```
 #[ouroboros::self_referencing]
 pub struct RrdManifestMessage {
     rb: RecordBatch,
 
+    chunk_entity_path: StringArray,
+
     #[borrows(rb)]
-    chunk_ids: &'this [ChunkId],
+    chunk_id: &'this [ChunkId],
 
     chunk_is_static: BooleanArray,
 }
@@ -61,7 +103,12 @@ impl RrdManifestMessage {
     pub fn from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
         #![expect(clippy::unwrap_used)] // We validate before running the builder
 
-        chunk_ids_from_rb(&rb)?; // validate
+        let chunk_entity_path = rb
+            .try_get_column("chunk_entity_path")?
+            .try_downcast_array_ref::<StringArray>()?
+            .clone();
+
+        chunk_id_from_rb(&rb)?; // validate
         let chunk_is_static = chunk_is_static_from_rb(&rb)?;
         if chunk_is_static.null_count() != 0 {
             return Err(ChunkIndexError::NullsInChunkIsStatic);
@@ -71,8 +118,9 @@ impl RrdManifestMessage {
 
         Ok(RrdManifestMessageBuilder {
             rb,
+            chunk_entity_path,
+            chunk_id_builder: |rb: &RecordBatch| chunk_id_from_rb(rb).unwrap(),
             chunk_is_static,
-            chunk_ids_builder: |rb: &RecordBatch| chunk_ids_from_rb(rb).unwrap(),
         }
         .build())
     }
@@ -85,9 +133,13 @@ impl RrdManifestMessage {
         self.borrow_rb().num_rows()
     }
 
+    pub fn chunk_entity_path(&self) -> &StringArray {
+        self.borrow_chunk_entity_path()
+    }
+
     /// All the chunks in this index
-    pub fn chunk_ids(&self) -> &[ChunkId] {
-        self.borrow_chunk_ids()
+    pub fn chunk_id(&self) -> &[ChunkId] {
+        self.borrow_chunk_id()
     }
 
     /// Is a given chunk static (as opposed to temporal)?
@@ -98,7 +150,7 @@ impl RrdManifestMessage {
     }
 }
 
-fn chunk_ids_from_rb(rb: &RecordBatch) -> Result<&[ChunkId], ChunkIndexError> {
+fn chunk_id_from_rb(rb: &RecordBatch) -> Result<&[ChunkId], ChunkIndexError> {
     let chunk_ids = rb
         .column_by_name("chunk_id")
         .ok_or(ChunkIndexError::MissingChunkIdColumn)?;
