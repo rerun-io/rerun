@@ -192,3 +192,74 @@ impl SorbetSchema {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use arrow::datatypes::Schema as ArrowSchema;
+
+    use super::*;
+    use crate::RowIdColumnDescriptor;
+
+    /// Test that the legacy `rerun:partition_id` metadata key is correctly read as `segment_id`.
+    #[test]
+    fn test_legacy_partition_id_backward_compatibility() {
+        let partition_id_value = "test-partition-123";
+
+        // Create an Arrow schema with the legacy "rerun:partition_id" metadata key
+        let row_id_field = RowIdColumnDescriptor::from_sorted(false).to_arrow_field();
+        let fields = vec![Arc::new(row_id_field)];
+        let arrow_schema = ArrowSchema::new_with_metadata(
+            fields,
+            std::iter::once((
+                "rerun:partition_id".to_owned(),
+                partition_id_value.to_owned(),
+            ))
+            .collect(),
+        );
+
+        // Parse the schema
+        let sorbet_schema = SorbetSchema::try_from_migrated_arrow_schema(&arrow_schema).unwrap();
+
+        // Verify that segment_id is correctly populated from the legacy partition_id
+        assert_eq!(
+            sorbet_schema.segment_id,
+            Some(partition_id_value.to_owned()),
+            "Legacy rerun:partition_id should be read as segment_id"
+        );
+    }
+
+    /// Test that the new `rerun:segment_id` metadata key takes precedence over legacy `rerun:partition_id`.
+    #[test]
+    fn test_segment_id_takes_precedence_over_partition_id() {
+        let segment_id_value = "new-segment-456";
+        let partition_id_value = "old-partition-123";
+
+        // Create an Arrow schema with both keys - segment_id should take precedence
+        let row_id_field = RowIdColumnDescriptor::from_sorted(false).to_arrow_field();
+        let fields = vec![Arc::new(row_id_field)];
+        let arrow_schema = ArrowSchema::new_with_metadata(
+            fields,
+            [
+                ("rerun:segment_id".to_owned(), segment_id_value.to_owned()),
+                (
+                    "rerun:partition_id".to_owned(),
+                    partition_id_value.to_owned(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+        // Parse the schema
+        let sorbet_schema = SorbetSchema::try_from_migrated_arrow_schema(&arrow_schema).unwrap();
+
+        // Verify that segment_id takes precedence
+        assert_eq!(
+            sorbet_schema.segment_id,
+            Some(segment_id_value.to_owned()),
+            "rerun:segment_id should take precedence over rerun:partition_id"
+        );
+    }
+}
