@@ -5,7 +5,7 @@ use ndarray::{Array, ShapeBuilder as _};
 use re_log_types::{EntityPath, Timeline};
 use re_test_context::TestContext;
 use re_types::{AsComponents, archetypes};
-use re_viewer_context::ViewClass as _;
+use re_viewer_context::{ViewClass as _, ViewSpawnHeuristics};
 
 enum ImageSize {
     Small,
@@ -40,6 +40,7 @@ enum EntityKind {
 
 fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
     let timeline_step = Timeline::new_sequence("step");
     let time = [(timeline_step, 1)];
@@ -99,15 +100,32 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
 }
 
 fn run_heuristics_snapshot_test(name: &str, test_context: &TestContext) {
-    let view_class = test_context
+    let view_class_2d = test_context
         .view_class_registry
-        .class(re_view_spatial::SpatialView2D::identifier())
-        .unwrap();
+        .class(re_view_spatial::SpatialView2D::identifier());
+
+    let view_class_3d = test_context
+        .view_class_registry
+        .class(re_view_spatial::SpatialView3D::identifier());
 
     test_context.run_in_egui_central_panel(|ctx, _ui| {
+        #[derive(Debug)]
+        // Fields are only used for debugging
+        #[expect(dead_code)]
+        struct RecommendedViews {
+            views_2d: Option<ViewSpawnHeuristics>,
+            views_3d: Option<ViewSpawnHeuristics>,
+        }
+
         let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
         let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
-        let recommended_views = view_class.spawn_heuristics(ctx, &include_entity);
+
+        let recommended_views = RecommendedViews {
+            views_2d: view_class_2d
+                .map(|view_class| view_class.spawn_heuristics(ctx, &include_entity)),
+            views_3d: view_class_3d
+                .map(|view_class| view_class.spawn_heuristics(ctx, &include_entity)),
+        };
 
         insta::assert_debug_snapshot!(name, recommended_views);
     });
@@ -202,6 +220,35 @@ fn test_mixed_2d_and_3d() {
     ]);
 
     run_heuristics_snapshot_test("should_be_three_space_views", &test_context);
+}
+
+#[test]
+fn test_mixed_2d_and_3d_at_root() {
+    use ImageSize::*;
+    use ImageType::*;
+
+    let test_context = build_test_scene(&[
+        ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
+        ("image2", EntityKind::Image(Color, Small)), // should be separate 2D views
+        // box and camera should be in the 3d view
+        ("box", EntityKind::BBox3D),
+        ("camera", EntityKind::Pinhole(Small)),
+        ("camera", EntityKind::Image(Color, Small)), // should be a separate 2D view
+    ]);
+
+    run_heuristics_snapshot_test("three_2d_views_and_one_3d_excluding_images", &test_context);
+}
+#[test]
+fn test_pinhole_with_2d() {
+    use ImageSize::*;
+    use ImageType::*;
+
+    let test_context = build_test_scene(&[
+        ("camera", EntityKind::Pinhole(Small)), // should be in a 3d view
+        ("camera/image", EntityKind::Image(Color, Small)), // should be in a 2d view and in the 3d view
+    ]);
+
+    run_heuristics_snapshot_test("one_3d_view_one_2d_view", &test_context);
 }
 
 #[test]
