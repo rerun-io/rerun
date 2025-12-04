@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.27.1](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatability with dependency
+## [0.27.2](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatibility with dependency
 
 - Fix non semver compliant breaking changes in `ply-rs` breaking Rust builds [#11890](https://github.com/rerun-io/rerun/pull/11890)
 
@@ -19,7 +19,7 @@
 - Reverted [#11766](https://github.com/rerun-io/rerun/pull/11766) because of performance issues with the time panel.
 
 
-## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 - 
+## [0.27.0](https://github.com/rerun-io/rerun/compare/0.26.2...0.27.0) - 2025-11-10 -
 ### ✨ Overview & highlights
 
 #### 🗄️ OSS server upgrades
