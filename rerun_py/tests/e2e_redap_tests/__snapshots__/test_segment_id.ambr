@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_partition_ids
+# name: test_segment_ids
   ┌──────────────────────────────────┬───────────────────┬──────────────────┐
   │ rerun_segment_id                 ┆ rerun_layer_names ┆ rerun_num_chunks │
   │ ---                              ┆ ---               ┆ ---              │
@@ -27,7 +27,7 @@
   └──────────────────────────────────┴───────────────────┴──────────────────┘
   Data truncated due to size.
 # ---
-# name: test_partition_ids.1
+# name: test_segment_ids.1
   list([
     '141a866deb2d49f69eb3215e8a404ffc',
     '24598969c97a4154a1ad0a262ee31b97',

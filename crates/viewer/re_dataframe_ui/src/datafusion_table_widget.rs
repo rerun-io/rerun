@@ -25,7 +25,7 @@ use crate::header_tooltip::column_header_tooltip_ui;
 use crate::re_table::ReTable;
 use crate::re_table_utils::{ColumnConfig, TableConfig};
 use crate::table_blueprint::{
-    ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+    ColumnBlueprint, EntryLinksSpec, SegmentLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
 use crate::table_selection::TableSelectionState;
 use crate::{DisplayRecordBatch, default_display_name_for_column};
@@ -174,16 +174,16 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn generate_partition_links(
+    pub fn generate_segment_links(
         mut self,
         column_name: impl Into<String>,
-        partition_id_column_name: impl Into<String>,
+        segment_id_column_name: impl Into<String>,
         origin: re_uri::Origin,
         dataset_id: EntryId,
     ) -> Self {
-        self.initial_blueprint.partition_links = Some(PartitionLinksSpec {
+        self.initial_blueprint.segment_links = Some(SegmentLinksSpec {
             column_name: column_name.into(),
-            partition_id_column_name: partition_id_column_name.into(),
+            segment_id_column_name: segment_id_column_name.into(),
             origin,
             dataset_id,
         });
@@ -629,7 +629,7 @@ impl DataFusionTableDelegate<'_> {
         None
     }
 
-    fn partition_link_for_row(&self, row: u64, spec: &PartitionLinksSpec) -> Option<String> {
+    fn segment_link_for_row(&self, row: u64, spec: &SegmentLinksSpec) -> Option<String> {
         let (display_record_batch, batch_index) =
             Self::with_row_batch(self.display_record_batches, row as usize)?;
         let column_index = self
@@ -645,7 +645,7 @@ impl DataFusionTableDelegate<'_> {
     }
 
     pub fn row_context_menu(&self, ui: &Ui, _row_number: u64) {
-        let has_context_menu = self.blueprint.partition_links.is_some();
+        let has_context_menu = self.blueprint.segment_links.is_some();
         if !has_context_menu {
             return;
         }
@@ -656,9 +656,9 @@ impl DataFusionTableDelegate<'_> {
             // re_table will ensure that the right-clicked row is always selected.
             let selected_rows = selection.selected_rows;
 
-            if let Some(partition_links_spec) = &self.blueprint.partition_links {
+            if let Some(segment_links_spec) = &self.blueprint.segment_links {
                 let label = format!(
-                    "Open {} partition{}",
+                    "Open {} segment{}",
                     selected_rows.len(),
                     format_plural_s(selected_rows.len())
                 );
@@ -668,15 +668,15 @@ impl DataFusionTableDelegate<'_> {
                 let open = |new_tab| {
                     // Let's open the recordings in order
                     for row in selected_rows.iter().copied().sorted() {
-                        if let Some(partition_link) =
-                            self.partition_link_for_row(row, partition_links_spec)
+                        if let Some(segment_link) =
+                            self.segment_link_for_row(row, segment_links_spec)
                         {
                             ui.ctx().open_url(OpenUrl {
-                                url: partition_link,
+                                url: segment_link,
                                 new_tab,
                             });
                         } else {
-                            error!("Could not get partition link for row {}", row);
+                            error!("Could not get segment link for row {}", row);
                         }
                     }
                 };

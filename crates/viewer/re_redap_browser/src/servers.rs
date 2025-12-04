@@ -239,7 +239,7 @@ impl Server {
 
             blueprint
         })
-        .generate_partition_links(
+        .generate_segment_links(
             RECORDING_LINK_COLUMN_NAME,
             ScanSegmentTableResponse::FIELD_SEGMENT_ID,
             self.origin.clone(),
