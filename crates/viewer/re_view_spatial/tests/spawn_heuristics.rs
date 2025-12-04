@@ -39,7 +39,8 @@ enum EntityKind {
 }
 
 fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
-    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<re_view_spatial::SpatialView2D>();
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
     let timeline_step = Timeline::new_sequence("step");
