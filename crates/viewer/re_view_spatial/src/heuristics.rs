@@ -132,19 +132,29 @@ fn default_excluded_entities_for_visualizer_kind(
         // Don't exclude if we want to include one of it's descendants.
         .filter(|e| !included_ancestors.contains(e))
         // Find the highest ancestor we can use for this exclusion.
-        .map(|e| {
-            let mut highest = e.clone();
+        .filter_map(|e| {
+            let mut highest = None;
+            let mut current = e.clone();
 
             loop {
-                let Some(p) = highest.parent() else {
+                let Some(p) = current.parent() else {
+                    if highest.is_none() {
+                        highest = Some(current.clone());
+                    }
+
                     break;
                 };
 
-                if included_ancestors.contains(&p) {
-                    break;
+                // If this is a child of an included entity always include it.
+                if included_entities.contains(&p) {
+                    return None;
                 }
 
-                highest = p;
+                current = p.clone();
+
+                if highest.is_none() && included_ancestors.contains(&p) {
+                    highest = Some(current.clone());
+                }
             }
 
             highest
