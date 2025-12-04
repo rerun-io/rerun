@@ -758,7 +758,7 @@ impl TracingInjectorInterceptor {
 }
 
 impl tonic::service::Interceptor for TracingInjectorInterceptor {
-    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+    fn call(&mut self, mut req: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
         struct MetadataMap<'a>(&'a mut tonic::metadata::MetadataMap);
 
         impl opentelemetry::propagation::Injector for MetadataMap<'_> {

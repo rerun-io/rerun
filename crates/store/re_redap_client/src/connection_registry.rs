@@ -12,7 +12,7 @@ use tonic::Code;
 
 use crate::connection_client::GenericConnectionClient;
 use crate::grpc::{RedapClient, RedapClientInner};
-use crate::{ApiError, TonicStatusError};
+use crate::{ApiError, ApiResult, TonicStatusError};
 
 /// This is the type of `ConnectionClient` used throughout the viewer, where the
 /// `ConnectionRegistry` is used.
@@ -174,7 +174,7 @@ impl ConnectionRegistryHandle {
     /// - Local credentials for Rerun Cloud
     ///
     /// Failing that, no token will be used.
-    pub async fn client(&self, origin: re_uri::Origin) -> Result<ConnectionClient, ApiError> {
+    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
         // happy path
         {
             let inner = self.inner.read().await;
@@ -252,7 +252,7 @@ impl ConnectionRegistryHandle {
     async fn try_create_raw_client(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = Credentials>,
-    ) -> Result<(RedapClient, Option<Credentials>), ApiError> {
+    ) -> ApiResult<(RedapClient, Option<Credentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
@@ -297,7 +297,7 @@ impl ConnectionRegistryHandle {
     async fn create_and_validate_raw_client_with_token(
         origin: re_uri::Origin,
         credentials: Option<Credentials>,
-    ) -> Result<RedapClient, ApiError> {
+    ) -> ApiResult<RedapClient> {
         let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
             match &credentials {
                 Some(Credentials::Token(token)) => Some(Arc::new(
