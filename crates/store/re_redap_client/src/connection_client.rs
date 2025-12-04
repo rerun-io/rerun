@@ -391,7 +391,7 @@ where
             })?
             .pipe(RecordBatch::try_from)
             .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))?
-            .pipe(RrdManifestMessage::from_record_batch)
+            .pipe(RrdManifestMessage::try_from_record_batch)
             .map_err(|err| ApiError::serialization(err, "failed to parse /GetRrdManifest response"))
     }
 

@@ -43,7 +43,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     use futures::StreamExt as _;
     let mut chunks = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
-            chunk_infos: vec![rrd_manifest_batch.into()],
+            chunk_infos: vec![rrd_manifest_batch.clone().into()],
         }))
         .await
         .unwrap()
@@ -62,6 +62,10 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
     let printed = chunks.iter().map(|chunk| format!("{chunk:240}")).join("\n");
 
     insta::assert_snapshot!("fetch_chunks_from_rrd_manifest", printed);
+
+    if let Err(err) = re_types_core::RrdManifestMessage::try_from_record_batch(rrd_manifest_batch) {
+        panic!("Failed to parse Rrd Manifest: {err}");
+    }
 }
 
 // ---
