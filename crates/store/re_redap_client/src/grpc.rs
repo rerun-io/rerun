@@ -45,7 +45,8 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
                 )
             })
             .map_err(|err| ApiError::connection(err, "connecting to server"))?
-            .http2_adaptive_window(true); // Optimize for throughput
+            .http2_adaptive_window(true) // Optimize for throughput
+            .connect_timeout(std::time::Duration::from_secs(10));
 
         if false {
             // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
@@ -53,10 +54,9 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
             endpoint = endpoint.initial_connection_window_size(Some(16 * 1024 * 1024));
         }
 
-        endpoint
-            .connect()
-            .await
-            .map_err(|err| ApiError::connection(err, "connecting to server"))
+        endpoint.connect().await.map_err(|err| {
+            ApiError::connection(err, format!("failed to connect to server at {origin}"))
+        })
     };
 
     match endpoint {
