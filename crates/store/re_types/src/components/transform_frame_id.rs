@@ -30,8 +30,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note that any [`archetypes::Transform3D`][crate::archetypes::Transform3D]s logged at an entity path describes a relationship between the
 ///  transform frames `parent` and `child`, **not** the transform frame that the entity path may be
 /// using. Which is defined by [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
-///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct TransformFrameId(pub crate::datatypes::Utf8);

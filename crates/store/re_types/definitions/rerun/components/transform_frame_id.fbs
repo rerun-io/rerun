@@ -10,7 +10,7 @@ namespace rerun.components;
 ///  transform frames `parent` and `child`, **not** the transform frame that the entity path may be
 /// using. Which is defined by [archetypes.CoordinateFrame].
 table TransformFrameId (
-  "attr.rerun.state": "unstable",
+  "attr.rerun.state": "stable",
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",

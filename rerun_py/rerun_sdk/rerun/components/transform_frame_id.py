@@ -25,8 +25,6 @@ class TransformFrameId(datatypes.Utf8, ComponentMixin):
     Note that any [`archetypes.Transform3D`][rerun.archetypes.Transform3D]s logged at an entity path describes a relationship between the
      transform frames `parent` and `child`, **not** the transform frame that the entity path may be
     using. Which is defined by [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
-
-    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

@@ -21,9 +21,6 @@ namespace rerun::components {
     /// Note that any `archetypes::Transform3D`s logged at an entity path describes a relationship between the
     ///  transform frames `parent` and `child`, **not** the transform frame that the entity path may be
     /// using. Which is defined by `archetypes::CoordinateFrame`.
-    ///
-    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    ///
     struct TransformFrameId {
         rerun::datatypes::Utf8 value;
 
