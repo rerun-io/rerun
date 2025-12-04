@@ -230,7 +230,7 @@ fn test_mixed_2d_and_3d_at_root() {
     let test_context = build_test_scene(&[
         ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
         ("image2", EntityKind::Image(Color, Small)), // should be separate 2D views
-        // box and camera should be in the 3d view
+        // box and camera should be in the 3D view
         ("box", EntityKind::BBox3D),
         ("camera", EntityKind::Pinhole(Small)),
         ("camera", EntityKind::Image(Color, Small)), // should be a separate 2D view
@@ -244,8 +244,8 @@ fn test_pinhole_with_2d() {
     use ImageType::*;
 
     let test_context = build_test_scene(&[
-        ("camera", EntityKind::Pinhole(Small)), // should be in a 3d view
-        ("camera/image", EntityKind::Image(Color, Small)), // should be in a 2d view and in the 3d view
+        ("camera", EntityKind::Pinhole(Small)), // should be in a 3D view
+        ("camera/image", EntityKind::Image(Color, Small)), // should be in a 2D view and in the 3D view
     ]);
 
     run_heuristics_snapshot_test("one_3d_view_one_2d_view", &test_context);
