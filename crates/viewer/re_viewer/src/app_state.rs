@@ -27,12 +27,12 @@ use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
-use crate::ui::{CloudState, LoginState};
 use crate::app_blueprint::AppBlueprint;
 use crate::app_blueprint_ctx::AppBlueprintCtx;
 use crate::navigation::Navigation;
 use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
+use crate::ui::{CloudState, LoginState};
 use crate::{StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
