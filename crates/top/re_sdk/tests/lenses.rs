@@ -6,7 +6,7 @@ use std::sync::Arc;
 use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder, StringBuilder};
 use arrow::datatypes::{DataType, Field};
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
-use re_sdk::lenses::{Lens, Lenses, Op};
+use re_sdk::lenses::{Lens, Lenses, Op, OutputMode};
 use re_types::ComponentDescriptor;
 use re_types::archetypes::Scalars;
 
@@ -144,7 +144,7 @@ fn test_destructure_cast() {
     .unwrap()
     .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(destructure);
 
     let res: Vec<re_chunk::Chunk> = lenses
@@ -173,7 +173,7 @@ fn test_destructure() {
     .unwrap()
     .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(destructure);
 
     let res: Vec<re_chunk::Chunk> = lenses
@@ -222,7 +222,7 @@ fn test_inner_count() {
     .unwrap()
     .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(count);
 
     let res: Vec<re_chunk::Chunk> = lenses
@@ -268,7 +268,7 @@ fn test_static_chunk_creation() {
     .unwrap()
     .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(static_lens);
 
     let res: Vec<re_chunk::Chunk> = lenses
@@ -335,7 +335,7 @@ fn test_time_column_extraction() {
     .unwrap()
     .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(time_lens);
 
     let res: Vec<Chunk> = lenses
@@ -472,7 +472,7 @@ fn test_scatter_columns() {
         .unwrap()
         .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
@@ -575,7 +575,7 @@ fn test_scatter_columns_static() {
         .unwrap()
         .build();
 
-    let mut lenses = Lenses::default();
+    let mut lenses = Lenses::new(OutputMode::DropUnmatched);
     lenses.add_lens(scatter_lens);
 
     let res: Vec<Chunk> = lenses
