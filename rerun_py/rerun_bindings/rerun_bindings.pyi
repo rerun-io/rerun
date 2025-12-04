@@ -520,7 +520,7 @@ class Recording:
         monotonically increasing when data is sent from a single process.
 
         If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
+        specified) and no index columns. It will also contain a single row per segment.
 
         Parameters
         ----------
