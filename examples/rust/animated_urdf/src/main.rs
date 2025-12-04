@@ -12,6 +12,7 @@ struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
+use rerun::components::Translation3D;
 use rerun::external::re_data_loader::UrdfTree;
 use rerun::external::{re_log, urdf_rs};
 
@@ -56,6 +57,7 @@ fn run(rec: &rerun::RecordingStream, _args: &Args) -> anyhow::Result<()> {
                         fixed_axis,
                         dynamic_angle as f32,
                     ))
+                    .with_translation(Translation3D::from(joint.origin.xyz.0))
                     .with_parent_frame(joint.parent.link.clone())
                     .with_child_frame(joint.child.link.clone()),
                 )?;
