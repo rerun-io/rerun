@@ -472,10 +472,6 @@ impl RrdManifest {
             for sorbet_column in &sorbet_columns {
                 let md = sorbet_column.metadata();
 
-                if md.get("rerun:is_static").map(|s| s.as_str()) == Some("true") {
-                    continue;
-                }
-
                 let Some(component) = md.get("rerun:component") else {
                     return Err(crate::CodecError::from(ChunkError::Malformed {
                         reason: format!(
@@ -500,6 +496,16 @@ impl RrdManifest {
                         Some(sorbet_index.name()),
                         Some(suffix),
                     );
+
+                    if md.get("rerun:is_static").map(|s| s.as_str()) == Some("true") {
+                        // Static columns don't have :start nor :end columns... unless they exist
+                        // both temporally and statically, something which is legal in Rerun, and
+                        // will end up with a final Sorbet schema that declares those column as
+                        // static (which is correct, since static overrides everything else), even
+                        // though there are still traces of temporal data for that same column!
+                        _ = rrd_manifest_fields.remove(&column_name);
+                        continue;
+                    }
 
                     let Some(field) = rrd_manifest_fields.remove(&column_name) else {
                         // Not all indexes have all components, that's fine.
