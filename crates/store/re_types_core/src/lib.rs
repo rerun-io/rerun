@@ -34,6 +34,7 @@ pub mod reflection;
 mod result;
 mod row_id;
 mod rrd_manifest_message;
+mod timeline_name;
 mod tuid;
 mod view;
 mod wrapper_component;
@@ -64,6 +65,7 @@ pub use self::rrd_manifest_message::RrdManifestMessage;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;
+pub use timeline_name::TimelineName;
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
