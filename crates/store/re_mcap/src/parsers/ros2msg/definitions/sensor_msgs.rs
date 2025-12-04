@@ -334,6 +334,9 @@ pub struct NavSatStatus {
 #[serde(from = "i8", into = "i8")]
 #[repr(i8)]
 pub enum NavSatFixStatus {
+    /// Status is unknown.
+    Unknown = -2,
+
     /// Unable to fix position.
     NoFix = -1,
 
@@ -350,10 +353,11 @@ pub enum NavSatFixStatus {
 impl From<i8> for NavSatFixStatus {
     fn from(value: i8) -> Self {
         match value {
+            -1 => Self::NoFix,
             0 => Self::Fix,
             1 => Self::SbasFix,
             2 => Self::GbasFix,
-            _ => Self::NoFix,
+            _ => Self::Unknown,
         }
     }
 }
