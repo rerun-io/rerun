@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_chunk::ChunkId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::StoreKind;
-use re_types_core::ChunkIndexMessage;
+use re_types_core::RrdManifestMessage;
 
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
@@ -22,7 +22,7 @@ pub struct ChunkInfo {
 /// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
-pub struct ChunkIndex {
+pub struct RrdManifest {
     /// Set if we have received an index.
     ///
     /// This only happens for some data sources.
@@ -44,9 +44,9 @@ pub struct ChunkIndex {
     has_deleted: bool,
 }
 
-impl ChunkIndex {
+impl RrdManifest {
     #[expect(clippy::needless_pass_by_value)] // In the future we may want to store them as record batches
-    pub fn append(&mut self, msg: ChunkIndexMessage) {
+    pub fn append(&mut self, msg: RrdManifestMessage) {
         re_tracing::profile_function!();
         self.has_index = true;
         for chunk_id in msg.chunk_ids() {

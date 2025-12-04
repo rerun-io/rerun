@@ -33,7 +33,7 @@ pub enum ChunkIndexError {
 ///
 /// This is sent from the server to the client/viewer.
 #[ouroboros::self_referencing]
-pub struct ChunkIndexMessage {
+pub struct RrdManifestMessage {
     rb: RecordBatch,
 
     #[borrows(rb)]
@@ -42,7 +42,7 @@ pub struct ChunkIndexMessage {
     chunk_is_static: BooleanArray,
 }
 
-impl std::fmt::Debug for ChunkIndexMessage {
+impl std::fmt::Debug for RrdManifestMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ChunkIndexMessage")
             .field("num_chunks", &self.num_rows())
@@ -50,14 +50,14 @@ impl std::fmt::Debug for ChunkIndexMessage {
     }
 }
 
-impl Clone for ChunkIndexMessage {
+impl Clone for RrdManifestMessage {
     fn clone(&self) -> Self {
         #![expect(clippy::unwrap_used)] // `self` is existence proof that this cannot fail
         Self::from_record_batch(self.borrow_rb().clone()).unwrap()
     }
 }
 
-impl ChunkIndexMessage {
+impl RrdManifestMessage {
     pub fn from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
         #![expect(clippy::unwrap_used)] // We validate before running the builder
 
@@ -67,7 +67,9 @@ impl ChunkIndexMessage {
             return Err(ChunkIndexError::NullsInChunkIsStatic);
         }
 
-        Ok(ChunkIndexMessageBuilder {
+        // TODO(emilk): parse all the other columns
+
+        Ok(RrdManifestMessageBuilder {
             rb,
             chunk_is_static,
             chunk_ids_builder: |rb: &RecordBatch| chunk_ids_from_rb(rb).unwrap(),
