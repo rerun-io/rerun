@@ -64,7 +64,7 @@ impl Authentication {
     }
 
     fn start_login_flow(&mut self, ui: &mut egui::Ui) {
-        match LoginFlow::open(ui, None) {
+        match LoginFlow::open(ui) {
             Ok(flow) => {
                 self.login_flow = Some(flow);
                 self.error = None;

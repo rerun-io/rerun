@@ -24,8 +24,8 @@ pub enum LoginFlowResult {
 }
 
 impl LoginFlow {
-    pub fn open(ui: &mut egui::Ui, login_hint: Option<&str>) -> Result<Self, String> {
-        State::open(ui, login_hint).map(|state| Self {
+    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
+        State::open(ui).map(|state| Self {
             state,
             #[cfg(target_arch = "wasm32")]
             started: false,
