@@ -2487,35 +2487,26 @@ mod tests {
         let transforms_frame0 = timeline_transforms
             .frame_transforms(TransformFrameIdHash::from_str("frame0"))
             .unwrap();
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            None
-        );
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(2.0, 0.0, 0.0)),
-            })
-        );
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::from_str("frame1"),
-                transform: DAffine3::from_translation(glam::dvec3(3.0, 0.0, 0.0)),
-            })
-        );
-        assert_eq!(
-            transforms_frame0
-                .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::from_str("frame1"),
-                transform: DAffine3::from_translation(glam::dvec3(3.0, 0.0, 0.0)),
-            })
-        );
+        for (t, expected_translation_and_parent) in [
+            (4, Some((3.0, TransformFrameIdHash::from_str("frame1")))),
+            (3, Some((3.0, TransformFrameIdHash::from_str("frame1")))),
+            (
+                2,
+                Some((2.0, TransformFrameIdHash::entity_path_hierarchy_root())),
+            ),
+            (1, None),
+            (0, None),
+        ] {
+            assert_eq!(
+                transforms_frame0
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                expected_translation_and_parent.map(|(x, parent)| ParentFromChildTransform {
+                    parent,
+                    transform: DAffine3::from_translation(glam::dvec3(x, 0.0, 0.0)),
+                }),
+                "querying at t=={t}"
+            );
+        }
 
         // frame1 is never a child, only a parent.
         assert!(
