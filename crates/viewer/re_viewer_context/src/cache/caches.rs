@@ -85,7 +85,7 @@ impl Caches {
             .caches
             .lock()
             .entry(TypeId::of::<C>())
-            .or_insert(Box::<C>::default())
+            .or_insert_with(|| Box::<C>::default())
             .as_any_mut()
             .downcast_mut::<C>()
             .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))
