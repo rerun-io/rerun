@@ -1041,10 +1041,10 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::Pose) {
+                let poses = per_timeline
+                    .get_or_create_pose_transforms_temporal(entity_path, static_timeline);
                 for (time, _) in chunk.iter_indices(timeline) {
-                    per_timeline
-                        .get_or_create_pose_transforms_temporal(entity_path, static_timeline)
-                        .invalidate_at(time);
+                    poses.invalidate_at(time);
                 }
             }
             if aspects.contains(TransformAspect::PinholeOrViewCoordinates) {
@@ -1219,9 +1219,8 @@ impl TransformResolutionCache {
                 }
             }
             if aspects.contains(TransformAspect::Pose) {
-                for (time, _) in chunk.iter_indices(timeline) {
-                    if let Some(poses) = per_timeline.per_entity_poses.get_mut(&entity_path.hash())
-                    {
+                if let Some(poses) = per_timeline.per_entity_poses.get_mut(&entity_path.hash()) {
+                    for (time, _) in chunk.iter_indices(timeline) {
                         poses.poses_per_time.get_mut().remove(&time);
                     }
                 }
