@@ -32,7 +32,7 @@ use url::Url;
 
 use crate::{ApiError, ApiResult};
 
-pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = Result<T, tonic::Status>> + Send>>;
+pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = tonic::Result<T>> + Send>>;
 
 pub type FetchChunksResponseStream =
     ResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;

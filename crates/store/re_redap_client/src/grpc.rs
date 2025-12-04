@@ -246,7 +246,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
 ) -> impl Stream<Item = ApiResult<Vec<(Chunk, Option<String>)>>>
 where
-    S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
+    S: Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
 {
     response.map(|resp| {
         let resp = resp.map_err(|err| {
