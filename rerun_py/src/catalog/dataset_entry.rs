@@ -168,7 +168,7 @@ impl PyDatasetEntryInternal {
     fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
-        connection.get_dataset_partition_ids(self_.py(), self_.entry_details.id)
+        connection.get_dataset_segment_ids(self_.py(), self_.entry_details.id)
     }
 
     /// Return the segment table as a Datafusion table provider.
@@ -410,7 +410,7 @@ impl PyDatasetEntryInternal {
         recording_layers = vec![],
     ))]
     #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
-    // TODO(ab): it might be useful to return partition ids directly since we have them
+    // TODO(ab): it might be useful to return segment ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
@@ -508,7 +508,7 @@ impl PyDatasetEntryInternal {
     /// monotonically increasing when data is sent from a single process.
     ///
     /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per partition.
+    /// specified) and no index columns. It will also contain a single row per segment.
     ///
     /// Parameters
     /// ----------

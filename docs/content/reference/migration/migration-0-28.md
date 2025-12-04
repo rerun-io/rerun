@@ -102,3 +102,17 @@ The DataFusion utility functions in `rerun.utilities.datafusion.functions.url_ge
 | `partition_url_with_timeref_udf()` | `segment_url_with_timeref_udf()` |
 
 The partition table columns have also been renamed from `rerun_partition_id` to `rerun_segment_id`.
+
+Additionally, the `partition_id` field on viewer event classes has been renamed to `segment_id`:
+
+```python
+# Before (0.27)
+def on_event(event):
+    print(event.partition_id)
+
+# After (0.28)
+def on_event(event):
+    print(event.segment_id)
+```
+
+This affects `PlayEvent`, `PauseEvent`, `TimeUpdateEvent`, `TimelineChangeEvent`, `SelectionChangeEvent`, and `RecordingOpenEvent`.

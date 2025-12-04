@@ -52,7 +52,7 @@ impl PyDataframeQueryView {
     ) -> PyResult<Self> {
         // Static only implies:
         // - we include only static columns in the contents
-        // - we only return one row per partition, with the static data
+        // - we only return one row per segment, with the static data
         let static_only = index.is_none();
 
         // We get the schema from the store since we need it to resolve our columns

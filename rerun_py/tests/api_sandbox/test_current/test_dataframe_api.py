@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
+def test_dataframe_api_filter_segment_id(simple_dataset_prefix: Path) -> None:
     with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset_entry(name="ds")
@@ -21,7 +21,7 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
             "simple_recording_0", "simple_recording_2"
         )
 
-        # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
+        # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple segments
         df = view.df().sort("rerun_segment_id")
 
         assert str(df) == inline_snapshot("""\
@@ -70,7 +70,7 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
         client = server.client()
         ds = client.get_dataset_entry(name="ds")
 
-        # Create a view with all partitions
+        # Create a view with all segments
         view = (
             ds.dataframe_query_view(index="timeline", contents="/**")
             .using_index_values(

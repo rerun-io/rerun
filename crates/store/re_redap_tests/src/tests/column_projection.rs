@@ -34,7 +34,7 @@ async fn test_column_projections<T>(
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [LayerDefinition::properties(
-            "my_partition_id",
+            "my_segment_id",
             [
                 prop(
                     "text_log",

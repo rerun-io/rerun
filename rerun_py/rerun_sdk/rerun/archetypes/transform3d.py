@@ -289,9 +289,9 @@ class Transform3D(Transform3DExt, Archetype):
         child_frame:
             The child frame this transform transforms from.
 
-            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
 
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -388,9 +388,9 @@ class Transform3D(Transform3DExt, Archetype):
         child_frame:
             The child frame this transform transforms from.
 
-            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
 
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -539,9 +539,9 @@ class Transform3D(Transform3DExt, Archetype):
     )
     # The child frame this transform transforms from.
     #
-    # The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+    # The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
     # E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-    # with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+    # with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
     #
     # If not specified, this is set to the implicit transform frame of the current entity path.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.

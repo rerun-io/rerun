@@ -689,7 +689,7 @@ pub fn entity_db_button_ui(
 
     // We try to use a name that has the most chance to be familiar to the user:
     // - The recording name has to be explicitly set by the user, so use it if it exists.
-    // - For remote data, partition id have a lot of visibility too, so good fall-back.
+    // - For remote data, segment id have a lot of visibility too, so good fall-back.
     // - Lacking anything better, the start time is better than a random id and caters to the local
     //   workflow where the same logging process is run repeatedly.
     let recording_name = if let Some(recording_name) =
@@ -809,11 +809,11 @@ pub fn entity_db_button_ui(
             ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_entry.display_mode())
                 .and_then(|url| url.sharable_url(None));
         if ui
-            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {
-                format!("Can't copy a link to this partition: {err}")
+                format!("Can't copy a link to this segment: {err}")
             } else {
-                "Can't copy a link to this partition".to_owned()
+                "Can't copy a link to this segment".to_owned()
             })
             .clicked()
             && let Ok(url) = url
@@ -822,7 +822,7 @@ pub fn entity_db_button_ui(
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
-        if ui.button("Copy partition name").clicked() {
+        if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {recording_name:?} to clipboard");
             ui.ctx().copy_text(recording_name);
         }

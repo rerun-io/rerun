@@ -10,7 +10,7 @@ use re_log_types::Timestamp;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
-use crate::table_blueprint::{EntryLinksSpec, PartitionLinksSpec, SortBy, TableBlueprint};
+use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
 use crate::table_selection::TableSelectionState;
 use crate::{ColumnFilter, RequestedObject};
 
@@ -34,7 +34,7 @@ fn col(name: &str) -> datafusion::logical_expr::Expr {
 #[derive(Debug, Clone, PartialEq, Default)]
 struct DataFusionQueryData {
     pub sort_by: Option<SortBy>,
-    pub partition_links: Option<PartitionLinksSpec>,
+    pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
     pub prefilter: Option<datafusion::prelude::Expr>,
     pub column_filters: Vec<ColumnFilter>,
@@ -44,7 +44,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
     fn from(value: &TableBlueprint) -> Self {
         let TableBlueprint {
             sort_by,
-            partition_links,
+            segment_links,
             entry_links,
             prefilter,
             column_filters,
@@ -52,7 +52,7 @@ impl From<&TableBlueprint> for DataFusionQueryData {
 
         Self {
             sort_by: sort_by.clone(),
-            partition_links: partition_links.clone(),
+            segment_links: segment_links.clone(),
             entry_links: entry_links.clone(),
             prefilter: prefilter.clone(),
             column_filters: column_filters.clone(),
@@ -104,31 +104,28 @@ impl DataFusionQuery {
 
         let DataFusionQueryData {
             sort_by,
-            partition_links,
+            segment_links,
             entry_links,
             prefilter,
             column_filters,
         } = &self.query_data;
 
         //
-        // Partition links
+        // Segment links
         //
 
         // Important: the needs to happen first, in case we sort/filter/etc. based on that
         // particular column.
-        if let Some(partition_links) = partition_links {
+        if let Some(segment_links) = segment_links {
             //TODO(ab): we should get this from `re_uri::DatasetDataUri` instead of hardcoding
             let uri = format!(
                 "{}/dataset/{}/data?segment_id=",
-                partition_links.origin, partition_links.dataset_id
+                segment_links.origin, segment_links.dataset_id
             );
 
             dataframe = dataframe.with_column(
-                &partition_links.column_name,
-                concat(vec![
-                    lit(uri),
-                    col(&partition_links.partition_id_column_name),
-                ]),
+                &segment_links.column_name,
+                concat(vec![lit(uri), col(&segment_links.segment_id_column_name)]),
             )?;
         }
 

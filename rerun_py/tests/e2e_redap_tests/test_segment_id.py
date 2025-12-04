@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from e2e_redap_tests.conftest import EntryFactory
 
 
-def test_partition_ids(entry_factory: EntryFactory, resource_prefix: str, snapshot: SnapshotAssertion) -> None:
+def test_segment_ids(entry_factory: EntryFactory, resource_prefix: str, snapshot: SnapshotAssertion) -> None:
     """Test that we can successfully collect information about segments."""
 
     ds = entry_factory.create_dataset("test_dataset")

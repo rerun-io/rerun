@@ -61,20 +61,20 @@ def create_results_table(client: CatalogClient, directory: Path) -> DataFrame:
     return create_table(client, directory, RESULTS_TABLE_NAME, schema)
 
 
-def find_missing_partitions(partition_table: DataFrame, status_log_table: DataFrame) -> list[str]:
-    """Query the status log table for partitions that have not processed."""
+def find_missing_segments(segment_table: DataFrame, status_log_table: DataFrame) -> list[str]:
+    """Query the status log table for segments that have not processed."""
     status_log_table = status_log_table.filter(col("is_complete"))
-    partitions = partition_table.join(status_log_table, on="rerun_segment_id", how="anti")
+    segments = segment_table.join(status_log_table, on="rerun_segment_id", how="anti")
 
-    partition_list = collect_to_string_list(partitions, "rerun_segment_id")
+    segment_list = collect_to_string_list(segments, "rerun_segment_id")
 
     # This cast is to satisfy mypy type checking. It is not strictly necessary.
-    return cast("list[str]", partition_list)
+    return cast("list[str]", segment_list)
 
 
-def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_list: list[str]) -> None:
+def process_segments(client: CatalogClient, dataset: DatasetEntry, segment_list: list[str]) -> None:
     """
-    Example code for processing some partitions within a dataset.
+    Example code for processing some segments within a dataset.
 
     This example performs a simple aggregation of some of the values stored in the dataset that
     might be useful for further processing or metrics extraction. In this work flow we first write
@@ -86,12 +86,12 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
     """
     client.append_to_table(
         STATUS_LOG_TABLE_NAME,
-        rerun_segment_id=partition_list,
-        is_complete=[False] * len(partition_list),
-        update_time=[datetime.now()] * len(partition_list),
+        rerun_segment_id=segment_list,
+        is_complete=[False] * len(segment_list),
+        update_time=[datetime.now()] * len(segment_list),
     )
 
-    df = dataset.dataframe_query_view(index="time_1", contents="/**").filter_partition_id(*partition_list).df()
+    df = dataset.dataframe_query_view(index="time_1", contents="/**").filter_segment_id(*segment_list).df()
 
     df = df.aggregate(
         "rerun_segment_id",
@@ -123,14 +123,14 @@ def process_partitions(client: CatalogClient, dataset: DatasetEntry, partition_l
     # can use an append statement as in the previous write.
     client.update_table(
         STATUS_LOG_TABLE_NAME,
-        rerun_segment_id=partition_list,
-        is_complete=[True] * len(partition_list),
-        update_time=[datetime.now()] * len(partition_list),
+        rerun_segment_id=segment_list,
+        is_complete=[True] * len(segment_list),
+        update_time=[datetime.now()] * len(segment_list),
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Process some partitions in a dataset.")
+    parser = argparse.ArgumentParser(description="Process some segments in a dataset.")
     parser.add_argument("--temp-dir", type=str, default=None, help="Temporary directory to store tables.")
     # TODO(#11760): Remove unneeded args when examples infra is fixed.
     rr.script_add_args(parser)
@@ -155,15 +155,15 @@ def run_example(temp_path: Path) -> None:
         status_log_table = create_status_log_table(client, temp_path)
         results_table = create_results_table(client, temp_path)
 
-        partition_table = dataset.partition_table().df().select("rerun_segment_id").distinct()
+        segment_table = dataset.segment_table().df().select("rerun_segment_id").distinct()
 
-        missing_partitions = None
-        while missing_partitions is None or len(missing_partitions) != 0:
-            missing_partitions = find_missing_partitions(partition_table, status_log_table)
-            print(f"{len(missing_partitions)} of {partition_table.count()} partitions have not processed.")
+        missing_segments = None
+        while missing_segments is None or len(missing_segments) != 0:
+            missing_segments = find_missing_segments(segment_table, status_log_table)
+            print(f"{len(missing_segments)} of {segment_table.count()} segments have not processed.")
 
-            if len(missing_partitions) > 0:
-                process_partitions(client, dataset, missing_partitions[0:3])
+            if len(missing_segments) > 0:
+                process_segments(client, dataset, missing_segments[0:3])
 
         # Show the final results
         print("Results table:")

@@ -79,7 +79,7 @@ impl InMemoryStore {
             let dataset = self.dataset(*dataset_id)?;
 
             for (segment_id, layer_index) in segment_index {
-                let partition = dataset.partition(segment_id)?;
+                let segment = dataset.segment(segment_id)?;
 
                 let store_id = StoreId::new(
                     StoreKind::Recording,
@@ -88,7 +88,7 @@ impl InMemoryStore {
                 );
 
                 for (layer_name, chunk_keys) in layer_index {
-                    let store_handle = partition
+                    let store_handle = segment
                         .layer(layer_name)
                         .ok_or_else(|| {
                             Error::LayerNameNotFound(
