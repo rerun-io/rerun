@@ -46,7 +46,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                     RowId::new(),
                     TimePoint::STATIC,
                     &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
-                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoseTranslation3D`
+                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoses3D`-like Translation3D`
                         [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
                     )
                     .with_colors([0x0000FFFF]),

@@ -6,9 +6,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{Chunk, LatestAtQuery, UnitChunkShared};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
-use re_types::archetypes::{
-    InstancePoses3D, {self},
-};
+use re_types::archetypes::{self, InstancePoses3D};
 use re_types::external::arrow::array::Array as _;
 use re_types::external::arrow::{self};
 use re_types::{ComponentIdentifier, TransformFrameIdHash, components};
@@ -202,8 +200,6 @@ pub fn query_and_resolve_tree_transform_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Result<ParentFromChildTransform, TransformError> {
-    // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
-
     // Topology
     let identifier_parent_frame = archetypes::Transform3D::descriptor_parent_frame().component;
     let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
@@ -417,23 +413,23 @@ pub fn query_and_resolve_instance_poses_at_entity(
     }
 
     let batch_translation = unit_chunk
-        .component_batch::<components::PoseTranslation3D>(identifier_translations)
+        .component_batch::<components::Translation3D>(identifier_translations)
         .and_then(|v| v.ok())
         .unwrap_or_default();
     let batch_rotation_axis_angle = unit_chunk
-        .component_batch::<components::PoseRotationAxisAngle>(identifier_rotation_axis_angles)
+        .component_batch::<components::RotationAxisAngle>(identifier_rotation_axis_angles)
         .and_then(|v| v.ok())
         .unwrap_or_default();
     let batch_rotation_quat = unit_chunk
-        .component_batch::<components::PoseRotationQuat>(identifier_quaternions)
+        .component_batch::<components::RotationQuat>(identifier_quaternions)
         .and_then(|v| v.ok())
         .unwrap_or_default();
     let batch_scale = unit_chunk
-        .component_batch::<components::PoseScale3D>(identifier_scales)
+        .component_batch::<components::Scale3D>(identifier_scales)
         .and_then(|v| v.ok())
         .unwrap_or_default();
     let batch_mat3x3 = unit_chunk
-        .component_batch::<components::PoseTransformMat3x3>(identifier_mat3x3)
+        .component_batch::<components::TransformMat3x3>(identifier_mat3x3)
         .and_then(|v| v.ok())
         .unwrap_or_default();
 
@@ -457,11 +453,11 @@ pub fn query_and_resolve_instance_poses_at_entity(
             // We apply these in a specific order.
             let mut transform = DAffine3::IDENTITY;
             if let Some(translation) = iter_translation.next() {
-                transform = convert::pose_translation_3d_to_daffine3(translation);
+                transform = convert::translation_3d_to_daffine3(translation);
             }
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
                 if let Ok(axis_angle) =
-                    convert::pose_rotation_axis_angle_to_daffine3(rotation_axis_angle)
+                    convert::rotation_axis_angle_to_daffine3(rotation_axis_angle)
                 {
                     transform *= axis_angle;
                 } else {
@@ -469,17 +465,17 @@ pub fn query_and_resolve_instance_poses_at_entity(
                 }
             }
             if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = convert::pose_rotation_quat_to_daffine3(rotation_quat) {
+                if let Ok(rotation_quat) = convert::rotation_quat_to_daffine3(rotation_quat) {
                     transform *= rotation_quat;
                 } else {
                     transform = DAffine3::ZERO;
                 }
             }
             if let Some(scale) = iter_scale.next() {
-                transform *= convert::pose_scale_3d_to_daffine3(scale);
+                transform *= convert::scale_3d_to_daffine3(scale);
             }
             if let Some(mat3x3) = iter_mat3x3.next() {
-                transform *= convert::pose_transform_mat3x3_to_daffine3(mat3x3);
+                transform *= convert::transform_mat3x3_to_daffine3(mat3x3);
             }
             transform
         })

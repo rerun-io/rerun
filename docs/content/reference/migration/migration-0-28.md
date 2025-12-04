@@ -5,6 +5,18 @@ order: 982
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
+## `Pose*` component types have been removed
+
+The following component types have been removed in favor of their more general counterparts:
+
+* `components.PoseTranslation3D` → `components.Translation3D`
+* `components.PoseRotationQuat` → `components.RotationQuat`
+* `components.PoseTransformMat3x3` → `components.TransformMat3x3`
+* `components.PoseRotationAxisAngle` → `components.RotationAxisAngle`
+* `components.PoseScale3D` →  `components.Scale3D`
+
+Existing `.rrd` files will be automatically migrated when opened.
+
 ## `Transform3D` no longer supports `axis_length` for visualizing coordinate axes
 
 The `axis_length` parameter/method has been moved from `Transform3D` to a new `TransformAxes3D` archetype, which you can log alongside of `Transform3D`.

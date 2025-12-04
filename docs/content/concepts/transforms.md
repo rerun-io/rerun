@@ -44,7 +44,10 @@ with `child_frame` and `parent_frame` parameters set to their respective names.
 snippet: concepts/transform3d_hierarchy_named_frames
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
-**Note:** A current limitation to this is that once a `Transform3D` relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
+**Note:** A current limitation to this is that once a `Transform3D` (or `Pinhole`) relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
+An exception to this rule is [static data](../concepts/static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
+This is useful to specify "default" transforms without yet knowing what timeline and paths are going to be used for temporal transforms.
+
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
