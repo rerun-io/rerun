@@ -89,6 +89,27 @@ mod tests {
 
 // ----------------------------------------------------------------
 
+/// Error used when a column is missing from a record batcj
+#[derive(Debug, Clone, thiserror::Error)]
+pub struct MissingColumnError {
+    pub name: String,
+}
+
+impl MissingColumnError {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+impl std::fmt::Display for MissingColumnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { name } = self;
+        write!(f, "Missing column: {name:?}")
+    }
+}
+
+// ----------------------------------------------------------------
+
 /// Error used for arrow datatype mismatch.
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct WrongDatatypeError {
