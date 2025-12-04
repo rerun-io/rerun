@@ -6,7 +6,6 @@ mod web;
 use egui::{IntoAtoms as _, vec2};
 #[cfg(not(target_arch = "wasm32"))]
 use native::State;
-use re_auth::oauth::Credentials;
 use re_ui::UiExt as _;
 use re_ui::notifications::{Notification, NotificationLevel};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};

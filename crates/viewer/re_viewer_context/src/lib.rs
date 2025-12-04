@@ -78,7 +78,7 @@ pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::display_mode::DisplayMode;
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
 pub use self::file_dialog::sanitize_file_name;
-pub use self::global_context::GlobalContext;
+pub use self::global_context::{AuthContext, GlobalContext};
 pub use self::heuristics::suggest_view_for_each_entity;
 pub use self::image_info::{
     ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,
