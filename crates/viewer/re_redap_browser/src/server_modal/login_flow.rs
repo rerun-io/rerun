@@ -23,7 +23,7 @@ pub struct LoginFlow {
 }
 
 pub enum LoginFlowResult {
-    Success(Credentials),
+    Success(Box<Credentials>),
     Failure(String),
 }
 
@@ -75,7 +75,7 @@ impl LoginFlow {
                     format!("Logged in as {}", credentials.user().email),
                 )));
 
-                Some(LoginFlowResult::Success(credentials))
+                Some(LoginFlowResult::Success(Box::new(credentials)))
             }
 
             Ok(None) => None,
