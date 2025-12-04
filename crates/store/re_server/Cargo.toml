@@ -47,6 +47,7 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
+axum.workspace = true
 bincode.workspace = true
 cfg-if.workspace = true
 chrono = { workspace = true, features = ["serde"] }
@@ -79,6 +80,7 @@ lance = { workspace = true, optional = true }
 [dev-dependencies]
 re_chunk_store.workspace = true
 re_redap_tests.workspace = true
+ehttp = { workspace = true, features = ["native-async"] }
 
 
 [build-dependencies]
