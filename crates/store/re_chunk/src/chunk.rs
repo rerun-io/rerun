@@ -50,7 +50,7 @@ pub enum ChunkError {
     UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
 
     #[error(transparent)]
-    WrongDatatypeError(#[from] re_sorbet::WrongDatatypeError),
+    WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),
 
     #[error(transparent)]
     MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),

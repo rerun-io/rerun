@@ -47,7 +47,7 @@ pub use self::metadata::{
     ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata, MissingMetadataKey,
 };
 pub use self::migrations::{migrate_record_batch, migrate_schema_ref};
-pub use self::row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError};
+pub use self::row_id_column_descriptor::RowIdColumnDescriptor;
 pub use self::schema_builder::SchemaBuilder;
 pub use self::selectors::{
     ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,

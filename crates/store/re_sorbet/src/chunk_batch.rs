@@ -2,10 +2,11 @@ use arrow::array::{
     ArrayRef as ArrowArrayRef, AsArray as _, FixedSizeBinaryArray, RecordBatch as ArrowRecordBatch,
 };
 use arrow::datatypes::Fields as ArrowFields;
+use re_arrow_util::WrongDatatypeError;
 use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
-use crate::{ChunkSchema, RowIdColumnDescriptor, SorbetBatch, SorbetError, WrongDatatypeError};
+use crate::{ChunkSchema, RowIdColumnDescriptor, SorbetBatch, SorbetError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum MismatchedChunkSchemaError {
