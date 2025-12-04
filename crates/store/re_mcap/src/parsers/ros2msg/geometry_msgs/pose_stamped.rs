@@ -3,6 +3,7 @@ use re_chunk::{Chunk, ChunkId};
 
 use re_types::archetypes::{CoordinateFrame, InstancePoses3D};
 use re_types::components::{PoseRotationQuat, PoseTranslation3D};
+use re_types::datatypes::Quaternion;
 
 use super::super::Ros2MessageParser;
 use crate::parsers::{
@@ -43,8 +44,15 @@ impl MessageParser for PoseStampedMessageParser {
             pose.position.y as f32,
             pose.position.z as f32,
         ));
-        // TODO!!
-        self.quaternions.push(PoseRotationQuat::IDENTITY);
+        self.quaternions.push(
+            Quaternion::from_xyzw([
+                pose.orientation.x as f32,
+                pose.orientation.y as f32,
+                pose.orientation.z as f32,
+                pose.orientation.w as f32,
+            ])
+            .into(),
+        );
 
         Ok(())
     }
