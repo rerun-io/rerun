@@ -600,6 +600,7 @@ gh = ">=2.79.0,<3"
 cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0" # For `rerun_notebook`
+huggingface_hub = "<1.0" # Needed for `LeRobot` checklist items
 inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"
