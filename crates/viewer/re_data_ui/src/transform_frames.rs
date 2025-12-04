@@ -100,7 +100,7 @@ impl TransformFramesUi {
 
             frames.push(TransformFrameInfo {
                 frame_id: frame_id.clone(),
-                source_entity: Some(frame.associated_entity_path().clone()),
+                source_entity: Some(frame.associated_entity_path(query.at()).clone()),
             });
 
             let Some(transform) = frame.latest_at_transform(ctx.recording(), query) else {
