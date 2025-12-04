@@ -118,6 +118,22 @@ fn migrate_pose_components(batch: RecordBatch) -> RecordBatch {
 
 #[tracing::instrument(level = "trace", skip_all)]
 fn migrate_transform3d_axis_length(batch: RecordBatch) -> RecordBatch {
+    let schema = batch.schema();
+
+    // Check if any migration is needed
+    let needs_migration = schema.fields().iter().any(|field| {
+        field
+            .metadata()
+            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT)
+            .is_some_and(|val| val == "Transform3D:axis_length")
+    });
+
+    if !needs_migration {
+        return batch;
+    }
+
+    re_log::debug_once!("Migrating Transform3D:axis_length to TransformAxes3D:axis_length");
+
     let (schema, columns, row_count) = batch.into_parts();
 
     let new_fields = schema.fields().iter().map(|field| {
@@ -156,6 +172,22 @@ fn migrate_transform3d_axis_length(batch: RecordBatch) -> RecordBatch {
 
 #[tracing::instrument(level = "trace", skip_all)]
 fn migrate_coordinate_frame(batch: RecordBatch) -> RecordBatch {
+    let schema = batch.schema();
+
+    // Check if any migration is needed
+    let needs_migration = schema.fields().iter().any(|field| {
+        field
+            .metadata()
+            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT)
+            .is_some_and(|val| val == "CoordinateFrame:frame_id")
+    });
+
+    if !needs_migration {
+        return batch;
+    }
+
+    re_log::debug_once!("Migrating CoordinateFrame:frame_id to CoordinateFrame:frame");
+
     let (schema, columns, row_count) = batch.into_parts();
 
     let new_fields = schema.fields().iter().map(|field| {
