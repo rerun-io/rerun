@@ -513,7 +513,7 @@ impl RrdManifest {
                     );
 
                     if md.get("rerun:is_static").map(|s| s.as_str()) == Some("true") {
-                        // Static columns don't have :start nor :end columns... unless they exist
+                        // Static columns don't have :start nor :end columns… unless they exist
                         // both temporally and statically, something which is legal in Rerun, and
                         // will end up with a final Sorbet schema that declares those column as
                         // static (which is correct, since static overrides everything else), even
