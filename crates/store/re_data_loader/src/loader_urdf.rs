@@ -5,7 +5,6 @@ use std::sync::mpsc::Sender;
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
-
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
 use re_sdk_types::archetypes::{Asset3D, Transform3D};
