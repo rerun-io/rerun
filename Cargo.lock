@@ -9637,6 +9637,7 @@ dependencies = [
  "re_protos",
  "re_redap_tests",
  "re_sorbet",
+ "re_span",
  "re_tuid",
  "re_types_core",
  "serde",

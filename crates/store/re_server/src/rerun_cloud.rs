@@ -22,10 +22,11 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     DeleteEntryResponse, EntryDetails, EntryKind, FetchChunksRequest,
     GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionRequest,
-    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
-    RegisterTableResponse, RegisterWithDatasetResponse, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse,
+    GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
+    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, RegisterWithDatasetResponse,
+    ScanDatasetManifestRequest, ScanDatasetManifestResponse, ScanSegmentTableResponse,
+    ScanTableResponse,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
@@ -922,6 +923,27 @@ impl RerunCloudService for RerunCloudHandler {
             schema: Some((&schema).try_into().map_err(|err| {
                 tonic::Status::internal(format!("Unable to serialize Arrow schema: {err:#}"))
             })?),
+        }))
+    }
+
+    async fn get_rrd_manifest(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetRrdManifestRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetRrdManifestResponse>> {
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+
+        let request = request.into_inner();
+        let segment_id = request
+            .segment_id
+            .ok_or_else(|| tonic::Status::invalid_argument("Missing segment_id"))?
+            .try_into()?;
+
+        let dataset = store.dataset(entry_id)?;
+        let rrd_manifest_batch = dataset.rrd_manifest(&segment_id)?;
+
+        Ok(tonic::Response::new(GetRrdManifestResponse {
+            data: Some(rrd_manifest_batch.into()),
         }))
     }
 
