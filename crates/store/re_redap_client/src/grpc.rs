@@ -12,7 +12,6 @@ use re_log_types::{
 use re_protos::cloud::v1alpha1::ext::Query;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::SegmentId;
-use re_types_core::RrdManifestMessage;
 use re_uri::{Origin, TimeSelection};
 use tokio_stream::{Stream, StreamExt as _};
 
