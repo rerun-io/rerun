@@ -8,6 +8,8 @@ import pytest
 from rerun.catalog import CatalogClient
 
 if TYPE_CHECKING:
+    import types
+
     from .conftest import PrefilledCatalog
 
 
@@ -28,7 +30,7 @@ def test_urls(prefilled_catalog: PrefilledCatalog) -> None:
 def test_network_unreachable() -> None:
     """Tests that the client raises an error when the server is unreachable."""
 
-    def timeout_handler(_signal_num, _frame):
+    def timeout_handler(_signal_num: int, _frame: types.FrameType | None) -> None:
         raise TimeoutError("the operation did not time out on time")
 
     signal.signal(signal.SIGALRM, timeout_handler)
