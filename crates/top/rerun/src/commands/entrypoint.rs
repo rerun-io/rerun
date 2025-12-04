@@ -1530,8 +1530,6 @@ impl ReceiversFromUrlParams {
     }
 }
 
-// --- analytics ---
-
 /// Records analytics for the CLI command invocation.
 #[cfg(feature = "analytics")]
 fn record_cli_command_analytics(args: &Args) {
@@ -1596,53 +1594,21 @@ fn record_cli_command_analytics(args: &Args) {
         None => ("viewer", None),
     };
 
-    // Collect the boolean flags that are set
-    let mut flags: Vec<&'static str> = Vec::new();
-
-    if args.web_viewer {
-        flags.push("web_viewer");
-    }
-    if args.serve_web {
-        flags.push("serve_web");
-    }
-    if args.serve_grpc {
-        flags.push("serve_grpc");
-    }
-    if args.connect.is_some() {
-        flags.push("connect");
-    }
-    if args.newest_first {
-        flags.push("newest_first");
-    }
-    if !args.persist_state {
-        // Only log if explicitly disabled (default is true)
-        flags.push("no_persist_state");
-    }
-    if args.profile {
-        flags.push("profile");
-    }
-    if args.save.is_some() {
-        flags.push("save");
-    }
-    if args.screenshot_to.is_some() {
-        flags.push("screenshot_to");
-    }
-    if args.expect_data_soon {
-        flags.push("expect_data_soon");
-    }
-    if args.hide_welcome_screen {
-        flags.push("hide_welcome_screen");
-    }
-    if args.detach_process {
-        flags.push("detach_process");
-    }
-    if args.test_receive {
-        flags.push("test_receive");
-    }
-
     analytics.record(re_analytics::event::CliCommandInvoked {
         command,
         subcommand,
-        flags,
+        web_viewer: args.web_viewer,
+        serve_web: args.serve_web,
+        serve_grpc: args.serve_grpc,
+        connect: args.connect.is_some(),
+        save: args.save.is_some(),
+        screenshot_to: args.screenshot_to.is_some(),
+        newest_first: args.newest_first,
+        persist_state_disabled: !args.persist_state,
+        profile: args.profile,
+        expect_data_soon: args.expect_data_soon,
+        hide_welcome_screen: args.hide_welcome_screen,
+        detach_process: args.detach_process,
+        test_receive: args.test_receive,
     });
 }

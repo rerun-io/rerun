@@ -504,17 +504,29 @@ impl Properties for LoadDataSource {
 /// Tracks CLI command invocations.
 ///
 /// This is sent when a user runs the Rerun CLI with any command.
+#[derive(Default)]
 pub struct CliCommandInvoked {
-    /// The main command (e.g., "rrd", "analytics", "auth", "mcap", "server", "viewer").
+    /// The main command (e.g., "rrd", "auth", "mcap").
     /// "viewer" is used when no subcommand is specified.
     pub command: &'static str,
 
-    /// The subcommand if any (e.g., "compact", "merge", "login", "enable").
+    /// The subcommand if any (e.g., "compact", "merge", "login").
     pub subcommand: Option<&'static str>,
 
-    /// List of boolean flags that were set.
-    /// Only includes safe, non-sensitive flags.
-    pub flags: Vec<&'static str>,
+    // --- Boolean flags ---
+    pub web_viewer: bool,
+    pub serve_web: bool,
+    pub serve_grpc: bool,
+    pub connect: bool,
+    pub save: bool,
+    pub screenshot_to: bool,
+    pub newest_first: bool,
+    pub persist_state_disabled: bool,
+    pub profile: bool,
+    pub expect_data_soon: bool,
+    pub hide_welcome_screen: bool,
+    pub detach_process: bool,
+    pub test_receive: bool,
 }
 
 impl Event for CliCommandInvoked {
@@ -526,14 +538,36 @@ impl Properties for CliCommandInvoked {
         let Self {
             command,
             subcommand,
-            flags,
+            web_viewer,
+            serve_web,
+            serve_grpc,
+            connect,
+            save,
+            screenshot_to,
+            newest_first,
+            persist_state_disabled,
+            profile,
+            expect_data_soon,
+            hide_welcome_screen,
+            detach_process,
+            test_receive,
         } = self;
 
         event.insert("command", command);
         event.insert_opt("subcommand", subcommand.map(|s| s.to_owned()));
-        if !flags.is_empty() {
-            event.insert("flags", flags.join(","));
-        }
+        event.insert("web_viewer", web_viewer);
+        event.insert("serve_web", serve_web);
+        event.insert("serve_grpc", serve_grpc);
+        event.insert("connect", connect);
+        event.insert("save", save);
+        event.insert("screenshot_to", screenshot_to);
+        event.insert("newest_first", newest_first);
+        event.insert("persist_state_disabled", persist_state_disabled);
+        event.insert("profile", profile);
+        event.insert("expect_data_soon", expect_data_soon);
+        event.insert("hide_welcome_screen", hide_welcome_screen);
+        event.insert("detach_process", detach_process);
+        event.insert("test_receive", test_receive);
     }
 }
 
