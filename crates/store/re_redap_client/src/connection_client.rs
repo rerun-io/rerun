@@ -30,7 +30,7 @@ use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
 use url::Url;
 
-use crate::ApiError;
+use crate::{ApiError, ApiResult};
 
 pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = Result<T, tonic::Status>> + Send>>;
 
@@ -85,10 +85,7 @@ where
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
     /// Find all entries matching the given filter.
-    pub async fn find_entries(
-        &mut self,
-        filter: EntryFilter,
-    ) -> Result<Vec<EntryDetails>, ApiError> {
+    pub async fn find_entries(&mut self, filter: EntryFilter) -> ApiResult<Vec<EntryDetails>> {
         let result = self
             .inner()
             .find_entries(FindEntriesRequest {
@@ -107,7 +104,7 @@ where
     }
 
     /// Delete the provided entry.
-    pub async fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), ApiError> {
+    pub async fn delete_entry(&mut self, entry_id: EntryId) -> ApiResult {
         self.inner()
             .delete_entry(DeleteEntryRequest {
                 id: Some(entry_id.into()),
@@ -123,7 +120,7 @@ where
         &mut self,
         entry_id: EntryId,
         entry_details_update: EntryDetailsUpdate,
-    ) -> Result<EntryDetails, ApiError> {
+    ) -> ApiResult<EntryDetails> {
         let response: UpdateEntryResponse = self
             .inner()
             .update_entry(tonic::Request::new(
@@ -143,7 +140,7 @@ where
     }
 
     /// Get the Arrow schema for a dataset entry.
-    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> Result<ArrowSchema, ApiError> {
+    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
         self.inner()
             .get_dataset_schema(
                 tonic::Request::new(GetDatasetSchemaRequest {})
@@ -166,7 +163,7 @@ where
         &mut self,
         name: String,
         entry_id: Option<EntryId>,
-    ) -> Result<DatasetEntry, ApiError> {
+    ) -> ApiResult<DatasetEntry> {
         let response: CreateDatasetEntryResponse = self
             .inner()
             .create_dataset_entry(CreateDatasetEntryRequest {
@@ -185,10 +182,7 @@ where
     }
 
     /// Get information on a dataset entry.
-    pub async fn read_dataset_entry(
-        &mut self,
-        entry_id: EntryId,
-    ) -> Result<DatasetEntry, ApiError> {
+    pub async fn read_dataset_entry(&mut self, entry_id: EntryId) -> ApiResult<DatasetEntry> {
         let response: ReadDatasetEntryResponse = self
             .inner()
             .read_dataset_entry(
@@ -214,7 +208,7 @@ where
         &mut self,
         entry_id: EntryId,
         dataset_details: DatasetDetails,
-    ) -> Result<DatasetEntry, ApiError> {
+    ) -> ApiResult<DatasetEntry> {
         let response: UpdateDatasetEntryResponse = self
             .inner()
             .update_dataset_entry(tonic::Request::new(
@@ -236,7 +230,7 @@ where
     }
 
     /// Get information on a table entry.
-    pub async fn read_table_entry(&mut self, entry_id: EntryId) -> Result<TableEntry, ApiError> {
+    pub async fn read_table_entry(&mut self, entry_id: EntryId) -> ApiResult<TableEntry> {
         let response: ReadTableEntryResponse = self
             .inner()
             .read_table_entry(ReadTableEntryRequest {
@@ -254,10 +248,7 @@ where
     }
 
     //TODO(ab): accept entry name
-    pub async fn get_segment_table_schema(
-        &mut self,
-        entry_id: EntryId,
-    ) -> Result<ArrowSchema, ApiError> {
+    pub async fn get_segment_table_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
         self.inner()
             .get_segment_table_schema(
                 tonic::Request::new(GetSegmentTableSchemaRequest {})
@@ -285,7 +276,7 @@ where
     pub async fn get_dataset_segment_ids(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<Vec<SegmentId>, ApiError> {
+    ) -> ApiResult<Vec<SegmentId>> {
         const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
 
         let mut stream = self
@@ -351,7 +342,7 @@ where
     pub async fn get_dataset_manifest_schema(
         &mut self,
         entry_id: EntryId,
-    ) -> Result<ArrowSchema, ApiError> {
+    ) -> ApiResult<ArrowSchema> {
         self.inner()
             .get_dataset_manifest_schema(
                 tonic::Request::new(GetDatasetManifestSchemaRequest {})
@@ -383,7 +374,7 @@ where
     pub async fn query_dataset_raw(
         &mut self,
         params: SegmentQueryParams,
-    ) -> Result<QueryDatasetResponseStream, ApiError> {
+    ) -> ApiResult<QueryDatasetResponseStream> {
         let SegmentQueryParams {
             dataset_id,
             segment_id,
@@ -434,7 +425,7 @@ where
     pub async fn query_dataset_chunk_index(
         &mut self,
         params: SegmentQueryParams,
-    ) -> Result<Vec<ChunkIndexMessage>, ApiError> {
+    ) -> ApiResult<Vec<ChunkIndexMessage>> {
         self.query_dataset_raw(params)
             .await?
             .collect::<Vec<_>>()
@@ -472,7 +463,7 @@ where
     pub async fn fetch_segment_chunks_by_id(
         &mut self,
         record_batch: &RecordBatch,
-    ) -> Result<FetchChunksResponseStream, ApiError> {
+    ) -> ApiResult<FetchChunksResponseStream> {
         let fetch_chunks_request = FetchChunksRequest {
             chunk_infos: vec![DataframePart::from(record_batch)],
         };
@@ -493,7 +484,7 @@ where
     pub async fn fetch_segment_chunks_by_query(
         &mut self,
         params: SegmentQueryParams,
-    ) -> Result<FetchChunksResponseStream, ApiError> {
+    ) -> ApiResult<FetchChunksResponseStream> {
         let chunk_info_batches = self
             .query_dataset_raw(params)
             .await?
@@ -548,7 +539,7 @@ where
         dataset_id: EntryId,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> Result<Vec<RegisterWithDatasetTaskDescriptor>, ApiError> {
+    ) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
         let req = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
@@ -666,11 +657,7 @@ where
 
     /// Register a foreign Lance table to a new table entry in the catalog.
     //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
-    pub async fn register_table(
-        &mut self,
-        name: String,
-        url: url::Url,
-    ) -> Result<TableEntry, ApiError> {
+    pub async fn register_table(&mut self, name: String, url: url::Url) -> ApiResult<TableEntry> {
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name,
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
@@ -701,7 +688,7 @@ where
         compact_fragments: bool,
         cleanup_before: Option<jiff::Timestamp>,
         unsafe_allow_recent_cleanup: bool,
-    ) -> Result<(), ApiError> {
+    ) -> ApiResult {
         self.inner()
             .do_maintenance(
                 tonic::Request::new(
@@ -723,7 +710,7 @@ where
         Ok(())
     }
 
-    pub async fn do_global_maintenance(&mut self) -> Result<(), ApiError> {
+    pub async fn do_global_maintenance(&mut self) -> ApiResult {
         self.inner()
             .do_global_maintenance(tonic::Request::new(
                 re_protos::cloud::v1alpha1::DoGlobalMaintenanceRequest {},
@@ -734,7 +721,7 @@ where
         Ok(())
     }
 
-    pub async fn get_table_names(&mut self) -> Result<Vec<String>, ApiError> {
+    pub async fn get_table_names(&mut self) -> ApiResult<Vec<String>> {
         Ok(self
             .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
                 entry_kind: Some(EntryKind::Table.into()),
@@ -751,7 +738,7 @@ where
         &mut self,
         task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
-    ) -> Result<tonic::Streaming<QueryTasksOnCompletionResponse>, ApiError> {
+    ) -> ApiResult<tonic::Streaming<QueryTasksOnCompletionResponse>> {
         let q = QueryTasksOnCompletionRequest { task_ids, timeout };
         let response = self
             .inner()
@@ -764,10 +751,7 @@ where
         Ok(response)
     }
 
-    pub async fn query_tasks(
-        &mut self,
-        task_ids: Vec<TaskId>,
-    ) -> Result<QueryTasksResponse, ApiError> {
+    pub async fn query_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult<QueryTasksResponse> {
         let q = QueryTasksRequest { task_ids };
         let response = self
             .inner()
@@ -784,7 +768,7 @@ where
         &mut self,
         entry_name: &str,
         entry_kind: Option<EntryKind>,
-    ) -> Result<Option<EntryId>, ApiError> {
+    ) -> ApiResult<Option<EntryId>> {
         self.inner()
             .find_entries(FindEntriesRequest {
                 filter: Some(EntryFilter {
@@ -811,7 +795,7 @@ where
         stream: impl Stream<Item = RecordBatch> + Send + 'static,
         table_id: EntryId,
         insert_mode: TableInsertMode,
-    ) -> Result<(), ApiError> {
+    ) -> ApiResult {
         let insert_mode = re_protos::cloud::v1alpha1::TableInsertMode::from(insert_mode).into();
         let stream = stream
             .map(move |batch| WriteTableRequest {
@@ -834,7 +818,7 @@ where
         name: &str,
         url: &Url,
         schema: SchemaRef,
-    ) -> Result<TableEntry, ApiError> {
+    ) -> ApiResult<TableEntry> {
         let provider_details = ProviderDetails::LanceTable(LanceTable {
             table_url: url.clone(),
         });

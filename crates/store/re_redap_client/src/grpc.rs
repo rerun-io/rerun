@@ -15,10 +15,10 @@ use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::{Origin, TimeSelection};
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ApiError, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};
+use crate::{ApiError, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};
 
 #[cfg(target_arch = "wasm32")]
-pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, ApiError> {
+pub async fn channel(origin: Origin) -> ApiResult<tonic_web_wasm_client::Client> {
     let channel = tonic_web_wasm_client::Client::new_with_options(
         origin.as_url(),
         tonic_web_wasm_client::options::FetchOptions::new(),
@@ -28,7 +28,7 @@ pub async fn channel(origin: Origin) -> Result<tonic_web_wasm_client::Client, Ap
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, ApiError> {
+pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
     use std::net::Ipv4Addr;
 
     use tonic::transport::Endpoint;
@@ -105,7 +105,7 @@ pub type RedapClientInner = re_auth::client::AuthService<
 pub(crate) async fn client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> Result<RedapClient, ApiError> {
+) -> ApiResult<RedapClient> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
@@ -157,7 +157,7 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 pub(crate) async fn client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> Result<RedapClient, ApiError> {
+) -> ApiResult<RedapClient> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
@@ -188,9 +188,9 @@ pub(crate) async fn client(
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
+) -> impl Stream<Item = ApiResult<Vec<(Chunk, Option<String>)>>>
 where
-    S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
+    S: Stream<Item = tonic::Result<re_protos::cloud::v1alpha1::FetchChunksResponse>>,
 {
     response
         .then(|resp| {
@@ -244,7 +244,7 @@ where
 #[cfg(target_arch = "wasm32")]
 pub fn fetch_chunks_response_to_chunk_and_segment_id<S>(
     response: S,
-) -> impl Stream<Item = Result<Vec<(Chunk, Option<String>)>, ApiError>>
+) -> impl Stream<Item = ApiResult<Vec<(Chunk, Option<String>)>>>
 where
     S: Stream<Item = Result<re_protos::cloud::v1alpha1::FetchChunksResponse, tonic::Status>>,
 {
@@ -297,7 +297,7 @@ pub async fn stream_blueprint_and_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
     uri: re_uri::DatasetSegmentUri,
-) -> Result<(), ApiError> {
+) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
     let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
@@ -391,7 +391,7 @@ async fn stream_segment_from_server(
     segment_id: SegmentId,
     time_range: Option<TimeSelection>,
     fragment: re_uri::Fragment,
-) -> Result<(), ApiError> {
+) -> ApiResult {
     let store_id = store_info.store_id.clone();
 
     re_log::debug!("Streaming {store_id:?}…");
