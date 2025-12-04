@@ -18,7 +18,6 @@ use crate::commands::AnalyticsCommands;
 #[cfg(feature = "data_loaders")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
-use crate::external::re_ui::{UICommand, UICommandSender as _};
 
 // ---
 
@@ -866,6 +865,8 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
+    use crate::external::re_ui::{UICommand, UICommandSender as _};
+
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
