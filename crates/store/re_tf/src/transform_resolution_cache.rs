@@ -2700,6 +2700,145 @@ mod tests {
     }
 
     #[test]
+    fn test_different_associated_paths_for_static_and_temporal()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+
+        let static_entity_path = EntityPath::from("static_entity");
+        let temporal_entity_path = EntityPath::from("temporal_entity");
+        let child_frame = TransformFrameIdHash::from_str("child_frame");
+
+        let static_chunk = Chunk::builder(static_entity_path.clone())
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Transform3D::new()
+                    .with_translation([1.0, 2.0, 3.0])
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            .build()?;
+        let temporal_chunk = Chunk::builder(temporal_entity_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::new()
+                    .with_translation([4.0, 5.0, 6.0])
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            .build()?;
+
+        #[derive(Debug)]
+        enum Scenario {
+            StaticAndTemporalAtOnce,
+            StaticFirstThenTemporal,
+            TemporalFirstThenStatic,
+        }
+
+        for scenario in [
+            Scenario::StaticAndTemporalAtOnce,
+            Scenario::StaticFirstThenTemporal,
+            Scenario::TemporalFirstThenStatic,
+        ] {
+            match scenario {
+                Scenario::StaticAndTemporalAtOnce => {
+                    entity_db.add_chunk(&Arc::new(static_chunk.clone()))?;
+                    entity_db.add_chunk(&Arc::new(temporal_chunk.clone()))?;
+                }
+                Scenario::StaticFirstThenTemporal => {
+                    entity_db.add_chunk(&Arc::new(static_chunk.clone()))?;
+                }
+                Scenario::TemporalFirstThenStatic => {
+                    entity_db.add_chunk(&Arc::new(temporal_chunk.clone()))?;
+                }
+            }
+            apply_store_subscriber_events(&mut cache, &entity_db);
+
+            // Warm cache.
+            {
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+                let transforms = transforms_per_timeline
+                    .frame_transforms(child_frame)
+                    .unwrap();
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0));
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1));
+            }
+
+            // Add extra chunk.
+            match scenario {
+                Scenario::StaticAndTemporalAtOnce => {
+                    // Already added both.
+                }
+                Scenario::StaticFirstThenTemporal => {
+                    entity_db.add_chunk(&Arc::new(temporal_chunk.clone()))?;
+                }
+                Scenario::TemporalFirstThenStatic => {
+                    entity_db.add_chunk(&Arc::new(static_chunk.clone()))?;
+                }
+            }
+            apply_store_subscriber_events(&mut cache, &entity_db);
+
+            // Both static and temporal data should be accessible
+            let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+            let transforms = transforms_per_timeline
+                .frame_transforms(child_frame)
+                .unwrap();
+
+            // At time 0, should see static data
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                }),
+                "Unexpected transform at time 0 (scenario: {scenario:?})",
+            );
+            // At time 1, should see temporal data (overriding static due to atomic-latest-at)
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    transform: DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                }),
+                "Unexpected transform at time 1 (scenario: {scenario:?})",
+            );
+
+            // Verify associated entity paths are correctly tracked
+            assert_eq!(
+                transforms.associated_entity_path(TimeInt::STATIC),
+                &static_entity_path,
+                "Unexpected path for static data (scenario: {scenario:?})",
+            );
+            assert_eq!(
+                transforms.associated_entity_path(TimeInt::new_temporal(1)),
+                &temporal_entity_path,
+                "Unexpected path for temporal data (scenario: {scenario:?})",
+            );
+
+            // Test on a different timeline that never saw the temporal data
+            let other_timeline = TimelineName::new("other");
+            let transforms_per_timeline = cache.transforms_for_timeline(other_timeline);
+            let transforms = transforms_per_timeline
+                .frame_transforms(child_frame)
+                .unwrap();
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(other_timeline, 100)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                }),
+                "Unexpected transform on other timeline (scenario: {scenario:?})",
+            );
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
@@ -2836,6 +2975,8 @@ mod tests {
 
         Ok(())
     }
+
+    // TODO: add test for error detection on invalid association movement.
 
     // TODO(andreas): We're missing tests for more corner cases involving child frames and (recursive) clears.
 
