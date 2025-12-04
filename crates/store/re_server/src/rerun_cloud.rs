@@ -150,7 +150,7 @@ impl RerunCloudHandler {
                 })?;
                 if !meta.is_dir() {
                     return Err(tonic::Status::invalid_argument(format!(
-                        "Expected directory, got file: {path:?}"
+                        "expected prefix / directory but got an object ({path:?})"
                     )));
                 }
 
@@ -596,6 +596,11 @@ impl RerunCloudService for RerunCloudHandler {
         let mut task_ids: Vec<String> = vec![];
 
         let data_sources = Self::resolve_data_sources(&data_sources)?;
+        if data_sources.is_empty() {
+            return Err(tonic::Status::invalid_argument(
+                "no data sources to register",
+            ));
+        }
 
         for source in data_sources {
             let ext::DataSource {
