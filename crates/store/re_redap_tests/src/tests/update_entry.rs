@@ -246,7 +246,7 @@ pub async fn update_entry_bumps_timestamp(service: impl RerunCloudService) {
 async fn create_dataset_entry(
     service: &impl RerunCloudService,
     name: &str,
-) -> Result<DatasetEntry, tonic::Status> {
+) -> tonic::Result<DatasetEntry> {
     service
         .create_dataset_entry(tonic::Request::new(
             CreateDatasetEntryRequest {
@@ -263,7 +263,7 @@ async fn create_table_entry(
     service: &impl RerunCloudService,
     table_name: &str,
     tmp_dir: &tempfile::TempDir,
-) -> Result<TableEntry, tonic::Status> {
+) -> tonic::Result<TableEntry> {
     let schema = Schema::new(vec![Field::new("column_a", DataType::Utf8, false)]);
 
     let table_url =
@@ -290,7 +290,7 @@ async fn create_table_entry(
 async fn update_entry(
     service: &impl RerunCloudService,
     request: UpdateEntryRequest,
-) -> Result<UpdateEntryResponse, tonic::Status> {
+) -> tonic::Result<UpdateEntryResponse> {
     service
         .update_entry(tonic::Request::new(request.into()))
         .await
