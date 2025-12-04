@@ -513,7 +513,7 @@ pub struct CliCommandInvoked {
     /// The subcommand if any (e.g., "compact", "merge", "login").
     pub subcommand: Option<&'static str>,
 
-    // --- Boolean flags ---
+    // --- Flags ---
     pub web_viewer: bool,
     pub serve_web: bool,
     pub serve_grpc: bool,
