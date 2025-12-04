@@ -27,7 +27,7 @@ use re_dataframe::{
 };
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::{FetchChunksRequest, ScanSegmentTableResponse};
-use re_redap_client::ConnectionClient;
+use re_redap_client::{ApiResult, ConnectionClient};
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 use tokio::runtime::Handle;
 use tokio::sync::Notify;
@@ -94,7 +94,7 @@ pub struct DataframeSegmentStreamInner {
     client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
 
-    chunk_tx: Option<Sender<Result<ChunksWithSegment, re_redap_client::ApiError>>>,
+    chunk_tx: Option<Sender<ApiResult<ChunksWithSegment>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<Result<(), DataFusionError>>>,
 
@@ -365,7 +365,7 @@ async fn send_next_row(
 // TODO(#10781) - support for sending intermediate results/chunks
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<Result<ChunksWithSegment, re_redap_client::ApiError>>,
+    mut input_channel: Receiver<ApiResult<ChunksWithSegment>>,
     output_channel: Sender<RecordBatch>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
@@ -448,7 +448,7 @@ async fn chunk_store_cpu_worker_thread(
 async fn chunk_stream_io_loop(
     mut client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
-    output_channel: Sender<Result<ChunksWithSegment, re_redap_client::ApiError>>,
+    output_channel: Sender<ApiResult<ChunksWithSegment>>,
 ) -> Result<(), DataFusionError> {
     let chunk_infos: Vec<_> = chunk_infos.into_iter().map(Into::into).collect();
 

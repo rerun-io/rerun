@@ -180,7 +180,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
 async fn create_dataset_entry(
     service: &impl RerunCloudService,
     request: CreateDatasetEntryRequest,
-) -> Result<DatasetEntry, tonic::Status> {
+) -> tonic::Result<DatasetEntry> {
     service
         .create_dataset_entry(tonic::Request::new(request.clone().into()))
         .await
@@ -192,7 +192,7 @@ async fn entry_details_from_name(
     service: &impl RerunCloudService,
     name: &str,
     entry_kind: EntryKind,
-) -> Result<EntryDetails, tonic::Status> {
+) -> tonic::Result<EntryDetails> {
     let mut result = service
         .find_entries(tonic::Request::new(FindEntriesRequest {
             filter: Some(EntryFilter {
@@ -219,7 +219,7 @@ async fn entry_details_from_id(
     service: &impl RerunCloudService,
     entry_id: EntryId,
     entry_kind: EntryKind,
-) -> Result<EntryDetails, tonic::Status> {
+) -> tonic::Result<EntryDetails> {
     let mut result = service
         .find_entries(tonic::Request::new(FindEntriesRequest {
             filter: Some(EntryFilter {
@@ -245,7 +245,7 @@ async fn entry_details_from_id(
 async fn dataset_details_from_id(
     service: &impl RerunCloudService,
     entry_id: EntryId,
-) -> Result<DatasetDetails, tonic::Status> {
+) -> tonic::Result<DatasetDetails> {
     service
         .read_dataset_entry(
             tonic::Request::new(ReadDatasetEntryRequest {})

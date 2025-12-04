@@ -30,15 +30,15 @@ pub const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 /// let mut req = tonic::Request::new(()).with_entry_name("droid:sample2k").unwrap();
 /// ```
 pub trait RerunHeadersInjectorExt: Sized {
-    fn with_entry_id(self, entry_id: re_log_types::EntryId) -> Result<Self, tonic::Status>;
+    fn with_entry_id(self, entry_id: re_log_types::EntryId) -> tonic::Result<Self>;
 
-    fn with_entry_name(self, entry_name: impl AsRef<str>) -> Result<Self, tonic::Status>;
+    fn with_entry_name(self, entry_name: impl AsRef<str>) -> tonic::Result<Self>;
 
     fn with_metadata(self, md: &tonic::metadata::MetadataMap) -> Self;
 }
 
 impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
-    fn with_entry_id(mut self, entry_id: re_log_types::EntryId) -> Result<Self, tonic::Status> {
+    fn with_entry_id(mut self, entry_id: re_log_types::EntryId) -> tonic::Result<Self> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 
         let entry_id = entry_id.to_string();
@@ -53,7 +53,7 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
         Ok(self)
     }
 
-    fn with_entry_name(mut self, entry_name: impl AsRef<str>) -> Result<Self, tonic::Status> {
+    fn with_entry_name(mut self, entry_name: impl AsRef<str>) -> tonic::Result<Self> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
 
         let entry_name = entry_name.as_ref();
@@ -88,13 +88,13 @@ impl<T> RerunHeadersInjectorExt for tonic::Request<T> {
 /// let entry_id = req.entry_id().unwrap();
 /// ```
 pub trait RerunHeadersExtractorExt {
-    fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status>;
+    fn entry_id(&self) -> tonic::Result<Option<re_log_types::EntryId>>;
 
-    fn entry_name(&self) -> Result<Option<String>, tonic::Status>;
+    fn entry_name(&self) -> tonic::Result<Option<String>>;
 }
 
 impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
-    fn entry_id(&self) -> Result<Option<re_log_types::EntryId>, tonic::Status> {
+    fn entry_id(&self) -> tonic::Result<Option<re_log_types::EntryId>> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_ID;
 
         let Some(entry_id) = self.metadata().get(HEADER) else {
@@ -115,7 +115,7 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
         Ok(Some(entry_id))
     }
 
-    fn entry_name(&self) -> Result<Option<String>, tonic::Status> {
+    fn entry_name(&self) -> tonic::Result<Option<String>> {
         const HEADER: &str = RERUN_HTTP_HEADER_ENTRY_NAME;
 
         let Some(entry_name) = self.metadata().get_bin(HEADER) else {
@@ -221,7 +221,7 @@ impl RerunVersionInterceptor {
 }
 
 impl tonic::service::Interceptor for RerunVersionInterceptor {
-    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+    fn call(&mut self, mut req: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
         let Self {
             is_client,
             name,
