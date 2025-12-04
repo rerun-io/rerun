@@ -313,11 +313,18 @@ impl ConnectionRegistryHandle {
         // so if what we're trying to connect to is not a valid Rerun server, then cut out
         // a layer of noise:
         {
-            let Ok(res) =
-                ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
-                    .await
-            else {
-                return Err(ApiError::invalid_server(origin));
+            let res = match ehttp::fetch_async(ehttp::Request::get(format!(
+                "{}/version",
+                origin.as_url()
+            )))
+            .await
+            {
+                Ok(res) => res,
+                Err(err) => {
+                    return Err(ApiError::connection_simple(format!(
+                        "failed to connect to server '{origin}': {err}"
+                    )));
+                }
             };
             if !res.ok {
                 return Err(ApiError::invalid_server(origin));

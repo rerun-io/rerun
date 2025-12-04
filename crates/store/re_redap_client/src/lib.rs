@@ -185,6 +185,14 @@ impl ApiError {
         }
     }
 
+    pub fn connection_simple(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Connection,
+            source: None,
+        }
+    }
+
     pub fn credentials(err: ClientCredentialsError, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
