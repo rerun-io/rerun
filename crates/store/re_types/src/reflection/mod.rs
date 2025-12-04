@@ -1571,7 +1571,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "widths",
                         display_name: "Widths",
                         component_type: "rerun.components.TensorData".into(),
-                        docstring_md: "The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
+                        docstring_md: "The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.",
                         is_required: false,
                     },
                 ],

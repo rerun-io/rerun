@@ -53,7 +53,7 @@ namespace rerun::archetypes {
         /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         std::optional<ComponentBatch> abscissa;
 
-        /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         std::optional<ComponentBatch> widths;
 
       public:
@@ -262,7 +262,7 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+        /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         BarChart with_widths(const rerun::components::TensorData& _widths) && {
             widths = ComponentBatch::from_loggable(_widths, Descriptor_widths).value_or_throw();
             return std::move(*this);

@@ -65,7 +65,7 @@ pub struct BarChart {
     /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     pub abscissa: Option<SerializedComponentBatch>,
 
-    /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     pub widths: Option<SerializedComponentBatch>,
 }
 
@@ -384,7 +384,7 @@ impl BarChart {
         self
     }
 
-    /// The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #[inline]
     pub fn with_widths(mut self, widths: impl Into<crate::components::TensorData>) -> Self {
         self.widths = try_serialize_field(Self::descriptor_widths(), [widths]);

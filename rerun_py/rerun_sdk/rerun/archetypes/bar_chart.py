@@ -71,7 +71,7 @@ class BarChart(BarChartExt, Archetype):
         abscissa:
             The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         widths:
-            The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+            The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -121,7 +121,7 @@ class BarChart(BarChartExt, Archetype):
         abscissa:
             The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         widths:
-            The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+            The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -174,7 +174,7 @@ class BarChart(BarChartExt, Archetype):
         abscissa:
             The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
         widths:
-            The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+            The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
 
         """
 
@@ -258,7 +258,7 @@ class BarChart(BarChartExt, Archetype):
         default=None,
         converter=components.TensorDataBatch._converter,  # type: ignore[misc]
     )
-    # The width of the bins. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
+    # The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
