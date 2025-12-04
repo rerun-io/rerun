@@ -200,8 +200,6 @@ pub fn query_and_resolve_tree_transform_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Result<ParentFromChildTransform, TransformError> {
-    // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
-
     // Topology
     let identifier_parent_frame = archetypes::Transform3D::descriptor_parent_frame().component;
     let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
