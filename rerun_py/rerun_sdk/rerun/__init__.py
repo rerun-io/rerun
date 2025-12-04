@@ -22,9 +22,6 @@ if sys.version_info < (3, 10):  # noqa: UP036
 # Background: https://github.com/microsoft/pyright/blob/1.1.365/docs/typed-libraries.md#library-interface
 #
 import rerun_bindings as bindings
-from rerun_bindings import UrdfJoint as UrdfJoint
-from rerun_bindings import UrdfLink as UrdfLink
-from rerun_bindings import UrdfTree as UrdfTree
 
 from . import (
     blueprint as blueprint,
@@ -33,6 +30,7 @@ from . import (
     experimental as experimental,
     recording as recording,
     server as server,
+    urdf as urdf,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,

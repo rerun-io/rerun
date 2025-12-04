@@ -164,9 +164,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyChunkBatcherConfig>()?;
     m.add_class::<PyDeviceCodeFlow>()?;
     m.add_class::<PyCredentials>()?;
-    m.add_class::<PyUrdfTree>()?;
-    m.add_class::<PyUrdfJoint>()?;
-    m.add_class::<PyUrdfLink>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -265,6 +262,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // server
     crate::server::register(py, m)?;
+
+    // urdf
+    crate::urdf::register(py, m)?;
 
     Ok(())
 }
@@ -503,180 +503,6 @@ impl PyChunkBatcherConfig {
 
     pub fn __str__(&self) -> String {
         format!("{:#?}", self.0)
-    }
-}
-
-fn vec3_to_tuple(vec: &urdf_rs::Vec3) -> (f64, f64, f64) {
-    let [x, y, z] = vec.0;
-    (x, y, z)
-}
-
-fn joint_type_to_str(joint_type: &urdf_rs::JointType) -> &'static str {
-    use urdf_rs::JointType;
-    match joint_type {
-        JointType::Revolute => "revolute",
-        JointType::Continuous => "continuous",
-        JointType::Prismatic => "prismatic",
-        JointType::Fixed => "fixed",
-        JointType::Floating => "floating",
-        JointType::Planar => "planar",
-        JointType::Spherical => "spherical",
-    }
-}
-
-/// A `.urdf` file loaded into memory (excluding any mesh files).
-#[pyclass(name = "UrdfTree", module = "rerun_bindings.rerun_bindings")]
-pub struct PyUrdfTree(UrdfTree);
-
-#[pymethods]
-impl PyUrdfTree {
-    #[staticmethod]
-    #[pyo3(text_signature = "(path)")]
-    /// Load the URDF found at `path`.
-    pub fn from_file_path(path: PathBuf) -> PyResult<Self> {
-        UrdfTree::from_file_path(path)
-            .map(Self)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))
-    }
-
-    #[getter]
-    /// Name of the robot defined in this URDF.
-    pub fn name(&self) -> &str {
-        self.0.name()
-    }
-
-    /// Returns the root link of the URDF hierarchy.
-    pub fn root_link(&self) -> PyUrdfLink {
-        PyUrdfLink(self.0.root().clone())
-    }
-
-    /// Iterate over all joints defined in the URDF.
-    pub fn joints(&self) -> Vec<PyUrdfJoint> {
-        self.0.joints().cloned().map(PyUrdfJoint).collect()
-    }
-
-    /// Find a joint by name.
-    pub fn get_joint_by_name(&self, joint_name: &str) -> Option<PyUrdfJoint> {
-        self.0
-            .get_joint_by_name(joint_name)
-            .cloned()
-            .map(PyUrdfJoint)
-    }
-
-    /// Returns the link that is the child of the given joint.
-    pub fn get_joint_child(&self, joint: &PyUrdfJoint) -> PyUrdfLink {
-        PyUrdfLink(self.0.get_joint_child(&joint.0).clone())
-    }
-
-    /// Returns the link with the given name, if it exists.
-    pub fn get_link_by_name(&self, link_name: &str) -> Option<PyUrdfLink> {
-        self.0.get_link(link_name).cloned().map(PyUrdfLink)
-    }
-
-    /// Returns the entity path assigned to the given link.
-    pub fn get_link_path(&self, link: &PyUrdfLink) -> String {
-        self.0.get_link_path(&link.0).to_string()
-    }
-
-    /// Returns the entity path for the named link, if it exists.
-    pub fn get_link_path_by_name(&self, link_name: &str) -> Option<String> {
-        self.0
-            .get_link(link_name)
-            .map(|link| self.0.get_link_path(link).to_string())
-    }
-
-    fn __repr__(&self) -> String {
-        format!("UrdfTree(name={:?})", self.0.name())
-    }
-}
-
-/// Wrapper around a URDF joint.
-#[pyclass(name = "UrdfJoint", module = "rerun_bindings.rerun_bindings")]
-#[derive(Clone)]
-pub struct PyUrdfJoint(pub urdf_rs::Joint);
-
-#[pymethods]
-impl PyUrdfJoint {
-    #[getter]
-    pub fn name(&self) -> &str {
-        &self.0.name
-    }
-
-    #[getter]
-    pub fn joint_type(&self) -> &'static str {
-        joint_type_to_str(&self.0.joint_type)
-    }
-
-    #[getter]
-    pub fn parent_link(&self) -> &str {
-        &self.0.parent.link
-    }
-
-    #[getter]
-    pub fn child_link(&self) -> &str {
-        &self.0.child.link
-    }
-
-    #[getter]
-    pub fn axis(&self) -> (f64, f64, f64) {
-        vec3_to_tuple(&self.0.axis.xyz)
-    }
-
-    #[getter]
-    pub fn origin_xyz(&self) -> (f64, f64, f64) {
-        vec3_to_tuple(&self.0.origin.xyz)
-    }
-
-    #[getter]
-    pub fn origin_rpy(&self) -> (f64, f64, f64) {
-        vec3_to_tuple(&self.0.origin.rpy)
-    }
-
-    #[getter]
-    pub fn limit_lower(&self) -> f64 {
-        self.0.limit.lower
-    }
-
-    #[getter]
-    pub fn limit_upper(&self) -> f64 {
-        self.0.limit.upper
-    }
-
-    #[getter]
-    pub fn limit_effort(&self) -> f64 {
-        self.0.limit.effort
-    }
-
-    #[getter]
-    pub fn limit_velocity(&self) -> f64 {
-        self.0.limit.velocity
-    }
-
-    fn __repr__(&self) -> String {
-        format!(
-            "UrdfJoint(name={:?}, type={}, parent={:?}, child={:?})",
-            self.0.name,
-            joint_type_to_str(&self.0.joint_type),
-            self.0.parent.link,
-            self.0.child.link
-        )
-    }
-}
-
-/// Wrapper around a URDF link.
-#[pyclass(name = "UrdfLink", module = "rerun_bindings.rerun_bindings")]
-#[derive(Clone)]
-pub struct PyUrdfLink(pub urdf_rs::Link);
-
-#[pymethods]
-impl PyUrdfLink {
-    #[getter]
-    pub fn name(&self) -> &str {
-        &self.0.name
-    }
-
-    fn __repr__(&self) -> String {
-        format!("UrdfLink(name={:?})", self.0.name)
     }
 }
 
