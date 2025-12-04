@@ -148,7 +148,7 @@ impl CachedTransformsForTimeline {
         self.per_child_frame_transforms
             .entry(child_frame)
             .or_insert_with(|| {
-                TreeTransformsForChildFrame::new(
+                TreeTransformsForChildFrame::new_temporal(
                     entity_path.clone(),
                     child_frame,
                     timeline,
@@ -167,7 +167,7 @@ impl CachedTransformsForTimeline {
         self.per_child_frame_transforms
             .entry(child_frame)
             .or_insert_with(|| {
-                TreeTransformsForChildFrame::new_empty(entity_path.clone(), child_frame)
+                TreeTransformsForChildFrame::new_static(entity_path.clone(), child_frame)
             })
     }
 
@@ -202,7 +202,7 @@ impl CachedTransformsForTimeline {
         // We generally assume Clears are quite rare, so just loop over all frames that it affects
         // and insert a cleared transform if necessary.
         for transforms in self.per_child_frame_transforms.values_mut() {
-            if &transforms.associated_entity_path == cleared_path {
+            if transforms.associated_entity_path_temporal.as_ref() == Some(cleared_path) {
                 transforms.events.get_mut().insert_clear(cleared_time);
             }
         }
@@ -227,8 +227,9 @@ impl CachedTransformsForTimeline {
         // and insert a cleared transform if necessary.
         for transforms in self.per_child_frame_transforms.values_mut() {
             if transforms
-                .associated_entity_path
-                .starts_with(recursively_cleared_path)
+                .associated_entity_path_temporal
+                .as_ref()
+                .is_some_and(|path| path.starts_with(recursively_cleared_path))
             {
                 transforms.events.get_mut().insert_clear(cleared_time);
             }
@@ -260,7 +261,7 @@ impl CachedTransformsForTimeline {
 
         // Figure out who is no longer affected by this Clear and remove entry.
         for transforms in self.per_child_frame_transforms.values_mut() {
-            if &transforms.associated_entity_path == cleared_path {
+            if transforms.associated_entity_path_temporal.as_ref() == Some(cleared_path) {
                 transforms.events.get_mut().remove_at(cleared_time);
             }
         }
@@ -288,8 +289,9 @@ impl CachedTransformsForTimeline {
         // Figure out who is no longer affected by this recursive Clear and remove entry.
         for transforms in self.per_child_frame_transforms.values_mut() {
             if transforms
-                .associated_entity_path
-                .starts_with(recursively_cleared_path)
+                .associated_entity_path_temporal
+                .as_ref()
+                .is_some_and(|path| path.starts_with(recursively_cleared_path))
             {
                 transforms.events.get_mut().remove_at(cleared_time);
             }
@@ -449,14 +451,17 @@ pub struct TreeTransformsForChildFrame {
     #[cfg(debug_assertions)]
     timeline: Option<TimelineName>,
 
-    /// The entity path that produces information for this frame.
+    /// The entity path that produces temporal information for this frame.
     ///
     /// Note that it is a user-data error to change the entity path a frame relationship is defined on.
     /// I.e., given a frame relationship `A -> B` logged on entity `/my_path`, all future changes
     /// to the relation of `A ->` must be logged on the same entity `/my_path`.
     ///
     /// This greatly simplifies clearing and tracking of transforms.
-    associated_entity_path: EntityPath,
+    associated_entity_path_temporal: Option<EntityPath>,
+
+    /// Like [`Self::associated_entity_path_temporal`] but for static chunks.
+    associated_entity_path_static: Option<EntityPath>,
 
     child_frame: TransformFrameIdHash,
 
@@ -468,7 +473,8 @@ impl Clone for TreeTransformsForChildFrame {
         Self {
             #[cfg(debug_assertions)]
             timeline: self.timeline,
-            associated_entity_path: self.associated_entity_path.clone(),
+            associated_entity_path_temporal: self.associated_entity_path_temporal.clone(),
+            associated_entity_path_static: self.associated_entity_path_static.clone(),
             child_frame: self.child_frame,
             events: Mutex::new(self.events.lock().clone()),
         }
@@ -477,14 +483,27 @@ impl Clone for TreeTransformsForChildFrame {
 
 impl PartialEq for TreeTransformsForChildFrame {
     fn eq(&self, other: &Self) -> bool {
-        self.child_frame == other.child_frame && *self.events.lock() == *other.events.lock()
+        let Self {
+            #[cfg(debug_assertions)]
+                timeline: _,
+            associated_entity_path_temporal,
+            associated_entity_path_static,
+            child_frame,
+            events,
+        } = self;
+
+        associated_entity_path_temporal == &other.associated_entity_path_temporal
+            && associated_entity_path_static == &other.associated_entity_path_static
+            && child_frame == &other.child_frame
+            && *events.lock() == *other.events.lock()
     }
 }
 
 impl SizeBytes for TreeTransformsForChildFrame {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            associated_entity_path,
+            associated_entity_path_temporal,
+            associated_entity_path_static,
             child_frame,
             events,
 
@@ -492,7 +511,8 @@ impl SizeBytes for TreeTransformsForChildFrame {
                 timeline: _,
         } = self;
 
-        associated_entity_path.heap_size_bytes()
+        associated_entity_path_temporal.heap_size_bytes()
+            + associated_entity_path_static.heap_size_bytes()
             + child_frame.heap_size_bytes()
             + events.lock().heap_size_bytes()
     }
@@ -548,7 +568,7 @@ impl SizeBytes for ResolvedPinholeProjection {
 }
 
 impl TreeTransformsForChildFrame {
-    fn new(
+    fn new_temporal(
         associated_entity_path: EntityPath,
         child_frame: TransformFrameIdHash,
         _timeline: TimelineName,
@@ -559,12 +579,17 @@ impl TreeTransformsForChildFrame {
         let mut events = TransformsForChildFrameEvents::new_empty();
 
         // Take over static events.
-        if let Some(static_transforms) = static_timeline
+        let associated_entity_path_static = if let Some(static_transforms) = static_timeline
             .per_child_frame_transforms
             .get_mut(&child_frame)
         {
             events = static_transforms.events.get_mut().clone();
-        }
+
+            debug_assert!(static_transforms.associated_entity_path_static.is_some());
+            static_transforms.associated_entity_path_static.clone()
+        } else {
+            None
+        };
 
         // Take over clear events.
         if let Some(cleared_times) = non_recursive_clears.get(&associated_entity_path) {
@@ -579,7 +604,8 @@ impl TreeTransformsForChildFrame {
         Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
-            associated_entity_path,
+            associated_entity_path_temporal: Some(associated_entity_path),
+            associated_entity_path_static,
             child_frame,
             events: Mutex::new(events),
         }
@@ -593,19 +619,32 @@ impl TreeTransformsForChildFrame {
         }
     }
 
-    fn new_empty(associated_entity_path: EntityPath, child_frame: TransformFrameIdHash) -> Self {
+    fn new_static(associated_entity_path: EntityPath, child_frame: TransformFrameIdHash) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
-            associated_entity_path,
+            associated_entity_path_temporal: None,
+            associated_entity_path_static: Some(associated_entity_path),
             child_frame,
             events: Mutex::new(TransformsForChildFrameEvents::new_empty()),
         }
     }
 
     /// The entity path that produces information for this frame.
-    pub fn associated_entity_path(&self) -> &EntityPath {
-        &self.associated_entity_path
+    pub fn associated_entity_path(&self, time: TimeInt) -> &EntityPath {
+        if time == TimeInt::STATIC {
+            // Use static path if it exists.
+            self.associated_entity_path_static
+                .as_ref()
+                .or(self.associated_entity_path_temporal.as_ref())
+                .expect("Either temporal or static associated entity path must be set")
+        } else {
+            // Use temporal path if it exists.
+            self.associated_entity_path_temporal
+                .as_ref()
+                .or(self.associated_entity_path_static.as_ref())
+                .expect("Either temporal or static associated entity path must be set")
+        }
     }
 
     /// Inserts an invalidation point for transforms.
@@ -639,7 +678,7 @@ impl TreeTransformsForChildFrame {
         // Separate check to work around borrow checker issues.
         if frame_transform == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_tree_transform_at_entity(
-                &self.associated_entity_path,
+                self.associated_entity_path(*time_of_last_update_to_this_frame),
                 self.child_frame,
                 entity_db,
                 // Do NOT use the original query time since that may give us information about a different child frame!
@@ -680,19 +719,19 @@ impl TreeTransformsForChildFrame {
 
         let mut events = self.events.lock();
 
-        let pinhole_projection = events
+        let (time_of_last_update_to_this_frame, pinhole_projection) = events
             .pinhole_projections
             .range_mut(..query.at().inc())
-            .next_back()?
-            .1;
+            .next_back()?;
 
         // Separate check to work around borrow checker issues.
         if pinhole_projection == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_pinhole_projection_at_entity(
-                &self.associated_entity_path,
+                self.associated_entity_path(*time_of_last_update_to_this_frame),
                 self.child_frame,
                 entity_db,
-                query,
+                // Do NOT use the original query time since that may give us information about a different child frame!
+                &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
             );
 
             *pinhole_projection = match &transform {
