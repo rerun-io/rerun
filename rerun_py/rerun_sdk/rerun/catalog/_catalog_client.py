@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING, Any, Self
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
+from typing_extensions import deprecated
 
 from rerun_bindings import (
     CatalogClientInternal,
 )
 
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
-from . import EntryId, EntryKind, TableInsertMode
+from . import EntryId, TableInsertMode
 
 if TYPE_CHECKING:
     import datafusion
@@ -103,22 +104,63 @@ class CatalogClient:
         """Returns the catalog URL."""
         return self._internal.url
 
+    def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
+        """
+        Returns a list of all entries in the catalog.
+
+        Parameters
+        ----------
+        include_hidden
+            If True, include hidden entries (blueprint datasets and system tables like `__entries`).
+
+        """
+        return self.datasets(include_hidden=include_hidden) + self.tables(include_hidden=include_hidden)
+
+    def datasets(self, *, include_hidden: bool = False) -> list[DatasetEntry]:
+        """
+        Returns a list of all dataset entries in the catalog.
+
+        Parameters
+        ----------
+        include_hidden
+            If True, include blueprint datasets.
+
+        """
+        from . import DatasetEntry
+
+        return [DatasetEntry(internal) for internal in self._internal.datasets(include_hidden=include_hidden)]
+
+    def tables(self, *, include_hidden: bool = False) -> list[TableEntry]:
+        """
+        Returns a list of all table entries in the catalog.
+
+        Parameters
+        ----------
+        include_hidden
+            If True, include system tables (e.g., `__entries`).
+
+        """
+        from . import TableEntry
+
+        return [TableEntry(internal) for internal in self._internal.tables(include_hidden=include_hidden)]
+
+    # ---
+
+    @deprecated("Use entries() instead")
     def all_entries(self) -> list[DatasetEntry | TableEntry]:
         """Returns a list of all entries in the catalog."""
 
-        return self.dataset_entries() + self.table_entries()
+        return self.entries()
 
+    @deprecated("Use datasets() instead")
     def dataset_entries(self) -> list[DatasetEntry]:
         """Returns a list of all dataset entries in the catalog."""
-        from . import DatasetEntry
+        return self.datasets()
 
-        return [DatasetEntry(internal) for internal in self._internal.dataset_entries()]
-
+    @deprecated("Use tables() instead")
     def table_entries(self) -> list[TableEntry]:
         """Returns a list of all dataset entries in the catalog."""
-        from . import TableEntry
-
-        return [TableEntry(internal) for internal in self._internal.table_entries()]
+        return self.tables()
 
     # ---
 
@@ -133,24 +175,6 @@ class CatalogClient:
     def table_names(self) -> list[str]:
         """Returns a list of all table names in the catalog."""
         return self._internal.table_names()
-
-    # ---
-
-    def entries(self) -> datafusion.DataFrame:
-        """Returns a DataFrame containing all entries in the catalog."""
-        return self.get_table(name="__entries")
-
-    def datasets(self) -> datafusion.DataFrame:
-        """Returns a DataFrame containing all dataset entries in the catalog."""
-        from datafusion import col
-
-        return self.entries().filter(col("entry_kind") == int(EntryKind.DATASET)).drop("entry_kind")
-
-    def tables(self) -> datafusion.DataFrame:
-        """Returns a DataFrame containing all table entries in the catalog."""
-        from datafusion import col
-
-        return self.entries().filter(col("entry_kind") == int(EntryKind.TABLE)).drop("entry_kind")
 
     # ---
 

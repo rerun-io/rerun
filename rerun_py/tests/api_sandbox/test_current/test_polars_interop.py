@@ -19,7 +19,12 @@ def test_entries_to_polars(tmp_path: Path) -> None:
         client.create_dataset("my_dataset")
         client.create_table_entry("my_table", pa.schema([]), tmp_path.as_uri())
 
-        df = client.entries().to_polars()
+        # Test the new list-based entries() API
+        entries = client.entries()
+        assert sorted([e.name for e in entries]) == ["my_dataset", "my_table"]
+
+        # Test get_table for raw __entries table access with polars conversion
+        df = client.get_table(name="__entries").to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot(
             """\

@@ -19,7 +19,7 @@ def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
     assert entries_table_name in client.table_names()
 
     # Check that we have at least the expected tables (may have more on external servers)
-    entries = client.table_entries()
+    entries = client.tables()
     assert len(entries) >= 4
     entry_names = [e.name for e in entries]
     assert expected_table_name in entry_names
@@ -28,7 +28,7 @@ def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
 
     # Verify we can get and query the table
     client.get_table(name=expected_table_name)
-    tables = client.tables()
+    tables = client.get_table(name="__entries")
     assert pa.Table.from_batches(tables.collect()).num_rows > 0
 
     entry = client.get_table_entry(name=expected_table_name)

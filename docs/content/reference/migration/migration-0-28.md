@@ -116,3 +116,34 @@ def on_event(event):
 ```
 
 This affects `PlayEvent`, `PauseEvent`, `TimeUpdateEvent`, `TimelineChangeEvent`, `SelectionChangeEvent`, and `RecordingOpenEvent`.
+
+## Python SDK: catalog entry listing APIs renamed
+
+The `CatalogClient` methods for listing catalog entries have been renamed for clarity:
+
+| Old API | New API |
+|---------|---------|
+| `CatalogClient.all_entries()` | `CatalogClient.entries()` |
+| `CatalogClient.dataset_entries()` | `CatalogClient.datasets()` |
+| `CatalogClient.table_entries()` | `CatalogClient.tables()` |
+
+The old methods are deprecated and will be removed in a future release.
+
+Additionally, the new methods accept an optional `include_hidden` parameter:
+- `datasets(include_hidden=True)`: includes blueprint datasets
+- `tables(include_hidden=True)`: includes system tables (e.g., `__entries`)
+- `entries(include_hidden=True)`: includes both
+
+## Python SDK: removed DataFrame-returning entry listing methods
+
+The following methods that returned `datafusion.DataFrame` objects have been removed without deprecation:
+
+| Removed method | Replacement |
+|----------------|-------------|
+| `CatalogClient.entries()` (returning DataFrame) | `CatalogClient.get_table(name="__entries")` |
+| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries")` filtered by entry kind |
+| `CatalogClient.tables()` (returning DataFrame) | `CatalogClient.get_table(name="__entries")` filtered by entry kind |
+
+<!-- TODO(ab): add `.reader()` to the suggested workaround when that API is updated --> 
+
+The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries")`.
