@@ -2315,7 +2315,7 @@ impl App {
             match msg {
                 DataSourceMessage::RrdManifestMessage(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
-                    entity_db.add_rrd_manifest_message(rrd_manifest);
+                    entity_db.add_rrd_manifest_message(*rrd_manifest);
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
