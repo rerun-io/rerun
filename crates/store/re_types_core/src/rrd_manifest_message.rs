@@ -95,12 +95,12 @@ impl std::fmt::Debug for RrdManifestMessage {
 impl Clone for RrdManifestMessage {
     fn clone(&self) -> Self {
         #![expect(clippy::unwrap_used)] // `self` is existence proof that this cannot fail
-        Self::from_record_batch(self.borrow_rb().clone()).unwrap()
+        Self::try_from_record_batch(self.borrow_rb().clone()).unwrap()
     }
 }
 
 impl RrdManifestMessage {
-    pub fn from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
+    pub fn try_from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
         #![expect(clippy::unwrap_used)] // We validate before running the builder
 
         let chunk_entity_path = rb
