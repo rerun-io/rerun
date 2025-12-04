@@ -2,7 +2,7 @@ use super::super::definitions::geometry_msgs::PoseStamped;
 use re_chunk::{Chunk, ChunkId};
 
 use re_types::archetypes::{CoordinateFrame, InstancePoses3D};
-use re_types::components::{PoseRotationQuat, PoseTranslation3D};
+use re_types::components::{RotationQuat, Translation3D};
 use re_types::datatypes::Quaternion;
 
 use super::super::Ros2MessageParser;
@@ -13,8 +13,8 @@ use crate::parsers::{
 use crate::util::TimestampCell;
 
 pub struct PoseStampedMessageParser {
-    translations: Vec<PoseTranslation3D>,
-    quaternions: Vec<PoseRotationQuat>,
+    translations: Vec<Translation3D>,
+    quaternions: Vec<RotationQuat>,
     frame_ids: Vec<String>,
 }
 
@@ -39,7 +39,7 @@ impl MessageParser for PoseStampedMessageParser {
         ));
 
         self.frame_ids.push(header.frame_id);
-        self.translations.push(PoseTranslation3D::new(
+        self.translations.push(Translation3D::new(
             pose.position.x as f32,
             pose.position.y as f32,
             pose.position.z as f32,
