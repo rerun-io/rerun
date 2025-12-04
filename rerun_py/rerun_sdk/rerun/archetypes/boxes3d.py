@@ -312,10 +312,10 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    centers: components.PoseTranslation3DBatch | None = field(
+    centers: components.Translation3DBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
+        converter=components.Translation3DBatch._converter,  # type: ignore[misc]
     )
     # Optional center positions of the boxes.
     #
@@ -323,10 +323,10 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
+    rotation_axis_angles: components.RotationAxisAngleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
+        converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
@@ -334,10 +334,10 @@ class Boxes3D(Boxes3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    quaternions: components.PoseRotationQuatBatch | None = field(
+    quaternions: components.RotationQuatBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
+        converter=components.RotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #

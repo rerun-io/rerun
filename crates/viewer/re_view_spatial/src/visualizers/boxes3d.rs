@@ -79,9 +79,9 @@ struct Boxes3DComponentData<'a> {
     half_sizes: &'a [HalfSize3D],
 
     // Clamped to edge
-    centers: &'a [components::PoseTranslation3D],
-    rotation_axis_angles: ChunkComponentIterItem<components::PoseRotationAxisAngle>,
-    quaternions: &'a [components::PoseRotationQuat],
+    centers: &'a [components::Translation3D],
+    rotation_axis_angles: ChunkComponentIterItem<components::RotationAxisAngle>,
+    quaternions: &'a [components::RotationQuat],
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
@@ -188,7 +188,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let data = re_query::range_zip_1x8(
                     all_half_sizes_indexed,
                     all_centers.slice::<[f32; 3]>(),
-                    all_rotation_axis_angles.component_slow::<components::PoseRotationAxisAngle>(),
+                    all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
                     all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
