@@ -64,7 +64,6 @@ impl Authentication {
     }
 
     fn start_login_flow(&mut self, ui: &mut egui::Ui) {
-        // TODO: Is login hint required?
         match LoginFlow::open(ui, None) {
             Ok(flow) => {
                 self.login_flow = Some(flow);
