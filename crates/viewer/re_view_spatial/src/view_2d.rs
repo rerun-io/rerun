@@ -11,7 +11,7 @@ use re_viewer_context::{
 };
 
 use crate::contexts::register_spatial_contexts;
-use crate::heuristics::VisualizedEntities;
+use crate::heuristics::IndicatedVisualizableEntities;
 use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
 use crate::shared_fallbacks;
 use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
@@ -151,10 +151,10 @@ impl ViewClass for SpatialView2D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let VisualizedEntities {
+        let IndicatedVisualizableEntities {
             indicated_entities,
             excluded_entities,
-        } = VisualizedEntities::new(
+        } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,

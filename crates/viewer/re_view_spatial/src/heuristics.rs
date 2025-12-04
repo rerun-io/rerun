@@ -7,7 +7,7 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::SpatialViewVisualizerData;
 use crate::{SpatialView2D, SpatialView3D};
 
-pub struct VisualizedEntities {
+pub struct IndicatedVisualizableEntities {
     /// All entities for which a visualizer of the given kind would be picked.
     ///
     /// I.e. all entities for which at least one visualizer of the specified kind is "maybe visualizable"
@@ -21,7 +21,7 @@ pub struct VisualizedEntities {
     pub excluded_entities: Vec<EntityPath>,
 }
 
-impl VisualizedEntities {
+impl IndicatedVisualizableEntities {
     pub fn new(
         ctx: &ViewerContext<'_>,
         view_class_identifier: ViewClassIdentifier,

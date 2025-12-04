@@ -1,5 +1,5 @@
 use re_log_types::hash::Hash64;
-use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule};
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs};
 use re_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
@@ -87,9 +87,14 @@ impl RecommendedView {
             .into()
     }
 
+    /// Crates new query filter rules for all given entities that would fit the current rule.
     pub fn exclude_entities(&mut self, excluded: &[EntityPath]) {
+        let filter = self
+            .query_filter
+            .resolve_forgiving(&EntityPathSubs::new_with_origin(&self.origin));
+
         for e in excluded {
-            if e.is_descendant_of(&self.origin) {
+            if filter.matches(e) {
                 self.query_filter.insert_rule(
                     re_log_types::RuleEffect::Exclude,
                     EntityPathRule::including_entity_subtree(e),
