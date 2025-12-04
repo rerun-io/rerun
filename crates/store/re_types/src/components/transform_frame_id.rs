@@ -27,9 +27,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// entity path driven hierarchy which is defined via [`archetypes::Transform3D`][crate::archetypes::Transform3D], [`archetypes::Pinhole`][crate::archetypes::Pinhole] etc..
 /// These implicit transform frames look like `tf#path/to/entity`.
 ///
-/// Note that any [`archetypes::Transform3D`][crate::archetypes::Transform3D]s logged at an entity path describes a relationship between the
-///  transform frames `parent` and `child`, **not** the transform frame that the entity path may be
-/// using. Which is defined by [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame].
+/// Note that any [`archetypes::Transform3D`][crate::archetypes::Transform3D]s logged with both `parent_frame` and `child_frame` set
+/// describes a relationship between these parent and child transform frames, **not** the transform frame
+/// that the entity path may be using (defined by an [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame]).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct TransformFrameId(pub crate::datatypes::Utf8);

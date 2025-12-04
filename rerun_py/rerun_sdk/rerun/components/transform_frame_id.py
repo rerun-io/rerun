@@ -22,9 +22,9 @@ class TransformFrameId(datatypes.Utf8, ComponentMixin):
     entity path driven hierarchy which is defined via [`archetypes.Transform3D`][rerun.archetypes.Transform3D], [`archetypes.Pinhole`][rerun.archetypes.Pinhole] etc..
     These implicit transform frames look like `tf#path/to/entity`.
 
-    Note that any [`archetypes.Transform3D`][rerun.archetypes.Transform3D]s logged at an entity path describes a relationship between the
-     transform frames `parent` and `child`, **not** the transform frame that the entity path may be
-    using. Which is defined by [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame].
+    Note that any [`archetypes.Transform3D`][rerun.archetypes.Transform3D]s logged with both `parent_frame` and `child_frame` set
+    describes a relationship between these parent and child transform frames, **not** the transform frame
+    that the entity path may be using (defined by an [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame]).
     """
 
     _BATCH_TYPE = None
