@@ -25,6 +25,7 @@ use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_types_core::RrdManifestMessage;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
@@ -365,11 +366,12 @@ where
             })
     }
 
+    /// Get the full [`RrdManifestMessage`] of a recording.
     pub async fn get_rrd_manifest(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<RecordBatch> {
+    ) -> ApiResult<RrdManifestMessage> {
         self.inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
@@ -388,14 +390,17 @@ where
             })?
             .try_into()
             .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))
+            .and_then(|rb| {
+                RrdManifestMessage::from_record_batch(rb).map_err(|err| {
+                    ApiError::serialization(err, "failed to parse /GetRrdManifest response")
+                })
+            })
     }
 
     /// Fetches all chunks ids for a specified segment.
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
-    ///
-    /// The result is compatible with [`RrdManifestMessage`].
     pub async fn query_dataset_raw(
         &mut self,
         params: SegmentQueryParams,
