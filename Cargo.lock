@@ -8749,6 +8749,7 @@ version = "0.28.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "datafusion",
  "insta",
  "itertools 0.14.0",
  "nohash-hasher",

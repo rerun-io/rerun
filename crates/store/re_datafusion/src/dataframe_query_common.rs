@@ -1,9 +1,11 @@
+use futures::StreamExt;
 use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
 
+use crate::pushdown_expressions::apply_filter_expr_to_queries;
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
     TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
@@ -42,8 +44,10 @@ const DEFAULT_BATCH_SIZE: usize = 2048;
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
     query_expression: QueryExpression,
+    query_dataset_request: QueryDatasetRequest,
     sort_index: Option<Index>,
-    chunk_info_batches: Arc<Vec<RecordBatch>>,
+    dataset_id: EntryId,
+    // chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
 
     /// passing trace headers between phases of execution pipeline helps keep
@@ -65,8 +69,6 @@ impl DataframeQueryTableProvider {
         segment_ids: &[impl AsRef<str> + Sync],
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
-        use futures::StreamExt as _;
-
         let mut client = connection
             .client(origin)
             .await
@@ -94,6 +96,7 @@ impl DataframeQueryTableProvider {
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
 
+        let query = query_from_query_expression(query_expression);
         let fuzzy_descriptors: Vec<String> = query_expression
             .view_contents
             .as_ref()
@@ -108,9 +111,7 @@ impl DataframeQueryTableProvider {
             .map(|ident| ident.to_string())
             .collect();
 
-        let query = query_from_query_expression(query_expression);
-
-        let dataset_query = QueryDatasetRequest {
+        let query_dataset_request = QueryDatasetRequest {
             segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
@@ -128,33 +129,6 @@ impl DataframeQueryTableProvider {
             }),
         };
 
-        let response_stream = client
-            .inner()
-            .query_dataset(
-                tonic::Request::new(dataset_query.into())
-                    .with_entry_id(dataset_id)
-                    .map_err(|err| exec_datafusion_err!("{err}"))?,
-            )
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner();
-
-        let chunk_info_batches = response_stream
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_iter()
-            .filter_map(|response| response.data)
-            .map(|dataframe_part| {
-                dataframe_part
-                    .try_into()
-                    .map_err(|err| exec_datafusion_err!("{err}"))
-            })
-            .collect::<Result<Vec<_>, _>>()?
-            .into();
-
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
             ScanSegmentTableResponse::FIELD_SEGMENT_ID,
@@ -163,8 +137,10 @@ impl DataframeQueryTableProvider {
         Ok(Self {
             schema,
             query_expression: query_expression.to_owned(),
+            query_dataset_request,
             sort_index: query_expression.filtered_index,
-            chunk_info_batches,
+            // chunk_info_batches,
+            dataset_id,
             client,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
@@ -243,7 +219,55 @@ impl TableProvider for DataframeQueryTableProvider {
         filters: &[Expr],
         limit: Option<usize>,
     ) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
+        let mut dataset_queries = vec![self.query_dataset_request.clone()];
+        for filter in filters {
+            if let Some(updated_queries) =
+                apply_filter_expr_to_queries(dataset_queries.clone(), filter, &self.schema)?
+            {
+                dataset_queries = updated_queries;
+            }
+        }
+
         let mut query_expression = self.query_expression.clone();
+
+        let mut chunk_info_batches = Vec::with_capacity(dataset_queries.len());
+        for dataset_query in dataset_queries {
+            let response_stream = self
+                .client
+                .clone()
+                .inner()
+                .query_dataset(
+                    tonic::Request::new(dataset_query.into())
+                        .with_entry_id(self.dataset_id)
+                        .map_err(|err| exec_datafusion_err!("{err}"))?,
+                )
+                .await
+                .map_err(|err| exec_datafusion_err!("{err}"))?
+                .into_inner();
+
+            let batches: Vec<RecordBatch> = response_stream
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| exec_datafusion_err!("{err}"))?
+                .into_iter()
+                .filter_map(|response| response.data)
+                .map(|dataframe_part| {
+                    dataframe_part
+                        .try_into()
+                        .map_err(|err| exec_datafusion_err!("{err}"))
+                })
+                .collect::<Result<Vec<_>, _>>()?
+                .into();
+
+            chunk_info_batches.push(batches);
+        }
+        // TODO(tsaucer) the multiple requests can produce identical chunks
+        // so we need to limit these down to distinct values
+
+        let chunk_info_batches: Arc<Vec<RecordBatch>> =
+            Arc::new(chunk_info_batches.into_iter().flatten().collect());
 
         // Find the first column selection that is a component
         if query_expression.filtered_is_not_null.is_none() {
@@ -260,7 +284,7 @@ impl TableProvider for DataframeQueryTableProvider {
             self.sort_index,
             projection,
             state.config().target_partitions(),
-            Arc::clone(&self.chunk_info_batches),
+            chunk_info_batches,
             query_expression,
             self.client.clone(),
             #[cfg(not(target_arch = "wasm32"))]
@@ -283,19 +307,40 @@ impl TableProvider for DataframeQueryTableProvider {
             let col = *col;
             Ok(filter_columns
                 .iter()
-                .map(|filter| {
-                    if Some(col) == filter.as_ref() {
-                        TableProviderFilterPushDown::Exact
+                .zip(filters)
+                .map(|(column_selector, filter_expr)| {
+                    if Some(col) == column_selector.as_ref() {
+                        Ok(TableProviderFilterPushDown::Exact)
                     } else {
-                        TableProviderFilterPushDown::Unsupported
+                        let returned_queries = apply_filter_expr_to_queries(
+                            vec![self.query_dataset_request.clone()],
+                            filter_expr,
+                            &self.schema,
+                        )?;
+                        if let Some(_) = returned_queries {
+                            Ok(TableProviderFilterPushDown::Inexact)
+                        } else {
+                            Ok(TableProviderFilterPushDown::Unsupported)
+                        }
                     }
                 })
-                .collect::<Vec<_>>())
+                .collect::<Result<Vec<_>, DataFusionError>>()?)
         } else {
-            Ok(vec![
-                TableProviderFilterPushDown::Unsupported;
-                filters.len()
-            ])
+            Ok(filters
+                .iter()
+                .map(|filter_expr| {
+                    let returned_queries = apply_filter_expr_to_queries(
+                        vec![self.query_dataset_request.clone()],
+                        filter_expr,
+                        &self.schema,
+                    )?;
+                    if let Some(_) = returned_queries {
+                        Ok(TableProviderFilterPushDown::Inexact)
+                    } else {
+                        Ok(TableProviderFilterPushDown::Unsupported)
+                    }
+                })
+                .collect::<Result<Vec<_>, DataFusionError>>()?)
         }
     }
 }
@@ -404,7 +449,7 @@ pub fn align_record_batch_to_schema(
 /// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
 /// these DataFusion partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
-/// This function will do the relevant grouping of chunk infos by chunk's segment id
+/// This function will do the relevant grouping of chunk infos by chunk's segment id,
 /// and we will eventually fire individual queries for each group. Segments must be ordered,
 /// see `SegmentStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]

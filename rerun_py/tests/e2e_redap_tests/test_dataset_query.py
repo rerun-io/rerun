@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow
-from datafusion import col
+from datafusion import col, functions as F, lit
 
 if TYPE_CHECKING:
     from rerun.catalog import DatasetEntry
@@ -103,3 +103,64 @@ def test_readonly_dataset_schema_comparison_self_consistent(readonly_test_datase
 
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
     assert schema_0 == schema_1, "Schema is not self-consistent"
+
+
+def test_query_view_df_filter_pushdown(readonly_test_dataset: DatasetEntry) -> None:
+    results = (
+        readonly_test_dataset.dataframe_query_view(index="time_3", contents="/**")
+        .df()
+        .aggregate(
+            "rerun_segment_id",
+            [
+                F.min(col("time_3")).alias("min_time"),
+                F.median(col("time_3")).alias("median_time"),
+            ],
+        )
+        .limit(3)
+        .collect()
+    )
+
+    partitions = [r for rs in results for r in rs.column(0)]
+    min_times = [r for rs in results for r in rs.column(1)]
+    med_times = [r for rs in results for r in rs.column(2)]
+
+    df = readonly_test_dataset.dataframe_query_view(index="time_3", contents="/**").fill_latest_at().df()
+
+    segment_col = col("rerun_segment_id")
+    partition_filter = (
+        (segment_col == lit(partitions[0])) | (segment_col == lit(partitions[1])) | (segment_col == lit(partitions[2]))
+    )
+
+    # TODO(tsaucer) add snapshots
+    _results = df.filter(partition_filter).collect()
+
+    time_col = col("time_3")
+    time_filter = (
+        ((time_col >= lit(min_times[0])) & (time_col <= lit(med_times[0])))
+        | ((time_col >= lit(min_times[1])) & (time_col <= lit(med_times[1])))
+        | ((time_col >= lit(min_times[2])) & (time_col <= lit(med_times[2])))
+    )
+    _results = df.filter(time_filter).collect()
+
+    time_col = col("time_3")
+    time_filter = (time_col == lit(med_times[0])) | (time_col == lit(med_times[1])) | (time_col == lit(med_times[2]))
+    _results = df.filter(time_filter).collect()
+
+    time_and_partition_filter = (
+        ((time_col >= lit(min_times[0])) & (time_col <= lit(med_times[0])) & (segment_col == lit(partitions[0])))
+        | ((time_col >= lit(min_times[1])) & (time_col <= lit(med_times[1])) & (segment_col == lit(partitions[1])))
+        | ((time_col >= lit(min_times[2])) & (time_col <= lit(med_times[2])) & (segment_col == lit(partitions[2])))
+    )
+    _results = df.filter(time_and_partition_filter).count()
+
+    between_filter = (
+        time_col.between(lit(min_times[0]), lit(med_times[0]))
+        | time_col.between(lit(min_times[1]), lit(med_times[1]))
+        | time_col.between(lit(min_times[2]), lit(med_times[2]))
+    )
+    _results = df.filter(between_filter).count()
+
+    and_expr1 = (segment_col == lit(partitions[0])) & (time_col == med_times[0])
+    and_expr2 = (segment_col == lit(partitions[1])) & (time_col <= med_times[1])
+    or_expr = and_expr1 | and_expr2
+    _results = df.filter(or_expr).collect()
