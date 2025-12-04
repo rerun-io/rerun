@@ -298,7 +298,7 @@ impl RrdManifest {
                         suffix => {
                             return Err(crate::CodecError::from(ChunkError::Malformed {
                                 reason: format!(
-                                    "field '{}' has invalid suffix '{suffix}",
+                                    "field '{}' has invalid suffix '{suffix}'",
                                     field.name(),
                                 ),
                             }));
@@ -306,6 +306,21 @@ impl RrdManifest {
                     }
                 } else {
                     // Global column
+                    match field.name().as_str() {
+                        Self::FIELD_CHUNK_ID
+                        | Self::FIELD_CHUNK_IS_STATIC
+                        | Self::FIELD_CHUNK_BYTE_SIZE
+                        | Self::FIELD_CHUNK_BYTE_OFFSET
+                        | Self::FIELD_CHUNK_ENTITY_PATH => {}
+
+                        name => {
+                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                                reason: format!(
+                                    "unexpected field '{name}' should not be present in an RRD manifest",
+                                ),
+                            }));
+                        }
+                    }
                 }
             }
         }
