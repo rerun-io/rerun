@@ -137,7 +137,7 @@ impl LeRobotDatasetV2 {
 /// Metadata for a `LeRobot` dataset.
 ///
 /// This is a wrapper struct for the metadata files in the `meta` directory of a
-/// `LeRobot` dataset. For more see [`LeRobotDataset`].
+/// `LeRobot` dataset. For more see [`LeRobotDatasetV2`].
 #[derive(Debug, Clone)]
 pub struct LeRobotDatasetMetadata {
     pub info: LeRobotDatasetInfo,
