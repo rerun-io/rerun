@@ -18,7 +18,7 @@ pub struct ChunkInfo {
 ///
 /// This is currently used to show a progress bar.
 ///
-/// This is constructed from one ore more [`ChunkIndexMessage`], which is what
+/// This is constructed from one ore more [`RrdManifestMessage`], which is what
 /// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
