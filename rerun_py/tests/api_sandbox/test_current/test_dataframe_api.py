@@ -16,8 +16,8 @@ def test_dataframe_api_filter_partition_id(simple_dataset_prefix: Path) -> None:
         client = server.client()
         ds = client.get_dataset_entry(name="ds")
 
-        # Create a view with all partitions
-        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_partition_id(
+        # Create a view with all segments
+        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_segment_id(
             "simple_recording_0", "simple_recording_2"
         )
 

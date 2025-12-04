@@ -14,7 +14,7 @@ struct TestScenario {
 }
 
 fn setup_scene(test_context: &mut TestContext) {
-    // We're using explicit transform frames here because it can trigger more different errors,
+    // We're using named transform frames here because it can trigger more different errors,
     // but most things work with implicit transform frames just as well.
     //
     // Transform frame forest:

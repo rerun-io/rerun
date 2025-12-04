@@ -215,28 +215,28 @@ class DatasetEntry(Entry):
         segment_id = blueprint_dataset.register(uri)
 
         if set_default:
-            self._inner.set_default_blueprint_partition_id(segment_id)
+            self._inner.set_default_blueprint_segment_id(segment_id)
 
     def blueprints(self) -> list[str]:
         """Lists all blueprints currently registered with this dataset."""
 
-        return self._inner.blueprint_dataset().partition_ids()
+        return self._inner.blueprint_dataset().segment_ids()
 
     def set_default_blueprint(self, blueprint_name: str) -> None:
         """Set an already-registered blueprint as default for this dataset."""
 
-        self._inner.set_default_blueprint_partition_id(blueprint_name)
+        self._inner.set_default_blueprint_segment_id(blueprint_name)
 
     def default_blueprint(self) -> str | None:
         """Return the name currently set blueprint."""
 
-        return self._inner.default_blueprint_partition_id()
+        return self._inner.default_blueprint_segment_id()
 
     def schema(self) -> Schema:
         return Schema(self._inner.schema(), _LazyDatasetState())
 
     def segment_ids(self) -> list[str]:
-        return self._inner.partition_ids()
+        return self._inner.segment_ids()
 
     def segment_table(
         self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
@@ -254,7 +254,7 @@ class DatasetEntry(Entry):
         start=None,
         end=None,
     ) -> str:
-        return self._inner.partition_url(segment_id, timeline, start, end)
+        return self._inner.segment_url(segment_id, timeline, start, end)
 
     def register(self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base") -> Tasks:
         if isinstance(recording_uri, str):
@@ -276,7 +276,7 @@ class DatasetEntry(Entry):
         return Tasks(self._inner.register_prefix(recordings_prefix, layer_name))
 
     def download_segment(self, segment_id: str) -> Any:
-        return self._inner.download_partition(segment_id)
+        return self._inner.download_segment(segment_id)
 
     def reader(
         self,
@@ -501,19 +501,19 @@ class DatasetView:
 
     def segment_ids(self) -> list[str]:
         if self._lazy_state.filtered_segments is not None:
-            return [pid for pid in self._inner.partition_ids() if pid in self._lazy_state.filtered_segments]
+            return [pid for pid in self._inner.segment_ids() if pid in self._lazy_state.filtered_segments]
         else:
-            return self._inner.partition_ids()
+            return self._inner.segment_ids()
 
     def download_segment(self, segment_id: str) -> Any:
-        return self._inner.download_partition(segment_id)
+        return self._inner.download_segment(segment_id)
 
     def segment_table(
         self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
     ) -> datafusion.DataFrame:
-        # Get the partition table from the inner object
+        # Get the segment table from the inner object
 
-        partitions = self._inner.partition_table().df()
+        partitions = self._inner.segment_table().df()
 
         if self._lazy_state.filtered_segments is not None:
             ctx = datafusion.SessionContext()
@@ -532,7 +532,7 @@ class DatasetView:
             if isinstance(join_meta, TableEntry):
                 join_meta = join_meta.reader()
             if join_key not in partitions.schema().names:
-                raise ValueError(f"Dataset partition table must contain join_key column '{join_key}'.")
+                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
             if join_key not in join_meta.schema().names:
                 raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
 
@@ -607,7 +607,7 @@ class DatasetView:
 
             # Fake the intended behavior: index values are provided on a per-segment basis. If a segment is missing,
             # no rows are generated for it.
-            segments = self._lazy_state.filtered_segments or self._inner.partition_ids()
+            segments = self._lazy_state.filtered_segments or self._inner.segment_ids()
 
             df = None
             for segment in segments:
@@ -616,7 +616,7 @@ class DatasetView:
                 else:
                     index_values = np.array([], dtype=np.datetime64)
 
-                other_df = view.filter_partition_id(segment).using_index_values(index_values).df()
+                other_df = view.filter_segment_id(segment).using_index_values(index_values).df()
 
                 if df is None:
                     df = other_df
@@ -640,7 +640,7 @@ class DatasetView:
                 return df
         else:
             if self._lazy_state.filtered_segments is not None:
-                view = view.filter_partition_id(*self._lazy_state.filtered_segments)
+                view = view.filter_segment_id(*self._lazy_state.filtered_segments)
 
             return view.df()
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
+from typing_extensions import deprecated
+
 from rerun_bindings import DatasetEntryInternal, TableEntryInternal
 
 if TYPE_CHECKING:
@@ -126,40 +128,106 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
 
+    def default_blueprint_segment_id(self) -> str | None:
+        """The default blueprint segment ID for this dataset, if any."""
+
+        return self._internal.default_blueprint_segment_id()
+
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
+        """
+        Set the default blueprint segment ID for this dataset.
+
+        Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
+        """
+
+        return self._internal.set_default_blueprint_segment_id(segment_id)
+
+    @deprecated("Use default_blueprint_segment_id() instead")
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""
+        return self.default_blueprint_segment_id()
 
-        return self._internal.default_blueprint_partition_id()
-
+    @deprecated("Use set_default_blueprint_segment_id() instead")
     def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
-        """
-        Set the default blueprint partition ID for this dataset.
-
-        Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
-        """
-
-        return self._internal.set_default_blueprint_partition_id(partition_id)
+        """Set the default blueprint partition ID for this dataset."""
+        return self.set_default_blueprint_segment_id(partition_id)
 
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""
 
         return self._internal.schema()
 
+    def segment_ids(self) -> list[str]:
+        """Returns a list of segment IDs for the dataset."""
+
+        return self._internal.segment_ids()
+
+    @deprecated("Use segment_ids() instead")
     def partition_ids(self) -> list[str]:
-        """Returns a list of partitions IDs for the dataset."""
+        """Returns a list of partition IDs for the dataset."""
+        return self.segment_ids()
 
-        return self._internal.partition_ids()
+    def segment_table(self) -> DataFusionTable:
+        """Return the segment table as a Datafusion table provider."""
 
+        return self._internal.segment_table()
+
+    @deprecated("Use segment_table() instead")
     def partition_table(self) -> DataFusionTable:
         """Return the partition table as a Datafusion table provider."""
-
-        return self._internal.partition_table()
+        return self.segment_table()
 
     def manifest(self) -> DataFusionTable:
         """Return the dataset manifest as a Datafusion table provider."""
 
         return self._internal.manifest()
 
+    def segment_url(  # noqa: PLR0917
+        self,
+        segment_id: str,
+        timeline: str | None = None,
+        start: datetime | int | None = None,
+        end: datetime | int | None = None,
+    ) -> str:
+        """
+        Return the URL for the given segment.
+
+        Parameters
+        ----------
+        segment_id: str
+            The ID of the segment to get the URL for.
+
+        timeline: str | None
+            The name of the timeline to display.
+
+        start: int | datetime | None
+            The start time for the segment.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        end: int | datetime | None
+            The end time for the segment.
+            Integer for ticks, or datetime/nanoseconds for timestamps.
+
+        Examples
+        --------
+        # With ticks
+        >>> start_tick, end_time = 0, 10
+        >>> dataset.segment_url("some_id", "log_tick", start_tick, end_time)
+
+        # With timestamps
+        >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
+        >>> dataset.segment_url("some_id", "real_time", start_time, end_time)
+
+        Returns
+        -------
+        str
+            The URL for the given segment.
+
+        """
+
+        return self._internal.segment_url(segment_id, timeline, start, end)
+
+    @deprecated("Use segment_url() instead")
     def partition_url(  # noqa: PLR0917
         self,
         partition_id: str,
@@ -167,43 +235,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         start: datetime | int | None = None,
         end: datetime | int | None = None,
     ) -> str:
-        """
-        Return the URL for the given partition.
-
-        Parameters
-        ----------
-        partition_id: str
-            The ID of the partition to get the URL for.
-
-        timeline: str | None
-            The name of the timeline to display.
-
-        start: int | datetime | None
-            The start time for the partition.
-            Integer for ticks, or datetime/nanoseconds for timestamps.
-
-        end: int | datetime | None
-            The end time for the partition.
-            Integer for ticks, or datetime/nanoseconds for timestamps.
-
-        Examples
-        --------
-        # With ticks
-        >>> start_tick, end_time = 0, 10
-        >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
-
-        # With timestamps
-        >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
-        >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
-
-        Returns
-        -------
-        str
-            The URL for the given partition.
-
-        """
-
-        return self._internal.partition_url(partition_id, timeline, start, end)
+        """Return the URL for the given partition."""
+        return self.segment_url(partition_id, timeline, start, end)
 
     def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
         """
@@ -225,8 +258,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        partition_id: str
-            The partition ID of the registered RRD.
+        segment_id: str
+            The segment ID of the registered RRD.
 
         """
 
@@ -281,10 +314,15 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.register_prefix(recordings_prefix, layer_name=layer_name)
 
+    def download_segment(self, segment_id: str) -> Recording:
+        """Download a segment from the dataset."""
+
+        return self._internal.download_segment(segment_id)
+
+    @deprecated("Use download_segment() instead")
     def download_partition(self, partition_id: str) -> Recording:
         """Download a partition from the dataset."""
-
-        return self._internal.download_partition(partition_id)
+        return self.download_segment(partition_id)
 
     def dataframe_query_view(
         self,
@@ -310,7 +348,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         monotonically increasing when data is sent from a single process.
 
         If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
+        specified) and no index columns. It will also contain a single row per segment.
 
         Parameters
         ----------

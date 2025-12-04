@@ -129,8 +129,8 @@ impl PyDatasetEntryInternal {
         Some(Py::new(py, Self::new(client, dataset_entry))).transpose()
     }
 
-    /// The default blueprint partition ID for this dataset, if any.
-    fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
+    /// The default blueprint segment ID for this dataset, if any.
+    fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_
             .dataset_details
             .default_blueprint_segment
@@ -138,19 +138,19 @@ impl PyDatasetEntryInternal {
             .map(ToString::to_string)
     }
 
-    /// Set the default blueprint partition ID for this dataset.
+    /// Set the default blueprint segment ID for this dataset.
     ///
     /// Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
-    #[pyo3(signature = (partition_id))]
-    fn set_default_blueprint_partition_id(
+    #[pyo3(signature = (segment_id))]
+    fn set_default_blueprint_segment_id(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
-        partition_id: Option<String>,
+        segment_id: Option<String>,
     ) -> PyResult<()> {
         let connection = self_.client.borrow(py).connection().clone();
 
         let mut dataset_details = self_.dataset_details.clone();
-        dataset_details.default_blueprint_segment = partition_id.map(Into::into);
+        dataset_details.default_blueprint_segment = segment_id.map(Into::into);
 
         let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
 
@@ -164,16 +164,16 @@ impl PyDatasetEntryInternal {
         Self::fetch_schema(&self_)
     }
 
-    /// Returns a list of partitions IDs for the dataset.
-    fn partition_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
+    /// Returns a list of segment IDs for the dataset.
+    fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         connection.get_dataset_partition_ids(self_.py(), self_.entry_details.id)
     }
 
-    /// Return the partition table as a Datafusion table provider.
+    /// Return the segment table as a Datafusion table provider.
     #[instrument(skip_all)]
-    fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -186,7 +186,7 @@ impl PyDatasetEntryInternal {
 
         Ok(PyDataFusionTable {
             client: self_.client.clone_ref(self_.py()),
-            name: format!("{}_partition_table", self_.entry_details.name),
+            name: format!("{}_segment_table", self_.entry_details.name),
             provider,
         })
     }
@@ -211,44 +211,44 @@ impl PyDatasetEntryInternal {
         })
     }
 
-    /// Return the URL for the given partition.
+    /// Return the URL for the given segment.
     ///
     /// Parameters
     /// ----------
-    /// partition_id: str
-    ///     The ID of the partition to get the URL for.
+    /// segment_id: str
+    ///     The ID of the segment to get the URL for.
     ///
     /// timeline: str | None
     ///     The name of the timeline to display.
     ///
     /// start: int | datetime | None
-    ///     The start time for the partition.
+    ///     The start time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// end: int | datetime | None
-    ///     The end time for the partition.
+    ///     The end time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// Examples
     /// --------
     /// # With ticks
     /// >>> start_tick, end_time = 0, 10
-    /// >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+    /// >>> dataset.segment_url("some_id", "log_tick", start_tick, end_time)
     ///
     /// # With timestamps
     /// >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
-    /// >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+    /// >>> dataset.segment_url("some_id", "real_time", start_time, end_time)
     ///
     /// Returns
     /// -------
     /// str
-    ///     The URL for the given partition.
+    ///     The URL for the given segment.
     ///
-    #[pyo3(signature = (partition_id, timeline=None, start=None, end=None))]
-    fn partition_url(
+    #[pyo3(signature = (segment_id, timeline=None, start=None, end=None))]
+    fn segment_url(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
-        partition_id: String,
+        segment_id: String,
         timeline: Option<&str>,
         start: Option<Bound<'_, PyAny>>,
         end: Option<Bound<'_, PyAny>>,
@@ -285,7 +285,7 @@ impl PyDatasetEntryInternal {
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
-            segment_id: partition_id, // Python API still uses partition_id for now
+            segment_id,
 
             time_range,
             //TODO(ab): add support for this
@@ -312,8 +312,8 @@ impl PyDatasetEntryInternal {
     ///
     /// Returns
     /// -------
-    /// partition_id: str
-    ///     The partition ID of the registered RRD.
+    /// segment_id: str
+    ///     The segment ID of the registered RRD.
     #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
     #[pyo3(
         text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
@@ -431,9 +431,9 @@ impl PyDatasetEntryInternal {
         ))
     }
 
-    /// Download a partition from the dataset.
+    /// Download a segment from the dataset.
     #[instrument(skip(self_), err)]
-    fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
+    fn download_segment(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyRecording> {
         let catalog_client = self_.client.borrow(self_.py());
         let connection = catalog_client.connection();
         let dataset_id = self_.entry_details.id;
@@ -444,7 +444,7 @@ impl PyDatasetEntryInternal {
             let response_stream = client
                 .fetch_segment_chunks_by_query(re_redap_client::SegmentQueryParams {
                     dataset_id,
-                    segment_id: partition_id.clone().into(),
+                    segment_id: segment_id.clone().into(),
                     include_static_data: true,
                     include_temporal_data: true,
                     query: None,
@@ -454,18 +454,18 @@ impl PyDatasetEntryInternal {
 
             let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
-            let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
+            let store_id = StoreId::new(StoreKind::Recording, dataset_name, segment_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());
 
             while let Some(chunks) = chunks_stream.next().await {
                 for chunk in chunks.map_err(to_py_err)? {
-                    let (chunk, chunk_partition_id) = chunk;
+                    let (chunk, chunk_segment_id) = chunk;
 
-                    if Some(&partition_id) != chunk_partition_id.as_ref() {
+                    if Some(&segment_id) != chunk_segment_id.as_ref() {
                         re_log::warn!(
-                            expected = partition_id,
-                            got = chunk_partition_id,
-                            "unexpected partition ID in chunk stream, this is a bug"
+                            expected = segment_id,
+                            got = chunk_segment_id,
+                            "unexpected segment ID in chunk stream, this is a bug"
                         );
                     }
                     store

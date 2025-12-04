@@ -8,6 +8,7 @@ mod fetch_chunks;
 mod indexes;
 mod query_dataset;
 mod register_segment;
+mod rrd_manifest;
 mod update_entry;
 mod write_table;
 
@@ -61,8 +62,8 @@ define_redap_tests! {
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
     indexes::column_doesnt_exist,
-    indexes::index_lifecycle,
     indexes::dataset_doesnt_exist,
+    indexes::index_lifecycle,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
@@ -73,9 +74,10 @@ define_redap_tests! {
     register_segment::register_and_scan_simple_dataset_with_layers,
     register_segment::register_and_scan_simple_dataset_with_properties,
     register_segment::register_and_scan_simple_dataset_with_properties_out_of_order,
-    register_segment::register_with_prefix,
     register_segment::register_segment_bumps_timestamp,
-    update_entry::update_entry_tests,
+    register_segment::register_with_prefix,
+    rrd_manifest::simple_dataset_rrd_manifest,
     update_entry::update_entry_bumps_timestamp,
+    update_entry::update_entry_tests,
     write_table::write_table
 }

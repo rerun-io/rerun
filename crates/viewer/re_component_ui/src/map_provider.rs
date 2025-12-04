@@ -24,9 +24,10 @@ impl VariantAvailableProvider<MapProvider> for MapProviderVariantAvailable {
         match variant {
             MapProvider::OpenStreetMap => VariantAvailable::Yes,
 
-            MapProvider::MapboxStreets | MapProvider::MapboxDark | MapProvider::MapboxSatellite => {
-                map_box_available
-            }
+            MapProvider::MapboxStreets
+            | MapProvider::MapboxDark
+            | MapProvider::MapboxSatellite
+            | MapProvider::MapboxLight => map_box_available,
         }
     }
 }

@@ -76,7 +76,7 @@ def test_partition_table_to_polars(simple_dataset_prefix: Path) -> None:
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        df = ds.partition_table().df().to_polars()
+        df = ds.segment_table().df().to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
 Schema([('rerun_segment_id', String),
@@ -108,7 +108,7 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_partition_id(
+        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_segment_id(
             "simple_recording_0", "simple_recording_2"
         )
 

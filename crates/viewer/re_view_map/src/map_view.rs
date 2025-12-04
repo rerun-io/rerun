@@ -556,6 +556,15 @@ fn get_tile_manager(
             options,
             egui_ctx.clone(),
         ),
+        MapProvider::MapboxLight => HttpTiles::with_options(
+            walkers::sources::Mapbox {
+                style: walkers::sources::MapboxStyle::Light,
+                access_token: mapbox_access_token.clone(),
+                high_resolution: false,
+            },
+            options,
+            egui_ctx.clone(),
+        ),
     }
 }
 
