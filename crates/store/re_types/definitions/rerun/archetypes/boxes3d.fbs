@@ -27,17 +27,17 @@ table Boxes3D (
   /// Optional center positions of the boxes.
   ///
   /// If not specified, the centers will be at (0, 0, 0).
-  centers: [rerun.components.PoseTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  centers: [rerun.components.Translation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Rotations via axis + angle.
   ///
   /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-  rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
+  rotation_axis_angles: [rerun.components.RotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// Rotations via quaternion.
   ///
   /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-  quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
+  quaternions: [rerun.components.RotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the boxes.
   ///

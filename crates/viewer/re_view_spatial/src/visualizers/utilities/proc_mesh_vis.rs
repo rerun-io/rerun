@@ -44,9 +44,9 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
 pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub half_sizes: &'a [components::HalfSize3D],
 
-    pub centers: &'a [components::PoseTranslation3D],
-    pub rotation_axis_angles: &'a [components::PoseRotationAxisAngle],
-    pub quaternions: &'a [components::PoseRotationQuat],
+    pub centers: &'a [components::Translation3D],
+    pub rotation_axis_angles: &'a [components::RotationAxisAngle],
+    pub quaternions: &'a [components::RotationQuat],
 
     /// Iterator of meshes. Must be at least as long as `half_sizes`.
     pub meshes: IMesh,
@@ -67,9 +67,9 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
 fn combine_instance_poses_with_archetype_transforms(
     num_half_sizes: usize,
     target_from_poses: &SmallVec1<[glam::DAffine3; 1]>,
-    translations: &[components::PoseTranslation3D],
-    rotation_axis_angles: &[components::PoseRotationAxisAngle],
-    quaternions: &[components::PoseRotationQuat],
+    translations: &[components::Translation3D],
+    rotation_axis_angles: &[components::RotationAxisAngle],
+    quaternions: &[components::RotationQuat],
 ) -> vec1::Vec1<glam::DAffine3> {
     // Draw as many proc meshes as we have max(instance pose count, proc mesh count), all components get repeated over that number.
     let num_instances = num_half_sizes
@@ -92,12 +92,12 @@ fn combine_instance_poses_with_archetype_transforms(
         .take(num_instances)
         .map(|mut transform| {
             if let Some(translation) = iter_translation.next() {
-                transform *= convert::pose_translation_3d_to_daffine3(*translation);
+                transform *= convert::translation_3d_to_daffine3(*translation);
             }
 
             if let Some(rotation_axis_angle) = iter_rotation_axis_angle.next() {
                 if let Ok(axis_angle) =
-                    convert::pose_rotation_axis_angle_to_daffine3(*rotation_axis_angle)
+                    convert::rotation_axis_angle_to_daffine3(*rotation_axis_angle)
                 {
                     transform *= axis_angle;
                 } else {
@@ -106,7 +106,7 @@ fn combine_instance_poses_with_archetype_transforms(
             }
 
             if let Some(rotation_quat) = iter_rotation_quat.next() {
-                if let Ok(rotation_quat) = convert::pose_rotation_quat_to_daffine3(*rotation_quat) {
+                if let Ok(rotation_quat) = convert::rotation_quat_to_daffine3(*rotation_quat) {
                     transform *= rotation_quat;
                 } else {
                     transform = glam::DAffine3::ZERO;
