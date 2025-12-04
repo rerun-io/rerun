@@ -501,6 +501,44 @@ impl Properties for LoadDataSource {
 
 // -----------------------------------------------
 
+/// Tracks CLI command invocations.
+///
+/// This is sent when a user runs the Rerun CLI with any command.
+pub struct CliCommandInvoked {
+    /// The main command (e.g., "rrd", "analytics", "auth", "mcap", "server", "viewer").
+    /// "viewer" is used when no subcommand is specified.
+    pub command: &'static str,
+
+    /// The subcommand if any (e.g., "compact", "merge", "login", "enable").
+    pub subcommand: Option<&'static str>,
+
+    /// List of boolean flags that were set.
+    /// Only includes safe, non-sensitive flags.
+    pub flags: Vec<&'static str>,
+}
+
+impl Event for CliCommandInvoked {
+    const NAME: &'static str = "cli_command_invoked";
+}
+
+impl Properties for CliCommandInvoked {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            command,
+            subcommand,
+            flags,
+        } = self;
+
+        event.insert("command", command);
+        event.insert_opt("subcommand", subcommand.map(|s| s.to_owned()));
+        if !flags.is_empty() {
+            event.insert("flags", flags.join(","));
+        }
+    }
+}
+
+// -----------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -600,6 +600,9 @@ where
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
 
+    #[cfg(feature = "analytics")]
+    record_cli_command_analytics(&args);
+
     initialize_thread_pool(args.threads);
 
     if args.web_viewer {
@@ -1525,4 +1528,121 @@ impl ReceiversFromUrlParams {
         }
         Ok(())
     }
+}
+
+// --- analytics ---
+
+/// Records analytics for the CLI command invocation.
+#[cfg(feature = "analytics")]
+fn record_cli_command_analytics(args: &Args) {
+    let Some(analytics) = re_analytics::Analytics::global_or_init() else {
+        return;
+    };
+
+    let (command, subcommand) = match &args.command {
+        #[cfg(feature = "analytics")]
+        Some(Command::Analytics(cmd)) => {
+            let subcommand = match cmd {
+                AnalyticsCommands::Details => "details",
+                AnalyticsCommands::Clear => "clear",
+                AnalyticsCommands::Email { .. } => "email",
+                AnalyticsCommands::Enable => "enable",
+                AnalyticsCommands::Disable => "disable",
+                AnalyticsCommands::Config => "config",
+            };
+            ("analytics", Some(subcommand))
+        }
+
+        #[cfg(feature = "auth")]
+        Some(Command::Auth(cmd)) => {
+            let subcommand = match cmd {
+                AuthCommands::Login(_) => "login",
+                AuthCommands::Token(_) => "token",
+            };
+            ("auth", Some(subcommand))
+        }
+
+        Some(Command::Manual) => ("man", None),
+
+        #[cfg(feature = "data_loaders")]
+        Some(Command::Mcap(cmd)) => {
+            let subcommand = match cmd {
+                McapCommands::Convert(_) => "convert",
+            };
+            ("mcap", Some(subcommand))
+        }
+
+        #[cfg(feature = "native_viewer")]
+        Some(Command::Reset) => ("reset", None),
+
+        Some(Command::Rrd(cmd)) => {
+            let subcommand = match cmd {
+                RrdCommands::Compact(_) => "compact",
+                RrdCommands::Compare(_) => "compare",
+                RrdCommands::Filter(_) => "filter",
+                RrdCommands::Merge(_) => "merge",
+                RrdCommands::Migrate(_) => "migrate",
+                RrdCommands::Print(_) => "print",
+                RrdCommands::Route(_) => "route",
+                RrdCommands::Stats(_) => "stats",
+                RrdCommands::Verify(_) => "verify",
+            };
+            ("rrd", Some(subcommand))
+        }
+
+        #[cfg(feature = "oss_server")]
+        Some(Command::Server(_)) => ("server", None),
+
+        None => ("viewer", None),
+    };
+
+    // Collect the boolean flags that are set
+    let mut flags: Vec<&'static str> = Vec::new();
+
+    if args.web_viewer {
+        flags.push("web_viewer");
+    }
+    if args.serve_web {
+        flags.push("serve_web");
+    }
+    if args.serve_grpc {
+        flags.push("serve_grpc");
+    }
+    if args.connect.is_some() {
+        flags.push("connect");
+    }
+    if args.newest_first {
+        flags.push("newest_first");
+    }
+    if !args.persist_state {
+        // Only log if explicitly disabled (default is true)
+        flags.push("no_persist_state");
+    }
+    if args.profile {
+        flags.push("profile");
+    }
+    if args.save.is_some() {
+        flags.push("save");
+    }
+    if args.screenshot_to.is_some() {
+        flags.push("screenshot_to");
+    }
+    if args.expect_data_soon {
+        flags.push("expect_data_soon");
+    }
+    if args.hide_welcome_screen {
+        flags.push("hide_welcome_screen");
+    }
+    if args.detach_process {
+        flags.push("detach_process");
+    }
+    if args.test_receive {
+        flags.push("test_receive");
+    }
+
+    analytics.record(re_analytics::event::CliCommandInvoked {
+        command,
+        subcommand,
+        flags,
+    });
 }
