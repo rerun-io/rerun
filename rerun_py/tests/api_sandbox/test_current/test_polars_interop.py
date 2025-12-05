@@ -54,12 +54,12 @@ shape: (3, 2)
 def test_table_to_polars(tmp_path: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
-        client.create_table(
+        table = client.create_table(
             "my_table",
             pa.schema([pa.field("int16", pa.int16()), pa.field("string_list", pa.list_(pa.string()))]),
             tmp_path.as_uri(),
         )
-        client.append_to_table("my_table", int16=[12], string_list=[["a", "b", "c"]])
+        table.append(int16=[12], string_list=[["a", "b", "c"]])
 
         df = client.get_table(name="my_table").df().to_polars()
 

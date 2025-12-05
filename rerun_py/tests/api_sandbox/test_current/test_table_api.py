@@ -39,8 +39,7 @@ sorbet:version: '0.1.2'\
 
         assert str(table.df().collect()) == inline_snapshot("[]")
 
-        client.append_to_table(
-            "my_table",
+        table.append(
             rerun_segment_id=["segment_001", "segment_002"],
             operator=["alice", "bob"],
         )
@@ -57,8 +56,7 @@ sorbet:version: '0.1.2'\
 └─────────────────────┴─────────────────────┘\
 """)
 
-        client.append_to_table(
-            "my_table",
+        table.append(
             rerun_segment_id=["segment_003"],
             operator=["carol"],
         )
