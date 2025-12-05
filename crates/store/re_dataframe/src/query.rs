@@ -384,10 +384,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             None
                         }
                     })
-                    .unwrap_or((
-                        usize::MAX,
-                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                    )),
+                    .unwrap_or_else(|| {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        )
+                    }),
 
                 ColumnSelector::Time(selected_column) => {
                     let TimeColumnSelector {

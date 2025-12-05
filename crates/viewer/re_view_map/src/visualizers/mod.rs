@@ -104,7 +104,7 @@ pub fn radius_to_size(
         radius
             .scene_units()
             .map(|radius_meter| projector.scale_pixel_per_meter(position) * radius_meter)
-            .or(radius.ui_points())
+            .or_else(|| radius.ui_points())
             .unwrap_or_default(),
     )
 }

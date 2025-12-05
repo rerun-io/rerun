@@ -840,10 +840,12 @@ where
             .into_inner();
 
         resp.table
-            .ok_or(ApiError::tonic(
-                Status::invalid_argument("entry ID not set in response"),
-                "/CreateTable failed",
-            ))?
+            .ok_or_else(|| {
+                ApiError::tonic(
+                    Status::invalid_argument("entry ID not set in response"),
+                    "/CreateTable failed",
+                )
+            })?
             .try_into()
             .map_err(|err| ApiError::internal(err, "/CreateTable failed"))
     }

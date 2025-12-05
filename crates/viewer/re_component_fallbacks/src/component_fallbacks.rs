@@ -20,7 +20,7 @@ pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
         // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
         // TODO(andreas): We should display a warning about this somewhere.
         // Since it's not a required component, logging a warning about this might be too noisy.
-        .unwrap_or(components::Resolution::from([0.0, 0.0]))
+        .unwrap_or_else(|| components::Resolution::from([0.0, 0.0]))
     });
 }
 
@@ -369,7 +369,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             components::TransformFrameId::from_entity_path(
                 &ctx.target_entity_path
                     .parent()
-                    .unwrap_or(re_log_types::EntityPath::root()),
+                    .unwrap_or_else(re_log_types::EntityPath::root),
             )
         },
     );
@@ -393,7 +393,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             components::TransformFrameId::from_entity_path(
                 &ctx.target_entity_path
                     .parent()
-                    .unwrap_or(re_log_types::EntityPath::root()),
+                    .unwrap_or_else(re_log_types::EntityPath::root),
             )
         },
     );
