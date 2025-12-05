@@ -145,7 +145,7 @@ impl PartialEq for SerializedComponentBatch {
 impl SerializedComponentBatch {
     #[inline]
     pub fn new(array: arrow::array::ArrayRef, descriptor: ComponentDescriptor) -> Self {
-        Self { array, descriptor }
+        Self { descriptor, array }
     }
 
     #[inline]

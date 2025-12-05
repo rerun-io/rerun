@@ -1,10 +1,10 @@
 use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
+use re_types::blueprint;
 use re_types::blueprint::archetypes::{
     ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition, GraphBackground,
     VisualBounds2D,
 };
-use re_types::blueprint::{self};
 use re_types::components::Color;
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;

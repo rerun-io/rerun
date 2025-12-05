@@ -95,9 +95,9 @@ impl DrawableLabel {
             .stroke(Stroke::new(1.0, ui.style().visuals.text_color()));
 
         Self::Text(TextLabel {
+            color,
             frame,
             galley,
-            color,
         })
     }
 }

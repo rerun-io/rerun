@@ -7,8 +7,8 @@ use re_chunk_store::{Chunk, LatestAtQuery, UnitChunkShared};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes::{self, InstancePoses3D};
+use re_types::external::arrow;
 use re_types::external::arrow::array::Array as _;
-use re_types::external::arrow::{self};
 use re_types::{ComponentIdentifier, TransformFrameIdHash, components};
 
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -332,7 +332,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
     }
 
-    Ok(ParentFromChildTransform { transform, parent })
+    Ok(ParentFromChildTransform { parent, transform })
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
