@@ -1537,7 +1537,38 @@ fn record_cli_command_analytics(args: &Args) {
         return;
     };
 
-    let (command, subcommand) = match &args.command {
+    // Destructure to ensure we consider all fields when adding new ones.
+    let Args {
+        command,
+        newest_first,
+        persist_state,
+        profile,
+        save,
+        screenshot_to,
+        serve_web,
+        serve_grpc,
+        connect,
+        expect_data_soon,
+        test_receive,
+        hide_welcome_screen,
+        detach_process,
+
+        // Not logged
+        threads: _,
+        url_or_paths: _,
+        version: _,
+        web_viewer,
+        web_viewer_port: _,
+        window_size: _,
+        renderer: _,
+        video_decoder: _,
+        bind: _,
+        memory_limit: _,
+        server_memory_limit: _,
+        port: _,
+    } = args;
+
+    let (command, subcommand) = match command {
         #[cfg(feature = "analytics")]
         Some(Command::Analytics(cmd)) => {
             let subcommand = match cmd {
@@ -1597,18 +1628,18 @@ fn record_cli_command_analytics(args: &Args) {
     analytics.record(re_analytics::event::CliCommandInvoked {
         command,
         subcommand,
-        web_viewer: args.web_viewer,
-        serve_web: args.serve_web,
-        serve_grpc: args.serve_grpc,
-        connect: args.connect.is_some(),
-        save: args.save.is_some(),
-        screenshot_to: args.screenshot_to.is_some(),
-        newest_first: args.newest_first,
-        persist_state_disabled: !args.persist_state,
-        profile: args.profile,
-        expect_data_soon: args.expect_data_soon,
-        hide_welcome_screen: args.hide_welcome_screen,
-        detach_process: args.detach_process,
-        test_receive: args.test_receive,
+        web_viewer: *web_viewer,
+        serve_web: *serve_web,
+        serve_grpc: *serve_grpc,
+        connect: connect.is_some(),
+        save: save.is_some(),
+        screenshot_to: screenshot_to.is_some(),
+        newest_first: *newest_first,
+        persist_state_disabled: !persist_state,
+        profile: *profile,
+        expect_data_soon: *expect_data_soon,
+        hide_welcome_screen: *hide_welcome_screen,
+        detach_process: *detach_process,
+        test_receive: *test_receive,
     });
 }
