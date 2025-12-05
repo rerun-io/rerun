@@ -266,7 +266,7 @@ fn paint_loop_selection(
                 None
             }
         })
-        .or(time_ctrl.loop_selection())?;
+        .or_else(|| time_ctrl.loop_selection())?;
 
     let min_x = time_ranges_ui.x_from_time_f32(selected_range.min)?;
     let max_x = time_ranges_ui.x_from_time_f32(selected_range.max)?;

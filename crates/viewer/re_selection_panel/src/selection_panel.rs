@@ -184,7 +184,7 @@ impl SelectionPanel {
                 let component_descriptor = engine
                     .store()
                     .entity_component_descriptor(entity_path, *component)
-                    .unwrap_or(ComponentDescriptor::partial(*component));
+                    .unwrap_or_else(|| ComponentDescriptor::partial(*component));
 
                 let is_static = engine
                     .store()

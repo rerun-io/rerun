@@ -214,7 +214,7 @@ fn run_test_case(test_case: &TestCase, filter_query: Option<&str>) -> Result<(),
         "tests/snapshots/view_structure_test/{}",
         filter_query
             .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-            .unwrap_or("no-query".to_owned())
+            .unwrap_or_else(|| "no-query".to_owned())
     ));
 
     harness.try_snapshot_options(test_case.name, &options)
@@ -254,7 +254,7 @@ fn test_all_insta_test_cases() {
                 "snapshots/view_structure_test/{}",
                 filter_query
                     .map(|query| format!("query-{}", query.replace(' ', ",").replace('/', "_")))
-                    .unwrap_or("no-query".to_owned())
+                    .unwrap_or_else(|| "no-query".to_owned())
             ));
 
             settings.bind(|| {

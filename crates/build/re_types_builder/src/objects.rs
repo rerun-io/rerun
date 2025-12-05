@@ -949,11 +949,10 @@ impl ObjectField {
         field: &FbsField<'_>,
     ) -> Self {
         let fqname = format!("{}#{}", obj.name(), field.name());
-        let (pkg_name, name) = fqname
-            .rsplit_once('#')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
+            || (String::new(), fqname.clone()),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = obj
             .declaration_file()
@@ -1026,11 +1025,10 @@ impl ObjectField {
         val: &FbsEnumVal<'_>,
     ) -> Self {
         let fqname = format!("{}#{}", enm.name(), val.name());
-        let (pkg_name, name) = fqname
-            .rsplit_once('#')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
+            || (String::new(), fqname.clone()),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = enm
             .declaration_file()

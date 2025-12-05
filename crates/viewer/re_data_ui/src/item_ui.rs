@@ -708,7 +708,7 @@ pub fn entity_db_button_ui(
                     .to_string()
             })
     }
-    .unwrap_or("<unknown>".to_owned());
+    .unwrap_or_else(|| "<unknown>".to_owned());
 
     let partial_postfix = if entity_db
         .store_info()

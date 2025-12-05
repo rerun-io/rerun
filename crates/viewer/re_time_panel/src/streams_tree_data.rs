@@ -110,7 +110,9 @@ impl EntityData {
             .path
             .last()
             .map(|entity_part| entity_part.ui_string());
-        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
+        let mut label = entity_part_ui_string
+            .clone()
+            .unwrap_or_else(|| "/".to_owned());
 
         let must_pop = if let Some(part) = &entity_part_ui_string {
             hierarchy.push(part.clone());

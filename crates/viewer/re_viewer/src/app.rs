@@ -21,8 +21,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
+    AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
     command_channel, sanitize_file_name,
@@ -178,6 +178,15 @@ impl App {
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
+
+        {
+            let command_sender = command_channel.0.clone();
+            re_auth::credentials::subscribe_auth_changes(move |user| {
+                command_sender.send_system(SystemCommand::OnAuthChanged(
+                    user.map(|user| AuthContext { email: user.email }),
+                ));
+            });
+        }
 
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
@@ -549,9 +558,9 @@ impl App {
             let blueprint_query = self
                 .state
                 .get_blueprint_query_for_viewer(blueprint)
-                .unwrap_or(re_chunk::LatestAtQuery::latest(
-                    re_viewer_context::blueprint_timeline(),
-                ));
+                .unwrap_or_else(|| {
+                    re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
+                });
 
             let bp_ctx = AppBlueprintCtx {
                 command_sender: &self.command_sender,
@@ -1005,9 +1014,7 @@ impl App {
                     )));
 
                 #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::SettingsOpened {});
-                }
+                re_analytics::record(|| re_analytics::event::SettingsOpened {});
             }
 
             SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {
@@ -1223,6 +1230,10 @@ impl App {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
                     re_log::error!("Failed to save file: {err}");
                 }
+            }
+
+            SystemCommand::OnAuthChanged(auth) => {
+                self.state.auth_state = auth;
             }
 
             SystemCommand::SetAuthCredentials {
@@ -2767,7 +2778,7 @@ impl App {
                         .path
                         .clone()
                         .map(|p| ApplicationId::from(p.display().to_string()))
-                        .unwrap_or(ApplicationId::from(file.name.clone()));
+                        .unwrap_or_else(|| ApplicationId::from(file.name.clone()));
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
@@ -2977,9 +2988,9 @@ impl App {
         let blueprint_query = self
             .state
             .get_blueprint_query_for_viewer(blueprint)
-            .unwrap_or(re_chunk::LatestAtQuery::latest(
-                re_viewer_context::blueprint_timeline(),
-            ));
+            .unwrap_or_else(|| {
+                re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
+            });
 
         Some(AppBlueprintCtx {
             command_sender: &self.command_sender,
@@ -3267,8 +3278,8 @@ impl eframe::App for App {
         {
             let (storage_context, store_context) = store_hub.read_context();
 
-            let blueprint_query = store_context.as_ref().map_or(
-                BlueprintUndoState::default_query(),
+            let blueprint_query = store_context.as_ref().map_or_else(
+                BlueprintUndoState::default_query,
                 |store_context| {
                     self.state
                         .blueprint_query_for_viewer(store_context.blueprint)

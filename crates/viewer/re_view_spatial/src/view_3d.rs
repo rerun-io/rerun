@@ -217,7 +217,7 @@ impl ViewClass for SpatialView3D {
                     0.75 * fwd + 0.25 * right - 0.25 * eye_up
                 };
 
-                let eye_dir = eye_dir.try_normalize().unwrap_or(scene_forward.into());
+                let eye_dir = eye_dir.try_normalize().unwrap_or_else(|| scene_forward.into());
 
                 let eye_pos = center - radius * eye_dir;
 

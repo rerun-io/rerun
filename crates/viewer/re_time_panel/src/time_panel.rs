@@ -1640,7 +1640,7 @@ fn initialize_time_ranges_ui(
 
     TimeRangesUi::new(
         x_range,
-        time_view.unwrap_or(TimeView {
+        time_view.unwrap_or_else(|| TimeView {
             min: TimeReal::from(0),
             time_spanned: 1.0,
         }),
