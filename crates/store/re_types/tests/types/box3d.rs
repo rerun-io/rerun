@@ -1,7 +1,5 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::Boxes3D, components,
-    datatypes,
-};
+use re_types::archetypes::Boxes3D;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components, datatypes};
 
 #[test]
 fn roundtrip() {
@@ -12,15 +10,15 @@ fn roundtrip() {
         ]
         .serialized(Boxes3D::descriptor_half_sizes()),
         centers: vec![
-            components::PoseTranslation3D::new(1.0, 2.0, 3.0), //
-            components::PoseTranslation3D::new(4.0, 5.0, 6.0),
+            components::Translation3D::new(1.0, 2.0, 3.0), //
+            components::Translation3D::new(4.0, 5.0, 6.0),
         ]
         .serialized(Boxes3D::descriptor_centers()),
-        quaternions: vec![components::PoseRotationQuat::from(
+        quaternions: vec![components::RotationQuat::from(
             datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]),
         )]
         .serialized(Boxes3D::descriptor_quaternions()),
-        rotation_axis_angles: vec![components::PoseRotationAxisAngle::new(
+        rotation_axis_angles: vec![components::RotationAxisAngle::new(
             [1.0, 2.0, 3.0],
             datatypes::Angle::from_radians(4.0),
         )]

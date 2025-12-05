@@ -1,14 +1,11 @@
 use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-
-use re_protos::{
-    cloud::v1alpha1::{
-        ScanDatasetManifestRequest, ScanSegmentTableRequest, ScanSegmentTableResponse,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    ScanDatasetManifestRequest, ScanSegmentTableRequest, ScanSegmentTableResponse,
 };
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop,
@@ -37,7 +34,7 @@ async fn test_column_projections<T>(
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [LayerDefinition::properties(
-            "my_partition_id",
+            "my_segment_id",
             [
                 prop(
                     "text_log",

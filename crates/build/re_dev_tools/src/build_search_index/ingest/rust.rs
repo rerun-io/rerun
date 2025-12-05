@@ -1,24 +1,19 @@
 #![expect(clippy::unwrap_used)] // build tool, so okay here
 
-use super::{Context, DocumentData, DocumentKind};
-use crate::build_search_index::util::ProgressBarExt as _;
-use anyhow::Context as _;
-use cargo_metadata::semver::Version;
-use indicatif::ProgressBar;
-use rayon::prelude::IntoParallelIterator as _;
-use rayon::prelude::ParallelIterator as _;
-use rustdoc_types::Crate;
-use rustdoc_types::Id as ItemId;
-use rustdoc_types::Impl;
-use rustdoc_types::Item;
-use rustdoc_types::ItemEnum;
-use rustdoc_types::Type;
-use rustdoc_types::Use;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::mpsc;
+
+use anyhow::Context as _;
+use cargo_metadata::semver::Version;
+use indicatif::ProgressBar;
+use rayon::prelude::{IntoParallelIterator as _, ParallelIterator as _};
+use rustdoc_types::{Crate, Id as ItemId, Impl, Item, ItemEnum, Type, Use};
+
+use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::ProgressBarExt as _;
 
 /// Ingest rust documentation for all published crates in the current workspace.
 ///

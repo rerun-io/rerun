@@ -44,7 +44,7 @@ def test_component_filtering(readonly_test_dataset: DatasetEntry) -> None:
     assert filter_on_query == filter_on_dataframe
 
 
-def test_partition_ordering(readonly_test_dataset: DatasetEntry) -> None:
+def test_segment_ordering(readonly_test_dataset: DatasetEntry) -> None:
     for time_index in ["time_1", "time_2", "time_3"]:
         streams = (
             readonly_test_dataset.dataframe_query_view(index=time_index, contents="/**")
@@ -54,27 +54,27 @@ def test_partition_ordering(readonly_test_dataset: DatasetEntry) -> None:
             .execute_stream_partitioned()
         )
 
-        prior_partition_ids = set()
+        prior_segment_ids = set()
         for rb_reader in streams:
-            prior_partition = ""
+            prior_segment = ""
             prior_timestamp = 0
             for rb in iter(rb_reader):
                 rb = rb.to_pyarrow()
                 for idx in range(rb.num_rows):
-                    partition = rb[0][idx].as_py()
+                    segment = rb[0][idx].as_py()
 
                     # Nanosecond timestamps cannot be converted using `as_py()`
                     timestamp = rb[1][idx]
                     timestamp = timestamp.value if hasattr(timestamp, "value") else timestamp.as_py()
 
-                    assert partition >= prior_partition
-                    if partition == prior_partition and timestamp is not None:
+                    assert segment >= prior_segment
+                    if segment == prior_segment and timestamp is not None:
                         assert timestamp >= prior_timestamp
                     else:
-                        assert partition not in prior_partition_ids
-                        prior_partition_ids.add(partition)
+                        assert segment not in prior_segment_ids
+                        prior_segment_ids.add(segment)
 
-                    prior_partition = partition
+                    prior_segment = segment
                     if timestamp is not None:
                         prior_timestamp = timestamp
 
@@ -83,8 +83,8 @@ def readonly_test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -
     for rb in readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**").to_arrow_reader():
         assert rb.num_rows > 0
 
-    for partition_batch in readonly_test_dataset.partition_table().to_arrow_reader():
-        assert partition_batch.num_rows > 0
+    for segment_batch in readonly_test_dataset.segment_table().to_arrow_reader():
+        assert segment_batch.num_rows > 0
 
 
 def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:

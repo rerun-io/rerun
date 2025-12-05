@@ -1,12 +1,8 @@
 use futures::StreamExt as _;
-
-use re_protos::{
-    cloud::v1alpha1::{
-        QueryDatasetResponse, ext::QueryDatasetRequest,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    headers::RerunHeadersInjectorExt as _,
-};
+use re_protos::cloud::v1alpha1::QueryDatasetResponse;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
@@ -30,10 +26,10 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple("my_segment_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_segment_id2", &["my/entity"]),
             LayerDefinition::simple(
-                "my_partition_id3",
+                "my_segment_id3",
                 &["my/entity", "another/one", "yet/another/one"],
             ),
         ],
@@ -49,7 +45,7 @@ pub async fn query_simple_dataset(service: impl RerunCloudService) {
         (QueryDatasetRequest::default(), "default"),
         (
             QueryDatasetRequest {
-                segment_ids: vec!["my_partition_id3".into()],
+                segment_ids: vec!["my_segment_id3".into()],
                 ..Default::default()
             },
             "single_segment",

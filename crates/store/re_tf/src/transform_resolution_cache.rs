@@ -5,23 +5,21 @@ use glam::DAffine3;
 use itertools::{Either, izip};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-use re_byte_size::SizeBytes;
-
-use crate::frame_id_registry::FrameIdRegistry;
-use crate::{
-    TransformFrameIdHash,
-    transform_aspect::TransformAspect,
-    transform_queries::{
-        query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
-        query_and_resolve_tree_transform_at_entity,
-    },
-};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk_store::{Chunk, LatestAtQuery, external::arrow};
+use re_byte_size::SizeBytes;
+use re_chunk_store::external::arrow;
+use re_chunk_store::{Chunk, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, TimeInt, TimelineName};
 use re_types::{ComponentIdentifier, archetypes, components};
+
+use crate::TransformFrameIdHash;
+use crate::frame_id_registry::FrameIdRegistry;
+use crate::transform_aspect::TransformAspect;
+use crate::transform_queries::{
+    query_and_resolve_instance_poses_at_entity, query_and_resolve_pinhole_projection_at_entity,
+    query_and_resolve_tree_transform_at_entity,
+};
 
 /// Resolves all transform relationship defining components to affine transforms for fast lookup.
 ///
@@ -146,31 +144,79 @@ impl CachedTransformsForTimeline {
         child_frame: TransformFrameIdHash,
         timeline: TimelineName,
         static_timeline: &mut Self,
+        frame_registry: &FrameIdRegistry,
     ) -> &mut TreeTransformsForChildFrame {
-        self.per_child_frame_transforms
-            .entry(child_frame)
-            .or_insert_with(|| {
-                TreeTransformsForChildFrame::new(
+        match self.per_child_frame_transforms.entry(child_frame) {
+            std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                let transforms = occupied_entry.into_mut();
+
+                // Make sure we have the right associated path (we may only have a static association so far).
+                match transforms.associated_entity_path_temporal.as_mut() {
+                    Some(existing_path) => {
+                        if existing_path != entity_path {
+                            re_log::error_once!(
+                                "The entity path associated with a child frame mustn't change except for static vs temporal data. The frame {:?} was previously logged temporally at the path {existing_path:?} and was now logged on {entity_path:?}.",
+                                frame_registry.lookup_frame_id(child_frame).map_or_else(
+                                    || format!("{child_frame:?}"),
+                                    ToString::to_string
+                                )
+                            );
+                        }
+                    }
+                    None => {
+                        transforms.associated_entity_path_temporal = Some(entity_path.clone());
+                    }
+                }
+
+                transforms
+            }
+            std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+                vacant_entry.insert(TreeTransformsForChildFrame::new_temporal(
                     entity_path.clone(),
                     child_frame,
                     timeline,
                     static_timeline,
                     &self.non_recursive_clears,
                     &self.recursive_clears,
-                )
-            })
+                ))
+            }
+        }
     }
 
     fn get_or_create_tree_transforms_static(
         &mut self,
         entity_path: &EntityPath,
         child_frame: TransformFrameIdHash,
+        frame_registry: &FrameIdRegistry,
     ) -> &mut TreeTransformsForChildFrame {
-        self.per_child_frame_transforms
-            .entry(child_frame)
-            .or_insert_with(|| {
-                TreeTransformsForChildFrame::new_empty(entity_path.clone(), child_frame)
-            })
+        match self.per_child_frame_transforms.entry(child_frame) {
+            std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+                let transforms = occupied_entry.into_mut();
+
+                // Make sure we have the right associated path (we may only have a temporal association so far).
+                match transforms.associated_entity_path_static.as_mut() {
+                    Some(existing_path) => {
+                        if existing_path != entity_path {
+                            re_log::error_once!(
+                                "The entity path associated with a child frame mustn't change except for static vs temporal data. The frame {} was previously logged statically at the path {existing_path:?} and was now logged on {entity_path:?}.",
+                                frame_registry.lookup_frame_id(child_frame).map_or_else(
+                                    || format!("{child_frame:?}"),
+                                    ToString::to_string
+                                )
+                            );
+                        }
+                    }
+                    None => {
+                        transforms.associated_entity_path_static = Some(entity_path.clone());
+                    }
+                }
+
+                transforms
+            }
+            std::collections::hash_map::Entry::Vacant(vacant_entry) => vacant_entry.insert(
+                TreeTransformsForChildFrame::new_static(entity_path.clone(), child_frame),
+            ),
+        }
     }
 
     fn get_or_create_pose_transforms_temporal(
@@ -204,7 +250,7 @@ impl CachedTransformsForTimeline {
         // We generally assume Clears are quite rare, so just loop over all frames that it affects
         // and insert a cleared transform if necessary.
         for transforms in self.per_child_frame_transforms.values_mut() {
-            if &transforms.associated_entity_path == cleared_path {
+            if transforms.associated_entity_path_temporal.as_ref() == Some(cleared_path) {
                 transforms.events.get_mut().insert_clear(cleared_time);
             }
         }
@@ -229,8 +275,9 @@ impl CachedTransformsForTimeline {
         // and insert a cleared transform if necessary.
         for transforms in self.per_child_frame_transforms.values_mut() {
             if transforms
-                .associated_entity_path
-                .starts_with(recursively_cleared_path)
+                .associated_entity_path_temporal
+                .as_ref()
+                .is_some_and(|path| path.starts_with(recursively_cleared_path))
             {
                 transforms.events.get_mut().insert_clear(cleared_time);
             }
@@ -262,7 +309,7 @@ impl CachedTransformsForTimeline {
 
         // Figure out who is no longer affected by this Clear and remove entry.
         for transforms in self.per_child_frame_transforms.values_mut() {
-            if &transforms.associated_entity_path == cleared_path {
+            if transforms.associated_entity_path_temporal.as_ref() == Some(cleared_path) {
                 transforms.events.get_mut().remove_at(cleared_time);
             }
         }
@@ -290,8 +337,9 @@ impl CachedTransformsForTimeline {
         // Figure out who is no longer affected by this recursive Clear and remove entry.
         for transforms in self.per_child_frame_transforms.values_mut() {
             if transforms
-                .associated_entity_path
-                .starts_with(recursively_cleared_path)
+                .associated_entity_path_temporal
+                .as_ref()
+                .is_some_and(|path| path.starts_with(recursively_cleared_path))
             {
                 transforms.events.get_mut().remove_at(cleared_time);
             }
@@ -451,14 +499,17 @@ pub struct TreeTransformsForChildFrame {
     #[cfg(debug_assertions)]
     timeline: Option<TimelineName>,
 
-    /// The entity path that produces information for this frame.
+    /// The entity path that produces temporal information for this frame.
     ///
     /// Note that it is a user-data error to change the entity path a frame relationship is defined on.
     /// I.e., given a frame relationship `A -> B` logged on entity `/my_path`, all future changes
     /// to the relation of `A ->` must be logged on the same entity `/my_path`.
     ///
     /// This greatly simplifies clearing and tracking of transforms.
-    associated_entity_path: EntityPath,
+    associated_entity_path_temporal: Option<EntityPath>,
+
+    /// Like [`Self::associated_entity_path_temporal`] but for static chunks.
+    associated_entity_path_static: Option<EntityPath>,
 
     child_frame: TransformFrameIdHash,
 
@@ -470,7 +521,8 @@ impl Clone for TreeTransformsForChildFrame {
         Self {
             #[cfg(debug_assertions)]
             timeline: self.timeline,
-            associated_entity_path: self.associated_entity_path.clone(),
+            associated_entity_path_temporal: self.associated_entity_path_temporal.clone(),
+            associated_entity_path_static: self.associated_entity_path_static.clone(),
             child_frame: self.child_frame,
             events: Mutex::new(self.events.lock().clone()),
         }
@@ -479,14 +531,27 @@ impl Clone for TreeTransformsForChildFrame {
 
 impl PartialEq for TreeTransformsForChildFrame {
     fn eq(&self, other: &Self) -> bool {
-        self.child_frame == other.child_frame && *self.events.lock() == *other.events.lock()
+        let Self {
+            #[cfg(debug_assertions)]
+                timeline: _,
+            associated_entity_path_temporal,
+            associated_entity_path_static,
+            child_frame,
+            events,
+        } = self;
+
+        associated_entity_path_temporal == &other.associated_entity_path_temporal
+            && associated_entity_path_static == &other.associated_entity_path_static
+            && child_frame == &other.child_frame
+            && *events.lock() == *other.events.lock()
     }
 }
 
 impl SizeBytes for TreeTransformsForChildFrame {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
-            associated_entity_path,
+            associated_entity_path_temporal,
+            associated_entity_path_static,
             child_frame,
             events,
 
@@ -494,7 +559,8 @@ impl SizeBytes for TreeTransformsForChildFrame {
                 timeline: _,
         } = self;
 
-        associated_entity_path.heap_size_bytes()
+        associated_entity_path_temporal.heap_size_bytes()
+            + associated_entity_path_static.heap_size_bytes()
             + child_frame.heap_size_bytes()
             + events.lock().heap_size_bytes()
     }
@@ -510,7 +576,7 @@ fn add_invalidated_entry_if_not_already_cleared<T: PartialEq>(
     if let Entry::Vacant(vacant_entry) = entry {
         vacant_entry.insert(CachedTransformValue::Invalidated);
     } else if let Entry::Occupied(mut occupied_entry) = entry
-        && occupied_entry.get() == &CachedTransformValue::Cleared
+        && occupied_entry.get() != &CachedTransformValue::Cleared
     {
         occupied_entry.insert(CachedTransformValue::Invalidated);
     }
@@ -550,7 +616,7 @@ impl SizeBytes for ResolvedPinholeProjection {
 }
 
 impl TreeTransformsForChildFrame {
-    fn new(
+    fn new_temporal(
         associated_entity_path: EntityPath,
         child_frame: TransformFrameIdHash,
         _timeline: TimelineName,
@@ -561,12 +627,17 @@ impl TreeTransformsForChildFrame {
         let mut events = TransformsForChildFrameEvents::new_empty();
 
         // Take over static events.
-        if let Some(static_transforms) = static_timeline
+        let associated_entity_path_static = if let Some(static_transforms) = static_timeline
             .per_child_frame_transforms
             .get_mut(&child_frame)
         {
             events = static_transforms.events.get_mut().clone();
-        }
+
+            debug_assert!(static_transforms.associated_entity_path_static.is_some());
+            static_transforms.associated_entity_path_static.clone()
+        } else {
+            None
+        };
 
         // Take over clear events.
         if let Some(cleared_times) = non_recursive_clears.get(&associated_entity_path) {
@@ -581,7 +652,8 @@ impl TreeTransformsForChildFrame {
         Self {
             #[cfg(debug_assertions)]
             timeline: Some(_timeline),
-            associated_entity_path,
+            associated_entity_path_temporal: Some(associated_entity_path),
+            associated_entity_path_static,
             child_frame,
             events: Mutex::new(events),
         }
@@ -595,19 +667,32 @@ impl TreeTransformsForChildFrame {
         }
     }
 
-    fn new_empty(associated_entity_path: EntityPath, child_frame: TransformFrameIdHash) -> Self {
+    fn new_static(associated_entity_path: EntityPath, child_frame: TransformFrameIdHash) -> Self {
         Self {
             #[cfg(debug_assertions)]
             timeline: None,
-            associated_entity_path,
+            associated_entity_path_temporal: None,
+            associated_entity_path_static: Some(associated_entity_path),
             child_frame,
             events: Mutex::new(TransformsForChildFrameEvents::new_empty()),
         }
     }
 
     /// The entity path that produces information for this frame.
-    pub fn associated_entity_path(&self) -> &EntityPath {
-        &self.associated_entity_path
+    pub fn associated_entity_path(&self, time: TimeInt) -> &EntityPath {
+        if time == TimeInt::STATIC {
+            // Use static path if it exists.
+            self.associated_entity_path_static
+                .as_ref()
+                .or(self.associated_entity_path_temporal.as_ref())
+                .expect("Either temporal or static associated entity path must be set")
+        } else {
+            // Use temporal path if it exists.
+            self.associated_entity_path_temporal
+                .as_ref()
+                .or(self.associated_entity_path_static.as_ref())
+                .expect("Either temporal or static associated entity path must be set")
+        }
     }
 
     /// Inserts an invalidation point for transforms.
@@ -641,7 +726,7 @@ impl TreeTransformsForChildFrame {
         // Separate check to work around borrow checker issues.
         if frame_transform == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_tree_transform_at_entity(
-                &self.associated_entity_path,
+                self.associated_entity_path(*time_of_last_update_to_this_frame),
                 self.child_frame,
                 entity_db,
                 // Do NOT use the original query time since that may give us information about a different child frame!
@@ -682,19 +767,19 @@ impl TreeTransformsForChildFrame {
 
         let mut events = self.events.lock();
 
-        let pinhole_projection = events
+        let (time_of_last_update_to_this_frame, pinhole_projection) = events
             .pinhole_projections
             .range_mut(..query.at().inc())
-            .next_back()?
-            .1;
+            .next_back()?;
 
         // Separate check to work around borrow checker issues.
         if pinhole_projection == &CachedTransformValue::Invalidated {
             let transform = query_and_resolve_pinhole_projection_at_entity(
-                &self.associated_entity_path,
+                self.associated_entity_path(*time_of_last_update_to_this_frame),
                 self.child_frame,
                 entity_db,
-                query,
+                // Do NOT use the original query time since that may give us information about a different child frame!
+                &LatestAtQuery::new(query.timeline(), *time_of_last_update_to_this_frame),
             );
 
             *pinhole_projection = match &transform {
@@ -950,6 +1035,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_transform_at(time);
                 }
@@ -971,6 +1057,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_pinhole_projection_at(time);
                 }
@@ -1020,8 +1107,11 @@ impl TransformResolutionCache {
             ) {
                 debug_assert_eq!(time, TimeInt::STATIC);
 
-                let frame_transforms =
-                    static_timeline.get_or_create_tree_transforms_static(entity_path, frame);
+                let frame_transforms = static_timeline.get_or_create_tree_transforms_static(
+                    entity_path,
+                    frame,
+                    &self.frame_id_registry,
+                );
                 frame_transforms.invalidate_transform_at(TimeInt::STATIC);
 
                 for (timeline, per_timeline) in &mut self.per_timeline {
@@ -1031,6 +1121,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_transform_at(TimeInt::STATIC);
                 }
@@ -1055,8 +1146,11 @@ impl TransformResolutionCache {
             ) {
                 debug_assert_eq!(time, TimeInt::STATIC);
 
-                let frame_transforms =
-                    static_timeline.get_or_create_tree_transforms_static(entity_path, frame);
+                let frame_transforms = static_timeline.get_or_create_tree_transforms_static(
+                    entity_path,
+                    frame,
+                    &self.frame_id_registry,
+                );
                 frame_transforms.invalidate_pinhole_projection_at(TimeInt::STATIC);
 
                 for (timeline, per_timeline) in &mut self.per_timeline {
@@ -1066,6 +1160,7 @@ impl TransformResolutionCache {
                             frame,
                             *timeline,
                             static_timeline,
+                            &self.frame_id_registry,
                         )
                         .invalidate_pinhole_projection_at(TimeInt::STATIC);
                 }
@@ -1209,14 +1304,18 @@ pub fn iter_child_frames_in_chunk(
 mod tests {
     use std::sync::{Arc, OnceLock};
 
-    use super::*;
-    use crate::convert;
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
         PerStoreChunkSubscriber, RowId,
     };
-    use re_log_types::{StoreId, TimePoint, Timeline};
+    use re_log_types::{
+        StoreId, StoreInfo, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
     use re_types::{ChunkId, archetypes};
+
+    use super::*;
+    use crate::convert;
 
     #[derive(Debug, Clone, Copy)]
     enum StaticTestFlavor {
@@ -1335,10 +1434,7 @@ mod tests {
     }
 
     fn new_entity_db_with_subscriber_registered() -> EntityDb {
-        let entity_db = EntityDb::new(StoreId::random(
-            re_log_types::StoreKind::Recording,
-            "test_app",
-        ));
+        let entity_db = EntityDb::new(StoreInfo::testing().store_id);
         let _ = TestStoreSubscriber::subscription_handle();
         entity_db
     }
@@ -2601,6 +2697,216 @@ mod tests {
     }
 
     #[test]
+    fn test_different_associated_paths_for_static_and_temporal()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+
+        let static_entity_path = EntityPath::from("static_entity");
+        let temporal_entity_path = EntityPath::from("temporal_entity");
+        let child_frame = TransformFrameIdHash::from_str("child_frame");
+
+        let static_chunk = Chunk::builder(static_entity_path.clone())
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Transform3D::new()
+                    .with_translation([1.0, 2.0, 3.0])
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            .build()?;
+        let temporal_chunk = Chunk::builder(temporal_entity_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::new()
+                    .with_translation([4.0, 5.0, 6.0])
+                    .with_child_frame("child_frame")
+                    .with_parent_frame("parent_frame"),
+            )
+            .build()?;
+
+        #[derive(Debug)]
+        enum Scenario {
+            StaticAndTemporalAtOnce,
+            StaticFirstThenTemporal,
+            TemporalFirstThenStatic,
+        }
+
+        for scenario in [
+            Scenario::StaticAndTemporalAtOnce,
+            Scenario::StaticFirstThenTemporal,
+            Scenario::TemporalFirstThenStatic,
+        ] {
+            match scenario {
+                Scenario::StaticAndTemporalAtOnce => {
+                    entity_db.add_chunk(&Arc::new(static_chunk.clone()))?;
+                    entity_db.add_chunk(&Arc::new(temporal_chunk.clone()))?;
+                }
+                Scenario::StaticFirstThenTemporal => {
+                    entity_db.add_chunk(&Arc::new(static_chunk.clone()))?;
+                }
+                Scenario::TemporalFirstThenStatic => {
+                    entity_db.add_chunk(&Arc::new(temporal_chunk.clone()))?;
+                }
+            }
+            apply_store_subscriber_events(&mut cache, &entity_db);
+
+            // Warm cache.
+            {
+                let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+                let transforms = transforms_per_timeline
+                    .frame_transforms(child_frame)
+                    .unwrap();
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0));
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1));
+            }
+
+            // Add extra chunk.
+            match scenario {
+                Scenario::StaticAndTemporalAtOnce => {
+                    // Already added both.
+                }
+                Scenario::StaticFirstThenTemporal => {
+                    entity_db.add_chunk(&Arc::new(temporal_chunk.clone()))?;
+                }
+                Scenario::TemporalFirstThenStatic => {
+                    entity_db.add_chunk(&Arc::new(static_chunk.clone()))?;
+                }
+            }
+            apply_store_subscriber_events(&mut cache, &entity_db);
+
+            // Both static and temporal data should be accessible
+            let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+            let transforms = transforms_per_timeline
+                .frame_transforms(child_frame)
+                .unwrap();
+
+            // At time 0, should see static data
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                }),
+                "Unexpected transform at time 0 (scenario: {scenario:?})",
+            );
+            // At time 1, should see temporal data (overriding static due to atomic-latest-at)
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    transform: DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                }),
+                "Unexpected transform at time 1 (scenario: {scenario:?})",
+            );
+
+            // Verify associated entity paths are correctly tracked
+            assert_eq!(
+                transforms.associated_entity_path(TimeInt::STATIC),
+                &static_entity_path,
+                "Unexpected path for static data (scenario: {scenario:?})",
+            );
+            assert_eq!(
+                transforms.associated_entity_path(TimeInt::new_temporal(1)),
+                &temporal_entity_path,
+                "Unexpected path for temporal data (scenario: {scenario:?})",
+            );
+
+            // Test on a different timeline that never saw the temporal data
+            let other_timeline = TimelineName::new("other");
+            let transforms_per_timeline = cache.transforms_for_timeline(other_timeline);
+            let transforms = transforms_per_timeline
+                .frame_transforms(child_frame)
+                .unwrap();
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(other_timeline, 100)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::from_str("parent_frame"),
+                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                }),
+                "Unexpected transform on other timeline (scenario: {scenario:?})",
+            );
+        }
+
+        Ok(())
+    }
+
+    fn test_error_on_changing_associated_path(
+        time: TimeInt,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        re_log::setup_logging();
+        let (logger, log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Error);
+        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        let mut cache = TransformResolutionCache::default();
+
+        let time_point = if time.is_static() {
+            TimePoint::STATIC
+        } else {
+            [(Timeline::new_sequence("t"), time)].into()
+        };
+
+        // First, create temporal transform
+        let temporal_chunk1 = Chunk::builder(EntityPath::from("entity_a"))
+            .with_archetype_auto_row(
+                time_point.clone(),
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0])
+                    .with_child_frame("my_frame"),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk1))?.iter());
+
+        assert!(log_rx.try_recv().is_err());
+
+        // Try to associate the same frame with a different temporal entity - should log error
+        let temporal_chunk2 = Chunk::builder(EntityPath::from("entity_b"))
+            .with_archetype_auto_row(
+                time_point,
+                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
+                    .with_child_frame("my_frame"),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk2))?.iter());
+
+        let error = log_rx.try_recv().unwrap();
+        assert!(log_rx.try_recv().is_err()); // Exactly one error.
+
+        assert_eq!(error.level, re_log::Level::Error);
+        assert!(
+            error.msg.contains("entity_a"),
+            "Expected to mention previous entity, but msg was {}",
+            error.msg
+        );
+        assert!(
+            error.msg.contains("entity_b"),
+            "Expected to mention new entity, but msg was {}",
+            error.msg
+        );
+        assert!(
+            error.msg.contains("my_frame"),
+            "Expected to mention target, but msg was {}",
+            error.msg
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_on_changing_associated_path_static() -> Result<(), Box<dyn std::error::Error>> {
+        test_error_on_changing_associated_path(TimeInt::STATIC)
+    }
+
+    #[test]
+    fn test_error_on_changing_associated_path_temporal() -> Result<(), Box<dyn std::error::Error>> {
+        test_error_on_changing_associated_path(TimeInt::new_temporal(0))
+    }
+
+    #[test]
     fn test_pinhole_with_explicit_frames() -> Result<(), Box<dyn std::error::Error>> {
         let mut entity_db = new_entity_db_with_subscriber_registered();
         let mut cache = TransformResolutionCache::default();
@@ -2819,6 +3125,146 @@ mod tests {
                 .recursive_clears
                 .is_empty(),
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_cache_invalidation() -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+        let mut cache = TransformResolutionCache::default();
+
+        let timeline = Timeline::new_sequence("t");
+        let timeline_name = *timeline.name();
+        let frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("my_entity"));
+
+        // Initial chunk with various events, some of which don't do anything about transforms.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+            )
+            .with_archetype_auto_row([(timeline, 2)], &MyPoints::new([MyPoint::new(0.0, 0.0)]))
+            .with_archetype_auto_row(
+                [(timeline, 3)],
+                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0]),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query all transforms, warming the cache.
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, glam::dvec3(1.0, 0.0, 0.0)),
+            (2, glam::dvec3(1.0, 0.0, 0.0)),
+            (3, glam::dvec3(2.0, 0.0, 0.0)),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(expected_translation),
+                }),
+                "querying at time {time}"
+            );
+        }
+
+        // New chunk overriding some of the times and adding new ones.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0]),
+            )
+            .with_archetype_auto_row(
+                [(timeline, 2)],
+                &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0]),
+            )
+            .with_archetype_auto_row(
+                [(timeline, 5)],
+                &archetypes::Transform3D::from_translation([5.0, 0.0, 0.0]),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query again, ensuring we get new transforms.
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, glam::dvec3(3.0, 0.0, 0.0)),
+            (2, glam::dvec3(4.0, 0.0, 0.0)),
+            (3, glam::dvec3(2.0, 0.0, 0.0)),
+            (4, glam::dvec3(2.0, 0.0, 0.0)),
+            (5, glam::dvec3(5.0, 0.0, 0.0)),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(expected_translation),
+                }),
+                "querying at time {time}"
+            );
+        }
+
+        // Add a clear chunk.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row([(timeline, 3)], &archetypes::Clear::new(false))
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query again, ensure the transform is cleared in the right places.
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, Some(glam::dvec3(3.0, 0.0, 0.0))),
+            (2, Some(glam::dvec3(4.0, 0.0, 0.0))),
+            (3, None),
+            (4, None),
+            (5, Some(glam::dvec3(5.0, 0.0, 0.0))),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                expected_translation.map(|translation| ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(translation),
+                }),
+                "querying at time {time}"
+            );
+        }
+
+        // Add a chunk that tries to restore the transform _at_ the clear.
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype_auto_row(
+                [(timeline, 3)],
+                &archetypes::Transform3D::from_translation([6.0, 0.0, 0.0]),
+            )
+            .build()?;
+        cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
+
+        // Query again, ensure that the clear "wins" (no change to before)
+        let transforms_per_timeline = cache.transforms_for_timeline(timeline_name);
+        let transforms = transforms_per_timeline.frame_transforms(frame).unwrap();
+        for (time, expected_translation) in [
+            (1, Some(glam::dvec3(3.0, 0.0, 0.0))),
+            (2, Some(glam::dvec3(4.0, 0.0, 0.0))),
+            (3, None),
+            (4, None),
+            (5, Some(glam::dvec3(5.0, 0.0, 0.0))),
+        ] {
+            assert_eq!(
+                transforms
+                    .latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, time)),
+                expected_translation.map(|translation| ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform: DAffine3::from_translation(translation),
+                }),
+                "querying at time {time}"
+            );
+        }
 
         Ok(())
     }

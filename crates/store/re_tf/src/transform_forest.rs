@@ -1,4 +1,7 @@
 use nohash_hasher::{IntMap, IntSet};
+use re_chunk_store::LatestAtQuery;
+use re_entity_db::EntityDb;
+use re_types::components::TransformFrameId;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -6,10 +9,6 @@ use crate::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformFrameIdHash,
     TransformResolutionCache, image_view_coordinates,
 };
-
-use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
-use re_types::components::TransformFrameId;
 
 /// Details on how to transform from a source to a target frame.
 #[derive(Clone, Debug, PartialEq)]
@@ -723,14 +722,13 @@ mod tests {
     use std::sync::Arc;
 
     use itertools::Itertools as _;
-
-    use super::*;
-
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{EntityPath, StoreInfo, TimeCell, TimePoint, Timeline, TimelineName};
     use re_types::components::TransformFrameId;
     use re_types::{RowId, archetypes, components};
+
+    use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
         archetypes::Pinhole::from_focal_length_and_resolution([1.0, 2.0], [100.0, 200.0])
@@ -761,8 +759,6 @@ mod tests {
     /// ├─── tf#/top/pure_leaf_pinhole
     /// └─── tf#/top/child3d
     /// ```
-    ///
-    /// TODO(RR-2510): add another scene (or extension) where we override transforms on select entities
     fn entity_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
         entity_db.add_chunk(&Arc::new(
@@ -944,8 +940,6 @@ mod tests {
     /// └── pinhole
     ///      └── child2d
     /// ```
-    ///
-    /// TODO(RR-2627): Add instances poses into the mix.
     fn simple_frame_hierarchy_test_scene(
         multiple_entities: bool,
     ) -> Result<EntityDb, Box<dyn std::error::Error>> {

@@ -2,7 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_types::blueprint::archetypes::EyeControls3D;
+use re_types::components::Position3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -45,7 +46,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                     RowId::new(),
                     TimePoint::STATIC,
                     &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
-                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoseTranslation3D`
+                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoses3D`-like Translation3D`
                         [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
                     )
                     .with_colors([0x0000FFFF]),

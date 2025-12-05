@@ -1,9 +1,7 @@
 use smallvec::smallvec;
 
-use crate::{
-    CpuModel, RenderContext, Rgba32Unmul,
-    mesh::{CpuMesh, Material, MeshError},
-};
+use crate::mesh::{CpuMesh, Material, MeshError};
+use crate::{CpuModel, RenderContext, Rgba32Unmul};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ObjImportError {

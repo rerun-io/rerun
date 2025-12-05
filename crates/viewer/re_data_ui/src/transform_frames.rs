@@ -1,9 +1,7 @@
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
-use re_types::{
-    ComponentDescriptor, TransformFrameIdHash, archetypes,
-    components::{self, TransformFrameId},
-};
+use re_types::components::{self, TransformFrameId};
+use re_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, TransformDatabaseStoreCache, ViewerContext,
@@ -102,7 +100,7 @@ impl TransformFramesUi {
 
             frames.push(TransformFrameInfo {
                 frame_id: frame_id.clone(),
-                source_entity: Some(frame.associated_entity_path().clone()),
+                source_entity: Some(frame.associated_entity_path(query.at()).clone()),
             });
 
             let Some(transform) = frame.latest_at_transform(ctx.recording(), query) else {

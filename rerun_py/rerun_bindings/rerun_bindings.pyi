@@ -520,7 +520,7 @@ class Recording:
         monotonically increasing when data is sent from a single process.
 
         If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per partition.
+        specified) and no index columns. It will also contain a single row per segment.
 
         Parameters
         ----------
@@ -1305,17 +1305,17 @@ class DatasetEntryInternal:
 
     def blueprint_dataset_id(self) -> EntryId | None: ...
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
-    def default_blueprint_partition_id(self) -> str | None: ...
-    def set_default_blueprint_partition_id(self, partition_id: str | None) -> None: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
-    def partition_ids(self) -> list[str]: ...
-    def partition_table(self) -> DataFusionTable: ...
+    def segment_ids(self) -> list[str]: ...
+    def segment_table(self) -> DataFusionTable: ...
     def manifest(self) -> DataFusionTable: ...
-    def partition_url(
+    def segment_url(
         self,
-        partition_id: str,
+        segment_id: str,
         timeline: str | None = None,
         start: datetime | int | None = None,
         end: datetime | int | None = None,
@@ -1329,7 +1329,7 @@ class DatasetEntryInternal:
 
     # ---
 
-    def download_partition(self, partition_id: str) -> Recording: ...
+    def download_segment(self, segment_id: str) -> Recording: ...
     def dataframe_query_view(
         self,
         *,
@@ -1431,8 +1431,8 @@ class _IndexValuesLikeInternal:
 class DataframeQueryView:
     """View into a remote dataset acting as DataFusion table provider."""
 
-    def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
-        """Filter by one or more partition ids. All partition ids are included if not specified."""
+    def filter_segment_id(self, segment_id: str, *args: Iterable[str]) -> Self:
+        """Filter by one or more segment ids. All segment ids are included if not specified."""
 
     def filter_range_sequence(self, start: int, end: int) -> Self:
         """

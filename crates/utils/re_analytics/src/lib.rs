@@ -35,16 +35,12 @@ pub mod event;
 
 // ----------------------------------------------------------------------------
 
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-    io::Error as IoError,
-    sync::{
-        OnceLock,
-        atomic::{AtomicI64, Ordering},
-    },
-    time::Duration,
-};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::io::Error as IoError;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::time::Duration;
 
 use jiff::Timestamp;
 
@@ -469,8 +465,9 @@ impl Properties for re_build_info::BuildInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::Value;
+
+    use super::*;
 
     #[test]
     fn test_analytics_event_serialization() {

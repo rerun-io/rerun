@@ -1,15 +1,12 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::{
-    array::{Array as _, ArrayRef, ListArray, StringArray},
-    compute::SortOptions,
-    datatypes::{DataType, Field, Fields},
-};
-use datafusion::{
-    common::DataFusionError,
-    physical_expr::{LexOrdering, PhysicalSortExpr, expressions::col},
-};
+use arrow::array::{Array as _, ArrayRef, ListArray, StringArray};
+use arrow::compute::SortOptions;
+use arrow::datatypes::{DataType, Field, Fields};
+use datafusion::common::DataFusionError;
+use datafusion::physical_expr::expressions::col;
+use datafusion::physical_expr::{LexOrdering, PhysicalSortExpr};
 use itertools::Itertools as _;
 
 use crate::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
@@ -352,7 +349,7 @@ impl SchemaTestExt for arrow::datatypes::Schema {
                 "top-level metadata: [\n    {}\n]",
                 self.metadata()
                     .iter()
-                    .map(|(k, v)| format!("{k}:{v}"))
+                    .map(|(k, v)| format!("{k}: {v:?}"))
                     .sorted()
                     .join("\n    ")
             )
@@ -375,7 +372,7 @@ impl SchemaTestExt for arrow::datatypes::Schema {
                     field
                         .metadata()
                         .iter()
-                        .map(|(k, v)| format!("{k}:{v}"))
+                        .map(|(k, v)| format!("{k}: {v:?}"))
                         .sorted()
                         .join("\n    ")
                 )

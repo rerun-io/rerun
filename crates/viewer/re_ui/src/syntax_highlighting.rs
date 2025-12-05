@@ -1,13 +1,12 @@
+use egui::text::LayoutJob;
+use egui::{Color32, Style, TextFormat, TextStyle};
 use re_entity_db::InstancePath;
-use re_log_types::{
-    ComponentPath, EntityPath, EntityPathPart, Instance,
-    external::re_types_core::{
-        ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
-    },
+use re_log_types::external::re_types_core::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
 };
+use re_log_types::{ComponentPath, EntityPath, EntityPathPart, Instance};
 
 use crate::HasDesignTokens as _;
-use egui::{Color32, Style, TextFormat, TextStyle, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
 pub trait SyntaxHighlighting {

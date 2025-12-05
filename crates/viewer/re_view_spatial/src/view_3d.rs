@@ -5,16 +5,12 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_tf::query_view_coordinates;
-use re_types::{
-    Component as _, View as _, ViewClassIdentifier, archetypes,
-    blueprint::{
-        archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation},
-        components::Eye3DKind,
-    },
-    components::{LinearSpeed, Plane3D, Position3D, Vector3D},
-    datatypes::Vec3D,
-    view_coordinates::SignedAxis3,
-};
+use re_types::blueprint::archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation};
+use re_types::blueprint::components::Eye3DKind;
+use re_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
+use re_types::datatypes::Vec3D;
+use re_types::view_coordinates::SignedAxis3;
+use re_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -26,17 +22,14 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    contexts::register_spatial_contexts,
-    heuristics::default_visualized_entities_for_visualizer_kind,
-    spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::register_3d_spatial_visualizers,
-};
-use crate::{
-    shared_fallbacks,
-    visualizers::{CamerasVisualizer, TransformAxes3DVisualizer},
+use crate::contexts::register_spatial_contexts;
+use crate::heuristics::IndicatedVisualizableEntities;
+use crate::shared_fallbacks;
+use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{
+    CamerasVisualizer, TransformAxes3DVisualizer, register_3d_spatial_visualizers,
 };
 
 #[derive(Default)]
@@ -375,33 +368,38 @@ impl ViewClass for SpatialView3D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let IndicatedVisualizableEntities {
+            indicated_entities,
+            excluded_entities,
+        } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
             include_entity,
+            |indicated_entities| {
+                // ViewCoordinates is a strong indicator that a 3D view is needed.
+                // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
+                // from splitting the root space into several subspaces.
+                //
+                // TODO(andreas):
+                // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
+                // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
+                // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
+                let engine = ctx.recording_engine();
+                ctx.recording().tree().visit_children_recursively(|path| {
+                    if let Some(components) = engine.store().all_components_for_entity(path)
+                        && components.into_iter().any(|component| {
+                            archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
+                            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
+                                || component
+                                    == archetypes::ViewCoordinates::descriptor_xyz().component
+                        })
+                    {
+                        indicated_entities.insert(path.clone());
+                    }
+                });
+            },
         );
-
-        // ViewCoordinates is a strong indicator that a 3D view is needed.
-        // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
-        // from splitting the root space into several subspaces.
-        //
-        // TODO(andreas):
-        // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
-        // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
-        // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        let engine = ctx.recording_engine();
-        ctx.recording().tree().visit_children_recursively(|path| {
-            if let Some(components) = engine.store().all_components_for_entity(path)
-                && components.into_iter().any(|component| {
-                    // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
-                    component == archetypes::Pinhole::descriptor_camera_xyz().component
-                        || component == archetypes::ViewCoordinates::descriptor_xyz().component
-                })
-            {
-                indicated_entities.insert(path.clone());
-            }
-        });
 
         // Spawn a view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
@@ -462,7 +460,13 @@ impl ViewClass for SpatialView3D {
                             origins.push(subspace.origin.clone());
                         }
 
-                        Some(origins.into_iter().map(RecommendedView::new_subtree))
+                        Some(origins.into_iter().map(RecommendedView::new_subtree).map(
+                            |mut subtree| {
+                                subtree.exclude_entities(&excluded_entities);
+
+                                subtree
+                            },
+                        ))
                     })
                     .flatten(),
             )
@@ -514,11 +518,11 @@ impl ViewClass for SpatialView3D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
             view_property_ui::<EyeControls3D>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);
             view_property_ui_grid3d(&view_ctx, ui);
-            view_property_ui::<SpatialInformation>(&view_ctx, ui);
         });
 
         Ok(())

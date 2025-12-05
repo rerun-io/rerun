@@ -1,10 +1,10 @@
 use egui::NumExt as _;
-
-use re_types::{
-    blueprint::{archetypes, components::TensorDimensionIndexSlider},
-    components::{TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension},
-    datatypes::TensorDimensionSelection,
+use re_types::blueprint::archetypes;
+use re_types::blueprint::components::TensorDimensionIndexSlider;
+use re_types::components::{
+    TensorDimensionIndexSelection, TensorHeightDimension, TensorWidthDimension,
 };
+use re_types::datatypes::TensorDimensionSelection;
 use re_viewport_blueprint::ViewProperty;
 
 use crate::TensorDimension;
@@ -274,12 +274,10 @@ fn longest_and_second_longest_dim_indices(shape: &[TensorDimension]) -> (usize, 
 
 #[cfg(test)]
 mod tests {
-    use crate::TensorDimension;
-    use re_types::{
-        blueprint::components::TensorDimensionIndexSlider,
-        components::TensorDimensionIndexSelection,
-    };
+    use re_types::blueprint::components::TensorDimensionIndexSlider;
+    use re_types::components::TensorDimensionIndexSelection;
 
+    use crate::TensorDimension;
     use crate::dimension_mapping::{
         find_width_height_dim_indices, make_indices_valid, make_slider_valid,
         make_width_height_valid,

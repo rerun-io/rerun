@@ -37,7 +37,7 @@ class InstancePoses3D(Archetype):
 
     From the point of view of the entity's coordinate system,
     all components are applied in the inverse order they are listed here.
-    E.g. if both a translation and a max3x3 transform are present,
+    E.g. if both a translation and a mat3x3 transform are present,
     the 3x3 matrix is applied first, followed by the translation.
 
     Currently, many visualizers support only a single instance transform per entity.
@@ -100,24 +100,14 @@ class InstancePoses3D(Archetype):
         ----------
         translations:
             Translation vectors.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         rotation_axis_angles:
             Rotations via axis + angle.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         quaternions:
             Rotations via quaternion.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         scales:
             Scaling factors.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         mat3x3:
             3x3 transformation matrices.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
 
         """
 
@@ -170,24 +160,14 @@ class InstancePoses3D(Archetype):
             If true, all unspecified fields will be explicitly cleared.
         translations:
             Translation vectors.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         rotation_axis_angles:
             Rotations via axis + angle.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         quaternions:
             Rotations via quaternion.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         scales:
             Scaling factors.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         mat3x3:
             3x3 transformation matrices.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
 
         """
 
@@ -237,24 +217,14 @@ class InstancePoses3D(Archetype):
         ----------
         translations:
             Translation vectors.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         rotation_axis_angles:
             Rotations via axis + angle.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         quaternions:
             Rotations via quaternion.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         scales:
             Scaling factors.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         mat3x3:
             3x3 transformation matrices.
-
-            Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
 
         """
 
@@ -308,58 +278,48 @@ class InstancePoses3D(Archetype):
 
         return ComponentColumnList(columns)
 
-    translations: components.PoseTranslation3DBatch | None = field(
+    translations: components.Translation3DBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseTranslation3DBatch._converter,  # type: ignore[misc]
+        converter=components.Translation3DBatch._converter,  # type: ignore[misc]
     )
     # Translation vectors.
     #
-    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    rotation_axis_angles: components.PoseRotationAxisAngleBatch | None = field(
+    rotation_axis_angles: components.RotationAxisAngleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseRotationAxisAngleBatch._converter,  # type: ignore[misc]
+        converter=components.RotationAxisAngleBatch._converter,  # type: ignore[misc]
     )
     # Rotations via axis + angle.
     #
-    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    quaternions: components.PoseRotationQuatBatch | None = field(
+    quaternions: components.RotationQuatBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseRotationQuatBatch._converter,  # type: ignore[misc]
+        converter=components.RotationQuatBatch._converter,  # type: ignore[misc]
     )
     # Rotations via quaternion.
     #
-    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    scales: components.PoseScale3DBatch | None = field(
+    scales: components.Scale3DBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseScale3DBatch._converter,  # type: ignore[misc]
+        converter=components.Scale3DBatch._converter,  # type: ignore[misc]
     )
     # Scaling factors.
     #
-    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    mat3x3: components.PoseTransformMat3x3Batch | None = field(
+    mat3x3: components.TransformMat3x3Batch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.PoseTransformMat3x3Batch._converter,  # type: ignore[misc]
+        converter=components.TransformMat3x3Batch._converter,  # type: ignore[misc]
     )
     # 3x3 transformation matrices.
-    #
-    # Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

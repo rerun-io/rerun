@@ -7,17 +7,14 @@ use std::sync::Arc;
 use glam::{Vec3, Vec3A, uvec3, vec3};
 use hexasphere::{BaseShape, Subdivided};
 use itertools::Itertools as _;
+use macaw::MeshGen;
 use ordered_float::NotNan;
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::external::re_chunk::external::re_byte_size;
-use smallvec::smallvec;
-
-use macaw::MeshGen;
-use re_renderer::{
-    RenderContext,
-    mesh::{self, GpuMesh, MeshError},
-};
+use re_renderer::RenderContext;
+use re_renderer::mesh::{self, GpuMesh, MeshError};
 use re_viewer_context::{Cache, CacheMemoryReport};
+use smallvec::smallvec;
 
 // ----------------------------------------------------------------------------
 

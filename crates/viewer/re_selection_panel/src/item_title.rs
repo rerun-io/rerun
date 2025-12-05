@@ -1,14 +1,14 @@
 use egui::WidgetText;
-
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
-use re_types::{archetypes::RecordingInfo, components::Timestamp};
-use re_ui::{
-    SyntaxHighlighting as _, icons,
-    syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
+use re_types::archetypes::RecordingInfo;
+use re_types::components::Timestamp;
+use re_ui::syntax_highlighting::{
+    InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };
+use re_ui::{SyntaxHighlighting as _, icons};
 use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
 use re_viewport_blueprint::ViewportBlueprint;
 

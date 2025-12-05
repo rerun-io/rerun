@@ -1,15 +1,14 @@
 use std::collections::VecDeque;
-use std::io::Cursor;
-use std::io::Read as _;
+use std::io::{Cursor, Read as _};
 
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 
-use crate::StreamFooter;
 use crate::rrd::MessageHeader;
 use crate::{
     CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
-    EncodingOptions, RrdManifest, Serializer, StreamHeader, ToApplication as _,
+    EncodingOptions, RrdManifest, Serializer, StreamFooter, StreamFooterEntry, StreamHeader,
+    ToApplication as _,
 };
 
 // ---
@@ -360,23 +359,29 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             let StreamFooter {
                                 fourcc: _,
                                 identifier: _,
-                                rrd_footer_byte_span_from_start_excluding_header,
-                                crc_excluding_header: _,
-                            } = footer;
+                                entries,
+                            } = &footer;
 
-                            let rrd_footer_end =
-                                rrd_footer_byte_span_from_start_excluding_header.end();
+                            for entry in entries {
+                                let StreamFooterEntry {
+                                    rrd_footer_byte_span_from_start_excluding_header,
+                                    crc_excluding_header: _,
+                                } = entry;
 
-                            if rrd_footer_end > position as u64 {
-                                // The RRD footer cannot possibly end after the stream footer starts, since it must
-                                // be part of an ::End message.
-                                re_log::error!(
-                                    position,
-                                    bytes = ?bytes,
-                                    ?footer,
-                                    err = "offsets are invalid",
-                                    "corrupt footer in rrd stream"
-                                );
+                                let rrd_footer_end =
+                                    rrd_footer_byte_span_from_start_excluding_header.end();
+
+                                if rrd_footer_end > position as u64 {
+                                    // The RRD footer cannot possibly end after the stream footer starts, since it must
+                                    // be part of an ::End message.
+                                    re_log::error!(
+                                        position,
+                                        bytes = ?bytes,
+                                        ?footer,
+                                        err = "offsets are invalid",
+                                        "corrupt footer in rrd stream"
+                                    );
+                                }
                             }
 
                             // And now we start all over.
@@ -547,10 +552,9 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{LogMsg, SetStoreInfo, StoreInfo};
 
+    use super::*;
     use crate::Encoder;
     use crate::rrd::EncodingOptions;
-
-    use super::*;
 
     fn fake_log_msg() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {

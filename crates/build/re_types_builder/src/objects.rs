@@ -9,11 +9,12 @@ use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
+use crate::data_type::LazyDatatype;
 use crate::{
     ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
     ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE,
     ATTR_RERUN_STATE, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, data_type::LazyDatatype, root_as_schema,
+    FbsSchema, FbsType, Reporter, root_as_schema,
 };
 
 // ---

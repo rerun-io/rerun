@@ -1,7 +1,8 @@
 use eframe::emath::NumExt as _;
 use egui::{Frame, ModalResponse};
 
-use crate::{DesignTokens, UiExt as _, context_ext::ContextExt as _};
+use crate::context_ext::ContextExt as _;
+use crate::{DesignTokens, UiExt as _};
 
 /// Helper object to handle a [`ModalWrapper`] window.
 ///

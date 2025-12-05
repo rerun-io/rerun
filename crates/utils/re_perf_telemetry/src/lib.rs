@@ -58,28 +58,20 @@ use std::collections::HashMap;
 
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 
-pub use self::{
-    args::{LogFormat, TelemetryArgs},
-    grpc::{
-        ClientTelemetryLayer, GrpcMakeSpan, GrpcOnEos, GrpcOnFirstBodyChunk, GrpcOnRequest,
-        GrpcOnResponse, GrpcOnResponseOptions, ServerTelemetryLayer, TelemetryLayerOptions,
-        TraceIdLayer, TracingInjectorInterceptor, new_client_telemetry_layer,
-        new_server_telemetry_layer,
-    },
-    telemetry::{Telemetry, TelemetryDropBehavior},
-    utils::to_short_str,
+pub use self::args::{LogFormat, TelemetryArgs};
+pub use self::grpc::{
+    ClientTelemetryLayer, GrpcMakeSpan, GrpcOnEos, GrpcOnFirstBodyChunk, GrpcOnRequest,
+    GrpcOnResponse, GrpcOnResponseOptions, ServerTelemetryLayer, TelemetryLayerOptions,
+    TraceIdLayer, TracingInjectorInterceptor, new_client_telemetry_layer,
+    new_server_telemetry_layer,
 };
+pub use self::telemetry::{Telemetry, TelemetryDropBehavior};
+pub use self::utils::to_short_str;
 
 pub mod external {
-    pub use clap;
-    pub use opentelemetry;
-    pub use tower;
-    pub use tower_http;
-    pub use tracing;
-    pub use tracing_opentelemetry;
-
     #[cfg(feature = "tracy")]
     pub use tracing_tracy;
+    pub use {clap, opentelemetry, tower, tower_http, tracing, tracing_opentelemetry};
 }
 
 // ---

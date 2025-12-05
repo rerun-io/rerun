@@ -1,12 +1,10 @@
-use tonic::{
-    Request, Status,
-    metadata::{Ascii, MetadataValue},
-    service::Interceptor,
-};
-
-use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
+use tonic::metadata::{Ascii, MetadataValue};
+use tonic::service::Interceptor;
+use tonic::{Request, Status};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
+use crate::provider::VerificationOptions;
+use crate::{Error, Jwt, RedapProvider};
 
 #[derive(Debug, Clone)]
 pub struct UserContext {

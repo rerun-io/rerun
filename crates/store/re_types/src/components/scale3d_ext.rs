@@ -1,6 +1,5 @@
-use crate::datatypes::Vec3D;
-
 use super::Scale3D;
+use crate::datatypes::Vec3D;
 
 impl Scale3D {
     /// Scale the same amount along all axis.

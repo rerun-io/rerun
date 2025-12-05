@@ -1,9 +1,7 @@
-use re_types::{
-    Archetype as _,
-    archetypes::Image,
-    components::{ImageFormat, Opacity},
-    image::ImageKind,
-};
+use re_types::Archetype as _;
+use re_types::archetypes::Image;
+use re_types::components::{ImageFormat, Opacity};
+use re_types::image::ImageKind;
 use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -11,12 +9,12 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect, contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind, visualizers::textured_rect_from_image,
-};
-
-use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
+use super::SpatialViewVisualizerData;
+use super::entity_iterator::process_archetype;
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::textured_rect_from_image;
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -102,8 +100,9 @@ impl ImageVisualizer {
         results: &HybridResults<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
     ) {
-        use super::entity_iterator::{iter_component, iter_slices};
         use re_view::RangeResultsExt as _;
+
+        use super::entity_iterator::{iter_component, iter_slices};
 
         let entity_path = ctx.target_entity_path;
 

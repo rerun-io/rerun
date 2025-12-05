@@ -1,21 +1,17 @@
 use std::collections::BTreeMap;
 
 use super::MessageLayer;
-use crate::parsers::{
-    MessageParser,
-    ros2msg::{
-        Ros2MessageParser,
-        rcl_interfaces::LogMessageParser,
-        sensor_msgs::{
-            BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
-            FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser,
-            ImuMessageParser, JointStateMessageParser, MagneticFieldMessageParser,
-            NavSatFixMessageParser, PointCloud2MessageParser, RangeMessageParser,
-            RelativeHumidityMessageParser, TemperatureMessageParser,
-        },
-        std_msgs::StringMessageParser,
-    },
+use crate::parsers::MessageParser;
+use crate::parsers::ros2msg::Ros2MessageParser;
+use crate::parsers::ros2msg::rcl_interfaces::LogMessageParser;
+use crate::parsers::ros2msg::sensor_msgs::{
+    BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
+    FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser, ImuMessageParser,
+    JointStateMessageParser, MagneticFieldMessageParser, NavSatFixMessageParser,
+    PointCloud2MessageParser, RangeMessageParser, RelativeHumidityMessageParser,
+    TemperatureMessageParser,
 };
+use crate::parsers::ros2msg::std_msgs::StringMessageParser;
 
 type ParserFactory = fn(usize) -> Box<dyn MessageParser>;
 

@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
-use arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
-use datafusion::{
-    catalog::TableProvider, common::exec_err, datasource::memory::MemorySourceConfig,
-    error::DataFusionError, execution::SessionStateBuilder, logical_expr::dml::InsertOp,
-};
+use arrow::datatypes::SchemaRef;
+use arrow::record_batch::RecordBatch;
+use datafusion::catalog::TableProvider;
+use datafusion::common::exec_err;
+use datafusion::datasource::memory::MemorySourceConfig;
+use datafusion::error::DataFusionError;
+use datafusion::execution::SessionStateBuilder;
+use datafusion::logical_expr::dml::InsertOp;
 use futures::StreamExt as _;
-
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::{
-    EntryKind,
-    ext::{EntryDetails, ProviderDetails, TableEntry},
-};
+use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry};
 
 #[derive(Clone)]
 pub enum TableType {

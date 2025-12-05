@@ -1,31 +1,29 @@
-use arrow::datatypes::Schema;
-use async_trait::async_trait;
 use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
-use datafusion::catalog::Session;
+use arrow::array::RecordBatch;
+use arrow::datatypes::{Schema, SchemaRef};
+use async_trait::async_trait;
+use datafusion::catalog::{Session, TableProvider};
 use datafusion::common::{exec_err, not_impl_err};
+use datafusion::error::{DataFusionError, Result as DataFusionResult};
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::dml::InsertOp;
 use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use datafusion::{
-    catalog::TableProvider,
-    error::{DataFusionError, Result as DataFusionResult},
-};
 use futures::Stream;
-use tokio::runtime::Handle;
-use tracing::instrument;
-
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
-use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
-use re_protos::cloud::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
+use re_protos::cloud::v1alpha1::{
+    EntryFilter, EntryKind, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
+    ScanTableResponse,
+};
 use re_redap_client::ConnectionClient;
+use tokio::runtime::Handle;
+use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 use crate::wasm_compat::make_future_send;
@@ -299,7 +297,7 @@ impl ExecutionPlan for TableEntryWriterExec {
 pub struct RecordBatchGrpcOutputStream {
     input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
-    thread_status: tokio::sync::oneshot::Receiver<Result<(), re_redap_client::ApiError>>,
+    thread_status: tokio::sync::oneshot::Receiver<re_redap_client::ApiResult>,
     complete: bool,
     grpc_error: Option<tonic::Status>,
 }

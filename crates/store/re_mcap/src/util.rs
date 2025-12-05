@@ -1,12 +1,9 @@
 use std::io::{Read, Seek};
 
-use mcap::{
-    Summary,
-    sans_io::{SummaryReadEvent, SummaryReader},
-};
-use saturating_cast::SaturatingCast as _;
-
+use mcap::Summary;
+use mcap::sans_io::{SummaryReadEvent, SummaryReader};
 use re_log_types::TimeCell;
+use saturating_cast::SaturatingCast as _;
 
 /// Read out the summary of an MCAP file.
 pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {

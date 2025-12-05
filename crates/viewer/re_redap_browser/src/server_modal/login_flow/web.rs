@@ -1,13 +1,14 @@
-use re_auth::oauth::{
-    Credentials,
-    api::{AuthenticateWithCode, Pkce, authorization_url, send_async},
-};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use re_auth::oauth::Credentials;
+use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_async};
 use re_log::ResultExt as _;
 use re_viewer_context::AsyncRuntimeHandle;
-use std::{cell::RefCell, rc::Rc};
 use url::Url;
 use uuid::Uuid;
-use wasm_bindgen::{JsCast as _, prelude::Closure};
+use wasm_bindgen::JsCast as _;
+use wasm_bindgen::prelude::Closure;
 
 #[expect(clippy::needless_pass_by_value)]
 fn js_value_to_string(s: wasm_bindgen::JsValue) -> String {
@@ -33,7 +34,6 @@ pub struct State {
     pkce: Rc<Pkce>,
     state: String,
 
-    login_hint: Option<String>,
     result: Rc<RefCell<Option<Result<Credentials, String>>>>,
 }
 
@@ -89,12 +89,7 @@ impl State {
             url.set_path("signed-in");
             url.to_string()
         };
-        let login_url = authorization_url(
-            &redirect_uri,
-            &self.state,
-            &self.pkce,
-            self.login_hint.as_deref(),
-        );
+        let login_url = authorization_url(&redirect_uri, &self.state, &self.pkce);
 
         let Some(child_window) = parent_window
             .open_with_url_and_target_and_features(&login_url, "auth", "width=480,height=640")
@@ -140,7 +135,7 @@ impl State {
     }
 
     #[expect(clippy::needless_pass_by_ref_mut, clippy::unnecessary_wraps)]
-    pub fn open(ui: &mut egui::Ui, login_hint: Option<&str>) -> Result<Self, String> {
+    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
         let parent_window = web_sys::window().expect("no window available");
         let pkce = Rc::new(Pkce::new());
         let state = Uuid::new_v4().to_string();
@@ -177,7 +172,6 @@ impl State {
             on_storage_event: Some(on_storage_event),
             pkce,
             state,
-            login_hint: login_hint.map(|v| v.to_owned()),
             result,
         })
     }

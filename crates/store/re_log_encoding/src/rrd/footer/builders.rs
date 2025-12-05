@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BooleanArray, RecordBatch, StringArray, UInt64Array};
 use arrow::datatypes::{Field, Schema, SchemaRef};
-
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, StoreId, TimeInt, TimeType, Timeline, TimelineName,

@@ -16,13 +16,9 @@ pub use re_types::{archetypes, components, datatypes};
 mod prelude {
     // Import all archetypes into the global namespace to minimize
     // the amount of typing for our users.
-    pub use re_types::archetypes::*;
-
-    // Special utility types.
-    pub use re_types::{AnyValues, DynamicArchetype, Rotation3D};
-
     // Also import any component or datatype that has a unique name:
     pub use re_chunk::TimeColumn;
+    pub use re_types::archetypes::*;
     pub use re_types::components::{
         AlbedoFactor, Color, FillMode, HalfSize2D, HalfSize3D, ImageFormat, LineStrip2D,
         LineStrip3D, MediaType, Position2D, Position3D, Radius, Scale3D, Text, TextLogLevel,
@@ -33,5 +29,7 @@ mod prelude {
         KeypointPair, Mat3x3, PixelFormat, Quaternion, Rgba32, RotationAxisAngle, TensorBuffer,
         TensorData, Vec2D, Vec3D, Vec4D,
     };
+    // Special utility types.
+    pub use re_types::{AnyValues, DynamicArchetype, Rotation3D};
 }
 pub use prelude::*;

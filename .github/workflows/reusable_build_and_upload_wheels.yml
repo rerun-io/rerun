@@ -85,6 +85,7 @@ defaults:
 permissions:
   contents: "read"
   id-token: "write"
+  packages: "read"
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -98,6 +99,14 @@ jobs:
       CONTAINER: ${{ steps.set-config.outputs.container }}
       COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
+      - name: Login to GHCR (with retries)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 10
+          max_attempts: 12
+          retry_on: timeout
+          warning_on_retry: true
+          command: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Set runner and target based on platform
         id: set-config
         run: |
@@ -105,14 +114,14 @@ jobs:
             linux-arm64)
                 runner="ubuntu-arm-16-core"
                 target="aarch64-unknown-linux-gnu"
-                container="'rerunio/ci_docker:0.16.0'" # Required to be manylinux compatible
+                container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
                 compat="manylinux_2_28"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_28"
-              container="'rerunio/ci_docker:0.16.0'" # Required to be manylinux compatible
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-32-cores"
@@ -145,8 +154,8 @@ jobs:
     container:
       image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Show context

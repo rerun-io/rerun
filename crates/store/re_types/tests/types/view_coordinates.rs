@@ -1,7 +1,6 @@
-use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::ViewCoordinates,
-    components, view_coordinates::ViewDir,
-};
+use re_types::archetypes::ViewCoordinates;
+use re_types::view_coordinates::ViewDir;
+use re_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
 
 #[test]
 fn roundtrip() {

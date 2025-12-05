@@ -7,12 +7,11 @@ pub use decode::{ChannelId, MessageParser, ParserContext};
 
 /// Defines utility functions shared across parsers.
 pub(crate) mod util {
-    use arrow::{
-        array::{FixedSizeListBuilder, ListBuilder, UInt8Builder},
-        datatypes::{DataType, Field},
-    };
-    use re_types::{Loggable as _, components};
     use std::sync::Arc;
+
+    use arrow::array::{FixedSizeListBuilder, ListBuilder, UInt8Builder};
+    use arrow::datatypes::{DataType, Field};
+    use re_types::{Loggable as _, components};
 
     pub(crate) fn fixed_size_list_builder<T: arrow::array::ArrayBuilder + Default>(
         value_length: i32,

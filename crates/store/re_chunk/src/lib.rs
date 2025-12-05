@@ -19,6 +19,20 @@ mod transport;
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
 
+// Re-exports
+#[doc(no_inline)]
+pub use {
+    arrow::array::Array as ArrowArray,
+    re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName},
+    re_span::Span,
+    re_types_core::{ArchetypeName, ChunkId, ComponentIdentifier, ComponentType, RowId},
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::batcher::{
+    BatcherFlushError, BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
+    ChunkBatcherResult, PendingRow,
+};
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
 pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
@@ -31,29 +45,8 @@ pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};
 pub use self::split::ChunkSplitConfig;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::batcher::{
-    BatcherFlushError, BatcherHooks, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
-    ChunkBatcherResult, PendingRow,
-};
-
-// Re-exports
-
-#[doc(no_inline)]
-pub use {
-    arrow::array::Array as ArrowArray,
-    re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName},
-    re_span::Span,
-    re_types_core::{ArchetypeName, ChunkId, ComponentIdentifier, ComponentType, RowId},
-};
-
 pub mod external {
-    pub use arrow;
-    pub use nohash_hasher;
-
-    pub use re_byte_size;
-    pub use re_log_types;
-
     #[cfg(not(target_arch = "wasm32"))]
     pub use crossbeam;
+    pub use {arrow, nohash_hasher, re_byte_size, re_log_types};
 }

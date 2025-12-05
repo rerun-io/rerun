@@ -1,26 +1,24 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
-use arrow::{
-    array::{
-        ArrayBuilder, ArrowPrimitiveType, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
-        Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, ListBuilder,
-        PrimitiveBuilder, StringBuilder, StructBuilder, UInt8Builder, UInt16Builder, UInt32Builder,
-        UInt64Builder,
-    },
-    datatypes::{
-        DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type,
-        Int64Type, UInt8Type, UInt16Type, UInt32Type, UInt64Type,
-    },
+use arrow::array::{
+    ArrayBuilder, ArrowPrimitiveType, BooleanBuilder, FixedSizeListBuilder, Float32Builder,
+    Float64Builder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, ListBuilder,
+    PrimitiveBuilder, StringBuilder, StructBuilder, UInt8Builder, UInt16Builder, UInt32Builder,
+    UInt64Builder,
+};
+use arrow::datatypes::{
+    DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type, Int64Type,
+    UInt8Type, UInt16Type, UInt32Type, UInt64Type,
 };
 use cdr_encoding::CdrDeserializer;
 use re_chunk::{Chunk, ChunkId};
-use re_ros_msg::{
-    MessageSchema,
-    deserialize::{MapResolver, MessageSeed, Value, primitive_array::PrimitiveArray},
-    message_spec::{ArraySize, BuiltInType, ComplexType, MessageSpecification, Type},
-};
-use re_types::{ComponentDescriptor, reflection::ComponentDescriptorExt as _};
+use re_ros_msg::MessageSchema;
+use re_ros_msg::deserialize::primitive_array::PrimitiveArray;
+use re_ros_msg::deserialize::{MapResolver, MessageSeed, Value};
+use re_ros_msg::message_spec::{ArraySize, BuiltInType, ComplexType, MessageSpecification, Type};
+use re_types::ComponentDescriptor;
+use re_types::reflection::ComponentDescriptorExt as _;
 use serde::de::DeserializeSeed as _;
 
 use crate::parsers::{MessageParser, ParserContext, dds};

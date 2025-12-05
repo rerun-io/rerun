@@ -1,12 +1,14 @@
+use std::str::FromStr as _;
+use std::sync::Arc;
+
 use egui::{FocusDirection, Key};
 use itertools::Itertools as _;
-use std::{str::FromStr as _, sync::Arc};
-
 use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
-use re_entity_db::{InstancePath, entity_db::EntityDb};
+use re_entity_db::InstancePath;
+use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{LogReceiver, LogReceiverSet, LogSource};
 use re_log_types::{
     ApplicationId, DataSourceMessage, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg,
@@ -16,26 +18,23 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
+use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
+use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
+    AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
-    command_channel,
-    open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url},
-    sanitize_file_name,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    command_channel, sanitize_file_name,
 };
 
-use crate::{
-    AppState,
-    app_blueprint::{AppBlueprint, PanelStateOverrides},
-    app_blueprint_ctx::AppBlueprintCtx,
-    app_state::WelcomeScreenState,
-    background_tasks::BackgroundTasks,
-    event::ViewerEventDispatcher,
-    startup_options::StartupOptions,
-};
+use crate::AppState;
+use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
+use crate::app_blueprint_ctx::AppBlueprintCtx;
+use crate::app_state::WelcomeScreenState;
+use crate::background_tasks::BackgroundTasks;
+use crate::event::ViewerEventDispatcher;
+use crate::startup_options::StartupOptions;
 
 // ----------------------------------------------------------------------------
 
@@ -179,6 +178,15 @@ impl App {
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
+
+        {
+            let command_sender = command_channel.0.clone();
+            re_auth::credentials::subscribe_auth_changes(move |user| {
+                command_sender.send_system(SystemCommand::OnAuthChanged(
+                    user.map(|user| AuthContext { email: user.email }),
+                ));
+            });
+        }
 
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
@@ -1224,6 +1232,10 @@ impl App {
                 }
             }
 
+            SystemCommand::OnAuthChanged(auth) => {
+                self.state.auth_state = auth;
+            }
+
             SystemCommand::SetAuthCredentials {
                 access_token,
                 email,
@@ -1358,7 +1370,19 @@ impl App {
             }
         }
 
-        match data_source.clone().stream(&self.connection_registry) {
+        let stream = data_source.clone().stream(&self.connection_registry);
+        #[cfg(feature = "analytics")]
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+            let data_source_analytics = data_source.analytics();
+            analytics.record(re_analytics::event::LoadDataSource {
+                source_type: data_source_analytics.source_type,
+                file_extension: data_source_analytics.file_extension,
+                file_source: data_source_analytics.file_source,
+                started_successfully: stream.is_ok(),
+            });
+        }
+
+        match stream {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -3086,7 +3110,7 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
+        #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry_tracy"))]
         re_perf_telemetry::external::tracing_tracy::client::frame_mark();
 
         if let Some(seconds) = frame.info().cpu_usage {

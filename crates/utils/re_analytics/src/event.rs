@@ -23,6 +23,8 @@ use crate::{AnalyticsEvent, Event, EventKind, Properties, Property};
 /// Used in `re_crash_handler`.
 pub struct CrashPanic {
     pub build_info: BuildInfo,
+
+    /// Anonymized
     pub callstack: String,
     pub message: Option<String>,
     pub file_line: Option<String>,
@@ -460,6 +462,47 @@ impl Properties for SetPersonProperty {
         } = self;
         event.insert("email", email);
         event.insert("organization_id", organization_id);
+    }
+}
+
+// -----------------------------------------------
+
+/// Tracks when a data source is loaded from the viewer.
+///
+/// This is sent when a user opens a file, URL, or other data source.
+pub struct LoadDataSource {
+    /// The type of data source being loaded (e.g., "file", "http" etc.).
+    pub source_type: &'static str,
+
+    /// The file extension if applicable (e.g., "rrd", "png", "glb").
+    /// None for non-file sources like stdin or gRPC streams.
+    pub file_extension: Option<String>,
+
+    /// How the file was opened (e.g., "cli", "`file_dialog`" etc.).
+    /// Only applicable for file-based sources.
+    pub file_source: Option<&'static str>,
+
+    /// Whether the data source stream was started successfully.
+    pub started_successfully: bool,
+}
+
+impl Event for LoadDataSource {
+    const NAME: &'static str = "load_data_source";
+}
+
+impl Properties for LoadDataSource {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            source_type,
+            file_extension,
+            file_source,
+            started_successfully,
+        } = self;
+
+        event.insert("source_type", source_type);
+        event.insert_opt("file_extension", file_extension);
+        event.insert_opt("file_source", file_source.map(|s| s.to_owned()));
+        event.insert("started_successfully", started_successfully);
     }
 }
 

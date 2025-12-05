@@ -1,12 +1,9 @@
 use glam::vec3;
-
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
-use re_types::{
-    Archetype as _,
-    archetypes::Pinhole,
-    components::{self},
-};
+use re_types::Archetype as _;
+use re_types::archetypes::Pinhole;
+use re_types::components::{self};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,
@@ -15,12 +12,11 @@ use re_viewer_context::{
 };
 
 use super::SpatialViewVisualizerData;
-use crate::{
-    contexts::TransformTreeContext,
-    pinhole_wrapper::PinholeWrapper,
-    view_kind::SpatialViewKind,
-    visualizers::{process_radius, utilities::spatial_view_kind_from_view_class},
-};
+use crate::contexts::TransformTreeContext;
+use crate::pinhole_wrapper::PinholeWrapper;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::process_radius;
+use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
 pub struct CamerasVisualizer {
     pub data: SpatialViewVisualizerData,

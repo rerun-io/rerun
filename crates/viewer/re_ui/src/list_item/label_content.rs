@@ -1,5 +1,7 @@
-use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 use std::sync::Arc;
+
+use egui::text::TextWrapping;
+use egui::{Align, Align2, NumExt as _, RichText, Ui};
 
 use super::{
     ContentContext, DesiredWidth, ListItemContent, ListItemContentButtonsExt, ListVisuals,

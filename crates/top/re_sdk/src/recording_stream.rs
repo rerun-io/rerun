@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::IsTerminal as _;
-use std::sync::Weak;
-use std::sync::{Arc, atomic::AtomicI64};
+use std::sync::atomic::AtomicI64;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use ahash::HashMap;
@@ -9,7 +9,6 @@ use crossbeam::channel::{Receiver, RecvTimeoutError, Sender};
 use itertools::Either;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-
 use re_chunk::{
     BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
     ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
@@ -22,12 +21,11 @@ use re_log_types::{
 use re_types::archetypes::RecordingInfo;
 use re_types::components::Timestamp;
 use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
-
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
-use crate::sink::{LogSink, MemorySinkStorage};
-use crate::{binary_stream_sink::BinaryStreamStorage, sink::SinkFlushError};
+use crate::binary_stream_sink::BinaryStreamStorage;
+use crate::sink::{LogSink, MemorySinkStorage, SinkFlushError};
 
 // ---
 

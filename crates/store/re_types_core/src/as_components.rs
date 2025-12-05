@@ -201,9 +201,8 @@ fn many_componentbatch_wrapped_many() {}
 mod tests {
     use std::sync::Arc;
 
-    use arrow::array::{
-        Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray, types::UInt32Type,
-    };
+    use arrow::array::types::UInt32Type;
+    use arrow::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
     use itertools::Itertools as _;
     use similar_asserts::assert_eq;
 

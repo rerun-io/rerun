@@ -157,6 +157,7 @@ pub trait ViewClass: Send + Sync {
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
+        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
         _space_origin: &EntityPath,
         _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -171,6 +172,7 @@ pub trait ViewClass: Send + Sync {
         _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
         _state: &mut dyn ViewState,
+        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
         _space_origin: &EntityPath,
         _view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -200,6 +202,7 @@ pub trait ViewClassExt<'a>: ViewClass + 'a {
         viewer_ctx: &'b ViewerContext<'b>,
         view_id: ViewId,
         view_state: &'b dyn ViewState,
+        space_origin: &'b EntityPath,
     ) -> ViewContext<'b>;
 }
 
@@ -212,11 +215,14 @@ where
         viewer_ctx: &'b ViewerContext<'b>,
         view_id: ViewId,
         view_state: &'b dyn ViewState,
+        // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
+        space_origin: &'b EntityPath,
     ) -> ViewContext<'b> {
         ViewContext {
             viewer_ctx,
             view_id,
             view_class_identifier: T::identifier(),
+            space_origin,
             view_state,
             query_result: viewer_ctx.lookup_query_result(view_id),
         }

@@ -1,18 +1,16 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::{BufRead as _, BufReader, Seek as _, Write as _},
-    sync::Arc,
-    time::Duration,
-};
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead as _, BufReader, Seek as _, Write as _};
+use std::sync::Arc;
+use std::time::Duration;
 
 use crossbeam::{channel, select};
 
-use super::{AbortSignal, sink::PostHogSink};
-
+use super::AbortSignal;
+use super::sink::PostHogSink;
 use crate::{AnalyticsEvent, Config, FlushError};
 
 // This is the environment variable that controls analytics collection.
-const ENV_ANALYTICS: &str = "RERUN_ANALYTICS";
+const ENV_FORCE_ANALYTICS: &str = "FORCE_RERUN_ANALYTICS";
 
 pub enum PipelineEvent {
     Analytics(AnalyticsEvent),
@@ -39,18 +37,9 @@ pub struct Pipeline {
 
 impl Pipeline {
     pub(crate) fn new(config: &Config, tick: Duration) -> Result<Option<Self>, PipelineError> {
-        let force_analytics = match std::env::var(ENV_ANALYTICS) {
-            Ok(s) => {
-                if s == "0" {
-                    re_log::debug_once!("Analytics disabled by environment variable");
-                    return Ok(None);
-                }
-                s.to_lowercase() == "force"
-            }
-            _ => false,
-        };
-
-        if !force_analytics {
+        if re_log::env_var_is_truthy(ENV_FORCE_ANALYTICS) {
+            re_log::debug_once!("Analytics enabled by environment variable");
+        } else {
             if !config.analytics_enabled {
                 re_log::debug_once!("Analytics disabled by configuration");
                 return Ok(None);

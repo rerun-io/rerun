@@ -2,10 +2,8 @@ use std::sync::LazyLock;
 
 use re_data_source::LogDataSource;
 use re_log_channel::LogSource;
-use re_uri::{
-    Scheme,
-    external::url::{self, Url},
-};
+use re_uri::Scheme;
+use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
 
 use crate::{
@@ -746,9 +744,11 @@ fn handle_web_event_listener(_egui_ctx: &egui::Context, _command_sender: &Comman
 
 #[cfg(target_arch = "wasm32")]
 fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandSender) {
+    use std::ops::ControlFlow;
+    use std::sync::Arc;
+
     use re_log::ResultExt as _;
     use re_log_encoding::rrd::stream_from_http::HttpMessage;
-    use std::{ops::ControlFlow, sync::Arc};
 
     // Process an rrd when it's posted via `window.postMessage`
     let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::RrdWebEvent);
@@ -788,16 +788,14 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 mod tests {
     use std::str::FromStr as _;
 
-    use crate::{DisplayMode, Item, StoreHub};
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
     use re_log_channel::LogSource;
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
-    use re_uri::{
-        CatalogUri, DatasetSegmentUri, Fragment,
-        external::url::{self, Url},
-    };
+    use re_uri::external::url::{self, Url};
+    use re_uri::{CatalogUri, DatasetSegmentUri, Fragment};
 
     use super::ViewerOpenUrl;
+    use crate::{DisplayMode, Item, StoreHub};
 
     #[test]
     fn test_viewer_open_url_from_str() {

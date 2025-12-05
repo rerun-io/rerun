@@ -34,29 +34,23 @@ mod vec_deque_ext;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::{
-    arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    data_source_message::{DataSourceMessage, DataSourceUiCommand},
-    entry_id::{EntryId, EntryIdOrName},
-    index::{
-        AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TimestampFormatKind, TryFromIntError,
-    },
-    instance::Instance,
-    path::*,
-    vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
+pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
+pub use self::entry_id::{EntryId, EntryIdOrName};
+pub use self::index::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
+    TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TimestampFormatKind,
+    TryFromIntError,
 };
+pub use self::instance::Instance;
+pub use self::path::*;
+pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
-    pub use arrow;
-
-    pub use re_tuid;
-    pub use re_types_core;
+    pub use {arrow, re_tuid, re_types_core};
 }
 
 #[macro_export]
@@ -143,8 +137,8 @@ fn store_kind_str_roundtrip() {
 /// can override the recording id though. In that case, the user is responsible for making the
 /// application id/recording id pair unique or not, based on their needs.
 ///
-/// In the context of remote recordings (aka a dataset's partition), the application id is the
-/// dataset entry id, and the recording id is the partition id. The former is a UUID, and the latter
+/// In the context of remote recordings (aka a dataset's segment), the application id is the
+/// dataset entry id, and the recording id is the segment id. The former is a UUID, and the latter
 /// is, by definition, unique within the dataset entry. As a result, the uniqueness of the `StoreId`
 /// is always guaranteed in this case.
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -339,7 +333,7 @@ impl std::fmt::Display for ApplicationId {
 ///
 /// In the context of a recording from the logging SDK, it is by default a uuid, but it is not
 /// required to be so. It may be a user-chosen name as well. In the context of a remote recording,
-/// this is the partition id.
+/// this is the segment id.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingId(Arc<String>);
@@ -563,8 +557,8 @@ pub struct SetStoreInfo {
 pub struct StoreInfo {
     /// Should be unique for each recording.
     ///
-    /// The store id contains both the application id (or dataset id) and the reocrding id (or
-    /// partition id).
+    /// The store id contains both the application id (or dataset id) and the recording id (or
+    /// segment id).
     pub store_id: StoreId,
 
     /// If this store is the result of a clone, which store was it cloned from?

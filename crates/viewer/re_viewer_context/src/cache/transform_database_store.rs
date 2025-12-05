@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
-
 use re_byte_size::SizeBytes;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;

@@ -7,21 +7,18 @@ mod route;
 mod stats;
 mod verify;
 
-use self::{
-    compare::CompareCommand,
-    filter::FilterCommand,
-    merge_compact::{CompactCommand, MergeCommand},
-    migrate::MigrateCommand,
-    print::PrintCommand,
-    route::RouteCommand,
-    stats::StatsCommand,
-    verify::VerifyCommand,
-};
-
 // ---
-
 use anyhow::Context as _;
 use clap::Subcommand;
+
+use self::compare::CompareCommand;
+use self::filter::FilterCommand;
+use self::merge_compact::{CompactCommand, MergeCommand};
+use self::migrate::MigrateCommand;
+use self::print::PrintCommand;
+use self::route::RouteCommand;
+use self::stats::StatsCommand;
+use self::verify::VerifyCommand;
 
 /// Manipulate the contents of .rrd and .rbl files.
 #[derive(Debug, Clone, Subcommand)]

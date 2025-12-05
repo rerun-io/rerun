@@ -3,11 +3,15 @@ mod dataset;
 mod error;
 mod in_memory_store;
 mod layer;
-mod partition;
+mod segment;
 mod table;
 mod tracked;
 
-pub use self::{
-    chunk_key::ChunkKey, dataset::Dataset, error::Error, in_memory_store::InMemoryStore,
-    layer::Layer, partition::Partition, table::Table, tracked::Tracked,
-};
+pub use self::chunk_key::ChunkKey;
+pub use self::dataset::Dataset;
+pub use self::error::Error;
+pub use self::in_memory_store::InMemoryStore;
+pub use self::layer::Layer;
+pub use self::segment::Segment;
+pub use self::table::Table;
+pub use self::tracked::Tracked;

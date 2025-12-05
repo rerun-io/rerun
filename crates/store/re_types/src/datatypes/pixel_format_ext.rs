@@ -1,6 +1,5 @@
-use crate::image::{YuvMatrixCoefficients, rgb_from_yuv};
-
 use super::{ChannelDatatype, ColorModel, PixelFormat};
+use crate::image::{YuvMatrixCoefficients, rgb_from_yuv};
 
 impl PixelFormat {
     /// Do we have an alpha channel?

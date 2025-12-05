@@ -1,13 +1,14 @@
 #![expect(clippy::unwrap_used)]
 
 use itertools::Itertools as _;
-
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{
-    Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, ToApplication as _,
+    Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, StreamFooter,
+    StreamFooterEntry, ToApplication as _,
 };
-use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time, external::re_tuid::Tuid};
+use re_log_types::external::re_tuid::Tuid;
+use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
 use re_protos::external::prost::Message as _;
 
 #[test]
@@ -83,23 +84,21 @@ fn footer_roundtrip() {
         re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
             .unwrap();
 
-    let rrd_footer_range = stream_footer
-        .rrd_footer_byte_span_from_start_excluding_header
+    let StreamFooterEntry {
+        rrd_footer_byte_span_from_start_excluding_header,
+        crc_excluding_header,
+    } = stream_footer.entries[0];
+
+    let rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
         .try_cast::<usize>()
         .unwrap()
         .range();
     let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
 
-    {
-        let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-            stream_footer
-                .rrd_footer_byte_span_from_start_excluding_header
-                .start,
-            rrd_footer_bytes,
-        )
-        .crc_excluding_header;
-        similar_asserts::assert_eq!(stream_footer.crc_excluding_header, crc);
-    }
+    similar_asserts::assert_eq!(
+        crc_excluding_header,
+        StreamFooter::compute_crc(rrd_footer_bytes)
+    );
 
     let rrd_footer =
         re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes).unwrap();
@@ -221,23 +220,21 @@ fn footer_roundtrip() {
         )
         .unwrap();
 
-        let reencoded_rrd_footer_range = reencoded_stream_footer
-            .rrd_footer_byte_span_from_start_excluding_header
+        let StreamFooterEntry {
+            rrd_footer_byte_span_from_start_excluding_header,
+            crc_excluding_header,
+        } = reencoded_stream_footer.entries[0];
+
+        let reencoded_rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
             .try_cast::<usize>()
             .unwrap()
             .range();
         let reencoded_rrd_footer_bytes = &msgs_reencoded[reencoded_rrd_footer_range];
 
-        {
-            let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-                reencoded_stream_footer
-                    .rrd_footer_byte_span_from_start_excluding_header
-                    .start,
-                reencoded_rrd_footer_bytes,
-            )
-            .crc_excluding_header;
-            similar_asserts::assert_eq!(reencoded_stream_footer.crc_excluding_header, crc);
-        }
+        similar_asserts::assert_eq!(
+            crc_excluding_header,
+            StreamFooter::compute_crc(reencoded_rrd_footer_bytes)
+        );
 
         let reencoded_rrd_footer =
             re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(reencoded_rrd_footer_bytes)
@@ -310,23 +307,27 @@ fn footer_empty() {
         re_log_encoding::StreamFooter::from_rrd_bytes(&msgs_encoded[stream_footer_start..])
             .unwrap();
 
-    let rrd_footer_range = stream_footer
-        .rrd_footer_byte_span_from_start_excluding_header
+    assert_eq!(
+        1,
+        stream_footer.entries.len(),
+        "Stream footers always point to exactly 1 RRD footer at the moment"
+    );
+
+    let StreamFooterEntry {
+        rrd_footer_byte_span_from_start_excluding_header,
+        crc_excluding_header,
+    } = stream_footer.entries[0];
+
+    let rrd_footer_range = rrd_footer_byte_span_from_start_excluding_header
         .try_cast::<usize>()
         .unwrap()
         .range();
     let rrd_footer_bytes = &msgs_encoded[rrd_footer_range];
 
-    {
-        let crc = re_log_encoding::StreamFooter::from_rrd_footer_bytes(
-            stream_footer
-                .rrd_footer_byte_span_from_start_excluding_header
-                .start,
-            rrd_footer_bytes,
-        )
-        .crc_excluding_header;
-        similar_asserts::assert_eq!(stream_footer.crc_excluding_header, crc);
-    }
+    similar_asserts::assert_eq!(
+        crc_excluding_header,
+        StreamFooter::compute_crc(rrd_footer_bytes)
+    );
 
     let rrd_footer =
         re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes).unwrap();
@@ -364,15 +365,14 @@ fn generate_recording(
 }
 
 fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
-    use re_log_types::{
-        TimeInt, TimeType, Timeline, build_frame_nr,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{TimeInt, TimeType, Timeline, build_frame_nr};
 
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);
 
-    let entity_path = "my_entity";
+    let entity_path1 = "my_entity1";
+    let entity_path2 = "my_entity2";
 
     fn build_elapsed(value: i64) -> (Timeline, TimeInt) {
         (
@@ -404,7 +404,7 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ty
             let colors2 = MyColor::from_iter(1..2);
             let colors3 = MyColor::from_iter(2..3);
 
-            Chunk::builder_with_id(next_chunk_id(), entity_path)
+            Chunk::builder_with_id(next_chunk_id(), entity_path1)
                 .with_sparse_component_batches(
                     next_row_id(),
                     build_timepoint(frame1),
@@ -434,13 +434,41 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ty
                 .unwrap()
         },
         {
-            let labels = vec![MyLabel("simple".to_owned())];
+            let labels_static = vec![MyLabel("static".to_owned())];
+            // It is super important that we test what happens when a single entity+component pair
+            // ends up with both static and temporal data, something that the viewer has always
+            // been able to ingest!
+            let colors_static = MyColor::from_iter(66..67);
 
-            Chunk::builder_with_id(next_chunk_id(), entity_path)
+            Chunk::builder_with_id(next_chunk_id(), entity_path1)
                 .with_sparse_component_batches(
                     next_row_id(),
                     TimePoint::default(),
-                    [(MyPoints::descriptor_labels(), Some(&labels as _))],
+                    [
+                        (MyPoints::descriptor_labels(), Some(&labels_static as _)), //
+                        (MyPoints::descriptor_colors(), Some(&colors_static as _)), //
+                    ],
+                )
+                .build()
+                .unwrap()
+                .to_arrow_msg()
+                .unwrap()
+        },
+        // Just testing with more than 1 entity.
+        {
+            let points_static = MyPoint::from_iter(42..43);
+            let colors_static = MyColor::from_iter(66..67);
+            let labels_static = vec![MyLabel("static".to_owned())];
+
+            Chunk::builder_with_id(next_chunk_id(), entity_path2)
+                .with_sparse_component_batches(
+                    next_row_id(),
+                    TimePoint::default(),
+                    [
+                        (MyPoints::descriptor_points(), Some(&points_static as _)), //
+                        (MyPoints::descriptor_colors(), Some(&colors_static as _)), //
+                        (MyPoints::descriptor_labels(), Some(&labels_static as _)), //
+                    ],
                 )
                 .build()
                 .unwrap()

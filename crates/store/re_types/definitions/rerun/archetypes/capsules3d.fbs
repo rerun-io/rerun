@@ -34,17 +34,17 @@ table Capsules3D (
   /// Optional translations of the capsules.
   ///
   /// If not specified, one end of each capsule will be at (0, 0, 0).
-  translations: [rerun.components.PoseTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  translations: [rerun.components.Translation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Rotations via axis + angle.
   ///
   /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-  rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
+  rotation_axis_angles: [rerun.components.RotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// Rotations via quaternion.
   ///
   /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-  quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
+  quaternions: [rerun.components.RotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the capsules.
   ///

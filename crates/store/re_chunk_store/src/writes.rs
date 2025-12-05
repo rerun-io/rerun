@@ -1,16 +1,16 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use ahash::HashMap;
 use arrow::array::Array as _;
 use itertools::Itertools as _;
-
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
+use crate::store::ChunkIdSetPerTime;
 use crate::{
     ChunkId, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
     ChunkStoreDiffKind, ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
-    store::ChunkIdSetPerTime,
 };
 
 // ---
@@ -70,9 +70,21 @@ impl ChunkStore {
             return Ok(all_events);
         }
 
-        if self.chunks_per_chunk_id.contains_key(&chunk.id()) {
-            // We assume that chunk IDs are unique, and that reinserting a chunk has no effect.
-            re_log::warn_once!("Chunk was inserted more than once (this has no effect)");
+        if let Some(prev_chunk) = self.chunks_per_chunk_id.get(&chunk.id()) {
+            if cfg!(debug_assertions) {
+                if let Err(difference) = Chunk::ensure_similar(prev_chunk, chunk) {
+                    re_log::error_once!(
+                        "The chunk id {} was used twice for two _different_ chunks. Difference: {difference}",
+                        chunk.id()
+                    );
+                } else {
+                    re_log::warn_once!("The same chunk was inserted twice (this has no effect)");
+                }
+            } else {
+                re_log::debug_once!("The same chunk was inserted twice (this has no effect)");
+            }
+
+            // We assume that chunk IDs are unique, and so inserting the same chunk twice has no effect.
             return Ok(Vec::new());
         }
 
@@ -378,7 +390,7 @@ impl ChunkStore {
                 .is_some()
         {
             re_log::warn_once!(
-                "detected duplicated RowId in the data, this will lead to undefined behavior"
+                "Detected duplicated RowId in the data, this will lead to undefined behavior"
             );
         }
 
@@ -746,17 +758,14 @@ mod tests {
     use std::collections::BTreeMap;
 
     use re_chunk::{TimeInt, TimePoint, Timeline};
-    use re_log_types::{
-        build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{build_frame_nr, build_log_time};
     use re_types::components::Blob;
     use re_types_core::ComponentDescriptor;
     use similar_asserts::assert_eq;
 
-    use crate::ChunkStoreDiffKind;
-
     use super::*;
+    use crate::ChunkStoreDiffKind;
 
     // TODO(cmc): We could have more test coverage here, especially regarding thresholds etc.
     // For now the development and maintenance cost doesn't seem to be worth it.

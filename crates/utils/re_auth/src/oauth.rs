@@ -236,6 +236,8 @@ impl InMemoryCredentials {
             organization_id: self.0.claims.org_id.clone(),
         });
 
+        crate::credentials::oauth::auth_update(Some(&self.0.user));
+
         Ok(self.0)
     }
 }

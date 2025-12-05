@@ -15,15 +15,10 @@
 //!
 //! A valid transform graph is expected to form a forest, i.e. one or more trees.
 //!
-//! TODO(RR-2511): We don't actually have custom frame relationships yet.
-//!
 //! #### Entity relationship & built-in transform frames
 //!
-//! TODO(RR-2487): Most things in this paragraph are planned but not yet implemented.
-//!
 //! Every entity is associated with a transform frame.
-//! The transform frame can be set with the `CoordinateFrame` archetype.
-//! TODO(RR-2486): Link to respective archetype.
+//! The transform frame can be set with [`re_types::archetypes::CoordinateFrame`].
 //!
 //! However, by default, it points to an implicit, entity-derived transform frame.
 //! The name of the implicit transform frames is the entity path, prefixed with `tf#`, e.g. `tf#/world/robot/arm`.
@@ -146,15 +141,14 @@ mod transform_resolution_cache;
 
 pub mod convert;
 
+// Re-export the transform frame id types from re_types.
+pub use re_types::TransformFrameIdHash;
+pub use re_types::components::TransformFrameId;
 pub use transform_forest::{PinholeTreeRoot, TransformForest, TransformFromToError, TreeTransform};
 pub use transform_queries::{query_view_coordinates, query_view_coordinates_at_closest_ancestor};
 pub use transform_resolution_cache::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,
 };
-
-// Re-export the transform frame id types from re_types.
-pub use re_types::TransformFrameIdHash;
-pub use re_types::components::TransformFrameId;
 
 /// Returns the view coordinates used for 2D (image) views.
 ///

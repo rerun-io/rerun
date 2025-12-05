@@ -1,15 +1,14 @@
-use std::{fs::File, io::BufWriter};
+use std::fs::File;
+use std::io::BufWriter;
 
 use crossbeam::channel::Receiver;
 use re_log_encoding::Encoder;
-use re_protos::{
-    common::v1alpha1::ApplicationId,
-    log_msg::v1alpha1::{
-        ArrowMsg, BlueprintActivationCommand, SetStoreInfo, StoreInfo, log_msg::Msg,
-    },
-};
+use re_protos::common::v1alpha1::ApplicationId;
+use re_protos::log_msg::v1alpha1::log_msg::Msg;
+use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo, StoreInfo};
 
-use crate::commands::{read_raw_rrd_streams_from_file_or_stdin, stdio::InputSource};
+use crate::commands::read_raw_rrd_streams_from_file_or_stdin;
+use crate::commands::stdio::InputSource;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct RouteCommand {

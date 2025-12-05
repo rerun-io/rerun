@@ -1,15 +1,11 @@
-use super::super::definitions::sensor_msgs;
-use re_chunk::{
-    Chunk, ChunkId,
-    external::arrow::array::{Float64Builder, ListBuilder, StringBuilder},
-};
+use re_chunk::external::arrow::array::{Float64Builder, ListBuilder, StringBuilder};
+use re_chunk::{Chunk, ChunkId};
 use re_types::archetypes::{Scalars, SeriesLines};
 
 use super::super::Ros2MessageParser;
-use crate::{
-    Error,
-    parsers::{MessageParser, ParserContext, cdr},
-};
+use super::super::definitions::sensor_msgs;
+use crate::Error;
+use crate::parsers::{MessageParser, ParserContext, cdr};
 
 /// Plugin that parses `sensor_msgs/msg/JointState` messages.
 #[derive(Default)]

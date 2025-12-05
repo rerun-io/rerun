@@ -18,9 +18,7 @@ Find out its location by running `rerun analytics config`.
 ### Opting out
 Run `rerun analytics disable` to opt out of all usage data collection.
 
-Alternatively, you can control analytics using an environment variable:
-- `RERUN_ANALYTICS=0`: off
-- `RERUN_ANALYTICS=force`: on (overrides configuration!)
+In debug builds, analytics is off by default. Turn it on by setting the environment variable `FORCE_RERUN_ANALYTICS=1`.
 
 ### What data is collected?
 The exact set of analytics events and parameters can be found here: <https://github.com/rerun-io/rerun/blob/main/crates/utils/re_analytics/src/event.rs>

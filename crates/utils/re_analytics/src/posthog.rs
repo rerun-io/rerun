@@ -1,7 +1,8 @@
-use crate::{AnalyticsEvent, Property};
 use std::collections::HashMap;
 
 use jiff::Timestamp;
+
+use crate::{AnalyticsEvent, Property};
 
 /// The "public" API key can be obtained at <https://eu.posthog.com/project/settings#project-api-key>.
 /// Make sure you are logged in to the right organization and have the correct project open.

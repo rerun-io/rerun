@@ -1,5 +1,4 @@
 use pyo3::{pyclass, pymethods};
-
 use re_sorbet::{ComponentColumnDescriptor, ComponentColumnSelector};
 
 /// The descriptor of a component column.

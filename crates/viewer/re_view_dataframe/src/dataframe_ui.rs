@@ -5,7 +5,6 @@ use anyhow::Context as _;
 use arrow::array::ArrayRef;
 use egui::{NumExt as _, RichText};
 use itertools::Itertools as _;
-
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
@@ -15,8 +14,7 @@ use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types::ComponentDescriptor;
 use re_types::reflection::ComponentDescriptorExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::TimeControlCommand;
-use re_viewer_context::{ViewId, ViewerContext};
+use re_viewer_context::{TimeControlCommand, ViewId, ViewerContext};
 
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 

@@ -5,7 +5,6 @@ use std::task::Poll;
 
 use datafusion::prelude::{SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
-
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
@@ -240,7 +239,7 @@ impl Server {
 
             blueprint
         })
-        .generate_partition_links(
+        .generate_segment_links(
             RECORDING_LINK_COLUMN_NAME,
             ScanSegmentTableResponse::FIELD_SEGMENT_ID,
             self.origin.clone(),

@@ -1,30 +1,25 @@
 use std::sync::Arc;
 
 use re_log_types::EntityPath;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{
-    Archetype as _,
-    archetypes::{AssetVideo, VideoFrameReference},
-    components::{Blob, MediaType, Opacity, VideoTimestamp},
-};
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::video::Video;
+use re_types::Archetype as _;
+use re_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
 use re_viewer_context::{
     IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
     ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
     VisualizerSystem, typed_fallback_for,
 };
 
-use crate::{
-    PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{
-        SpatialViewVisualizerData,
-        entity_iterator::{self, process_archetype},
-        video::{
-            VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
-            visualize_video_frame_texture,
-        },
-    },
+use crate::PickableTexturedRect;
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
+use crate::visualizers::entity_iterator::{self, process_archetype};
+use crate::visualizers::video::{
+    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+    visualize_video_frame_texture,
 };
 
 pub struct VideoFrameReferenceVisualizer {

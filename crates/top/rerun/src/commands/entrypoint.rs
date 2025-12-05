@@ -1,26 +1,23 @@
-use std::{net::IpAddr, time::Duration};
+use std::net::IpAddr;
+use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use tokio::runtime::Runtime;
-
 use re_data_source::LogDataSource;
 use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 use re_log_types::DataSourceMessage;
-
-use crate::{CallSource, commands::RrdCommands};
-
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-
-#[cfg(feature = "data_loaders")]
-use crate::commands::McapCommands;
-
-#[cfg(feature = "analytics")]
-use crate::commands::AnalyticsCommands;
+use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
 use super::auth::AuthCommands;
+use crate::CallSource;
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+use crate::commands::RrdCommands;
 
 // ---
 
@@ -585,7 +582,7 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
     } else {
         re_crash_handler::install_crash_handlers(build_info.clone());
@@ -868,6 +865,8 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
+    use crate::external::re_ui::{UICommand, UICommandSender as _};
+
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
@@ -906,6 +905,25 @@ fn start_native_viewer(
     re_viewer::run_native_app(
         _main_thread_token,
         Box::new(move |cc| {
+            let (tx, rx) = re_viewer::command_channel();
+            {
+                let tx = tx.clone();
+                let egui_ctx = cc.egui_ctx.clone();
+                tokio::spawn(async move {
+                    // We catch ctrl-c commands so we can properly quit.
+                    // Without this, recent state changes might not be persisted.
+                    match tokio::signal::ctrl_c().await {
+                        Ok(()) => {
+                            re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
+                            tx.send_ui(UICommand::Quit);
+                            egui_ctx.request_repaint();
+                        }
+                        Err(err) => {
+                            re_log::error!("Failed to listen for ctrl-c signal: {}", err);
+                        }
+                    }
+                });
+            }
             let mut app = re_viewer::App::with_commands(
                 _main_thread_token,
                 _build_info,
@@ -915,7 +933,7 @@ fn start_native_viewer(
                 Some(connection_registry),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
-                re_viewer::command_channel(),
+                (tx, rx),
             );
             app.set_profiler(profiler);
             for rx in log_receivers {

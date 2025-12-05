@@ -2,7 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::blueprint::{archetypes::SpatialInformation, components::Enabled};
+use re_types::blueprint::archetypes::SpatialInformation;
+use re_types::blueprint::components::Enabled;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 

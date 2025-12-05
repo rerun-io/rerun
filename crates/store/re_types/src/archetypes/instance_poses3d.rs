@@ -34,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// From the point of view of the entity's coordinate system,
 /// all components are applied in the inverse order they are listed here.
-/// E.g. if both a translation and a max3x3 transform are present,
+/// E.g. if both a translation and a mat3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
 /// Currently, many visualizers support only a single instance transform per entity.
@@ -102,89 +102,79 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct InstancePoses3D {
     /// Translation vectors.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub translations: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Scaling factors.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub scales: Option<SerializedComponentBatch>,
 
     /// 3x3 transformation matrices.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     pub mat3x3: Option<SerializedComponentBatch>,
 }
 
 impl InstancePoses3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
     ///
-    /// The corresponding component is [`crate::components::PoseTranslation3D`].
+    /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.InstancePoses3D".into()),
             component: "InstancePoses3D:translations".into(),
-            component_type: Some("rerun.components.PoseTranslation3D".into()),
+            component_type: Some("rerun.components.Translation3D".into()),
         }
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
     ///
-    /// The corresponding component is [`crate::components::PoseRotationAxisAngle`].
+    /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.InstancePoses3D".into()),
             component: "InstancePoses3D:rotation_axis_angles".into(),
-            component_type: Some("rerun.components.PoseRotationAxisAngle".into()),
+            component_type: Some("rerun.components.RotationAxisAngle".into()),
         }
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
     ///
-    /// The corresponding component is [`crate::components::PoseRotationQuat`].
+    /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.InstancePoses3D".into()),
             component: "InstancePoses3D:quaternions".into(),
-            component_type: Some("rerun.components.PoseRotationQuat".into()),
+            component_type: Some("rerun.components.RotationQuat".into()),
         }
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scales`].
     ///
-    /// The corresponding component is [`crate::components::PoseScale3D`].
+    /// The corresponding component is [`crate::components::Scale3D`].
     #[inline]
     pub fn descriptor_scales() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.InstancePoses3D".into()),
             component: "InstancePoses3D:scales".into(),
-            component_type: Some("rerun.components.PoseScale3D".into()),
+            component_type: Some("rerun.components.Scale3D".into()),
         }
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
     ///
-    /// The corresponding component is [`crate::components::PoseTransformMat3x3`].
+    /// The corresponding component is [`crate::components::TransformMat3x3`].
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.InstancePoses3D".into()),
             component: "InstancePoses3D:mat3x3".into(),
-            component_type: Some("rerun.components.PoseTransformMat3x3".into()),
+            component_type: Some("rerun.components.TransformMat3x3".into()),
         }
     }
 }
@@ -338,23 +328,23 @@ impl InstancePoses3D {
         use ::re_types_core::Loggable as _;
         Self {
             translations: Some(SerializedComponentBatch::new(
-                crate::components::PoseTranslation3D::arrow_empty(),
+                crate::components::Translation3D::arrow_empty(),
                 Self::descriptor_translations(),
             )),
             rotation_axis_angles: Some(SerializedComponentBatch::new(
-                crate::components::PoseRotationAxisAngle::arrow_empty(),
+                crate::components::RotationAxisAngle::arrow_empty(),
                 Self::descriptor_rotation_axis_angles(),
             )),
             quaternions: Some(SerializedComponentBatch::new(
-                crate::components::PoseRotationQuat::arrow_empty(),
+                crate::components::RotationQuat::arrow_empty(),
                 Self::descriptor_quaternions(),
             )),
             scales: Some(SerializedComponentBatch::new(
-                crate::components::PoseScale3D::arrow_empty(),
+                crate::components::Scale3D::arrow_empty(),
                 Self::descriptor_scales(),
             )),
             mat3x3: Some(SerializedComponentBatch::new(
-                crate::components::PoseTransformMat3x3::arrow_empty(),
+                crate::components::TransformMat3x3::arrow_empty(),
                 Self::descriptor_mat3x3(),
             )),
         }
@@ -422,26 +412,20 @@ impl InstancePoses3D {
     }
 
     /// Translation vectors.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_translations(
         mut self,
-        translations: impl IntoIterator<Item = impl Into<crate::components::PoseTranslation3D>>,
+        translations: impl IntoIterator<Item = impl Into<crate::components::Translation3D>>,
     ) -> Self {
         self.translations = try_serialize_field(Self::descriptor_translations(), translations);
         self
     }
 
     /// Rotations via axis + angle.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
-        rotation_axis_angles: impl IntoIterator<
-            Item = impl Into<crate::components::PoseRotationAxisAngle>,
-        >,
+        rotation_axis_angles: impl IntoIterator<Item = impl Into<crate::components::RotationAxisAngle>>,
     ) -> Self {
         self.rotation_axis_angles = try_serialize_field(
             Self::descriptor_rotation_axis_angles(),
@@ -451,36 +435,30 @@ impl InstancePoses3D {
     }
 
     /// Rotations via quaternion.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_quaternions(
         mut self,
-        quaternions: impl IntoIterator<Item = impl Into<crate::components::PoseRotationQuat>>,
+        quaternions: impl IntoIterator<Item = impl Into<crate::components::RotationQuat>>,
     ) -> Self {
         self.quaternions = try_serialize_field(Self::descriptor_quaternions(), quaternions);
         self
     }
 
     /// Scaling factors.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_scales(
         mut self,
-        scales: impl IntoIterator<Item = impl Into<crate::components::PoseScale3D>>,
+        scales: impl IntoIterator<Item = impl Into<crate::components::Scale3D>>,
     ) -> Self {
         self.scales = try_serialize_field(Self::descriptor_scales(), scales);
         self
     }
 
     /// 3x3 transformation matrices.
-    ///
-    /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[inline]
     pub fn with_mat3x3(
         mut self,
-        mat3x3: impl IntoIterator<Item = impl Into<crate::components::PoseTransformMat3x3>>,
+        mat3x3: impl IntoIterator<Item = impl Into<crate::components::TransformMat3x3>>,
     ) -> Self {
         self.mat3x3 = try_serialize_field(Self::descriptor_mat3x3(), mat3x3);
         self

@@ -6,12 +6,12 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{Array as _, ListArray},
-    compute,
-    datatypes::{DataType, Field},
-};
-use re_arrow_combinators::{Transform as _, map::MapList, reshape::GetField};
+use arrow::array::{Array as _, ListArray};
+use arrow::compute;
+use arrow::datatypes::{DataType, Field};
+use re_arrow_combinators::Transform as _;
+use re_arrow_combinators::map::MapList;
+use re_arrow_combinators::reshape::GetField;
 
 /// Errors that occur during low-level operation execution on columns.
 #[derive(Debug, thiserror::Error)]

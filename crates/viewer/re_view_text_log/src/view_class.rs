@@ -2,12 +2,11 @@ use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::{self, timeline_button};
 use re_log_types::{EntityPath, TimelineName};
-use re_types::ViewClassIdentifier;
 use re_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_types::blueprint::datatypes as bp_datatypes;
 use re_types::components::TextLogLevel;
-use re_types::{View as _, datatypes};
+use re_types::{View as _, ViewClassIdentifier, datatypes};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
 use re_viewer_context::{
@@ -166,13 +165,13 @@ Filter message types and toggle column visibility in a selection panel.",
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<TextViewState>()?;
 
         ui.list_item_scope("text_log_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             re_view::view_property_ui::<TextLogColumns>(&ctx, ui);
             view_property_ui_rows(&ctx, ui);
             re_view::view_property_ui::<TextLogFormat>(&ctx, ui);
@@ -212,7 +211,7 @@ Filter message types and toggle column visibility in a selection panel.",
             query.view_id,
         );
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         let monospace_body = format_property.component_or_fallback::<Enabled>(
             &view_ctx,

@@ -4,7 +4,7 @@ namespace rerun.archetypes;
 ///
 /// From the point of view of the entity's coordinate system,
 /// all components are applied in the inverse order they are listed here.
-/// E.g. if both a translation and a max3x3 transform are present,
+/// E.g. if both a translation and a mat3x3 transform are present,
 /// the 3x3 matrix is applied first, followed by the translation.
 ///
 /// Whenever you log this archetype, the state of the resulting transform relationship is fully reset to the new archetype.
@@ -60,9 +60,9 @@ table Transform3D (
 
   /// The child frame this transform transforms from.
   ///
-  /// The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+  /// The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
   /// E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-  /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+  /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
   ///
   /// If not specified, this is set to the implicit transform frame of the current entity path.
   /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.

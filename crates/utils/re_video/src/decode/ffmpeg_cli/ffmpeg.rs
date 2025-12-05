@@ -1,36 +1,29 @@
 //! Send video data to `ffmpeg` over CLI to decode it.
 
-use std::{
-    collections::BTreeMap,
-    process::ChildStdin,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicI32, Ordering},
-    },
-};
+use std::collections::BTreeMap;
+use std::process::ChildStdin;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use crossbeam::channel::{Receiver, SendError, Sender};
-use ffmpeg_sidecar::{
-    child::FfmpegChild,
-    command::FfmpegCommand,
-    event::{FfmpegEvent, LogLevel},
-};
+use ffmpeg_sidecar::child::FfmpegChild;
+use ffmpeg_sidecar::command::FfmpegCommand;
+use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
 use parking_lot::Mutex;
 
-use crate::{
-    PixelFormat, Time, VideoDataDescription, VideoEncodingDetails,
-    decode::{
-        AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult,
-        ffmpeg_cli::{FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion},
-    },
-    demux::ChromaSubsamplingModes,
-    h264::write_avc_chunk_to_nalu_stream,
-    h265::write_hevc_chunk_to_nalu_stream,
-    nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError},
-};
-
 use super::version::FFmpegVersionParseError;
+use crate::decode::ffmpeg_cli::{
+    FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
+};
+use crate::decode::{
+    AsyncDecoder, Chunk, DecodeError, Frame, FrameContent, FrameInfo, FrameResult,
+};
+use crate::demux::ChromaSubsamplingModes;
+use crate::h264::write_avc_chunk_to_nalu_stream;
+use crate::h265::write_hevc_chunk_to_nalu_stream;
+use crate::nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError};
+use crate::{PixelFormat, Time, VideoDataDescription, VideoEncodingDetails};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

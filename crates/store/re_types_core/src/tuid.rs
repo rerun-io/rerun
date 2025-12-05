@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder},
-    datatypes::DataType,
-};
-
+use arrow::array::{ArrayRef, AsArray as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
+use arrow::datatypes::DataType;
 use re_tuid::Tuid;
 
 use crate::{DeserializationError, Loggable};

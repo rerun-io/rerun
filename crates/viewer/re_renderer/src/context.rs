@@ -1,21 +1,17 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
 use type_map::concurrent::TypeMap;
 
-use crate::{
-    FileServer, RecommendedFileResolver,
-    allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    device_caps::DeviceCaps,
-    error_handling::{ErrorTracker, WgpuErrorScope},
-    global_bindings::GlobalBindings,
-    renderer::{Renderer, RendererExt},
-    resource_managers::TextureManager2D,
-    wgpu_resources::WgpuResourcePools,
-};
+use crate::allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt};
+use crate::device_caps::DeviceCaps;
+use crate::error_handling::{ErrorTracker, WgpuErrorScope};
+use crate::global_bindings::GlobalBindings;
+use crate::renderer::{Renderer, RendererExt};
+use crate::resource_managers::TextureManager2D;
+use crate::wgpu_resources::WgpuResourcePools;
+use crate::{FileServer, RecommendedFileResolver};
 
 /// Frame idx used before starting the first frame.
 const STARTUP_FRAME_IDX: u64 = u64::MAX;

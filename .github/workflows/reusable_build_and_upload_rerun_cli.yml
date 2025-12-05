@@ -67,6 +67,7 @@ defaults:
 
 permissions:
   contents: "read"
+  packages: "read"
   id-token: "write"
 
 jobs:
@@ -86,13 +87,13 @@ jobs:
             linux-arm64)
               runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             windows-x64)
@@ -124,8 +125,8 @@ jobs:
     container:
       image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Show context

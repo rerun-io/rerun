@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Conditionally compiled function - always exists at runtime but mypy can't verify
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     DataframeQueryView as DataframeQueryView,

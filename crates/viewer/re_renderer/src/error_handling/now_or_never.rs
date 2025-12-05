@@ -3,11 +3,9 @@
 //!
 //! It is used there for a very similar purpose: catching errors on native wgpu which are known to be non-asynchronous.
 
-use std::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-};
+use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
 /// Consumes the future, polls it once, and immediately returns the output
 /// or returns `None` if it wasn't ready yet.

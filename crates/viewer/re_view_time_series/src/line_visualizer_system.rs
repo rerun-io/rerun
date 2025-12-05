@@ -1,20 +1,17 @@
 use itertools::Itertools as _;
-
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_types::{
-    Archetype as _, archetypes,
-    components::{AggregationPolicy, Color, StrokeWidth},
-};
+use re_types::components::{AggregationPolicy, Color, StrokeWidth};
+use re_types::{Archetype as _, archetypes};
 use re_view::{
     RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,
 };
+use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
-use re_viewer_context::{external::re_entity_db::InstancePath, typed_fallback_for};
 use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::series_query::{

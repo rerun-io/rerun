@@ -1,30 +1,23 @@
-use std::{
-    collections::BTreeSet,
-    sync::{
-        OnceLock,
-        atomic::{AtomicU64, Ordering},
-    },
-};
+use std::collections::BTreeSet;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use arrow::array::RecordBatchOptions;
-use arrow::{
-    array::{
-        ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
-        PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch,
-    },
-    buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::{
-        DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
-        SchemaRef as ArrowSchemaRef,
-    },
+use arrow::array::{
+    ArrayRef as ArrowArrayRef, BooleanArray as ArrowBooleanArray,
+    PrimitiveArray as ArrowPrimitiveArray, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
+};
+use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
+use arrow::datatypes::{
+    DataType as ArrowDataType, Fields as ArrowFields, Schema as ArrowSchema,
+    SchemaRef as ArrowSchemaRef,
 };
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
+use re_chunk::external::arrow::array::ArrayRef;
 use re_chunk::{
     Chunk, ComponentIdentifier, EntityPath, RangeQuery, RowId, TimeInt, TimelineName,
-    UnitChunkShared, external::arrow::array::ArrayRef,
+    UnitChunkShared,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
@@ -35,9 +28,8 @@ use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnSelector, RowIdColumnDescriptor, TimeColumnSelector,
 };
-use re_types_core::{
-    Loggable as _, SerializedComponentColumn, archetypes, arrow_helpers::as_array_ref,
-};
+use re_types_core::arrow_helpers::as_array_ref;
+use re_types_core::{Loggable as _, SerializedComponentColumn, archetypes};
 
 // ---
 
@@ -1322,24 +1314,20 @@ mod tests {
     use arrow::array::{StringArray, UInt32Array};
     use arrow::compute::concat_batches;
     use insta::assert_snapshot;
-
     use re_arrow_util::format_record_batch;
     use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
     use re_chunk_store::{
         AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
     };
-    use re_log_types::{
-        EntityPath, Timeline, build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, Timeline, build_frame_nr, build_log_time};
     use re_query::StorageEngine;
     use re_sorbet::ComponentColumnSelector;
     use re_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_types_core::components;
 
-    use crate::{QueryCache, QueryEngine};
-
     use super::*;
+    use crate::{QueryCache, QueryEngine};
 
     /// Implement `Display` for `ArrowRecordBatch`
     struct DisplayRB(ArrowRecordBatch);

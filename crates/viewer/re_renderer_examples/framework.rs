@@ -5,18 +5,14 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
+use re_renderer::device_caps::DeviceCaps;
+use re_renderer::view_builder::ViewBuilder;
+use re_renderer::{RenderConfig, RenderContext};
 use web_time::Instant;
-
-use re_renderer::{
-    RenderConfig, RenderContext, device_caps::DeviceCaps, view_builder::ViewBuilder,
-};
-
-use winit::{
-    application::ApplicationHandler,
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop},
-    window::{Window, WindowId},
-};
+use winit::application::ApplicationHandler;
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, EventLoop};
+use winit::window::{Window, WindowId};
 
 pub struct ViewDrawResult {
     pub view_builder: ViewBuilder,

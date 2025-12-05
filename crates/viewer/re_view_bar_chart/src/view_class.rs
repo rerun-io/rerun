@@ -1,17 +1,14 @@
 use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{PlotBackground, PlotLegend},
-        components::{Corner2D, Enabled},
-    },
-    components::{Color, Visible},
-    datatypes::TensorBuffer,
-};
+use re_types::blueprint::archetypes::{PlotBackground, PlotLegend};
+use re_types::blueprint::components::{Corner2D, Enabled};
+use re_types::components::{Color, Visible};
+use re_types::datatypes::TensorBuffer;
+use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
-use re_view::{controls::SELECTION_RECT_ZOOM_BUTTON, view_property_ui};
+use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
+use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
     ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
@@ -143,11 +140,11 @@ impl ViewClass for BarChartView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "bar_char_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
         });
@@ -176,7 +173,7 @@ impl ViewClass for BarChartView {
             .get::<BarChartVisualizerSystem>()?
             .charts;
 
-        let ctx = self.view_context(ctx, view_id, state);
+        let ctx = self.view_context(ctx, view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<PlotBackground>(
             blueprint_db,
             ctx.blueprint_query(),

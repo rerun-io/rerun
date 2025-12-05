@@ -1,6 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-use std::{borrow::Borrow, collections::HashMap};
+use std::borrow::Borrow;
+use std::collections::HashMap;
 
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};

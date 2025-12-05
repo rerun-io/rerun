@@ -7,17 +7,19 @@ use glam::Vec3;
 use itertools::Itertools as _;
 use macaw::IsoTransform;
 use rand::Rng as _;
-
+use re_renderer::renderer::{
+    GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
+    TestTriangleDrawData,
+};
+use re_renderer::view_builder::{
+    OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder,
+};
 use re_renderer::{
     Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
     Rgba, ScreenshotProcessor, Size,
-    renderer::{
-        GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
-        TestTriangleDrawData,
-    },
-    view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
 };
-use winit::{event::ElementState, keyboard};
+use winit::event::ElementState;
+use winit::keyboard;
 
 mod framework;
 

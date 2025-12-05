@@ -1,22 +1,21 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{ComponentIdentifier, components::MediaType};
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::video::Video;
+use re_types::ComponentIdentifier;
+use re_types::components::MediaType;
 use re_video::DecodeSettings;
 
-use crate::{
-    Cache, CacheMemoryReport, cache::filter_blob_removed_events, image_info::StoredBlobCacheKey,
-};
+use crate::cache::filter_blob_removed_events;
+use crate::image_info::StoredBlobCacheKey;
+use crate::{Cache, CacheMemoryReport};
 
 // ----------------------------------------------------------------------------
 

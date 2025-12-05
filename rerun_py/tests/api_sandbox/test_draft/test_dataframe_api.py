@@ -12,13 +12,13 @@ if TYPE_CHECKING:
     from rerun_draft.catalog import DatasetEntry
 
 
-def test_dataframe_api_filter_partition_id(basic_dataset: DatasetEntry) -> None:
-    # Create a view with 2 partitions
+def test_dataframe_api_filter_segment_id(basic_dataset: DatasetEntry) -> None:
+    # Create a view with 2 segments
     view = basic_dataset.filter_segments(segment_ids=["simple_recording_0", "simple_recording_2"]).reader(
         index="timeline"
     )
 
-    # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple partitions
+    # Get dataframe from the unfiltered view and apply DataFrame-level filtering for multiple segments
     df = view.sort("rerun_segment_id")
 
     assert str(df) == inline_snapshot("""\

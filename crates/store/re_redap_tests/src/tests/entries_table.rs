@@ -1,10 +1,10 @@
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::ext::EntryDetails;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     DeleteEntryRequest, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
-    ext::EntryDetails, rerun_cloud_service_server::RerunCloudService,
 };
 
 use crate::tests::common::RerunCloudServiceExt as _;

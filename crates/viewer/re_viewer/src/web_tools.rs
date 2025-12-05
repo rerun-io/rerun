@@ -1,10 +1,9 @@
 //! Web-specific tools used by various parts of the application.
 
+use re_log::ResultExt as _;
 use serde::Deserialize;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
-
-use re_log::ResultExt as _;
 
 pub trait JsResultExt<T> {
     /// Logs an error if the result is an error and returns the result.

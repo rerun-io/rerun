@@ -2,20 +2,16 @@
 
 use std::sync::Arc;
 
-use re_arrow_combinators::{
-    Error, Transform as _,
-    semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
+use arrow::array::{
+    Array as _, GenericByteBuilder, Int32Array, Int64Array, StringArray, StructArray, UInt32Array,
 };
-
-use arrow::{
-    array::{
-        Array as _, GenericByteBuilder, Int32Array, Int64Array, StringArray, StructArray,
-        UInt32Array,
-    },
-    datatypes::{DataType, Field, GenericBinaryType},
+use arrow::datatypes::{DataType, Field, GenericBinaryType};
+use re_arrow_combinators::semantic::{
+    BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos,
 };
-
-use re_types::{components::VideoCodec, reflection::Enum as _};
+use re_arrow_combinators::{Error, Transform as _};
+use re_types::components::VideoCodec;
+use re_types::reflection::Enum as _;
 
 mod util;
 

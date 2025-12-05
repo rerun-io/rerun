@@ -7,17 +7,13 @@
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors
 
 use itertools::Itertools as _;
-use re_renderer::Hsva;
-
-use re_renderer::{
-    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
-    renderer::{
-        ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
-        TextureFilterMin, TexturedRect,
-    },
-    resource_managers::{GpuTexture2D, ImageDataDesc},
-    view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
+use re_renderer::renderer::{
+    ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
+    TextureFilterMin, TexturedRect,
 };
+use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
+use re_renderer::view_builder::{self, Projection, TargetConfiguration, ViewBuilder};
+use re_renderer::{Color32, Hsva, LineDrawableBuilder, PointCloudBuilder, Size};
 
 mod framework;
 
