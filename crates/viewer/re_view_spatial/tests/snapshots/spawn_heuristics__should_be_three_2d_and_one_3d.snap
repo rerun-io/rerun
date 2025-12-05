@@ -7,13 +7,19 @@ RecommendedViews {
         ViewSpawnHeuristics {
             recommended_views: [
                 RecommendedView {
-                    origin: /segmentation,
+                    origin: /3D/camera,
                     query_filter: [
                         "+ $origin/**",
                     ],
                 },
                 RecommendedView {
-                    origin: /video,
+                    origin: /image1,
+                    query_filter: [
+                        "+ $origin/**",
+                    ],
+                },
+                RecommendedView {
+                    origin: /image2,
                     query_filter: [
                         "+ $origin/**",
                     ],
@@ -23,7 +29,14 @@ RecommendedViews {
     ),
     views_3d: Some(
         ViewSpawnHeuristics {
-            recommended_views: [],
+            recommended_views: [
+                RecommendedView {
+                    origin: /3D,
+                    query_filter: [
+                        "+ $origin/**",
+                    ],
+                },
+            ],
         },
     ),
 }
