@@ -6,7 +6,6 @@ mod web;
 use egui::{IntoAtoms as _, vec2};
 #[cfg(not(target_arch = "wasm32"))]
 use native::State;
-use re_auth::oauth::Credentials;
 use re_ui::UiExt as _;
 use re_ui::notifications::{Notification, NotificationLevel};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
@@ -20,13 +19,13 @@ pub struct LoginFlow {
 }
 
 pub enum LoginFlowResult {
-    Success(Credentials),
+    Success,
     Failure(String),
 }
 
 impl LoginFlow {
-    pub fn open(ui: &mut egui::Ui, login_hint: Option<&str>) -> Result<Self, String> {
-        State::open(ui, login_hint).map(|state| Self {
+    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
+        State::open(ui).map(|state| Self {
             state,
             #[cfg(target_arch = "wasm32")]
             started: false,
@@ -72,7 +71,7 @@ impl LoginFlow {
                     format!("Logged in as {}", credentials.user().email),
                 )));
 
-                Some(LoginFlowResult::Success(credentials))
+                Some(LoginFlowResult::Success)
             }
 
             Ok(None) => None,

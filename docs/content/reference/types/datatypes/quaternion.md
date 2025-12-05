@@ -22,5 +22,4 @@ FixedSizeList<4, float32>
 
 ## Used by
 
-* [`PoseRotationQuat`](../components/pose_rotation_quat.md)
 * [`RotationQuat`](../components/rotation_quat.md)

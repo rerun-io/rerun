@@ -21,8 +21,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
+    AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
     command_channel, sanitize_file_name,
@@ -178,6 +178,15 @@ impl App {
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
+
+        {
+            let command_sender = command_channel.0.clone();
+            re_auth::credentials::subscribe_auth_changes(move |user| {
+                command_sender.send_system(SystemCommand::OnAuthChanged(
+                    user.map(|user| AuthContext { email: user.email }),
+                ));
+            });
+        }
 
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
@@ -1229,6 +1238,10 @@ impl App {
                 }
             }
 
+            SystemCommand::OnAuthChanged(auth) => {
+                self.state.auth_state = auth;
+            }
+
             SystemCommand::SetAuthCredentials {
                 access_token,
                 email,
@@ -1369,7 +1382,19 @@ impl App {
             }
         }
 
-        match data_source.clone().stream(&self.connection_registry) {
+        let stream = data_source.clone().stream(&self.connection_registry);
+        #[cfg(feature = "analytics")]
+        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+            let data_source_analytics = data_source.analytics();
+            analytics.record(re_analytics::event::LoadDataSource {
+                source_type: data_source_analytics.source_type,
+                file_extension: data_source_analytics.file_extension,
+                file_source: data_source_analytics.file_source,
+                started_successfully: stream.is_ok(),
+            });
+        }
+
+        match stream {
             Ok(rx) => self.add_log_receiver(rx),
             Err(err) => {
                 re_log::error!("Failed to open data source: {}", re_error::format(err));

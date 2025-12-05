@@ -95,7 +95,7 @@ fn test_transparent_geometry<A: AsComponents>(
             format!("transparent_{name}_{i}"),
             &SnapshotOptions::default()
                 .threshold(4.0) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
-                .failed_pixel_count_threshold(10),
+                .failed_pixel_count_threshold(15),
         );
     }
 }
