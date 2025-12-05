@@ -8376,6 +8376,7 @@ dependencies = [
  "js-sys",
  "jsonwebtoken",
  "rand 0.9.2",
+ "re_analytics",
  "re_log",
  "saturating_cast",
  "serde",
