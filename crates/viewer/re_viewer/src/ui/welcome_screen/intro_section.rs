@@ -118,7 +118,8 @@ impl<'a> IntroItem<'a> {
                                 ctx.command_sender.send_ui(UICommand::AddRedapServer);
                             }
                             if let LoginState::Auth { email: Some(email) } = login {
-                                ui.weak("logged in as");
+                                ui.spacing_mut().item_spacing.x = 0.0;
+                                ui.weak("logged in as ");
                                 ui.strong(email);
                             }
                         });
@@ -128,7 +129,8 @@ impl<'a> IntroItem<'a> {
                         if ui.primary_button("Add credentials").clicked() {
                             ctx.command_sender.send_system(SystemCommand::EditRedapServerModal(origin.clone()));
                         }
-                        ui.weak("for address");
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        ui.weak("for address ");
                         ui.strong(format!("{}", &origin.host));
                         });
                     }

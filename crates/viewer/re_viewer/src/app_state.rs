@@ -683,7 +683,7 @@ impl AppState {
                                         .map(|o| redap_servers.is_authenticated(o))
                                         .unwrap_or(false);
 
-                                    let login_state = if origin_token {
+                                    let login_state = if origin_token || email.is_some() {
                                         LoginState::Auth { email }
                                     } else {
                                         LoginState::NoAuth
