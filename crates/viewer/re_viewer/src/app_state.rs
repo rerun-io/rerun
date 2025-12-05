@@ -677,7 +677,7 @@ impl AppState {
                                         .map(|s| s.origin())
                                         .cloned();
 
-                                    let email = redap_servers.auth_email();
+                                    let email = auth_state.as_ref().map(|auth| auth.email.clone());
                                     let origin_token = origin
                                         .as_ref()
                                         .map(|o| redap_servers.is_authenticated(o))

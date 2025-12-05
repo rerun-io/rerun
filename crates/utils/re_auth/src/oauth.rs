@@ -55,6 +55,8 @@ pub struct CredentialsClearError(#[from] storage::ClearError);
 pub fn clear_credentials() -> Result<(), CredentialsClearError> {
     storage::clear()?;
 
+    crate::credentials::oauth::auth_update(None);
+
     Ok(())
 }
 

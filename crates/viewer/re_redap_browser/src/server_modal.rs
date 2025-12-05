@@ -137,7 +137,6 @@ impl ServerModal {
     }
 
     pub fn logout(&mut self) {
-        self.auth.email = None;
         self.auth.reset_login_flow();
     }
 
