@@ -1311,7 +1311,11 @@ mod tests {
         StoreId, StoreInfo, TimePoint, Timeline,
         example_components::{MyPoint, MyPoints},
     };
-    use re_types::{ChunkId, archetypes};
+    use re_types::{
+        ChunkId,
+        archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
+        components::PinholeProjection,
+    };
 
     use super::*;
     use crate::convert;
@@ -1448,7 +1452,7 @@ mod tests {
         let chunk0 = Chunk::builder(EntityPath::from("with_transform"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                &Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
             .build()?;
         let chunk1 = Chunk::builder(EntityPath::from("without_transform"))
@@ -1498,20 +1502,20 @@ mod tests {
                 .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::from_translation([123.0, 234.0, 345.0]),
+                    &Transform3D::from_translation([123.0, 234.0, 345.0]),
                 )
                 .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
                     // Make sure only translation is logged (no null arrays for everything else).
-                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                    &Transform3D::from_translation([1.0, 2.0, 3.0]),
                 )
                 .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::from_scale([123.0, 234.0, 345.0]),
+                    &Transform3D::from_scale([123.0, 234.0, 345.0]),
                 )
                 .build()?;
 
@@ -1592,21 +1596,20 @@ mod tests {
             let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
-                    &archetypes::InstancePoses3D::new().with_translations([[321.0, 234.0, 345.0]]),
+                    &InstancePoses3D::new().with_translations([[321.0, 234.0, 345.0]]),
                 )
                 .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
-                    &archetypes::InstancePoses3D::new()
-                        .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
+                    &InstancePoses3D::new().with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
                 )
                 .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     [(timeline, 1)],
                     // Add a splatted scale.
-                    &archetypes::InstancePoses3D::new().with_scales([[10.0, 20.0, 30.0]]),
+                    &InstancePoses3D::new().with_scales([[10.0, 20.0, 30.0]]),
                 )
                 .build()?;
 
@@ -1675,29 +1678,25 @@ mod tests {
     #[test]
     fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
-            let image_from_camera_prior =
-                components::PinholeProjection::from_focal_length_and_principal_point(
-                    [123.0, 123.0],
-                    [123.0, 123.0],
-                );
+            let image_from_camera_prior = PinholeProjection::from_focal_length_and_principal_point(
+                [123.0, 123.0],
+                [123.0, 123.0],
+            );
             let image_from_camera_final =
-                components::PinholeProjection::from_focal_length_and_principal_point(
-                    [1.0, 2.0],
-                    [1.0, 2.0],
-                );
+                PinholeProjection::from_focal_length_and_principal_point([1.0, 2.0], [1.0, 2.0]);
 
             // Static pinhole, non-static view coordinates.
             let timeline = Timeline::new_sequence("t");
             let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
+                    &Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
                 )
                 .build()?;
             let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
                 .with_archetype_auto_row(
                     TimePoint::default(),
-                    &archetypes::Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
+                    &Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
                 )
                 .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
@@ -1780,10 +1779,7 @@ mod tests {
     fn test_static_view_coordinates_projection() -> Result<(), Box<dyn std::error::Error>> {
         for flavor in &ALL_STATIC_TEST_FLAVOURS {
             let image_from_camera =
-                components::PinholeProjection::from_focal_length_and_principal_point(
-                    [1.0, 2.0],
-                    [1.0, 2.0],
-                );
+                PinholeProjection::from_focal_length_and_principal_point([1.0, 2.0], [1.0, 2.0]);
 
             // Static view coordinates, non-static pinhole.
             let timeline = Timeline::new_sequence("t");
@@ -1794,10 +1790,7 @@ mod tests {
                 .with_archetype_auto_row(TimePoint::default(), &archetypes::ViewCoordinates::BLU())
                 .build()?;
             let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
-                .with_archetype_auto_row(
-                    [(timeline, 1)],
-                    &archetypes::Pinhole::new(image_from_camera),
-                )
+                .with_archetype_auto_row([(timeline, 1)], &Pinhole::new(image_from_camera))
                 .build()?;
 
             let mut cache = TransformResolutionCache::default();
@@ -1858,17 +1851,14 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                &Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
-            .with_archetype_auto_row(
-                [(timeline, 3)],
-                &archetypes::Transform3D::from_scale([1.0, 2.0, 3.0]),
-            )
+            .with_archetype_auto_row([(timeline, 3)], &Transform3D::from_scale([1.0, 2.0, 3.0]))
             .with_archetype_auto_row(
                 [(timeline, 4)],
-                &archetypes::Transform3D::from_rotation(glam::Quat::from_rotation_x(1.0)),
+                &Transform3D::from_rotation(glam::Quat::from_rotation_x(1.0)),
             )
-            .with_archetype_auto_row([(timeline, 5)], &archetypes::Transform3D::clear_fields())
+            .with_archetype_auto_row([(timeline, 5)], &Transform3D::clear_fields())
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
 
@@ -1932,7 +1922,7 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::InstancePoses3D::new().with_translations([
+                &InstancePoses3D::new().with_translations([
                     [1.0, 2.0, 3.0],
                     [4.0, 5.0, 6.0],
                     [7.0, 8.0, 9.0],
@@ -1941,14 +1931,11 @@ mod tests {
             .with_archetype_auto_row(
                 [(timeline, 3)],
                 // Less instances, and a splatted scale.
-                &archetypes::InstancePoses3D::new()
+                &InstancePoses3D::new()
                     .with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
                     .with_scales([[2.0, 3.0, 4.0]]),
             )
-            .with_archetype_auto_row(
-                [(timeline, 4)],
-                &archetypes::InstancePoses3D::clear_fields(),
-            )
+            .with_archetype_auto_row([(timeline, 4)], &InstancePoses3D::clear_fields())
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
 
@@ -2012,21 +1999,15 @@ mod tests {
         let mut cache = TransformResolutionCache::default();
 
         let image_from_camera =
-            components::PinholeProjection::from_focal_length_and_principal_point(
-                [1.0, 2.0],
-                [1.0, 2.0],
-            );
+            PinholeProjection::from_focal_length_and_principal_point([1.0, 2.0], [1.0, 2.0]);
 
         // Log a few tree transforms at different times.
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype_auto_row(
-                [(timeline, 1)],
-                &archetypes::Pinhole::new(image_from_camera),
-            )
+            .with_archetype_auto_row([(timeline, 1)], &Pinhole::new(image_from_camera))
             .with_archetype_auto_row([(timeline, 3)], &archetypes::ViewCoordinates::BLU())
             // Clear out the pinhole projection (this should yield nothing then for the remaining view coordinates.)
-            .with_archetype_auto_row([(timeline, 4)], &archetypes::Pinhole::clear_fields())
+            .with_archetype_auto_row([(timeline, 4)], &Pinhole::clear_fields())
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
 
@@ -2042,8 +2023,8 @@ mod tests {
 
         for (t, pinhole_view_coordinates) in [
             (0, None),
-            (1, Some(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)),
-            (2, Some(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)),
+            (1, Some(Pinhole::DEFAULT_CAMERA_XYZ)),
+            (2, Some(Pinhole::DEFAULT_CAMERA_XYZ)),
             (3, Some(components::ViewCoordinates::BLU)),
             (4, None), // View coordinates alone doesn't give us a pinhole projection from the transform cache.
             (123, None),
@@ -2073,12 +2054,12 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                &Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
                 // Note that this clears anything that could be inserted at time 2 due to atomic-query semantics.
-                &archetypes::Transform3D::from_translation([2.0, 3.0, 4.0]),
+                &Transform3D::from_translation([2.0, 3.0, 4.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -2117,7 +2098,7 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::from_scale([-1.0, -2.0, -3.0]),
+                &Transform3D::from_scale([-1.0, -2.0, -3.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -2169,11 +2150,11 @@ mod tests {
             let data_chunk = Chunk::builder(path.clone())
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                    &Transform3D::from_translation([1.0, 2.0, 3.0]),
                 )
                 .with_archetype_auto_row(
                     [(timeline, 3)],
-                    &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0]),
+                    &Transform3D::from_translation([3.0, 4.0, 5.0]),
                 )
                 .build()?;
             let clear_chunk = Chunk::builder(path.clone())
@@ -2282,7 +2263,7 @@ mod tests {
             let mut parent_chunk = Chunk::builder(EntityPath::from("parent"))
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                    &Transform3D::from_translation([1.0, 2.0, 3.0]),
                 );
             if !clear_in_separate_chunk {
                 parent_chunk = parent_chunk
@@ -2296,7 +2277,7 @@ mod tests {
             let child_chunk = Chunk::builder(EntityPath::from("parent/child"))
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                    &Transform3D::from_translation([1.0, 2.0, 3.0]),
                 );
             entity_db.add_chunk(&Arc::new(child_chunk.build()?))?;
             if update_after_each_chunk {
@@ -2360,24 +2341,24 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                &Transform3D::from_translation([1.0, 0.0, 0.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::new()
+                &Transform3D::new()
                     .with_translation([2.0, 0.0, 0.0])
                     .with_child_frame("frame0"), // Uses implicit entity-path derived parent frame.
             )
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::new()
+                &Transform3D::new()
                     .with_translation([3.0, 0.0, 0.0])
                     .with_child_frame("frame0")
                     .with_parent_frame("frame1"),
             )
             .with_archetype_auto_row(
                 [(timeline, 4)],
-                &archetypes::Transform3D::new()
+                &Transform3D::new()
                     .with_translation([4.0, 0.0, 0.0])
                     .with_child_frame("frame2")
                     .with_parent_frame("frame3"),
@@ -2530,7 +2511,7 @@ mod tests {
             Chunk::builder(static_entity_path.clone())
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::new()
+                    &Transform3D::new()
                         .with_translation([1.0, 0.0, 0.0])
                         .with_child_frame("frame0"),
                 )
@@ -2540,7 +2521,7 @@ mod tests {
             Chunk::builder(temporal_entity_path)
                 .with_archetype_auto_row(
                     [(timeline, 1)],
-                    &archetypes::Transform3D::new()
+                    &Transform3D::new()
                         .with_translation([2.0, 0.0, 0.0])
                         .with_child_frame("frame1"),
                 )
@@ -2590,7 +2571,7 @@ mod tests {
             Chunk::builder(static_entity_path)
                 .with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &archetypes::Transform3D::new()
+                    &Transform3D::new()
                         .with_child_frame("frame2")
                         .with_scale(2.0),
                 )
@@ -2647,7 +2628,7 @@ mod tests {
         let static_chunk = Chunk::builder(static_entity_path.clone())
             .with_archetype_auto_row(
                 TimePoint::STATIC,
-                &archetypes::Transform3D::new()
+                &Transform3D::new()
                     .with_translation([1.0, 2.0, 3.0])
                     .with_child_frame("child_frame")
                     .with_parent_frame("parent_frame"),
@@ -2656,7 +2637,7 @@ mod tests {
         let temporal_chunk = Chunk::builder(temporal_entity_path.clone())
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::new()
+                &Transform3D::new()
                     .with_translation([4.0, 5.0, 6.0])
                     .with_child_frame("child_frame")
                     .with_parent_frame("parent_frame"),
@@ -2790,8 +2771,7 @@ mod tests {
         let temporal_chunk1 = Chunk::builder(EntityPath::from("entity_a"))
             .with_archetype_auto_row(
                 time_point.clone(),
-                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0])
-                    .with_child_frame("my_frame"),
+                &Transform3D::from_translation([1.0, 0.0, 0.0]).with_child_frame("my_frame"),
             )
             .build()?;
         cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk1))?.iter());
@@ -2802,8 +2782,7 @@ mod tests {
         let temporal_chunk2 = Chunk::builder(EntityPath::from("entity_b"))
             .with_archetype_auto_row(
                 time_point,
-                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0])
-                    .with_child_frame("my_frame"),
+                &Transform3D::from_translation([2.0, 0.0, 0.0]).with_child_frame("my_frame"),
             )
             .build()?;
         cache.process_store_events(entity_db.add_chunk(&Arc::new(temporal_chunk2))?.iter());
@@ -2850,37 +2829,34 @@ mod tests {
         let timeline_name = *timeline.name();
 
         let image_from_camera =
-            components::PinholeProjection::from_focal_length_and_principal_point(
-                [1.0, 2.0],
-                [1.0, 2.0],
-            );
+            PinholeProjection::from_focal_length_and_principal_point([1.0, 2.0], [1.0, 2.0]);
 
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             // Add pinhole with explicit child and parent frames
             .with_archetype_auto_row(
                 [(timeline, 0)],
-                &archetypes::Pinhole::new(image_from_camera)
+                &Pinhole::new(image_from_camera)
                     .with_child_frame("child_frame")
                     .with_parent_frame("parent_frame"),
             )
             // Add a 3D transform on top.
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0])
+                &Transform3D::from_translation([1.0, 2.0, 3.0])
                     .with_child_frame("child_frame")
                     .with_parent_frame("parent_frame"),
             )
             // Add a 3D transform to a different child frame.
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::from_translation([3.0, 4.0, 5.0])
+                &Transform3D::from_translation([3.0, 4.0, 5.0])
                     .with_child_frame("other_frame")
                     .with_parent_frame("parent_frame"),
             )
             // Add a pinhole to that same relation, this time with an explicit resolution.
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Pinhole::new(image_from_camera)
+                &Pinhole::new(image_from_camera)
                     .with_resolution([1.0, 2.0])
                     .with_child_frame("other_frame")
                     .with_parent_frame("parent_frame"),
@@ -2990,7 +2966,7 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity0"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
+                &Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -3002,7 +2978,7 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity1"))
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::from_translation([4.0, 5.0, 6.0]),
+                &Transform3D::from_translation([4.0, 5.0, 6.0]),
             )
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
@@ -3074,12 +3050,12 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                &Transform3D::from_translation([1.0, 0.0, 0.0]),
             )
             .with_archetype_auto_row([(timeline, 2)], &MyPoints::new([MyPoint::new(0.0, 0.0)]))
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::from_translation([2.0, 0.0, 0.0]),
+                &Transform3D::from_translation([2.0, 0.0, 0.0]),
             )
             .build()?;
         cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
@@ -3107,15 +3083,15 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 1)],
-                &archetypes::Transform3D::from_translation([3.0, 0.0, 0.0]),
+                &Transform3D::from_translation([3.0, 0.0, 0.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 2)],
-                &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0]),
+                &Transform3D::from_translation([4.0, 0.0, 0.0]),
             )
             .with_archetype_auto_row(
                 [(timeline, 5)],
-                &archetypes::Transform3D::from_translation([5.0, 0.0, 0.0]),
+                &Transform3D::from_translation([5.0, 0.0, 0.0]),
             )
             .build()?;
         cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
@@ -3172,7 +3148,7 @@ mod tests {
         let chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
                 [(timeline, 3)],
-                &archetypes::Transform3D::from_translation([6.0, 0.0, 0.0]),
+                &Transform3D::from_translation([6.0, 0.0, 0.0]),
             )
             .build()?;
         cache.process_store_events(entity_db.add_chunk(&Arc::new(chunk))?.iter());
