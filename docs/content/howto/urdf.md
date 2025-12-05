@@ -29,32 +29,7 @@ Once that is done, the joints can be updated by sending `Transform3D`s, where yo
 
 Here is an example that demonstrates how to load and update a `URDF` with the Python SDK:
 
-```python
-from pathlib import Path
-
-import rerun as rr
-
-rr.init("urdf_example", spawn=True)
-
-# `log_file_from_path` automatically uses the built-in URDF data-loader.
-urdf_path = Path("/path/to/robot.urdf")
-rr.log_file_from_path(urdf_path, static=True)
-
-# Later, in your logging code, you'll update the joints using transforms.
-# A minimal example for updating a revolute joint that connects two links:
-joint_axis = [0, 1, 0]  # comes from URDF
-joint_angle = 1.216     # radians
-rotation = rr.RotationAxisAngle(axis=joint_axis, angle=joint_angle)
-# Make sure that `parent_frame` and `child_frame` match the joint's frame IDs in the URDF file.
-rr.log(
-  "transforms",
-  rr.Transform3D(
-    rotation=rotation,
-    parent_frame="link_1",
-    child_frame="link_2"
-  )
-)
-```
+snippet: howto/load_urdf
 
 For similar code in Rust, we have a full example [here](github.com/rerun-io/rerun/tree/main/examples/rust/animated_urdf).
 
