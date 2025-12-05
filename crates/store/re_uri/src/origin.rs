@@ -56,7 +56,9 @@ impl Origin {
         input: &str,
         default_localhost_port: Option<u16>,
     ) -> Result<(Self, url::Url), Error> {
-        let (scheme, rewritten) = if !input.contains("://") && (input.contains("localhost") || input.contains("127.0.0.1")) {
+        let (scheme, rewritten) = if !input.contains("://")
+            && (input.contains("localhost") || input.contains("127.0.0.1"))
+        {
             // Assume `rerun+http://`, because that is the default for localhost
             (Scheme::RerunHttp, format!("http://{input}"))
         } else {
