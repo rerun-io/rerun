@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pytest
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col
+from syrupy import SnapshotAssertion
 
 if TYPE_CHECKING:
     import pathlib
@@ -120,7 +121,7 @@ def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.P
 
 
 @pytest.mark.creates_table
-def test_table_upsert(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
+def test_table_upsert(entry_factory: EntryFactory, tmp_path: pathlib.Path, snapshot: SnapshotAssertion) -> None:
     """Test TableEntry.upsert() method on a table with an index column."""
     base_name = "test_table"
     table_name = entry_factory.apply_prefix(base_name)
@@ -149,8 +150,7 @@ def test_table_upsert(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
     result = ctx.table(table_name).sort(col("id")).collect()
     assert len(result) == 1
     batch = result[0]
-    assert batch.column("id").to_pylist() == [1, 2, 3, 4]
-    assert batch.column("value").to_pylist() == ["A", "B", "c", "D"]
+    assert str(batch) == snapshot
 
 
 @pytest.mark.local_only
