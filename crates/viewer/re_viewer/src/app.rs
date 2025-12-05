@@ -558,9 +558,9 @@ impl App {
             let blueprint_query = self
                 .state
                 .get_blueprint_query_for_viewer(blueprint)
-                .unwrap_or(re_chunk::LatestAtQuery::latest(
-                    re_viewer_context::blueprint_timeline(),
-                ));
+                .unwrap_or_else(|| {
+                    re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
+                });
 
             let bp_ctx = AppBlueprintCtx {
                 command_sender: &self.command_sender,
@@ -1014,9 +1014,7 @@ impl App {
                     )));
 
                 #[cfg(feature = "analytics")]
-                if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                    analytics.record(re_analytics::event::SettingsOpened {});
-                }
+                re_analytics::record(|| re_analytics::event::SettingsOpened {});
             }
 
             SystemCommand::OpenChunkStoreBrowser => match self.state.navigation.current() {
@@ -2780,7 +2778,7 @@ impl App {
                         .path
                         .clone()
                         .map(|p| ApplicationId::from(p.display().to_string()))
-                        .unwrap_or(ApplicationId::from(file.name.clone()));
+                        .unwrap_or_else(|| ApplicationId::from(file.name.clone()));
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
@@ -2990,9 +2988,9 @@ impl App {
         let blueprint_query = self
             .state
             .get_blueprint_query_for_viewer(blueprint)
-            .unwrap_or(re_chunk::LatestAtQuery::latest(
-                re_viewer_context::blueprint_timeline(),
-            ));
+            .unwrap_or_else(|| {
+                re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
+            });
 
         Some(AppBlueprintCtx {
             command_sender: &self.command_sender,
@@ -3280,8 +3278,8 @@ impl eframe::App for App {
         {
             let (storage_context, store_context) = store_hub.read_context();
 
-            let blueprint_query = store_context.as_ref().map_or(
-                BlueprintUndoState::default_query(),
+            let blueprint_query = store_context.as_ref().map_or_else(
+                BlueprintUndoState::default_query,
                 |store_context| {
                     self.state
                         .blueprint_query_for_viewer(store_context.blueprint)

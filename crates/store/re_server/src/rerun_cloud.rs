@@ -524,7 +524,7 @@ impl RerunCloudService for RerunCloudHandler {
         let id = request
             .into_inner()
             .id
-            .ok_or(Status::invalid_argument("No table entry ID provided"))?
+            .ok_or_else(|| Status::invalid_argument("No table entry ID provided"))?
             .try_into()?;
 
         let table = store.table(id).ok_or_else(|| {
@@ -1119,11 +1119,13 @@ impl RerunCloudService for RerunCloudHandler {
                         missing_timelines.remove(timeline_name);
                         let timeline_data_type = timeline_col.times_array().data_type().to_owned();
 
-                        let timeline_data = timelines.entry(timeline_name).or_insert((
-                            timeline_data_type,
-                            vec![None; chunk_segment_ids.len()],
-                            vec![None; chunk_segment_ids.len()],
-                        ));
+                        let timeline_data = timelines.entry(timeline_name).or_insert_with(|| {
+                            (
+                                timeline_data_type,
+                                vec![None; chunk_segment_ids.len()],
+                                vec![None; chunk_segment_ids.len()],
+                            )
+                        });
 
                         timeline_data.1.push(Some(time_min.as_i64()));
                         timeline_data.2.push(Some(time_max.as_i64()));
@@ -1306,7 +1308,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let table_entry = store
             .table(entry_id)
-            .ok_or(Status::internal("table missing that was just registered"))?
+            .ok_or_else(|| Status::internal("table missing that was just registered"))?
             .as_table_entry();
 
         let response = RegisterTableResponse {

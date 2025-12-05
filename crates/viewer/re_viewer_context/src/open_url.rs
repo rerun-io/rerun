@@ -347,11 +347,11 @@ impl ViewerOpenUrl {
                 let recording = store_hub
                     .store_bundle()
                     .get(store_id)
-                    .ok_or(anyhow::anyhow!("No data for active recording"))?;
+                    .ok_or_else(|| anyhow::anyhow!("No data for active recording"))?;
                 let data_source = recording
                     .data_source
                     .as_ref()
-                    .ok_or(anyhow::anyhow!("No data source"))?;
+                    .ok_or_else(|| anyhow::anyhow!("No data source"))?;
 
                 Self::from_data_source(data_source)
             }

@@ -101,7 +101,7 @@ impl ViewProperty {
         self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()
-            .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
+            .ok_or_else(|| ComponentFallbackError::UnexpectedEmptyFallback.into())
     }
 
     /// Get the component array for a given type or its fallback if the component is not present or empty.

@@ -243,14 +243,14 @@ fn from_ply(ply: ply_rs_bw::ply::Ply<ply_rs_bw::ply::DefaultElement>) -> Points3
         // If some colors have been specified but not others, default the unspecified ones to white.
         let colors = colors
             .into_iter()
-            .map(|opt| opt.unwrap_or(Color::from_rgb(255, 255, 255)));
+            .map(|opt| opt.unwrap_or_else(|| Color::from_rgb(255, 255, 255)));
         arch = arch.with_colors(colors);
     }
     if radii.iter().any(|opt| opt.is_some()) {
         // If some radii have been specified but not others, default the unspecified ones to 1.0.
         let radii = radii
             .into_iter()
-            .map(|opt| opt.unwrap_or(Radius::from(1.0)));
+            .map(|opt| opt.unwrap_or_else(|| Radius::from(1.0)));
         arch = arch.with_radii(radii);
     }
     if labels.iter().any(|opt| opt.is_some()) {

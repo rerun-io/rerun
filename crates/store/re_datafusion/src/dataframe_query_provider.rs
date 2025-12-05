@@ -193,7 +193,7 @@ impl RecordBatchStream for DataframeSegmentStream {
         self.inner
             .as_ref()
             .map(|inner| inner.projected_schema.clone())
-            .unwrap_or(Schema::empty().into())
+            .unwrap_or_else(|| Schema::empty().into())
     }
 }
 

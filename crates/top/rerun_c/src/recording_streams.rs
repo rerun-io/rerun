@@ -47,5 +47,5 @@ pub fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CEr
     RECORDING_STREAMS
         .lock()
         .get(stream)
-        .ok_or(CError::invalid_recording_stream_handle())
+        .ok_or_else(CError::invalid_recording_stream_handle)
 }
