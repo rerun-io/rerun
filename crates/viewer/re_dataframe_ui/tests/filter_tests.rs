@@ -38,7 +38,7 @@ impl TestColumn {
         let array = Arc::new(array) as ArrayRef;
         let field = Arc::new(Field::new(COLUMN_NAME, array.data_type().clone(), nullable));
 
-        Self { array, field }
+        Self { field, array }
     }
 
     /// Create a primitive array with the provided data.

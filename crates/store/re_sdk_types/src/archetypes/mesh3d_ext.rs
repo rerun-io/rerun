@@ -2,7 +2,7 @@ use arrow::array::{self, Array as _};
 
 use super::Mesh3D;
 use crate::archetypes;
-use crate::components::{self};
+use crate::components;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Mesh3DError {

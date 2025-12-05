@@ -102,8 +102,8 @@ impl PyRerunHtmlTable {
     #[pyo3(signature = (max_width=None, max_height=None))]
     pub fn new(max_width: Option<usize>, max_height: Option<usize>) -> Self {
         Self {
-            max_height,
             max_width,
+            max_height,
         }
     }
 

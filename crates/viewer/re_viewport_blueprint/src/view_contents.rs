@@ -385,8 +385,6 @@ impl QueryExpressionEvaluator<'_> {
             return None;
         }
 
-        // TODO(jleibs): If this space is disconnected, we should terminate here
-
         let entity_path = &tree.path;
 
         let matches_filter = filter_evaluation.matches;

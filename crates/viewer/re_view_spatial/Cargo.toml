@@ -71,6 +71,7 @@ vec1 = { workspace = true, features = ["smallvec-v1"] }
 re_component_ui.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
+re_viewport.workspace = true
 
 half.workspace = true
 insta.workspace = true

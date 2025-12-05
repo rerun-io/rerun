@@ -613,20 +613,56 @@ impl OneToMany {
     }
 }
 
+/// Controls how data is processed when applying lenses.
+///
+/// This determines what happens to logged data when lenses are applied, particularly
+/// how unmatched original data is handled.
+#[derive(Copy, Clone)]
+pub enum OutputMode {
+    /// Forward both the transformed data from matching lenses and the original data.
+    ///
+    /// Use this when you want to preserve all original data alongside transformations.
+    ForwardAll,
+
+    /// Forward transformed data if lenses match, otherwise forward the original data unchanged.
+    ///
+    /// Use this when you want to transform matching data but ensure unmatched data isn't dropped.
+    ForwardUnmatched,
+
+    /// Only forward transformed data, drop data that doesn't match any lens.
+    ///
+    /// Use this when you want a pure transformation pipeline where only explicitly transformed
+    /// data should be output.
+    DropUnmatched,
+}
+
 /// A collection that holds multiple lenses and applies them to chunks.
 ///
 /// This can hold multiple lenses that match different entity paths and components.
 /// When a chunk is processed, all relevant lenses (those whose entity path filters match
 /// the chunk's entity path) are applied.
-#[derive(Default)]
 pub struct Lenses {
     lenses: Vec<Lens>,
+    mode: OutputMode,
 }
 
 impl Lenses {
+    /// Creates a new lens collection with the specified mode.
+    pub fn new(mode: OutputMode) -> Self {
+        Self {
+            lenses: Default::default(),
+            mode,
+        }
+    }
+
     /// Adds a lens to this collection.
     pub fn add_lens(&mut self, lens: Lens) {
         self.lenses.push(lens);
+    }
+
+    /// Adds a lens to this collection.
+    pub fn set_output_mode(&mut self, mode: OutputMode) {
+        self.mode = mode;
     }
 
     fn relevant(&self, chunk: &Chunk) -> impl Iterator<Item = &Lens> {
@@ -636,16 +672,45 @@ impl Lenses {
                 .clone()
                 .resolve_without_substitutions()
                 .matches(chunk.entity_path())
+                && chunk.components().contains_component(lens.input.component)
         })
     }
 
-    /// Applies all relevant lenses to a chunk and returns the transformed chunks.
+    /// Applies all relevant lenses and returns the results.
     ///
-    /// This will only transform component columns that match registered lenses.
-    /// Other component columns are dropped. To retain original data, use identity
-    /// lenses or multi-sink configurations.
-    pub fn apply(&self, chunk: &Chunk) -> impl Iterator<Item = Result<Chunk, PartialChunk>> {
-        self.relevant(chunk)
-            .flat_map(|transform| transform.apply(chunk))
+    /// The behavior depends on the configured [`OutputMode`]:
+    /// - [`OutputMode::ForwardAll`]: Returns both transformed and original data
+    /// - [`OutputMode::ForwardUnmatched`]: Returns transformed data if lenses match, otherwise original data
+    /// - [`OutputMode::DropUnmatched`]: Returns only transformed data, drops unmatched data
+    pub fn apply<'a>(
+        &'a self,
+        chunk: &'a Chunk,
+    ) -> impl Iterator<Item = Result<Chunk, PartialChunk>> + 'a {
+        match self.mode {
+            OutputMode::ForwardAll => {
+                // Apply all relevant lenses and also forward the original chunk
+                let chunk_clone = chunk.clone();
+                Either::Left(
+                    self.relevant(chunk)
+                        .flat_map(|lens| lens.apply(chunk))
+                        .chain(std::iter::once(Ok(chunk_clone))),
+                )
+            }
+            OutputMode::ForwardUnmatched => {
+                // Apply relevant lenses if any exist, otherwise forward the original chunk
+                let chunk_clone = chunk.clone();
+                let mut relevant_lenses = self.relevant(chunk).peekable();
+                let has_relevant = relevant_lenses.peek().is_some();
+
+                Either::Right(Either::Left(
+                    relevant_lenses
+                        .flat_map(|lens| lens.apply(chunk))
+                        .chain((!has_relevant).then_some(Ok(chunk_clone))),
+                ))
+            }
+            OutputMode::DropUnmatched => Either::Right(Either::Right(
+                self.relevant(chunk).flat_map(|lens| lens.apply(chunk)),
+            )),
+        }
     }
 }

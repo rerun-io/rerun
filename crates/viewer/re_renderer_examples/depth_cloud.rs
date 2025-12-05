@@ -28,7 +28,7 @@ use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
 use re_renderer::view_builder::{self, Projection, ViewBuilder};
 use re_renderer::{Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size};
 use winit::event::ElementState;
-use winit::keyboard::{self};
+use winit::keyboard;
 
 mod framework;
 

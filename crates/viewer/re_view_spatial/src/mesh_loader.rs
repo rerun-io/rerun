@@ -101,8 +101,8 @@ impl LoadedMesh {
 
         Ok(Self {
             name,
-            bbox,
             mesh_instances,
+            bbox,
         })
     }
 
@@ -208,8 +208,8 @@ impl LoadedMesh {
 
         Ok(Self {
             name,
-            bbox,
             mesh_instances,
+            bbox,
         })
     }
 

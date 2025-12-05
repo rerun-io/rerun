@@ -285,8 +285,8 @@ impl Credentials {
 
         Ok(InMemoryCredentials(Self {
             user,
-            access_token,
             refresh_token,
+            access_token,
             claims,
         }))
     }

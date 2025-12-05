@@ -1,5 +1,5 @@
 ---
-source: crates/top/re_sdk/tests/lenses.rs
+source: crates/top/re_sdk/tests/lenses/operations.rs
 expression: "format!(\"{chunk:-240}\")"
 ---
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐

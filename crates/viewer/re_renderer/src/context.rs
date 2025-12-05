@@ -202,7 +202,7 @@ impl Renderers {
             let renderer = Arc::new(R::create_renderer(ctx));
             self.renderers_by_key.push(renderer.clone());
 
-            RendererWithKey { key, renderer }
+            RendererWithKey { renderer, key }
         })
     }
 
