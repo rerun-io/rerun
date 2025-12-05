@@ -57,6 +57,8 @@ pub(super) fn process_depth_image_data(
     transforms: &TransformTreeContext,
     images: impl Iterator<Item = DepthImageComponentData>,
     archetype_name: re_types::ArchetypeName,
+    depth_meter_identifier: re_types::ComponentIdentifier,
+    colormap_identifier: re_types::ComponentIdentifier,
 ) {
     let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
 
@@ -71,13 +73,11 @@ pub(super) fn process_depth_image_data(
             value_range,
         } = data;
 
-        let depth_meter = depth_meter
-            .unwrap_or_else(|| typed_fallback_for(ctx, DepthImage::descriptor_meter().component));
+        let depth_meter =
+            depth_meter.unwrap_or_else(|| typed_fallback_for(ctx, depth_meter_identifier));
 
         // All depth images must have a colormap:
-        let colormap = colormap.unwrap_or_else(|| {
-            typed_fallback_for(ctx, DepthImage::descriptor_colormap().component)
-        });
+        let colormap = colormap.unwrap_or_else(|| typed_fallback_for(ctx, colormap_identifier));
         let value_range = value_range
             .map(|r| [r[0] as f32, r[1] as f32])
             .unwrap_or_else(|| {
@@ -181,7 +181,7 @@ fn process_entity_view_as_depth_cloud(
     // is a factor of the diameter of a pixel projected at that distance.
     let fov_y = pinhole
         .image_from_camera
-        .fov_y(pinhole.resolution.unwrap_or([1.0, 1.0].into()));
+        .fov_y(pinhole.resolution.unwrap_or_else(|| [1.0, 1.0].into()));
     let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
     let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
@@ -308,6 +308,8 @@ impl VisualizerSystem for DepthImageVisualizer {
                     transforms,
                     data_iter,
                     DepthImage::name(),
+                    DepthImage::descriptor_meter().component,
+                    DepthImage::descriptor_colormap().component,
                 );
 
                 Ok(())

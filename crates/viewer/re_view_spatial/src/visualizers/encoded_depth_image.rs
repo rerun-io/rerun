@@ -159,6 +159,8 @@ impl VisualizerSystem for EncodedDepthImageVisualizer {
                     transforms,
                     data_iter,
                     EncodedDepthImage::name(),
+                    EncodedDepthImage::descriptor_meter().component,
+                    EncodedDepthImage::descriptor_colormap().component,
                 );
 
                 Ok(())
