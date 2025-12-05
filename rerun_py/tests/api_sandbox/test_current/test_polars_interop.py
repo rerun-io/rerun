@@ -70,7 +70,7 @@ shape: (1, 2)
 """)
 
 
-def test_partition_table_to_polars(simple_dataset_prefix: Path) -> None:
+def test_segment_table_to_polars(simple_dataset_prefix: Path) -> None:
     with rr.server.Server() as server:
         client = server.client()
         ds = client.create_dataset("my_dataset")

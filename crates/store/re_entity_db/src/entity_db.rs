@@ -34,7 +34,7 @@ pub const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::fro
 /// What class of [`EntityDb`] is this?
 ///
 /// The class is used to semantically group recordings in the UI (e.g. in the recording panel) and
-/// to determine how to source the default blueprint. For example, `DatasetPartition` dbs might have
+/// to determine how to source the default blueprint. For example, `DatasetSegment` dbs might have
 /// their default blueprint sourced remotely.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EntityDbClass<'a> {
