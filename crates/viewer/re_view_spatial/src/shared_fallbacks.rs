@@ -134,8 +134,8 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
             {
                 // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
-                // view properties, therefore the `QueryContext` is actually only querying the blueprint directly.
-                // However, we're now interested in something that lives on the store but may have an _override_ on the blueprint.
+                // view properties, therefore the `QueryContext`'s query & path is all about the blueprint store.
+                // However, we're now interested in something that primarily lives on the "regular" store (with optional blueprint overrides). Therefore, we must take care to use the store query.
                 let query = ctx.view_ctx.current_query();
 
                 let results = data_result
