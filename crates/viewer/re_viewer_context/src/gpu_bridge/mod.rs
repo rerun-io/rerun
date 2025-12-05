@@ -26,7 +26,7 @@ use crate::TensorStats;
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 pub fn tensor_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
+    data_type: re_sdk_types::tensor_data::TensorDataType,
     channels: u32,
 ) -> bool {
     if matches!(channels, 1 | 3 | 4) {

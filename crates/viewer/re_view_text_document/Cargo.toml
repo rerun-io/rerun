@@ -25,7 +25,7 @@ default = []
 re_chunk_store.workspace = true
 re_view.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 

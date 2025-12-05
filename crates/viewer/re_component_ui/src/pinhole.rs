@@ -1,4 +1,4 @@
-use re_types::components::PinholeProjection;
+use re_sdk_types::components::PinholeProjection;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 
 pub fn singleline_view_pinhole(

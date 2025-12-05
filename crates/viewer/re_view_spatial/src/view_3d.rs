@@ -4,13 +4,15 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_sdk_types::blueprint::archetypes::{
+    Background, EyeControls3D, LineGrid3D, SpatialInformation,
+};
+use re_sdk_types::blueprint::components::Eye3DKind;
+use re_sdk_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
+use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::view_coordinates::SignedAxis3;
+use re_sdk_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_tf::query_view_coordinates;
-use re_types::blueprint::archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation};
-use re_types::blueprint::components::Eye3DKind;
-use re_types::components::{LinearSpeed, Plane3D, Position3D, Vector3D};
-use re_types::datatypes::Vec3D;
-use re_types::view_coordinates::SignedAxis3;
-use re_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -35,7 +37,7 @@ use crate::visualizers::{
 #[derive(Default)]
 pub struct SpatialView3D;
 
-type ViewType = re_types::blueprint::views::Spatial3DView;
+type ViewType = re_sdk_types::blueprint::views::Spatial3DView;
 
 impl ViewClass for SpatialView3D {
     fn identifier() -> ViewClassIdentifier {
@@ -64,7 +66,7 @@ impl ViewClass for SpatialView3D {
     ) -> Result<(), ViewClassRegistryError> {
         system_registry
             .register_fallback_provider(LineGrid3D::descriptor_color().component, |_| {
-                re_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
+                re_sdk_types::components::Color::from_unmultiplied_rgba(128, 128, 128, 60)
             });
 
         system_registry.register_fallback_provider(
@@ -86,15 +88,17 @@ impl ViewClass for SpatialView3D {
 
         system_registry
             .register_fallback_provider(LineGrid3D::descriptor_stroke_width().component, |_| {
-                re_types::components::StrokeWidth::from(1.0)
+                re_sdk_types::components::StrokeWidth::from(1.0)
             });
 
         system_registry.register_fallback_provider(
             Background::descriptor_kind().component,
             |ctx| match ctx.egui_ctx().theme() {
-                egui::Theme::Dark => re_types::blueprint::components::BackgroundKind::GradientDark,
+                egui::Theme::Dark => {
+                    re_sdk_types::blueprint::components::BackgroundKind::GradientDark
+                }
                 egui::Theme::Light => {
-                    re_types::blueprint::components::BackgroundKind::GradientBright
+                    re_sdk_types::blueprint::components::BackgroundKind::GradientBright
                 }
             },
         );
@@ -108,7 +112,7 @@ impl ViewClass for SpatialView3D {
         }
 
         system_registry.register_fallback_provider(
-            re_types::blueprint::archetypes::EyeControls3D::descriptor_speed().component,
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_speed().component,
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
@@ -151,7 +155,7 @@ impl ViewClass for SpatialView3D {
         );
 
         system_registry.register_fallback_provider(
-            re_types::blueprint::archetypes::EyeControls3D::descriptor_look_target().component,
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_look_target().component,
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
@@ -170,7 +174,7 @@ impl ViewClass for SpatialView3D {
         );
 
         system_registry.register_fallback_provider(
-            re_types::blueprint::archetypes::EyeControls3D::descriptor_position().component,
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_position().component,
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
@@ -222,7 +226,7 @@ impl ViewClass for SpatialView3D {
         );
 
         system_registry.register_fallback_provider(
-            re_types::blueprint::archetypes::EyeControls3D::descriptor_eye_up().component,
+            re_sdk_types::blueprint::archetypes::EyeControls3D::descriptor_eye_up().component,
             |ctx| {
                 let Ok(view_state) = ctx.view_state().downcast_ref::<SpatialViewState>() else {
                     re_log::error_once!(
@@ -569,7 +573,7 @@ fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
         for field in &reflection.fields {
             // TODO(#1611): The color picker for the color component doesn't show alpha values so far since alpha is almost never supported.
             // Here however, we need that alpha color picker!
-            if field.component_type == re_types::components::Color::name() {
+            if field.component_type == re_sdk_types::components::Color::name() {
                 re_view::view_property_component_ui_custom(
                     &query_ctx,
                     ui,
@@ -578,7 +582,7 @@ fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                     field,
                     &|ui| {
                         let Ok(color) = property
-                            .component_or_fallback::<re_types::components::Color>(
+                            .component_or_fallback::<re_sdk_types::components::Color>(
                                 ctx,
                                 LineGrid3D::descriptor_color().component,
                             )
@@ -594,7 +598,7 @@ fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                         )
                         .changed()
                         {
-                            let color = re_types::components::Color::from(edit_color);
+                            let color = re_sdk_types::components::Color::from(edit_color);
                             property.save_blueprint_component(
                                 ctx.viewer_ctx,
                                 &LineGrid3D::descriptor_color(),

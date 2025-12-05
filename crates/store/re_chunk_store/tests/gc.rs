@@ -11,8 +11,8 @@ use re_chunk_store::{
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, EntityPath, Timestamp, build_frame_nr, build_log_time};
-use re_types::ComponentDescriptor;
-use re_types::testing::{build_some_large_structs, large_struct_descriptor};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::testing::{build_some_large_structs, large_struct_descriptor};
 
 // ---
 

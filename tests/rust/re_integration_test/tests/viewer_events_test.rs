@@ -9,8 +9,8 @@ use re_sdk::external::re_log_types::TimeReal;
 use re_sdk::log::RowId;
 use re_viewer::App;
 use re_viewer::event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind};
-use re_viewer::external::re_types::archetypes::TextLog;
-use re_viewer::external::re_types::blueprint::components::PlayState;
+use re_viewer::external::re_sdk_types::archetypes::TextLog;
+use re_viewer::external::re_sdk_types::blueprint::components::PlayState;
 use re_viewer::external::re_viewer_context::TimeControlCommand;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 

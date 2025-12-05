@@ -1,7 +1,7 @@
-use re_types::Archetype as _;
-use re_types::archetypes::Image;
-use re_types::components::{ImageFormat, Opacity};
-use re_types::image::ImageKind;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Image;
+use re_sdk_types::components::{ImageFormat, Opacity};
+use re_sdk_types::image::ImageKind;
 use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, QueryContext, ViewContext, ViewContextCollection, ViewQuery,

@@ -11,7 +11,7 @@ use re_log::ResultExt as _;
 use re_log_channel::LogSender;
 use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
-use re_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{
     AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
 };
@@ -638,7 +638,7 @@ enum PanelState {
     Expanded,
 }
 
-impl From<PanelState> for re_types::blueprint::components::PanelState {
+impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
     fn from(value: PanelState) -> Self {
         match value {
             PanelState::Hidden => Self::Hidden,

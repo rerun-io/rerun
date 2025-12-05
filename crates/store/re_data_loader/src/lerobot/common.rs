@@ -12,8 +12,8 @@ use re_chunk::{
     external::nohash_hasher::IntMap,
 };
 use re_log_types::{ApplicationId, StoreId};
-use re_types::archetypes;
-use re_types::archetypes::EncodedImage;
+use re_sdk_types::archetypes;
+use re_sdk_types::archetypes::EncodedImage;
 
 use crate::lerobot::{EpisodeIndex, Feature};
 use crate::{DataLoaderError, LoadedData, load_file::prepare_store_info};
@@ -69,7 +69,7 @@ pub fn load_and_stream_common<Dataset>(
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
-                let recording_info = re_types::archetypes::RecordingInfo::new()
+                let recording_info = re_sdk_types::archetypes::RecordingInfo::new()
                     .with_name(format!("Episode {}", episode.0));
 
                 let Ok(initial) = Chunk::builder(EntityPath::properties())
@@ -169,7 +169,7 @@ pub fn load_episode_depth_images(
     for frame_idx in 0..image_bytes.len() {
         let img_buffer = image_bytes.value(frame_idx);
         let depth_image =
-            re_types::archetypes::DepthImage::from_file_contents(img_buffer.to_owned())
+            re_sdk_types::archetypes::DepthImage::from_file_contents(img_buffer.to_owned())
                 .map_err(|err| anyhow!("Failed to decode image: {err}"))?;
 
         let frame_idx = i64::try_from(frame_idx)

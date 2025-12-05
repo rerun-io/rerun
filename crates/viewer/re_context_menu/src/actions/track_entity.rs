@@ -1,5 +1,5 @@
-use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_viewer_context::{Item, ViewId};
 use re_viewport_blueprint::ViewProperty;
 
@@ -57,7 +57,7 @@ impl ContextMenuAction for TrackEntity {
         eye_property.save_blueprint_component(
             ctx.viewer_context,
             &EyeControls3D::descriptor_tracking_entity(),
-            &re_types::components::EntityPath::from(&instance_path.entity_path),
+            &re_sdk_types::components::EntityPath::from(&instance_path.entity_path),
         );
     }
 }

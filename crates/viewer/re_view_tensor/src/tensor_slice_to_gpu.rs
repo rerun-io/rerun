@@ -1,9 +1,9 @@
 use re_chunk_store::RowId;
 use re_renderer::renderer::ColormappedTexture;
 use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError};
-use re_types::components::GammaCorrection;
-use re_types::datatypes::TensorData;
-use re_types::tensor_data::{TensorCastError, TensorDataType};
+use re_sdk_types::components::GammaCorrection;
+use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::tensor_data::{TensorCastError, TensorDataType};
 use re_viewer_context::ColormapWithRange;
 use re_viewer_context::gpu_bridge::{self, colormap_to_re_renderer};
 

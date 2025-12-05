@@ -57,7 +57,7 @@ pub mod external {
     pub use re_viewport::external::*;
     pub use {
         eframe, egui, parking_lot, re_chunk, re_chunk_store, re_data_ui, re_entity_db, re_log,
-        re_log_channel, re_log_types, re_memory, re_renderer, re_types, re_ui, re_view_spatial,
+        re_log_channel, re_log_types, re_memory, re_renderer, re_sdk_types, re_ui, re_view_spatial,
         re_viewer_context, re_viewport,
     };
 }

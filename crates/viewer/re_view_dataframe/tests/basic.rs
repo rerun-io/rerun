@@ -1,8 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::{Timeline, TimelineName};
+use re_sdk_types::archetypes::Scalars;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Scalars;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
 use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};

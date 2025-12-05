@@ -1,6 +1,6 @@
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs};
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
 #[derive(Debug, Clone)]
@@ -76,7 +76,7 @@ impl RecommendedView {
     pub fn recommendation_hash(
         &self,
         class_id: ViewClassIdentifier,
-    ) -> re_types::blueprint::components::ViewerRecommendationHash {
+    ) -> re_sdk_types::blueprint::components::ViewerRecommendationHash {
         let Self {
             origin,
             query_filter,

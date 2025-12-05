@@ -9,9 +9,9 @@ use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, LatestAtQuery};
 use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, entity_path};
 use re_query::{LatestAtResults, QueryCache, clamped_zip_1x1};
-use re_types::Archetype as _;
-use re_types::archetypes::Points2D;
-use re_types::components::{Color, Position2D, Text};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Points2D;
+use re_sdk_types::components::{Color, Position2D, Text};
 
 // ---
 

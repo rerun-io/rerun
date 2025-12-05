@@ -1,6 +1,6 @@
 use ahash::HashMap;
-use re_types::ComponentIdentifier;
-use re_types::components::Color;
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::Color;
 use re_viewer_context::{Annotations, QueryContext, ResolvedAnnotationInfos, typed_fallback_for};
 
 use crate::clamped_or_nothing;
@@ -50,8 +50,8 @@ pub fn process_color_slice<'a>(
 }
 
 pub type Keypoints = HashMap<
-    (re_types::components::ClassId, i64),
-    HashMap<re_types::datatypes::KeypointId, glam::Vec3>,
+    (re_sdk_types::components::ClassId, i64),
+    HashMap<re_sdk_types::datatypes::KeypointId, glam::Vec3>,
 >;
 
 /// Resolves all annotations and keypoints for the given entity view.
@@ -59,8 +59,8 @@ pub fn process_annotation_and_keypoint_slices(
     latest_at: re_log_types::TimeInt,
     num_instances: usize,
     positions: impl Iterator<Item = glam::Vec3>,
-    keypoint_ids: &[re_types::components::KeypointId],
-    class_ids: &[re_types::components::ClassId],
+    keypoint_ids: &[re_sdk_types::components::KeypointId],
+    class_ids: &[re_sdk_types::components::ClassId],
     annotations: &Annotations,
 ) -> (ResolvedAnnotationInfos, Keypoints) {
     re_tracing::profile_function!();
@@ -115,7 +115,7 @@ pub fn process_annotation_and_keypoint_slices(
 pub fn process_annotation_slices(
     latest_at: re_log_types::TimeInt,
     num_instances: usize,
-    class_ids: &[re_types::components::ClassId],
+    class_ids: &[re_sdk_types::components::ClassId],
     annotations: &Annotations,
 ) -> ResolvedAnnotationInfos {
     let (annotations, _keypoints) = process_annotation_and_keypoint_slices(

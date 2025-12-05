@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle};
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 
 use super::view_class_placeholder::ViewClassPlaceholder;
 use super::visualizer_entity_subscriber::VisualizerEntitySubscriber;
@@ -123,7 +123,7 @@ impl ViewSystemRegistrator<'_> {
 
     /// Register a fallback provider specific to the current view
     /// and given component.
-    pub fn register_fallback_provider<C: re_types::Component>(
+    pub fn register_fallback_provider<C: re_sdk_types::Component>(
         &mut self,
         component: ComponentIdentifier,
         provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
@@ -137,7 +137,10 @@ impl ViewSystemRegistrator<'_> {
 
     /// Register a fallback provider specific to the current view
     /// and given component.
-    pub fn register_array_fallback_provider<C: re_types::Component, I: IntoIterator<Item = C>>(
+    pub fn register_array_fallback_provider<
+        C: re_sdk_types::Component,
+        I: IntoIterator<Item = C>,
+    >(
         &mut self,
         component: ComponentIdentifier,
         provider: impl Fn(&QueryContext<'_>) -> I + Send + Sync + 'static,

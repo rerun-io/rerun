@@ -1,8 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
+use re_sdk_types::archetypes;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes;
 use re_view_text_document::TextDocumentView;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;

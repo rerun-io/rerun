@@ -2,10 +2,10 @@ use nohash_hasher::IntMap;
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
-use re_types::Archetype as _;
-use re_types::archetypes::DepthImage;
-use re_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
-use re_types::image::ImageKind;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::DepthImage;
+use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
+use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,

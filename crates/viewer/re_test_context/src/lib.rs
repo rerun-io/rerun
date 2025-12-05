@@ -13,8 +13,8 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
-use re_types::archetypes::RecordingInfo;
-use re_types::{Component as _, ComponentDescriptor};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
@@ -130,14 +130,14 @@ impl TestContext {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_name(),
-                    &re_types::components::Name::from("Test recording"),
+                    &re_sdk_types::components::Name::from("Test recording"),
                 )
                 .unwrap();
             recording_store
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::from(
+                    &re_sdk_types::components::Timestamp::from(
                         "2025-06-28T19:26:42Z"
                             .parse::<jiff::Timestamp>()
                             .unwrap()
@@ -154,9 +154,9 @@ impl TestContext {
                     ComponentDescriptor {
                         archetype: None,
                         component: "location".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Swallow Falls"),
+                    &re_sdk_types::components::Text::from("Swallow Falls"),
                 )
                 .unwrap();
             recording_store
@@ -165,9 +165,9 @@ impl TestContext {
                     ComponentDescriptor {
                         archetype: None,
                         component: "weather".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Cloudy with meatballs"),
+                    &re_sdk_types::components::Text::from("Cloudy with meatballs"),
                 )
                 .unwrap();
         }
@@ -210,7 +210,7 @@ impl TestContext {
             re_component_fallbacks::create_component_fallback_registry();
 
         let reflection =
-            re_types::reflection::generate_reflection().expect("Failed to generate reflection");
+            re_sdk_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
         Self {
             app_options: Default::default(),

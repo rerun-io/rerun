@@ -3,7 +3,7 @@ use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
+use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 

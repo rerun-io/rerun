@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId, TimeColumn, TimeInt, TimePoint, Timeline};
 use re_log_types::ApplicationId;
-use re_types::{
+use re_sdk_types::{
     archetypes::{AssetVideo, TextDocument, VideoFrameReference},
     components::VideoTimestamp,
 };

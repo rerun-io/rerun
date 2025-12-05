@@ -7,8 +7,8 @@ use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreEvent};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, TimelineName};
+use re_sdk_types::{RowId, archetypes};
 use re_tf::{TransformFrameIdHash, TransformResolutionCache};
-use re_types::{RowId, archetypes};
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;

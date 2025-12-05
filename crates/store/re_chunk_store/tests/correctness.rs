@@ -10,7 +10,7 @@ use re_log_types::{
     Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
     build_log_time,
 };
-use re_types::ComponentIdentifier;
+use re_sdk_types::ComponentIdentifier;
 
 // ---
 

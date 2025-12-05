@@ -10,11 +10,11 @@ use parking_lot::Mutex;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
-use re_types::blueprint::archetypes as blueprint_archetypes;
-use re_types::blueprint::components::{
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::{
     AutoLayout, AutoViews, RootContainer, ViewMaximized, ViewerRecommendationHash,
 };
-use re_types::{Archetype as _, ViewClassIdentifier};
+use re_sdk_types::{Archetype as _, ViewClassIdentifier};
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
     blueprint_id_to_tile_id,

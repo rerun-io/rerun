@@ -79,7 +79,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window", "MessageEvent"] }
 
 [dev-dependencies]
-re_types.workspace = true
+re_sdk_types.workspace = true
 
 criterion.workspace = true
 insta.workspace = true

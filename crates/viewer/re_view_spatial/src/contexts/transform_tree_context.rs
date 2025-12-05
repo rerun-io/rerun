@@ -3,9 +3,9 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
+use re_sdk_types::components::ImagePlaneDistance;
+use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
-use re_types::components::ImagePlaneDistance;
-use re_types::{ArchetypeName, archetypes, blueprint};
 use re_view::{
     DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
 };
@@ -536,10 +536,10 @@ impl EntityTransformIdMapping {
 #[cfg(test)]
 mod tests {
     use re_log_types::{EntityPath, TimePoint};
+    use re_sdk_types::archetypes::CoordinateFrame;
     use re_test_context::TestContext;
     use re_test_viewport::TestContextExt as _;
     use re_tf::{TransformFrameId, TransformFrameIdHash};
-    use re_types::archetypes::CoordinateFrame;
     use re_viewer_context::{
         BlueprintContext as _, RecommendedView, ViewClass as _, ViewClassExt as _,
         ViewContextSystem as _,
@@ -603,11 +603,11 @@ mod tests {
                 blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()));
 
             let property = ViewProperty::from_archetype::<
-                re_types::blueprint::archetypes::SpatialInformation,
+                re_sdk_types::blueprint::archetypes::SpatialInformation,
             >(ctx.blueprint_db(), ctx.blueprint_query(), view_id);
             property.save_blueprint_component(
                 ctx,
-                &re_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
+                &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
                 &TransformFrameId::from("directly_set_frame"),
             );
 

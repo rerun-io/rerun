@@ -5,9 +5,9 @@ use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::ViewPickingConfiguration;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
-use re_types::blueprint::components as blueprint_components;
-use re_types::{Archetype as _, archetypes};
+use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_sdk_types::blueprint::components as blueprint_components;
+use re_sdk_types::{Archetype as _, archetypes};
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{

@@ -1,5 +1,5 @@
 use re_chunk_store::Chunk;
-use re_types::{Archetype as _, ArchetypeName, archetypes};
+use re_sdk_types::{Archetype as _, ArchetypeName, archetypes};
 
 bitflags::bitflags! {
     /// Flags for the different kinds of independent transforms that the transform cache handles.

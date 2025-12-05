@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use re_chunk_store::external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer};
 use re_chunk_store::{Chunk, Span};
 use re_log_types::{TimeInt, TimePoint, TimelineName};
-use re_types::{Component, ComponentIdentifier, RowId};
+use re_sdk_types::{Component, ComponentIdentifier, RowId};
 
 /// A helper struct that bundles a list of chunks with a component identifier.
 ///

@@ -13,9 +13,9 @@ use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
 };
-use re_types::ComponentIdentifier;
-use re_types::blueprint::components::PanelState;
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::blueprint::components::PanelState;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget, icons, list_item,
@@ -1507,7 +1507,10 @@ impl TimePanel {
     }
 }
 
-fn archetype_label_ui(ui: &mut Ui, archetype: Option<re_types::ArchetypeName>) -> egui::Response {
+fn archetype_label_ui(
+    ui: &mut Ui,
+    archetype: Option<re_sdk_types::ArchetypeName>,
+) -> egui::Response {
     ui.list_item()
         .with_y_offset(1.0)
         .with_height(20.0)

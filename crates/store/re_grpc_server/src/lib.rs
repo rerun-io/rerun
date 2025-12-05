@@ -1053,8 +1053,8 @@ mod tests {
                             re_log_types::Timeline::new_sequence("blueprint"),
                             re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                         ),
-                        &re_types::blueprint::archetypes::Background::new(
-                            re_types::blueprint::components::BackgroundKind::SolidColor,
+                        &re_sdk_types::blueprint::archetypes::Background::new(
+                            re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
                         )
                         .with_color([255, 0, 0]),
                     )
@@ -1112,7 +1112,11 @@ mod tests {
                     .with_archetype(
                         re_chunk::RowId::new(),
                         timepoint,
-                        &re_types::archetypes::Points2D::new([(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)]),
+                        &re_sdk_types::archetypes::Points2D::new([
+                            (0.0, 0.0),
+                            (1.0, 1.0),
+                            (2.0, 2.0),
+                        ]),
                     )
                     .build()
                     .unwrap()

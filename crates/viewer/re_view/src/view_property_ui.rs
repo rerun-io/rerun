@@ -1,4 +1,4 @@
-use re_types::{ComponentDescriptor, ComponentIdentifier};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
 use re_types_core::reflection::ArchetypeFieldReflection;
 use re_types_core::{Archetype, ArchetypeReflectionMarker};
 use re_ui::list_item::ListItemContentButtonsExt as _;

@@ -1,6 +1,6 @@
-use re_types::Archetype as _;
-use re_types::archetypes::VideoStream;
-use re_types::components::Opacity;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::VideoStream;
+use re_sdk_types::components::Opacity;
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,

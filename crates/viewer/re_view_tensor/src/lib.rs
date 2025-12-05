@@ -13,11 +13,11 @@ pub use view_class::TensorView;
 /// Information about a dimension of a tensor.
 struct TensorDimension {
     pub size: u64,
-    pub name: Option<re_types::ArrowString>,
+    pub name: Option<re_sdk_types::ArrowString>,
 }
 
 impl TensorDimension {
-    pub fn from_tensor_data(tensor_data: &re_types::datatypes::TensorData) -> Vec<Self> {
+    pub fn from_tensor_data(tensor_data: &re_sdk_types::datatypes::TensorData) -> Vec<Self> {
         tensor_data
             .shape
             .iter()
@@ -35,7 +35,7 @@ impl TensorDimension {
     }
 
     #[allow(clippy::allow_attributes, dead_code)] // Used for tests
-    pub fn named(size: u64, name: impl Into<re_types::ArrowString>) -> Self {
+    pub fn named(size: u64, name: impl Into<re_sdk_types::ArrowString>) -> Self {
         Self {
             size,
             name: Some(name.into()),

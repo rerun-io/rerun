@@ -2,9 +2,9 @@ use re_data_ui::item_ui;
 use re_renderer::external::wgpu;
 use re_renderer::renderer::ColormappedTexture;
 use re_renderer::resource_managers::GpuTexture2D;
-use re_types::datatypes::ColorModel;
-use re_types::image::ImageKind;
-use re_types::tensor_data::TensorElement;
+use re_sdk_types::datatypes::ColorModel;
+use re_sdk_types::image::ImageKind;
+use re_sdk_types::tensor_data::TensorElement;
 use re_ui::UiExt as _;
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ImageInfo, ViewQuery, ViewerContext, gpu_bridge};
@@ -342,7 +342,7 @@ fn pixel_value_ui(
                 ui.label("Label:");
                 ui.label(
                     annotations
-                        .resolved_class_description(Some(re_types::components::ClassId::from(
+                        .resolved_class_description(Some(re_sdk_types::components::ClassId::from(
                             u16_val,
                         )))
                         .annotation_info()

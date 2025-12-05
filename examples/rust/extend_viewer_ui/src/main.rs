@@ -2,7 +2,7 @@
 
 use rerun::external::{
     arrow, eframe, egui, re_chunk_store, re_crash_handler, re_entity_db, re_grpc_server, re_log,
-    re_log_types, re_memory, re_types, re_viewer, tokio,
+    re_log_types, re_memory, re_sdk_types, re_viewer, tokio,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -154,7 +154,7 @@ fn component_ui(
     entity_db: &re_entity_db::EntityDb,
     timeline: re_log_types::TimelineName,
     entity_path: &re_log_types::EntityPath,
-    component: re_types::ComponentIdentifier,
+    component: re_sdk_types::ComponentIdentifier,
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
