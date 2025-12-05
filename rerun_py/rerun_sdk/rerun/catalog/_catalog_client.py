@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, overload
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
@@ -202,7 +202,13 @@ class CatalogClient:
 
     # ---
 
-    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
+    @overload
+    def get_dataset(self, *, id: EntryId | str) -> DatasetEntry: ...
+
+    @overload
+    def get_dataset(self, name: str) -> DatasetEntry: ...
+
+    def get_dataset(self, name: str | None = None, *, id: EntryId | str | None = None) -> DatasetEntry:
         """
         Returns a dataset by its ID or name.
 
@@ -210,17 +216,23 @@ class CatalogClient:
 
         Parameters
         ----------
-        id
-            The unique identifier of the dataset. Can be an `EntryId` object or its string representation.
         name
             The name of the dataset.
+        id
+            The unique identifier of the dataset. Can be an `EntryId` object or its string representation.
 
         """
         from . import DatasetEntry
 
         return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name)))
 
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
+    @overload
+    def get_table(self, *, id: EntryId | str) -> TableEntry: ...
+
+    @overload
+    def get_table(self, name: str) -> TableEntry: ...
+
+    def get_table(self, name: str | None = None, *, id: EntryId | str | None = None) -> TableEntry:
         """
         Returns a table by its ID or name.
 
@@ -228,10 +240,10 @@ class CatalogClient:
 
         Parameters
         ----------
-        id
-            The unique identifier of the table. Can be an `EntryId` object or its string representation.
         name
             The name of the table.
+        id
+            The unique identifier of the table. Can be an `EntryId` object or its string representation.
 
         """
         from . import TableEntry
@@ -243,12 +255,12 @@ class CatalogClient:
     @deprecated("Use get_dataset() instead")
     def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
-        return self.get_dataset(id=id, name=name)
+        return self.get_dataset(name=name, id=id)  # type: ignore[call-overload, no-any-return]
 
     @deprecated("Use get_table() instead")
     def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table by its ID or name."""
-        return self.get_table(id=id, name=name)
+        return self.get_table(name=name, id=id)  # type: ignore[call-overload, no-any-return]
 
     # ---
 
