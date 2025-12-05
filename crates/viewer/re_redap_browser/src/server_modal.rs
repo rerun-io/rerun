@@ -32,7 +32,7 @@ pub enum ServerModalMode {
 impl ServerModalMode {
     /// Should we show a warning about dataplatform being experimental?
     pub fn should_show_experimental_warning(&self) -> bool {
-        matches!(self, ServerModalMode::Add)
+        matches!(self, Self::Add)
     }
 }
 

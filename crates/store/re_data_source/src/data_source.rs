@@ -3,7 +3,7 @@ use crate::FileContents;
 use anyhow::Context as _;
 use re_log_channel::{LogReceiver, LogSource};
 use re_log_types::RecordingId;
-use re_redap_client::{ApiError, ApiErrorKind, ConnectionRegistryHandle};
+use re_redap_client::ConnectionRegistryHandle;
 
 pub type AuthErrorHandler =
     Box<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;

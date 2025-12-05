@@ -1464,6 +1464,7 @@ struct ReceiversFromUrlParams {
 
 impl ReceiversFromUrlParams {
     /// Processes all incoming URLs according to the given config.
+    #[expect(clippy::needless_pass_by_value)]
     fn new(
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,

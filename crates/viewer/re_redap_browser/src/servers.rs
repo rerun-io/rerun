@@ -13,7 +13,7 @@ use re_sorbet::ColumnDescriptorRef;
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
-    AsyncRuntimeHandle, EditRedapServerModalCommand, GlobalContext, SystemCommand, ViewerContext,
+    AsyncRuntimeHandle, EditRedapServerModalCommand, GlobalContext, ViewerContext,
 };
 
 use crate::context::Context;
