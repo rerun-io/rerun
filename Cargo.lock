@@ -10168,6 +10168,7 @@ dependencies = [
  "re_video",
  "re_view",
  "re_viewer_context",
+ "re_viewport",
  "re_viewport_blueprint",
  "saturating_cast",
  "serde",
