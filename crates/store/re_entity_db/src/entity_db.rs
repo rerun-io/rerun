@@ -21,7 +21,7 @@ use re_query::{
 use re_types_core::RrdManifestMessage;
 
 use crate::ingestion_statistics::IngestionStatistics;
-use crate::rrd_manifest_index::RrdManifest;
+use crate::rrd_manifest_index::RrdManifestIndex;
 use crate::{Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    rrd_manifest_index: RrdManifest,
+    rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -245,7 +245,7 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn rrd_manifest_index(&self) -> &RrdManifest {
+    pub fn rrd_manifest_index(&self) -> &RrdManifestIndex {
         &self.rrd_manifest_index
     }
 

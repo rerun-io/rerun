@@ -22,7 +22,7 @@ pub struct ChunkInfo {
 /// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
 #[derive(Default, Debug, Clone)]
-pub struct RrdManifest {
+pub struct RrdManifestIndex {
     /// Set if we have received an index.
     ///
     /// This only happens for some data sources.
@@ -44,7 +44,7 @@ pub struct RrdManifest {
     has_deleted: bool,
 }
 
-impl RrdManifest {
+impl RrdManifestIndex {
     #[expect(clippy::needless_pass_by_value)] // In the future we may want to store them as record batches
     pub fn append(&mut self, msg: RrdManifestMessage) {
         re_tracing::profile_function!();

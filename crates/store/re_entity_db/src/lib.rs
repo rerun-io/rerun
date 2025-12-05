@@ -21,7 +21,7 @@ pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb};
 pub use self::entity_tree::EntityTree;
 pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
 pub use self::instance_path::{InstancePath, InstancePathHash};
-pub use self::rrd_manifest_index::RrdManifest as RrdManifestIndex;
+pub use self::rrd_manifest_index::RrdManifestIndex;
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};
 pub use self::times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline};
