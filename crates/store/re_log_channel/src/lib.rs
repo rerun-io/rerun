@@ -215,7 +215,7 @@ pub(crate) struct Channel {
     waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
-/// Create a new communication channel for [`re_log_types::DataSourceMessage`].
+/// Create a new communication channel for [`DataSourceMessage`].
 pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
     // TODO(emilk): add a back-channel to be used for controlling what data we load.
 
