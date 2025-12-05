@@ -163,7 +163,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_partition_ids(
+    pub fn get_dataset_segment_ids(
         &self,
         py: Python<'_>,
         entry_id: EntryId,
@@ -260,7 +260,7 @@ impl ConnectionHandle {
                     .get_entry_id(&name, Some(EntryKind::Table))
                     .await
                     .map_err(to_py_err)?
-                    .ok_or(PyValueError::new_err("Unable to find EntryId for table"))?;
+                    .ok_or_else(|| PyValueError::new_err("Unable to find EntryId for table"))?;
 
                 // Since the errors occur during streaming, we cannot let this method
                 // fail without doing a collect operation. Instead, we log a warning to
@@ -569,7 +569,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
-        partition_ids: &[impl AsRef<str> + Sync],
+        segment_ids: &[impl AsRef<str> + Sync],
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         use tokio_stream::StreamExt as _;
 
@@ -602,7 +602,7 @@ impl ConnectionHandle {
         let query = query_from_query_expression(query_expression);
 
         let request = QueryDatasetRequest {
-            segment_ids: partition_ids
+            segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),

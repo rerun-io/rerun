@@ -184,12 +184,12 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
             .inner
             .low_bound_timestamp
             .resolved_formatted(self.timestamp_format)
-            .unwrap_or("…".to_owned());
+            .unwrap_or_else(|_| "…".to_owned());
         let high_bound = self
             .inner
             .high_bound_timestamp
             .resolved_formatted(self.timestamp_format)
-            .unwrap_or("…".to_owned());
+            .unwrap_or_else(|_| "…".to_owned());
 
         match self.inner.kind {
             TimestampFilterKind::Today => builder.append_keyword("today"),

@@ -47,7 +47,7 @@ pub fn test_various_filter_ui_snapshot() {
                 "various_filters-{}",
                 filter_query
                     .map(|s| s.replace(' ', ",").replace('/', "_"))
-                    .unwrap_or("none".to_owned())
+                    .unwrap_or_else(|| "none".to_owned())
             ),
         );
     }
@@ -76,7 +76,7 @@ pub fn test_various_filter_insta_snapshot() {
             "various_filters-{}",
             filter_query
                 .map(|s| s.replace(' ', ",").replace('/', "_"))
-                .unwrap_or("none".to_owned())
+                .unwrap_or_else(|| "none".to_owned())
         );
 
         let mut settings = insta::Settings::clone_current();

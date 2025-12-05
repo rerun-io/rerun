@@ -157,7 +157,7 @@ pub struct StoreId {
     /// The kind of the store.
     #[prost(enumeration = "StoreKind", tag = "1")]
     pub kind: i32,
-    /// The recording id of the store. For remote stores, this is the partition id. For blueprint store, this is an
+    /// The recording id of the store. For remote stores, this is the segment id. For blueprint store, this is an
     /// arbitrary uuid.
     #[prost(string, tag = "2")]
     pub recording_id: ::prost::alloc::string::String,

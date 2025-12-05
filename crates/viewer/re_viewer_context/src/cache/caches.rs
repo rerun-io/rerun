@@ -80,12 +80,11 @@ impl Caches {
     ///
     /// Adds the cache lazily if it wasn't already there.
     pub fn entry<C: Cache + Default, R>(&self, f: impl FnOnce(&mut C) -> R) -> R {
-        #[expect(clippy::unwrap_or_default)] // or_default doesn't work here.
         f(self
             .caches
             .lock()
             .entry(TypeId::of::<C>())
-            .or_insert(Box::<C>::default())
+            .or_insert_with(|| Box::<C>::default())
             .as_any_mut()
             .downcast_mut::<C>()
             .expect("Downcast failed, this indicates a bug in how `Caches` adds new cache types."))

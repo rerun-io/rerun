@@ -26,10 +26,10 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple("my_segment_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_segment_id2", &["my/entity"]),
             LayerDefinition::simple(
-                "my_partition_id3",
+                "my_segment_id3",
                 &["my/entity", "another/one", "yet/another/one"],
             ),
         ],
@@ -95,10 +95,10 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     let data_sources_def_1 = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::simple("my_partition_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::simple("my_partition_id2", &["my/entity"]),
+            LayerDefinition::simple("my_segment_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::simple("my_segment_id2", &["my/entity"]),
             LayerDefinition::simple(
-                "my_partition_id3",
+                "my_segment_id3",
                 &["my/entity", "another/one", "yet/another/one"],
             ),
         ],
@@ -117,8 +117,8 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     let data_sources_def_2 = DataSourcesDefinition::new_with_tuid_prefix(
         1,
         [
-            LayerDefinition::nasty("my_partition_id1", &["my/entity", "my/other/entity"]),
-            LayerDefinition::nasty("my_partition_id2", &["my/other/entity"]),
+            LayerDefinition::nasty("my_segment_id1", &["my/entity", "my/other/entity"]),
+            LayerDefinition::nasty("my_segment_id2", &["my/other/entity"]),
         ],
     );
 

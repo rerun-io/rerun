@@ -86,8 +86,8 @@ impl ViewProperty {
         Self {
             blueprint_store_path,
             archetype_name,
-            query_results,
             component_descrs,
+            query_results,
             blueprint_query,
         }
     }
@@ -101,7 +101,7 @@ impl ViewProperty {
         self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()
-            .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
+            .ok_or_else(|| ComponentFallbackError::UnexpectedEmptyFallback.into())
     }
 
     /// Get the component array for a given type or its fallback if the component is not present or empty.

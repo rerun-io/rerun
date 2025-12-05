@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_types::archetypes::BarChart;
-use re_types::components::{self};
+use re_types::components;
 use re_types::datatypes;
 use re_view::DataResultQuery as _;
 use re_viewer_context::{

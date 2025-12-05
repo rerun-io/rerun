@@ -384,10 +384,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             None
                         }
                     })
-                    .unwrap_or((
-                        usize::MAX,
-                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                    )),
+                    .unwrap_or_else(|| {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        )
+                    }),
 
                 ColumnSelector::Time(selected_column) => {
                     let TimeColumnSelector {
@@ -2460,9 +2462,8 @@ mod tests {
                 let mut cx = std::task::Context::from_waker(
                     // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
                     unsafe {
-                        std::mem::transmute::<&std::task::RawWaker, &std::task::Waker>(
-                            &RAW_WAKER_NOOP,
-                        )
+                        &*std::ptr::from_ref::<std::task::RawWaker>(&RAW_WAKER_NOOP)
+                            .cast::<std::task::Waker>()
                     },
                 );
 

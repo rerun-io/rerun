@@ -27,8 +27,8 @@ use crate::rerun_cloud::SearchDatasetResponseStream;
 use crate::store::{Dataset, Error as StoreError};
 // Fields in an index table
 
-pub const FIELD_RERUN_PARTITION_ID: &str = "rerun_partition_id"; // aka "segment"
-pub const FIELD_RERUN_PARTITION_LAYER: &str = "rerun_partition_layer";
+pub const FIELD_RERUN_SEGMENT_ID: &str = "rerun_segment_id";
+pub const FIELD_RERUN_SEGMENT_LAYER: &str = "rerun_segment_layer";
 pub const FIELD_CHUNK_ID: &str = "chunk_id";
 pub const FIELD_TIMEPOINT: &str = "timepoint";
 
@@ -301,8 +301,8 @@ impl DatasetChunkIndexes {
 
         // Backfill existing data in the index
         let mut backfill = Vec::new();
-        for (segment_id, partition) in dataset.partitions() {
-            for (layer_name, layer) in partition.layers() {
+        for (segment_id, segment) in dataset.segments() {
+            for (layer_name, layer) in segment.layers() {
                 let store = layer.store_handle().read();
                 for chunk in store.iter_chunks() {
                     if chunk.entity_path() == entity_path

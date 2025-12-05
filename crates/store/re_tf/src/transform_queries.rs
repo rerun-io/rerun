@@ -7,8 +7,8 @@ use re_chunk_store::{Chunk, LatestAtQuery, UnitChunkShared};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes::{self, InstancePoses3D};
+use re_types::external::arrow;
 use re_types::external::arrow::array::Array as _;
-use re_types::external::arrow::{self};
 use re_types::{ComponentIdentifier, TransformFrameIdHash, components};
 
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -200,8 +200,6 @@ pub fn query_and_resolve_tree_transform_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Result<ParentFromChildTransform, TransformError> {
-    // TODO(RR-2799): Output more than one target at once, doing the usual clamping - means probably we can merge a lot of code here with instance poses!
-
     // Topology
     let identifier_parent_frame = archetypes::Transform3D::descriptor_parent_frame().component;
     let identifier_child_frame = archetypes::Transform3D::descriptor_child_frame().component;
@@ -334,7 +332,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
     }
 
-    Ok(ParentFromChildTransform { transform, parent })
+    Ok(ParentFromChildTransform { parent, transform })
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
@@ -563,7 +561,7 @@ fn get_parent_frame(
         .map_or_else(
             || {
                 TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or(EntityPath::root()),
+                    &entity_path.parent().unwrap_or_else(EntityPath::root),
                 )
             },
             |frame_id| TransformFrameIdHash::new(&frame_id),

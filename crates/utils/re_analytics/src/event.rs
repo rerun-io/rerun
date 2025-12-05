@@ -104,7 +104,7 @@ pub struct Identify {
 impl Event for Identify {
     const NAME: &'static str = "$identify";
 
-    const KIND: EventKind = EventKind::Update;
+    const KIND: EventKind = EventKind::Identify;
 }
 
 impl Properties for Identify {
@@ -443,6 +443,9 @@ impl Properties for SettingsOpened {
 /// pre-login anonymous activity with their authenticated identity.
 pub struct SetPersonProperty {
     pub email: String,
+
+    /// The user's organization ID from the JWT claims.
+    pub organization_id: String,
 }
 
 impl Event for SetPersonProperty {
@@ -453,8 +456,12 @@ impl Event for SetPersonProperty {
 
 impl Properties for SetPersonProperty {
     fn serialize(self, event: &mut AnalyticsEvent) {
-        let Self { email } = self;
+        let Self {
+            email,
+            organization_id,
+        } = self;
         event.insert("email", email);
+        event.insert("organization_id", organization_id);
     }
 }
 

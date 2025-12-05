@@ -290,10 +290,10 @@ impl PickingLayerProcessor {
         ));
 
         Self {
-            bind_group_0,
             picking_target,
             picking_depth_target,
             readback_buffer,
+            bind_group_0,
             depth_readback_workaround,
         }
     }

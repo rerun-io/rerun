@@ -521,6 +521,8 @@ impl TestContext {
                 display_mode: &DisplayMode::LocalRecordings(
                     store_context.recording_store_id().clone(),
                 ),
+
+                auth_context: None,
             },
             component_ui_registry: &self.component_ui_registry,
             component_fallback_registry: &self.component_fallback_registry,
@@ -756,6 +758,7 @@ impl TestContext {
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
                 | SystemCommand::SetAuthCredentials { .. }
+                | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
