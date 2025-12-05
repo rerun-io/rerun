@@ -9074,6 +9074,7 @@ dependencies = [
  "parking_lot",
  "re_log_types",
  "re_tracing",
+ "re_types_core",
  "re_uri",
  "serde",
  "thiserror 2.0.17",

@@ -7,8 +7,9 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::SizeBytes;
+use re_log_channel::DataSourceMessage;
 use re_log_encoding::{ToApplication as _, ToTransport as _};
-use re_log_types::{DataSourceMessage, TableMsg};
+use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
     DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
 };

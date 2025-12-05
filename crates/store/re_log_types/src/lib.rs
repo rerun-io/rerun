@@ -18,7 +18,6 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
-mod data_source_message;
 mod entry_id;
 pub mod example_components;
 pub mod hash;
@@ -38,7 +37,6 @@ use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
-pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
 pub use self::entry_id::{EntryId, EntryIdOrName};
 pub use self::index::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,

@@ -1488,7 +1488,7 @@ impl RecordingStream {
                 move || {
                     while let Some(msg) = rx.recv().ok().and_then(|msg| msg.into_data()) {
                         match msg {
-                            re_log_types::DataSourceMessage::LogMsg(log_msg) => {
+                            re_log_channel::DataSourceMessage::LogMsg(log_msg) => {
                                 this.record_msg(log_msg);
                             }
                             unsupported => {
