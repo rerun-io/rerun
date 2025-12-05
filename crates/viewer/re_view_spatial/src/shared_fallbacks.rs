@@ -128,6 +128,11 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     system_registry.register_fallback_provider(
         blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
         |ctx| {
+            // 1. Check if the space root has a defined coordinate frame.
+            // 2. Check if all coordinate frames logged on entities included in the filter share the same
+            //    root frame, if so use that frame.
+            // 3. Use the implicit frame for the space root.
+
             // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
             // view properties, therefore the `QueryContext` is actually only querying the blueprint directly.
             // However, we're now interested in something that lives on the store but may have an _override_ on the blueprint.
