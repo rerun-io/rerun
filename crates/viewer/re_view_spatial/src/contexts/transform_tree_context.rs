@@ -156,11 +156,15 @@ impl ViewContextSystem for TransformTreeContext {
         let caches = ctx.store_context.caches;
         let (transform_forest, transform_cache) =
             caches.entry(|c: &mut TransformDatabaseStoreCache| {
+                c.update_transform_forest(ctx.recording(), &ctx.current_query());
                 (
-                    c.get_or_create_transform_forest(ctx.recording(), &ctx.current_query()),
+                    c.get_transform_forest(),
                     c.read_lock_transform_cache(ctx.recording()),
                 )
             });
+
+        // We update this here so it should exist.
+        let transform_forest = transform_forest.unwrap_or_default();
 
         let frame_ids = transform_cache
             .frame_id_registry()
@@ -560,8 +564,14 @@ mod tests {
         });
 
         // Different views with different expected targets.
-        let view_id_root = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        let view_id_root_subtree = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
             blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()))
+        });
+        let view_id_root = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                class_id,
+                RecommendedView::new_single_entity(EntityPath::root()),
+            ))
         });
         let view_id_some_path = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
             blueprint.add_view_at_root(ViewBlueprint::new(
@@ -617,6 +627,7 @@ mod tests {
 
         test_context.run_in_egui_central_panel(|ctx, _ui| {
             for (view_id, expected_target) in [
+                (view_id_root_subtree, TransformFrameId::from("store_frame")),
                 (
                     view_id_root,
                     TransformFrameId::from_entity_path(&EntityPath::root()),
