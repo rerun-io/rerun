@@ -38,7 +38,7 @@ re_query.workspace = true
 re_renderer = { workspace = true, features = ["import-gltf", "import-obj", "import-stl"] }
 re_tf.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_sdk_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_ui.workspace = true
 re_video.workspace = true
 re_view.workspace = true

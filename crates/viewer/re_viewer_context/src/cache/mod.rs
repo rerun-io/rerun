@@ -30,7 +30,7 @@ pub use video_stream_cache::{
 fn filter_blob_removed_events(
     events: &[&re_chunk_store::ChunkStoreEvent],
 ) -> ahash::HashSet<crate::StoredBlobCacheKey> {
-    use re_types::Component as _;
+    use re_sdk_types::Component as _;
 
     events
         .iter()
@@ -41,7 +41,7 @@ fn filter_blob_removed_events(
                         .chunk
                         .component_descriptors()
                         .filter(|descr| {
-                            descr.component_type == Some(re_types::components::Blob::name())
+                            descr.component_type == Some(re_sdk_types::components::Blob::name())
                         })
                         .flat_map(|descr| {
                             event.chunk.row_ids().map(move |row_id| {

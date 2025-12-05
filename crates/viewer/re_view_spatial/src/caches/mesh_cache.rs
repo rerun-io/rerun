@@ -7,8 +7,8 @@ use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::{EntityDb, VersionedInstancePathHash};
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
-use re_types::archetypes::{Asset3D, Mesh3D};
-use re_types::components::MediaType;
+use re_sdk_types::archetypes::{Asset3D, Mesh3D};
+use re_sdk_types::components::MediaType;
 use re_viewer_context::{Cache, CacheMemoryReport, CacheMemoryReportItem};
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
@@ -59,7 +59,7 @@ pub struct MeshCache {
     generation: u64,
 }
 
-/// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
+/// Either a [`re_sdk_types::archetypes::Asset3D`] or [`re_sdk_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone)]
 pub enum AnyMesh<'a> {
     Asset {

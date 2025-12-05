@@ -4,7 +4,7 @@ use rerun::external::egui;
 use rerun::external::re_data_ui::{DataUi, item_ui};
 use rerun::external::re_entity_db::InstancePath;
 use rerun::external::re_log_types::EntityPath;
-use rerun::external::re_types::ViewClassIdentifier;
+use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
 use rerun::external::re_viewer_context::{
     HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,

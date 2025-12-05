@@ -503,7 +503,7 @@ fn generate_blueprint(
 
 fn generate_blueprint_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_types::ArrowMsg> {
     use re_log_types::{EntityPath, TimeInt, build_frame_nr};
-    use re_types::blueprint::archetypes::TimePanelBlueprint;
+    use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let mut next_row_id = next_row_id_generator(tuid_prefix);

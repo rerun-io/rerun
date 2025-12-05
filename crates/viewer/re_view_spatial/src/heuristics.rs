@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, ViewerContext};
 
 use crate::view_kind::SpatialViewKind;

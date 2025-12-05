@@ -11,7 +11,7 @@ mod series_query;
 mod util;
 mod view_class;
 
-use re_types::components::{AggregationPolicy, MarkerShape};
+use re_sdk_types::components::{AggregationPolicy, MarkerShape};
 use re_viewer_context::external::re_entity_db::InstancePath;
 pub use view_class::TimeSeriesView;
 

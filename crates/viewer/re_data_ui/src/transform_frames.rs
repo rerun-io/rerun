@@ -1,7 +1,7 @@
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
-use re_types::components::{self, TransformFrameId};
-use re_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
+use re_sdk_types::components::{self, TransformFrameId};
+use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, TransformDatabaseStoreCache, ViewerContext,

@@ -3,9 +3,9 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, EntityPathHash};
+use re_sdk_types::components::ImagePlaneDistance;
+use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
-use re_types::components::ImagePlaneDistance;
-use re_types::{ArchetypeName, archetypes, blueprint};
 use re_view::{
     DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
 };

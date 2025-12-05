@@ -3,12 +3,12 @@
 use glam::Vec3;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::{FillMode, Position3D};
+use re_sdk_types::{AsComponents, RowId, archetypes};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
-use re_types::blueprint::archetypes::EyeControls3D;
-use re_types::components::{FillMode, Position3D};
-use re_types::{AsComponents, RowId, archetypes};
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};

@@ -2,7 +2,7 @@ use egui::{Color32, CursorIcon, Id, NumExt as _, Rangef, Rect};
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeInt, TimeReal, TimeType, TimestampFormat,
 };
-use re_types::blueprint::components::LoopMode;
+use re_sdk_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UICommand, UICommandSender as _, UiExt as _, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext};

@@ -17,7 +17,7 @@ fn log_test_data_and_register_views(test_context: &mut TestContext, scalars_coun
         builder.with_archetype(
             RowId::new(),
             [(timeline_a, 0)],
-            &re_types::archetypes::Scalars::single(scalars_count as f32),
+            &re_sdk_types::archetypes::Scalars::single(scalars_count as f32),
         )
     });
 
@@ -27,7 +27,7 @@ fn log_test_data_and_register_views(test_context: &mut TestContext, scalars_coun
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::BarChart::new(vector),
+            &re_sdk_types::archetypes::BarChart::new(vector),
         )
     });
 }
@@ -40,7 +40,8 @@ fn setup_viewport(test_context: &mut TestContext) {
 
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         // Set the color override for the bar chart view.
-        let color_override = re_types::archetypes::BarChart::default().with_color([255, 144, 1]); // #FF9001
+        let color_override =
+            re_sdk_types::archetypes::BarChart::default().with_color([255, 144, 1]); // #FF9001
         let override_path = re_viewport_blueprint::ViewContents::override_path_for_entity(
             view_1.id,
             &re_chunk::EntityPath::from("vector"),

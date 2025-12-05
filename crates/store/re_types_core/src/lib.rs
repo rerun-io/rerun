@@ -68,19 +68,19 @@ pub use self::wrapper_component::WrapperComponent;
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
-/// There are also re-exported by `re_types`.
+/// There are also re-exported by `re_sdk_types`.
 pub mod archetypes;
 
 /// Fundamental [`Component`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
-/// There are also re-exported by `re_types`.
+/// There are also re-exported by `re_sdk_types`.
 pub mod components;
 
 /// Fundamental datatypes that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
 ///
-/// There are also re-exported by `re_types`.
+/// There are also re-exported by `re_sdk_types`.
 pub mod datatypes;
 
 // ---
@@ -99,7 +99,7 @@ pub mod external {
 /// Useful macro for statically asserting that a `struct` contains some specific fields.
 ///
 ///  ```
-/// # #[macro_use] extern crate re_types_core;
+/// # #[macro_use] extern crate re_sdk_types_core;
 /// struct Data {
 ///     x: f32,
 ///     y: String,
@@ -112,7 +112,7 @@ pub mod external {
 /// This will fail to compile because the type is wrong:
 ///
 /// ```compile_fail
-/// # #[macro_use] extern crate re_types_core;
+/// # #[macro_use] extern crate re_sdk_types_core;
 /// struct Data {
 ///     x: f32,
 /// }
@@ -123,7 +123,7 @@ pub mod external {
 /// This will fail to compile because the field is missing:
 ///
 /// ```compile_fail
-/// # #[macro_use] extern crate re_types_core;
+/// # #[macro_use] extern crate re_sdk_types_core;
 /// struct Data {
 ///     x: f32,
 /// }
@@ -152,7 +152,7 @@ macro_rules! static_assert_struct_has_fields {
 ///
 /// For that reason, this method favors a nice user experience over error handling: errors will
 /// merely be logged, not returned (except in debug builds, where all errors panic).
-#[doc(hidden)] // public so we can access it from re_types too
+#[doc(hidden)] // public so we can access it from re_sdk_types too
 #[expect(clippy::unnecessary_wraps)] // clippy gets confused in debug builds
 pub fn try_serialize_field<L: Loggable>(
     descriptor: ComponentDescriptor,

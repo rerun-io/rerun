@@ -397,7 +397,7 @@ mod serde {
             T: re_viewer_context::BlueprintIdRegistry,
         {
             let s: String = Deserialize::deserialize(deserializer)?;
-            re_types::external::uuid::Uuid::try_parse(&s)
+            re_sdk_types::external::uuid::Uuid::try_parse(&s)
                 .map_err(serde::de::Error::custom)
                 .map(re_viewer_context::BlueprintId::from)
         }

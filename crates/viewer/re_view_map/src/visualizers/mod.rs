@@ -92,11 +92,11 @@ pub fn update_span(span: &mut Option<GeoSpan>, other: Option<GeoSpan>) {
     }
 }
 
-/// Convert a [`re_types::components::Radius`] to a [`re_renderer::Size`], considering scene units
+/// Convert a [`re_sdk_types::components::Radius`] to a [`re_renderer::Size`], considering scene units
 /// as meters.
 #[inline]
 pub fn radius_to_size(
-    radius: re_types::components::Radius,
+    radius: re_sdk_types::components::Radius,
     projector: &walkers::Projector,
     position: walkers::Position,
 ) -> re_renderer::Size {

@@ -18,9 +18,9 @@ use re_log_types::{
     RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
     Timeline, TimelineName,
 };
-use re_types::archetypes::RecordingInfo;
-use re_types::components::Timestamp;
-use re_types::{AsComponents, SerializationError, SerializedComponentColumn};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::Timestamp;
+use re_sdk_types::{AsComponents, SerializationError, SerializedComponentColumn};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -164,7 +164,7 @@ impl RecordingStreamBuilder {
 
             should_send_properties: true,
             recording_info: RecordingInfo::new()
-                .with_start_time(re_types::components::Timestamp::now()),
+                .with_start_time(re_sdk_types::components::Timestamp::now()),
         }
     }
 
@@ -187,7 +187,7 @@ impl RecordingStreamBuilder {
 
             should_send_properties: true,
             recording_info: RecordingInfo::new()
-                .with_start_time(re_types::components::Timestamp::now()),
+                .with_start_time(re_sdk_types::components::Timestamp::now()),
         }
     }
 
@@ -1295,7 +1295,7 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = re_types::SerializedComponentBatch>,
+        comp_batches: impl IntoIterator<Item = re_sdk_types::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_serialized_batches_impl(row_id, ent_path, static_, comp_batches)
@@ -1337,7 +1337,7 @@ impl RecordingStream {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = re_types::SerializedComponentBatch>,
+        comp_batches: impl IntoIterator<Item = re_sdk_types::SerializedComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             return Ok(()); // silently drop the message
@@ -2722,7 +2722,7 @@ mod tests {
     use insta::assert_debug_snapshot;
     use itertools::Itertools as _;
     use re_log_types::example_components::{MyLabel, MyPoints};
-    use re_types::SerializedComponentBatch;
+    use re_sdk_types::SerializedComponentBatch;
 
     use super::*;
 
@@ -3015,7 +3015,7 @@ mod tests {
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-        use re_types::Loggable;
+        use re_sdk_types::Loggable;
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
@@ -3148,7 +3148,7 @@ mod tests {
             .unwrap();
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
-        use re_types::ComponentBatch as _;
+        use re_sdk_types::ComponentBatch as _;
         rec.log(
             "labels",
             &labels

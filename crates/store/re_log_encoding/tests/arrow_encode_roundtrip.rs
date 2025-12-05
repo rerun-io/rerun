@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_encoding::{DecoderApp, Encoder};
 use re_log_types::{LogMsg, StoreId};
-use re_types::archetypes::Points3D;
+use re_sdk_types::archetypes::Points3D;
 use similar_asserts::assert_eq;
 
 fn no_radii() -> impl Iterator<Item = f32> {

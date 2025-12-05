@@ -10,8 +10,8 @@ use re_arrow_combinators::semantic::{
     BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos,
 };
 use re_arrow_combinators::{Error, Transform as _};
-use re_types::components::VideoCodec;
-use re_types::reflection::Enum as _;
+use re_sdk_types::components::VideoCodec;
+use re_sdk_types::reflection::Enum as _;
 
 mod util;
 

@@ -1,6 +1,6 @@
 /// A pinhole camera model.
 ///
-/// Corresponds roughly to the [`re_types::archetypes::Pinhole`] archetype, but uses render-friendly types.
+/// Corresponds roughly to the [`re_sdk_types::archetypes::Pinhole`] archetype, but uses render-friendly types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pinhole {
     pub image_from_camera: glam::Mat3,

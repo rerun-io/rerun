@@ -164,7 +164,7 @@ pub fn create_simple_blueprint(
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
     use re_log_types::{EntityPath, TimeInt, build_frame_nr};
-    use re_types::blueprint::archetypes::TimePanelBlueprint;
+    use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
@@ -693,7 +693,7 @@ pub fn create_recording_with_text(
             .with_archetype(
                 next_row_id(),
                 [build_log_time(frame.into())],
-                &re_types::archetypes::TextLog::new(sentence.to_owned()),
+                &re_sdk_types::archetypes::TextLog::new(sentence.to_owned()),
             )
             .build()?;
 

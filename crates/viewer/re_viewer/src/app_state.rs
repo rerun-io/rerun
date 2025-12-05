@@ -12,7 +12,7 @@ use re_log_channel::LogReceiverSet;
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
-use re_types::blueprint::components::{PanelState, PlayState};
+use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{

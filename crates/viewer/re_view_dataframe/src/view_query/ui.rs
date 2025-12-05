@@ -6,8 +6,8 @@ use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
+use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
-use re_types::blueprint::components;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{TimeControlCommand, ViewId, ViewSystemExecutionError, ViewerContext};

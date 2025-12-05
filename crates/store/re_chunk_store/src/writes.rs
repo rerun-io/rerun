@@ -760,7 +760,7 @@ mod tests {
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::{build_frame_nr, build_log_time};
-    use re_types::components::Blob;
+    use re_sdk_types::components::Blob;
     use re_types_core::ComponentDescriptor;
     use similar_asserts::assert_eq;
 

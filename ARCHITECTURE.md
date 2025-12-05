@@ -182,7 +182,7 @@ Update instructions:
 | re_query        | Querying data in the re_chunk_store                             |
 | re_server       | In-memory data server                                           |
 | re_tf           | Dealing with spatial transforms & transform frames              |
-| re_types        | The built-in Rerun data types, component types, and archetypes. |
+| re_sdk_types        | The built-in Rerun data types, component types, and archetypes. |
 
 ### Low-level store
 

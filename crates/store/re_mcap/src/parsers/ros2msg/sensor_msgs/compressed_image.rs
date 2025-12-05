@@ -1,6 +1,6 @@
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
-use re_types::archetypes::{EncodedImage, VideoStream};
-use re_types::components::VideoCodec;
+use re_sdk_types::archetypes::{EncodedImage, VideoStream};
+use re_sdk_types::components::VideoCodec;
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;

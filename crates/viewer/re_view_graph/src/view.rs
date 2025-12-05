@@ -1,11 +1,11 @@
 use re_log_types::EntityPath;
-use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::{
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::archetypes::{
     ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition, GraphBackground,
     VisualBounds2D,
 };
-use re_types::blueprint::{self};
-use re_types::components::Color;
+use re_sdk_types::blueprint::{self};
+use re_sdk_types::components::Color;
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_view::view_property_ui;
@@ -66,12 +66,12 @@ impl ViewClass for GraphView {
             VisualBounds2D::descriptor_range().component,
             |ctx| {
                 let Ok(state) = ctx.view_state().downcast_ref::<GraphViewState>() else {
-                    return re_types::blueprint::components::VisualBounds2D::default();
+                    return re_sdk_types::blueprint::components::VisualBounds2D::default();
                 };
 
                 match state.layout_state.bounding_rect() {
                     Some(rect) if valid_bound(&rect) => rect.into(),
-                    _ => re_types::blueprint::components::VisualBounds2D::default(),
+                    _ => re_sdk_types::blueprint::components::VisualBounds2D::default(),
                 }
             },
         );

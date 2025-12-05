@@ -16,7 +16,7 @@ use re_chunk::{
     TimelineName,
 };
 use re_log_types::{EntityPathFilter, TimeType};
-use re_types::{ComponentDescriptor, SerializedComponentColumn};
+use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
 use vec1::Vec1;
 
 use super::LensError;

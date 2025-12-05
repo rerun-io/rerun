@@ -800,7 +800,7 @@ impl Object {
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
         self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
-            .unwrap_or_else(|| "re_types".to_owned())
+            .unwrap_or_else(|| "re_sdk_types".to_owned())
     }
 
     /// Returns the module name of an object.

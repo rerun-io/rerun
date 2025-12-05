@@ -5,7 +5,7 @@
 //! easier.
 
 use glam::{DAffine3, DMat3, DQuat, DVec3};
-use re_types::{components, datatypes};
+use re_sdk_types::{components, datatypes};
 
 // ---------------------------------------------------------------------------
 // Helper functions for datatypes

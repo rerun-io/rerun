@@ -27,9 +27,9 @@ mod visualizers;
 
 pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 pub(crate) use pinhole::Pinhole;
-use re_types::blueprint::archetypes::Background;
-use re_types::blueprint::components::BackgroundKind;
-use re_types::components::Color;
+use re_sdk_types::blueprint::archetypes::Background;
+use re_sdk_types::blueprint::components::BackgroundKind;
+use re_sdk_types::components::Color;
 // ---
 use re_viewer_context::ViewContext;
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};

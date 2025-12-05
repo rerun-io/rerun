@@ -1,9 +1,9 @@
 use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
-use re_types::Archetype as _;
-use re_types::archetypes::Pinhole;
-use re_types::components::{self};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Pinhole;
+use re_sdk_types::components::{self};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,

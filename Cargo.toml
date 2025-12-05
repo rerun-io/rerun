@@ -84,8 +84,8 @@ re_redap_client = { path = "crates/store/re_redap_client", version = "=0.28.0-al
 re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.28.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.28.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", default-features = false }
+re_sdk_types = { path = "crates/store/re_sdk_types", version = "=0.28.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
-re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.28.0-alpha.1", default-features = false }
 re_uri = { path = "crates/store/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 
@@ -510,7 +510,7 @@ debug = false
 "re_tuid".debug = true
 "re_types_builder".debug = true
 "re_types_core".debug = true
-"re_types".debug = true
+"re_sdk_types".debug = true
 "re_ui".debug = true
 "re_uri".debug = true
 "re_video".debug = true
