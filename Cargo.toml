@@ -86,7 +86,6 @@ re_sdk_types = { path = "crates/store/re_sdk_types", version = "=0.28.0-alpha.1"
 re_server = { path = "crates/store/re_server", version = "=0.28.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
-re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.28.0-alpha.1", default-features = false }
 re_uri = { path = "crates/store/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 
