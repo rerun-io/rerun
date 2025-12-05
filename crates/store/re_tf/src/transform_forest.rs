@@ -759,8 +759,6 @@ mod tests {
     /// ├─── tf#/top/pure_leaf_pinhole
     /// └─── tf#/top/child3d
     /// ```
-    ///
-    /// TODO(RR-2510): add another scene (or extension) where we override transforms on select entities
     fn entity_hierarchy_test_scene() -> Result<EntityDb, Box<dyn std::error::Error>> {
         let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
         entity_db.add_chunk(&Arc::new(
