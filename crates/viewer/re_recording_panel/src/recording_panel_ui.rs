@@ -10,7 +10,8 @@ use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
+    DisplayMode, EditRedapServerModalCommand, Item, RecordingOrTable, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
 };
 
 use crate::RecordingPanelCommand;
@@ -290,7 +291,9 @@ fn server_section_ui(
                         .ui(ui)
                         .clicked()
                     {
-                        servers.send_command(Command::OpenEditServerModal(origin.clone()));
+                        servers.send_command(Command::OpenEditServerModal(
+                            EditRedapServerModalCommand::new(origin.clone()),
+                        ));
                     }
                     if icons::TRASH
                         .as_button_with_label(ui.tokens(), "Remove")

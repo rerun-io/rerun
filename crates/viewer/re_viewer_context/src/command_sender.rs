@@ -32,7 +32,7 @@ pub enum SystemCommand {
     AddRedapServer(re_uri::Origin),
 
     /// Open a modal to edit this redap server.
-    EditRedapServerModal(re_uri::Origin),
+    EditRedapServerModal(EditRedapServerModalCommand),
 
     ChangeDisplayMode(crate::DisplayMode),
 
@@ -278,5 +278,21 @@ impl UICommandSender for CommandSender {
     fn send_ui(&self, command: UICommand) {
         // The only way this can fail is if the receiver has been dropped.
         self.ui_sender.send(command).ok();
+    }
+}
+
+pub struct EditRedapServerModalCommand {
+    pub origin: re_uri::Origin,
+    pub open_on_success: Option<String>,
+    pub title: Option<String>,
+}
+
+impl EditRedapServerModalCommand {
+    pub fn new(origin: re_uri::Origin) -> Self {
+        Self {
+            origin,
+            open_on_success: None,
+            title: None,
+        }
     }
 }
