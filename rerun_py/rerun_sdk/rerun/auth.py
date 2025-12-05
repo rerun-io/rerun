@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from IPython.core.display import HTML
-from IPython.display import display, clear_output
+from IPython.display import clear_output, display
 
 from rerun_bindings import init_login_flow
 
