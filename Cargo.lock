@@ -10384,7 +10384,6 @@ dependencies = [
  "bit-vec",
  "bitflags 2.9.4",
  "bytemuck",
- "byteorder",
  "crossbeam",
  "datafusion",
  "directories",
