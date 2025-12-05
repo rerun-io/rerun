@@ -350,7 +350,7 @@ impl SyntaxHighlightedStyle {
                 format.color = style
                     .visuals
                     .override_text_color
-                    .unwrap_or(style.tokens().text_default);
+                    .unwrap_or_else(|| style.tokens().text_default);
                 format
             }
             Self::BodyItalics => {

@@ -225,7 +225,7 @@ impl RrdManifestBuilder {
         for (_timeline, desc) in columns.keys() {
             columns_static
                 .entry(desc.clone())
-                .or_insert(RrdManifestIndexColumn::new_padded(0));
+                .or_insert_with(|| RrdManifestIndexColumn::new_padded(0));
         }
 
         for column in itertools::chain!(

@@ -552,9 +552,9 @@ impl BlueprintTree {
                     ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
-                    has_error
-                        .then(|| ui.visuals().error_fg_color)
-                        .or(is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color)),
+                    has_error.then(|| ui.visuals().error_fg_color).or_else(|| {
+                        is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color)
+                    }),
                 ))
                 .with_icon(guess_instance_path_icon(
                     ctx,

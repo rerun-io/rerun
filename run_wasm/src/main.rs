@@ -71,11 +71,11 @@ fn main() {
     let host = args
         .opt_value_from_str("--host")
         .unwrap_or(None)
-        .unwrap_or("localhost".to_owned());
+        .unwrap_or_else(|| "localhost".to_owned());
     let port = args
         .opt_value_from_str("--port")
         .unwrap_or(None)
-        .unwrap_or("8000".to_owned());
+        .unwrap_or_else(|| "8000".to_owned());
 
     let thread = std::thread::Builder::new()
         .name("cargo_run_wasm".into())

@@ -486,7 +486,7 @@ impl VideoPlayer {
                     requested.sample_idx,
                     requested_sample
                         .map(|s| s.frame_nr.to_string())
-                        .unwrap_or("<unknown>".to_owned())
+                        .unwrap_or_else(|| "<unknown>".to_owned())
                 );
 
                 // special case: handle seeking backwards within a single GOP

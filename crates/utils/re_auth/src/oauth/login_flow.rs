@@ -52,7 +52,7 @@ impl OauthLoginFlow {
 
         // Start web server that listens for the authorization code received from the auth server.
         let pkce = Pkce::new();
-        let server = OauthCallbackServer::new(&pkce, login_hint.as_deref())?;
+        let server = OauthCallbackServer::new(&pkce)?;
 
         Ok(OauthLoginFlowState::LoginFlowStarted(Self {
             server,

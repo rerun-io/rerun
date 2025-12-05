@@ -203,23 +203,17 @@ impl Loggable for MyPoint {
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
             .downcast_array_ref::<arrow::array::StructArray>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::StructArray,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::StructArray>)?;
 
         let x_array = array.columns()[0].as_ref();
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
             .downcast_array_ref::<arrow::array::Float32Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float32Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
         let ys = y_array
             .downcast_array_ref::<arrow::array::Float32Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float32Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float32Array>)?;
 
         Ok(xs
             .iter()
@@ -324,23 +318,17 @@ impl Loggable for MyPoint64 {
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
         let array = data
             .downcast_array_ref::<arrow::array::StructArray>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::StructArray,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::StructArray>)?;
 
         let x_array = array.columns()[0].as_ref();
         let y_array = array.columns()[1].as_ref();
 
         let xs = x_array
             .downcast_array_ref::<arrow::array::Float64Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float64Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
         let ys = y_array
             .downcast_array_ref::<arrow::array::Float64Array>()
-            .ok_or(DeserializationError::downcast_error::<
-                arrow::array::Float64Array,
-            >())?;
+            .ok_or_else(DeserializationError::downcast_error::<arrow::array::Float64Array>)?;
 
         Ok(xs
             .iter()

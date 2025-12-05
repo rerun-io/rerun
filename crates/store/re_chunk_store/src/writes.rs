@@ -433,13 +433,15 @@ impl ChunkStore {
                 .entry(chunk.entity_path().clone())
                 .or_default()
                 .entry(descriptor.component)
-                .or_insert((
-                    descriptor.clone(),
-                    ColumnMetadataState {
-                        is_semantically_empty: true,
-                    },
-                    list_array.value_type().clone(),
-                ));
+                .or_insert_with(|| {
+                    (
+                        descriptor.clone(),
+                        ColumnMetadataState {
+                            is_semantically_empty: true,
+                        },
+                        list_array.value_type().clone(),
+                    )
+                });
             {
                 if *datatype != list_array.value_type() {
                     // TODO(grtlr): If we encounter two different data types, we should split the chunk.
