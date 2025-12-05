@@ -1305,7 +1305,7 @@ mod tests {
 
     use re_chunk_store::{
         Chunk, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, GarbageCollectionOptions,
-        PerStoreChunkSubscriber, RowId,
+        PerStoreChunkSubscriber,
     };
     use re_log_types::{
         StoreId, StoreInfo, TimePoint, Timeline,
@@ -1882,61 +1882,42 @@ mod tests {
             )))
             .unwrap();
 
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 0)),
-            None
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 1)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 2)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 3)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale(glam::dvec3(1.0, 2.0, 3.0)),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 4)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+        for (t, expected) in [
+            (0, None),
+            (
+                1,
+                Some(DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))),
+            ),
+            (
+                2,
+                Some(DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))),
+            ),
+            (3, Some(DAffine3::from_scale(glam::dvec3(1.0, 2.0, 3.0)))),
+            (
+                4,
                 // Note: We must use the same conversion path as the actual implementation:
                 // glam::Quat (f32) -> Quaternion (f32) -> glam::DQuat (f64)
                 // This involves casting f32 components to f64 and renormalizing, which produces
                 // slightly different values than directly computing in f64.
-                transform: DAffine3::from_quat(
+                Some(DAffine3::from_quat(
                     convert::quaternion_to_dquat(re_types::datatypes::Quaternion::from(
-                        glam::Quat::from_rotation_x(1.0)
+                        glam::Quat::from_rotation_x(1.0),
                     ))
-                    .unwrap()
-                ),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 5)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::IDENTITY, // Empty transform is treated as connected with identity.
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, 123)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::IDENTITY, // Empty transform is treated as connected with identity.
-            })
-        );
+                    .unwrap(),
+                )),
+            ),
+            (5, Some(DAffine3::IDENTITY)), // Empty transform is treated as connected with identity.
+            (123, Some(DAffine3::IDENTITY)), // Empty transform is treated as connected with identity.
+        ] {
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline_name, t)),
+                expected.map(|transform| ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform,
+                }),
+                "at time {t}"
+            );
+        }
 
         Ok(())
     }
@@ -1979,50 +1960,48 @@ mod tests {
             .pose_transforms(EntityPath::from("my_entity").hash())
             .unwrap();
 
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 0)),
-            Vec::new(),
-        );
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            vec![
-                DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-            ]
-        );
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            vec![
-                DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
-                DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
-            ]
-        );
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 3)),
-            vec![
-                DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(2.0, 3.0, 4.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(1.0, 2.0, 3.0),
-                ),
-                DAffine3::from_scale_rotation_translation(
-                    glam::dvec3(2.0, 3.0, 4.0),
-                    glam::DQuat::IDENTITY,
-                    glam::dvec3(4.0, 5.0, 6.0),
-                ),
-            ]
-        );
-
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 4)),
-            Vec::new()
-        );
-        assert_eq!(
-            transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, 123)),
-            Vec::new()
-        );
+        for (t, poses) in [
+            (0, Vec::new()),
+            (
+                1,
+                vec![
+                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                    DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
+                ],
+            ),
+            (
+                2,
+                vec![
+                    DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
+                    DAffine3::from_translation(glam::dvec3(4.0, 5.0, 6.0)),
+                    DAffine3::from_translation(glam::dvec3(7.0, 8.0, 9.0)),
+                ],
+            ),
+            (
+                3,
+                vec![
+                    DAffine3::from_scale_rotation_translation(
+                        glam::dvec3(2.0, 3.0, 4.0),
+                        glam::DQuat::IDENTITY,
+                        glam::dvec3(1.0, 2.0, 3.0),
+                    ),
+                    DAffine3::from_scale_rotation_translation(
+                        glam::dvec3(2.0, 3.0, 4.0),
+                        glam::DQuat::IDENTITY,
+                        glam::dvec3(4.0, 5.0, 6.0),
+                    ),
+                ],
+            ),
+            (4, Vec::new()),
+            (123, Vec::new()),
+        ] {
+            assert_eq!(
+                transforms.latest_at_instance_poses(&entity_db, &LatestAtQuery::new(timeline, t)),
+                poses,
+                "Unexpected result at time {t}"
+            );
+        }
 
         Ok(())
     }
@@ -2061,45 +2040,25 @@ mod tests {
             )))
             .unwrap();
 
-        assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 0)),
-            None
-        );
-        assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera,
-                resolution: None,
-                view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera,
-                resolution: None,
-                view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 3)),
-            Some(ResolvedPinholeProjection {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                image_from_camera,
-                resolution: None,
-                view_coordinates: components::ViewCoordinates::BLU,
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 4)),
-            None // View coordinates alone doesn't give us a pinhole projection from the transform cache.
-        );
-        assert_eq!(
-            transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, 123)),
-            None
-        );
+        for (t, pinhole_view_coordinates) in [
+            (0, None),
+            (1, Some(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)),
+            (2, Some(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)),
+            (3, Some(components::ViewCoordinates::BLU)),
+            (4, None), // View coordinates alone doesn't give us a pinhole projection from the transform cache.
+            (123, None),
+        ] {
+            assert_eq!(
+                transforms.latest_at_pinhole(&entity_db, &LatestAtQuery::new(timeline, t)),
+                pinhole_view_coordinates.map(|view_coordinates| ResolvedPinholeProjection {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    image_from_camera,
+                    resolution: None,
+                    view_coordinates,
+                }),
+                "Unexpected result at time {t}"
+            );
+        }
 
         Ok(())
     }
@@ -2137,20 +2096,20 @@ mod tests {
                 .unwrap();
 
             // Check that the transform cache has the expected transforms.
-            assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
-                Some(ParentFromChildTransform {
-                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-                })
-            );
-            assert_eq!(
-                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
-                Some(ParentFromChildTransform {
-                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                    transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0)),
-                })
-            );
+            for (t, transform) in [
+                (1, DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))),
+                (2, DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))),
+                (3, DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0))),
+            ] {
+                assert_eq!(
+                    transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, t)),
+                    Some(ParentFromChildTransform {
+                        parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                        transform,
+                    }),
+                    "Unexpected result at time {t}",
+                );
+            }
         }
 
         // Add a transform between the two.
@@ -2174,27 +2133,20 @@ mod tests {
             .unwrap();
 
         // Check that the transform cache has the expected transforms.
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 1)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 2)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_scale(glam::dvec3(-1.0, -2.0, -3.0)),
-            })
-        );
-        assert_eq!(
-            transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, 3)),
-            Some(ParentFromChildTransform {
-                parent: TransformFrameIdHash::entity_path_hierarchy_root(),
-                transform: DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0),),
-            })
-        );
+        for (t, transform) in [
+            (1, DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0))),
+            (2, DAffine3::from_scale(glam::dvec3(-1.0, -2.0, -3.0))),
+            (3, DAffine3::from_translation(glam::dvec3(2.0, 3.0, 4.0))),
+        ] {
+            assert_eq!(
+                transforms.latest_at_transform(&entity_db, &LatestAtQuery::new(timeline, t)),
+                Some(ParentFromChildTransform {
+                    parent: TransformFrameIdHash::entity_path_hierarchy_root(),
+                    transform,
+                }),
+                "Unexpected result at time {t}",
+            );
+        }
 
         Ok(())
     }
@@ -3056,18 +3008,14 @@ mod tests {
         entity_db.add_chunk(&Arc::new(chunk))?;
 
         // Don't apply updates for this chunk.
-
         entity_db.gc(&GarbageCollectionOptions::gc_everything());
         apply_store_subscriber_events(&mut cache, &entity_db);
+        let num_bytes_after_gc = cache.total_size_bytes();
+        assert!(
+            num_bytes_after_gc < num_bytes_before_gc,
+            "Expected cache size to decrease after GC (before/after: {num_bytes_before_gc} bytes)"
+        );
 
-        // TODO(andreas): Ensure child ranges get GC'ed as well.
-        // assert_eq!(
-        //     cache
-        //         .transforms_for_timeline(*timeline.name())
-        //         .per_entity_affected_child_frames
-        //         .clone(),
-        //     cache.static_timeline.per_entity_affected_child_frames
-        // );
         assert_eq!(
             cache
                 .transforms_for_timeline(*timeline.name())
