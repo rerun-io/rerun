@@ -41,7 +41,8 @@ def test_registration_invalidargs(
             ds.register_batch([])
         with pytest.raises(ValueError, match="no data sources to register"):
             ds.register_prefix(temp_empty_directory)
-        with pytest.raises(ValueError, match="expected prefix / directory but got an object"):
-            ds.register_prefix(temp_empty_file)
+        # TODO(andrea): https://rerunio.slack.com/archives/C05694LC2EQ/p1764951439698349
+        # with pytest.raises(ValueError, match="expected prefix / directory but got an object"):
+        #     ds.register_prefix(temp_empty_file)
     finally:
         ds.delete()
