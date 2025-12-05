@@ -33,7 +33,7 @@ pub use token::{Jwt, TokenError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use error::Error;
 #[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
-pub use oauth::login_flow::OauthLoginFlow;
+pub use oauth::login_flow::{DeviceCodeFlow, OauthLoginFlow};
 #[cfg(not(target_arch = "wasm32"))]
 pub use provider::{Claims, RedapProvider, SecretKey, VerificationOptions};
 #[cfg(not(target_arch = "wasm32"))]
