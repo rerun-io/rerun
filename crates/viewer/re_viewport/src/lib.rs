@@ -15,4 +15,4 @@ pub mod external {
 }
 
 // TODO(andreas): cfg test this only?
-pub use system_execution::execute_systems_for_view;
+pub use system_execution::{execute_systems_for_view, new_view_query};

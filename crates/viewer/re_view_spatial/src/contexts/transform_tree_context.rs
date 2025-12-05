@@ -532,3 +532,143 @@ impl EntityTransformIdMapping {
             .insert(entity_path_hash, frame_id);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use re_log_types::{EntityPath, TimePoint};
+    use re_test_context::TestContext;
+    use re_test_viewport::TestContextExt as _;
+    use re_tf::{TransformFrameId, TransformFrameIdHash};
+    use re_types::archetypes::CoordinateFrame;
+    use re_viewer_context::{
+        BlueprintContext as _, RecommendedView, ViewClass as _, ViewClassExt as _,
+        ViewContextSystem as _,
+    };
+    use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
+
+    use crate::SpatialView3D;
+    use crate::contexts::TransformTreeContext;
+
+    #[test]
+    fn test_expected_target_frames() {
+        let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
+        let class_id = SpatialView3D::identifier();
+
+        test_context.log_entity("has_frame", |builder| {
+            builder.with_archetype_auto_row(TimePoint::STATIC, &CoordinateFrame::new("store_frame"))
+        });
+
+        // Different views with different expected targets.
+        let view_id_root = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()))
+        });
+        let view_id_some_path = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                class_id,
+                RecommendedView::new_single_entity("some/path"),
+            ))
+        });
+        let _view_id_some_path_overriden =
+            test_context.setup_viewport_blueprint(|ctx, blueprint| {
+                let view_id = blueprint.add_view_at_root(ViewBlueprint::new(
+                    class_id,
+                    RecommendedView::new_single_entity("some/path"),
+                ));
+                ctx.save_blueprint_archetype(
+                    ViewContents::override_path_for_entity(view_id, &"some/path".into()),
+                    &CoordinateFrame::new("overriden_frame"),
+                );
+                view_id
+            });
+        let view_id_coordinate_frame = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+            blueprint.add_view_at_root(ViewBlueprint::new(
+                class_id,
+                RecommendedView::new_single_entity("has_frame"),
+            ))
+        });
+        let view_id_coordinate_frame_overriden =
+            test_context.setup_viewport_blueprint(|ctx, blueprint| {
+                let view_id = blueprint.add_view_at_root(ViewBlueprint::new(
+                    class_id,
+                    RecommendedView::new_single_entity("has_frame"),
+                ));
+                ctx.save_blueprint_archetype(
+                    ViewContents::override_path_for_entity(view_id, &"has_frame".into()),
+                    &CoordinateFrame::new("overriden_frame"),
+                );
+                view_id
+            });
+        let view_id_directly_set = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_id =
+                blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()));
+
+            let property = ViewProperty::from_archetype::<
+                re_types::blueprint::archetypes::SpatialInformation,
+            >(ctx.blueprint_db(), ctx.blueprint_query(), view_id);
+            property.save_blueprint_component(
+                ctx,
+                &re_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
+                &TransformFrameId::from("directly_set_frame"),
+            );
+
+            view_id
+        });
+
+        test_context.run_in_egui_central_panel(|ctx, _ui| {
+            for (view_id, expected_target) in [
+                (
+                    view_id_root,
+                    TransformFrameId::from_entity_path(&EntityPath::root()),
+                ),
+                (
+                    view_id_some_path,
+                    TransformFrameId::from_entity_path(&EntityPath::from("some/path")),
+                ),
+                // TODO(RR-3076): this fails right now since if there's no data at all we don't create data results.
+                // This will be fixed by either removing space_origin or by supporting override-only visualizations.
+                // (
+                //     _view_id_some_path_overriden,
+                //     TransformFrameId::from("overriden_frame"),
+                // ),
+                (
+                    view_id_coordinate_frame,
+                    TransformFrameId::from("store_frame"),
+                ),
+                (
+                    view_id_coordinate_frame_overriden,
+                    TransformFrameId::from("overriden_frame"),
+                ),
+                (
+                    view_id_directly_set,
+                    TransformFrameId::from("directly_set_frame"),
+                ),
+            ] {
+                let view_blueprint = ViewBlueprint::try_from_db(
+                    view_id,
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                )
+                .expect("expected the view id to be known to the blueprint store");
+
+                let view_class = SpatialView3D;
+                let mut view_states = test_context.view_states.lock();
+                let view_state = view_states.get_mut_or_create(view_id, &view_class);
+
+                let view_ctx =
+                    view_class.view_context(ctx, view_id, view_state, &view_blueprint.space_origin);
+                let view_query = re_viewport::new_view_query(ctx, &view_blueprint);
+
+                let mut tree_context = TransformTreeContext::default();
+                let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
+                tree_context.execute(&view_ctx, &view_query, &once_per_frame);
+
+                assert_eq!(
+                    tree_context.target_frame(),
+                    TransformFrameIdHash::new(&expected_target),
+                    "View expected target frame {expected_target:?}, got {:?}",
+                    tree_context.format_frame(tree_context.target_frame())
+                );
+            }
+        });
+    }
+}
