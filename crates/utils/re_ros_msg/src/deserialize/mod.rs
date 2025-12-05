@@ -357,7 +357,6 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
                     .ok_or_else(|| serde::de::Error::custom("short sequence"))?;
                 out.push(v);
             }
-            Ok(out)
         } else {
             // Fallback for truly unbounded streams
             while let Some(v) =
@@ -365,7 +364,7 @@ impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
             {
                 out.push(v);
             }
-            Ok(out)
         }
+        Ok(out)
     }
 }
