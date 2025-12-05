@@ -56,8 +56,8 @@ impl OauthLoginFlow {
 
         Ok(OauthLoginFlowState::LoginFlowStarted(Self {
             server,
-            pkce,
             login_hint,
+            pkce,
         }))
     }
 

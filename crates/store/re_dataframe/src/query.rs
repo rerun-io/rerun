@@ -2462,9 +2462,7 @@ mod tests {
                 let mut cx = std::task::Context::from_waker(
                     // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
                     unsafe {
-                        std::mem::transmute::<&std::task::RawWaker, &std::task::Waker>(
-                            &RAW_WAKER_NOOP,
-                        )
+                        &*(&RAW_WAKER_NOOP as *const std::task::RawWaker as *const std::task::Waker)
                     },
                 );
 

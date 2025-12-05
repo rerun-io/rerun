@@ -86,8 +86,8 @@ impl ViewProperty {
         Self {
             blueprint_store_path,
             archetype_name,
-            query_results,
             component_descrs,
+            query_results,
             blueprint_query,
         }
     }

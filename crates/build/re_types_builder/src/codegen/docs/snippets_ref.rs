@@ -471,16 +471,16 @@ fn collect_snippets_recursively<'o>(
         let cpp = path.with_extension("cpp").exists();
 
         let snippet = Snippet {
+            path,
             name,
             name_qualified,
-            path,
-
-            contents,
-            description,
 
             python,
             rust,
+
             cpp,
+            description,
+            contents,
 
             archetypes,
             components,

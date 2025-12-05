@@ -4,7 +4,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
 use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::{self as blueprint_archetypes};
+use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::blueprint::components::{self as blueprint_components, ViewOrigin};
 use re_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
