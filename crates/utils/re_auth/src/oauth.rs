@@ -228,6 +228,30 @@ impl InMemoryCredentials {
     /// Ensure credentials are persisted to disk before using them.
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
         storage::store(&self.0)?;
+
+        // Normally if re_analytics discovers this is a brand-new configuration,
+        // we show an analytics diclaimer. But, during SDK usage with the Catalog
+        // it's possible to hit this code-path during a first run in a new
+        // environment. Given the user already has a Rerun identity (or else there
+        // would be no credentials to store!), we assume they are already aware of
+        // rerun analytics and do not need a disclaimer. They can still use the shell
+        // to run `rerun analytics disable` if they wish to opt out.
+        //
+        // By manually forcing the creation of the analytics config we bypass the first_run check.
+        if let Ok(config) = re_analytics::Config::load_or_default() {
+            if config.is_first_run() {
+                config.save().ok();
+            }
+        }
+
+        // Link the analytics ID to the authenticated user
+        re_analytics::record(|| re_analytics::event::SetPersonProperty {
+            email: self.0.user.email.clone(),
+            organization_id: self.0.claims.org_id.clone(),
+        });
+
+        crate::credentials::oauth::auth_update(Some(&self.0.user));
+
         Ok(self.0)
     }
 }
