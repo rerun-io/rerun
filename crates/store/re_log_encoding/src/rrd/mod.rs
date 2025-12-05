@@ -47,7 +47,7 @@ pub use self::file_sink::{FileFlushError, FileSink, FileSinkError};
 pub use self::footer::{RrdFooter, RrdManifest, RrdManifestBuilder};
 pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
-    StreamFooter, StreamHeader,
+    StreamFooter, StreamFooterEntry, StreamHeader,
 };
 
 // ---
