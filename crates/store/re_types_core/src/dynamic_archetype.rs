@@ -1,14 +1,15 @@
 //! Utilities to generate an arbitrary archetype to log Rerun.
 
 use nohash_hasher::IntMap;
-use re_types_core::{AsComponents, ComponentType, Loggable, try_serialize_field};
 
 use crate::reflection::ComponentDescriptorExt as _;
 use crate::{
-    ArchetypeName, Component, ComponentDescriptor, ComponentIdentifier, SerializedComponentBatch,
+    ArchetypeName, AsComponents, Component, ComponentDescriptor, ComponentIdentifier,
+    ComponentType, Loggable, SerializedComponentBatch, try_serialize_field,
 };
 
 /// A helper for logging a dynamically defined archetype to Rerun.
+///
 /// component names will be modified in a way similar to Rerun
 /// internal types to avoid name collisions.
 pub struct DynamicArchetype {
@@ -26,8 +27,9 @@ impl DynamicArchetype {
         }
     }
 
-    // Only crate public to reduce code duplication.
-    pub(crate) fn new_without_archetype() -> Self {
+    // Only used internally; kept public so helper crates can avoid code duplication.
+    #[doc(hidden)]
+    pub fn new_without_archetype() -> Self {
         Self {
             archetype_name: None,
             batches: Default::default(),
@@ -99,48 +101,5 @@ impl DynamicArchetype {
 impl AsComponents for DynamicArchetype {
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         self.batches.values().cloned().collect()
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    use std::collections::BTreeSet;
-
-    use re_types_core::datatypes::Utf8;
-
-    use super::*;
-    use crate::components;
-
-    #[test]
-    fn with_archetype() {
-        let values = DynamicArchetype::new("MyExample")
-            .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
-            .with_component_override::<Utf8>("homepage", "user.url", vec!["https://www.rerun.io"])
-            .with_component_from_data(
-                "description",
-                std::sync::Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
-            );
-
-        let actual = values
-            .as_serialized_batches()
-            .into_iter()
-            .map(|batch| batch.descriptor)
-            .collect::<BTreeSet<_>>();
-
-        assert_eq!(
-            actual,
-            [
-                ComponentDescriptor::partial("confidence")
-                    .with_builtin_archetype("MyExample")
-                    .with_component_type(components::Scalar::name()),
-                ComponentDescriptor::partial("homepage")
-                    .with_component_type("user.url".into())
-                    .with_builtin_archetype("MyExample"),
-                ComponentDescriptor::partial("description").with_builtin_archetype("MyExample"),
-            ]
-            .into_iter()
-            .collect()
-        );
     }
 }

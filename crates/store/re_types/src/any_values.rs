@@ -1,8 +1,7 @@
 //! Utilities to log arbitrary data to Rerun.
 
-use re_types_core::{AsComponents, ComponentType, Loggable};
+use re_types_core::{AsComponents, ComponentType, DynamicArchetype, Loggable};
 
-use crate::dynamic_archetype::DynamicArchetype;
 use crate::{Component, SerializedComponentBatch};
 
 /// A helper for logging arbitrary data to Rerun.

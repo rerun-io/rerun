@@ -28,6 +28,7 @@ mod as_components;
 mod chunk_index_message;
 mod component_batch;
 mod component_descriptor;
+mod dynamic_archetype;
 mod id;
 mod loggable;
 pub mod reflection;
@@ -49,6 +50,7 @@ pub use self::component_descriptor::{
     ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
+pub use self::dynamic_archetype::DynamicArchetype;
 pub use self::id::{ChunkId, RowId};
 pub use self::loggable::{
     Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
