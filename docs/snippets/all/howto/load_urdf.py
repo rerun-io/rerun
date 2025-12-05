@@ -2,7 +2,7 @@ from pathlib import Path
 
 import rerun as rr
 
-rr.init("urdf_example", spawn=True)
+rr.init("rerun_example_load_urdf", spawn=True)
 
 # `log_file_from_path` automatically uses the built-in URDF data-loader.
 urdf_path = Path(__file__).parent / "minimal.urdf"
