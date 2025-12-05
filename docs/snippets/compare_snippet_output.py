@@ -295,7 +295,7 @@ def build_rust_snippets(
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
 
-    cmd = ["cargo", "build", "--quiet", "-p", "snippets"]
+    cmd = ["cargo", "build", "-p", "snippets"]
     if target is not None:
         cmd += ["--target", target]
     if target_dir is not None:
@@ -314,7 +314,7 @@ def build_python_sdk(build_env: dict[str, str]) -> None:
     print("----------------------------------------------------------")
     print("Building rerun-sdk for Python…")
     start_time = time.time()
-    run(["pixi", "run", "py-build", "--quiet"], env=build_env, timeout=12000)
+    run(["pixi", "run", "py-build"], env=build_env, timeout=12000)
     elapsed = time.time() - start_time
     print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
     print()
