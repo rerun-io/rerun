@@ -20,6 +20,10 @@ pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Similar to `downcast_array_ref`, but returns an error in case the downcast
     /// returns `None`.
     fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError>;
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError>;
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
@@ -36,6 +40,12 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
             ))
         })
     }
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+        Ok(self.try_downcast_array_ref::<T>()?.clone())
+    }
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
@@ -51,6 +61,12 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
                 std::any::type_name::<T>(),
             ))
         })
+    }
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+        Ok(self.try_downcast_array_ref::<T>()?.clone())
     }
 }
 
