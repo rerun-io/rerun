@@ -2,16 +2,14 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use arrow::datatypes::Schema;
-use arrow::ffi_stream::ArrowArrayStreamReader;
-use arrow::pyarrow::{FromPyArrow as _, PyArrowType};
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
-use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
+use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
 use re_datafusion::{DEFAULT_CATALOG_NAME, get_all_catalog_names};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProvider;
-use crate::catalog::table_entry::PyTableInsertMode;
 use crate::catalog::{
     ConnectionHandle, PyDatasetEntryInternal, PyEntryId, PyRerunHtmlTable, PyTableEntryInternal,
     to_py_err,
@@ -257,22 +255,6 @@ impl PyCatalogClientInternal {
             py,
             PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
         )
-    }
-
-    fn write_table(
-        self_: Py<Self>,
-        py: Python<'_>,
-        name: String,
-        batches: &Bound<'_, PyAny>,
-        insert_mode: PyTableInsertMode,
-    ) -> PyResult<()> {
-        let connection = self_.borrow_mut(py).connection.clone();
-
-        let stream = ArrowArrayStreamReader::from_pyarrow_bound(batches)?;
-
-        connection.write_table(py, name, stream, insert_mode)?;
-
-        Ok(())
     }
 
     // ---

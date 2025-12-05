@@ -15,9 +15,7 @@ use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
     RegisterWithDatasetTaskDescriptor, TableEntry,
 };
-use re_protos::cloud::v1alpha1::{
-    EntryFilter, EntryKind, QueryDatasetResponse, QueryTasksResponse,
-};
+use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -247,21 +245,13 @@ impl ConnectionHandle {
     pub fn write_table(
         &self,
         py: Python<'_>,
-        name: String,
+        entry_id: EntryId,
         stream: ArrowArrayStreamReader,
         insert_mode: PyTableInsertMode,
     ) -> PyResult<()> {
         wait_for_future(
             py,
             async {
-                let mut client = self.client().await?;
-
-                let entry_id = client
-                    .get_entry_id(&name, Some(EntryKind::Table))
-                    .await
-                    .map_err(to_py_err)?
-                    .ok_or_else(|| PyValueError::new_err("Unable to find EntryId for table"))?;
-
                 // Since the errors occur during streaming, we cannot let this method
                 // fail without doing a collect operation. Instead, we log a warning to
                 // the user.

@@ -181,3 +181,36 @@ df = table_entry.df()  # call df() to get the DataFrame
 ```
 
 This change aligns `get_table()` with `get_dataset()`, which returns a `DatasetEntry`. Both methods now consistently return entry objects that provide access to metadata and data.
+
+## Python SDK: table write operations moved to `TableEntry`
+
+Write operations for tables have been moved from `CatalogClient` to `TableEntry`. The new methods provide a cleaner API that operates directly on table entries:
+
+| Old API                                              | New API                           |
+|------------------------------------------------------|-----------------------------------|
+| `CatalogClient.write_table(name, batches, mode)`     | `TableEntry.append(batches)`      |
+|                                                      | `TableEntry.overwrite(batches)`   |
+|                                                      | `TableEntry.upsert(batches)`      |
+| `CatalogClient.append_to_table(name, batches)`       | `TableEntry.append(batches)`      |
+| `CatalogClient.update_table(name, batches)`          | `TableEntry.upsert(batches)`      |
+
+The old methods are deprecated and will be removed in a future release.
+
+```python
+# Before (0.27)
+client.write_table("my_table", batches, TableInsertMode.APPEND)
+client.append_to_table("my_table", batches)
+client.update_table("my_table", batches)
+
+# After (0.28)
+table = client.get_table(name="my_table")
+table.append(batches)
+table.overwrite(batches)
+table.upsert(batches)
+```
+
+The new `TableEntry` methods also support writing Python objects directly via keyword arguments:
+
+```python
+table.append(col1=[1, 2, 3], col2=["a", "b", "c"])
+```

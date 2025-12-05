@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
+import pyarrow as pa
+from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
 
-from rerun_bindings import DatasetEntryInternal, TableEntryInternal
+from rerun_bindings import DatasetEntryInternal, TableEntryInternal, TableInsertMode
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -28,8 +31,6 @@ if TYPE_CHECKING:
 
 if TYPE_CHECKING:
     from datetime import datetime
-
-    import pyarrow as pa
 
     from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnSelector, Recording
 
@@ -523,3 +524,175 @@ class TableEntry(Entry[TableEntryInternal]):
         """The table's storage URL."""
 
         return self._internal.storage_url
+
+    def arrow_schema(self) -> pa.Schema:
+        """Returns the Arrow schema of the table."""
+
+        return self.df().schema()
+
+    # ---
+
+    def append(
+        self,
+        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]] | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Append to the Table.
+
+        Parameters
+        ----------
+        batches
+            A sequence of Arrow RecordBatches to append to the table.
+        **named_params
+            Each named parameter corresponds to a column in the table.
+
+        """
+        if batches is not None and len(named_params) > 0:
+            raise TypeError(
+                "TableEntry.append can take a sequence of RecordBatches or a named set of columns, but not both"
+            )
+
+        if batches is not None:
+            self._write_batches(batches, insert_mode=TableInsertMode.APPEND)
+        else:
+            self._write_named_params(named_params, insert_mode=TableInsertMode.APPEND)
+
+    def overwrite(
+        self,
+        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]] | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Overwrite the Table with new data.
+
+        Parameters
+        ----------
+        batches
+            A sequence of Arrow RecordBatches to overwrite the table with.
+        **named_params
+            Each named parameter corresponds to a column in the table.
+
+        """
+        if batches is not None and len(named_params) > 0:
+            raise TypeError(
+                "TableEntry.overwrite can take a sequence of RecordBatches or a named set of columns, but not both"
+            )
+
+        if batches is not None:
+            self._write_batches(batches, insert_mode=TableInsertMode.OVERWRITE)
+        else:
+            self._write_named_params(named_params, insert_mode=TableInsertMode.OVERWRITE)
+
+    def upsert(
+        self,
+        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]] | None = None,
+        **named_params: Any,
+    ) -> None:
+        """
+        Upsert data into the Table.
+
+        To use upsert, the table must contain a column with the metadata:
+        ```
+            {"rerun:is_table_index" = "true"}
+        ```
+
+        Any row with a matching index value will have the new data inserted.
+        Any row without a matching index value will be appended as a new row.
+
+        Parameters
+        ----------
+        batches
+            A sequence of Arrow RecordBatches to upsert into the table.
+        **named_params
+            Each named parameter corresponds to a column in the table
+
+        """
+        if batches is not None and len(named_params) > 0:
+            raise TypeError(
+                "TableEntry.upsert can take a sequence of RecordBatches or a named set of columns, but not both"
+            )
+
+        if batches is not None:
+            self._write_batches(batches, insert_mode=TableInsertMode.REPLACE)
+        else:
+            self._write_named_params(named_params, insert_mode=TableInsertMode.REPLACE)
+
+    def _write_batches(
+        self,
+        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]],
+        insert_mode: TableInsertMode,
+    ) -> None:
+        """Internal helper to write batches to the table."""
+        flat_batches = self._flatten_batches(batches)
+        if len(flat_batches) == 0:
+            return
+        schema = flat_batches[0].schema
+        reader = RecordBatchReader.from_batches(schema, flat_batches)
+        self._internal.write_batches(reader, insert_mode=insert_mode)
+
+    def _flatten_batches(
+        self,
+        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]],
+    ) -> list[pa.RecordBatch]:
+        """Flatten batches to a list of RecordBatches."""
+        if isinstance(batches, pa.RecordBatch):
+            return [batches]
+
+        result = []
+        for item in batches:
+            if isinstance(item, pa.RecordBatch):
+                result.append(item)
+            elif isinstance(item, Sequence):
+                result.extend(item)
+            else:
+                raise TypeError(f"Unexpected type: {type(item)}")
+        return result
+
+    def _write_named_params(
+        self,
+        named_params: dict[str, Any],
+        insert_mode: TableInsertMode,
+    ) -> None:
+        """Internal helper to write named parameters to the table."""
+        batch = self._python_objects_to_record_batch(self.arrow_schema(), named_params)
+        if batch is not None:
+            reader = RecordBatchReader.from_batches(batch.schema, [batch])
+            self._internal.write_batches(reader, insert_mode=insert_mode)
+
+    def _python_objects_to_record_batch(self, schema: pa.Schema, named_params: dict[str, Any]) -> pa.RecordBatch:
+        cast_params = {}
+        expected_len = None
+
+        for name, value in named_params.items():
+            field = schema.field(name)
+            if field is None:
+                raise ValueError(f"Column {name} does not exist in table")
+
+            if isinstance(value, str):
+                value = [value]
+
+            try:
+                cast_value = pa.array(value, type=field.type)
+            except TypeError:
+                cast_value = pa.array([value], type=field.type)
+
+            cast_params[name] = cast_value
+
+            if expected_len is None:
+                expected_len = len(cast_value)
+            else:
+                if len(cast_value) != expected_len:
+                    raise ValueError("Columns have mismatched number of rows")
+
+        if expected_len is None or expected_len == 0:
+            return
+
+        columns = []
+        for field in schema:
+            if field.name in cast_params:
+                columns.append(cast_params[field.name])
+            else:
+                columns.append(pa.array([None] * expected_len, type=field.type))
+
+        return pa.RecordBatch.from_arrays(columns, schema=schema)

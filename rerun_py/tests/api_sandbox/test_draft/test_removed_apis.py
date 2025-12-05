@@ -18,6 +18,7 @@ def test_removed_apis() -> None:
 
         assert "write_table" not in dir(client)
         assert "append_to_table" not in dir(client)
+        assert "update_table" not in dir(client)
 
         ds = client.create_dataset("my_dataset")
 
