@@ -558,9 +558,9 @@ impl App {
             let blueprint_query = self
                 .state
                 .get_blueprint_query_for_viewer(blueprint)
-                .unwrap_or_else(|| re_chunk::LatestAtQuery::latest(
-                    re_viewer_context::blueprint_timeline(),
-                ));
+                .unwrap_or_else(|| {
+                    re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
+                });
 
             let bp_ctx = AppBlueprintCtx {
                 command_sender: &self.command_sender,
@@ -2990,9 +2990,9 @@ impl App {
         let blueprint_query = self
             .state
             .get_blueprint_query_for_viewer(blueprint)
-            .unwrap_or_else(|| re_chunk::LatestAtQuery::latest(
-                re_viewer_context::blueprint_timeline(),
-            ));
+            .unwrap_or_else(|| {
+                re_chunk::LatestAtQuery::latest(re_viewer_context::blueprint_timeline())
+            });
 
         Some(AppBlueprintCtx {
             command_sender: &self.command_sender,
