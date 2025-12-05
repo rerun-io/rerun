@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pytest
 from datafusion import DataFrameWriteOptions, InsertOp, SessionContext, col
-from syrupy import SnapshotAssertion
 
 if TYPE_CHECKING:
     import pathlib
+
+    from syrupy import SnapshotAssertion
 
     from .conftest import EntryFactory
 
