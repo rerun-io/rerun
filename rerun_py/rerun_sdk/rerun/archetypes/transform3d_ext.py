@@ -116,8 +116,8 @@ class Transform3DExt:
                 if is_rotation_axis_angle:
                     rotation_axis_angle = rotation  # type: ignore[assignment]
                 else:
+                    is_quaternion = False
                     try:
-                        is_quaternion = False
                         if isinstance(rotation, Quaternion):
                             is_quaternion = True
                         elif isinstance(rotation[0], Quaternion):  # type: ignore[index]
