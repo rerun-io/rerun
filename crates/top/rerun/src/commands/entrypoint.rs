@@ -4,8 +4,7 @@ use std::time::Duration;
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use re_data_source::LogDataSource;
-use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
-use re_log_types::DataSourceMessage;
+use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
 use tokio::runtime::Runtime;

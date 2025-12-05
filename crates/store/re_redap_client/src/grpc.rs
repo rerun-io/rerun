@@ -5,9 +5,10 @@ use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_types::{
-    AbsoluteTimeRange, BlueprintActivationCommand, DataSourceMessage, DataSourceUiCommand, EntryId,
-    LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
+    AbsoluteTimeRange, BlueprintActivationCommand, EntryId, LogMsg, SetStoreInfo, StoreId,
+    StoreInfo, StoreKind, StoreSource,
 };
 use re_protos::cloud::v1alpha1::ext::Query;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;

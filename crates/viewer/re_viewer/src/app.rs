@@ -9,10 +9,10 @@ use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_log_channel::{LogReceiver, LogReceiverSet, LogSource};
-use re_log_types::{
-    ApplicationId, DataSourceMessage, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg,
+use re_log_channel::{
+    DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
 };
+use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_types::blueprint::components::PlayState;
@@ -2555,11 +2555,11 @@ impl App {
 
     fn receive_data_source_ui_command(
         &self,
-        ui_command: re_log_types::DataSourceUiCommand,
+        ui_command: DataSourceUiCommand,
         channel_source: &LogSource,
     ) {
         match ui_command {
-            re_log_types::DataSourceUiCommand::AddValidTimeRange {
+            DataSourceUiCommand::AddValidTimeRange {
                 store_id,
                 timeline,
                 time_range,
@@ -2574,7 +2574,7 @@ impl App {
                     });
             }
 
-            re_log_types::DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
+            DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
                     Ok(fragment) => {
                         self.command_sender

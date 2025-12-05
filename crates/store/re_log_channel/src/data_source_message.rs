@@ -3,7 +3,7 @@
 
 use re_types_core::ChunkIndexMessage;
 
-use crate::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
+use re_log_types::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
 
 /// Message from a data source.
 ///
