@@ -82,7 +82,7 @@ pub struct ServerModal {
     mode: ServerModalMode,
     scheme: Scheme,
     host: String,
-    pub(crate) auth: Authentication,
+    auth: Authentication,
     port: u16,
 }
 
