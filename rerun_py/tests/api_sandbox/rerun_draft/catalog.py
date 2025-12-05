@@ -69,7 +69,7 @@ class CatalogClient:
 
     def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table entry by its ID or name."""
-        return TableEntry(self._inner.get_table_entry(id=id, name=name))
+        return TableEntry(self._inner.get_table(id=id, name=name))
 
     def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
         """Returns a dataset by its ID or name."""
@@ -89,7 +89,7 @@ class CatalogClient:
             tmpdir = tempfile.TemporaryDirectory()
             self.tmpdirs.append(tmpdir)
             url = Path(tmpdir.name).as_uri()
-        return TableEntry(self._inner.create_table_entry(name, schema, url))
+        return TableEntry(self._inner.create_table(name, schema, url))
 
     def do_global_maintenance(self) -> None:
         """Perform maintenance tasks on the whole system."""

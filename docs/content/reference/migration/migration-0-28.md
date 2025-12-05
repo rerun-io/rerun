@@ -138,15 +138,13 @@ Additionally, the new methods accept an optional `include_hidden` parameter:
 
 The following methods that returned `datafusion.DataFrame` objects have been removed without deprecation:
 
-| Removed method                                   | Replacement                                                        |
-|--------------------------------------------------|--------------------------------------------------------------------|
-| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries")`                        |
-| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries")` filtered by entry kind |
-| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries")` filtered by entry kind |
+| Removed method                                   | Replacement                                                             |
+|--------------------------------------------------|-------------------------------------------------------------------------|
+| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries").df()`                        |
+| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries").df()` filtered by entry kind |
+| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries").df()` filtered by entry kind |
 
-<!-- TODO(ab): add `.reader()` to the suggested workaround when that API is updated -->
-
-The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries")`.
+The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries").df()`.
 
 ## Python SDK: entry name listing methods now support `include_hidden`
 
@@ -155,3 +153,30 @@ The `CatalogClient` methods for listing entry names now accept an optional `incl
 - `entry_names(include_hidden=True)`: includes hidden entries (blueprint datasets and system tables like `__entries`)
 - `dataset_names(include_hidden=True)`: includes blueprint datasets
 - `table_names(include_hidden=True)`: includes system tables (e.g., `__entries`)
+
+## Python SDK: entry access methods renamed
+
+The `CatalogClient` methods for accessing individual entries have been renamed:
+
+| Old API                              | New API                        |
+|--------------------------------------|--------------------------------|
+| `CatalogClient.get_dataset_entry()`  | `CatalogClient.get_dataset()`  |
+| `CatalogClient.get_table_entry()`    | `CatalogClient.get_table()`    |
+| `CatalogClient.create_table_entry()` | `CatalogClient.create_table()` |
+
+The old methods are deprecated and will be removed in a future release.
+
+## Python SDK: `get_table()` now returns `TableEntry` instead of DataFrame
+
+The `CatalogClient.get_table()` method has been changed to return a `TableEntry` object instead of a `datafusion.DataFrame`. This is a **breaking change**.
+
+```python
+# Before (0.27)
+df = client.get_table(name="my_table")  # returns DataFrame
+
+# After (0.28)
+table_entry = client.get_table(name="my_table")  # returns TableEntry
+df = table_entry.df()  # call df() to get the DataFrame
+```
+
+This change aligns `get_table()` with `get_dataset()`, which returns a `DatasetEntry`. Both methods now consistently return entry objects that provide access to metadata and data.

@@ -13,6 +13,8 @@ def test_removed_apis() -> None:
         assert "table_entries" not in dir(client)
 
         assert "get_dataset_entry" not in dir(client)
+        assert "get_table_entry" not in dir(client)
+        assert "create_table_entry" not in dir(client)
 
         assert "write_table" not in dir(client)
         assert "append_to_table" not in dir(client)

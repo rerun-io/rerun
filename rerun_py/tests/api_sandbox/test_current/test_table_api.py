@@ -17,7 +17,7 @@ def test_table_api(tmp_path_factory: pytest.TempPathFactory) -> None:
 
         tmp_path = tmp_path_factory.mktemp("my_table")
 
-        table = client.create_table_entry(
+        table = client.create_table(
             "my_table",
             pa.schema([
                 ("rerun_segment_id", pa.string()),

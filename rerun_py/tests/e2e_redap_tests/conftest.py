@@ -206,10 +206,10 @@ class EntryFactory:
         self._created_entries.append(entry)
         return entry
 
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
-        """Create a table entry with automatic cleanup. Mirrors CatalogClient.create_table_entry()."""
+    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """Create a table with automatic cleanup. Mirrors CatalogClient.create_table()."""
         prefixed_name = self.apply_prefix(name)
-        entry = self._client.create_table_entry(prefixed_name, schema, url)
+        entry = self._client.create_table(prefixed_name, schema, url)
         self._created_entries.append(entry)
         return entry
 

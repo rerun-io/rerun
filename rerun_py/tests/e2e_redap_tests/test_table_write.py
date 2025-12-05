@@ -22,7 +22,7 @@ def test_datafusion_write_table(entry_factory: EntryFactory, tmp_path: pathlib.P
 
     # Create a table from scratch
     schema = pa.schema([("id", pa.int32()), ("value", pa.float64())])
-    entry_factory.create_table_entry(base_name, schema, tmp_path.absolute().as_uri())
+    entry_factory.create_table(base_name, schema, tmp_path.absolute().as_uri())
 
     # Write initial data
     initial_data = pa.RecordBatch.from_pydict(
@@ -55,7 +55,7 @@ def test_client_write_table(entry_factory: EntryFactory, tmp_path: pathlib.Path)
 
     # Create a table from scratch
     schema = pa.schema([("id", pa.int32()), ("bool_col", pa.bool_()), ("double_col", pa.float64())])
-    entry_factory.create_table_entry(base_name, schema, tmp_path.absolute().as_uri())
+    entry_factory.create_table(base_name, schema, tmp_path.absolute().as_uri())
 
     # No initial data, start with empty table
     original_count = 0
@@ -108,7 +108,7 @@ def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.P
 
     # Create a table from scratch
     schema = pa.schema([("id", pa.int32()), ("bool_col", pa.bool_()), ("double_col", pa.float64())])
-    entry_factory.create_table_entry(base_name, schema, tmp_path.absolute().as_uri())
+    entry_factory.create_table(base_name, schema, tmp_path.absolute().as_uri())
 
     # Start with empty table
     original_rows = 0
