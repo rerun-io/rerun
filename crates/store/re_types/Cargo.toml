@@ -1,0 +1,19 @@
+[package]
+name = "re_types"
+authors.workspace = true
+description = "The old name of re_sdk_types. USE re_sdk_types INSTEAD!"
+edition = "2024"
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+re_sdk_types.workspace = true
