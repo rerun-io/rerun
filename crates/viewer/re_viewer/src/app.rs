@@ -21,8 +21,8 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifi
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub, StoreHubStats};
 use re_viewer_context::{
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
+    AppOptions, AsyncRuntimeHandle, AuthContext, BlueprintUndoState, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DisplayMode, FallbackProviderRegistry, Item, NeedsRepaint,
     RecordingOrTable, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _,
     TableStore, TimeControlCommand, ViewClass, ViewClassRegistry, ViewClassRegistryError,
     command_channel, sanitize_file_name,
@@ -178,6 +178,15 @@ impl App {
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
+
+        {
+            let command_sender = command_channel.0.clone();
+            re_auth::credentials::subscribe_auth_changes(move |user| {
+                command_sender.send_system(SystemCommand::OnAuthChanged(
+                    user.map(|user| AuthContext { email: user.email }),
+                ));
+            });
+        }
 
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
@@ -1223,6 +1232,10 @@ impl App {
                 if let Err(err) = self.background_tasks.spawn_file_saver(file_saver) {
                     re_log::error!("Failed to save file: {err}");
                 }
+            }
+
+            SystemCommand::OnAuthChanged(auth) => {
+                self.state.auth_state = auth;
             }
 
             SystemCommand::SetAuthCredentials {

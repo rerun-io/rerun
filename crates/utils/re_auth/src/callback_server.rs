@@ -16,7 +16,7 @@ pub struct OauthCallbackServer {
 const PORT_RANGE: std::ops::RangeInclusive<u16> = 17340..=17349;
 
 impl OauthCallbackServer {
-    pub fn new(pkce: &Pkce, login_hint: Option<&str>) -> Result<Self, Error> {
+    pub fn new(pkce: &Pkce) -> Result<Self, Error> {
         let server = PORT_RANGE
             .map(|port| tiny_http::Server::http(format!("127.0.0.1:{port}")))
             .find_map(Result::ok)
@@ -33,7 +33,7 @@ impl OauthCallbackServer {
             "http://{server_addr}/logged-in",
             server_addr = server.server_addr()
         );
-        let auth_url = authorization_url(&redirect_uri, &state, pkce, login_hint);
+        let auth_url = authorization_url(&redirect_uri, &state, pkce);
 
         Ok(Self {
             server,

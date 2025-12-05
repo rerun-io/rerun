@@ -194,13 +194,8 @@ impl Default for Pkce {
     }
 }
 
-pub fn authorization_url(
-    redirect_uri: &str,
-    state: &str,
-    pkce: &Pkce,
-    login_hint: Option<&str>,
-) -> String {
-    let mut url = format!(
+pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String {
+    let url = format!(
         "\
         {base}/user_management/authorize\
         ?response_type=code\
@@ -215,10 +210,6 @@ pub fn authorization_url(
         client_id = *OAUTH_CLIENT_ID,
         code_challenge = pkce.code_challenge,
     );
-
-    if let Some(login_hint) = login_hint {
-        url = format!("{url}&login_hint={login_hint}");
-    }
 
     url
 }

@@ -6,9 +6,7 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
-use re_viewer_context::{
-    CommandSender, DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{DisplayMode, GlobalContext, SystemCommand, SystemCommandSender as _};
 
 use crate::context::Context;
 use crate::servers::Command;
@@ -30,7 +28,6 @@ pub enum ServerModalMode {
 
 /// Authentication state for the server modal.
 struct Authentication {
-    email: Option<String>,
     token: String,
     show_token_input: bool,
     login_flow: Option<LoginFlow>,
@@ -46,22 +43,13 @@ impl Authentication {
     ///
     /// Optionally, this can be given a token, which takes
     /// precedence over stored credentials.
-    fn new(token: Option<String>, use_stored_credentials: bool) -> Self {
-        let email = if !use_stored_credentials {
-            None
-        } else {
-            re_auth::oauth::load_credentials()
-                .ok()
-                .flatten()
-                .map(|credentials| credentials.user().email.clone())
-        };
+    fn new(token: Option<String>) -> Self {
         let (token, show_token_input) = match token {
             Some(token) => (token, true),
             None => (String::new(), false),
         };
 
         Self {
-            email,
             token,
             show_token_input,
             login_flow: None,
@@ -76,8 +64,7 @@ impl Authentication {
     }
 
     fn start_login_flow(&mut self, ui: &mut egui::Ui) {
-        let login_hint = self.email.as_deref();
-        match LoginFlow::open(ui, login_hint) {
+        match LoginFlow::open(ui) {
             Ok(flow) => {
                 self.login_flow = Some(flow);
                 self.error = None;
@@ -106,7 +93,7 @@ impl Default for ServerModal {
             mode: ServerModalMode::Add,
             scheme: Scheme::Rerun,
             host: String::new(),
-            auth: Authentication::new(None, false),
+            auth: Authentication::new(None),
             port: 443,
         }
     }
@@ -114,10 +101,9 @@ impl Default for ServerModal {
 
 impl ServerModal {
     pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
-        let use_stored_credentials = connection_registry.should_use_stored_credentials();
         *self = match mode {
             ServerModalMode::Add => {
-                let auth = Authentication::new(None, use_stored_credentials);
+                let auth = Authentication::new(None);
 
                 Self {
                     mode: ServerModalMode::Add,
@@ -131,11 +117,9 @@ impl ServerModal {
                 let credentials = connection_registry.credentials(&origin);
                 let auth = match credentials {
                     Some(re_redap_client::Credentials::Token(token)) => {
-                        Authentication::new(Some(token.to_string()), use_stored_credentials)
+                        Authentication::new(Some(token.to_string()))
                     }
-                    Some(re_redap_client::Credentials::Stored) | None => {
-                        Authentication::new(None, use_stored_credentials)
-                    }
+                    Some(re_redap_client::Credentials::Stored) | None => Authentication::new(None),
                 };
 
                 Self {
@@ -238,7 +222,7 @@ impl ServerModal {
                 ui.label("Authenticate:");
                 ui.scope(|ui| {
                     ui.shrink_width_to_current();
-                    auth_ui(ui, global_ctx.command_sender, &mut self.auth);
+                    auth_ui(ui, global_ctx, &mut self.auth);
                 });
 
                 ui.add_space(24.0);
@@ -260,7 +244,7 @@ impl ServerModal {
                         .map(Some)
                         // error is reported in the UI above
                         .map_err(|_err| ())
-                } else if self.auth.email.is_some() {
+                } else if global_ctx.logged_in() {
                     Ok(Some(re_redap_client::Credentials::Stored))
                 } else {
                     Ok(None)
@@ -314,7 +298,7 @@ impl ServerModal {
     }
 }
 
-fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
+fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             if auth.show_token_input {
@@ -347,10 +331,9 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                 }
             } else {
                 if let Some(flow) = &mut auth.login_flow {
-                    if let Some(result) = flow.ui(ui, cmd) {
+                    if let Some(result) = flow.ui(ui, ctx.command_sender) {
                         match result {
-                            LoginFlowResult::Success(credentials) => {
-                                auth.email = Some(credentials.user().email.clone());
+                            LoginFlowResult::Success => {
                                 auth.error = None;
                                 // Clear login flow to close popup window
                                 auth.reset_login_flow();
@@ -362,9 +345,9 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
                             }
                         }
                     }
-                } else if let Some(email) = &auth.email {
+                } else if let Some(logged_in) = &ctx.auth_context {
                     ui.label("Continue as ");
-                    ui.label(RichText::new(email).strong().underline());
+                    ui.label(RichText::new(&logged_in.email).strong().underline());
 
                     if ui
                         .small_icon_button(&re_ui::icons::CLOSE, "Clear login status")
@@ -403,7 +386,7 @@ fn auth_ui(ui: &mut egui::Ui, cmd: &CommandSender, auth: &mut Authentication) {
     ui.horizontal(|ui| {
         ui.set_min_width(300.0);
         ui.set_width(300.0);
-        if !auth.show_token_input && auth.email.is_none() {
+        if !auth.show_token_input && !ctx.logged_in() {
             if let Some(error) = &auth.error {
                 ui.error_label(error.clone());
             }
