@@ -103,8 +103,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
             tmp_path.as_uri(),
         )
 
-        client.append_to_table(
-            "basic_dataset_metadata",
+        meta.append(
             rerun_segment_id=["complex_recording_0", "complex_recording_1", "complex_recording_4"],
             success=[True, False, True],
         )

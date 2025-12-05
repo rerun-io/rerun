@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.catalog import TableInsertMode
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,10 +25,10 @@ def test_create_table_and_append(tmp_path: Path) -> None:
         table = client.create_table("my_table", schema, tmp_path.as_uri())
 
         # Append single row with scalar values
-        client.append_to_table("my_table", id=1, value=10.5, enabled=True)
+        table.append(id=1, value=10.5, enabled=True)
 
         # Append multiple rows using lists
-        client.append_to_table("my_table", id=[2, 3, 4], value=[20.3, 15.7, 30.2], enabled=[False, True, False])
+        table.append(id=[2, 3, 4], value=[20.3, 15.7, 30.2], enabled=[False, True, False])
 
         # Read the table back
         df = table.df()
@@ -67,7 +66,7 @@ def test_write_table_with_record_batches(tmp_path: Path) -> None:
             pa.field("score", pa.float64()),
         ])
 
-        client.create_table("scores_table", schema, tmp_path.as_uri())
+        table = client.create_table("scores_table", schema, tmp_path.as_uri())
 
         # Create record batches
         batch1 = pa.RecordBatch.from_pydict(
@@ -79,7 +78,7 @@ def test_write_table_with_record_batches(tmp_path: Path) -> None:
         )
 
         # Append batches to table
-        client.write_table("scores_table", [batch1, batch2], TableInsertMode.APPEND)
+        table.append([batch1, batch2])
 
         # Query the table
         df = client.get_table(name="scores_table").df()
@@ -117,12 +116,12 @@ def test_table_overwrite_mode(tmp_path: Path) -> None:
 
         schema = pa.schema([pa.field("id", pa.int32()), pa.field("category", pa.string())])
 
-        client.create_table("data_table", schema, tmp_path.as_uri())
+        table = client.create_table("data_table", schema, tmp_path.as_uri())
 
         # Initial data
         batch1 = pa.RecordBatch.from_pydict({"id": [1, 2, 3], "category": ["A", "B", "C"]}, schema=schema)
 
-        client.write_table("data_table", batch1, TableInsertMode.APPEND)
+        table.append(batch1)
 
         df_after_append = client.get_table(name="data_table").df()
         assert str(df_after_append.sort("id")) == inline_snapshot("""\
@@ -142,7 +141,7 @@ def test_table_overwrite_mode(tmp_path: Path) -> None:
         # Overwrite with new data
         batch2 = pa.RecordBatch.from_pydict({"id": [10, 20], "category": ["X", "Y"]}, schema=schema)
 
-        client.write_table("data_table", batch2, TableInsertMode.OVERWRITE)
+        table.overwrite(batch2)
 
         df_after_overwrite = client.get_table(name="data_table").df()
         assert str(df_after_overwrite.sort("id")) == inline_snapshot("""\
@@ -165,10 +164,10 @@ def test_read_table(tmp_path: Path) -> None:
 
         schema = pa.schema([pa.field("product_id", pa.int32()), pa.field("price", pa.float64())])
 
-        client.create_table("products", schema, tmp_path.as_uri())
+        table = client.create_table("products", schema, tmp_path.as_uri())
 
         # Add some data
-        client.append_to_table("products", product_id=[101, 102, 103], price=[29.99, 49.99, 19.99])
+        table.append(product_id=[101, 102, 103], price=[29.99, 49.99, 19.99])
 
         # Method 1: get_table - returns a TableEntry, call df() to get DataFrame
         table_entry = client.get_table(name="products")
