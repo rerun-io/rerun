@@ -58,12 +58,12 @@ impl ConvertCommand {
         let application_id = application_id
             .to_owned()
             .map(ApplicationId::from)
-            .unwrap_or(ApplicationId::from(path_to_input_mcap.clone()));
+            .unwrap_or_else(|| ApplicationId::from(path_to_input_mcap.clone()));
 
         let recording_id = recording_id
             .to_owned()
             .map(RecordingId::from)
-            .unwrap_or(RecordingId::random());
+            .unwrap_or_else(RecordingId::random);
 
         let selected_layers = if selected_layers.is_empty() {
             SelectedLayers::All
