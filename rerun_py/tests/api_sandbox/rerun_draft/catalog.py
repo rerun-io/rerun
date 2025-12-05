@@ -8,7 +8,7 @@ import tempfile
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import datafusion
 import numpy as np
@@ -37,41 +37,35 @@ class CatalogClient:
     def entries(self, *, include_hidden=False) -> list[Entry]:
         """Returns a list of all entries in the catalog."""
         return sorted(
-            [
-                Entry(e)
-                for e in self._inner.all_entries()
-                if (not e.name.startswith("__") and e.kind != _catalog.EntryKind.BLUEPRINT_DATASET) or include_hidden
-            ],
+            [Entry(e) for e in self._inner.entries(include_hidden=include_hidden)],
             key=lambda e: e.name,
         )
 
     def datasets(self, *, include_hidden=False) -> list[DatasetEntry]:
         """Returns a list of all dataset entries in the catalog."""
-        return [
-            DatasetEntry(cast("_catalog.DatasetEntry", e._inner))
-            for e in self.entries(include_hidden=include_hidden)
-            if e.kind == _catalog.EntryKind.DATASET
-        ]
+        return sorted(
+            [DatasetEntry(e) for e in self._inner.datasets(include_hidden=include_hidden)],
+            key=lambda e: e.name,
+        )
 
     def tables(self, *, include_hidden=False) -> list[TableEntry]:
         """Returns a list of all table entries in the catalog."""
-        return [
-            TableEntry(cast("_catalog.TableEntry", e._inner))
-            for e in self.entries(include_hidden=include_hidden)
-            if e.kind == _catalog.EntryKind.TABLE
-        ]
+        return sorted(
+            [TableEntry(e) for e in self._inner.tables(include_hidden=include_hidden)],
+            key=lambda e: e.name,
+        )
 
-    def entry_names(self) -> list[str]:
+    def entry_names(self, *, include_hidden: bool = False) -> list[str]:
         """Returns a list of all entry names in the catalog."""
-        return self._inner.entry_names()
+        return [e.name for e in self.entries(include_hidden=include_hidden)]
 
-    def dataset_names(self) -> list[str]:
+    def dataset_names(self, *, include_hidden: bool = False) -> list[str]:
         """Returns a list of all dataset names in the catalog."""
-        return self._inner.dataset_names()
+        return [d.name for d in self.datasets(include_hidden=include_hidden)]
 
-    def table_names(self) -> list[str]:
+    def table_names(self, *, include_hidden: bool = False) -> list[str]:
         """Returns a list of all table names in the catalog."""
-        return self._inner.table_names()
+        return [t.name for t in self.tables(include_hidden=include_hidden)]
 
     def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table entry by its ID or name."""
