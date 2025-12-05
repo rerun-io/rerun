@@ -85,7 +85,6 @@ def build_and_upload(
         "maturin build "
         f"{compatibility} "
         "--manifest-path rerun_py/Cargo.toml "
-        "--quiet "
         "--release "
         f"--target {target} "
         f"{maturin_feature_flags} "

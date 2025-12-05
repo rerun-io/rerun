@@ -119,7 +119,6 @@ pub fn build(
         let mut cmd = std::process::Command::new("cargo");
         cmd.args([
             "build",
-            "--quiet",
             &format!("--package={crate_name}"),
             "--lib",
             "--target=wasm32-unknown-unknown",
