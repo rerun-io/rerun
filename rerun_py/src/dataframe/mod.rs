@@ -16,12 +16,12 @@ pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
 pub use self::recording::{PyRecording, PyRecordingHandle};
 pub use self::recording_view::PyRecordingView;
 pub use self::rrd::{PyRRDArchive, load_archive, load_recording};
-pub use self::schema::PySchema;
+pub use self::schema::PySchemaInternal;
 pub use self::type_aliases::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyIndexValuesLike};
 
 /// Register the `rerun.dataframe` module.
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PySchema>()?;
+    m.add_class::<PySchemaInternal>()?;
 
     m.add_class::<PyRRDArchive>()?;
     m.add_class::<PyRecording>()?;

@@ -13,7 +13,9 @@ from rerun_bindings import (
     Recording as Recording,
     RecordingView as RecordingView,
     RRDArchive as RRDArchive,
-    Schema as Schema,
+    # Note: SchemaInternal is re-exported as Schema for backward compatibility.
+    # The rerun.dataframe module is slated for deprecation. Use rerun.catalog.Schema instead.
+    SchemaInternal as Schema,  # noqa: F401
     load_archive as load_archive,
     load_recording as load_recording,
 )

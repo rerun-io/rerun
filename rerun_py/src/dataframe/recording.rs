@@ -13,7 +13,7 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::EntityPathFilter;
 use re_sorbet::TimeColumnSelector;
 
-use super::{PyRecordingView, PySchema};
+use super::{PyRecordingView, PySchemaInternal};
 
 /// A single Rerun recording.
 ///
@@ -129,8 +129,8 @@ impl PyRecording {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self) -> PySchema {
-        PySchema {
+    fn schema(&self) -> PySchemaInternal {
+        PySchemaInternal {
             schema: self.store.read().schema().into(),
         }
     }

@@ -27,10 +27,15 @@ impl SchemaIterator {
     }
 }
 
-#[pyclass(frozen, eq, name = "Schema", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    frozen,
+    eq,
+    name = "SchemaInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, PartialEq, Eq)]
-//TODO(#9457): improve this object and use it for `Dataset.schema()`.
-pub struct PySchema {
+//TODO(#9457): improve this object and use it for `Dataset.schema()`. TODO
+pub struct PySchemaInternal {
     pub schema: SorbetColumnDescriptors,
 }
 
@@ -39,7 +44,7 @@ pub struct PySchema {
 /// Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
-impl PySchema {
+impl PySchemaInternal {
     fn __repr__(&self) -> String {
         self.component_columns()
             .iter()
@@ -164,7 +169,7 @@ impl PySchema {
     }
 }
 
-impl PySchema {
+impl PySchemaInternal {
     pub fn resolve_component_column_selector(
         &self,
         column_selector: &ComponentColumnSelector,

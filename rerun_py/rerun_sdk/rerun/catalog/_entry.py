@@ -160,8 +160,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""
+        from ._schema import Schema
 
-        return self._internal.schema()
+        return Schema(self._internal.schema())
 
     def segment_ids(self) -> list[str]:
         """Returns a list of segment IDs for the dataset."""

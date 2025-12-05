@@ -61,6 +61,7 @@ def test_dataset_schema(complex_dataset_prefix: Path) -> None:
         ds.register_prefix(complex_dataset_prefix.as_uri())
 
         assert str(ds.schema()) == inline_snapshot("""\
+Index(timeline:timeline)
 Column name: /points:Points2D:colors
 	Entity path: /points
 	Archetype: rerun.archetypes.Points2D

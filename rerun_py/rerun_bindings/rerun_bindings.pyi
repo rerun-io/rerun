@@ -177,12 +177,13 @@ class VectorDistanceMetric(Enum):  # type: ignore[misc]
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
 
-class Schema:
+class SchemaInternal:
     """
-    The schema representing a set of available columns.
+    Internal schema class representing a set of available columns.
 
-    Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
-    [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
+    This is the internal implementation. For the public API, use:
+    - `rerun.catalog.Schema` for catalog/dataset operations
+    - `rerun.dataframe.Schema` for dataframe operations (deprecated, will be removed)
     """
 
     def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
@@ -232,6 +233,9 @@ class Schema:
             The column descriptor, if it exists. Raise an exception otherwise.
 
         """
+
+# Type alias for backward compatibility with rerun.dataframe module
+Schema = SchemaInternal
 
 class RecordingView:
     """

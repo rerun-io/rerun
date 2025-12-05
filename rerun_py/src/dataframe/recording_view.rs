@@ -11,7 +11,8 @@ use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
 use super::{
-    AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle, PySchema,
+    AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle,
+    PySchemaInternal,
 };
 use crate::utils::py_rerun_warn_cstr;
 
@@ -83,7 +84,7 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PySchema {
+    fn schema(&self, py: Python<'_>) -> PySchemaInternal {
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -92,7 +93,7 @@ impl PyRecordingView {
                 let mut query_expression = self.query_expression.clone();
                 query_expression.selection = None;
 
-                PySchema {
+                PySchemaInternal {
                     schema: engine.schema_for_query(&query_expression).into(),
                 }
             }
