@@ -164,6 +164,7 @@ The `CatalogClient` methods for accessing individual entries have been renamed:
 | `CatalogClient.get_table_entry()`    | `CatalogClient.get_table()`    |
 | `CatalogClient.create_table_entry()` | `CatalogClient.create_table()` |
 
+The existing `CatalogClient.create_dataset()` method is already aligned with the new naming scheme and remains unchanged.
 The old methods are deprecated and will be removed in a future release.
 
 ## Python SDK: `get_table()` now returns `TableEntry` instead of DataFrame
