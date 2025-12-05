@@ -15,7 +15,7 @@ pub const FIELD_CHUNK_KEY: &str = "chunk_key";
 // -----------------------------------------------------------------------------------------
 
 #[derive(thiserror::Error, Debug)]
-pub enum ChunkIndexError {
+pub enum RrdManifestError {
     #[error(transparent)]
     Arrow(#[from] ArrowError),
 
@@ -88,7 +88,7 @@ impl std::fmt::Debug for RrdManifestMessage {
 }
 
 impl RrdManifestMessage {
-    pub fn try_from_record_batch(rb: RecordBatch) -> Result<Self, ChunkIndexError> {
+    pub fn try_from_record_batch(rb: RecordBatch) -> Result<Self, RrdManifestError> {
         let chunk_entity_path = rb
             .try_get_column(FIELD_CHUNK_ENTITY_PATH)?
             .try_downcast_array_ref::<StringArray>()?
@@ -105,7 +105,7 @@ impl RrdManifestMessage {
             .try_downcast_array_ref::<BooleanArray>()?
             .clone();
         if chunk_is_static.null_count() != 0 {
-            return Err(ChunkIndexError::UnexpectedNulls {
+            return Err(RrdManifestError::UnexpectedNulls {
                 column_name: FIELD_CHUNK_IS_STATIC.into(),
             });
         }
