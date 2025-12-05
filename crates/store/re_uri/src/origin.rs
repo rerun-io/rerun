@@ -56,17 +56,13 @@ impl Origin {
         input: &str,
         default_localhost_port: Option<u16>,
     ) -> Result<(Self, url::Url), Error> {
-        let scheme: Scheme;
-        let rewritten;
-
-        if !input.contains("://") && (input.contains("localhost") || input.contains("127.0.0.1")) {
+        let (scheme, rewritten) = if !input.contains("://") && (input.contains("localhost") || input.contains("127.0.0.1")) {
             // Assume `rerun+http://`, because that is the default for localhost
-            scheme = Scheme::RerunHttp;
-            rewritten = format!("http://{input}");
+            (Scheme::RerunHttp, format!("http://{input}"))
         } else {
-            scheme = input.parse()?;
-            rewritten = scheme.canonical_url(input);
-        }
+            let scheme: Scheme = input.parse()?;
+            (scheme, scheme.canonical_url(input))
+        };
 
         // We have to first rewrite the endpoint, because `Url` does not allow
         // `.set_scheme()` for non-opaque origins, nor does it return a proper

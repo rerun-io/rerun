@@ -250,6 +250,7 @@ fn add_series_runs(
     };
 
     for (i, p) in points.into_iter().enumerate() {
+        #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
 
