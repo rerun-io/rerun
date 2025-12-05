@@ -3,7 +3,9 @@ use egui::{Button, Frame, RichText, TextStyle, Theme, Ui};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::{ReButtonExt as _, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
-use re_viewer_context::{GlobalContext, Item, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    EditRedapServerModalCommand, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
+};
 
 pub enum LoginState {
     NoAuth,
@@ -126,7 +128,7 @@ impl<'a> IntroItem<'a> {
                     CloudState { has_server: Some(origin), login: LoginState::NoAuth } => {
                     ui.horizontal_wrapped(|ui| {
                         if ui.primary_button("Add credentials").clicked() {
-                            ctx.command_sender.send_system(SystemCommand::EditRedapServerModal(origin.clone()));
+                            ctx.command_sender.send_system(SystemCommand::EditRedapServerModal(EditRedapServerModalCommand::new(origin.clone())));
                         }
                         ui.weak("for address");
                         ui.strong(format!("{}", &origin.host));
