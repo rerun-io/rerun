@@ -68,6 +68,7 @@ mod file {
     pub fn store(credentials: &Credentials) -> Result<(), StoreError> {
         let path = credentials_path().ok_or(StoreError::UnknownConfigLocation)?;
         let data = serde_json::to_string_pretty(credentials)?;
+        std::fs::create_dir_all(path.parent().ok_or(StoreError::UnknownConfigLocation)?)?;
         std::fs::write(path, data)?;
         Ok(())
     }
