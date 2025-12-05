@@ -39,7 +39,7 @@ pub enum ChunkIndexError {
 /// ## Example (transposed)
 /// See schema in `crates/store/re_log_encoding/tests/snapshots/footers_and_manifests__rrd_manifest_blueprint_schema.snap`
 ///
-/// ```
+/// ```text
 /// ┌─────────────────────────────────────────┬──────────────────────────────────────────┬──────────────────────────────────────────┐
 /// │ chunk_entity_path                       ┆ /my/entity                               ┆ /my/entity                               │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
