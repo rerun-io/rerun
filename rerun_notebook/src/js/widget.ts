@@ -137,10 +137,6 @@ class ViewerWidget {
         this.viewer.close(msg.url)
         break;
       }
-      case "set_credentials": {
-        this.viewer.set_credentials(msg.access_token, msg.email)
-        break;
-      }
       default: {
         console.error("received unknown message type", msg, buffers);
         throw new Error(`unknown message type ${msg}, check console for more details`);
