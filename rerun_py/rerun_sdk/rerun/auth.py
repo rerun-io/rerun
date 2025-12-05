@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from IPython.core.display import HTML
-from IPython.display import display
+from IPython.display import display, clear_output
 
 from rerun_bindings import init_login_flow
 
@@ -30,4 +30,5 @@ def login() -> None:
 
     # Wait for the flow to complete and store credentials
     credentials = flow.finish_login_flow()
+    clear_output(wait=True)
     print(f"Success! You're logged in as '{credentials.user_email}'.")
