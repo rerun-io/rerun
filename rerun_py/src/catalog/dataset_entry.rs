@@ -31,7 +31,8 @@ use super::{
     PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
-use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchemaInternal};
+use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
+use crate::dataframe::{AnyComponentColumn, PyRecording};
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.

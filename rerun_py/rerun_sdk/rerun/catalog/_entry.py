@@ -431,19 +431,19 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Parameters
         ----------
-        column : AnyComponentColumn
+        column
             The component column to create the index on.
-        time_index : IndexColumnSelector
+        time_index
             Which timeline this index will map to.
-        target_partition_num_rows : int | None
+        target_partition_num_rows
             The target size (in number of rows) for each partition.
             The underlying indexer (lance) will pick a default when no value
             is specified - today this is 8192. It will also cap the
             maximum number of partitions independently of this setting - currently
             4096.
-        num_sub_vectors : int
+        num_sub_vectors
             The number of sub-vectors to use when building the index.
-        distance_metric : VectorDistanceMetricLike
+        distance_metric
             The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
 
         """

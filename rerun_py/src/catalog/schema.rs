@@ -6,10 +6,10 @@ use pyo3::{IntoPyObjectExt as _, Py, PyObject, PyRef, PyRefMut, PyResult, pyclas
 use re_log_types::EntityPath;
 use re_sorbet::{ColumnDescriptor, ComponentColumnSelector, SorbetColumnDescriptors};
 
-use super::AnyComponentColumn;
 use super::component_columns::PyComponentColumnDescriptor;
 use super::index_columns::PyIndexColumnDescriptor;
 use crate::catalog::to_py_err;
+use crate::dataframe::AnyComponentColumn;
 
 #[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct SchemaIterator {

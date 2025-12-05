@@ -13,7 +13,8 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::EntityPathFilter;
 use re_sorbet::TimeColumnSelector;
 
-use super::{PyRecordingView, PySchemaInternal};
+use super::PyRecordingView;
+use crate::catalog::PySchemaInternal;
 
 /// A single Rerun recording.
 ///

@@ -10,10 +10,8 @@ use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 
-use super::{
-    AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle,
-    PySchemaInternal,
-};
+use super::{AnyColumn, AnyComponentColumn, IndexValuesLike, PyRecording, PyRecordingHandle};
+use crate::catalog::PySchemaInternal;
 use crate::utils::py_rerun_warn_cstr;
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
