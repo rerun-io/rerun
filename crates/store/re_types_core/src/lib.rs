@@ -25,14 +25,15 @@ pub mod arrow_helpers;
 mod arrow_string;
 pub mod arrow_zip_validity;
 mod as_components;
+mod chunk_id;
 mod chunk_index_message;
 mod component_batch;
 mod component_descriptor;
 mod dynamic_archetype;
-mod id;
 mod loggable;
 pub mod reflection;
 mod result;
+mod row_id;
 mod tuid;
 mod view;
 mod wrapper_component;
@@ -42,6 +43,7 @@ pub use self::archetype::{
 };
 pub use self::arrow_string::ArrowString;
 pub use self::as_components::AsComponents;
+pub use self::chunk_id::ChunkId;
 pub use self::chunk_index_message::ChunkIndexMessage;
 pub use self::component_batch::{
     ComponentBatch, SerializedComponentBatch, SerializedComponentColumn,
@@ -51,7 +53,6 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
-pub use self::id::{ChunkId, RowId};
 pub use self::loggable::{
     Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
 };
@@ -59,6 +60,7 @@ pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult,
 };
+pub use self::row_id::RowId;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;
