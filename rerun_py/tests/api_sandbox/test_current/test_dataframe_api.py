@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 def test_dataframe_api_filter_segment_id(simple_dataset_prefix: Path) -> None:
     with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
-        ds = client.get_dataset_entry(name="ds")
+        ds = client.get_dataset(name="ds")
 
         # Create a view with all segments
         view = ds.dataframe_query_view(index="timeline", contents="/**").filter_segment_id(
@@ -68,7 +68,7 @@ timeline: [[2000-01-01 00:00:00.000000000,2000-01-01 00:00:02.000000000]]
 def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
     with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
-        ds = client.get_dataset_entry(name="ds")
+        ds = client.get_dataset(name="ds")
 
         # Create a view with all segments
         view = (

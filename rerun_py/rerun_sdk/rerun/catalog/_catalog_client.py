@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, overload
 
 import pyarrow as pa
 from pyarrow import RecordBatch, RecordBatchReader
@@ -202,32 +202,65 @@ class CatalogClient:
 
     # ---
 
-    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
-        """Returns a dataset by its ID or name."""
-        from . import DatasetEntry
+    @overload
+    def get_dataset(self, *, id: EntryId | str) -> DatasetEntry: ...
 
-        return DatasetEntry(self._internal.get_dataset_entry(self._resolve_name_or_id(id, name)))
+    @overload
+    def get_dataset(self, name: str) -> DatasetEntry: ...
 
-    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
-        """Returns a table by its ID or name."""
-        from . import TableEntry
-
-        return TableEntry(self._internal.get_table_entry(self._resolve_name_or_id(id, name)))
-
-    # ---
-
-    def get_dataset(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
+    def get_dataset(self, name: str | None = None, *, id: EntryId | str | None = None) -> DatasetEntry:
         """
         Returns a dataset by its ID or name.
 
-        Note: This is currently an alias for `get_dataset_entry`. In the future, it will return a data-oriented dataset
-        object instead.
-        """
-        return self.get_dataset_entry(id=id, name=name)
+        Exactly one of `id` or `name` must be provided.
 
-    def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> datafusion.DataFrame:
+        Parameters
+        ----------
+        name
+            The name of the dataset.
+        id
+            The unique identifier of the dataset. Can be an `EntryId` object or its string representation.
+
+        """
+        from . import DatasetEntry
+
+        return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name)))
+
+    @overload
+    def get_table(self, *, id: EntryId | str) -> TableEntry: ...
+
+    @overload
+    def get_table(self, name: str) -> TableEntry: ...
+
+    def get_table(self, name: str | None = None, *, id: EntryId | str | None = None) -> TableEntry:
+        """
+        Returns a table by its ID or name.
+
+        Exactly one of `id` or `name` must be provided.
+
+        Parameters
+        ----------
+        name
+            The name of the table.
+        id
+            The unique identifier of the table. Can be an `EntryId` object or its string representation.
+
+        """
+        from . import TableEntry
+
+        return TableEntry(self._internal.get_table(self._resolve_name_or_id(id, name)))
+
+    # ---
+
+    @deprecated("Use get_dataset() instead")
+    def get_dataset_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> DatasetEntry:
+        """Returns a dataset by its ID or name."""
+        return self.get_dataset(name=name, id=id)  # type: ignore[call-overload, no-any-return]
+
+    @deprecated("Use get_table() instead")
+    def get_table_entry(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table by its ID or name."""
-        return self.get_table_entry(id=id, name=name).df()
+        return self.get_table(name=name, id=id)  # type: ignore[call-overload, no-any-return]
 
     # ---
 
@@ -256,7 +289,7 @@ class CatalogClient:
 
         return TableEntry(self._internal.register_table(name, url))
 
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
         """
         Create and register a new table.
 
@@ -275,7 +308,12 @@ class CatalogClient:
         """
         from . import TableEntry
 
-        return TableEntry(self._internal.create_table_entry(name, schema, url))
+        return TableEntry(self._internal.create_table(name, schema, url))
+
+    @deprecated("Use create_table() instead")
+    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """Create and register a new table."""
+        return self.create_table(name, schema, url)
 
     def write_table(
         self,
@@ -369,7 +407,7 @@ class CatalogClient:
         if not named_params:
             return
         params = named_params.items()
-        schema = self.get_table(name=table_name).df.schema()
+        schema = self.get_table(name=table_name).df().schema()
 
         cast_params = {}
         expected_len = None

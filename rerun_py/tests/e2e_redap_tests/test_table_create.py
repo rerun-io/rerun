@@ -19,7 +19,7 @@ def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    table_entry = entry_factory.create_table_entry(table_name, original_schema, tmp_path.absolute().as_uri())
+    table_entry = entry_factory.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
     df = table_entry.df()
 
     returned_schema = df.schema().remove_metadata()
@@ -33,9 +33,7 @@ def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path
     df = prefilled_catalog.dataset.dataframe_query_view(index="time_1", contents="/**").df()
     original_schema = df.schema()
 
-    table_entry = prefilled_catalog.factory.create_table_entry(
-        table_name, original_schema, tmp_path.absolute().as_uri()
-    )
+    table_entry = prefilled_catalog.factory.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
     df = table_entry.df()
 
     # Due to https://github.com/lance-format/lance/issues/2304 we cannot
@@ -58,7 +56,7 @@ def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: 
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    catalog_client.create_table_entry(table_name, original_schema, tmp_path.absolute().as_uri())
+    catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
 
     df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
 

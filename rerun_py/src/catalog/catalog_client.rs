@@ -165,7 +165,7 @@ impl PyCatalogClientInternal {
     // ---
 
     /// Get a dataset by name or id.
-    fn get_dataset_entry(
+    fn get_dataset(
         self_: Py<Self>,
         id: Py<PyEntryId>,
         py: Python<'_>,
@@ -182,7 +182,7 @@ impl PyCatalogClientInternal {
     /// Get a table by name or id.
     ///
     /// Note: the entry table is named `__entries`.
-    fn get_table_entry(
+    fn get_table(
         self_: Py<Self>,
         py: Python<'_>,
         id: Py<PyEntryId>,
@@ -235,7 +235,7 @@ impl PyCatalogClientInternal {
         )
     }
 
-    fn create_table_entry(
+    fn create_table(
         self_: Py<Self>,
         py: Python<'_>,
         name: String,

@@ -94,7 +94,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
 
         # TODO(jleibs): Consider attaching this metadata table directly to the dataset
         # and automatically joining it by default
-        meta = client.create_table_entry(
+        meta = client.create_table(
             "basic_dataset_metadata",
             pa.schema([
                 ("rerun_segment_id", pa.string()),
