@@ -30,4 +30,5 @@ def login() -> None:
 
     # Wait for the flow to complete and store credentials
     credentials = flow.finish_login_flow()
+    print()
     print(f"Success! You're logged in as '{credentials.user_email}'.")
