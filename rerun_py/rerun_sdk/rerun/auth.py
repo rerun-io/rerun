@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import webbrowser
+from IPython.core.display import HTML
+from IPython.display import display
 
 from rerun_bindings import init_login_flow
 
@@ -22,9 +23,10 @@ def login() -> None:
 
     # Automatically open the login URL in the default browser
     login_url = flow.login_url()
-    print("Open the following URL in your browser:")
-    print(login_url)
-    webbrowser.open(login_url)
+    print("Click the button to login in your browser:")
+    display(HTML(f'<a href="{login_url}" target="_blank" style="">Login</a>'))
+    print("You should see the following code:")
+    print(flow.user_code())
 
     # Wait for the flow to complete and store credentials
     credentials = flow.finish_login_flow()

@@ -12,9 +12,8 @@ use itertools::Itertools as _;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use re_auth::OauthLoginFlow;
 use re_auth::oauth::Credentials;
-use re_auth::oauth::login_flow::OauthLoginFlowState;
+use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
@@ -162,7 +161,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
-    m.add_class::<PyOauthLoginFlow>()?;
+    m.add_class::<PyDeviceCodeFlow>()?;
     m.add_class::<PyCredentials>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
@@ -2244,16 +2243,21 @@ authkey = multiprocessing.current_process().authkey
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
 }
 
-#[pyclass(name = "OauthLoginFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-struct PyOauthLoginFlow {
-    login_flow: OauthLoginFlow,
+#[pyclass(name = "DeviceCodeFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+struct PyDeviceCodeFlow {
+    login_flow: DeviceCodeFlow,
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyOauthLoginFlow {
+impl PyDeviceCodeFlow {
     /// Get the URL for the OAuth login flow.
     fn login_url(&self) -> String {
-        self.login_flow.server.get_login_url().to_owned()
+        self.login_flow.get_login_url().to_owned()
+    }
+
+    /// Get the user code.
+    fn user_code(&self) -> String {
+        self.login_flow.get_user_code().to_owned()
     }
 
     /// Finish the OAuth login flow.
@@ -2264,15 +2268,7 @@ impl PyOauthLoginFlow {
     ///     The credentials of the logged in user.
     fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
         let result: Result<Credentials, re_auth::callback_server::Error> =
-            crate::utils::wait_for_future(py, async {
-                loop {
-                    let result = self.login_flow.poll().await?;
-                    match result {
-                        Some(credentials) => break Ok(credentials),
-                        None => tokio::time::sleep(Duration::from_millis(10)).await,
-                    }
-                }
-            });
+            crate::utils::wait_for_future(py, self.login_flow.wait_for_user_confirmation());
 
         result
             .map(PyCredentials)
@@ -2285,19 +2281,19 @@ impl PyOauthLoginFlow {
 ///
 /// Returns
 /// -------
-/// OauthLoginFlow | None
+/// DeviceCodeFlow | None
 ///     The login flow, or `None` if the user is already logged in.
-fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyOauthLoginFlow>> {
-    let login_flow = crate::utils::wait_for_future(py, async { OauthLoginFlow::init(false).await })
+fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyDeviceCodeFlow>> {
+    let login_flow = crate::utils::wait_for_future(py, async { DeviceCodeFlow::init(false).await })
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
     match login_flow {
-        OauthLoginFlowState::AlreadyLoggedIn(_) => {
+        DeviceCodeFlowState::AlreadyLoggedIn(_) => {
             // Already logged in, no need to start a login flow.
             Ok(None)
         }
-        OauthLoginFlowState::LoginFlowStarted(login_flow) => {
-            Ok(Some(PyOauthLoginFlow { login_flow }))
+        DeviceCodeFlowState::LoginFlowStarted(login_flow) => {
+            Ok(Some(PyDeviceCodeFlow { login_flow }))
         }
     }
 }
