@@ -2225,11 +2225,7 @@ mod tests {
                 )
                 .build()?;
             let clear_chunk = Chunk::builder(path.clone())
-                .with_archetype(
-                    RowId::new(),
-                    [(timeline, 2)],
-                    &archetypes::Clear::new(false),
-                )
+                .with_archetype_auto_row([(timeline, 2)], &archetypes::Clear::new(false))
                 .build()?;
 
             if clear_in_separate_chunk && !first_clear_then_data {
@@ -2337,11 +2333,8 @@ mod tests {
                     &archetypes::Transform3D::from_translation([1.0, 2.0, 3.0]),
                 );
             if !clear_in_separate_chunk {
-                parent_chunk = parent_chunk.with_archetype(
-                    RowId::new(),
-                    [(timeline, 2)],
-                    &archetypes::Clear::new(true),
-                );
+                parent_chunk = parent_chunk
+                    .with_archetype_auto_row([(timeline, 2)], &archetypes::Clear::new(true));
             }
             entity_db.add_chunk(&Arc::new(parent_chunk.build()?))?;
             if update_after_each_chunk {
@@ -2360,7 +2353,7 @@ mod tests {
 
             if clear_in_separate_chunk {
                 let chunk = Chunk::builder(EntityPath::from("parent"))
-                    .with_archetype(RowId::new(), [(timeline, 2)], &archetypes::Clear::new(true))
+                    .with_archetype_auto_row([(timeline, 2)], &archetypes::Clear::new(true))
                     .build()?;
                 entity_db.add_chunk(&Arc::new(chunk))?;
                 if update_after_each_chunk {
@@ -3052,6 +3045,7 @@ mod tests {
 
         // Apply some updates to the transform before GC pass.
         apply_store_subscriber_events(&mut cache, &entity_db);
+        let num_bytes_before_gc = cache.total_size_bytes();
 
         let chunk = Chunk::builder(EntityPath::from("my_entity1"))
             .with_archetype_auto_row(
@@ -3092,7 +3086,7 @@ mod tests {
 
         let timeline = Timeline::new_sequence("t");
         let chunk = Chunk::builder(EntityPath::from("my_recursive_clear"))
-            .with_archetype(RowId::new(), [(timeline, 1)], &archetypes::Clear::new(true))
+            .with_archetype_auto_row([(timeline, 1)], &archetypes::Clear::new(true))
             .build()?;
         entity_db.add_chunk(&Arc::new(chunk))?;
 
