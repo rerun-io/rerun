@@ -10,6 +10,7 @@ from rerun_bindings import (
     IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
     Schema as Schema,
+    # TODO(RR-3130): remove deprecated TableInsertMode in 0.29 or later
     TableInsertMode as TableInsertMode,
     Task as Task,
     Tasks as Tasks,

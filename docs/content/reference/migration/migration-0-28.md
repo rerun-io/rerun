@@ -214,3 +214,5 @@ The new `TableEntry` methods also support writing Python objects directly via ke
 ```python
 table.append(col1=[1, 2, 3], col2=["a", "b", "c"])
 ```
+
+Note: `TableInsertMode` is no longer needed with the new API and will be removed in a future release.
