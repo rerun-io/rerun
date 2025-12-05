@@ -568,7 +568,7 @@ mod tests {
                 RecommendedView::new_single_entity("some/path"),
             ))
         });
-        let _view_id_some_path_overriden =
+        let _view_id_some_path_overridden =
             test_context.setup_viewport_blueprint(|ctx, blueprint| {
                 let view_id = blueprint.add_view_at_root(ViewBlueprint::new(
                     class_id,
@@ -576,7 +576,7 @@ mod tests {
                 ));
                 ctx.save_blueprint_archetype(
                     ViewContents::override_path_for_entity(view_id, &"some/path".into()),
-                    &CoordinateFrame::new("overriden_frame"),
+                    &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id
             });
@@ -586,7 +586,7 @@ mod tests {
                 RecommendedView::new_single_entity("has_frame"),
             ))
         });
-        let view_id_coordinate_frame_overriden =
+        let view_id_coordinate_frame_overridden =
             test_context.setup_viewport_blueprint(|ctx, blueprint| {
                 let view_id = blueprint.add_view_at_root(ViewBlueprint::new(
                     class_id,
@@ -594,7 +594,7 @@ mod tests {
                 ));
                 ctx.save_blueprint_archetype(
                     ViewContents::override_path_for_entity(view_id, &"has_frame".into()),
-                    &CoordinateFrame::new("overriden_frame"),
+                    &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id
             });
@@ -627,16 +627,16 @@ mod tests {
                 // TODO(RR-3076): this fails right now since if there's no data at all we don't create data results.
                 // This will be fixed by either removing space_origin or by supporting override-only visualizations.
                 // (
-                //     _view_id_some_path_overriden,
-                //     TransformFrameId::from("overriden_frame"),
+                //     _view_id_some_path_overridden,
+                //     TransformFrameId::from("overridden_frame"),
                 // ),
                 (
                     view_id_coordinate_frame,
                     TransformFrameId::from("store_frame"),
                 ),
                 (
-                    view_id_coordinate_frame_overriden,
-                    TransformFrameId::from("overriden_frame"),
+                    view_id_coordinate_frame_overridden,
+                    TransformFrameId::from("overridden_frame"),
                 ),
                 (
                     view_id_directly_set,
