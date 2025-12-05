@@ -278,7 +278,9 @@ pub fn list_item_scope<R>(
         if let Some(max_desired_left_column_width) = layout_stats.max_desired_left_column_width {
             // TODO(ab): this heuristics can certainly be improved, to be done with more hindsight
             // from real-world usage.
-            let available_width = layout_stats.max_item_width.unwrap_or(ui.available_width());
+            let available_width = layout_stats
+                .max_item_width
+                .unwrap_or_else(|| ui.available_width());
             Some(max_desired_left_column_width.at_most(0.7 * available_width))
         } else {
             None

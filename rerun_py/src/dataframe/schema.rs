@@ -172,7 +172,7 @@ impl PySchema {
         let desc = self
             .schema
             .resolve_component_column_selector(column_selector)
-            .ok_or(PyValueError::new_err(format!(
+            .ok_or_else(|| PyValueError::new_err(format!(
                 "Could not find column for selector {column_selector}"
             )))?;
 

@@ -184,12 +184,10 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     .instances
                     .get(&Instance::from(instance_index as u64))
                     .copied()
-                    .unwrap_or(
-                        query
+                    .unwrap_or_else(|| query
                             .highlights
                             .entity_outline_mask(data_result.entity_path.hash())
-                            .overall,
-                    );
+                            .overall);
 
                 add_axis_arrows(
                     ctx.tokens(),

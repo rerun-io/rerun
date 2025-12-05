@@ -561,7 +561,7 @@ fn get_parent_frame(
         .map_or_else(
             || {
                 TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or(EntityPath::root()),
+                    &entity_path.parent().unwrap_or_else(EntityPath::root),
                 )
             },
             |frame_id| TransformFrameIdHash::new(&frame_id),

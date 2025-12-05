@@ -119,7 +119,7 @@ impl Pinhole {
                 let v = PinholeProjection::from_arrow(&data.array)?;
                 v.first()
                     .copied()
-                    .ok_or(re_types_core::DeserializationError::missing_data())
+                    .ok_or_else(re_types_core::DeserializationError::missing_data)
             },
         )
     }
@@ -134,7 +134,7 @@ impl Pinhole {
                 let v = Resolution::from_arrow(&data.array)?;
                 v.first()
                     .copied()
-                    .ok_or(re_types_core::DeserializationError::missing_data())
+                    .ok_or_else(re_types_core::DeserializationError::missing_data)
             },
         )
     }
