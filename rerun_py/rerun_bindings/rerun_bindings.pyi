@@ -1800,7 +1800,7 @@ class _ServerInternal:
 ## AUTH                                                                                                            ##
 #####################################################################################################################
 
-class OauthLoginFlow:
+class DeviceCodeFlow:
     """
     OAuth login flow implementation.
 
@@ -1809,6 +1809,9 @@ class OauthLoginFlow:
 
     def login_url(self) -> str:
         """Get the URL for the OAuth login flow."""
+
+    def user_code(self) -> str:
+        """Get the user code."""
 
     def finish_login_flow(self) -> Credentials:
         """
@@ -1821,13 +1824,13 @@ class OauthLoginFlow:
 
         """
 
-def init_login_flow() -> OauthLoginFlow | None:
+def init_login_flow() -> DeviceCodeFlow | None:
     """
     Initialize an OAuth login flow.
 
     Returns
     -------
-    OauthLoginFlow | None
+    DeviceCodeFlow | None
         The login flow, or `None` if the user is already logged in.
 
     """

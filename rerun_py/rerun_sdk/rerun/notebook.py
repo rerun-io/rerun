@@ -124,6 +124,7 @@ class Viewer:
         self._error_widget = _ErrorWidget()
 
         # Get access token from env variable
+        credentials = None
         fallback_token = os.environ.get("REDAP_TOKEN", None)
         credentials = None
         if fallback_token is None:
