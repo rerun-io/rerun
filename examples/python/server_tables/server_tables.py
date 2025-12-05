@@ -31,11 +31,11 @@ def create_table(client: CatalogClient, directory: Path, table_name: str, schema
     This is a convenience function for creating the status log and result tables.
     """
     if table_name in client.table_names():
-        return client.get_table(name=table_name)
+        return client.get_table(name=table_name).df()
 
     url = f"file://{directory}/{table_name}"
 
-    return client.create_table_entry(table_name, schema, url).df()
+    return client.create_table(table_name, schema, url).df()
 
 
 def create_status_log_table(client: CatalogClient, directory: Path) -> DataFrame:
@@ -84,8 +84,8 @@ def process_segments(client: CatalogClient, dataset: DatasetEntry, segment_list:
     to keep track of when jobs start and finish so you can produce additional metrics around
     when the jobs ran and how long they took.
     """
-    client.append_to_table(
-        STATUS_LOG_TABLE_NAME,
+    status_log_table = client.get_table(name=STATUS_LOG_TABLE_NAME)
+    status_log_table.append(
         rerun_segment_id=segment_list,
         is_complete=[False] * len(segment_list),
         update_time=[datetime.now()] * len(segment_list),
@@ -121,8 +121,7 @@ def process_segments(client: CatalogClient, dataset: DatasetEntry, segment_list:
     # This command will replace the existing rows with a `True` completion status.
     # If instead you wish to measure how long it takes your workflow to run, you
     # can use an append statement as in the previous write.
-    client.update_table(
-        STATUS_LOG_TABLE_NAME,
+    status_log_table.upsert(
         rerun_segment_id=segment_list,
         is_complete=[True] * len(segment_list),
         update_time=[datetime.now()] * len(segment_list),
