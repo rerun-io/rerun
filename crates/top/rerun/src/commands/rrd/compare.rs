@@ -2,8 +2,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::Context as _;
+use arrow::array::RecordBatch;
 use itertools::{Itertools as _, izip};
+
 use re_chunk::Chunk;
+use re_log_encoding::RrdManifest;
 
 // ---
 
@@ -49,18 +52,26 @@ impl CompareCommand {
         let path_to_rrd1 = PathBuf::from(path_to_rrd1);
         let path_to_rrd2 = PathBuf::from(path_to_rrd2);
 
-        let (app_id1, chunks1) = load_chunks(&path_to_rrd1, *ignore_chunks_without_components)
-            .with_context(|| format!("path: {path_to_rrd1:?}"))?;
-        let (app_id2, chunks2) = load_chunks(&path_to_rrd2, *ignore_chunks_without_components)
-            .with_context(|| format!("path: {path_to_rrd2:?}"))?;
+        let (app_id1, chunks1, rrd_manifests1) =
+            load_chunks(&path_to_rrd1, *ignore_chunks_without_components)
+                .with_context(|| format!("path: {path_to_rrd1:?}"))?;
+        let (app_id2, chunks2, rrd_manifests2) =
+            load_chunks(&path_to_rrd2, *ignore_chunks_without_components)
+                .with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
         if *full_dump {
             println!("{app_id1}");
+            for manifest in &rrd_manifests1 {
+                println!("{}", format_manifest(&manifest.data));
+            }
             for chunk in &chunks1 {
                 println!("{chunk}");
             }
 
             println!("{app_id2}");
+            for manifest in &rrd_manifests2 {
+                println!("{}", format_manifest(&manifest.data));
+            }
             for chunk in &chunks2 {
                 println!("{chunk}");
             }
@@ -69,6 +80,19 @@ impl CompareCommand {
         anyhow::ensure!(
             app_id1 == app_id2,
             "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
+        );
+
+        anyhow::ensure!(
+            rrd_manifests1 == rrd_manifests2,
+            "RRD manifests do not match:\n{}\n{}",
+            rrd_manifests1
+                .iter()
+                .map(|b| format_manifest(&b.data))
+                .join("\n"),
+            rrd_manifests2
+                .iter()
+                .map(|b| format_manifest(&b.data))
+                .join("\n"),
         );
 
         anyhow::ensure!(
@@ -110,6 +134,19 @@ impl CompareCommand {
             .to_string()
         }
 
+        fn format_manifest(batch: &RecordBatch) -> String {
+            re_arrow_util::format_record_batch_opts(
+                batch,
+                &re_arrow_util::RecordBatchFormatOpts {
+                    width: Some(800),
+                    transposed: true,
+                    max_cell_content_width: 40,
+                    ..Default::default()
+                },
+            )
+            .to_string()
+        }
+
         if !*unordered || unordered_failed {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
@@ -139,7 +176,11 @@ impl CompareCommand {
 fn load_chunks(
     path_to_rrd: &Path,
     ignore_chunks_without_components: bool,
-) -> anyhow::Result<(re_log_types::ApplicationId, Vec<Arc<re_chunk::Chunk>>)> {
+) -> anyhow::Result<(
+    re_log_types::ApplicationId,
+    Vec<Arc<re_chunk::Chunk>>,
+    Vec<RrdManifest>,
+)> {
     use re_entity_db::EntityDb;
     use re_log_types::StoreId;
 
@@ -153,8 +194,8 @@ fn load_chunks(
     // in `Decoder` requires `SetStoreInfo` to arrive before the corresponding `ArrowMsg`. Ideally
     // this tool would cache orphan `ArrowMsg` until a matching `SetStoreInfo` arrives.
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let decoder = re_log_encoding::DecoderApp::decode_lazy(rrd_file);
-    for msg in decoder {
+    let mut decoder = re_log_encoding::DecoderApp::decode_lazy(rrd_file);
+    for msg in &mut decoder {
         let msg = msg.context("decode rrd message")?;
         stores
             .entry(msg.store_id().clone())
@@ -169,6 +210,8 @@ fn load_chunks(
             .add(&msg)
             .context("decode rrd file contents")?;
     }
+
+    let rrd_manifests = decoder.rrd_manifests()?;
 
     let mut stores = stores
         .values()
@@ -198,5 +241,6 @@ fn load_chunks(
                 }
             })
             .collect_vec(),
+        rrd_manifests,
     ))
 }
