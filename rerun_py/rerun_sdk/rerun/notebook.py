@@ -125,6 +125,7 @@ class Viewer:
 
         # Get access token from env variable
         fallback_token = os.environ.get("REDAP_TOKEN", None)
+        credentials = None
         if fallback_token is None:
             # Get credentials from the SDK and pass the access token to wasm viewer
             credentials = bindings.get_credentials()
