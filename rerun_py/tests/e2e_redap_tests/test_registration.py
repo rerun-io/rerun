@@ -28,7 +28,7 @@ def temp_empty_directory() -> Iterator[str]:
 
 
 def test_registration_invalidargs(
-    catalog_client: CatalogClient, temp_empty_file: str, temp_empty_directory: str
+    catalog_client: CatalogClient, _temp_empty_file: str, temp_empty_directory: str
 ) -> None:
     """Tests the url property on the catalog and dataset."""
 
