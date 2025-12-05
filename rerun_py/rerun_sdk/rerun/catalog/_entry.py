@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
 import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
 
 from rerun_bindings import DatasetEntryInternal, TableEntryInternal, TableInsertMode
+
+#: Type alias for supported batch input types for TableEntry write methods.
+_BatchesType: TypeAlias = (
+    RecordBatchReader | pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]]
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -531,9 +536,6 @@ class TableEntry(Entry[TableEntryInternal]):
         return self.df().schema()
 
     # ---
-
-    #: Type alias for supported batch input types.
-    _BatchesType = RecordBatchReader | pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]]
 
     def append(
         self,
