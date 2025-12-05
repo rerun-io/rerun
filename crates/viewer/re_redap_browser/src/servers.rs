@@ -334,7 +334,7 @@ pub enum Command {
     /// If the token is None, this does *not* remove an existing token.
     ///
     /// The closure can be used to run something after adding the server (useful since [`Command`]s
-    /// are not ran in order with [`SystemCommand`]s).
+    /// are not ran in order with [`re_viewer_context::SystemCommand`]s).
     AddServer(
         re_uri::Origin,
         Option<re_redap_client::Credentials>,
