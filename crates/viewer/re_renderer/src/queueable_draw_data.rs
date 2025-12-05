@@ -1,9 +1,7 @@
 use std::any::Any;
 
-use crate::{
-    DrawableCollector, RenderContext, RendererTypeId,
-    renderer::{DrawData, DrawableCollectionViewInfo},
-};
+use crate::renderer::{DrawData, DrawableCollectionViewInfo};
+use crate::{DrawableCollector, RenderContext, RendererTypeId};
 
 /// Utility trait for implementing dynamic dispatch within [`QueueableDrawData`].
 pub trait TypeErasedDrawData {

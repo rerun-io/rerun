@@ -7,23 +7,18 @@ use datafusion::catalog::TableProvider;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
-
 use re_dataframe_ui::RequestedObject;
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider};
 use re_log_types::EntryId;
-use re_protos::{
-    TypeConversionError,
-    cloud::v1alpha1::{
-        EntryFilter, EntryKind,
-        ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry},
-    },
-    external::prost,
-};
+use re_protos::TypeConversionError;
+use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
+use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
+use re_protos::external::prost;
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
 use re_ui::{Icon, icons};
 use re_viewer_context::AsyncRuntimeHandle;
 
-pub type EntryResult<T> = Result<T, ApiError>;
+pub type EntryResult<T = ()> = Result<T, ApiError>;
 
 pub struct Dataset {
     pub dataset_entry: DatasetEntry,

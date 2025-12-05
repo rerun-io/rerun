@@ -1,8 +1,8 @@
 //! Utilities for decoding MCAP messages into Rerun chunks.
 
+use re_chunk::external::nohash_hasher::{IntMap, IsEnabled};
 use re_chunk::{
     Chunk, EntityPath, TimeColumn, TimeColumnBuilder, TimePoint, Timeline, TimelineName,
-    external::nohash_hasher::{IntMap, IsEnabled},
 };
 use re_log_types::TimeCell;
 

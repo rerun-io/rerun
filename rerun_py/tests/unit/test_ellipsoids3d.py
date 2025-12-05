@@ -4,7 +4,7 @@ import itertools
 from typing import TYPE_CHECKING, cast
 
 import rerun as rr
-from rerun.components import HalfSize3DBatch, PoseRotationAxisAngleBatch, PoseRotationQuatBatch, PoseTranslation3DBatch
+from rerun.components import HalfSize3DBatch, RotationAxisAngleBatch, RotationQuatBatch, Translation3DBatch
 
 from .common_arrays import (
     class_ids_arrays,
@@ -108,12 +108,12 @@ def test_ellipsoids() -> None:
         print(f"{arch}\n")
 
         assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize3DBatch)
-        assert arch.centers == centers_expected(centers, PoseTranslation3DBatch)
+        assert arch.centers == centers_expected(centers, Translation3DBatch)
         assert arch.rotation_axis_angles == expected_rotation_axis_angles(
             rotation_axis_angles,
-            PoseRotationAxisAngleBatch,
+            RotationAxisAngleBatch,
         )
-        assert arch.quaternions == quaternions_expected(quaternions, PoseRotationQuatBatch)
+        assert arch.quaternions == quaternions_expected(quaternions, RotationQuatBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.line_radii == radii_expected(line_radii)
         assert arch.fill_mode == rr.components.FillModeBatch._converter(fill_mode)

@@ -3,6 +3,9 @@ use bytemuck::Pod;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
+use re_depth_compression::ros_rvl::{
+    decode_ros_rvl_f32, decode_ros_rvl_u16, parse_ros_rvl_metadata,
+};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_types::{
@@ -12,12 +15,9 @@ use re_types::{
     image::{ImageKind, ImageLoadError},
 };
 
-use crate::{
-    Cache, CacheMemoryReport, CacheMemoryReportItem, ImageInfo, cache::filter_blob_removed_events,
-    image_info::StoredBlobCacheKey,
-};
-
-use crate::{decode_ros_rvl_f32, decode_ros_rvl_u16, parse_ros_rvl_metadata};
+use crate::cache::filter_blob_removed_events;
+use crate::image_info::StoredBlobCacheKey;
+use crate::{Cache, CacheMemoryReport, CacheMemoryReportItem, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image

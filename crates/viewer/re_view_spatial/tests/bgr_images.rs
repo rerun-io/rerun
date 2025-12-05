@@ -2,15 +2,14 @@
 
 use image::GenericImageView as _;
 use itertools::Itertools as _;
-
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{
-    Archetype as _, blueprint::components::BackgroundKind, datatypes::ColorModel,
-    image::ImageChannelType,
-};
+use re_types::Archetype as _;
+use re_types::blueprint::components::BackgroundKind;
+use re_types::datatypes::ColorModel;
+use re_types::image::ImageChannelType;
 use re_viewer_context::{BlueprintContext as _, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 

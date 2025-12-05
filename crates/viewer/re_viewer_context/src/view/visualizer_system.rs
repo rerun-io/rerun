@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
-
 use re_chunk::{ArchetypeName, EntityPath};
 use re_types::{Archetype, ComponentDescriptor, ComponentIdentifier, ComponentSet};
 

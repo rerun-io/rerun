@@ -1,14 +1,13 @@
-use std::{iter::repeat_n, sync::Arc};
+use std::iter::repeat_n;
+use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-        PrimitiveArray, UInt32Array, new_empty_array,
-    },
-    buffer::{NullBuffer, OffsetBuffer},
-    datatypes::{DataType, Field},
-    error::ArrowError,
+use arrow::array::{
+    Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
+    PrimitiveArray, UInt32Array, new_empty_array,
 };
+use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
 // ---------------------------------------------------------------------------------
@@ -423,11 +422,9 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
 #[cfg(test)]
 mod tests {
 
-    use arrow::{
-        array::{Array as _, AsArray as _, Int32Array},
-        buffer::{NullBuffer, ScalarBuffer},
-        datatypes::{DataType, Int32Type},
-    };
+    use arrow::array::{Array as _, AsArray as _, Int32Array};
+    use arrow::buffer::{NullBuffer, ScalarBuffer};
+    use arrow::datatypes::{DataType, Int32Type};
 
     use super::*;
 

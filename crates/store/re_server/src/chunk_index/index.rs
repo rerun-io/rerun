@@ -9,7 +9,6 @@ use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::error::ArrowError;
 use lance::deps::arrow_array::UInt8Array;
-
 use re_chunk_store::Chunk;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{IndexConfig, IndexProperties};
@@ -17,11 +16,10 @@ use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::ComponentIdentifier;
 
 use crate::chunk_index::{
-    ArcCell, FIELD_CHUNK_ID, FIELD_INSTANCE, FIELD_INSTANCE_ID, FIELD_RERUN_PARTITION_ID,
-    FIELD_RERUN_PARTITION_LAYER, FIELD_TIMEPOINT,
+    ArcCell, FIELD_CHUNK_ID, FIELD_INSTANCE, FIELD_INSTANCE_ID, FIELD_RERUN_SEGMENT_ID,
+    FIELD_RERUN_SEGMENT_LAYER, FIELD_TIMEPOINT,
 };
-use crate::store::Dataset;
-use crate::store::Error as StoreError;
+use crate::store::{Dataset, Error as StoreError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IndexType {
@@ -218,10 +216,10 @@ impl super::Index {
         // Keep in sync (including types) with `create_lance_dataset`
         let batch = RecordBatch::try_from_iter([
             (
-                FIELD_RERUN_PARTITION_ID,
+                FIELD_RERUN_SEGMENT_ID,
                 Arc::new(segment_id_array) as ArrayRef,
             ),
-            (FIELD_RERUN_PARTITION_LAYER, Arc::new(layer_array)),
+            (FIELD_RERUN_SEGMENT_LAYER, Arc::new(layer_array)),
             (FIELD_CHUNK_ID, Arc::new(chunk_id_array)),
             (FIELD_TIMEPOINT, Arc::new(timepoint_array)),
             (FIELD_INSTANCE_ID, Arc::new(instance_id_array)),
@@ -275,14 +273,14 @@ async fn create_lance_dataset(
         Schema::new(vec![
             // Chunk identification values are the same for all rows: use a dictionary
             Field::new_dictionary(
-                FIELD_RERUN_PARTITION_ID,
+                FIELD_RERUN_SEGMENT_ID,
                 DataType::UInt8,
                 DataType::Utf8,
                 non_nullable,
             )
             .with_dict_is_ordered(true),
             Field::new_dictionary(
-                FIELD_RERUN_PARTITION_LAYER,
+                FIELD_RERUN_SEGMENT_LAYER,
                 DataType::UInt8,
                 DataType::Utf8,
                 non_nullable,
@@ -404,8 +402,8 @@ fn find_datatypes(
     component: &ComponentIdentifier,
     timeline_name: &TimelineName,
 ) -> Option<IndexDataTypes> {
-    for partition in dataset.partitions().values() {
-        for layer in partition.layers().values() {
+    for segment in dataset.segments().values() {
+        for layer in segment.layers().values() {
             let chunk_store = layer.store_handle().read();
             for chunk in chunk_store.iter_chunks() {
                 if chunk.entity_path() == entity_path

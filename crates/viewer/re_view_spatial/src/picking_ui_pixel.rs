@@ -1,11 +1,16 @@
 use re_data_ui::item_ui;
-use re_renderer::{external::wgpu, renderer::ColormappedTexture, resource_managers::GpuTexture2D};
-use re_types::{datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement};
+use re_renderer::external::wgpu;
+use re_renderer::renderer::ColormappedTexture;
+use re_renderer::resource_managers::GpuTexture2D;
+use re_types::datatypes::ColorModel;
+use re_types::image::ImageKind;
+use re_types::tensor_data::TensorElement;
 use re_ui::UiExt as _;
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ImageInfo, ViewQuery, ViewerContext, gpu_bridge};
 
-use crate::{PickableRectSourceData, view_kind::SpatialViewKind};
+use crate::PickableRectSourceData;
+use crate::view_kind::SpatialViewKind;
 
 pub struct PickedPixelInfo {
     pub source_data: PickableRectSourceData,

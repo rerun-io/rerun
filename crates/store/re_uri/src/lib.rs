@@ -26,7 +26,7 @@
 //!     "rerun+http://localhost:51234/proxy",
 //!
 //!     // Links to recording on the dataplatform (optionally with timestamp).
-//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1.23s..72s",
+//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1.23s..72s",
 //! ] {
 //!     assert!(uri.parse::<re_uri::RedapUri>().is_ok());
 //! }
@@ -41,17 +41,16 @@ mod redap_uri;
 mod scheme;
 mod time_selection;
 
-pub use self::{
-    endpoints::{
-        catalog::CatalogUri, dataset::DatasetPartitionUri, entry::EntryUri, proxy::ProxyUri,
-    },
-    error::Error,
-    fragment::Fragment,
-    origin::Origin,
-    redap_uri::RedapUri,
-    scheme::Scheme,
-    time_selection::TimeSelection,
-};
+pub use self::endpoints::catalog::CatalogUri;
+pub use self::endpoints::dataset::DatasetSegmentUri;
+pub use self::endpoints::entry::EntryUri;
+pub use self::endpoints::proxy::ProxyUri;
+pub use self::error::Error;
+pub use self::fragment::Fragment;
+pub use self::origin::Origin;
+pub use self::redap_uri::RedapUri;
+pub use self::scheme::Scheme;
+pub use self::time_selection::TimeSelection;
 
 pub mod external {
     pub use url;

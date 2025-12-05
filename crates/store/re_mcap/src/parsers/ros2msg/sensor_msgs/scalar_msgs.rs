@@ -1,12 +1,8 @@
-use crate::parsers::ros2msg::{
-    definitions::{
-        sensor_msgs::{
-            BatteryState, FluidPressure, Illuminance, Range, RelativeHumidity, Temperature,
-        },
-        std_msgs::Header,
-    },
-    scalar_parser::{ScalarExtractor, ScalarMessageParser},
+use crate::parsers::ros2msg::definitions::sensor_msgs::{
+    BatteryState, FluidPressure, Illuminance, Range, RelativeHumidity, Temperature,
 };
+use crate::parsers::ros2msg::definitions::std_msgs::Header;
+use crate::parsers::ros2msg::scalar_parser::{ScalarExtractor, ScalarMessageParser};
 
 // Type aliases for scalar messages convenience
 pub type TemperatureMessageParser = ScalarMessageParser<Temperature>;

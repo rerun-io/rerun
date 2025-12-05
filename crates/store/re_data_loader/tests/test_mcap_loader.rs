@@ -4,7 +4,8 @@ mod tests {
 
     use re_chunk::Chunk;
     use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-    use re_data_loader::{DataLoaderSettings, LoadedData, loader_mcap::load_mcap};
+    use re_data_loader::loader_mcap::load_mcap;
+    use re_data_loader::{DataLoaderSettings, LoadedData};
     use re_log_types::StoreId;
     use re_mcap::layers::SelectedLayers;
 

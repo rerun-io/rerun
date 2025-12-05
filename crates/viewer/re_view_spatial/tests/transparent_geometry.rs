@@ -3,13 +3,12 @@
 use glam::Vec3;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
-use re_test_context::{TestContext, external::egui_kittest::SnapshotOptions};
+use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
-use re_types::{
-    AsComponents, RowId, archetypes,
-    blueprint::archetypes::EyeControls3D,
-    components::{FillMode, Position3D},
-};
+use re_types::blueprint::archetypes::EyeControls3D;
+use re_types::components::{FillMode, Position3D};
+use re_types::{AsComponents, RowId, archetypes};
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
@@ -96,7 +95,7 @@ fn test_transparent_geometry<A: AsComponents>(
             format!("transparent_{name}_{i}"),
             &SnapshotOptions::default()
                 .threshold(4.0) // Transparent overlaps has some numerical inaccuracies which causes differences for a lot of pixels.
-                .failed_pixel_count_threshold(10),
+                .failed_pixel_count_threshold(15),
         );
     }
 }

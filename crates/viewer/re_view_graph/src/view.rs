@@ -1,17 +1,14 @@
 use re_log_types::EntityPath;
-use re_types::{
-    ViewClassIdentifier,
-    blueprint::{
-        self,
-        archetypes::{
-            ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
-            GraphBackground, VisualBounds2D,
-        },
-    },
-    components::Color,
+use re_types::ViewClassIdentifier;
+use re_types::blueprint::archetypes::{
+    ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition, GraphBackground,
+    VisualBounds2D,
 };
+use re_types::blueprint::{self};
+use re_types::components::Color;
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
-use re_view::{controls::DRAG_PAN2D_BUTTON, view_property_ui};
+use re_view::controls::DRAG_PAN2D_BUTTON;
+use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, RecommendedView, SystemCommand, SystemCommandSender as _,
     SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
@@ -20,12 +17,10 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    graph::Graph,
-    layout::{ForceLayoutParams, LayoutRequest},
-    ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui},
-    visualizers::{EdgesVisualizer, NodeVisualizer, merge},
-};
+use crate::graph::Graph;
+use crate::layout::{ForceLayoutParams, LayoutRequest};
+use crate::ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui};
+use crate::visualizers::{EdgesVisualizer, NodeVisualizer, merge};
 
 #[derive(Default)]
 pub struct GraphView;
@@ -176,7 +171,7 @@ impl ViewClass for GraphView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphViewState>()?;
@@ -187,7 +182,7 @@ impl ViewClass for GraphView {
         });
 
         re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<GraphBackground>(&ctx, ui);
             view_property_ui::<VisualBounds2D>(&ctx, ui);
             view_property_force_ui::<ForceLink>(&ctx, ui);
@@ -222,7 +217,7 @@ impl ViewClass for GraphView {
 
         let state = state.downcast_mut::<GraphViewState>()?;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let params = ForceLayoutParams::get(&view_ctx)?;
 
         let background = ViewProperty::from_archetype::<GraphBackground>(

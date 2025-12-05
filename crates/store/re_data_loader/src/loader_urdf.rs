@@ -1,21 +1,17 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::{Arc, mpsc::Sender},
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::mpsc::Sender;
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
-use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
-
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_types::{
-    AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
-    archetypes::{Asset3D, Transform3D},
-    datatypes::Vec3D,
-    external::glam,
-};
+use re_types::archetypes::{Asset3D, Transform3D};
+use re_types::datatypes::Vec3D;
+use re_types::external::glam;
+use re_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 

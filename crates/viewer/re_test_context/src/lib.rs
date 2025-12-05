@@ -110,9 +110,12 @@ impl Default for TestContext {
 
 impl TestContext {
     pub fn new() -> Self {
+        Self::new_with_store_info(StoreInfo::testing())
+    }
+
+    pub fn new_with_store_info(store_info: StoreInfo) -> Self {
         re_log::setup_logging();
 
-        let store_info = StoreInfo::testing();
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
@@ -518,6 +521,8 @@ impl TestContext {
                 display_mode: &DisplayMode::LocalRecordings(
                     store_context.recording_store_id().clone(),
                 ),
+
+                auth_context: None,
             },
             component_ui_registry: &self.component_ui_registry,
             component_fallback_registry: &self.component_fallback_registry,
@@ -753,6 +758,7 @@ impl TestContext {
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
                 | SystemCommand::SetAuthCredentials { .. }
+                | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
@@ -837,9 +843,10 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use re_entity_db::InstancePath;
     use re_viewer_context::Item;
+
+    use super::*;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.

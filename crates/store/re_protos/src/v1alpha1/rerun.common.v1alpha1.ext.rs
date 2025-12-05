@@ -1,6 +1,7 @@
-use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-
-use re_log_types::{RecordingId, StoreKind, TableId, external::re_types_core::ComponentDescriptor};
+use arrow::datatypes::Schema as ArrowSchema;
+use arrow::error::ArrowError;
+use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_log_types::{RecordingId, StoreKind, TableId};
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 

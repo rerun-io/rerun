@@ -1,18 +1,16 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array, ArrayBuilder, Float32Array, Float64Array, Int64Builder, ListArray, ListBuilder,
-        StringArray, StringBuilder, StructArray,
-    },
-    datatypes::{DataType, Field},
+use arrow::array::{
+    Array, ArrayBuilder, Float32Array, Float64Array, Int64Builder, ListArray, ListBuilder,
+    StringArray, StringBuilder, StructArray,
 };
+use arrow::datatypes::{DataType, Field};
+use rerun::external::re_log;
+use rerun::lenses::{Lens, LensesSink, Op};
+use rerun::sink::GrpcSink;
 use rerun::{
     ComponentDescriptor, DynamicArchetype, RecordingStream, Scalars, SerializedComponentColumn,
     SeriesLines, SeriesPoints, TextDocument, TimeCell,
-    external::re_log,
-    lenses::{Lens, LensesSink, Op},
-    sink::GrpcSink,
 };
 
 fn lens_flag() -> anyhow::Result<Lens> {

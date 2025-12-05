@@ -1,5 +1,6 @@
-use super::FilterByRange;
 use re_log_types::TimeInt;
+
+use super::FilterByRange;
 
 impl Default for FilterByRange {
     fn default() -> Self {

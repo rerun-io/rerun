@@ -1,4 +1,5 @@
-use std::{any::Any, path::PathBuf};
+use std::any::Any;
+use std::path::PathBuf;
 
 use ahash::HashMap;
 use poll_promise::Promise;

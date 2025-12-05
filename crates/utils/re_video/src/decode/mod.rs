@@ -87,7 +87,6 @@ mod ffmpeg_cli;
 
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::FFmpegCliDecoder;
-
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,

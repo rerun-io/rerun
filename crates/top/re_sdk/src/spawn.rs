@@ -180,10 +180,11 @@ impl std::fmt::Debug for SpawnError {
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
+    use std::net::TcpStream;
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
-
-    use std::{net::TcpStream, process::Command, time::Duration};
+    use std::process::Command;
+    use std::time::Duration;
 
     // NOTE: These are indented on purpose, it just looks better and reads easier.
 

@@ -1,13 +1,11 @@
 use std::convert::{TryFrom, TryInto as _};
 
 use egui_tiles::TileId;
-
 use re_log_types::EntityPath;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
-use crate::Item;
-use crate::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId};
+use crate::{BlueprintId, BlueprintIdRegistry, ContainerId, Item, ViewId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Contents {

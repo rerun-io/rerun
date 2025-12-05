@@ -1,11 +1,8 @@
 use re_types_core::{DeserializationResult, Loggable as _};
 
-use crate::{
-    components::{PinholeProjection, Resolution, ViewCoordinates},
-    datatypes::Vec2D,
-};
-
 use super::Pinhole;
+use crate::components::{PinholeProjection, Resolution, ViewCoordinates};
+use crate::datatypes::Vec2D;
 
 impl Pinhole {
     /// Camera orientation used when there's no camera orientation explicitly logged.

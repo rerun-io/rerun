@@ -9,10 +9,8 @@ use re_types::{
 };
 
 use super::super::Ros2MessageParser;
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
-};
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
 use crate::util::TimestampCell;
 
 /// Plugin that parses `sensor_msgs/msg/CompressedImage` messages.

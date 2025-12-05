@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
+
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 #[cfg(windows)]
@@ -60,7 +61,8 @@ impl FromStr for NamedPath {
 }
 
 impl Args {
-    pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
+    /// Waits for the server to start, and return a handle to it together with its address.
+    pub async fn create_server_handle(self) -> anyhow::Result<(ServerHandle, SocketAddr)> {
         let rerun_cloud_server = {
             use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudServiceServer;
 
@@ -102,19 +104,23 @@ impl Args {
 
         let server_builder = ServerBuilder::default()
             .with_address(addr)
-            .with_service(rerun_cloud_server);
+            .with_service(rerun_cloud_server)
+            .with_http_route(
+                "/version",
+                axum::routing::get(async move || re_build_info::build_info!().to_string()),
+            );
 
         let server = server_builder.build();
 
         let mut server_handle = server.start();
 
-        server_handle.wait_for_ready().await?;
+        let addr = server_handle.wait_for_ready().await?;
 
-        Ok(server_handle)
+        Ok((server_handle, addr))
     }
 
     pub async fn run_async(self) -> anyhow::Result<()> {
-        let mut server_handle = self.create_server_handle().await?;
+        let (mut server_handle, _) = self.create_server_handle().await?;
 
         #[cfg(unix)]
         let mut term_signal = signal(SignalKind::terminate())?;

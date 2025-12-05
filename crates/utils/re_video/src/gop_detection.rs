@@ -1,7 +1,7 @@
-use crate::{
-    VideoCodec, VideoEncodingDetails, av1::detect_av1_keyframe_start, h264::detect_h264_annexb_gop,
-    h265::detect_h265_annexb_gop,
-};
+use crate::av1::detect_av1_keyframe_start;
+use crate::h264::detect_h264_annexb_gop;
+use crate::h265::detect_h265_annexb_gop;
+use crate::{VideoCodec, VideoEncodingDetails};
 
 /// Failure reason for [`detect_gop_start`].
 #[derive(thiserror::Error, Debug)]

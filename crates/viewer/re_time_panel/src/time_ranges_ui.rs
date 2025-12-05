@@ -9,7 +9,6 @@ use std::ops::RangeInclusive;
 use egui::emath::Rangef;
 use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
-
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal};
 use re_types::blueprint::components::PlayState;
 use re_viewer_context::{TimeControlCommand, TimeView};

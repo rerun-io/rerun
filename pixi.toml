@@ -157,10 +157,10 @@ man = { cmd = "cargo --quiet run --package rerun-cli --all-features -- man > doc
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
-# Compile and run the rerun viewer, with performance telemetry.
+# Compile and run the rerun viewer, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --"
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,rerun/perf_telemetry_tracy --"
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
@@ -173,10 +173,10 @@ rerun-build-release = "cargo build --package rerun-cli --release --no-default-fe
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-release = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --release --"
 
-# Compile and run the rerun viewer in release, with performance telemetry.
+# Compile and run the rerun viewer in release mode, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --release --"
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,rerun/perf_telemetry_tracy --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --", depends-on = [
@@ -430,11 +430,11 @@ py-build = "pixi run -e py py-build-common"
 # Dedicated alias for building the python bindings in release mode for the `py` environment.
 py-build-release = "pixi run -e py py-build-common-release"
 
-# Dedicated alias for building the python bindings for the `py` environment, with performance telemetry.
-py-build-perf-debug = "pixi run -e py py-build-common --features perf_telemetry"
+# Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
+py-build-perf-debug = "pixi run -e py py-build-common --features re_perf_telemetry/tracy"
 
-# Dedicated alias for building the python bindings in release mode for the `py` environment, with performance telemetry.
-py-build-perf = "pixi run -e py py-build-common-release --features perf_telemetry"
+# Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
+py-build-perf = "pixi run -e py py-build-common-release --features re_perf_telemetry/tracy"
 
 py-check-signatures = "python scripts/ci/python_check_signatures.py"
 
@@ -477,14 +477,14 @@ rerun-from-path = "rerun"
 # Dedicated alias for building the python bindings for the `examples` environment.
 py-build-examples = "pixi run -e examples py-build-common"
 
-# Dedicated alias for building the python bindings for the `examples` environment, with perf telemetry.
-py-build-perf-debug-examples = "pixi run -e examples py-build-common --features perf_telemetry"
+# Dedicated alias for building the python bindings for the `examples` environment, with performance telemetry including Tracy profiler.
+py-build-perf-debug-examples = "pixi run -e examples py-build-common --features re_perf_telemetry/tracy"
 
 # Dedicated alias for building the python bindings for the `examples` environment, in release.
 py-build-release-examples = "pixi run -e examples py-build-common-release"
 
-# Dedicated alias for building the python bindings for the `examples` environment, in release, with perf telemetry.
-py-build-perf-examples = "pixi run -e examples py-build-common-release --features perf_telemetry"
+# Dedicated alias for building the python bindings for the `examples` environment in release, with performance telemetry including Tracy profiler.
+py-build-perf-examples = "pixi run -e examples py-build-common-release --features re_perf_telemetry/tracy"
 
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
@@ -600,6 +600,7 @@ gh = ">=2.79.0,<3"
 cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0" # For `rerun_notebook`
+huggingface_hub = "<1.0" # Needed for `LeRobot` checklist items
 inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"

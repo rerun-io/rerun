@@ -1,23 +1,20 @@
+use std::iter;
+
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
-use re_types::{
-    ArrowString,
-    archetypes::Cylinders3D,
-    components,
-    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
-};
+use re_types::archetypes::Cylinders3D;
+use re_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
+use re_types::{ArrowString, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
-use std::iter;
 
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
-
-use super::{
-    SpatialViewVisualizerData,
-    utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
-};
+use super::SpatialViewVisualizerData;
+use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::proc_mesh;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 pub struct Cylinders3DVisualizer(SpatialViewVisualizerData);
@@ -106,9 +103,9 @@ struct Cylinders3DComponentData<'a> {
     radii: &'a [Radius],
 
     // Clamped to edge
-    centers: &'a [components::PoseTranslation3D],
-    rotation_axis_angles: ChunkComponentIterItem<components::PoseRotationAxisAngle>,
-    quaternions: &'a [components::PoseRotationQuat],
+    centers: &'a [components::Translation3D],
+    rotation_axis_angles: ChunkComponentIterItem<components::RotationAxisAngle>,
+    quaternions: &'a [components::RotationQuat],
     colors: &'a [Color],
     labels: Vec<ArrowString>,
     line_radii: &'a [Radius],
@@ -208,7 +205,7 @@ impl VisualizerSystem for Cylinders3DVisualizer {
                     all_lengths_indexed,
                     all_radii_indexed,
                     all_centers.slice::<[f32; 3]>(),
-                    all_rotation_axis_angles.component_slow::<components::PoseRotationAxisAngle>(),
+                    all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
                     all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
                     all_line_radii.slice::<f32>(),

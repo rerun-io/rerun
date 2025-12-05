@@ -6,11 +6,11 @@ use std::sync::Arc;
 use re_chunk::{Chunk, ComponentIdentifier, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{
-    EntityPath, StoreId, TimeInt, TimePoint, Timeline,
-    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-};
-use re_types_core::{ComponentBatch as _, archetypes::Clear, components::ClearIsRecursive};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
+use re_types_core::ComponentBatch as _;
+use re_types_core::archetypes::Clear;
+use re_types_core::components::ClearIsRecursive;
 
 // ---
 

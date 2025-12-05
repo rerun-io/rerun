@@ -2,7 +2,6 @@ use std::sync::{Arc, OnceLock};
 
 use egui::ahash::HashMap;
 use nohash_hasher::IntMap;
-
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle,
     PerStoreChunkSubscriber,
@@ -180,10 +179,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, RowId};
-    use re_log_types::{
-        AbsoluteTimeRange, StoreId, TimeInt, Timeline, TimelineName,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{AbsoluteTimeRange, StoreId, TimeInt, Timeline, TimelineName};
 
     use super::{EntityTimelineChunks, PathRecursiveChunksPerTimelineStoreSubscriber};
 

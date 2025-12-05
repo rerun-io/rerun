@@ -1,11 +1,13 @@
-use crate::SchemaTestExt as _;
+use std::collections::HashMap;
+
 use arrow::datatypes::{DataType, Field, Schema};
 use re_protos::cloud::v1alpha1::GetTableSchemaRequest;
 use re_protos::cloud::v1alpha1::ext::{
     CreateTableEntryRequest, EntryDetails, LanceTable, ProviderDetails,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use std::collections::HashMap;
+
+use crate::SchemaTestExt as _;
 
 pub async fn create_table_entry(service: impl RerunCloudService) {
     let tmp_dir = tempfile::tempdir().expect("create temp dir");

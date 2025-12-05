@@ -38,7 +38,6 @@
 use std::fmt::{Display, Formatter};
 
 use itertools::Itertools as _;
-
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_ui::UiExt as _;

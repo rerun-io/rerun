@@ -58,7 +58,7 @@ This page lists all built-in archetypes.
 * [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
-* [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.
+* [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms applied on the current entity's transform frame.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 * [`Points3D`](archetypes/points3d.md): A 3D point cloud with positions and optional colors, radii, labels, etc.

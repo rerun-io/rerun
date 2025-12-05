@@ -27,7 +27,7 @@ class Pinhole(PinholeExt, Archetype):
 
     If [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
 
-    If you use explicit transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame]
+    If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame]
     as it is the case with other visualizations: for any entity with an [`archetypes.Pinhole`][rerun.archetypes.Pinhole] the viewer will always visualize it
     directly without needing a [`archetypes.CoordinateFrame`][rerun.archetypes.CoordinateFrame] to refer to the pinhole's child/parent frame.
 
@@ -176,9 +176,9 @@ class Pinhole(PinholeExt, Archetype):
         child_frame:
             The child frame this transform transforms from.
 
-            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
 
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -302,9 +302,9 @@ class Pinhole(PinholeExt, Archetype):
         child_frame:
             The child frame this transform transforms from.
 
-            The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+            The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
             E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-            with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+            with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
 
             If not specified, this is set to the implicit transform frame of the current entity path.
             This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
@@ -459,9 +459,9 @@ class Pinhole(PinholeExt, Archetype):
     )
     # The child frame this transform transforms from.
     #
-    # The entity at which the transform relationship of any given child frame is specified mustn't change over time.
+    # The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
     # E.g. if you specified the child frame `"robot_arm"` on an entity named `"my_transforms"`, you may not log transforms
-    # with the child frame `"robot_arm"` on any other entity than `"my_transforms"`.
+    # with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
     #
     # If not specified, this is set to the implicit transform frame of the current entity path.
     # This means that if a [`archetypes.Transform3D`][rerun.archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.

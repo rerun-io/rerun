@@ -1,5 +1,4 @@
 use nohash_hasher::IntMap;
-
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
@@ -16,13 +15,10 @@ use re_viewer_context::{
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect, SpatialView3D,
-    contexts::{SpatialSceneEntityContext, TransformTreeContext},
-    view_kind::SpatialViewKind,
-};
-
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
+use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
+use crate::view_kind::SpatialViewKind;
+use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
 
 pub(super) type DepthCloudEntities =
     IntMap<EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)>;

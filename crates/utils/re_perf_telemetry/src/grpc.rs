@@ -16,16 +16,27 @@ const RERUN_HTTP_HEADER_SERVER_VERSION: &str = "x-rerun-server-version";
 #[derive(Debug, Clone)]
 pub struct GrpcMakeSpan {
     gauge: opentelemetry::metrics::Gauge<u64>,
+    // unfortunately we can't have different implementation of `MakeSpan` as that creates a ripple effect
+    // through the entire hierarchy of types of the RedapClient and its usage, hence to disable the span
+    // creation, we create noop spans instead if telemetry is disabled at runtime
+    create_noop_spans: bool,
 }
 
 impl GrpcMakeSpan {
     pub fn new() -> Self {
+        // if telemetry is not explicitly enabled through an env var, we create noop spans
+        let create_noop_spans = !std::env::var("TELEMETRY_ENABLED")
+            .is_ok_and(|v| v == "1" || v.to_lowercase() == "true" || v.to_lowercase() == "yes");
+
         let meter = opentelemetry::global::meter("grpc");
         let gauge = meter
             .u64_gauge("grpc_make_span_state_size")
             .with_description("Size of the SpanMetadata state")
             .build();
-        Self { gauge }
+        Self {
+            gauge,
+            create_noop_spans,
+        }
     }
 }
 
@@ -37,6 +48,10 @@ impl Default for GrpcMakeSpan {
 
 impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
     fn make_span(&mut self, request: &http::Request<B>) -> tracing::Span {
+        if self.create_noop_spans {
+            return tracing::Span::none();
+        }
+
         // Extract `OpenTelemetry` context from headers before creating the span
         let parent_ctx = opentelemetry::global::get_text_map_propagator(|prop| {
             prop.extract(&opentelemetry_http::HeaderExtractor(request.headers()))
@@ -73,7 +88,8 @@ impl<B> tower_http::trace::MakeSpan<B> for GrpcMakeSpan {
             .and_then(|auth| auth.to_str().ok()?.strip_prefix("Bearer "))
             .and_then(|token| token.split('.').skip(1).take(1).next())
             .and_then(|data| {
-                use base64::{Engine as _, engine::general_purpose};
+                use base64::Engine as _;
+                use base64::engine::general_purpose;
                 general_purpose::STANDARD_NO_PAD.decode(data).ok()
             })
             .and_then(|data| {
@@ -757,7 +773,7 @@ impl TracingInjectorInterceptor {
 }
 
 impl tonic::service::Interceptor for TracingInjectorInterceptor {
-    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, tonic::Status> {
+    fn call(&mut self, mut req: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
         struct MetadataMap<'a>(&'a mut tonic::metadata::MetadataMap);
 
         impl opentelemetry::propagation::Injector for MetadataMap<'_> {
@@ -786,9 +802,11 @@ impl tonic::service::Interceptor for TracingInjectorInterceptor {
 // ---
 
 use opentelemetry::trace::TraceContextExt as _;
-use tracing::{Span, Subscriber, span::Id};
+use tracing::span::Id;
+use tracing::{Span, Subscriber};
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-use tracing_subscriber::{Layer, layer::Context};
+use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
 
 /// A `tracing_subscriber::Layer` that injects the opentelemetry `trace_id` as a `benchmark_id` field
 /// top level field on every span.

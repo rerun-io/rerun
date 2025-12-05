@@ -1,38 +1,29 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
 
-use std::{
-    borrow::Borrow as _,
-    io::IsTerminal as _,
-    path::PathBuf,
-    sync::{LazyLock, OnceLock},
-    time::Duration,
-};
+use std::borrow::Borrow as _;
+use std::io::IsTerminal as _;
+use std::path::PathBuf;
+use std::sync::{LazyLock, OnceLock};
+use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::{
-    exceptions::PyRuntimeError,
-    prelude::*,
-    types::{PyBytes, PyDict},
-};
-
-use re_auth::{
-    OauthLoginFlow,
-    oauth::{Credentials, login_flow::OauthLoginFlowState},
-};
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::prelude::*;
+use pyo3::types::{PyBytes, PyDict};
+use re_auth::OauthLoginFlow;
+use re_auth::oauth::Credentials;
+use re_auth::oauth::login_flow::OauthLoginFlowState;
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
-use re_log_types::{BlueprintActivationCommand, EntityPathPart};
-use re_log_types::{LogMsg, RecordingId};
-use re_sdk::{
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
-    external::re_log_encoding::Encoder,
-    sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError},
-    time::TimePoint,
-};
+use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId};
+use re_sdk::external::re_log_encoding::Encoder;
+use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
+use re_sdk::time::TimePoint;
+use re_sdk::{ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -142,7 +133,7 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 #[pymodule]
 #[pyo3(name = "rerun_bindings")]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
     } else {
         // NOTE: We set up the logging this here because some the inner init methods don't respond too kindly to being
@@ -2189,8 +2180,9 @@ pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
 }
 
 fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
-    use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
+
+    use rand::{Rng as _, SeedableRng as _};
 
     // If the user uses `multiprocessing` for parallelism,
     // we still want child processes to log to the same recording.

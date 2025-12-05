@@ -233,11 +233,11 @@ Update instructions:
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
 | re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
+| re_log_channel       | An in-memory channel of Rerun data messages                                          |
 | re_mcap              | Convert MCAP into Rerun-compatible data.                                             |
 | re_memory            | Run-time memory tracking and profiling.                                              |
 | re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap              |
 | re_ros_msg           | Parsing and deserializing ROS   messages                                             |
-| re_smart_channel     | A channel that keeps track of latency and queue length.                              |
 | re_span              | An integer range that always has a non-negative length                               |
 | re_string_interner   | Yet another string interning library                                                 |
 | re_tracing           | Helpers for tracing/spans/flamegraphs and such.                                      |

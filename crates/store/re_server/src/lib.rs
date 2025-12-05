@@ -6,11 +6,11 @@ mod rerun_cloud;
 mod server;
 mod store;
 
-pub use self::{
-    entrypoint::{Args, NamedPath},
-    rerun_cloud::{RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings},
-    server::{Server, ServerBuilder, ServerError, ServerHandle},
+pub use self::entrypoint::{Args, NamedPath};
+pub use self::rerun_cloud::{
+    RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings,
 };
+pub use self::server::{Server, ServerBuilder, ServerError, ServerHandle};
 
 /// What should we do on error?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

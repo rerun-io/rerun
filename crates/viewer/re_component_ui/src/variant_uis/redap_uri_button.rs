@@ -5,9 +5,8 @@ use egui::{Align, Layout, Link, Ui, UiBuilder};
 use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
-use re_viewer_context::{
-    SystemCommand, SystemCommandSender as _, ViewerContext, open_url::ViewerOpenUrl,
-};
+use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///

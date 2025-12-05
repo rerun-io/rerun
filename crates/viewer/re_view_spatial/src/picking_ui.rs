@@ -1,12 +1,9 @@
 use egui::NumExt as _;
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
-use re_ui::{
-    UiExt as _,
-    list_item::{PropertyContent, list_item_scope},
-};
+use re_ui::UiExt as _;
+use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     Item, ItemCollection, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError,

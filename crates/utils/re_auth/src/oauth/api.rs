@@ -2,12 +2,12 @@
 
 use std::sync::LazyLock;
 
-use base64::{Engine as _, prelude::BASE64_URL_SAFE_NO_PAD};
+use base64::Engine as _;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use sha2::{Digest as _, Sha256};
 
-use crate::oauth::OAUTH_CLIENT_ID;
-
 use super::RefreshToken;
+use crate::oauth::OAUTH_CLIENT_ID;
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_SERVER_URL")
@@ -194,13 +194,8 @@ impl Default for Pkce {
     }
 }
 
-pub fn authorization_url(
-    redirect_uri: &str,
-    state: &str,
-    pkce: &Pkce,
-    login_hint: Option<&str>,
-) -> String {
-    let mut url = format!(
+pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String {
+    let url = format!(
         "\
         {base}/user_management/authorize\
         ?response_type=code\
@@ -215,10 +210,6 @@ pub fn authorization_url(
         client_id = *OAUTH_CLIENT_ID,
         code_challenge = pkce.code_challenge,
     );
-
-    if let Some(login_hint) = login_hint {
-        url = format!("{url}&login_hint={login_hint}");
-    }
 
     url
 }

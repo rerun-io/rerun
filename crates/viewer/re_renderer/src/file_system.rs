@@ -1,7 +1,5 @@
-use std::{
-    borrow::Cow,
-    path::{Path, PathBuf},
-};
+use std::borrow::Cow;
+use std::path::{Path, PathBuf};
 
 use ahash::{HashMap, HashMapExt as _};
 use anyhow::{Context as _, anyhow, ensure};

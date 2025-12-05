@@ -40,17 +40,34 @@ impl CredentialsProvider for StaticCredentialsProvider {
 }
 
 #[cfg(feature = "oauth")]
-pub use oauth::CliCredentialsProvider;
+pub use oauth::{CliCredentialsProvider, subscribe_auth_changes};
 
 #[cfg(feature = "oauth")]
-mod oauth {
+pub(crate) mod oauth {
     use super::{CredentialsProvider, CredentialsProviderError, Jwt};
+    use crate::oauth;
     use crate::oauth::{Credentials, load_and_refresh_credentials};
     use tokio::sync::RwLock;
 
     // We only want to keep a single instance of credentials in memory,
     // so we store them in a static.
     static CACHE: RwLock<Option<Credentials>> = RwLock::const_new(None);
+
+    type AuthCallback = Box<dyn Fn(Option<oauth::User>) + Send>;
+    static AUTH_SUBSCRIBERS: parking_lot::Mutex<Vec<AuthCallback>> =
+        parking_lot::Mutex::new(Vec::new());
+
+    pub(crate) fn auth_update(user: Option<&oauth::User>) {
+        let subscribers = AUTH_SUBSCRIBERS.lock();
+        for sub in &*subscribers {
+            sub(user.cloned());
+        }
+    }
+
+    pub fn subscribe_auth_changes(callback: impl Fn(Option<oauth::User>) + Send + 'static) {
+        let mut subscribers = AUTH_SUBSCRIBERS.lock();
+        subscribers.push(Box::new(callback));
+    }
 
     /// Provider which uses `OAuth` credentials stored on the user's machine.
     #[derive(Debug, Default)]
@@ -95,6 +112,7 @@ mod oauth {
                 Ok(Some(credentials)) => {
                     // Success: cache credentials and return the token.
                     let token = credentials.access_token().jwt();
+                    auth_update(Some(credentials.user()));
                     *cache = Some(credentials);
                     Ok(Some(token))
                 }
@@ -102,7 +120,7 @@ mod oauth {
                 Ok(None) => {
                     re_log::debug!("no credentials available");
 
-                    // TODO(jan): we should propagate this information to the UI
+                    auth_update(None);
 
                     // There are no credentials stored on disk, so the user has not logged in yet.
                     // We represent that by saying there is no token:
@@ -110,7 +128,10 @@ mod oauth {
                 }
 
                 // TODO(jan): this needs to handle the case where the refresh token expired
-                Err(err) => Err(CredentialsProviderError::Custom(err.into())),
+                Err(err) => {
+                    auth_update(None);
+                    Err(CredentialsProviderError::Custom(err.into()))
+                }
             }
         }
     }

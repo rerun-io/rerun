@@ -16,7 +16,6 @@ mod time_ranges_ui;
 mod time_selection_ui;
 
 pub use time_panel::TimePanel;
-
 #[cfg(feature = "testing")]
 pub use {streams_tree_data::StreamsTreeData, time_panel::TimePanelSource};
 

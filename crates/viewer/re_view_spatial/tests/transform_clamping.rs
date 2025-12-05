@@ -2,7 +2,8 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{blueprint::archetypes::EyeControls3D, components::Position3D};
+use re_types::blueprint::archetypes::EyeControls3D;
+use re_types::components::Position3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -45,7 +46,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                     RowId::new(),
                     TimePoint::STATIC,
                     &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
-                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoseTranslation3D`
+                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoses3D`-like Translation3D`
                         [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
                     )
                     .with_colors([0x0000FFFF]),
@@ -207,6 +208,8 @@ fn test_transform_clamping(base_transform: BaseTransform) {
 
         BaseTransform::FrameHierarchy => {
             // Put everything under a frame that has an identity relationship with a frame called "base".
+            // Note that this means we end up with several `InstancePoses3D` which are all relative to "base".
+            // Since poses are always relative to their entity's frame, this should work out fine and give us the same result as `BaseTransform::EntityHierarchy`!
             let entity_paths = test_context
                 .store_hub
                 .lock()
@@ -217,20 +220,11 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .cloned()
                 .collect::<Vec<_>>();
             for path in entity_paths {
-                let frame = format!("frame_{path}");
                 test_context.log_entity(path, |builder| {
-                    builder
-                        .with_archetype_auto_row(
-                            TimePoint::STATIC,
-                            &re_types::archetypes::CoordinateFrame::new(frame.clone()),
-                        )
-                        .with_archetype_auto_row(
-                            TimePoint::STATIC,
-                            &re_types::archetypes::Transform3D::default()
-                                .with_child_frame(frame)
-                                .with_parent_frame("base"),
-                        )
-                    // TODO(RR-2627): Where there's an instance transform we also have to change its frame!
+                    builder.with_archetype_auto_row(
+                        TimePoint::STATIC,
+                        &re_types::archetypes::CoordinateFrame::new("base"),
+                    )
                 });
             }
 

@@ -1,6 +1,5 @@
-use crate::components;
-
 use super::Capsules3D;
+use crate::components;
 
 impl Capsules3D {
     /// Creates a new [`Capsules3D`] with the given axis-aligned lengths and radii.
@@ -26,8 +25,8 @@ impl Capsules3D {
 
         let (lengths, translations, quaternions): (
             Vec<components::Length>,
-            Vec<components::PoseTranslation3D>,
-            Vec<components::PoseRotationQuat>,
+            Vec<components::Translation3D>,
+            Vec<components::RotationQuat>,
         ) = start_points
             .into_iter()
             .zip(end_points)
@@ -42,8 +41,8 @@ impl Capsules3D {
                 if let Some(normalized_direction) = direction.try_normalize() {
                     (
                         components::Length::from(direction.length()),
-                        components::PoseTranslation3D::from(p1),
-                        components::PoseRotationQuat::from(glam::Quat::from_rotation_arc(
+                        components::Translation3D::from(p1),
+                        components::RotationQuat::from(glam::Quat::from_rotation_arc(
                             glam::Vec3::Z,
                             normalized_direction,
                         )),
@@ -51,8 +50,8 @@ impl Capsules3D {
                 } else {
                     (
                         components::Length::from(0.0),
-                        components::PoseTranslation3D::from(p1),
-                        components::PoseRotationQuat::IDENTITY,
+                        components::Translation3D::from(p1),
+                        components::RotationQuat::IDENTITY,
                     )
                 }
             })
@@ -67,8 +66,9 @@ impl Capsules3D {
 #[cfg(test)]
 #[cfg(feature = "glam")]
 mod tests {
-    use super::*;
     use glam::vec3;
+
+    use super::*;
 
     #[test]
     fn endpoints_equivalent_to_rotation() {

@@ -1,27 +1,22 @@
 use std::sync::Arc;
 
 use egui::{RichText, Widget as _};
-
-use re_data_ui::{
-    DataUi as _,
-    item_ui::{entity_db_button_ui, table_id_button_ui},
-};
+use re_data_ui::DataUi as _;
+use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
+use re_log_channel::LogSource;
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, LOCAL_ORIGIN, RedapServers};
-use re_smart_channel::SmartChannelSource;
-use re_ui::{
-    OnResponseExt as _, UiExt as _, UiLayout, icons, list_item,
-    list_item::{LabelContent, ListItemContentButtonsExt as _},
-};
+use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
+use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     DisplayMode, Item, RecordingOrTable, SystemCommand, SystemCommandSender as _, ViewerContext,
-    open_url::ViewerOpenUrl,
 };
 
 use crate::RecordingPanelCommand;
 use crate::data::{
-    AppIdData, DatasetData, EntryData, FailedEntryData, PartitionData, RecordingPanelData,
-    RemoteTableData, ServerData, ServerEntriesData,
+    AppIdData, DatasetData, EntryData, FailedEntryData, RecordingPanelData, RemoteTableData,
+    SegmentData, ServerData, ServerEntriesData,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -389,7 +384,7 @@ fn dataset_entry_ui(
                 is_selected,
                 is_active,
             },
-        displayed_partitions,
+        displayed_segments,
     } = dataset_entry_data;
 
     let item = dataset_entry_data.entry_data.item();
@@ -399,7 +394,7 @@ fn dataset_entry_ui(
 
     let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
 
-    if !displayed_partitions.is_empty() {
+    if !displayed_segments.is_empty() {
         list_item_content = list_item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
@@ -407,10 +402,7 @@ fn dataset_entry_ui(
                 .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
 
             if resp.clicked() {
-                for db in displayed_partitions
-                    .iter()
-                    .filter_map(PartitionData::entity_db)
-                {
+                for db in displayed_segments.iter().filter_map(SegmentData::entity_db) {
                     ctx.command_sender()
                         .send_system(SystemCommand::CloseRecordingOrTable(
                             RecordingOrTable::Recording {
@@ -422,14 +414,14 @@ fn dataset_entry_ui(
         });
     }
 
-    let item_response = if !displayed_partitions.is_empty() {
+    let item_response = if !displayed_segments.is_empty() {
         list_item
             .show_hierarchical_with_children(ui, id, true, list_item_content, |ui| {
-                for partition in displayed_partitions {
-                    match partition {
-                        PartitionData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
+                for segment in displayed_segments {
+                    match segment {
+                        SegmentData::Loading { receiver } => receiver_ui(ctx, ui, receiver, true),
 
-                        PartitionData::Loaded { entity_db } => {
+                        SegmentData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
                             let response = entity_db_button_ui(
                                 ctx,
@@ -644,7 +636,7 @@ fn table_item_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table_id: &TableId)
 fn loading_receivers_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    loading_receivers: &Vec<Arc<SmartChannelSource>>,
+    loading_receivers: &Vec<Arc<LogSource>>,
 ) {
     for receiver in loading_receivers {
         receiver_ui(ctx, ui, receiver, false);
@@ -654,7 +646,7 @@ fn loading_receivers_ui(
 fn receiver_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    receiver: &SmartChannelSource,
+    receiver: &LogSource,
     show_hierarchal: bool,
 ) {
     let Some(name) = receiver.loading_name() else {
@@ -690,11 +682,11 @@ fn receiver_ui(
     response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
         if ui
-            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {
-                format!("Can't copy a link to this partition: {err}")
+                format!("Can't copy a link to this segment: {err}")
             } else {
-                "Can't copy a link to this partition".to_owned()
+                "Can't copy a link to this segment".to_owned()
             })
             .clicked()
             && let Ok(url) = url
@@ -703,7 +695,7 @@ fn receiver_ui(
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
-        if ui.button("Copy partition name").clicked() {
+        if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
             ui.ctx().copy_text(name);
         }

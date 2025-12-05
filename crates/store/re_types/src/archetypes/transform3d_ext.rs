@@ -1,9 +1,6 @@
-use crate::{
-    Rotation3D,
-    components::{Scale3D, TransformMat3x3, Translation3D},
-};
-
 use super::Transform3D;
+use crate::Rotation3D;
+use crate::components::{Scale3D, TransformMat3x3, Translation3D};
 
 impl Transform3D {
     /// The identity transform.

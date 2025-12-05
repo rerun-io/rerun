@@ -50,15 +50,13 @@ pub struct LoadingSpinner {
 // ---
 
 use ahash::HashMap;
-
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
+use re_view::clamped_or_nothing;
 use re_viewer_context::{
     Annotations, IdentifiedViewSystem as _, ViewClassRegistryError, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewSystemRegistrator, VisualizerCollection, auto_color_egui,
 };
-
-use re_view::clamped_or_nothing;
 
 /// Collection of keypoints for annotation context.
 pub type Keypoints = HashMap<(re_types::components::ClassId, i64), HashMap<KeypointId, glam::Vec3>>;

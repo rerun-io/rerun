@@ -1,5 +1,4 @@
 use nohash_hasher::IntMap;
-
 use re_chunk::EntityPath;
 
 use crate::{

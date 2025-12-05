@@ -1,10 +1,12 @@
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
+use re_log_channel::LogReceiver;
 use re_log_types::StoreId;
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{RecordingOrTable, time_control::TimeControlCommand};
+use crate::time_control::TimeControlCommand;
+use crate::{AuthContext, RecordingOrTable};
 
 // ----------------------------------------------------------------------------
 
@@ -24,7 +26,7 @@ pub enum SystemCommand {
     LoadDataSource(LogDataSource),
 
     /// Add a new receiver for log messages.
-    AddReceiver(re_smart_channel::Receiver<re_log_types::DataSourceMessage>),
+    AddReceiver(LogReceiver),
 
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
@@ -138,6 +140,9 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+
+    /// Notify about authentication changes.
+    OnAuthChanged(Option<AuthContext>),
 
     /// Set authentication credentials from an external source.
     SetAuthCredentials {

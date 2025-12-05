@@ -5,10 +5,9 @@ use arrow::datatypes::{DataType, Field};
 use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, lit, not};
 use ordered_float::OrderedFloat;
-use strum::VariantArray as _;
-
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
 

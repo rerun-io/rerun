@@ -1,17 +1,15 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId};
-use re_types::{
-    ComponentDescriptor, SerializedComponentColumn, archetypes::GeoPoints, components::LatLon,
-};
+use re_types::archetypes::GeoPoints;
+use re_types::components::LatLon;
+use re_types::{ComponentDescriptor, SerializedComponentColumn};
 
 use super::super::Ros2MessageParser;
-use crate::parsers::{
-    cdr,
-    decode::{MessageParser, ParserContext},
-    ros2msg::definitions::sensor_msgs,
-    util::fixed_size_list_builder,
-};
+use crate::parsers::cdr;
+use crate::parsers::decode::{MessageParser, ParserContext};
+use crate::parsers::ros2msg::definitions::sensor_msgs;
+use crate::parsers::util::fixed_size_list_builder;
 
 /// Plugin that parses `sensor_msgs/msg/NavSatFix` messages.
 #[derive(Default)]

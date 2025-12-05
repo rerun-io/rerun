@@ -1,12 +1,13 @@
 use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as ArrowRecordBatch};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_byte_size::SizeBytes as _;
-use re_types_core::{ComponentDescriptor, SerializedComponentColumn, arrow_helpers::as_array_ref};
+use re_types_core::arrow_helpers::as_array_ref;
+use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
 
-use crate::{Chunk, ChunkError, ChunkResult, TimeColumn, chunk::ChunkComponents};
+use crate::chunk::ChunkComponents;
+use crate::{Chunk, ChunkError, ChunkResult, TimeColumn};
 
 // ---
 
@@ -279,13 +280,10 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use nohash_hasher::IntMap;
-    use similar_asserts::assert_eq;
-
-    use re_log_types::{
-        EntityPath, Timeline,
-        example_components::{MyColor, MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, Timeline};
     use re_types_core::{ChunkId, Loggable as _, RowId};
+    use similar_asserts::assert_eq;
 
     use super::*;
 

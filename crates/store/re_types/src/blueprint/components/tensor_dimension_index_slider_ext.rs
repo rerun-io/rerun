@@ -1,6 +1,5 @@
-use crate::blueprint::datatypes;
-
 use super::TensorDimensionIndexSlider;
+use crate::blueprint::datatypes;
 
 impl TensorDimensionIndexSlider {
     /// Creates a new `TensorDimensionIndexSlider` to determine the index for a given `dimension`.

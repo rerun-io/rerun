@@ -1,5 +1,5 @@
-use pyo3::{Bound, PyAny, PyResult, exceptions::PyRuntimeError, pyfunction};
-
+use pyo3::exceptions::PyRuntimeError;
+use pyo3::{Bound, PyAny, PyResult, pyfunction};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_video::VideoLoadError;
 

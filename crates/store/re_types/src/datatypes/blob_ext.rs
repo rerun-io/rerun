@@ -63,9 +63,10 @@ impl std::ops::Deref for Blob {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::array::Array as _;
     use re_types_core::Loggable as _;
+
+    use super::*;
 
     #[test]
     fn test_single_blob_serialization() {

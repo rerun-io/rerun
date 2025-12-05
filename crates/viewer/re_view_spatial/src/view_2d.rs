@@ -1,10 +1,8 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
-};
+use re_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -12,16 +10,14 @@ use re_viewer_context::{
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
-use crate::{
-    contexts::register_spatial_contexts,
-    heuristics::default_visualized_entities_for_visualizer_kind,
-    max_image_dimension_subscriber::{ImageTypes, MaxDimensions},
-    shared_fallbacks,
-    spatial_topology::{SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::register_2d_spatial_visualizers,
-};
+use crate::contexts::register_spatial_contexts;
+use crate::heuristics::IndicatedVisualizableEntities;
+use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
+use crate::shared_fallbacks;
+use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::register_2d_spatial_visualizers;
 
 #[derive(Default)]
 pub struct SpatialView2D;
@@ -155,11 +151,15 @@ impl ViewClass for SpatialView2D {
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
-        let indicated_entities = default_visualized_entities_for_visualizer_kind(
+        let IndicatedVisualizableEntities {
+            indicated_entities,
+            excluded_entities,
+        } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
             include_entity,
+            |_| {},
         );
 
         let image_dimensions =
@@ -215,6 +215,10 @@ impl ViewClass for SpatialView2D {
                     recommended_views.push(RecommendedView::new_subtree(recommended_root));
                 }
 
+                for recommended_view in &mut recommended_views {
+                    recommended_view.exclude_entities(&excluded_entities);
+                }
+
                 recommended_views
             }))
         })
@@ -226,7 +230,7 @@ impl ViewClass for SpatialView2D {
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
@@ -236,7 +240,7 @@ impl ViewClass for SpatialView2D {
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
-            let view_ctx = self.view_context(ctx, view_id, state);
+            let view_ctx = self.view_context(ctx, view_id, state, space_origin);
             view_property_ui::<VisualBounds2D>(&view_ctx, ui);
             view_property_ui::<NearClipPlane>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);

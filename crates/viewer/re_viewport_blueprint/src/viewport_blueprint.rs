@@ -1,34 +1,28 @@
-use std::{
-    collections::BTreeMap,
-    ops::ControlFlow,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-};
+use std::collections::BTreeMap;
+use std::ops::ControlFlow;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use parking_lot::Mutex;
-use smallvec::SmallVec;
-
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
-use re_types::blueprint::{
-    archetypes as blueprint_archetypes,
-    components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
+use re_types::blueprint::archetypes as blueprint_archetypes;
+use re_types::blueprint::components::{
+    AutoLayout, AutoViews, RootContainer, ViewMaximized, ViewerRecommendationHash,
 };
-use re_types::{
-    Archetype as _, ViewClassIdentifier, blueprint::components::ViewerRecommendationHash,
-};
+use re_types::{Archetype as _, ViewClassIdentifier};
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
     blueprint_id_to_tile_id,
 };
+use smallvec::SmallVec;
 
-use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand, container::ContainerBlueprint};
+use crate::container::ContainerBlueprint;
+use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand};
 
 // ----------------------------------------------------------------------------
 

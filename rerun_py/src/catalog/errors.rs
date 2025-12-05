@@ -22,7 +22,6 @@ use pyo3::PyErr;
 use pyo3::exceptions::{
     PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
 };
-
 use re_redap_client::ApiErrorKind;
 
 pyo3::create_exception!(

@@ -31,4 +31,17 @@ pub struct GlobalContext<'a> {
 
     /// The current display mode of the viewer.
     pub display_mode: &'a DisplayMode,
+
+    /// Are we logged in to rerun cloud?
+    pub auth_context: Option<&'a AuthContext>,
+}
+
+pub struct AuthContext {
+    pub email: String,
+}
+
+impl GlobalContext<'_> {
+    pub fn logged_in(&self) -> bool {
+        self.auth_context.is_some()
+    }
 }

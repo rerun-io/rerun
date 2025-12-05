@@ -18,19 +18,15 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
-
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
-use re_protos::{
-    cloud::v1alpha1::{
-        FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse,
-        ScanSegmentTableResponse,
-        ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange},
-    },
-    common::v1alpha1::ext::ScanParameters,
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{
+    FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse, ScanSegmentTableResponse,
 };
+use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
@@ -66,7 +62,7 @@ impl DataframeQueryTableProvider {
         connection: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
-        partition_ids: &[impl AsRef<str> + Sync],
+        segment_ids: &[impl AsRef<str> + Sync],
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
@@ -115,7 +111,7 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let dataset_query = QueryDatasetRequest {
-            segment_ids: partition_ids
+            segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
@@ -259,7 +255,7 @@ impl TableProvider for DataframeQueryTableProvider {
                     .next();
         }
 
-        crate::PartitionStreamExec::try_new(
+        crate::SegmentStreamExec::try_new(
             &self.schema,
             self.sort_index,
             projection,
@@ -402,23 +398,23 @@ pub fn align_record_batch_to_schema(
     )?)
 }
 
-/// We need to create `num_partitions` of partition stream outputs, each of
-/// which will be fed from multiple `rerun_partition_id` sources. The partitioning
-/// output is a hash of the `rerun_partition_id`. We will reuse some of the
+/// We need to create `num_partitions` of DataFusion partition stream outputs, each of
+/// which will be fed from multiple `rerun_segment_id` sources. The partitioning
+/// output is a hash of the `rerun_segment_id`. We will reuse some of the
 /// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
-/// these partition IDs, just to be certain they match partitioning generated
+/// these DataFusion partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
-/// This function will do the relevant grouping of chunk infos by chunk's partition id
-/// and we will eventually fire individual queries for each group. Partitions must be ordered,
-/// see `PartitionStreamExec::try_new` for more details.
+/// This function will do the relevant grouping of chunk infos by chunk's segment id
+/// and we will eventually fire individual queries for each group. Segments must be ordered,
+/// see `SegmentStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
-pub(crate) fn group_chunk_infos_by_partition_id(
+pub(crate) fn group_chunk_infos_by_segment_id(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
 ) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
-        let partition_ids = batch
+        let segment_ids = batch
             .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
             .ok_or(exec_datafusion_err!(
                 "Unable to find {} column",
@@ -431,20 +427,20 @@ pub(crate) fn group_chunk_infos_by_partition_id(
                 QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?;
 
-        // group rows by partition ID
-        let mut partition_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-        for (row_idx, partition_id) in partition_ids.iter().enumerate() {
-            let pid = partition_id.ok_or(exec_datafusion_err!(
+        // group rows by segment ID
+        let mut segment_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        for (row_idx, segment_id) in segment_ids.iter().enumerate() {
+            let sid = segment_id.ok_or(exec_datafusion_err!(
                 "Found null segment id in {} column at row {row_idx}",
                 QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?;
-            partition_rows
-                .entry(pid.to_owned())
+            segment_rows
+                .entry(sid.to_owned())
                 .or_default()
                 .push(row_idx);
         }
 
-        for (partition_id, row_indices) in partition_rows {
+        for (segment_id, row_indices) in segment_rows {
             if row_indices.is_empty() {
                 continue;
             }
@@ -453,12 +449,12 @@ pub(crate) fn group_chunk_infos_by_partition_id(
             let indices = arrow::array::UInt32Array::from(
                 row_indices.iter().map(|&i| i as u32).collect::<Vec<_>>(),
             );
-            let partition_batch = arrow::compute::take_record_batch(batch, &indices)?;
+            let segment_batch = arrow::compute::take_record_batch(batch, &indices)?;
 
             results
-                .entry(partition_id)
+                .entry(segment_id)
                 .or_insert_with(Vec::new)
-                .push(partition_batch);
+                .push(segment_batch);
         }
     }
 
@@ -587,7 +583,7 @@ mod tests {
 
         let chunk_info_batches = Arc::new(vec![batch1, batch2]);
 
-        let grouped = group_chunk_infos_by_partition_id(&chunk_info_batches).unwrap();
+        let grouped = group_chunk_infos_by_segment_id(&chunk_info_batches).unwrap();
 
         assert_eq!(grouped.len(), 4);
 

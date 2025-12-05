@@ -6,11 +6,11 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/pose_rotation_axis_angle.hpp"
-#include "../components/pose_rotation_quat.hpp"
-#include "../components/pose_scale3d.hpp"
-#include "../components/pose_transform_mat3x3.hpp"
-#include "../components/pose_translation3d.hpp"
+#include "../components/rotation_axis_angle.hpp"
+#include "../components/rotation_quat.hpp"
+#include "../components/scale3d.hpp"
+#include "../components/transform_mat3x3.hpp"
+#include "../components/translation3d.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -19,10 +19,11 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: One or more transforms between the current entity and its parent. Unlike `archetypes::Transform3D`, it is *not* propagated in the transform hierarchy.
+    /// **Archetype**: One or more transforms applied on the current entity's transform frame.
     ///
-    /// If both `archetypes::InstancePoses3D` and `archetypes::Transform3D` are present,
-    /// first the tree propagating `archetypes::Transform3D` is applied, then `archetypes::InstancePoses3D`.
+    /// Unlike `archetypes::Transform3D`, it is *not* propagated in the transform hierarchy.
+    /// If `archetypes::CoordinateFrame` is specified, it acts relative to that coordinate frame,
+    /// otherwise it is relative to the entity's implicit coordinate frame.
     ///
     /// Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
     /// This means that if you first log a pose with only a translation, and then log one with only a rotation,
@@ -31,7 +32,7 @@ namespace rerun::archetypes {
     ///
     /// From the point of view of the entity's coordinate system,
     /// all components are applied in the inverse order they are listed here.
-    /// E.g. if both a translation and a max3x3 transform are present,
+    /// E.g. if both a translation and a mat3x3 transform are present,
     /// the 3x3 matrix is applied first, followed by the translation.
     ///
     /// Currently, many visualizers support only a single instance transform per entity.
@@ -82,28 +83,18 @@ namespace rerun::archetypes {
     /// ```
     struct InstancePoses3D {
         /// Translation vectors.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> translations;
 
         /// Rotations via axis + angle.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> quaternions;
 
         /// Scaling factors.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> scales;
 
         /// 3x3 transformation matrices.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         std::optional<ComponentBatch> mat3x3;
 
       public:
@@ -113,27 +104,27 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `translations` field.
         static constexpr auto Descriptor_translations = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:translations",
-            Loggable<rerun::components::PoseTranslation3D>::ComponentType
+            Loggable<rerun::components::Translation3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `rotation_axis_angles` field.
         static constexpr auto Descriptor_rotation_axis_angles = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:rotation_axis_angles",
-            Loggable<rerun::components::PoseRotationAxisAngle>::ComponentType
+            Loggable<rerun::components::RotationAxisAngle>::ComponentType
         );
         /// `ComponentDescriptor` for the `quaternions` field.
         static constexpr auto Descriptor_quaternions = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:quaternions",
-            Loggable<rerun::components::PoseRotationQuat>::ComponentType
+            Loggable<rerun::components::RotationQuat>::ComponentType
         );
         /// `ComponentDescriptor` for the `scales` field.
         static constexpr auto Descriptor_scales = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:scales",
-            Loggable<rerun::components::PoseScale3D>::ComponentType
+            Loggable<rerun::components::Scale3D>::ComponentType
         );
         /// `ComponentDescriptor` for the `mat3x3` field.
         static constexpr auto Descriptor_mat3x3 = ComponentDescriptor(
             ArchetypeName, "InstancePoses3D:mat3x3",
-            Loggable<rerun::components::PoseTransformMat3x3>::ComponentType
+            Loggable<rerun::components::TransformMat3x3>::ComponentType
         );
 
       public:
@@ -152,10 +143,8 @@ namespace rerun::archetypes {
         static InstancePoses3D clear_fields();
 
         /// Translation vectors.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_translations(
-            const Collection<rerun::components::PoseTranslation3D>& _translations
+            const Collection<rerun::components::Translation3D>& _translations
         ) && {
             translations = ComponentBatch::from_loggable(_translations, Descriptor_translations)
                                .value_or_throw();
@@ -163,10 +152,8 @@ namespace rerun::archetypes {
         }
 
         /// Rotations via axis + angle.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_rotation_axis_angles(
-            const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
+            const Collection<rerun::components::RotationAxisAngle>& _rotation_axis_angles
         ) && {
             rotation_axis_angles = ComponentBatch::from_loggable(
                                        _rotation_axis_angles,
@@ -177,10 +164,8 @@ namespace rerun::archetypes {
         }
 
         /// Rotations via quaternion.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
         InstancePoses3D with_quaternions(
-            const Collection<rerun::components::PoseRotationQuat>& _quaternions
+            const Collection<rerun::components::RotationQuat>& _quaternions
         ) && {
             quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
                               .value_or_throw();
@@ -188,18 +173,13 @@ namespace rerun::archetypes {
         }
 
         /// Scaling factors.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-        InstancePoses3D with_scales(const Collection<rerun::components::PoseScale3D>& _scales) && {
+        InstancePoses3D with_scales(const Collection<rerun::components::Scale3D>& _scales) && {
             scales = ComponentBatch::from_loggable(_scales, Descriptor_scales).value_or_throw();
             return std::move(*this);
         }
 
         /// 3x3 transformation matrices.
-        ///
-        /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-        InstancePoses3D with_mat3x3(
-            const Collection<rerun::components::PoseTransformMat3x3>& _mat3x3
+        InstancePoses3D with_mat3x3(const Collection<rerun::components::TransformMat3x3>& _mat3x3
         ) && {
             mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
             return std::move(*this);

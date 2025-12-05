@@ -1,14 +1,13 @@
-use std::{borrow::Cow, ops::RangeInclusive};
+use std::borrow::Cow;
+use std::ops::RangeInclusive;
 
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
-use re_types::{
-    ComponentIdentifier, archetypes,
-    components::{self, Colormap},
-    datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
-    image::{ImageKind, rgb_from_yuv},
-    tensor_data::TensorElement,
-};
+use re_types::components::{self, Colormap};
+use re_types::datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat};
+use re_types::image::{ImageKind, rgb_from_yuv};
+use re_types::tensor_data::TensorElement;
+use re_types::{ComponentIdentifier, archetypes};
 
 /// Get a fallback resolution for an image on a specific entity.
 pub fn resolution_of_image_at(
@@ -505,11 +504,11 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
 #[cfg(test)]
 mod tests {
     use re_log_types::hash::Hash64;
-    use re_types::{datatypes::ColorModel, image::ImageChannelType};
-
-    use crate::image_info::StoredBlobCacheKey;
+    use re_types::datatypes::ColorModel;
+    use re_types::image::ImageChannelType;
 
     use super::ImageInfo;
+    use crate::image_info::StoredBlobCacheKey;
 
     fn new_2x2_image_info<T: ImageChannelType>(
         color_model: ColorModel,

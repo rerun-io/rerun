@@ -1,26 +1,23 @@
-use std::{net::IpAddr, time::Duration};
+use std::net::IpAddr;
+use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use tokio::runtime::Runtime;
-
 use re_data_source::LogDataSource;
+use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
 use re_log_types::DataSourceMessage;
-use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
-
-use crate::{CallSource, commands::RrdCommands};
-
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-
-#[cfg(feature = "data_loaders")]
-use crate::commands::McapCommands;
-
-#[cfg(feature = "analytics")]
-use crate::commands::AnalyticsCommands;
+use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
 use super::auth::AuthCommands;
+use crate::CallSource;
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+use crate::commands::RrdCommands;
 
 // ---
 
@@ -585,7 +582,7 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
     } else {
         re_crash_handler::install_crash_handlers(build_info.clone());
@@ -868,6 +865,8 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
+    use crate::external::re_ui::{UICommand, UICommandSender as _};
+
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
@@ -906,6 +905,25 @@ fn start_native_viewer(
     re_viewer::run_native_app(
         _main_thread_token,
         Box::new(move |cc| {
+            let (tx, rx) = re_viewer::command_channel();
+            {
+                let tx = tx.clone();
+                let egui_ctx = cc.egui_ctx.clone();
+                tokio::spawn(async move {
+                    // We catch ctrl-c commands so we can properly quit.
+                    // Without this, recent state changes might not be persisted.
+                    match tokio::signal::ctrl_c().await {
+                        Ok(()) => {
+                            re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
+                            tx.send_ui(UICommand::Quit);
+                            egui_ctx.request_repaint();
+                        }
+                        Err(err) => {
+                            re_log::error!("Failed to listen for ctrl-c signal: {}", err);
+                        }
+                    }
+                });
+            }
             let mut app = re_viewer::App::with_commands(
                 _main_thread_token,
                 _build_info,
@@ -915,7 +933,7 @@ fn start_native_viewer(
                 Some(connection_registry),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
-                re_viewer::command_channel(),
+                (tx, rx),
             );
             app.set_profiler(profiler);
             for rx in log_receivers {
@@ -1061,7 +1079,7 @@ fn serve_web(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
-            ReceiveSet::new(log_receivers),
+            LogReceiverSet::new(log_receivers),
         );
 
         // Add the proxy URL to the url parameters.
@@ -1119,7 +1137,7 @@ fn serve_grpc(
         server_addr,
         server_options,
         shutdown,
-        ReceiveSet::new(receivers.log_receivers),
+        LogReceiverSet::new(receivers.log_receivers),
     );
 
     // Gracefully shut down the server on SIGINT
@@ -1153,16 +1171,16 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let log_server = re_grpc_server::spawn_with_recv(
+        let log_rx = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
         );
 
-        log_receivers.push(log_server);
+        log_receivers.push(log_rx);
     }
 
-    let receive_set = ReceiveSet::new(log_receivers);
+    let receive_set = LogReceiverSet::new(log_receivers);
 
     if let Some(rrd_path) = save {
         Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
@@ -1186,9 +1204,7 @@ fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool 
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_entity_db(
-    rx: &ReceiveSet<DataSourceMessage>,
-) -> anyhow::Result<re_entity_db::EntityDb> {
+fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a EntityDb…");
 
     let mut rec: Option<re_entity_db::EntityDb> = None;
@@ -1258,7 +1274,7 @@ fn assert_receive_into_entity_db(
                         num_messages += 1;
                     }
 
-                    re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
                         on_flush_done();
                     }
 
@@ -1342,7 +1358,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 // TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
 
 fn stream_to_rrd_on_disk(
-    rx: &re_smart_channel::ReceiveSet<DataSourceMessage>,
+    rx: &re_log_channel::LogReceiverSet,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
@@ -1432,7 +1448,7 @@ impl UrlParamProcessingConfig {
 /// Log receivers created from URLs or path parameters that were passed in on the CLI.
 struct ReceiversFromUrlParams {
     /// Log receivers that we want to hook up to a connection or viewer.
-    log_receivers: Vec<Receiver<DataSourceMessage>>,
+    log_receivers: Vec<LogReceiver>,
 
     /// URLs that should be passed on to the viewer if possible.
     ///
@@ -1462,7 +1478,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDatasetPartition { .. } => {
+                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDatasetSegment { .. } => {
                         if config.data_sources_from_redap_datasets {
                             data_sources.push(data_source);
                         } else {
@@ -1490,10 +1506,7 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                let on_msg = None;
-                data_source.stream(connection_registry, on_msg)
-            })
+            .map(|data_source| data_source.stream(connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {

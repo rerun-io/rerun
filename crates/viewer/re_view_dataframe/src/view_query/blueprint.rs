@@ -300,9 +300,10 @@ impl Query {
 
 #[cfg(test)]
 mod test {
-    use super::Query;
     use re_test_context::TestContext;
     use re_viewer_context::ViewId;
+
+    use super::Query;
 
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]
