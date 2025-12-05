@@ -51,6 +51,7 @@ snippet: views/spatial2d
 * [`Clear`](../archetypes/clear.md)
 * [`CoordinateFrame`](../archetypes/coordinate_frame.md)
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
