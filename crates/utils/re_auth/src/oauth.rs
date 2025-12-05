@@ -234,9 +234,11 @@ impl InMemoryCredentials {
         // we show an analytics diclaimer. But, during SDK usage with the Catalog
         // it's possible to hit this code-path during a first run in a new
         // environment. Given the user already has a Rerun identity (or else there
-        // would be no credentials to store!), we assume they are already opted-in
-        // to rerun analytics and do not need a disclaimer. By manually forcing the
-        // creation of the analytics config we bypass the first_run check.
+        // would be no credentials to store!), we assume they are already aware of
+        // rerun analytics and do not need a disclaimer. They can still use the shell
+        // to run `rerun analytics disable` if they wish to opt out.
+        //
+        // By manually forcing the creation of the analytics config we bypass the first_run check.
         if let Ok(config) = re_analytics::Config::load_or_default() {
             if config.is_first_run() {
                 config.save().ok();
