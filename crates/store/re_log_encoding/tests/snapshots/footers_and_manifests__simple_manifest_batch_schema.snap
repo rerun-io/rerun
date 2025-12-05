@@ -8,110 +8,110 @@ chunk_entity_path: Utf8
 chunk_id: FixedSizeBinary[16]
 chunk_is_static: bool
 elapsed_time:end: Duration(ns) [
-    rerun:index:elapsed time
+    rerun:index: "elapsed time"
 ]
 elapsed_time:example_MyPoints:colors:end: Duration(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:elapsed time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "elapsed time"
 ]
 elapsed_time:example_MyPoints:colors:start: Duration(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:elapsed time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "elapsed time"
 ]
 elapsed_time:example_MyPoints:points:end: Duration(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:elapsed time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
 ]
 elapsed_time:example_MyPoints:points:start: Duration(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:elapsed time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
 ]
 elapsed_time:start: Duration(ns) [
-    rerun:index:elapsed time
+    rerun:index: "elapsed time"
 ]
 example_MyPoints:colors:has_static_data: bool [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:rerun:static
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "rerun:static"
 ]
 example_MyPoints:labels:has_static_data: bool [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:labels
-    rerun:component_type:example.MyLabel
-    rerun:index:rerun:static
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:labels"
+    rerun:component_type: "example.MyLabel"
+    rerun:index: "rerun:static"
 ]
 example_MyPoints:points:has_static_data: bool [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:rerun:static
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "rerun:static"
 ]
 frame_nr:end: i64 [
-    rerun:index:frame_nr
+    rerun:index: "frame_nr"
 ]
 frame_nr:example_MyPoints:colors:end: i64 [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:frame_nr
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "frame_nr"
 ]
 frame_nr:example_MyPoints:colors:start: i64 [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:frame_nr
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "frame_nr"
 ]
 frame_nr:example_MyPoints:points:end: i64 [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:frame_nr
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
 ]
 frame_nr:example_MyPoints:points:start: i64 [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:frame_nr
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
 ]
 frame_nr:start: i64 [
-    rerun:index:frame_nr
+    rerun:index: "frame_nr"
 ]
 log_time:end: Timestamp(ns) [
-    rerun:index:log_time
+    rerun:index: "log_time"
 ]
 log_time:example_MyPoints:colors:end: Timestamp(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:log_time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "log_time"
 ]
 log_time:example_MyPoints:colors:start: Timestamp(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:colors
-    rerun:component_type:example.MyColor
-    rerun:index:log_time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "log_time"
 ]
 log_time:example_MyPoints:points:end: Timestamp(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:log_time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
 ]
 log_time:example_MyPoints:points:start: Timestamp(ns) [
-    rerun:archetype:example.MyPoints
-    rerun:component:example.MyPoints:points
-    rerun:component_type:example.MyPoint
-    rerun:index:log_time
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
 ]
 log_time:start: Timestamp(ns) [
-    rerun:index:log_time
+    rerun:index: "log_time"
 ]

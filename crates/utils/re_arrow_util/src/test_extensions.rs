@@ -349,7 +349,7 @@ impl SchemaTestExt for arrow::datatypes::Schema {
                 "top-level metadata: [\n    {}\n]",
                 self.metadata()
                     .iter()
-                    .map(|(k, v)| format!("{k}:{v}"))
+                    .map(|(k, v)| format!("{k}: {v:?}"))
                     .sorted()
                     .join("\n    ")
             )
@@ -372,7 +372,7 @@ impl SchemaTestExt for arrow::datatypes::Schema {
                     field
                         .metadata()
                         .iter()
-                        .map(|(k, v)| format!("{k}:{v}"))
+                        .map(|(k, v)| format!("{k}: {v:?}"))
                         .sorted()
                         .join("\n    ")
                 )

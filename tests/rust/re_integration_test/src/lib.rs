@@ -29,7 +29,7 @@ impl TestServer {
             datasets: vec![],
             tables: vec![],
         };
-        let server_handle = args
+        let (server_handle, _) = args
             .create_server_handle()
             .await
             .expect("Can't create server");
