@@ -1,4 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
+use re_byte_size::SizeBytes;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_types::components::TransformFrameId;
@@ -55,6 +56,17 @@ impl TreeTransform {
             root: *root,
             target_from_source,
         }
+    }
+}
+
+impl SizeBytes for TreeTransform {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            root,
+            target_from_source,
+        } = self;
+
+        root.heap_size_bytes() + target_from_source.heap_size_bytes()
     }
 }
 
@@ -119,6 +131,20 @@ pub struct PinholeTreeRoot {
     pub parent_root_from_pinhole_root: glam::DAffine3,
 }
 
+impl SizeBytes for PinholeTreeRoot {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            parent_tree_root,
+            pinhole_projection,
+            parent_root_from_pinhole_root,
+        } = self;
+
+        parent_tree_root.heap_size_bytes()
+            + pinhole_projection.heap_size_bytes()
+            + parent_root_from_pinhole_root.heap_size_bytes()
+    }
+}
+
 /// Properties of a transform root.
 ///
 /// [`TransformForest`] tries to identify all roots.
@@ -130,6 +156,15 @@ pub enum TransformTreeRootInfo {
     /// The tree root is an entity path with a pinhole transformation,
     /// thus marking a 3D to 2D transition.
     Pinhole(PinholeTreeRoot),
+}
+
+impl SizeBytes for TransformTreeRootInfo {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::TransformFrameRoot => 0,
+            Self::Pinhole(pinhole_tree_root) => pinhole_tree_root.heap_size_bytes(),
+        }
+    }
 }
 
 /// Analyzes & propagates the transform graph of a recording at a given time & timeline.
@@ -327,6 +362,17 @@ impl TransformForest {
     }
 }
 
+impl SizeBytes for TransformForest {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            roots,
+            root_from_frame,
+        } = self;
+
+        roots.heap_size_bytes() + root_from_frame.heap_size_bytes()
+    }
+}
+
 static UNKNOWN_TRANSFORM_ID: std::sync::LazyLock<TransformFrameId> =
     std::sync::LazyLock::new(|| TransformFrameId::new("<unknown>"));
 
@@ -381,6 +427,15 @@ fn implicit_transform_parent(
 }
 
 impl TransformForest {
+    /// An arbitrarily ordered iterator of all [`TransformTreeRootInfo::TransformFrameRoot`]
+    /// roots.
+    pub fn transform_frame_roots(&self) -> impl Iterator<Item = TransformFrameIdHash> {
+        self.roots
+            .iter()
+            .filter(|(_, info)| matches!(info, TransformTreeRootInfo::TransformFrameRoot))
+            .map(|(id, _)| *id)
+    }
+
     /// Returns the properties of the transform tree root at the given frame.
     ///
     /// If frame is not known as a transform tree root, returns [`None`].

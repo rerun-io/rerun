@@ -154,12 +154,13 @@ impl ViewContextSystem for TransformTreeContext {
         ctx: &re_viewer_context::ViewerContext<'_>,
     ) -> ViewContextSystemOncePerFrameResult {
         let caches = ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
-        });
-
-        let transform_forest =
-            re_tf::TransformForest::new(ctx.recording(), &transform_cache, &ctx.current_query());
+        let (transform_forest, transform_cache) =
+            caches.entry(|c: &mut TransformDatabaseStoreCache| {
+                (
+                    c.get_or_create_transform_forest(ctx.recording(), &ctx.current_query()),
+                    c.read_lock_transform_cache(ctx.recording()),
+                )
+            });
 
         let frame_ids = transform_cache
             .frame_id_registry()
@@ -167,7 +168,7 @@ impl ViewContextSystem for TransformTreeContext {
             .map(|(k, v)| (*k, v.clone()));
 
         Box::new(TransformTreeContextOncePerFrameResult {
-            transform_forest: Arc::new(transform_forest),
+            transform_forest,
             frame_id_mapping: Arc::new(frame_ids.collect()),
         })
     }

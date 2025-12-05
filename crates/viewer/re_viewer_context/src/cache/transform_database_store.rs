@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock};
 use re_byte_size::SizeBytes;
+use re_chunk::LatestAtQuery;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_tf::TransformResolutionCache;
@@ -15,6 +16,8 @@ use super::{Cache, CacheMemoryReport};
 pub struct TransformDatabaseStoreCache {
     initialized: bool,
     transform_cache: Arc<RwLock<TransformResolutionCache>>,
+
+    transform_forest: Option<(LatestAtQuery, Arc<re_tf::TransformForest>)>,
 }
 
 impl TransformDatabaseStoreCache {
@@ -34,6 +37,28 @@ impl TransformDatabaseStoreCache {
 
         self.transform_cache.read_arc()
     }
+
+    pub fn get_or_create_transform_forest(
+        &mut self,
+        entity_db: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Arc<re_tf::TransformForest> {
+        Arc::clone(
+            if let Some((_, forest)) = self.transform_forest.as_ref().filter(|(q, _)| q == query) {
+                forest
+            } else {
+                let lock = self.read_lock_transform_cache(entity_db);
+
+                &self
+                    .transform_forest
+                    .insert((
+                        query.clone(),
+                        Arc::new(re_tf::TransformForest::new(entity_db, &lock, query)),
+                    ))
+                    .1
+            },
+        )
+    }
 }
 
 impl SizeBytes for TransformDatabaseStoreCache {
@@ -41,9 +66,12 @@ impl SizeBytes for TransformDatabaseStoreCache {
         let Self {
             initialized,
             transform_cache,
+            transform_forest,
         } = self;
 
-        initialized.heap_size_bytes() + transform_cache.read().heap_size_bytes()
+        initialized.heap_size_bytes()
+            + transform_cache.read().heap_size_bytes()
+            + transform_forest.heap_size_bytes()
     }
 }
 

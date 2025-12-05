@@ -1,7 +1,4 @@
-use ahash::HashSetExt as _;
 use itertools::Itertools as _;
-use nohash_hasher::IntSet;
-use re_tf::TransformFrameIdHash;
 use re_types::image::ImageKind;
 use re_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
@@ -132,87 +129,37 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     system_registry.register_fallback_provider(
         blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
         |ctx| {
-            let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
+            {
+                // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
+                // view properties, therefore the `QueryContext` is actually only querying the blueprint directly.
+                // However, we're now interested in something that lives on the store but may have an _override_ on the blueprint.
+                let query = ctx.view_ctx.current_query();
 
-            let mut root_candidates = IntSet::new();
-            let mut not_roots = IntSet::new();
+                let caches = ctx.store_ctx().caches;
+                let (transforms, transform_forest) =
+                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                        (
+                            c.read_lock_transform_cache(ctx.recording()),
+                            c.get_or_create_transform_forest(ctx.recording(), &query),
+                        )
+                    });
 
-            // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
-            // view properties, therefore the `QueryContext` is actually only querying the blueprint directly.
-            // However, we're now interested in something that lives on the store but may have an _override_ on the blueprint.
-            let query = ctx.view_ctx.current_query();
+                if let Some(frame) = transform_forest
+                    .transform_frame_roots()
+                    .filter_map(|id| {
+                        transforms
+                            .frame_id_registry()
+                            .lookup_frame_id(id)
+                            .filter(|id| !id.is_entity_path_derived())
+                    })
+                    .sorted_unstable()
+                    .next()
+                {
+                    return frame.clone();
+                }
+            }
 
             let space_origin = ctx.view_ctx.space_origin;
-
-            if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
-            {
-                let results = data_result.latest_at_with_blueprint_resolved_data_for_component(
-                    ctx.view_ctx,
-                    &query,
-                    archetypes::CoordinateFrame::descriptor_frame().component,
-                );
-
-                if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
-                    archetypes::CoordinateFrame::descriptor_frame().component,
-                ) {
-                    return frame_id;
-                }
-            }
-
-            query_result.tree.visit(&mut |node| {
-                let results = node
-                    .data_result
-                    .latest_at_with_blueprint_resolved_data_for_component(
-                        ctx.view_ctx,
-                        &query,
-                        archetypes::CoordinateFrame::descriptor_frame().component,
-                    );
-
-                if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
-                    archetypes::CoordinateFrame::descriptor_frame().component,
-                ) && !frame_id.is_entity_path_derived()
-                {
-                    root_candidates.insert(TransformFrameIdHash::new(&frame_id));
-                }
-
-                let results = node
-                    .data_result
-                    .latest_at_with_blueprint_resolved_data::<archetypes::Transform3D>(
-                        ctx.view_ctx,
-                        &query,
-                    );
-
-                if let Some(child_frame) = results.get_mono::<components::TransformFrameId>(
-                    archetypes::Transform3D::descriptor_child_frame().component,
-                ) && !child_frame.is_entity_path_derived()
-                {
-                    not_roots.insert(TransformFrameIdHash::new(&child_frame));
-                }
-
-                if let Some(parent_frame) = results.get_mono::<components::TransformFrameId>(
-                    archetypes::Transform3D::descriptor_parent_frame().component,
-                ) && !parent_frame.is_entity_path_derived()
-                {
-                    root_candidates.insert(TransformFrameIdHash::new(&parent_frame));
-                }
-
-                true
-            });
-
-            if let Some(root) = root_candidates
-                .difference(&not_roots)
-                .sorted_unstable()
-                .next()
-            {
-                let caches = ctx.store_ctx().caches;
-                let transform_cache =
-                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        c.read_lock_transform_cache(ctx.recording())
-                    });
-                if let Some(root) = transform_cache.frame_id_registry().lookup_frame_id(*root) {
-                    return root.clone();
-                }
-            }
 
             // Fallback to entity path if no explicit CoordinateFrame
             components::TransformFrameId::from_entity_path(space_origin)
