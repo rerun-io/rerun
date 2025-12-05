@@ -144,6 +144,8 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         )
                     });
 
+                // Pick the first (alphabetical order) non-entity path root if
+                // we can find one.
                 if let Some(frame) = transform_forest
                     .transform_frame_roots()
                     .filter_map(|id| {
