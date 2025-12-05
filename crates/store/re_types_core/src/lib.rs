@@ -99,7 +99,7 @@ pub mod external {
 /// Useful macro for statically asserting that a `struct` contains some specific fields.
 ///
 ///  ```
-/// # #[macro_use] extern crate re_sdk_types_core;
+/// # #[macro_use] extern crate re_types_core;
 /// struct Data {
 ///     x: f32,
 ///     y: String,
@@ -112,7 +112,7 @@ pub mod external {
 /// This will fail to compile because the type is wrong:
 ///
 /// ```compile_fail
-/// # #[macro_use] extern crate re_sdk_types_core;
+/// # #[macro_use] extern crate re_types_core;
 /// struct Data {
 ///     x: f32,
 /// }
@@ -123,7 +123,7 @@ pub mod external {
 /// This will fail to compile because the field is missing:
 ///
 /// ```compile_fail
-/// # #[macro_use] extern crate re_sdk_types_core;
+/// # #[macro_use] extern crate re_types_core;
 /// struct Data {
 ///     x: f32,
 /// }
