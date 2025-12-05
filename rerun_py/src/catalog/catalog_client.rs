@@ -238,16 +238,19 @@ impl PyCatalogClientInternal {
         py: Python<'_>,
         name: String,
         schema: PyArrowType<Schema>,
-        url: String,
+        url: Option<String>,
     ) -> PyResult<Py<PyTableEntryInternal>> {
         let connection = self_.borrow_mut(py).connection.clone();
 
         let url = url
-            .parse::<url::Url>()
-            .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))?;
+            .map(|url| {
+                url.parse::<url::Url>()
+                    .map_err(|err| PyValueError::new_err(format!("Invalid URL: {err}")))
+            })
+            .transpose()?;
 
         let schema = Arc::new(schema.0);
-        let table_entry = connection.create_table_entry(py, name, schema, &url)?;
+        let table_entry = connection.create_table_entry(py, name, schema, url)?;
 
         self_.borrow(py).update_catalog_providers(py, false)?;
 

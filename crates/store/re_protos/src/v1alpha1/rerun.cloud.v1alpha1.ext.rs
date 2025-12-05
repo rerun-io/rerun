@@ -761,7 +761,7 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryResponse> for CreateDatas
 pub struct CreateTableEntryRequest {
     pub name: String,
     pub schema: Schema,
-    pub provider_details: ProviderDetails,
+    pub provider_details: Option<ProviderDetails>,
 }
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
@@ -770,7 +770,10 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
         Ok(Self {
             name: value.name,
             schema: Some((&value.schema).try_into()?),
-            provider_details: Some((&value.provider_details).try_into()?),
+            provider_details: value
+                .provider_details
+                .map(|d| (&d).try_into())
+                .transpose()?,
         })
     }
 }
@@ -789,12 +792,10 @@ impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEnt
                     "schema"
                 ))?
                 .try_into()?,
-            provider_details: ProviderDetails::try_from(&value.provider_details.ok_or(
-                missing_field!(
-                    crate::cloud::v1alpha1::CreateTableEntryRequest,
-                    "provider_details"
-                ),
-            )?)?,
+            provider_details: value
+                .provider_details
+                .map(|v| ProviderDetails::try_from(&v))
+                .transpose()?,
         })
     }
 }

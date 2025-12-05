@@ -12,6 +12,7 @@ use re_arrow_util::RecordBatchExt as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::LanceTable;
 use re_protos::cloud::v1alpha1::ext::{
     self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
     CreateTableEntryResponse, DataSource, DatasetDetails, EntryDetailsUpdate, ProviderDetails,
@@ -38,15 +39,37 @@ use tonic::{Code, Request, Response, Status};
 use crate::chunk_index::DatasetChunkIndexes;
 use crate::entrypoint::NamedPath;
 use crate::store::{ChunkKey, Dataset, InMemoryStore, Table};
+use re_tuid::Tuid;
 
-#[derive(Debug, Default)]
-pub struct RerunCloudHandlerSettings {}
+#[derive(Debug)]
+pub struct RerunCloudHandlerSettings {
+    storage_dir: tempfile::TempDir,
+}
 
-#[derive(Default)]
+impl Default for RerunCloudHandlerSettings {
+    fn default() -> Self {
+        Self {
+            storage_dir: create_data_dir().expect("Failed to create data directory"),
+        }
+    }
+}
+
+fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
+    Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
+}
+
 pub struct RerunCloudHandlerBuilder {
     settings: RerunCloudHandlerSettings,
-
     store: InMemoryStore,
+}
+
+impl Default for RerunCloudHandlerBuilder {
+    fn default() -> Self {
+        Self {
+            settings: Default::default(),
+            store: InMemoryStore::default(),
+        }
+    }
 }
 
 impl RerunCloudHandlerBuilder {
@@ -90,7 +113,6 @@ impl RerunCloudHandlerBuilder {
 const DUMMY_TASK_ID: &str = "task_00000000DEADBEEF";
 
 pub struct RerunCloudHandler {
-    #[expect(dead_code)]
     settings: RerunCloudHandlerSettings,
 
     store: tokio::sync::RwLock<InMemoryStore>,
@@ -1478,7 +1500,28 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
-        let table = match &request.provider_details {
+        let details = match request.provider_details {
+            Some(details) => details,
+            None => {
+                // Create a directory in the storage directory. We use a tuid to avoid collisions
+                // and avoid any sanitization issue with the provided table name.
+                let table_path = self
+                    .settings
+                    .storage_dir
+                    .path()
+                    .join(format!("lance-{}", Tuid::new().to_string()));
+                ProviderDetails::LanceTable(LanceTable {
+                    table_url: url::Url::from_directory_path(table_path).map_err(|_| {
+                        Status::internal(format!(
+                            "Failed to create table directory in {:?}",
+                            self.settings.storage_dir.path()
+                        ))
+                    })?,
+                })
+            }
+        };
+
+        let table = match details {
             ProviderDetails::LanceTable(table) => {
                 store
                     .create_table_entry(table_name, &table.table_url, schema)
