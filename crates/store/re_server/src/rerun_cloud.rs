@@ -58,18 +58,10 @@ fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
     Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
 }
 
+#[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
     settings: RerunCloudHandlerSettings,
     store: InMemoryStore,
-}
-
-impl Default for RerunCloudHandlerBuilder {
-    fn default() -> Self {
-        Self {
-            settings: Default::default(),
-            store: InMemoryStore::default(),
-        }
-    }
 }
 
 impl RerunCloudHandlerBuilder {
@@ -1500,25 +1492,24 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
-        let details = match request.provider_details {
-            Some(details) => details,
-            None => {
-                // Create a directory in the storage directory. We use a tuid to avoid collisions
-                // and avoid any sanitization issue with the provided table name.
-                let table_path = self
-                    .settings
-                    .storage_dir
-                    .path()
-                    .join(format!("lance-{}", Tuid::new().to_string()));
-                ProviderDetails::LanceTable(LanceTable {
-                    table_url: url::Url::from_directory_path(table_path).map_err(|_| {
-                        Status::internal(format!(
-                            "Failed to create table directory in {:?}",
-                            self.settings.storage_dir.path()
-                        ))
-                    })?,
-                })
-            }
+        let details = if let Some(details) = request.provider_details {
+            details
+        } else {
+            // Create a directory in the storage directory. We use a tuid to avoid collisions
+            // and avoid any sanitization issue with the provided table name.
+            let table_path = self
+                .settings
+                .storage_dir
+                .path()
+                .join(format!("lance-{}", Tuid::new()));
+            ProviderDetails::LanceTable(LanceTable {
+                table_url: url::Url::from_directory_path(table_path).map_err(|err| {
+                    Status::internal(format!(
+                        "Failed to create table directory in {:?} (err: {err:?})",
+                        self.settings.storage_dir.path()
+                    ))
+                })?,
+            })
         };
 
         let table = match details {
