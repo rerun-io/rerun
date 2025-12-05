@@ -1,3 +1,5 @@
+use base64::Engine as _;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
 
 use crate::Jwt;
@@ -167,6 +169,22 @@ pub struct RerunCloudClaims {
 impl RerunCloudClaims {
     pub const REQUIRED: &'static [&'static str] =
         &["iss", "sub", "org_id", "permissions", "exp", "iat"];
+
+    pub fn try_from_unverified_jwt(jwt: &Jwt) -> Result<Self, MalformedTokenError> {
+        // TODO(aedm): check signature of the JWT token
+        let (_header, rest) = jwt
+            .as_str()
+            .split_once('.')
+            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
+        let (payload, _signature) = rest
+            .split_once('.')
+            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
+        let payload = BASE64_URL_SAFE_NO_PAD
+            .decode(payload)
+            .map_err(MalformedTokenError::Base64)?;
+        let claims = serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
+        Ok(claims)
+    }
 }
 
 #[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
@@ -240,8 +258,7 @@ impl Credentials {
         refresh_token: Option<String>,
         email: String,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
-        // TODO(aedm): check signature of the JWT token
-        let claims = Jwt(access_token.clone()).unverified_claims()?;
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&Jwt(access_token.clone()))?;
 
         let user = User {
             id: claims.sub,
@@ -310,7 +327,7 @@ impl AccessToken {
     ///
     /// The token should come from a trusted source, like the Rerun auth API.
     pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, MalformedTokenError> {
-        let claims = jwt.unverified_claims()?;
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         Ok(Self {
             token: jwt.0,
             expires_at: claims.exp,
