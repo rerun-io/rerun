@@ -9296,6 +9296,7 @@ name = "re_redap_client"
 version = "0.27.3-rc.1"
 dependencies = [
  "arrow",
+ "ehttp",
  "itertools 0.14.0",
  "jiff",
  "re_arrow_util",

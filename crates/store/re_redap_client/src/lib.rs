@@ -96,6 +96,7 @@ pub enum ApiErrorKind {
     Internal,
     InvalidArguments,
     Serialization,
+    InvalidServer,
 }
 
 impl From<tonic::Code> for ApiErrorKind {
@@ -125,6 +126,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::InvalidArguments => write!(f, "InvalidArguments"),
             Self::Serialization => write!(f, "Serialization"),
             Self::Timeout => write!(f, "Timeout"),
+            Self::InvalidServer => write!(f, "InvalidServer"),
         }
     }
 }
@@ -171,11 +173,28 @@ impl ApiError {
         }
     }
 
+    pub fn connection_simple(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: ApiErrorKind::Connection,
+            source: None,
+        }
+    }
+
     pub fn credentials(err: ClientCredentialsError, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
             kind: ApiErrorKind::Unauthenticated,
             source: Some(Box::new(err)),
+        }
+    }
+
+    #[expect(clippy::needless_pass_by_value)]
+    pub fn invalid_server(origin: re_uri::Origin) -> Self {
+        Self {
+            message: format!("{origin} is not a valid Rerun server"),
+            kind: ApiErrorKind::InvalidServer,
+            source: None,
         }
     }
 

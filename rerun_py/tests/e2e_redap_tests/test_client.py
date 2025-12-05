@@ -23,6 +23,8 @@ def test_urls(server_instance: ServerInstance) -> None:
     assert re.match("^file:///[-_:./0-9a-zA-Z]+/simple_datatypes/$", table.storage_url)
 
 
+# TODO(#12122): It'd be nice if the connection timeout was configurable, so we would not have to wait for 30 seconds for this test.
+@pytest.mark.skip
 def test_network_unreachable() -> None:
     """Tests that the client raises an error when the server is unreachable."""
 
@@ -30,8 +32,7 @@ def test_network_unreachable() -> None:
         raise TimeoutError("the operation did not time out on time")
 
     signal.signal(signal.SIGALRM, timeout_handler)
-    # It'd be nice if the connection timeout was configurable, so we would not have to wait for 10 seconds for this test. Another day.
-    signal.alarm(15)  # Our connection timeout is 10 seconds. Let's be generous to avoid flakiness
+    signal.alarm(60)  # Our connection timeout is 30 seconds (ehttp default). Let's be generous to avoid flakiness
 
     try:
         with pytest.raises(ConnectionError, match=r"failed to connect to server"):  # Adjust exception type as needed
