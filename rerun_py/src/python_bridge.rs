@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
@@ -2267,12 +2267,18 @@ impl PyDeviceCodeFlow {
     /// Credentials
     ///     The credentials of the logged in user.
     fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
-        let result: Result<Credentials, re_auth::callback_server::Error> =
-            crate::utils::wait_for_future(py, self.login_flow.wait_for_user_confirmation());
-
-        result
-            .map(PyCredentials)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+        crate::utils::wait_for_future(py, async move {
+            tokio::select! {
+                result = self.login_flow.wait_for_user_confirmation() => {
+                    result
+                        .map(PyCredentials)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+                }
+                _ = tokio::signal::ctrl_c() => {
+                    Err(PyKeyboardInterrupt::new_err(None::<()>))
+                }
+            }
+        })
     }
 }
 
