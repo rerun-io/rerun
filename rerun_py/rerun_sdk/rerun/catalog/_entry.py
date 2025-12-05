@@ -532,9 +532,12 @@ class TableEntry(Entry[TableEntryInternal]):
 
     # ---
 
+    #: Type alias for supported batch input types.
+    _BatchesType = RecordBatchReader | pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]]
+
     def append(
         self,
-        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]] | None = None,
+        batches: _BatchesType | None = None,
         **named_params: Any,
     ) -> None:
         """
@@ -543,24 +546,17 @@ class TableEntry(Entry[TableEntryInternal]):
         Parameters
         ----------
         batches
-            A sequence of Arrow RecordBatches to append to the table.
+            Arrow data to append to the table. Can be a RecordBatchReader, a single RecordBatch, a list of
+            RecordBatches, or a list of lists of RecordBatches (as returned by `datafusion.DataFrame.collect()`).
         **named_params
             Each named parameter corresponds to a column in the table.
 
         """
-        if batches is not None and len(named_params) > 0:
-            raise TypeError(
-                "TableEntry.append can take a sequence of RecordBatches or a named set of columns, but not both"
-            )
-
-        if batches is not None:
-            self._write_batches(batches, insert_mode=TableInsertMode.APPEND)
-        else:
-            self._write_named_params(named_params, insert_mode=TableInsertMode.APPEND)
+        self._write(batches, named_params, TableInsertMode.APPEND)
 
     def overwrite(
         self,
-        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]] | None = None,
+        batches: _BatchesType | None = None,
         **named_params: Any,
     ) -> None:
         """
@@ -569,24 +565,18 @@ class TableEntry(Entry[TableEntryInternal]):
         Parameters
         ----------
         batches
-            A sequence of Arrow RecordBatches to overwrite the table with.
+            Arrow data to overwrite the table with. Can be a RecordBatchReader, a single RecordBatch, a list of
+            RecordBatches, or a list of lists of RecordBatches (as returned by `datafusion.DataFrame.collect()`).
+
         **named_params
             Each named parameter corresponds to a column in the table.
 
         """
-        if batches is not None and len(named_params) > 0:
-            raise TypeError(
-                "TableEntry.overwrite can take a sequence of RecordBatches or a named set of columns, but not both"
-            )
-
-        if batches is not None:
-            self._write_batches(batches, insert_mode=TableInsertMode.OVERWRITE)
-        else:
-            self._write_named_params(named_params, insert_mode=TableInsertMode.OVERWRITE)
+        self._write(batches, named_params, TableInsertMode.OVERWRITE)
 
     def upsert(
         self,
-        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]] | None = None,
+        batches: _BatchesType | None = None,
         **named_params: Any,
     ) -> None:
         """
@@ -603,27 +593,40 @@ class TableEntry(Entry[TableEntryInternal]):
         Parameters
         ----------
         batches
-            A sequence of Arrow RecordBatches to upsert into the table.
+            Arrow data to upsert into the table. Can be a RecordBatchReader, a single RecordBatch, a list of
+            RecordBatches, or a list of lists of RecordBatches (as returned by `datafusion.DataFrame.collect()`).
         **named_params
             Each named parameter corresponds to a column in the table
 
         """
+        self._write(batches, named_params, TableInsertMode.REPLACE)
+
+    def _write(
+        self,
+        batches: _BatchesType | None,
+        named_params: dict[str, Any],
+        insert_mode: TableInsertMode,
+    ) -> None:
+        """Internal helper that implements append/overwrite/upsert."""
         if batches is not None and len(named_params) > 0:
-            raise TypeError(
-                "TableEntry.upsert can take a sequence of RecordBatches or a named set of columns, but not both"
-            )
+            raise TypeError("Cannot pass both batches and named parameters. Use one or the other.")
 
         if batches is not None:
-            self._write_batches(batches, insert_mode=TableInsertMode.REPLACE)
+            self._write_batches(batches, insert_mode=insert_mode)
         else:
-            self._write_named_params(named_params, insert_mode=TableInsertMode.REPLACE)
+            self._write_named_params(named_params, insert_mode=insert_mode)
 
     def _write_batches(
         self,
-        batches: pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]],
+        batches: _BatchesType,
         insert_mode: TableInsertMode,
     ) -> None:
         """Internal helper to write batches to the table."""
+        # If already a RecordBatchReader, pass it directly
+        if isinstance(batches, RecordBatchReader):
+            self._internal.write_batches(batches, insert_mode=insert_mode)
+            return
+
         flat_batches = self._flatten_batches(batches)
         if len(flat_batches) == 0:
             return
