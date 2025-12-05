@@ -119,6 +119,40 @@ def test_client_append_to_table(entry_factory: EntryFactory, tmp_path: pathlib.P
     assert ctx.table(table_name).count() == original_rows + 4
 
 
+@pytest.mark.creates_table
+def test_table_upsert(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
+    """Test TableEntry.upsert() method on a table with an index column."""
+    base_name = "test_table"
+    table_name = entry_factory.apply_prefix(base_name)
+    ctx: SessionContext = entry_factory.client.ctx
+
+    # Create a table with an index column (marked with rerun:is_table_index metadata)
+    schema = pa.schema([
+        pa.field("id", pa.int32(), metadata={"rerun:is_table_index": "true"}),
+        pa.field("value", pa.string()),
+    ])
+    table = entry_factory.create_table(base_name, schema, tmp_path.absolute().as_uri())
+
+    # Insert initial data
+    initial_batch = pa.RecordBatch.from_pydict({"id": [1, 2, 3], "value": ["a", "b", "c"]}, schema=schema)
+    table.append(initial_batch)
+    assert ctx.table(table_name).count() == 3
+
+    # Upsert: update existing rows (id=1, id=2) and insert new row (id=4)
+    upsert_batch = pa.RecordBatch.from_pydict({"id": [1, 2, 4], "value": ["A", "B", "D"]}, schema=schema)
+    table.upsert(upsert_batch)
+
+    # Should still have 4 rows (3 original, minus 2 updated, plus 1 new = 4)
+    assert ctx.table(table_name).count() == 4
+
+    # Verify the values were updated
+    result = ctx.table(table_name).sort(col("id")).collect()
+    assert len(result) == 1
+    batch = result[0]
+    assert batch.column("id").to_pylist() == [1, 2, 3, 4]
+    assert batch.column("value").to_pylist() == ["A", "B", "c", "D"]
+
+
 @pytest.mark.local_only
 def test_write_to_registered_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> None:
     """
