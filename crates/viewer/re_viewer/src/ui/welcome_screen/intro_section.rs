@@ -148,8 +148,8 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, login_state: &C
 
     ui.add_space(32.0);
 
-    if let LoginState::Auth { email: Some(email) } = &login_state.login {
-        ui.strong(RichText::new(format!("Hi, {email}!")).size(15.0));
+    if let Some(auth) = ctx.auth_context {
+        ui.strong(RichText::new(format!("Hi, {}!", &auth.email)).size(15.0));
 
         if ui.add(Button::new("Logout").secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);
