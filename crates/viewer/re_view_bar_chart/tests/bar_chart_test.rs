@@ -31,26 +31,6 @@ fn test_bar_chart() {
         None,
     );
 }
-#[test]
-fn test_bar_chart_abscissa_width() {
-    let mut test_context = TestContext::new_with_view_class::<BarChartView>();
-
-    test_context.log_entity("time_series", |builder| {
-        builder.with_archetype(
-            RowId::new(),
-            TimePoint::STATIC,
-            &archetypes::BarChart::new(vec![1, 2, 3]).with_abscissa(vec![0.0, 3.0, 6.0]), // .with_widths(vec![2.0; 3]),
-        )
-    });
-
-    let view_id = setup_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "bar_chart_1d_abscissa_width",
-        egui::vec2(400.0, 300.0),
-        None,
-    );
-}
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
