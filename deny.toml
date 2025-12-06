@@ -66,7 +66,6 @@ skip = [
   { name = "event-listener" }, # remove after https://github.com/lance-format/lance/pull/4834 closes
   { name = "gimli" }, # wasm-bindgen
   { name = "hashbrown" }, # Old version used by polar-rs
-  { name = "heck" }, # Old version via ouroboros
   { name = "itertools" }, # Too popular
   { name = "libloading" }, # datafusion-ffi needs an older version than wgpu
   { name = "lru" }, # because of lance

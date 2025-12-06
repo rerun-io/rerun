@@ -92,6 +92,9 @@ pub enum ApiErrorKind {
     AlreadyExists,
     PermissionDenied,
     Unauthenticated,
+
+    /// The gRPC endpoint has not been implemented
+    Unimplemented,
     Connection,
     Timeout,
     Internal,
@@ -107,6 +110,7 @@ impl From<tonic::Code> for ApiErrorKind {
             tonic::Code::AlreadyExists => Self::AlreadyExists,
             tonic::Code::PermissionDenied => Self::PermissionDenied,
             tonic::Code::Unauthenticated => Self::Unauthenticated,
+            tonic::Code::Unimplemented => Self::Unimplemented,
             tonic::Code::Unavailable => Self::Connection,
             tonic::Code::InvalidArgument => Self::InvalidArguments,
             tonic::Code::DeadlineExceeded => Self::Timeout,
@@ -122,6 +126,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::AlreadyExists => write!(f, "AlreadyExists"),
             Self::PermissionDenied => write!(f, "PermissionDenied"),
             Self::Unauthenticated => write!(f, "Unauthenticated"),
+            Self::Unimplemented => write!(f, "Unimplemented"),
             Self::Connection => write!(f, "Connection"),
             Self::Internal => write!(f, "Internal"),
             Self::InvalidArguments => write!(f, "InvalidArguments"),

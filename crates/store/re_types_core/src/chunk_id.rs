@@ -144,8 +144,9 @@ impl ChunkId {
             Ok(bytemuck::cast_slice(array.value_data()))
         } else {
             Err(WrongDatatypeError {
-                expected: Self::arrow_datatype(),
-                actual: array.data_type().clone(),
+                column_name: None,
+                expected: Self::arrow_datatype().into(),
+                actual: array.data_type().clone().into(),
             })
         }
     }
