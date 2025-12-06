@@ -1,4 +1,5 @@
 mod example_section;
+mod intro_section;
 mod loading_data_ui;
 mod no_data_ui;
 mod welcome_section;
@@ -7,9 +8,11 @@ use std::sync::Arc;
 
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use re_log_channel::LogSource;
-use welcome_section::welcome_section_ui;
 
 use crate::app_state::WelcomeScreenState;
+
+pub use intro_section::{CloudState, LoginState};
+use re_viewer_context::GlobalContext;
 
 #[derive(Default)]
 pub struct WelcomeScreen {
@@ -25,8 +28,10 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        ctx: &GlobalContext<'_>,
         welcome_screen_state: &WelcomeScreenState,
         log_sources: &[Arc<LogSource>],
+        login_state: &CloudState,
     ) {
         if welcome_screen_state.opacity <= 0.0 {
             return;
@@ -61,7 +66,7 @@ impl WelcomeScreen {
                             no_data_ui::no_data_ui(ui);
                         }
                     } else {
-                        self.example_page.ui(ui, &welcome_section_ui);
+                        self.example_page.ui(ui, ctx, login_state);
                     }
                 });
             });
