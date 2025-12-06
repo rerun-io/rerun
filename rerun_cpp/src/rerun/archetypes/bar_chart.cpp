@@ -15,8 +15,8 @@ namespace rerun::archetypes {
         archetype.abscissa =
             ComponentBatch::empty<rerun::components::TensorData>(Descriptor_abscissa)
                 .value_or_throw();
-        archetype.widths = ComponentBatch::empty<rerun::components::TensorData>(Descriptor_widths)
-                               .value_or_throw();
+        archetype.widths =
+            ComponentBatch::empty<rerun::components::Length>(Descriptor_widths).value_or_throw();
         return archetype;
     }
 

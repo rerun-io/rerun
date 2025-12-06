@@ -41,6 +41,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4].as_slice())
 ///             .with_abscissa([0_i64, 1, 3, 4, 7, 11].as_slice()),
 ///     )?;
+///     rec.log(
+///         "bar_chart_custom_abscissa_and_widths",
+///         &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4].as_slice())
+///             .with_abscissa([0_i64, 1, 3, 4, 7, 11].as_slice())
+///             .with_widths([1_i64, 2, 1, 3, 4, 1].as_slice()),
+///     )?;
 ///
 ///     Ok(())
 /// }
@@ -108,13 +114,13 @@ impl BarChart {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::widths`].
     ///
-    /// The corresponding component is [`crate::components::TensorData`].
+    /// The corresponding component is [`crate::components::Length`].
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.archetypes.BarChart".into()),
             component: "BarChart:widths".into(),
-            component_type: Some("rerun.components.TensorData".into()),
+            component_type: Some("rerun.components.Length".into()),
         }
     }
 }
@@ -262,7 +268,7 @@ impl BarChart {
                 Self::descriptor_abscissa(),
             )),
             widths: Some(SerializedComponentBatch::new(
-                crate::components::TensorData::arrow_empty(),
+                crate::components::Length::arrow_empty(),
                 Self::descriptor_widths(),
             )),
         }
@@ -386,19 +392,9 @@ impl BarChart {
 
     /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #[inline]
-    pub fn with_widths(mut self, widths: impl Into<crate::components::TensorData>) -> Self {
-        self.widths = try_serialize_field(Self::descriptor_widths(), [widths]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::TensorData`] in a single component batch.
-    ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_widths`] should
-    /// be used when logging a single row's worth of data.
-    #[inline]
-    pub fn with_many_widths(
+    pub fn with_widths(
         mut self,
-        widths: impl IntoIterator<Item = impl Into<crate::components::TensorData>>,
+        widths: impl IntoIterator<Item = impl Into<crate::components::Length>>,
     ) -> Self {
         self.widths = try_serialize_field(Self::descriptor_widths(), widths);
         self

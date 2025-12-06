@@ -27,5 +27,5 @@ table BarChart (
   abscissa: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
-  widths: rerun.components.TensorData ("attr.rerun.component_optional", nullable, order: 4000);
+  widths: [rerun.components.Length] ("attr.rerun.component_optional", nullable, order: 4000);
 }

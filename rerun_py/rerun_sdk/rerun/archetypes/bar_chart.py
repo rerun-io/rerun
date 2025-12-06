@@ -38,6 +38,10 @@ class BarChart(BarChartExt, Archetype):
     rr.init("rerun_example_bar_chart", spawn=True)
     rr.log("bar_chart", rr.BarChart([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
     rr.log("bar_chart_custom_abscissa", rr.BarChart([8, 4, 0, 9, 1, 4], abscissa=[0, 1, 3, 4, 7, 11]))
+    rr.log(
+        "bar_chart_custom_abscissa_and_widths",
+        rr.BarChart([8, 4, 0, 9, 1, 4], abscissa=[0, 1, 3, 4, 7, 11], widths=[1, 2, 1, 3, 4, 1]),
+    )
     ```
     <center>
     <picture>
@@ -57,7 +61,7 @@ class BarChart(BarChartExt, Archetype):
         *,
         color: datatypes.Rgba32Like | None = None,
         abscissa: datatypes.TensorDataLike | None = None,
-        widths: datatypes.TensorDataLike | None = None,
+        widths: datatypes.Float32ArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the BarChart archetype.
@@ -105,7 +109,7 @@ class BarChart(BarChartExt, Archetype):
         values: datatypes.TensorDataLike | None = None,
         color: datatypes.Rgba32Like | None = None,
         abscissa: datatypes.TensorDataLike | None = None,
-        widths: datatypes.TensorDataLike | None = None,
+        widths: datatypes.Float32ArrayLike | None = None,
     ) -> BarChart:
         """
         Update only some specific fields of a `BarChart`.
@@ -155,7 +159,7 @@ class BarChart(BarChartExt, Archetype):
         values: datatypes.TensorDataArrayLike | None = None,
         color: datatypes.Rgba32ArrayLike | None = None,
         abscissa: datatypes.TensorDataArrayLike | None = None,
-        widths: datatypes.TensorDataArrayLike | None = None,
+        widths: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -253,10 +257,10 @@ class BarChart(BarChartExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    widths: components.TensorDataBatch | None = field(
+    widths: components.LengthBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.TensorDataBatch._converter,  # type: ignore[misc]
+        converter=components.LengthBatch._converter,  # type: ignore[misc]
     )
     # The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
     #

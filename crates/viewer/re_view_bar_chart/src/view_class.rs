@@ -225,7 +225,7 @@ impl ViewClass for BarChartView {
                 fn create_bar_chart<N: Into<f64>>(
                     ent_path: &EntityPath,
                     indexes: impl Iterator<Item = f64>,
-                    widths: impl Iterator<Item = f64>,
+                    widths: impl Iterator<Item = f32>,
                     values: impl Iterator<Item = N>,
                     color: &re_types::components::Color,
                     background_color: egui::Color32,
@@ -244,8 +244,8 @@ impl ViewClass for BarChartView {
                             .zip(widths)
                             .enumerate()
                             .map(|(i, ((value, index), width))| {
-                                Bar::new(index + 0.5 * width, value.into())
-                                    .width(width)
+                                Bar::new(index + (0.5 * width as f64), value.into())
+                                    .width(width as f64)
                                     .name(format!("{ent_path} #{i}"))
                                     .fill(fill)
                                     .stroke((1.0, stroke_color))
@@ -279,7 +279,8 @@ impl ViewClass for BarChartView {
                         TensorBuffer::F32(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::F64(data) => data.iter().copied().collect(),
                     };
-                    let widths: ::arrow::buffer::ScalarBuffer<f64> = match &widths.buffer {
+
+                    let data: ::arrow::buffer::ScalarBuffer<f64> = match &tensor.buffer {
                         TensorBuffer::U8(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::U16(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::U32(data) => data.iter().map(|v| *v as f64).collect(),
@@ -292,97 +293,14 @@ impl ViewClass for BarChartView {
                         TensorBuffer::F32(data) => data.iter().map(|v| *v as f64).collect(),
                         TensorBuffer::F64(data) => data.iter().copied().collect(),
                     };
-
-                    let chart = match &tensor.buffer {
-                        TensorBuffer::U8(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::U16(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::U32(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::U64(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied().map(|v| v as f64),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::I8(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::I16(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::I32(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::I64(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied().map(|v| v as f64),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::F16(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().map(|f| f.to_f32()),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::F32(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                        TensorBuffer::F64(data) => create_bar_chart(
-                            ent_path,
-                            arg.iter().copied(),
-                            widths.iter().copied(),
-                            data.iter().copied(),
-                            color,
-                            background_color,
-                        ),
-                    };
+                    let chart = create_bar_chart(
+                        ent_path,
+                        arg.iter().copied(),
+                        widths.iter().copied(),
+                        data.iter().copied(),
+                        color,
+                        background_color,
+                    );
 
                     let id = egui::Id::new(ent_path.hash());
                     plot_item_id_to_entity_path.insert(id, ent_path.clone());
