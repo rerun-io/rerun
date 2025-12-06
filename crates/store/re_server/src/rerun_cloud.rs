@@ -1503,9 +1503,9 @@ impl RerunCloudService for RerunCloudHandler {
                 .path()
                 .join(format!("lance-{}", Tuid::new()));
             ProviderDetails::LanceTable(LanceTable {
-                table_url: url::Url::from_directory_path(table_path).map_err(|err| {
+                table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
                     Status::internal(format!(
-                        "Failed to create table directory in {:?} (err: {err:?})",
+                        "Failed to create table directory in {:?}",
                         self.settings.storage_dir.path()
                     ))
                 })?,
