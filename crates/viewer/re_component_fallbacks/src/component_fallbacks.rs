@@ -63,35 +63,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     );
     registry.register_component_fallback_provider(
         archetypes::BarChart::descriptor_widths().component,
-        |ctx| {
-            // This fallback is for widths - set all widths to 1.0
-
-            // Try to get the values tensor to determine the length
-            if let Some(((_time, _row_id), tensor)) = ctx
-                .recording()
-                .latest_at_component::<components::TensorData>(
-                    ctx.target_entity_path,
-                    ctx.query,
-                    archetypes::BarChart::descriptor_values().component,
-                )
-                && tensor.is_vector()
-            {
-                let shape = tensor.shape();
-                if let Some(&length) = shape.first() {
-                    // Set all widths to 1.0
-                    let tensor_data = datatypes::TensorData::new(
-                        vec![length],
-                        datatypes::TensorBuffer::F32(vec![1.0; length as usize].into()),
-                    );
-                    return components::TensorData(tensor_data);
-                }
-            }
-
-            // Fallback to empty tensor if we can't determine the values length
-            let tensor_data =
-                datatypes::TensorData::new(vec![0u64], datatypes::TensorBuffer::I64(vec![].into()));
-            components::TensorData(tensor_data)
-        },
+        |_| components::Length::from(1.0),
     );
 
     // GraphNodes

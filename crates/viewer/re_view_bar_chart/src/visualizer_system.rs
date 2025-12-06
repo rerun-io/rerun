@@ -4,13 +4,13 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_types::{
     archetypes::BarChart,
-    components::{self},
+    components::{self, Length},
     datatypes,
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 #[derive(Default)]
@@ -74,7 +74,11 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                     }
                     widths
                 } else {
-                    vec![1.0_f32; length as usize]
+                    let fallback_width: Length = typed_fallback_for(
+                        &ctx.query_context(data_result, &view_query.latest_at_query()),
+                        BarChart::descriptor_widths().component,
+                    );
+                    vec![fallback_width.0.into(); length as usize]
                 };
                 self.charts.insert(
                     data_result.entity_path.clone(),
