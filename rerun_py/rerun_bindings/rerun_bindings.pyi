@@ -234,9 +234,6 @@ class SchemaInternal:
 
         """
 
-# Type alias for backward compatibility with rerun.dataframe module
-Schema = SchemaInternal
-
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -256,7 +253,7 @@ class RecordingView:
     monotonically increasing when data is sent from a single process.
     """
 
-    def schema(self) -> Schema:
+    def schema(self) -> SchemaInternal:
         """
         The schema describing all the columns available in the view.
 
@@ -497,7 +494,7 @@ class Recording:
     to retrieve the data.
     """
 
-    def schema(self) -> Schema:
+    def schema(self) -> SchemaInternal:
         """The schema describing all the columns available in the recording."""
 
     def view(
@@ -1302,7 +1299,7 @@ class DatasetEntryInternal:
 
     @property
     def manifest_url(self) -> str: ...
-    def schema(self) -> Schema: ...
+    def schema(self) -> SchemaInternal: ...
     def arrow_schema(self) -> pa.Schema: ...
 
     # ---
