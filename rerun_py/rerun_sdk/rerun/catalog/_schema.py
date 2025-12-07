@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor
 
@@ -45,7 +45,7 @@ class Schema:
         """Iterate over all column descriptors in the schema (index columns first, then component columns)."""
         return itertools.chain(self._index_columns, self._component_columns)
 
-    def index_columns(self) -> list[IndexColumnDescriptor]:
+    def index_columns(self) -> Sequence[IndexColumnDescriptor]:
         """
         Return a list of all the index columns in the schema.
 
@@ -54,7 +54,7 @@ class Schema:
         """
         return self._index_columns
 
-    def component_columns(self) -> list[ComponentColumnDescriptor]:
+    def component_columns(self) -> Sequence[ComponentColumnDescriptor]:
         """
         Return a list of all the component columns in the schema.
 
@@ -106,20 +106,30 @@ class Schema:
         ------
         KeyError
             If the column is not found.
+            Note: if the input is already a `ComponentColumnDescriptor`, it is returned directly without checking for
+            existence.
+
         ValueError
-            If the string selector format is invalid.
+            If the string selector format is invalid or the input type is unsupported.
 
         """
-        if isinstance(selector, ComponentColumnDescriptor):
-            return selector
-        if isinstance(selector, ComponentColumnSelector):
-            entity_path = selector.entity_path
-            component = selector.component
-        else:  # str
-            parts = selector.split(":")
-            if len(parts) != 2:
-                raise ValueError(f"Invalid selector format: {selector}. Expected '<entity_path>:<component>'")
-            entity_path, component = parts
+
+        match selector:
+            case ComponentColumnDescriptor():
+                return selector
+
+            case ComponentColumnSelector():
+                entity_path = selector.entity_path
+                component = selector.component
+
+            case str(s):
+                parts = selector.split(":")
+                if len(parts) != 2:
+                    raise ValueError(f"Invalid selector format: {selector}. Expected '<entity_path>:<component>'")
+                entity_path, component = parts
+
+            case _:
+                raise ValueError(f"Invalid selector type: {type(selector)}")
 
         result = self.column_for(entity_path, component)
         if result is None:
@@ -132,8 +142,7 @@ class Schema:
 
         Returns
         -------
-        list[str]
-            The names of all columns (index columns first, then component columns).
+        The names of all columns (index columns first, then component columns).
 
         """
         return [col.name for col in self]

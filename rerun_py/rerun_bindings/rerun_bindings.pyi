@@ -177,6 +177,8 @@ class VectorDistanceMetric(Enum):  # type: ignore[misc]
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
 
+# TODO(RR-3130): this class is not truly internal, and is actually re-exported as `Schema` from `rerun.dataframe` as a
+# stop-gap until the local API/load_recording is deprecated/removed.
 class SchemaInternal:
     """
     Internal schema class representing a set of available columns.
