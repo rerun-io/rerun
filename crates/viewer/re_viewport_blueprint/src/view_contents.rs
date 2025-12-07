@@ -21,7 +21,6 @@ use re_viewer_context::{
     QueryRange, ViewClassRegistry, ViewId, ViewState, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities,
 };
-use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{ViewBlueprint, ViewProperty};
@@ -281,7 +280,7 @@ impl ViewContents {
     ) -> DataQueryResult {
         re_tracing::profile_function!();
 
-        let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
+        let mut data_results = Default::default();
 
         let visualizers_per_entity =
             Self::visualizers_per_entity(visualizable_entities_for_visualizer_systems);
@@ -374,7 +373,7 @@ impl QueryExpressionEvaluator<'_> {
     fn add_entity_tree_to_data_results_recursive(
         &self,
         tree: &EntityTree,
-        data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
+        data_results: &mut IntMap<DataResultHandle, DataResultNode>,
         num_matching_entities: &mut usize,
         num_visualized_entities: &mut usize,
     ) -> Option<DataResultHandle> {
@@ -420,21 +419,26 @@ impl QueryExpressionEvaluator<'_> {
         // and aren't directly included.
         let exact_included = filter_evaluation.matches_exactly;
         if exact_included || !children.is_empty() || !visualizers.is_empty() {
-            Some(data_results.insert(DataResultNode {
-                data_result: DataResult {
-                    entity_path: entity_path.clone(),
-                    visualizers,
-                    tree_prefix_only: !matches_filter,
-                    property_overrides: PropertyOverrides {
-                        component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
-                        visible: true, // Determined later during `update_overrides_recursive`.
-                        interactive: true, // Determined later during `update_overrides_recursive`.
-                        override_path: self.override_base_path.join(entity_path),
-                        query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
+            let handle = DataResultHandle::new(entity_path.hash());
+            data_results.insert(
+                handle,
+                DataResultNode {
+                    data_result: DataResult {
+                        entity_path: entity_path.clone(),
+                        visualizers,
+                        tree_prefix_only: !matches_filter,
+                        property_overrides: PropertyOverrides {
+                            component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
+                            visible: true, // Determined later during `update_overrides_recursive`.
+                            interactive: true, // Determined later during `update_overrides_recursive`.
+                            override_path: self.override_base_path.join(entity_path),
+                            query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
+                        },
                     },
+                    children,
                 },
-                children,
-            }))
+            );
+            Some(handle)
         } else {
             None
         }

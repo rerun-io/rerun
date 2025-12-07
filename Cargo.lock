@@ -10491,7 +10491,6 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
- "slotmap",
  "smallvec",
  "thiserror 2.0.17",
 ]

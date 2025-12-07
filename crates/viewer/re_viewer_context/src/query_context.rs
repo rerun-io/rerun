@@ -1,17 +1,32 @@
 use std::sync::LazyLock;
 
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, EntityPathHash};
-use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{
     DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,
 };
 
-slotmap::new_key_type! {
-    /// Identifier for a [`DataResultNode`]
-    pub struct DataResultHandle;
+/// Dataresults are currently directly identified via their entity path hash
+/// since for a given entity there can only be a single data result in a given view.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct DataResultHandle(EntityPathHash);
+
+impl std::hash::Hash for DataResultHandle {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl nohash_hasher::IsEnabled for DataResultHandle {}
+
+impl DataResultHandle {
+    #[inline]
+    pub fn new(path_hash: EntityPathHash) -> Self {
+        Self(path_hash)
+    }
 }
 
 /// Context for a latest-at query in a specific view.
@@ -132,12 +147,11 @@ impl Clone for DataQueryResult {
 /// A hierarchical tree of [`DataResult`]s
 #[derive(Clone, Default, Debug)]
 pub struct DataResultTree {
-    data_results: SlotMap<DataResultHandle, DataResultNode>,
     // TODO(jleibs): Decide if we really want to compute this per-query.
     // at the moment we only look up a single path per frame for the selection panel. It's probably
     // less over-head to just walk the tree once instead of pre-computing an entire map we use for
     // a single lookup.
-    data_results_by_path: HashMap<EntityPathHash, DataResultHandle>,
+    data_results: IntMap<DataResultHandle, DataResultNode>,
     root_handle: Option<DataResultHandle>,
 }
 
@@ -150,18 +164,11 @@ pub struct DataResultNode {
 
 impl DataResultTree {
     pub fn new(
-        data_results: SlotMap<DataResultHandle, DataResultNode>,
+        data_results: IntMap<DataResultHandle, DataResultNode>,
         root_handle: Option<DataResultHandle>,
     ) -> Self {
-        re_tracing::profile_function!();
-        let data_results_by_path = data_results
-            .iter()
-            .map(|(handle, node)| (node.data_result.entity_path.hash(), handle))
-            .collect();
-
         Self {
             data_results,
-            data_results_by_path,
             root_handle,
         }
     }
@@ -171,7 +178,7 @@ impl DataResultTree {
     }
 
     pub fn root_node(&self) -> Option<&DataResultNode> {
-        self.data_results.get(self.root_handle?)
+        self.data_results.get(&self.root_handle?)
     }
 
     /// Depth-first traversal of the tree, calling `visitor` on each result.
@@ -192,12 +199,10 @@ impl DataResultTree {
         node: &DataResultNode,
         visitor: &mut impl FnMut(&'a DataResultNode) -> bool,
     ) {
-        if let Some(handle) = self
-            .data_results_by_path
-            .get(&node.data_result.entity_path.hash())
-        {
-            self.visit_recursive(*handle, visitor);
-        }
+        self.visit_recursive(
+            DataResultHandle::new(node.data_result.entity_path.hash()),
+            visitor,
+        );
     }
 
     /// Depth-first search of a node based on the provided predicate.
@@ -226,36 +231,36 @@ impl DataResultTree {
     /// Look up a [`DataResult`] in the tree based on its handle.
     #[inline]
     pub fn lookup_result(&self, handle: DataResultHandle) -> Option<&DataResult> {
-        self.data_results.get(handle).map(|node| &node.data_result)
+        self.data_results.get(&handle).map(|node| &node.data_result)
     }
 
     /// Look up a [`DataResultNode`] in the tree based on its handle.
     #[inline]
     pub fn lookup_node(&self, handle: DataResultHandle) -> Option<&DataResultNode> {
-        self.data_results.get(handle)
+        self.data_results.get(&handle)
     }
 
     /// Look up a [`DataResultNode`] in the tree based on its handle.
     #[inline]
     pub fn lookup_node_mut(&mut self, handle: DataResultHandle) -> Option<&mut DataResultNode> {
-        self.data_results.get_mut(handle)
+        self.data_results.get_mut(&handle)
     }
 
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPathHash`].
     #[inline]
     pub fn lookup_node_by_path(&self, path: EntityPathHash) -> Option<&DataResultNode> {
-        self.lookup_node(*self.data_results_by_path.get(&path)?)
+        self.lookup_node(DataResultHandle::new(path))
     }
 
     /// Look up a [`DataResult`] in the tree based on an [`EntityPathHash`].
     #[inline]
     pub fn lookup_result_by_path(&self, path: EntityPathHash) -> Option<&DataResult> {
-        self.lookup_result(*self.data_results_by_path.get(&path)?)
+        self.lookup_result(DataResultHandle::new(path))
     }
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.data_results_by_path.is_empty()
+        self.data_results.is_empty()
     }
 
     fn visit_recursive<'a>(
@@ -263,7 +268,7 @@ impl DataResultTree {
         handle: DataResultHandle,
         visitor: &mut impl FnMut(&'a DataResultNode) -> bool,
     ) {
-        if let Some(result) = self.data_results.get(handle)
+        if let Some(result) = self.data_results.get(&handle)
             && visitor(result)
         {
             for child in &result.children {
