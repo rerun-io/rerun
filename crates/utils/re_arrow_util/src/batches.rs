@@ -5,6 +5,8 @@ use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Field, Schema, SchemaBuilder};
 use itertools::Itertools as _;
 
+use crate::MissingColumnError;
+
 // ---
 
 /// Concatenates the given [`RecordBatch`]es, regardless of their respective schema.
@@ -76,6 +78,9 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
 }
 
 pub trait RecordBatchExt {
+    /// Helper for [`RecordBatchExt`].
+    fn inner(&self) -> &RecordBatch;
+
     /// Returns a new [`RecordBatch`] where all *top-level* fields are nullable.
     ///
     /// ⚠️ This is *not* recursive! E.g. for a `StructArray` containing 2 fields, only the field
@@ -112,9 +117,20 @@ pub trait RecordBatchExt {
 
     /// Rename columns based on the provided (original, new) pairs.
     fn rename_columns(self, renames: &[(&str, &str)]) -> arrow::error::Result<RecordBatch>;
+
+    /// Get a column by name, with a nice error message otherwise
+    fn try_get_column(&self, name: &str) -> Result<&ArrayRef, MissingColumnError> {
+        self.inner()
+            .column_by_name(name)
+            .ok_or_else(|| MissingColumnError::new(name))
+    }
 }
 
 impl RecordBatchExt for RecordBatch {
+    fn inner(&self) -> &RecordBatch {
+        self
+    }
+
     fn make_nullable(&self) -> RecordBatch {
         let schema = Schema::new_with_metadata(
             self.schema()
