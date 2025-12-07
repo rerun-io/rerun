@@ -1,9 +1,10 @@
+use mcap::sans_io::IndexedReaderOptions;
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::McapStatistics;
 use re_sdk_types::{components, datatypes};
 use saturating_cast::SaturatingCast as _;
 
-use super::{Layer, LayerIdentifier};
+use super::{AsyncSeekRead, Layer, LayerIdentifier};
 use crate::Error;
 
 /// Extracts [`mcap::records::Statistics`], such as message count, from an MCAP file.
@@ -19,8 +20,9 @@ impl Layer for McapStatisticLayer {
 
     fn process(
         &mut self,
-        _mcap_bytes: &[u8],
+        _mcap: &mut dyn AsyncSeekRead,
         summary: &mcap::Summary,
+        _options: &IndexedReaderOptions,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
         if let Some(statistics) = summary.stats.as_ref() {

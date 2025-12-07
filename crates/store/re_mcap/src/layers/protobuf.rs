@@ -472,6 +472,7 @@ impl MessageLayer for McapProtobufLayer {
 mod test {
     use std::io;
 
+    use mcap::sans_io::IndexedReaderOptions;
     use prost_reflect::prost::Message as _;
     use prost_reflect::prost_types::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
@@ -600,7 +601,12 @@ mod test {
         registry
             .plan(summary)
             .expect("failed to plan")
-            .run(buffer, summary, &mut send_chunk)
+            .run(
+                &mut io::Cursor::new(buffer),
+                summary,
+                &IndexedReaderOptions::default(),
+                &mut send_chunk,
+            )
             .expect("failed to run layer");
 
         chunks

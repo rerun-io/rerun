@@ -46,12 +46,16 @@ indexmap.workspace = true
 itertools.workspace = true
 notify = { workspace = true, features = ["crossbeam-channel"] }
 mcap.workspace = true
+lance-io = { workspace = true, features = ["gcp", "aws"] }
+object_store = { workspace = true }
 parking_lot.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 urdf-rs.workspace = true
+url.workspace = true
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]

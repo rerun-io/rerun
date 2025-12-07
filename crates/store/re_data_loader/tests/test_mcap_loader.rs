@@ -2,21 +2,33 @@
 mod tests {
     use std::sync::Arc;
 
+    use mcap::sans_io::IndexedReaderOptions;
     use re_chunk::Chunk;
     use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
     use re_data_loader::loader_mcap::load_mcap;
     use re_data_loader::{DataLoaderSettings, LoadedData};
     use re_log_types::StoreId;
     use re_mcap::layers::SelectedLayers;
+    use std::io::Cursor;
 
     // Load an MCAP file into a list of chunks.
     fn load_mcap_chunks(path: impl AsRef<std::path::Path>) -> Vec<Chunk> {
         let path = path.as_ref();
         println!("Loading MCAP file: {}", path.display());
-        let mcap_data = std::fs::read(path).unwrap();
+        let mcap_data = Box::new(Cursor::new(std::fs::read(path).unwrap()));
+
         let (tx, rx) = std::sync::mpsc::channel();
         let settings = DataLoaderSettings::recommended("test");
-        load_mcap(&mcap_data, &settings, &tx, &SelectedLayers::All, false).unwrap();
+        let mcap_options = IndexedReaderOptions::default();
+        load_mcap(
+            mcap_data,
+            &mcap_options,
+            &settings,
+            &tx,
+            &SelectedLayers::All,
+            false,
+        )
+        .unwrap();
         drop(tx);
 
         // Collect chunks

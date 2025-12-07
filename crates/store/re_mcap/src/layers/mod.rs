@@ -5,12 +5,6 @@ mod ros2;
 mod ros2_reflection;
 mod schema;
 mod stats;
-
-use std::collections::{BTreeMap, BTreeSet};
-
-use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::{Chunk, EntityPath};
-
 pub use self::protobuf::McapProtobufLayer;
 pub use self::raw::McapRawLayer;
 pub use self::recording_info::McapRecordingInfoLayer;
@@ -20,7 +14,14 @@ pub use self::schema::McapSchemaLayer;
 pub use self::stats::McapStatisticLayer;
 use crate::Error;
 use crate::parsers::{ChannelId, MessageParser, ParserContext};
-
+use mcap::sans_io::IndexedReaderOptions;
+use mcap::sans_io::indexed_reader::IndexedReadEvent;
+use re_chunk::external::nohash_hasher::IntMap;
+use re_chunk::{Chunk, EntityPath};
+use std::borrow::Cow;
+use std::collections::{BTreeMap, BTreeSet};
+use tokio::io::{AsyncRead, AsyncSeek};
+use tokio::io::{AsyncReadExt as _, AsyncSeekExt as _};
 /// Globally unique identifier for a layer.
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 #[repr(transparent)]
@@ -44,6 +45,9 @@ impl std::fmt::Display for LayerIdentifier {
     }
 }
 
+pub trait AsyncSeekRead: AsyncSeek + AsyncRead + Unpin + Send {}
+impl<T: AsyncSeek + AsyncRead + Unpin + Send> AsyncSeekRead for T {}
+
 /// A layer describes information that can be extracted from an MCAP file.
 ///
 /// It is the most general level at which we can interpret an MCAP file and can
@@ -64,8 +68,9 @@ pub trait Layer {
     // For example, we probably don't want to store the entire file in memory.
     fn process(
         &mut self,
-        mcap_bytes: &[u8],
-        summary: &::mcap::Summary,
+        mcap: &mut dyn AsyncSeekRead,
+        summary: &mcap::Summary,
+        options: &IndexedReaderOptions,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error>;
 }
@@ -190,6 +195,25 @@ impl MessageLayerRunner {
     fn new(inner: Box<dyn MessageLayer>, allowed: BTreeSet<ChannelId>) -> Self {
         Self { inner, allowed }
     }
+
+    fn make_chunk_decoder(&self, summary: &mcap::Summary, num_rows: usize) -> McapChunkDecoder {
+        let parsers = summary
+            .channels
+            .iter()
+            .filter_map(|(_, channel)| {
+                let channel_id = ChannelId::from(channel.id);
+                if !self.allowed.contains(&channel_id) {
+                    return None;
+                }
+                let parser = self.inner.message_parser(channel, num_rows)?;
+                let entity_path = EntityPath::from(channel.topic.as_str());
+                let ctx = ParserContext::new(entity_path);
+                Some((channel_id, (ctx, parser)))
+            })
+            .collect::<IntMap<_, _>>();
+
+        McapChunkDecoder::new(parsers)
+    }
 }
 
 impl Layer for MessageLayerRunner {
@@ -203,42 +227,86 @@ impl Layer for MessageLayerRunner {
 
     fn process(
         &mut self,
-        mcap_bytes: &[u8],
+        mcap: &mut dyn AsyncSeekRead,
         summary: &mcap::Summary,
+        options: &IndexedReaderOptions,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
+        re_tracing::profile_function!();
+
         self.inner.init(summary)?;
+        let rt = match tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
+            Ok(rt) => rt,
+            Err(err) => return Err(Error::Other(err.into())),
+        };
 
-        for chunk in &summary.chunk_indexes {
-            let parsers = summary
-                .read_message_indexes(mcap_bytes, chunk)?
-                .iter()
-                .filter_map(|(channel, msg_offsets)| {
-                    let channel_id = ChannelId::from(channel.id);
-                    if !self.allowed.contains(&channel_id) {
-                        return None;
-                    }
+        let mut reader = mcap::sans_io::indexed_reader::IndexedReader::new_with_options(
+            summary,
+            options.clone(),
+        )
+        .expect("could not construct reader");
+        let mut buffer = Vec::new();
+        const ROWS_PER_CHUNK: usize = 100;
 
-                    let parser = self.inner.message_parser(channel, msg_offsets.len())?;
-                    let entity_path = EntityPath::from(channel.topic.as_str());
-                    let ctx = ParserContext::new(entity_path);
-                    Some((channel_id, (ctx, parser)))
-                })
-                .collect::<IntMap<_, _>>();
+        rt.block_on(async {
+            let mut decoder = self.make_chunk_decoder(summary, ROWS_PER_CHUNK);
+            let mut count = 0;
+            while let Some(event) = reader.next_event() {
+                match event {
+                    Ok(event) => match event {
+                        IndexedReadEvent::ReadChunkRequest { offset, length } => {
+                            if let Err(err) = mcap.seek(std::io::SeekFrom::Start(offset)).await {
+                                return Err(Error::Other(err.into()));
+                            }
+                            buffer.resize(length, 0);
+                            if let Err(err) = mcap.read_exact(&mut buffer).await {
+                                return Err(Error::Other(err.into()));
+                            }
+                            if let Err(err) = reader.insert_chunk_record_data(offset, &buffer) {
+                                return Err(Error::Other(err.into()));
+                            }
+                        }
+                        IndexedReadEvent::Message { header, data } => {
+                            // Correlate the message to its channel from this summary.
+                            let channel = match summary.channels.get(&header.channel_id) {
+                                Some(c) => c.clone(),
+                                None => {
+                                    return Err(Error::Mcap(mcap::McapError::UnknownChannel(
+                                        header.sequence,
+                                        header.channel_id,
+                                    )));
+                                }
+                            };
+                            let message = mcap::Message {
+                                channel,
+                                sequence: header.sequence,
+                                log_time: header.log_time,
+                                publish_time: header.publish_time,
+                                data: Cow::Borrowed(data),
+                            };
+                            if let Err(err) = decoder.decode_next(&message) {
+                                re_log::error_once!(
+                                    "Failed to decode message on channel {}: {err}",
+                                    message.channel.topic
+                                );
+                            }
+                            count += 1;
+                        }
+                    },
+                    Err(err) => re_log::error!("Failed to read message from MCAP file: {err}"),
+                }
 
-            let mut decoder = McapChunkDecoder::new(parsers);
-
-            for msg in summary.stream_chunk(mcap_bytes, chunk)? {
-                match msg {
-                    Ok(message) => {
-                        if let Err(err) = decoder.decode_next(&message) {
-                            re_log::error_once!(
-                                "Failed to decode message on channel {}: {err}",
-                                message.channel.topic
-                            );
+                if count % ROWS_PER_CHUNK == 0 {
+                    for chunk in decoder.finish() {
+                        match chunk {
+                            Ok(c) => emit(c),
+                            Err(err) => re_log::error!("Failed to decode chunk: {err}"),
                         }
                     }
-                    Err(err) => re_log::error!("Failed to read message from MCAP file: {err}"),
+                    decoder = self.make_chunk_decoder(summary, ROWS_PER_CHUNK);
                 }
             }
 
@@ -248,7 +316,9 @@ impl Layer for MessageLayerRunner {
                     Err(err) => re_log::error!("Failed to decode chunk: {err}"),
                 }
             }
-        }
+
+            Ok(())
+        })?;
 
         Ok(())
     }
@@ -274,16 +344,17 @@ pub struct ExecutionPlan {
 impl ExecutionPlan {
     pub fn run(
         mut self,
-        mcap_bytes: &[u8],
+        mcap: &mut dyn AsyncSeekRead,
         summary: &mcap::Summary,
+        options: &IndexedReaderOptions,
         emit: &mut dyn FnMut(Chunk),
     ) -> anyhow::Result<()> {
         for mut layer in self.file_layers {
-            layer.process(mcap_bytes, summary, emit)?;
+            layer.process(mcap, summary, options, emit)?;
         }
 
         for runner in &mut self.runners {
-            runner.process(mcap_bytes, summary, emit)?;
+            runner.process(mcap, summary, options, emit)?;
         }
         Ok(())
     }

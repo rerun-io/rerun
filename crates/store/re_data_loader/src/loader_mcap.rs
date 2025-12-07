@@ -1,14 +1,17 @@
 //! Rerun dataloader for MCAP files.
 
-use std::io::Cursor;
-use std::path::Path;
-use std::sync::mpsc::Sender;
-
+use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+use lance_io::object_store::{ObjectStoreParams, ObjectStoreRegistry};
+use mcap::sans_io::IndexedReaderOptions;
 use re_chunk::RowId;
 use re_log_types::{SetStoreInfo, StoreId, StoreInfo};
-use re_mcap::{LayerRegistry, SelectedLayers};
+use re_mcap::{AsyncSeekRead, LayerRegistry, SelectedLayers};
+use std::io::Cursor;
+use std::path::Path;
+use std::str::FromStr as _;
 
-use crate::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+use std::sync::mpsc::Sender;
+use url::Url;
 
 const MCAP_LOADER_NAME: &str = "McapLoader";
 
@@ -56,6 +59,19 @@ impl McapLoader {
     }
 }
 
+fn mcap_option_from_url(url: &Url) -> anyhow::Result<IndexedReaderOptions> {
+    let mut mcap_options = IndexedReaderOptions::default();
+    for (name, val) in url.query_pairs() {
+        if name == "start" {
+            mcap_options = mcap_options.log_time_on_or_after(u64::from_str(&val)?);
+        } else if name == "end" {
+            mcap_options = mcap_options.log_time_before(u64::from_str(&val)?);
+        }
+    }
+
+    Ok(mcap_options)
+}
+
 impl DataLoader for McapLoader {
     fn name(&self) -> crate::DataLoaderName {
         MCAP_LOADER_NAME.into()
@@ -68,11 +84,31 @@ impl DataLoader for McapLoader {
         path: std::path::PathBuf,
         tx: Sender<crate::LoadedData>,
     ) -> std::result::Result<(), DataLoaderError> {
-        if !is_mcap_file(&path) {
-            return Err(DataLoaderError::Incompatible(path)); // simply not interested
+        re_tracing::profile_function!();
+        let url = path.to_string_lossy();
+        let mcap_url = match Url::parse(&url) {
+            Ok(mcap_url) => mcap_url,
+            Err(err) => match err {
+                url::ParseError::RelativeUrlWithoutBase => {
+                    match Url::parse(&format!("file://{url}")) {
+                        Ok(mcap_url) => mcap_url,
+                        Err(err) => return Err(DataLoaderError::Other(err.into())),
+                    }
+                }
+                _ => return Err(DataLoaderError::Other(err.into())),
+            },
+        };
+
+        let path = std::path::PathBuf::from_str(mcap_url.path()).unwrap();
+
+        if mcap_url.scheme() == "file" && !is_mcap_file(&path) {
+            return Err(DataLoaderError::Incompatible(path.clone())); // simply not interested
         }
 
-        re_tracing::profile_function!();
+        let mcap_options = match mcap_option_from_url(&mcap_url) {
+            Ok(mcap_options) => mcap_options,
+            Err(err) => return Err(DataLoaderError::Other(err)),
+        };
 
         // NOTE(1): `spawn` is fine, this whole function is native-only.
         // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
@@ -85,8 +121,23 @@ impl DataLoader for McapLoader {
         std::thread::Builder::new()
             .name(format!("load_mcap({path:?}"))
             .spawn(move || {
-                if let Err(err) = load_mcap_mmap(
-                    &path,
+                // Load from local disk.
+                if mcap_url.scheme() == "file" {
+                    if let Err(err) = load_mcap_mmap(
+                        &path,
+                        &mcap_options,
+                        &settings,
+                        &tx,
+                        &selected_layers,
+                        raw_fallback_enabled,
+                    ) {
+                        re_log::error!("Failed to load MCAP file: {err}");
+                    }
+                }
+                // Load from cloud.
+                else if let Err(err) = load_mcap_cloud(
+                    &mcap_url,
+                    &mcap_options,
                     &settings,
                     &tx,
                     &selected_layers,
@@ -128,6 +179,7 @@ impl DataLoader for McapLoader {
             .spawn(move || {
                 if let Err(err) = load_mcap_mmap(
                     &filepath,
+                    &IndexedReaderOptions::default(),
                     &settings,
                     &tx,
                     &selected_layers,
@@ -151,12 +203,11 @@ impl DataLoader for McapLoader {
     ) -> std::result::Result<(), DataLoaderError> {
         if !is_mcap_file(&filepath) {
             return Err(DataLoaderError::Incompatible(filepath)); // simply not interested
-        }
-
+        };
         let contents = contents.into_owned();
-
         load_mcap(
-            &contents,
+            Box::new(Cursor::new(contents)),
+            &IndexedReaderOptions::default(),
             settings,
             &tx,
             &self.selected_layers,
@@ -166,8 +217,47 @@ impl DataLoader for McapLoader {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+fn load_mcap_cloud(
+    url: &Url,
+    mcap_options: &IndexedReaderOptions,
+    settings: &DataLoaderSettings,
+    tx: &Sender<LoadedData>,
+    selected_layers: &SelectedLayers,
+    raw_fallback_enabled: bool,
+) -> anyhow::Result<()> {
+    let mcap_reader = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(async {
+            let store = ObjectStoreRegistry::default()
+                .get_store(url.clone(), &ObjectStoreParams::default())
+                .await?;
+            let meta = store
+                .inner
+                .head(&object_store::path::Path::parse(url.path())?)
+                .await?;
+            let mcap_reader = Box::from(object_store::buffered::BufReader::new(
+                store.inner.clone(),
+                &meta,
+            ));
+
+            Ok::<Box<object_store::buffered::BufReader>, anyhow::Error>(mcap_reader)
+        })?;
+
+    Ok(load_mcap(
+        mcap_reader,
+        mcap_options,
+        settings,
+        tx,
+        selected_layers,
+        raw_fallback_enabled,
+    )?)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn load_mcap_mmap(
     filepath: &std::path::PathBuf,
+    mcap_options: &IndexedReaderOptions,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
     selected_layers: &SelectedLayers,
@@ -180,17 +270,26 @@ fn load_mcap_mmap(
     #[expect(unsafe_code)]
     let mmap = unsafe { memmap2::Mmap::map(&file)? };
 
-    load_mcap(&mmap, settings, tx, selected_layers, raw_fallback_enabled)
+    load_mcap(
+        Box::new(Cursor::new(mmap)),
+        mcap_options,
+        settings,
+        tx,
+        selected_layers,
+        raw_fallback_enabled,
+    )
 }
 
 pub fn load_mcap(
-    mcap: &[u8],
+    mut mcap: Box<dyn AsyncSeekRead>,
+    mcap_options: &IndexedReaderOptions,
     settings: &DataLoaderSettings,
     tx: &Sender<LoadedData>,
     selected_layers: &SelectedLayers,
     raw_fallback_enabled: bool,
 ) -> Result<(), DataLoaderError> {
     re_tracing::profile_function!();
+
     let store_id = settings.recommended_store_id();
 
     if tx
@@ -223,16 +322,14 @@ pub fn load_mcap(
         }
     };
 
-    let reader = Cursor::new(&mcap);
-
-    let summary = re_mcap::read_summary(reader)?
+    let summary = re_mcap::read_summary(&mut mcap)?
         .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
 
     // TODO(#10862): Add warning for channel that miss semantic information.
     LayerRegistry::all_builtin(raw_fallback_enabled)
         .select(selected_layers)
         .plan(&summary)?
-        .run(mcap, &summary, &mut send_chunk)?;
+        .run(&mut mcap, &summary, mcap_options, &mut send_chunk)?;
 
     Ok(())
 }
