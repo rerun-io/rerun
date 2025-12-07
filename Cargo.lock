@@ -9098,7 +9098,6 @@ dependencies = [
  "re_build_info",
  "re_chunk",
  "re_log",
- "re_log_channel",
  "re_log_types",
  "re_protos",
  "re_sdk_types",
