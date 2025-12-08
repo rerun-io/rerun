@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use re_arrow_util::ArrowArrayDowncastRef as _;
