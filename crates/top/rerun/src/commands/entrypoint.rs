@@ -1586,6 +1586,7 @@ fn record_cli_command_analytics(args: &Args) {
             let subcommand = match cmd {
                 AuthCommands::Login(_) => "login",
                 AuthCommands::Token(_) => "token",
+                AuthCommands::GenerateToken(_) => "generate-token",
             };
             ("auth", Some(subcommand))
         }
