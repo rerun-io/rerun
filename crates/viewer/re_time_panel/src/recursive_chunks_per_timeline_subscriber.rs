@@ -7,11 +7,39 @@ use re_chunk_store::{
     PerStoreChunkSubscriber,
 };
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
+use re_sdk_types::ComponentIdentifier;
+
+#[derive(Debug, Clone)]
+pub struct UnloadedChunk {
+    pub id: ChunkId,
+
+    pub entity_path: EntityPath,
+
+    /// The compressed size of this chunk in bytes.
+    pub heap_size_bytes: u64,
+
+    pub components: IntMap<ComponentIdentifier, IntMap<TimelineName, AbsoluteTimeRange>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum MaybeChunk {
+    Loaded(Arc<Chunk>),
+    Unloaded(Arc<UnloadedChunk>),
+}
+
+impl MaybeChunk {
+    pub fn id(&self) -> ChunkId {
+        match self {
+            MaybeChunk::Loaded(c) => c.id(),
+            MaybeChunk::Unloaded(c) => c.id,
+        }
+    }
+}
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Debug, Clone)]
 pub struct ChunkTimelineInfo {
-    pub chunk: Arc<Chunk>,
+    pub chunk: MaybeChunk,
     pub num_events: u64,
     pub resolved_time_range: AbsoluteTimeRange,
 }
@@ -84,7 +112,15 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
                 .or_default();
 
             let chunk_info = ChunkTimelineInfo {
-                chunk: chunk.clone(),
+                // chunk: MaybeChunk::Loaded(chunk.clone()),
+                chunk: MaybeChunk::Unloaded(Arc::new(
+                    crate::recursive_chunks_per_timeline_subscriber::UnloadedChunk {
+                        id: chunk.id(),
+                        entity_path: chunk.entity_path().clone(),
+                        heap_size_bytes: 0,
+                        components: Default::default(),
+                    },
+                )),
                 num_events: chunk.num_events_cumulative(), // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
                 resolved_time_range: time_column.time_range(),
             };

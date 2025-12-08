@@ -7,13 +7,15 @@ use std::sync::Arc;
 
 use egui::epaint::Vertex;
 use egui::{Color32, NumExt as _, Rangef, Rect, Shape, lerp, pos2, remap};
-use re_chunk_store::{Chunk, RangeQuery};
+use re_chunk_store::RangeQuery;
 use re_log_types::{AbsoluteTimeRange, ComponentPath, TimeInt, TimeReal, TimelineName};
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use super::time_ranges_ui::TimeRangesUi;
-use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
+use crate::recursive_chunks_per_timeline_subscriber::{
+    MaybeChunk, PathRecursiveChunksPerTimelineStoreSubscriber,
+};
 use crate::time_panel::TimePanelItem;
 
 // ----------------------------------------------------------------------------
@@ -410,6 +412,15 @@ pub fn data_density_graph_ui(
         DensityGraphBuilderConfig::default(),
     );
 
+    data.unloaded_density_graph.paint(
+        data_density_graph_painter,
+        row_rect.y_range(),
+        time_area_painter,
+        ui.tokens().density_graph_outside_valid_ranges,
+        &time_ranges_ui.segments,
+        ui.tokens().density_graph_outside_valid_ranges,
+    );
+
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
 
     data.density_graph.paint(
@@ -427,6 +438,29 @@ pub fn data_density_graph_ui(
         data.hovered_time.map(|t| t.round())
     }
 }
+
+/*
+fn unloaded_data_ui(
+    ui: &egui::Ui,
+    time_area_painter: &egui::Painter,
+    data: &DensityGraphBuilder<'_>,
+    y_range: Rangef,
+) {
+    for range in &data. {
+        time_area_painter.hline(
+            range.range,
+            fast_midpoint(y_range.min, y_range.max),
+            egui::Stroke::new(
+                y_range.span() * 0.25
+                    + (range.num_events as f64 / (100.0 + range.num_events as f64)
+                        * y_range.span() as f64
+                        * 0.25) as f32,
+                ui.tokens().density_graph_outside_valid_ranges,
+            ),
+        );
+    }
+}
+*/
 
 pub fn build_density_graph<'a>(
     ui: &'a egui::Ui,
@@ -447,7 +481,7 @@ pub fn build_density_graph<'a>(
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, AbsoluteTimeRange, u64)>, u64) = {
+    let (chunk_ranges, total_events): (Vec<(MaybeChunk, AbsoluteTimeRange, u64)>, u64) = {
         re_tracing::profile_scope!("collect chunks");
 
         let engine = db.storage_engine();
@@ -464,7 +498,8 @@ pub fn build_density_graph<'a>(
                         let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk.num_events_for_component(component).map(|num_events| {
                             total_num_events += num_events;
-                            (chunk, time_range, num_events)
+                            // (MaybeChunk::Loaded(chunk), time_range, num_events)
+                                (MaybeChunk::Unloaded(Arc::new(crate::recursive_chunks_per_timeline_subscriber::UnloadedChunk { id: chunk.id(), entity_path: chunk.entity_path().clone(), heap_size_bytes: 0, components: Default::default() })), time_range, num_events)
                         })
                     })
                     .collect(),
@@ -526,19 +561,28 @@ pub fn build_density_graph<'a>(
         }
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
-            let should_render_individual_events = can_render_individual_events
-                && if chunk.is_timeline_sorted(timeline) {
-                    num_events_in_chunk < config.max_events_in_sorted_chunk
-                } else {
-                    num_events_in_chunk < config.max_events_in_unsorted_chunk
-                };
+            match chunk {
+                MaybeChunk::Loaded(chunk) => {
+                    let should_render_individual_events = can_render_individual_events
+                        && if chunk.is_timeline_sorted(timeline) {
+                            num_events_in_chunk < config.max_events_in_sorted_chunk
+                        } else {
+                            num_events_in_chunk < config.max_events_in_unsorted_chunk
+                        };
 
-            if should_render_individual_events {
-                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
-                    data.add_chunk_point(time, num_events as usize);
+                    if should_render_individual_events {
+                        for (time, num_events) in
+                            chunk.num_events_cumulative_per_unique_time(timeline)
+                        {
+                            data.add_chunk_point(time, num_events as usize);
+                        }
+                    } else {
+                        data.add_chunk_range(time_range, num_events_in_chunk);
+                    }
                 }
-            } else {
-                data.add_chunk_range(time_range, num_events_in_chunk);
+                MaybeChunk::Unloaded(_) => {
+                    data.add_unloaded_chunk_range(time_range, num_events_in_chunk);
+                }
             }
         }
     }
@@ -631,12 +675,19 @@ pub fn show_row_ids_tooltip(
     }
 }
 
+#[derive(Debug)]
+pub struct UnloadedRange {
+    pub num_events: u64,
+    pub range: Rangef,
+}
+
 pub struct DensityGraphBuilder<'a> {
     time_ranges_ui: &'a TimeRangesUi,
     row_rect: Rect,
 
     pointer_pos: Option<egui::Pos2>,
 
+    pub unloaded_density_graph: DensityGraph,
     pub density_graph: DensityGraph,
 
     closest_event_x_distance: f32,
@@ -655,6 +706,7 @@ impl<'a> DensityGraphBuilder<'a> {
 
             pointer_pos,
 
+            unloaded_density_graph: DensityGraph::new(row_rect.x_range()),
             density_graph: DensityGraph::new(row_rect.x_range()),
 
             closest_event_x_distance: interact_radius,
@@ -719,6 +771,124 @@ impl<'a> DensityGraphBuilder<'a> {
             }
         }
     }
+
+    fn add_unloaded_chunk_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64) {
+        if num_events == 0 {
+            return;
+        }
+
+        let (Some(min_x), Some(max_x)) = (
+            self.time_ranges_ui.x_from_time_f32(time_range.min().into()),
+            self.time_ranges_ui.x_from_time_f32(time_range.max().into()),
+        ) else {
+            return;
+        };
+
+        self.unloaded_density_graph
+            .add_range((min_x, max_x), num_events as _);
+
+        if let Some(pointer_pos) = self.pointer_pos
+            && self.row_rect.y_range().contains(pointer_pos.y)
+        {
+            let very_thin_range = (max_x - min_x).abs() < 1.0;
+            if very_thin_range {
+                // Are we close enough to center?
+                let center_x = fast_midpoint(max_x, min_x);
+                let x_dist = (center_x - pointer_pos.x).abs();
+
+                if x_dist < self.closest_event_x_distance {
+                    self.closest_event_x_distance = x_dist;
+                    self.hovered_pos = Some(pointer_pos);
+                    self.hovered_time = None;
+                }
+            } else if (min_x..=max_x).contains(&pointer_pos.x) {
+                self.closest_event_x_distance = 0.0;
+                self.hovered_pos = Some(pointer_pos);
+                self.hovered_time = None;
+            }
+        }
+    }
+
+    /*
+    fn add_unloaded_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64) {
+        if num_events == 0 {
+            return;
+        }
+
+        let (Some(min_x), Some(max_x)) = (
+            self.time_ranges_ui.x_from_time_f32(time_range.min().into()),
+            self.time_ranges_ui.x_from_time_f32(time_range.max().into()),
+        ) else {
+            return;
+        };
+
+        let range = Rangef::new(min_x, max_x);
+
+        const CUTOFF: f32 = 1.0;
+
+        let found_index = self.unloaded_ranges.binary_search_by(|r| {
+            use std::cmp::Ordering;
+            if range.max + CUTOFF < r.range.min {
+                Ordering::Less
+            } else if range.min - CUTOFF > r.range.max {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+
+        match found_index {
+            Ok(merge_index) => {
+                let merge_range = &mut self.unloaded_ranges[merge_index];
+                merge_range.num_events += num_events;
+                merge_range.range = Rangef::new(
+                    merge_range.range.min.min(range.min),
+                    merge_range.range.max.max(range.max),
+                );
+
+                let mut drain_from = None;
+                for i in (0..merge_index).rev() {
+                    if self.unloaded_ranges[i].range.max + CUTOFF
+                        < self.unloaded_ranges[merge_index].range.min
+                    {
+                        break;
+                    }
+                    drain_from = Some(i);
+
+                    self.unloaded_ranges[merge_index].range.min = self.unloaded_ranges[i].range.min;
+                    self.unloaded_ranges[merge_index].num_events +=
+                        self.unloaded_ranges[i].num_events;
+                }
+
+                let mut drain_to = None;
+                for i in merge_index + 1..self.unloaded_ranges.len() {
+                    if self.unloaded_ranges[i].range.min - CUTOFF
+                        > self.unloaded_ranges[merge_index].range.max
+                    {
+                        break;
+                    }
+                    drain_to = Some(i);
+
+                    self.unloaded_ranges[merge_index].range.max = self.unloaded_ranges[i].range.max;
+                    self.unloaded_ranges[merge_index].num_events +=
+                        self.unloaded_ranges[i].num_events;
+                }
+
+                if let Some(drain_to) = drain_to {
+                    self.unloaded_ranges.drain(merge_index + 1..=drain_to);
+                }
+
+                if let Some(drain_from) = drain_from {
+                    self.unloaded_ranges.drain(drain_from..merge_index);
+                }
+            }
+            Err(new_index) => {
+                self.unloaded_ranges
+                    .insert(new_index, UnloadedRange { num_events, range });
+            }
+        }
+    }
+    */
 }
 
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
