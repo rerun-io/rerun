@@ -62,7 +62,7 @@ pub struct VisualizerQueryInfo {
     pub relevant_archetype: Option<ArchetypeName>,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
-    pub required: RequiredComponents,
+    pub required: RequiredComponents, // TODO: this needs to be be WAY more flexible. Or hacked ;-)
 
     /// Returns the list of components that the system _queries_.
     ///
