@@ -1,8 +1,9 @@
 use ahash::{HashMap, HashSet};
-use arrow::array::{Int32Array, RecordBatch};
+use arrow::array::{AsArray as _, Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
-use itertools::Itertools as _;
-use re_chunk::{ChunkId, TimelineName};
+use arrow::datatypes::Int64Type;
+use itertools::{Itertools as _, izip};
+use re_chunk::{ChunkId, Timeline};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
@@ -165,8 +166,8 @@ impl RrdManifestIndex {
     #[must_use]
     pub fn time_range_missing_chunks(
         &mut self,
-        timeline: TimelineName,
-        range: AbsoluteTimeRange,
+        timeline: Timeline,
+        query_range: AbsoluteTimeRange,
     ) -> Option<RecordBatch> {
         // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
 
@@ -174,13 +175,29 @@ impl RrdManifestIndex {
 
         let mut indices = vec![];
 
-        // TODO: do the range query
+        let chunk_id = manifest.col_chunk_id().unwrap();
+        let start_column = manifest
+            .data
+            .column_by_name(RrdManifest::field_index_start(&timeline, None).name())?
+            .as_primitive_opt::<Int64Type>()?;
+        let end_column = manifest
+            .data
+            .column_by_name(RrdManifest::field_index_end(&timeline, None).name())?
+            .as_primitive_opt::<Int64Type>()?;
 
-        for (row_idx, chunk_id) in manifest.col_chunk_id().unwrap().enumerate() {
-            let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
-            if chunk_info.state == LoadState::Unloaded {
-                chunk_info.state = LoadState::InTransit;
-                indices.push(row_idx as i32);
+        for (row_idx, (chunk_id, start_time, end_time)) in
+            izip!(chunk_id, start_column, end_column).enumerate()
+        {
+            let chunk_range = AbsoluteTimeRange::new(
+                start_time.unwrap_or_default(),
+                end_time.unwrap_or_default(),
+            );
+            if chunk_range.intersects(query_range) {
+                let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+                if chunk_info.state == LoadState::Unloaded {
+                    chunk_info.state = LoadState::InTransit;
+                    indices.push(row_idx as i32);
+                }
             }
         }
 
