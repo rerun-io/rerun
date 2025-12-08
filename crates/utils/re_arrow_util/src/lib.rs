@@ -89,7 +89,7 @@ mod tests {
 
 // ----------------------------------------------------------------
 
-/// Error used when a column is missing from a record batcj
+/// Error used when a column is missing from a record batch
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct MissingColumnError {
     pub name: String,

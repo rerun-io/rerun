@@ -20,6 +20,6 @@ pub use self::time_int::TimeInt;
 pub use self::time_point::TimePoint;
 pub use self::time_real::TimeReal;
 pub use self::time_type::TimeType;
-pub use self::timeline::{Timeline, TimelineName};
+pub use self::timeline::Timeline;
 pub use self::timestamp::Timestamp;
 pub use self::timestamp_format::{TimestampFormat, TimestampFormatKind};

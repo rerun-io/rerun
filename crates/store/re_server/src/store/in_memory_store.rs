@@ -173,6 +173,9 @@ impl InMemoryStore {
         }
 
         self.update_entries_table()?;
+
+        re_log::info!("Finished loading {}", directory.display());
+
         Ok(())
     }
 
