@@ -3,10 +3,8 @@ use std::time::Duration;
 use indicatif::ProgressBar;
 
 pub use crate::callback_server::Error;
-use crate::callback_server::OauthCallbackServer;
-use crate::oauth::api::{AuthenticateWithCode, GenerateToken, Pkce, send_async};
+use crate::oauth::api::{GenerateToken, send_async};
 use crate::oauth::login_flow::OauthLoginFlowState;
-use crate::oauth::{self, Credentials};
 use crate::{OauthLoginFlow, oauth};
 
 pub struct LoginOptions {
