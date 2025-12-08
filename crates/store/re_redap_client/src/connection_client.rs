@@ -397,7 +397,7 @@ where
                 RrdManifest {
                     // TODO(cmc): fix this
                     store_id: StoreId::empty_recording().with_recording_id(segment_id.to_string()),
-                    sorbet_schema: Arc::unwrap_or_clone(data.schema()),
+                    sorbet_schema: Arc::new(Schema::empty()),
                     sorbet_schema_sha256: Default::default(),
                     data,
                 }
