@@ -1,5 +1,26 @@
 # Rerun changelog
 
+## [0.27.3](https://github.com/rerun-io/rerun/compare/0.27.2...0.27.3) - 2025-12-08 - Bug fixes, improved error messages, and cloud auth
+
+### 🔎 Details
+
+#### 🌊 C++ API
+- Make component type registration thread-safe in C++ SDK [#11907](https://github.com/rerun-io/rerun/pull/11907)
+- Don't install signal handlers into rerun_c outside of DEBUG mode [#11956](https://github.com/rerun-io/rerun/pull/11956)
+
+#### 🐍 Python API
+- Rework notebook auth to use device code flow [#12128](https://github.com/rerun-io/rerun/pull/12128)
+
+#### 🪳 Bug fixes
+- Fix the visible time range for the time series view [#11938](https://github.com/rerun-io/rerun/pull/11938)
+- Fix opening non-recording URLs on startup [#11981](https://github.com/rerun-io/rerun/pull/11981)
+
+#### 🗄️ OSS server
+- Expose `/version` from oss server [#12108](https://github.com/rerun-io/rerun/pull/12108)
+
+#### 🤷‍ Other
+- Add crate linkage delete user logging from future [f7df67196c6844369f91a23ac4bbb14002ee6b05](https://github.com/rerun-io/rerun/commit/f7df67196c6844369f91a23ac4bbb14002ee6b05)
+
 ## [0.27.2](https://github.com/rerun-io/rerun/compare/0.27.1...0.27.2) - 2025-11-14 - Fix compatibility with dependency
 
 - Fix non semver compliant breaking changes in `ply-rs` breaking Rust builds [#11890](https://github.com/rerun-io/rerun/pull/11890)
