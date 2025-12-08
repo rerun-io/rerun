@@ -207,8 +207,6 @@ class RecordingView:
     monotonically increasing when data is sent from a single process.
     """
 
-    # Note: this is a lie, it's actually a `SchemaInternal`, but it ends up being monkey patched to `Schema`. This all
-    # will be removed soon, so the hack is acceptable.
     def schema(self) -> Schema:
         """
         The schema describing all the columns available in the view.
@@ -450,8 +448,6 @@ class Recording:
     to retrieve the data.
     """
 
-    # Note: this is a lie, it's actually a `SchemaInternal`, but it ends up being monkey patched to `Schema`. This all
-    # will be removed soon, so the hack is acceptable.
     def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
 

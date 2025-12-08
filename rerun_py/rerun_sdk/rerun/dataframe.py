@@ -26,7 +26,6 @@ from ._baseclasses import ComponentColumn, ComponentDescriptor
 from ._send_columns import TimeColumnLike, send_columns
 
 if TYPE_CHECKING:
-    from .catalog import Schema
     from .recording_stream import RecordingStream
 
 SORBET_INDEX_NAME = b"rerun:index_name"
@@ -38,35 +37,6 @@ SORBET_IS_TABLE_INDEX = b"rerun:is_table_index"
 RERUN_KIND = b"rerun:kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
-
-
-# Monkey-patch Recording.schema() and RecordingView.schema() to return the python-wrapped `Schema`.
-# This is not clean, but this module is going to be deprecated/removed soon, so taking a shortcut is acceptable.
-_recording_schema_internal = Recording.schema
-_recording_view_schema_internal = RecordingView.schema
-
-
-def _recording_schema(self: Recording) -> Schema:
-    """The schema describing all the columns available in the recording."""
-    from .catalog import Schema
-
-    return Schema(_recording_schema_internal(self))  # type: ignore[arg-type]
-
-
-def _recording_view_schema(self: RecordingView) -> Schema:
-    """
-    The schema describing all the columns available in the view.
-
-    This schema will only contain the columns that are included in the view via
-    the view contents.
-    """
-    from .catalog import Schema
-
-    return Schema(_recording_view_schema_internal(self))  # type: ignore[arg-type]
-
-
-Recording.schema = _recording_schema  # type: ignore[method-assign, assignment]
-RecordingView.schema = _recording_view_schema  # type: ignore[method-assign, assignment]
 
 
 class RawIndexColumn(TimeColumnLike):

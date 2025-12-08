@@ -4,8 +4,8 @@ use arrow::array::{RecordBatchIterator, RecordBatchReader};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::{PyAnyMethods as _, PyTupleMethods as _};
-use pyo3::types::PyTuple;
-use pyo3::{Bound, PyRef, PyResult, Python, pyclass, pymethods};
+use pyo3::types::{PyModule, PyTuple};
+use pyo3::{Bound, PyObject, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy};
 use re_log_types::AbsoluteTimeRange;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
@@ -64,6 +64,23 @@ impl PyRecordingView {
             })
             .transpose()
     }
+
+    /// Internal method to get the schema without wrapping in Python Schema class.
+    fn schema_internal(&self, py: Python<'_>) -> PySchemaInternal {
+        match &self.recording {
+            PyRecordingHandle::Local(recording) => {
+                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
+                let engine = borrowed.engine();
+
+                let mut query_expression = self.query_expression.clone();
+                query_expression.selection = None;
+
+                PySchemaInternal {
+                    schema: engine.schema_for_query(&query_expression).into(),
+                }
+            }
+        }
+    }
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -82,20 +99,13 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PySchemaInternal {
-        match &self.recording {
-            PyRecordingHandle::Local(recording) => {
-                let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
-                let engine = borrowed.engine();
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = self.schema_internal(py);
 
-                let mut query_expression = self.query_expression.clone();
-                query_expression.selection = None;
-
-                PySchemaInternal {
-                    schema: engine.schema_for_query(&query_expression).into(),
-                }
-            }
-        }
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     /// Select the columns from the view.
@@ -226,7 +236,7 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)
+                    .schema_internal(py)
                     .schema
                     .component_columns()
                     .filter(|col| col.is_static())
