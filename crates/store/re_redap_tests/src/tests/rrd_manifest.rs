@@ -63,7 +63,7 @@ pub async fn simple_dataset_rrd_manifest(service: impl RerunCloudService) {
 
     insta::assert_snapshot!("fetch_chunks_from_rrd_manifest", printed);
 
-    if let Err(err) = re_types_core::RrdManifestMessage::try_from_record_batch(rrd_manifest_batch) {
+    if let Err(err) = re_log_encoding::RrdManifest::try_from_record_batch(rrd_manifest_batch) {
         panic!("Failed to parse Rrd Manifest: {err}");
     }
 }

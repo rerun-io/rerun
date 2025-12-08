@@ -11,6 +11,7 @@ use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_channel::LogSource;
+use re_log_encoding::RrdManifest;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
     RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
@@ -18,7 +19,6 @@ use re_log_types::{
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
-use re_types_core::RrdManifestMessage;
 
 use crate::ingestion_statistics::IngestionStatistics;
 use crate::rrd_manifest_index::RrdManifestIndex;
@@ -549,8 +549,10 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifestMessage) {
-        self.rrd_manifest_index.append(rrd_manifest);
+    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
+            re_log::error!("Failed to load RRD Manifest: {err}");
+        }
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {

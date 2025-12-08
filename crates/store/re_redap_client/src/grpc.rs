@@ -463,7 +463,7 @@ async fn stream_segment_from_server(
     match manifest_result {
         Ok(rrd_manifest) => {
             if tx
-                .send(DataSourceMessage::RrdManifestMessage(
+                .send(DataSourceMessage::RrdManifest(
                     store_id.clone(),
                     rrd_manifest.into(),
                 ))

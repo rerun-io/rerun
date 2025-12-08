@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_types::EntryId;
+use re_log_encoding::RrdManifest;
+use re_log_types::{EntryId, StoreId};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -25,7 +28,6 @@ use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
-use re_types_core::RrdManifestMessage;
 use tap::Pipe as _;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
@@ -367,16 +369,16 @@ where
             })
     }
 
-    /// Get the full [`RrdManifestMessage`] of a recording.
+    /// Get the full [`RrdManifest`] of a recording.
     pub async fn get_rrd_manifest(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<RrdManifestMessage> {
+    ) -> ApiResult<RrdManifest> {
         self.inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
-                    segment_id: Some(segment_id.into()),
+                    segment_id: Some(segment_id.clone().into()),
                 })
                 .with_entry_id(dataset_id)
                 .map_err(|err| ApiError::tonic(err, "failed building /GetRrdManifest request"))?,
@@ -390,9 +392,16 @@ where
                 ApiError::serialization(err, "missing field in /GetRrdManifest response")
             })?
             .pipe(RecordBatch::try_from)
-            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))?
-            .pipe(RrdManifestMessage::try_from_record_batch)
-            .map_err(|err| ApiError::serialization(err, "failed to parse /GetRrdManifest response"))
+            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))
+            .map(|data| {
+                RrdManifest {
+                    // TODO(cmc): fix this
+                    store_id: StoreId::empty_recording().with_recording_id(segment_id.to_string()),
+                    sorbet_schema: Arc::unwrap_or_clone(data.schema()),
+                    sorbet_schema_sha256: Default::default(),
+                    data,
+                }
+            })
     }
 
     /// Fetches all chunks ids for a specified segment.
