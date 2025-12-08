@@ -508,11 +508,20 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    // Fetch the chunks base on the ids:
+    load_chunks(client, tx, store_id, batch).await?;
+
+    Ok(())
+}
+
+/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+async fn load_chunks(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: StoreId,
+    batch: RecordBatch,
+) -> Result<(), ApiError> {
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
-
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
-
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
             if tx
@@ -536,7 +545,6 @@ async fn stream_segment_from_server(
             }
         }
     }
-
     Ok(())
 }
 
