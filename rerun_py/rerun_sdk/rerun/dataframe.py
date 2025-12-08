@@ -42,15 +42,15 @@ RERUN_KIND_INDEX = b"index"
 
 # Monkey-patch Recording.schema() and RecordingView.schema() to return the python-wrapped `Schema`.
 # This is not clean, but this module is going to be deprecated/removed soon, so taking a shortcut is acceptable.
-_Recording_schema_internal = Recording.schema
-_RecordingView_schema_internal = RecordingView.schema
+_recording_schema_internal = Recording.schema
+_recording_view_schema_internal = RecordingView.schema
 
 
 def _recording_schema(self: Recording) -> Schema:
     """The schema describing all the columns available in the recording."""
     from .catalog import Schema
 
-    return Schema(_Recording_schema_internal(self))
+    return Schema(_recording_schema_internal(self))  # type: ignore[arg-type]
 
 
 def _recording_view_schema(self: RecordingView) -> Schema:
@@ -62,7 +62,7 @@ def _recording_view_schema(self: RecordingView) -> Schema:
     """
     from .catalog import Schema
 
-    return Schema(_RecordingView_schema_internal(self))
+    return Schema(_recording_view_schema_internal(self))  # type: ignore[arg-type]
 
 
 Recording.schema = _recording_schema  # type: ignore[method-assign, assignment]
