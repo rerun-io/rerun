@@ -18,7 +18,12 @@ pub enum AuthCommands {
     /// and is used to authorize requests to the Rerun data platform.
     Token(TokenCommand),
 
-    /// Generate a fresh token.
+    /// Generate a fresh access token.
+    ///
+    /// You can use this token to authorize requests to the Rerun data platform.
+    ///
+    /// It's closer to an API key than an access token, as it can be revoked before
+    /// it expires.
     GenerateToken(GenerateTokenCommand),
 }
 
