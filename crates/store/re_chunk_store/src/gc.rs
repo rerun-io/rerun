@@ -48,6 +48,7 @@ pub struct GarbageCollectionOptions {
     /// The default is an unbounded time budget (i.e. throughput only).
     pub time_budget: Duration,
 
+    // TODO: this needs to die, maybe?
     /// How many component revisions to preserve on each timeline.
     pub protect_latest: usize,
 
@@ -355,6 +356,8 @@ impl ChunkStore {
 
             let mut diffs = Vec::new();
 
+            // TODO: aren't dangling chunks the expectation right now?
+            //
             // NOTE: Dangling chunks should never happen: it is the job of the GC to ensure that.
             //
             // In release builds, we still want to do the nice thing and clean them up as best as we
@@ -362,11 +365,12 @@ impl ChunkStore {
             //
             // We should really never be in there, so don't bother accounting that in the time
             // budget.
-            debug_assert!(
-                chunk_ids_dangling.is_empty(),
-                "detected dangling chunks -- there's a GC bug"
-            );
-            if !chunk_ids_dangling.is_empty() {
+            // debug_assert!(
+            //     chunk_ids_dangling.is_empty(),
+            //     "detected dangling chunks -- there's a GC bug"
+            // );
+            // dbg!(&chunk_ids_dangling);
+            if false && !chunk_ids_dangling.is_empty() {
                 re_tracing::profile_scope!("dangling");
 
                 chunk_ids_per_min_row_id
@@ -558,22 +562,28 @@ impl ChunkStore {
                             if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                                 per_start_time.entry(time)
                             {
-                                for chunk_id in chunk_ids {
-                                    chunk_id_set.get_mut().remove(chunk_id);
-                                }
-                                if chunk_id_set.get().is_empty() {
-                                    chunk_id_set.remove_entry();
+                                // TODO: we've disabled garbage collection entirely.
+                                if false {
+                                    for chunk_id in chunk_ids {
+                                        chunk_id_set.get_mut().remove(chunk_id);
+                                    }
+                                    if chunk_id_set.get().is_empty() {
+                                        chunk_id_set.remove_entry();
+                                    }
                                 }
                             }
 
                             if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                                 per_end_time.entry(time)
                             {
-                                for chunk_id in chunk_ids {
-                                    chunk_id_set.get_mut().remove(chunk_id);
-                                }
-                                if chunk_id_set.get().is_empty() {
-                                    chunk_id_set.remove_entry();
+                                // TODO: we've disabled garbage collection entirely.
+                                if false {
+                                    for chunk_id in chunk_ids {
+                                        chunk_id_set.get_mut().remove(chunk_id);
+                                    }
+                                    if chunk_id_set.get().is_empty() {
+                                        chunk_id_set.remove_entry();
+                                    }
                                 }
                             }
 
@@ -587,8 +597,11 @@ impl ChunkStore {
                         }
                     }
 
-                    if per_start_time.is_empty() && per_end_time.is_empty() {
-                        temporal_chunk_ids_per_time_componentless.remove_entry();
+                    // TODO: we've disabled garbage collection entirely.
+                    if false {
+                        if per_start_time.is_empty() && per_end_time.is_empty() {
+                            temporal_chunk_ids_per_time_componentless.remove_entry();
+                        }
                     }
                 }
 
@@ -628,54 +641,74 @@ impl ChunkStore {
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                             per_start_time.entry(time)
                         {
-                            for chunk_id in chunk_ids
-                                .iter()
-                                .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
-                            {
-                                chunk_id_set.get_mut().remove(chunk_id);
-                            }
-                            if chunk_id_set.get().is_empty() {
-                                chunk_id_set.remove_entry();
+                            // TODO: we've disabled garbage collection entirely.
+                            if false {
+                                for chunk_id in chunk_ids
+                                    .iter()
+                                    .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
+                                {
+                                    chunk_id_set.get_mut().remove(chunk_id);
+                                }
+                                if chunk_id_set.get().is_empty() {
+                                    chunk_id_set.remove_entry();
+                                }
                             }
                         }
 
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) = per_end_time.entry(time)
                         {
-                            for chunk_id in chunk_ids
-                                .iter()
-                                .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
-                            {
-                                chunk_id_set.get_mut().remove(chunk_id);
-                            }
-                            if chunk_id_set.get().is_empty() {
-                                chunk_id_set.remove_entry();
+                            // TODO: we've disabled garbage collection entirely.
+                            if false {
+                                for chunk_id in chunk_ids
+                                    .iter()
+                                    .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
+                                {
+                                    chunk_id_set.get_mut().remove(chunk_id);
+                                }
+                                if chunk_id_set.get().is_empty() {
+                                    chunk_id_set.remove_entry();
+                                }
                             }
                         }
                     }
 
-                    if per_start_time.is_empty() && per_end_time.is_empty() {
-                        temporal_chunk_ids_per_time.remove_entry();
+                    // TODO: we've disabled garbage collection entirely.
+                    if false {
+                        if per_start_time.is_empty() && per_end_time.is_empty() {
+                            temporal_chunk_ids_per_time.remove_entry();
+                        }
                     }
                 }
 
-                if temporal_chunk_ids_per_component.get().is_empty() {
-                    temporal_chunk_ids_per_component.remove_entry();
+                // TODO: we've disabled garbage collection entirely.
+                if false {
+                    if temporal_chunk_ids_per_component.get().is_empty() {
+                        temporal_chunk_ids_per_component.remove_entry();
+                    }
                 }
             }
 
-            if temporal_chunk_ids_per_timeline.get().is_empty() {
-                temporal_chunk_ids_per_timeline.remove_entry();
+            // TODO: we've disabled garbage collection entirely.
+            if false {
+                if temporal_chunk_ids_per_timeline.get().is_empty() {
+                    temporal_chunk_ids_per_timeline.remove_entry();
+                }
             }
 
-            if temporal_chunk_ids_per_timeline_componentless
-                .get()
-                .is_empty()
-            {
-                temporal_chunk_ids_per_timeline_componentless.remove_entry();
+            // TODO: we've disabled garbage collection entirely.
+            if false {
+                if temporal_chunk_ids_per_timeline_componentless
+                    .get()
+                    .is_empty()
+                {
+                    temporal_chunk_ids_per_timeline_componentless.remove_entry();
+                }
             }
         }
 
-        {
+        // TODO: we've disabled garbage collection entirely.
+        // TODO: do we need to disable that? not sure yet.
+        if false {
             let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
                 let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
                 chunk.row_id_range().map(|(min, _)| min)

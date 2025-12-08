@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use ahash::HashMap;
+use itertools::Itertools;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
@@ -56,7 +57,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component);
+            let (cached, missing) =
+                cache.range_larger_than_ram(&store, query, entity_path, component);
+            results.missing.extend(missing);
             if !cached.is_empty() {
                 results.add(component, cached);
             }
@@ -81,6 +84,8 @@ pub struct RangeResults {
 
     /// Results for each individual component.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
+
+    pub missing: Vec<ChunkId>,
 }
 
 impl RangeResults {
@@ -89,6 +94,7 @@ impl RangeResults {
         Self {
             query,
             components: Default::default(),
+            missing: Default::default(),
         }
     }
 
@@ -299,6 +305,70 @@ impl RangeCache {
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()
+    }
+
+    // TODO: are we ready to replace the actual one maybe?
+    /// Queries cached range data for a single component.
+    pub fn range_larger_than_ram(
+        &mut self,
+        store: &ChunkStore,
+        query: &RangeQuery,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> (Vec<Chunk>, Vec<ChunkId>) {
+        re_tracing::profile_scope!("range", format!("{query:?}"));
+
+        debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
+
+        // First, we forward the query as-is to the store.
+        //
+        // It's fine to run the query every time -- the index scan itself is not the costly part of a
+        // range query.
+        //
+        // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
+        // cache them.
+
+        let (raw_chunks, chunk_ids_missing) =
+            store.range_relevant_chunks_larger_than_ram(query, entity_path, component);
+
+        for raw_chunk in &raw_chunks {
+            self.chunks
+                .entry(raw_chunk.id())
+                .or_insert_with(|| RangeCachedChunk {
+                    // TODO(#7008): avoid unnecessary sorting on the unhappy path
+                    chunk: raw_chunk
+                        // Densify the cached chunk according to the cache key's component, which
+                        // will speed up future arrow operations on this chunk.
+                        .densified(component)
+                        // Pre-sort the cached chunk according to the cache key's timeline.
+                        .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
+                    resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
+                });
+        }
+
+        // Second, we simply retrieve from the cache all the relevant `Chunk`s .
+        //
+        // Since these `Chunk`s have already been pre-processed adequately, running a range filter
+        // on them will be quite cheap.
+
+        let chunks = raw_chunks
+            .into_iter()
+            .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
+            .map(|cached_sorted_chunk| {
+                debug_assert!(
+                    cached_sorted_chunk
+                        .chunk
+                        .is_timeline_sorted(query.timeline())
+                );
+
+                let chunk = &cached_sorted_chunk.chunk;
+
+                chunk.range(query, component)
+            })
+            .filter(|chunk| !chunk.is_empty())
+            .collect();
+
+        (chunks, chunk_ids_missing)
     }
 
     #[inline]
