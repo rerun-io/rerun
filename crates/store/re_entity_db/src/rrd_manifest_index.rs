@@ -1,17 +1,28 @@
-use std::collections::hash_map::Entry;
-
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
-use re_chunk::ChunkId;
+use re_chunk::external::arrow::array::RecordBatch;
+use re_chunk::{ChunkId, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
-use re_log_types::StoreKind;
+use re_log_types::{AbsoluteTimeRange, StoreKind};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum LoadState {
+    /// The chunk is not loaded, nor being loaded.
+    #[default]
+    Unloaded,
+
+    /// We have requested it.
+    InTransit,
+
+    /// We have the chole chunk in memory.
+    Loaded,
+}
 
 /// Info about a single chunk that we know ahead of loading it.
 #[derive(Clone, Debug, Default)]
 pub struct ChunkInfo {
-    /// Do we have the whole chunk in memory?
-    pub fully_loaded: bool,
+    pub state: LoadState,
 }
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
@@ -49,19 +60,16 @@ impl RrdManifestIndex {
         re_tracing::profile_function!();
 
         for chunk_id in manifest.col_chunk_id()? {
-            match self.remote_chunks.entry(chunk_id) {
-                Entry::Occupied(_occupied_entry) => {
-                    // TODO(RR-2999): update time range index for the chunk
-                }
-                Entry::Vacant(vacant_entry) => {
-                    vacant_entry.insert(ChunkInfo {
-                        fully_loaded: false,
-                    });
-                }
-            }
+            let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+            // TODO(RR-2999): update chunk info?
         }
         self.manifest = Some(manifest);
         Ok(())
+    }
+
+    /// The full manifest, if known.
+    pub fn manifest(&self) -> Option<&RrdManifest> {
+        self.manifest.as_ref()
     }
 
     /// [0, 1], how many chunks have been loaded?
@@ -83,7 +91,7 @@ impl RrdManifestIndex {
             let num_loaded = self
                 .remote_chunks
                 .values()
-                .filter(|c| c.fully_loaded)
+                .filter(|c| c.state == LoadState::Loaded)
                 .count();
             Some(num_loaded as f32 / num_remote_chunks as f32)
         }
@@ -91,7 +99,7 @@ impl RrdManifestIndex {
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
         let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
-        chunk_info.fully_loaded = true;
+        chunk_info.state = LoadState::Loaded;
     }
 
     pub fn on_events(&mut self, store_events: &[ChunkStoreEvent]) {
@@ -107,7 +115,7 @@ impl RrdManifestIndex {
             match event.kind {
                 re_chunk_store::ChunkStoreDiffKind::Addition => {
                     if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                        chunk_info.fully_loaded = true;
+                        chunk_info.state = LoadState::Loaded;
                     } else if let Some(source) = event.split_source {
                         // The added chunk was the result of splitting another chunk:
                         self.parents.entry(chunk_id).or_default().insert(source);
@@ -129,14 +137,14 @@ impl RrdManifestIndex {
         self.has_deleted = true;
 
         if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
-            chunk_info.fully_loaded = false;
+            chunk_info.state = LoadState::Unloaded;
         } else if let Some(parents) = self.parents.remove(chunk_id) {
             // Mark all ancestors as not being fully loaded:
 
             let mut ancestors = parents.into_iter().collect_vec();
             while let Some(chunk_id) = ancestors.pop() {
                 if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                    chunk_info.fully_loaded = false;
+                    chunk_info.state = LoadState::Unloaded;
                 } else if let Some(grandparents) = self.parents.get(&chunk_id) {
                     ancestors.extend(grandparents);
                 } else {
