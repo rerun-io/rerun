@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
-from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor
+from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
+    from rerun.dataframe import IndexColumnDescriptor
     from rerun_bindings import SchemaInternal
 
 
@@ -32,18 +33,12 @@ class Schema:
 
         """
         self._internal = inner
-        self._component_columns: list[ComponentColumnDescriptor] = []
-        self._index_columns: list[IndexColumnDescriptor] = []
-
-        for col in self._internal:
-            if isinstance(col, ComponentColumnDescriptor):
-                self._component_columns.append(col)
-            elif isinstance(col, IndexColumnDescriptor):
-                self._index_columns.append(col)
 
     def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
         """Iterate over all column descriptors in the schema (index columns first, then component columns)."""
-        return itertools.chain(self._index_columns, self._component_columns)
+
+        # TODO(#9922): we should support control columns like row id as well.
+        return itertools.chain(self.index_columns(), self.component_columns())
 
     def index_columns(self) -> Sequence[IndexColumnDescriptor]:
         """
@@ -52,7 +47,7 @@ class Schema:
         Index columns contain the index values for when the data was updated.
         They generally correspond to Rerun timelines.
         """
-        return self._index_columns
+        return self._internal.index_columns()
 
     def component_columns(self) -> Sequence[ComponentColumnDescriptor]:
         """
@@ -60,7 +55,7 @@ class Schema:
 
         Component columns contain the data for a specific component of an entity.
         """
-        return self._component_columns
+        return self._internal.component_columns()
 
     def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
         """
@@ -79,10 +74,7 @@ class Schema:
             The column descriptor, if it exists.
 
         """
-        for col in self._component_columns:
-            if col.entity_path == entity_path and col.component == component:
-                return col
-        return None
+        return self._internal.column_for(entity_path, component)
 
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
@@ -113,7 +105,6 @@ class Schema:
             If the string selector format is invalid or the input type is unsupported.
 
         """
-
         match selector:
             case ComponentColumnDescriptor():
                 return selector
@@ -122,7 +113,7 @@ class Schema:
                 entity_path = selector.entity_path
                 component = selector.component
 
-            case str(s):
+            case str():
                 parts = selector.split(":")
                 if len(parts) != 2:
                     raise ValueError(f"Invalid selector format: {selector}. Expected '<entity_path>:<component>'")
@@ -155,4 +146,5 @@ class Schema:
         """Check equality with another Schema."""
         if not isinstance(other, Schema):
             return NotImplemented
-        return self._index_columns == other._index_columns and self._component_columns == other._component_columns
+        # Impl note: this delegates to the `Eq` trait of `PySchemaInternal`
+        return self._internal == other._internal

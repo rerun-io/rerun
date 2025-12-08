@@ -4,7 +4,7 @@ import os
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import datafusion as dfn
 import numpy as np
@@ -19,6 +19,9 @@ from .types import (
     VectorDistanceMetricLike as VectorDistanceMetricLike,
     ViewContentsLike as ViewContentsLike,
 )
+
+if TYPE_CHECKING:
+    from rerun.catalog import Schema
 
 # NOTE
 #
@@ -255,7 +258,9 @@ class RecordingView:
     monotonically increasing when data is sent from a single process.
     """
 
-    def schema(self) -> SchemaInternal:
+    # Note: this is a lie, it's actually a `SchemaInternal`, but it ends up being monkey patched to `Schema`. This all
+    # will be removed soon, so the hack is acceptable.
+    def schema(self) -> Schema:
         """
         The schema describing all the columns available in the view.
 
@@ -496,7 +501,9 @@ class Recording:
     to retrieve the data.
     """
 
-    def schema(self) -> SchemaInternal:
+    # Note: this is a lie, it's actually a `SchemaInternal`, but it ends up being monkey patched to `Schema`. This all
+    # will be removed soon, so the hack is acceptable.
+    def schema(self) -> Schema:
         """The schema describing all the columns available in the recording."""
 
     def view(

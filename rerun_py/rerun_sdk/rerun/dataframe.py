@@ -13,9 +13,6 @@ from rerun_bindings import (
     Recording as Recording,
     RecordingView as RecordingView,
     RRDArchive as RRDArchive,
-    # Note: SchemaInternal is re-exported as Schema for backward compatibility.
-    # The rerun.dataframe module is slated for deprecation. Use rerun.catalog.Schema instead.
-    SchemaInternal as Schema,  # noqa: F401
     load_archive as load_archive,
     load_recording as load_recording,
 )
@@ -29,6 +26,7 @@ from ._baseclasses import ComponentColumn, ComponentDescriptor
 from ._send_columns import TimeColumnLike, send_columns
 
 if TYPE_CHECKING:
+    from .catalog import Schema
     from .recording_stream import RecordingStream
 
 SORBET_INDEX_NAME = b"rerun:index_name"
@@ -40,6 +38,35 @@ SORBET_IS_TABLE_INDEX = b"rerun:is_table_index"
 RERUN_KIND = b"rerun:kind"
 RERUN_KIND_CONTROL = b"control"
 RERUN_KIND_INDEX = b"index"
+
+
+# Monkey-patch Recording.schema() and RecordingView.schema() to return the python-wrapped `Schema`.
+# This is not clean, but this module is going to be deprecated/removed soon, so taking a shortcut is acceptable.
+_Recording_schema_internal = Recording.schema
+_RecordingView_schema_internal = RecordingView.schema
+
+
+def _recording_schema(self: Recording) -> Schema:
+    """The schema describing all the columns available in the recording."""
+    from .catalog import Schema
+
+    return Schema(_Recording_schema_internal(self))
+
+
+def _recording_view_schema(self: RecordingView) -> Schema:
+    """
+    The schema describing all the columns available in the view.
+
+    This schema will only contain the columns that are included in the view via
+    the view contents.
+    """
+    from .catalog import Schema
+
+    return Schema(_RecordingView_schema_internal(self))
+
+
+Recording.schema = _recording_schema  # type: ignore[method-assign, assignment]
+RecordingView.schema = _recording_view_schema  # type: ignore[method-assign, assignment]
 
 
 class RawIndexColumn(TimeColumnLike):
