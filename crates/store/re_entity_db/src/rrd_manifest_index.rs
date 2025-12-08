@@ -1,10 +1,9 @@
 use ahash::{HashMap, HashSet};
-use arrow::array::{AsArray, Int32Array, Int64Array, RecordBatch};
+use arrow::array::{AsArray as _, Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use arrow::datatypes::Int64Type;
 use itertools::{Itertools as _, izip};
-use re_arrow_util::ArrowArrayDowncastRef;
-use re_chunk::{ChunkId, Timeline, TimelineName};
+use re_chunk::{ChunkId, Timeline};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
@@ -212,7 +211,7 @@ impl RrdManifestIndex {
     ) -> Option<Vec<(LoadState, AbsoluteTimeRange)>> {
         let manifest = self.manifest.as_ref()?;
 
-        let chunk_id = manifest.col_chunk_id().unwrap();
+        let chunk_id = manifest.col_chunk_id().ok()?;
         let start_column = manifest
             .data
             .column_by_name(RrdManifest::field_index_start(&timeline, None).name())?
