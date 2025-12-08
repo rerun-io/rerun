@@ -148,7 +148,7 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 # Generate the Rerun CLI manual.
 
 # NOTE: must be --all-features, otherwise we might miss some optional commands.
-man = "cargo run --package rerun-cli --all-features --config disable_web_viewer_server=1 -- man > docs/content/reference/cli.md"
+man = "RERUN_DISABLE_WEB_VIEWER_SERVER=1 cargo run --package rerun-cli --all-features -- man > docs/content/reference/cli.md"
 
 # Compile and run the rerun viewer.
 #
