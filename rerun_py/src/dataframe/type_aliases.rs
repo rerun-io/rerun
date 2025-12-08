@@ -54,7 +54,6 @@ impl AnyColumn {
 
 /// A type alias for any component-column-like object.
 //TODO(#9853): rename to `ComponentColumnLike`
-//TODO(ab): actually, remove this entirely. This stuff should be handled on python side.
 #[derive(FromPyObject)]
 pub enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
