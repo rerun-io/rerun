@@ -428,21 +428,25 @@ impl IntoRequest for GenerateToken<'_> {
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
         #[derive(serde::Serialize)]
-        struct Body<'a> {
-            token: &'a str,
+        struct Body {
             expiration: jiff::Span,
         }
 
-        ehttp::Request::json(
+        let mut req = ehttp::Request::json(
             format_args!(
                 "{origin}/generate-token",
                 origin = self.server.ascii_serialization()
             ),
             &Body {
-                token: self.token,
                 expiration: self.expiration,
             },
         )
-        .map_err(Error::Serialize)
+        .map_err(Error::Serialize)?;
+        req.headers.insert(
+            "Authorization",
+            format!("Bearer {token}", token = self.token),
+        );
+
+        Ok(req)
     }
 }
