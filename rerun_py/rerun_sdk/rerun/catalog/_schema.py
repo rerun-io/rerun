@@ -3,12 +3,10 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING
 
-from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector
-
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
-    from rerun.dataframe import IndexColumnDescriptor
+    from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor
     from rerun_bindings import SchemaInternal
 
 
@@ -96,36 +94,16 @@ class Schema:
 
         Raises
         ------
-        KeyError
+        LookupError
             If the column is not found.
-            Note: if the input is already a `ComponentColumnDescriptor`, it is returned directly without checking for
-            existence.
-
         ValueError
             If the string selector format is invalid or the input type is unsupported.
 
+        Note: if the input is already a `ComponentColumnDescriptor`, it is
+        returned directly without checking for existence.
+
         """
-        match selector:
-            case ComponentColumnDescriptor():
-                return selector
-
-            case ComponentColumnSelector():
-                entity_path = selector.entity_path
-                component = selector.component
-
-            case str():
-                parts = selector.split(":")
-                if len(parts) != 2:
-                    raise ValueError(f"Invalid selector format: {selector}. Expected '<entity_path>:<component>'")
-                entity_path, component = parts
-
-            case _:
-                raise ValueError(f"Invalid selector type: {type(selector)}")
-
-        result = self.column_for(entity_path, component)
-        if result is None:
-            raise KeyError(f"Column not found for selector: {selector}")
-        return result
+        return self._internal.column_for_selector(selector)
 
     def column_names(self) -> list[str]:
         """

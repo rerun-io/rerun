@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
 
@@ -122,3 +123,37 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
 │ complex_recording_4 ┆ true                │
 └─────────────────────┴─────────────────────┘\
 """)
+
+
+def test_schema_column_for_selector(complex_dataset_prefix: Path) -> None:
+    """Test Schema.column_for_selector with various inputs and error cases."""
+    with rr.server.Server() as server:
+        client = server.client()
+        ds = client.create_dataset("test_dataset")
+        ds.register_prefix(complex_dataset_prefix.as_uri())
+
+        schema = ds.schema()
+
+        # Success case: valid selector string returns correct descriptor
+        col = schema.column_for_selector("/points:Points2D:colors")
+        assert col.entity_path == "/points"
+        assert col.component == "Points2D:colors"
+
+        # Success case: ComponentColumnSelector
+        selector = rr.dataframe.ComponentColumnSelector("/points", "Points2D:positions")
+        col = schema.column_for_selector(selector)
+        assert col.entity_path == "/points"
+        assert col.component == "Points2D:positions"
+
+        # Success case: ComponentColumnDescriptor passthrough (returns equivalent descriptor)
+        existing_col = schema.column_for_selector("/text:TextLog:text")
+        same_col = schema.column_for_selector(existing_col)
+        assert same_col == existing_col
+
+        # LookupError case: column not found
+        with pytest.raises(LookupError):
+            schema.column_for_selector("/nonexistent:Foo:bar")
+
+        # ValueError case: invalid selector format (no colon)
+        with pytest.raises(ValueError):
+            schema.column_for_selector("invalid-format-no-colon")

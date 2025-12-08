@@ -235,7 +235,17 @@ class SchemaInternal:
         Returns
         -------
         ComponentColumnDescriptor
-            The column descriptor, if it exists. Raise an exception otherwise.
+            The column descriptor.
+
+        Raises
+        ------
+        LookupError
+            If the column is not found.
+        ValueError
+            If the string selector format is invalid or the input type is unsupported.
+
+        Note: if the input is already a `ComponentColumnDescriptor`, it is
+        returned directly without checking for existence.
 
         """
 

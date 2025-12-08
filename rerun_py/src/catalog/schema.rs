@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::PyLookupError;
 use pyo3::{PyResult, pyclass, pymethods};
 use re_log_types::EntityPath;
 use re_sorbet::{ComponentColumnSelector, SorbetColumnDescriptors};
@@ -124,7 +124,7 @@ impl PySchemaInternal {
             .schema
             .resolve_component_column_selector(column_selector)
             .ok_or_else(|| {
-                PyValueError::new_err(format!(
+                PyLookupError::new_err(format!(
                     "Could not find column for selector {column_selector}"
                 ))
             })?;
