@@ -1,13 +1,15 @@
 use ahash::{HashMap, HashSet};
+use arrow::array::{Int32Array, RecordBatch};
+use arrow::compute::take_record_batch;
 use itertools::Itertools as _;
-use re_chunk::external::arrow::array::RecordBatch;
 use re_chunk::{ChunkId, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
+/// Is the following chunk loaded?
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum LoadState {
+pub enum LoadState {
     /// The chunk is not loaded, nor being loaded.
     #[default]
     Unloaded,
@@ -60,7 +62,7 @@ impl RrdManifestIndex {
         re_tracing::profile_function!();
 
         for chunk_id in manifest.col_chunk_id()? {
-            let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+            self.remote_chunks.entry(chunk_id).or_default();
             // TODO(RR-2999): update chunk info?
         }
         self.manifest = Some(manifest);
@@ -157,6 +159,32 @@ impl RrdManifestIndex {
         } else {
             warn_when_editing_recording(store_kind, "Removed chunk that was not part of the index");
         }
+    }
+
+    /// Returns the yet-to-be-loaded chunks
+    #[must_use]
+    pub fn time_range_missing_chunks(
+        &mut self,
+        timeline: TimelineName,
+        range: AbsoluteTimeRange,
+    ) -> Option<RecordBatch> {
+        // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
+
+        let manifest = self.manifest.as_mut()?;
+
+        let mut indices = vec![];
+
+        // TODO: do the range query
+
+        for (row_idx, chunk_id) in manifest.col_chunk_id().unwrap().enumerate() {
+            let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+            if chunk_info.state == LoadState::Unloaded {
+                chunk_info.state = LoadState::InTransit;
+                indices.push(row_idx as i32);
+            }
+        }
+
+        take_record_batch(&manifest.data, &Int32Array::from(indices)).ok()
     }
 }
 
