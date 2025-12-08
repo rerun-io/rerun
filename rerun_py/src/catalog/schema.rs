@@ -25,7 +25,7 @@ pub struct PySchemaInternal {
 ///
 /// Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PySchemaInternal {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {

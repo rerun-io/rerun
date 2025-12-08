@@ -217,7 +217,7 @@ table.append(col1=[1, 2, 3], col2=["a", "b", "c"])
 
 Note: `TableInsertMode` is no longer needed with the new API and will be removed in a future release.
 
-## Python SDK: Schema and column types moved to `rerun.catalog`
+## Python SDK: schema and column types moved to `rerun.catalog`
 
 The `Schema` class and related column descriptor/selector types have moved from `rerun.dataframe` to `rerun.catalog`.
 
