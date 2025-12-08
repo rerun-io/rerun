@@ -27,13 +27,14 @@ pub fn load_from_path(
 
     re_tracing::profile_function!(path.to_string_lossy());
 
-    if !path.exists() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("path does not exist: {path:?}"),
-        )
-        .into());
-    }
+    // Remote paths cannot be easily detected to exist or not.
+    // if !path.exists() {
+    //     return Err(std::io::Error::new(
+    //         std::io::ErrorKind::NotFound,
+    //         format!("path does not exist: {path:?}"),
+    //     )
+    //     .into());
+    // }
 
     re_log::info!("Loading {path:?}…");
 

@@ -33,6 +33,7 @@ saturating_cast.workspace = true
 serde.workspace = true
 serde_bytes.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [dev-dependencies]
 insta = { workspace = true, features = ["filters", "redactions"] }

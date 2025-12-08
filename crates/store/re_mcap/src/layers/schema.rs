@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use mcap::sans_io::IndexedReaderOptions;
 use re_chunk::{Chunk, RowId, TimePoint};
 use re_sdk_types::archetypes::{McapChannel, McapSchema};
 use re_sdk_types::{AsComponents as _, components};
 
-use super::{Layer, LayerIdentifier};
+use super::{AsyncSeekRead, Layer, LayerIdentifier};
 use crate::Error;
 
 /// Extracts a static summary of channel and schema information.
@@ -20,8 +21,9 @@ impl Layer for McapSchemaLayer {
 
     fn process(
         &mut self,
-        _mcap_bytes: &[u8],
+        _mcap: &mut dyn AsyncSeekRead,
         summary: &mcap::Summary,
+        _options: &IndexedReaderOptions,
         emit: &mut dyn FnMut(Chunk),
     ) -> Result<(), Error> {
         for channel in summary.channels.values() {

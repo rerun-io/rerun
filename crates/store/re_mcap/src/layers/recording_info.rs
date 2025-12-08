@@ -1,8 +1,9 @@
+use mcap::sans_io::IndexedReaderOptions;
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
 use re_sdk_types::archetypes::RecordingInfo;
 use saturating_cast::SaturatingCast as _;
 
-use super::Layer;
+use super::{AsyncSeekRead, Layer};
 use crate::Error;
 
 /// Build the [`RecordingInfo`] chunk using the message statistics from a [`mcap::Summary`].
@@ -16,8 +17,9 @@ impl Layer for McapRecordingInfoLayer {
 
     fn process(
         &mut self,
-        _mcap_bytes: &[u8],
+        _mcap: &mut dyn AsyncSeekRead,
         summary: &mcap::Summary,
+        _options: &IndexedReaderOptions,
         emit: &mut dyn FnMut(Chunk),
     ) -> std::result::Result<(), Error> {
         let properties = summary

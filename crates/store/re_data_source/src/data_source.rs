@@ -57,8 +57,6 @@ impl LogDataSource {
     pub fn from_uri(_file_source: re_log_types::FileSource, url: &str) -> Option<Self> {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use itertools::Itertools as _;
-
             fn looks_like_windows_abs_path(path: &str) -> bool {
                 let path = path.as_bytes();
                 // "C:/" etc
@@ -70,29 +68,21 @@ impl LogDataSource {
                 let Some(file_extension) = uri.split('.').next_back() else {
                     return false;
                 };
-                if !re_data_loader::is_supported_file_extension(file_extension) {
-                    return false;
-                }
+
+                // URL query syntax breaks this logic.
+                // if !re_data_loader::is_supported_file_extension(file_extension) {
+                //     return false;
+                // }
 
                 #[expect(clippy::if_same_then_else)]
                 if uri.starts_with('/') {
                     true // Unix absolute path
                 } else if looks_like_windows_abs_path(uri) {
                     true
-                } else if uri.starts_with("http:") || uri.starts_with("https:") {
-                    false
                 } else {
-                    // We use a simple heuristic here: if there are multiple dots, it is likely an url,
-                    // like "example.com/foo.zip".
-                    // If there is only one dot, we treat it as an extension and look it up in a list of common
-                    // file extensions:
-
-                    let parts = uri.split('.').collect_vec();
-                    if parts.len() == 2 {
-                        true
-                    } else {
-                        false // Too many dots; assume an url
-                    }
+                    !(uri.starts_with("http:")
+                        || uri.starts_with("https:")
+                        || uri.starts_with("rerun:"))
                 }
             }
 

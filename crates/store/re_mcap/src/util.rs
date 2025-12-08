@@ -1,24 +1,31 @@
-use std::io::{Read, Seek};
-
+use crate::AsyncSeekRead;
 use mcap::Summary;
 use mcap::sans_io::{SummaryReadEvent, SummaryReader};
 use re_log_types::TimeCell;
 use saturating_cast::SaturatingCast as _;
+use tokio::io::{AsyncReadExt as _, AsyncSeekExt as _};
 
 /// Read out the summary of an MCAP file.
-pub fn read_summary<R: Read + Seek>(mut reader: R) -> anyhow::Result<Option<Summary>> {
+pub fn read_summary(reader: &mut dyn AsyncSeekRead) -> anyhow::Result<Option<Summary>> {
     let mut summary_reader = SummaryReader::new();
-    while let Some(event) = summary_reader.next_event() {
-        match event? {
-            SummaryReadEvent::SeekRequest(pos) => {
-                summary_reader.notify_seeked(reader.seek(pos)?);
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?
+        .block_on(async {
+            while let Some(event) = summary_reader.next_event() {
+                match event? {
+                    SummaryReadEvent::SeekRequest(pos) => {
+                        summary_reader.notify_seeked(reader.seek(pos).await?);
+                    }
+                    SummaryReadEvent::ReadRequest(need) => {
+                        let pos = reader.read(summary_reader.insert(need)).await?;
+                        summary_reader.notify_read(pos);
+                    }
+                }
             }
-            SummaryReadEvent::ReadRequest(need) => {
-                let read = reader.read(summary_reader.insert(need))?;
-                summary_reader.notify_read(read);
-            }
-        }
-    }
+
+            Ok::<(), anyhow::Error>(())
+        })?;
 
     Ok(summary_reader.finish())
 }
