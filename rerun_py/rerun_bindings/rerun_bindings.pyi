@@ -180,74 +180,13 @@ class VectorDistanceMetric(Enum):  # type: ignore[misc]
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
 
-# TODO(RR-3130): this class is not truly internal, and is actually re-exported as `Schema` from `rerun.dataframe` as a
-# stop-gap until the local API/load_recording is deprecated/removed.
 class SchemaInternal:
-    """
-    Internal schema class representing a set of available columns.
-
-    This is the internal implementation. For the public API, use:
-    - `rerun.catalog.Schema` for catalog/dataset operations
-    - `rerun.dataframe.Schema` for dataframe operations (deprecated, will be removed)
-    """
-
-    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
-        """Iterate over all the column descriptors in the schema."""
-
-    def index_columns(self) -> list[IndexColumnDescriptor]:
-        """Return a list of all the index columns in the schema."""
-
-    def component_columns(self) -> list[ComponentColumnDescriptor]:
-        """Return a list of all the component columns in the schema."""
-
-    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
-        """
-        Look up the column descriptor for a specific entity path and component.
-
-        Parameters
-        ----------
-        entity_path : str
-            The entity path to look up.
-        component : str
-            The component to look up. Example: `Points3D:positions`.
-
-        Returns
-        -------
-        Optional[ComponentColumnDescriptor]
-            The column descriptor, if it exists.
-
-        """
-
+    def index_columns(self) -> list[IndexColumnDescriptor]: ...
+    def component_columns(self) -> list[ComponentColumnDescriptor]: ...
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None: ...
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
-    ) -> ComponentColumnDescriptor:
-        """
-        Look up the column descriptor for a specific selector.
-
-        Parameters
-        ----------
-        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
-            The selector to look up.
-
-            String arguments are expected to follow the following format:
-            `"<entity_path>:<component_type>"`
-
-        Returns
-        -------
-        ComponentColumnDescriptor
-            The column descriptor.
-
-        Raises
-        ------
-        LookupError
-            If the column is not found.
-        ValueError
-            If the string selector format is invalid or the input type is unsupported.
-
-        Note: if the input is already a `ComponentColumnDescriptor`, it is
-        returned directly without checking for existence.
-
-        """
+    ) -> ComponentColumnDescriptor: ...
 
 class RecordingView:
     """
