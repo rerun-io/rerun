@@ -9023,6 +9023,7 @@ dependencies = [
 name = "re_log_channel"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
+ "arrow",
  "crossbeam",
  "parking_lot",
  "re_log_encoding",
