@@ -6,8 +6,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
-    from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor
-    from rerun_bindings import SchemaInternal
+    from rerun_bindings import (
+        ComponentColumnDescriptor,
+        ComponentColumnSelector,
+        IndexColumnDescriptor,
+        SchemaInternal,
+    )
 
 
 class Schema:

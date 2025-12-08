@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
+    ComponentColumnDescriptor as ComponentColumnDescriptor,
+    ComponentColumnSelector as ComponentColumnSelector,
     DataframeQueryView as DataframeQueryView,
     DataFusionTable as DataFusionTable,
     EntryId as EntryId,
     EntryKind as EntryKind,
+    IndexColumnDescriptor as IndexColumnDescriptor,
+    IndexColumnSelector as IndexColumnSelector,
     IndexConfig as IndexConfig,
     IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,

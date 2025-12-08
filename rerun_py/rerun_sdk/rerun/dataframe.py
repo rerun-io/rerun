@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 
+from rerun.catalog import Schema as Schema  # for backward compatibility
 from rerun_bindings import (
-    ComponentColumnDescriptor as ComponentColumnDescriptor,
-    ComponentColumnSelector as ComponentColumnSelector,
-    IndexColumnDescriptor as IndexColumnDescriptor,
-    IndexColumnSelector as IndexColumnSelector,
+    ComponentColumnDescriptor as ComponentColumnDescriptor,  # for backward compatibility
+    ComponentColumnSelector as ComponentColumnSelector,  # for backward compatibility
+    IndexColumnDescriptor as IndexColumnDescriptor,  # for backward compatibility
+    IndexColumnSelector as IndexColumnSelector,  # for backward compatibility
     Recording as Recording,
     RecordingView as RecordingView,
     RRDArchive as RRDArchive,
