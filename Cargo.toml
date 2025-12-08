@@ -82,10 +82,10 @@ re_protos = { path = "crates/store/re_protos", version = "=0.28.0-alpha.1", defa
 re_query = { path = "crates/store/re_query", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_client = { path = "crates/store/re_redap_client", version = "=0.28.0-alpha.1", default-features = false }
 re_redap_tests = { path = "crates/store/re_redap_tests", version = "=0.28.0-alpha.1", default-features = false }
+re_sdk_types = { path = "crates/store/re_sdk_types", version = "=0.28.0-alpha.1", default-features = false }
 re_server = { path = "crates/store/re_server", version = "=0.28.0-alpha.1", default-features = false }
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.28.0-alpha.1", default-features = false }
 re_tf = { path = "crates/store/re_tf", version = "=0.28.0-alpha.1", default-features = false }
-re_types = { path = "crates/store/re_types", version = "=0.28.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.28.0-alpha.1", default-features = false }
 re_uri = { path = "crates/store/re_uri", version = "=0.28.0-alpha.1", default-features = false }
 
@@ -511,7 +511,7 @@ debug = false
 "re_tuid".debug = true
 "re_types_builder".debug = true
 "re_types_core".debug = true
-"re_types".debug = true
+"re_sdk_types".debug = true
 "re_ui".debug = true
 "re_uri".debug = true
 "re_video".debug = true
@@ -627,6 +627,7 @@ clear_with_drain = "warn"
 cloned_instead_of_copied = "warn"
 dbg_macro = "warn"
 debug_assert_with_mut_call = "warn"
+default_union_representation = "warn"
 derive_partial_eq_without_eq = "warn"
 disallowed_macros = "warn" # See clippy.toml
 disallowed_methods = "warn" # See clippy.toml
@@ -657,7 +658,9 @@ from_iter_instead_of_collect = "warn"
 get_unwrap = "warn"
 ignore_without_reason = "warn"
 implicit_clone = "warn"
+implied_bounds_in_impls = "warn"
 imprecise_flops = "warn"
+inconsistent_struct_constructor = "warn"
 index_refutable_slice = "warn"
 inefficient_to_string = "warn"
 infinite_loop = "warn"
@@ -750,6 +753,7 @@ too_long_first_doc_paragraph = "warn"
 too_many_lines = "warn"
 trailing_empty_array = "warn"
 trait_duplication_in_bounds = "warn"
+transmute_ptr_to_ptr = "warn"
 tuple_array_conversions = "warn"
 unchecked_duration_subtraction = "warn"
 undocumented_unsafe_blocks = "warn"
@@ -759,6 +763,7 @@ uninlined_format_args = "warn"
 unnecessary_box_returns = "warn"
 unnecessary_literal_bound = "warn"
 unnecessary_safety_doc = "warn"
+unnecessary_self_imports = "warn"
 unnecessary_semicolon = "warn"
 unnecessary_struct_initialization = "warn"
 unnecessary_wraps = "warn"
@@ -784,6 +789,7 @@ map_unwrap_or = "allow" # so is this one
 ref_patterns = "allow" # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
+branches_sharing_code = "allow"
 cast_possible_truncation = "allow" # Moo much noise, sadly
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"

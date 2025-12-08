@@ -106,11 +106,11 @@ impl TypedFilter {
             }
 
             data_type
-                if data_type == &re_types::components::Timestamp::arrow_datatype()
+                if data_type == &re_sdk_types::components::Timestamp::arrow_datatype()
                     && column_field
                         .metadata()
                         .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                        == Some(&re_types::components::Timestamp::name().to_string()) =>
+                        == Some(&re_sdk_types::components::Timestamp::name().to_string()) =>
             {
                 Some(TimestampFilter::default().into())
             }

@@ -110,14 +110,22 @@ impl PyCatalogClientInternal {
     }
 
     /// Get a list of all dataset entries in the catalog.
-    fn dataset_entries(
+    fn datasets(
         self_: Py<Self>,
         py: Python<'_>,
+        include_hidden: bool,
     ) -> PyResult<Vec<Py<PyDatasetEntryInternal>>> {
         let connection = self_.borrow(py).connection.clone();
 
-        let entry_details =
+        let mut entry_details =
             connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
+
+        if include_hidden {
+            entry_details.extend(connection.find_entries(
+                py,
+                EntryFilter::new().with_entry_kind(EntryKind::BlueprintDataset),
+            )?);
+        }
 
         entry_details
             .into_iter()
@@ -132,7 +140,11 @@ impl PyCatalogClientInternal {
     }
 
     /// Get a list of all table entries in the catalog.
-    fn table_entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
+    fn tables(
+        self_: Py<Self>,
+        py: Python<'_>,
+        include_hidden: bool,
+    ) -> PyResult<Vec<Py<PyTableEntryInternal>>> {
         let connection = self_.borrow(py).connection.clone();
 
         let entry_details =
@@ -140,6 +152,7 @@ impl PyCatalogClientInternal {
 
         entry_details
             .into_iter()
+            .filter(|details| !details.name.starts_with("__") || include_hidden)
             .map(|details| {
                 let table_entry = connection.read_table(py, details.id)?;
                 let table = PyTableEntryInternal::new(self_.clone_ref(py), table_entry);
@@ -147,43 +160,6 @@ impl PyCatalogClientInternal {
                 Py::new(py, table)
             })
             .collect()
-    }
-
-    // ---
-
-    fn entry_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details = connection.find_entries(py, EntryFilter::new())?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    fn dataset_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
-    }
-
-    fn table_names(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<String>> {
-        let connection = self_.borrow(py).connection.clone();
-
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Table))?;
-
-        Ok(entry_details
-            .into_iter()
-            .map(|details| details.name)
-            .collect())
     }
 
     // ---

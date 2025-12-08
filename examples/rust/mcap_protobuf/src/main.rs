@@ -9,7 +9,6 @@ use re_arrow_combinators::{
     semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
 };
 use re_log_types::TimeType;
-use rerun::dataframe::EntityPathFilter;
 use rerun::external::re_log;
 use rerun::lenses::{Lens, LensesSink, Op, OpError};
 use rerun::sink::GrpcSink;
@@ -17,6 +16,7 @@ use rerun::{
     CoordinateFrame, EncodedImage, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
     VideoStream,
 };
+use rerun::{dataframe::EntityPathFilter, lenses::OutputMode};
 
 /// Foxglove timestamp fields are by definition relative to a custom epoch.
 /// In this example, we default to an UNIX epoch timestamp interpretation.
@@ -341,6 +341,7 @@ fn main() -> anyhow::Result<()> {
     .build();
 
     let lenses_sink = LensesSink::new(GrpcSink::default())
+        .output_mode(OutputMode::ForwardUnmatched)
         .with_lens(image_lens)
         .with_lens(instance_pose_lens)
         .with_lens(instance_poses_lens)

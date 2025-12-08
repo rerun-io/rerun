@@ -1,11 +1,11 @@
 use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
-use re_types::blueprint::archetypes::{PlotBackground, PlotLegend};
-use re_types::blueprint::components::{Corner2D, Enabled};
-use re_types::components::{Color, Visible};
-use re_types::datatypes::TensorBuffer;
-use re_types::{View as _, ViewClassIdentifier};
+use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend};
+use re_sdk_types::blueprint::components::{Corner2D, Enabled};
+use re_sdk_types::components::{Color, Visible};
+use re_sdk_types::datatypes::TensorBuffer;
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
 use re_view::view_property_ui;
@@ -22,7 +22,7 @@ use super::visualizer_system::{BarChartData, BarChartVisualizerSystem};
 #[derive(Default)]
 pub struct BarChartView;
 
-type ViewType = re_types::blueprint::views::BarChartView;
+type ViewType = re_sdk_types::blueprint::views::BarChartView;
 
 impl ViewClass for BarChartView {
     fn identifier() -> ViewClassIdentifier {
@@ -222,7 +222,7 @@ impl ViewClass for BarChartView {
                     ent_path: &EntityPath,
                     indexes: impl Iterator<Item = f64>,
                     values: impl Iterator<Item = N>,
-                    color: &re_types::components::Color,
+                    color: &re_sdk_types::components::Color,
                     background_color: egui::Color32,
                 ) -> BarChart {
                     let color: egui::Color32 = color.0.into();

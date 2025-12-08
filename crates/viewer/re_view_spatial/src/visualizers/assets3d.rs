@@ -2,9 +2,9 @@ use re_chunk_store::RowId;
 use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::ArrowString;
-use re_types::archetypes::Asset3D;
-use re_types::components::AlbedoFactor;
+use re_sdk_types::ArrowString;
+use re_sdk_types::archetypes::Asset3D;
+use re_sdk_types::components::AlbedoFactor;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -29,7 +29,7 @@ struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: re_types::datatypes::Blob,
+    blob: re_sdk_types::datatypes::Blob,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
 }

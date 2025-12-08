@@ -2,11 +2,11 @@ use egui::Color32;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
-use re_types::archetypes::GraphNodes;
-use re_types::components::{
+use re_sdk_types::archetypes::GraphNodes;
+use re_sdk_types::components::{
     Color, {self},
 };
-use re_types::{self, ArrowString, archetypes};
+use re_sdk_types::{self, ArrowString, archetypes};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -23,7 +23,7 @@ pub struct NodeVisualizer {
 
 pub const FALLBACK_RADIUS: f32 = 4.0;
 
-/// The label information of a [`re_types::archetypes::GraphNodes`].
+/// The label information of a [`re_sdk_types::archetypes::GraphNodes`].
 #[derive(Clone)]
 pub enum Label {
     Circle {

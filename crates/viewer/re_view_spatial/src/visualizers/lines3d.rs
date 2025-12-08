@@ -1,9 +1,9 @@
 use re_log_types::Instance;
 use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::LineStripFlags;
-use re_types::archetypes::LineStrips3D;
-use re_types::components::{ClassId, Color, Radius, ShowLabels};
-use re_types::{Archetype as _, ArrowString};
+use re_sdk_types::archetypes::LineStrips3D;
+use re_sdk_types::components::{ClassId, Color, Radius, ShowLabels};
+use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,

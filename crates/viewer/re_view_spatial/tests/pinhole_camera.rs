@@ -1,10 +1,10 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_sdk_types::archetypes::Pinhole;
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::{Color, Position3D, Radius};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::Pinhole;
-use re_types::blueprint::archetypes::EyeControls3D;
-use re_types::components::{Color, Position3D, Radius};
 use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 

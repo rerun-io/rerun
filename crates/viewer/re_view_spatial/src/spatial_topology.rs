@@ -7,8 +7,8 @@ use re_chunk_store::{
     ChunkStoreSubscriberHandle,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::Component as _;
-use re_types::components::{PinholeProjection, ViewCoordinates};
+use re_sdk_types::Component as _;
+use re_sdk_types::components::{PinholeProjection, ViewCoordinates};
 
 bitflags::bitflags! {
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -260,7 +260,7 @@ impl SpatialTopology {
     fn on_store_diff<'a>(
         &mut self,
         entity_path: &EntityPath,
-        added_components: impl Iterator<Item = &'a re_types::ComponentDescriptor>,
+        added_components: impl Iterator<Item = &'a re_sdk_types::ComponentDescriptor>,
     ) {
         re_tracing::profile_function!();
 
@@ -416,8 +416,8 @@ impl SpatialTopology {
 #[cfg(test)]
 mod tests {
     use re_log_types::EntityPath;
-    use re_types::components::{PinholeProjection, ViewCoordinates};
-    use re_types::{Component as _, ComponentDescriptor};
+    use re_sdk_types::components::{PinholeProjection, ViewCoordinates};
+    use re_sdk_types::{Component as _, ComponentDescriptor};
 
     use super::SpatialTopology;
     use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};

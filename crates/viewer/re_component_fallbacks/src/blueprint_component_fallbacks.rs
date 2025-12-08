@@ -1,4 +1,4 @@
-use re_types::{blueprint, components};
+use re_sdk_types::{blueprint, components};
 use re_viewer_context::FallbackProviderRegistry;
 
 pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {

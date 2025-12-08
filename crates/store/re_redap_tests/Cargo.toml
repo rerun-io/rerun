@@ -32,7 +32,7 @@ re_sorbet.workspace = true
 re_sdk.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
-re_types.workspace = true
+re_sdk_types.workspace = true
 
 anyhow.workspace = true
 arrow.workspace = true

@@ -1,7 +1,7 @@
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_types::components::TransformFrameId;
+use re_sdk_types::components::TransformFrameId;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -725,8 +725,8 @@ mod tests {
     use re_chunk_store::Chunk;
     use re_entity_db::EntityDb;
     use re_log_types::{EntityPath, StoreInfo, TimeCell, TimePoint, Timeline, TimelineName};
-    use re_types::components::TransformFrameId;
-    use re_types::{RowId, archetypes, components};
+    use re_sdk_types::components::TransformFrameId;
+    use re_sdk_types::{RowId, archetypes, components};
 
     use super::*;
 

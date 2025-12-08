@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
-use re_types::components::{Color, MarkerShape, MarkerSize};
-use re_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{Color, MarkerShape, MarkerSize};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
@@ -352,7 +352,7 @@ impl SeriesPointsSystem {
                     view_query,
                     label,
                     // Aggregation for points is not supported.
-                    re_types::components::AggregationPolicy::Off,
+                    re_sdk_types::components::AggregationPolicy::Off,
                     all_series,
                 );
             }

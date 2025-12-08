@@ -1,5 +1,5 @@
 use re_chunk::{Chunk, ChunkId};
-use re_types::archetypes::Pinhole;
+use re_sdk_types::archetypes::Pinhole;
 
 use super::super::Ros2MessageParser;
 use super::super::definitions::sensor_msgs;

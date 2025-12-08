@@ -4,8 +4,7 @@ use std::time::Duration;
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use re_data_source::LogDataSource;
-use re_log_channel::{LogReceiver, LogReceiverSet, SmartMessagePayload};
-use re_log_types::DataSourceMessage;
+use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
 use tokio::runtime::Runtime;
@@ -599,6 +598,9 @@ where
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
+
+    #[cfg(feature = "analytics")]
+    record_cli_command_analytics(&args);
 
     initialize_thread_pool(args.threads);
 
@@ -1525,4 +1527,118 @@ impl ReceiversFromUrlParams {
         }
         Ok(())
     }
+}
+
+/// Records analytics for the CLI command invocation.
+#[cfg(feature = "analytics")]
+fn record_cli_command_analytics(args: &Args) {
+    let Some(analytics) = re_analytics::Analytics::global_or_init() else {
+        return;
+    };
+
+    // Destructure to ensure we consider all fields when adding new ones.
+    let Args {
+        command,
+        newest_first,
+        persist_state,
+        profile,
+        save,
+        screenshot_to,
+        serve_web,
+        serve_grpc,
+        connect,
+        expect_data_soon,
+        test_receive,
+        hide_welcome_screen,
+        detach_process,
+
+        // Not logged
+        threads: _,
+        url_or_paths: _,
+        version: _,
+        web_viewer,
+        web_viewer_port: _,
+        window_size: _,
+        renderer: _,
+        video_decoder: _,
+        bind: _,
+        memory_limit: _,
+        server_memory_limit: _,
+        port: _,
+    } = args;
+
+    let (command, subcommand) = match command {
+        #[cfg(feature = "analytics")]
+        Some(Command::Analytics(cmd)) => {
+            let subcommand = match cmd {
+                AnalyticsCommands::Details => "details",
+                AnalyticsCommands::Clear => "clear",
+                AnalyticsCommands::Email { .. } => "email",
+                AnalyticsCommands::Enable => "enable",
+                AnalyticsCommands::Disable => "disable",
+                AnalyticsCommands::Config => "config",
+            };
+            ("analytics", Some(subcommand))
+        }
+
+        #[cfg(feature = "auth")]
+        Some(Command::Auth(cmd)) => {
+            let subcommand = match cmd {
+                AuthCommands::Login(_) => "login",
+                AuthCommands::Token(_) => "token",
+            };
+            ("auth", Some(subcommand))
+        }
+
+        Some(Command::Manual) => ("man", None),
+
+        #[cfg(feature = "data_loaders")]
+        Some(Command::Mcap(cmd)) => {
+            let subcommand = match cmd {
+                McapCommands::Convert(_) => "convert",
+            };
+            ("mcap", Some(subcommand))
+        }
+
+        #[cfg(feature = "native_viewer")]
+        Some(Command::Reset) => ("reset", None),
+
+        Some(Command::Rrd(cmd)) => {
+            let subcommand = match cmd {
+                RrdCommands::Compact(_) => "compact",
+                RrdCommands::Compare(_) => "compare",
+                RrdCommands::Filter(_) => "filter",
+                RrdCommands::Merge(_) => "merge",
+                RrdCommands::Migrate(_) => "migrate",
+                RrdCommands::Print(_) => "print",
+                RrdCommands::Route(_) => "route",
+                RrdCommands::Stats(_) => "stats",
+                RrdCommands::Verify(_) => "verify",
+            };
+            ("rrd", Some(subcommand))
+        }
+
+        #[cfg(feature = "oss_server")]
+        Some(Command::Server(_)) => ("server", None),
+
+        None => ("viewer", None),
+    };
+
+    analytics.record(re_analytics::event::CliCommandInvoked {
+        command,
+        subcommand,
+        web_viewer: *web_viewer,
+        serve_web: *serve_web,
+        serve_grpc: *serve_grpc,
+        connect: connect.is_some(),
+        save: save.is_some(),
+        screenshot_to: screenshot_to.is_some(),
+        newest_first: *newest_first,
+        persist_state_disabled: !persist_state,
+        profile: *profile,
+        expect_data_soon: *expect_data_soon,
+        hide_welcome_screen: *hide_welcome_screen,
+        detach_process: *detach_process,
+        test_receive: *test_receive,
+    });
 }

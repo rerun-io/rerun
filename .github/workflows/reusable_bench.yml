@@ -119,7 +119,7 @@ jobs:
           gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
 
       - name: Install cargo-benchcmp
-        run: pixi run cargo install --quiet cargo-benchcmp
+        run: pixi run cargo install cargo-benchcmp
 
       - name: Compare results with benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}

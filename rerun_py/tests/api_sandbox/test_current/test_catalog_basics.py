@@ -18,7 +18,22 @@ def test_catalog_basics(tmp_path: Path) -> None:
         client.create_dataset("my_dataset")
         client.create_table_entry("my_table", pa.schema([]), tmp_path.as_uri())
 
-        df = client.entries()
+        # Test the new list-based APIs
+        datasets = client.datasets()
+        assert [d.name for d in datasets] == ["my_dataset"]
+
+        tables = client.tables()
+        assert [t.name for t in tables] == ["my_table"]
+
+        entries = client.entries()
+        assert sorted([e.name for e in entries]) == ["my_dataset", "my_table"]
+
+        # Test include_hidden parameter
+        tables_with_hidden = client.tables(include_hidden=True)
+        assert sorted([t.name for t in tables_with_hidden]) == ["__entries", "my_table"]
+
+        # Test the underlying __entries table via get_table
+        df = client.get_table(name="__entries")
 
         assert str(df.schema()) == inline_snapshot("""\
 id: fixed_size_binary[16] not null

@@ -220,7 +220,7 @@ mod tests {
     use re_chunk::{RowId, TimelineName};
     use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
     use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-    use re_types::ComponentDescriptor;
+    use re_sdk_types::ComponentDescriptor;
 
     use super::*;
     use crate::{ChunkStore, GarbageCollectionOptions};

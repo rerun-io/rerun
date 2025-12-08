@@ -1,7 +1,7 @@
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_types;
+use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 const IMAGE_SIZE: (usize, usize) = (20, 30);
@@ -18,8 +18,8 @@ fn log_test_image(
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Image::from_color_model_and_tensor(
-                re_types::datatypes::ColorModel::RGB,
+            &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
+                re_sdk_types::datatypes::ColorModel::RGB,
                 image,
             )
             .expect("Failed to create image"),
@@ -36,7 +36,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
+            &re_sdk_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
         )
     });
 
@@ -44,7 +44,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(0.0, 0.0, 0.0)],
                 [(0.1, 0.1, 0.1)],
             )
@@ -55,7 +55,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Pinhole::from_focal_length_and_resolution(
+            &re_sdk_types::archetypes::Pinhole::from_focal_length_and_resolution(
                 [128.0, 128.0],
                 [IMAGE_SIZE.1 as f32, IMAGE_SIZE.0 as f32],
             )

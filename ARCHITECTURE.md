@@ -182,7 +182,7 @@ Update instructions:
 | re_query        | Querying data in the re_chunk_store                             |
 | re_server       | In-memory data server                                           |
 | re_tf           | Dealing with spatial transforms & transform frames              |
-| re_types        | The built-in Rerun data types, component types, and archetypes. |
+| re_sdk_types    | The built-in Rerun data types, component types, and archetypes. |
 
 ### Low-level store
 
@@ -251,6 +251,12 @@ Update instructions:
 | ---------------- | ------------------------------------------------------------- |
 | re_test_context  | Provides a test context that builds on `re_viewer_context.    |
 | re_test_viewport | Extends the `re_test_context` with viewport-related features. |
+
+### Deprecated crates
+
+| Crate           | Description                                                     |
+| --------------- | --------------------------------------------------------------- |
+| re_types        | Old name of `re_sdk_types`                                      |
 
 ### Dependencies and docs
 

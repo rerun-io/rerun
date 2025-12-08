@@ -9,13 +9,13 @@ use re_chunk::TimelineName;
 use re_data_source::{FileContents, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
-use re_log_channel::{LogReceiver, LogReceiverSet, LogSource};
-use re_log_types::{
-    ApplicationId, DataSourceMessage, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg,
+use re_log_channel::{
+    DataSourceMessage, DataSourceUiCommand, LogReceiver, LogReceiverSet, LogSource,
 };
+use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::PlayState;
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
@@ -318,7 +318,7 @@ impl App {
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
-        let reflection = re_types::reflection::generate_reflection().unwrap_or_else(|err| {
+        let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
             re_log::error!(
                 "Failed to create list of serialized default values for components: {err}"
             );
@@ -2031,8 +2031,8 @@ impl App {
             let messages = store.to_messages(None).collect_vec();
 
             let file_name = if let Some(rec_name) = store
-                .recording_info_property::<re_types::components::Name>(
-                    re_types::archetypes::RecordingInfo::descriptor_name().component,
+                .recording_info_property::<re_sdk_types::components::Name>(
+                    re_sdk_types::archetypes::RecordingInfo::descriptor_name().component,
                 ) {
                 rec_name.to_string()
             } else {
@@ -2555,11 +2555,11 @@ impl App {
 
     fn receive_data_source_ui_command(
         &self,
-        ui_command: re_log_types::DataSourceUiCommand,
+        ui_command: DataSourceUiCommand,
         channel_source: &LogSource,
     ) {
         match ui_command {
-            re_log_types::DataSourceUiCommand::AddValidTimeRange {
+            DataSourceUiCommand::AddValidTimeRange {
                 store_id,
                 timeline,
                 time_range,
@@ -2574,7 +2574,7 @@ impl App {
                     });
             }
 
-            re_log_types::DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
+            DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
                     Ok(fragment) => {
                         self.command_sender
@@ -3574,8 +3574,8 @@ fn save_recording(
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
     let file_name = if let Some(recording_name) = entity_db
-        .recording_info_property::<re_types::components::Name>(
-            re_types::archetypes::RecordingInfo::descriptor_name().component,
+        .recording_info_property::<re_sdk_types::components::Name>(
+            re_sdk_types::archetypes::RecordingInfo::descriptor_name().component,
         ) {
         format!("{}.rrd", sanitize_file_name(&recording_name))
     } else {

@@ -2,9 +2,9 @@ use egui::{NumExt as _, Rect};
 use glam::{Mat4, Quat, Vec3, vec3};
 use macaw::IsoTransform;
 use re_log_types::EntityPath;
-use re_types::blueprint::archetypes::EyeControls3D;
-use re_types::blueprint::components::{AngularSpeed, Eye3DKind};
-use re_types::components::{LinearSpeed, Position3D, Vector3D};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::blueprint::components::{AngularSpeed, Eye3DKind};
+use re_sdk_types::components::{LinearSpeed, Position3D, Vector3D};
 use re_ui::ContextExt as _;
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
@@ -657,7 +657,7 @@ impl EyeState {
         let mut drag_threshold = 0.0;
 
         let tracking_entity = eye_property
-            .component_or_empty::<re_types::components::EntityPath>(
+            .component_or_empty::<re_sdk_types::components::EntityPath>(
                 EyeControls3D::descriptor_tracking_entity().component,
             )?
             .and_then(|tracking_entity| {
@@ -730,7 +730,7 @@ impl EyeState {
         old_pos: Vec3,
         old_look_target: Vec3,
         old_eye_up: Vec3,
-        tracking_entity: Option<&re_types::components::EntityPath>,
+        tracking_entity: Option<&re_sdk_types::components::EntityPath>,
     ) -> Option<Eye> {
         if let Some(tracking_entity) = &tracking_entity {
             let tracking_entity = EntityPath::from(tracking_entity.as_str());

@@ -27,7 +27,7 @@ re_entity_db.workspace = true # It would be nice not to depend on this, but we n
 re_log.workspace = true
 re_log_types.workspace = true
 re_tracing.workspace = true
-re_types = { workspace = true, features = ["glam"] }
+re_sdk_types = { workspace = true, features = ["glam"] }
 
 ahash.workspace = true
 arrow.workspace = true

@@ -9,7 +9,7 @@ use arrow::array::{
 };
 use arrow::datatypes::{DataType, Field, Int32Type, Int64Type};
 use arrow::error::ArrowError;
-use re_types::components::VideoCodec;
+use re_sdk_types::components::VideoCodec;
 
 use crate::cast::DowncastRef;
 use crate::reshape::GetField;

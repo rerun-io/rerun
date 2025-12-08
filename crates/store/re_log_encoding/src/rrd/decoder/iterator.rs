@@ -203,8 +203,8 @@ mod tests {
                     re_log_types::Timeline::new_sequence("blueprint"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),
-                &re_types::blueprint::archetypes::Background::new(
-                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                &re_sdk_types::blueprint::archetypes::Background::new(
+                    re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
                 )
                 .with_color([255, 0, 0]),
             )

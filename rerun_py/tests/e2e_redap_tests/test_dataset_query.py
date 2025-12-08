@@ -88,7 +88,7 @@ def readonly_test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -
 
 
 def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:
-    for table_entry in prefilled_catalog.client.table_entries():
+    for table_entry in prefilled_catalog.client.tables():
         assert pyarrow.Table.from_batches(table_entry.to_arrow_reader()).num_rows > 0
 
 

@@ -1,7 +1,7 @@
 use egui::NumExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeType};
-use re_types::blueprint::components::TimeRange;
-use re_types::datatypes::{TimeInt, TimeRangeBoundary};
+use re_sdk_types::blueprint::components::TimeRange;
+use re_sdk_types::datatypes::{TimeInt, TimeRangeBoundary};
 use re_ui::list_item::LabelContent;
 use re_ui::{
     RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_boundary_label_text,

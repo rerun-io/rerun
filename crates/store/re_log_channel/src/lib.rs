@@ -4,13 +4,14 @@ use std::sync::Arc;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
-use re_log_types::DataSourceMessage;
 use re_uri::RedapUri;
 
+mod data_source_message;
 mod receiver;
 mod receiver_set;
 mod sender;
 
+pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
 pub use self::sender::LogSender;
@@ -214,7 +215,7 @@ pub(crate) struct Channel {
     waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
 }
 
-/// Create a new communication channel for [`re_log_types::DataSourceMessage`].
+/// Create a new communication channel for [`DataSourceMessage`].
 pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
     // TODO(emilk): add a back-channel to be used for controlling what data we load.
 

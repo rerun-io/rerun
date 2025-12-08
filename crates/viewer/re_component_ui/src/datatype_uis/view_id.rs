@@ -1,5 +1,5 @@
 use re_data_ui::item_ui;
-use re_types::datatypes::Uuid;
+use re_sdk_types::datatypes::Uuid;
 use re_viewer_context::{MaybeMutRef, ViewId};
 
 pub fn view_view_id(

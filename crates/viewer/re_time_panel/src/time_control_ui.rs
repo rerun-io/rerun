@@ -1,7 +1,7 @@
 use egui::NumExt as _;
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
-use re_types::blueprint::components::{LoopMode, PlayState};
+use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::{UICommand, UiExt as _, list_item};
 use re_viewer_context::{TimeControl, TimeControlCommand};
 

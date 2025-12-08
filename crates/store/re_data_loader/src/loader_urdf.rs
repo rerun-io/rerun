@@ -7,10 +7,10 @@ use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_types::archetypes::{Asset3D, Transform3D};
-use re_types::datatypes::Vec3D;
-use re_types::external::glam;
-use re_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
+use re_sdk_types::archetypes::{Asset3D, Transform3D};
+use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::external::glam;
+use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
 use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -540,9 +540,9 @@ fn log_link(
                         ComponentDescriptor {
                             archetype: None,
                             component: "visible".into(),
-                            component_type: Some(re_types::components::Visible::name()),
+                            component_type: Some(re_sdk_types::components::Visible::name()),
                         },
-                        &re_types::components::Visible::from(false),
+                        &re_sdk_types::components::Visible::from(false),
                     ),
                 ),
             )?;
@@ -596,7 +596,7 @@ fn log_geometry(
 ) -> anyhow::Result<()> {
     match geometry {
         Geometry::Mesh { filename, scale } => {
-            use re_types::components::MediaType;
+            use re_sdk_types::components::MediaType;
 
             let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
             let mut asset3d =
@@ -614,7 +614,7 @@ fn log_geometry(
                     } = color;
                     asset3d = asset3d.with_albedo_factor(
                         // TODO(emilk): is this linear or sRGB?
-                        re_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
+                        re_sdk_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
                             *r as f32, *g as f32, *b as f32, *a as f32,
                         ),
                     );
@@ -647,7 +647,9 @@ fn log_geometry(
                 store_id,
                 entity_path,
                 timepoint,
-                &re_types::archetypes::Boxes3D::from_sizes([Vec3D::new(*x as _, *y as _, *z as _)]),
+                &re_sdk_types::archetypes::Boxes3D::from_sizes([Vec3D::new(
+                    *x as _, *y as _, *z as _,
+                )]),
             )?;
         }
         Geometry::Cylinder { radius, length } => {
@@ -657,7 +659,7 @@ fn log_geometry(
                 store_id,
                 entity_path,
                 timepoint,
-                &re_types::archetypes::Cylinders3D::from_lengths_and_radii(
+                &re_sdk_types::archetypes::Cylinders3D::from_lengths_and_radii(
                     [*length as f32],
                     [*radius as f32],
                 ),
@@ -670,7 +672,7 @@ fn log_geometry(
                 store_id,
                 entity_path,
                 timepoint,
-                &re_types::archetypes::Capsules3D::from_lengths_and_radii(
+                &re_sdk_types::archetypes::Capsules3D::from_lengths_and_radii(
                     [*length as f32],
                     [*radius as f32],
                 ),
@@ -682,7 +684,7 @@ fn log_geometry(
                 store_id,
                 entity_path,
                 timepoint,
-                &re_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
+                &re_sdk_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
             )?;
         }
     }

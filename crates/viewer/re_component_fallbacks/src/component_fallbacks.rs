@@ -1,4 +1,4 @@
-use re_types::{archetypes, components, datatypes};
+use re_sdk_types::{archetypes, components, datatypes};
 use re_viewer_context::{
     ColormapWithRange, FallbackProviderRegistry, ImageDecodeCache, ImageInfo, ImageStatsCache,
     QueryContext, TensorStats, TensorStatsCache, auto_color_for_entity_path,
@@ -286,7 +286,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         archetypes::DepthImage::descriptor_buffer().component,
                         image_buffer.0,
                         format.0,
-                        re_types::image::ImageKind::Depth,
+                        re_sdk_types::image::ImageKind::Depth,
                     );
                     let cache = ctx.store_ctx().caches;
                     let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
@@ -502,8 +502,8 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 // possibly incorrectly.
 fn show_labels_fallback(
     ctx: &QueryContext<'_>,
-    instance_count_component: re_types::ComponentIdentifier,
-    text_component: re_types::ComponentIdentifier,
+    instance_count_component: re_sdk_types::ComponentIdentifier,
+    text_component: re_sdk_types::ComponentIdentifier,
 ) -> components::ShowLabels {
     let results = ctx.recording().latest_at(
         ctx.query,
@@ -523,7 +523,7 @@ fn show_labels_fallback(
 /// Get a valid, finite range for the gpu to use.
 fn tensor_data_range_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
+    data_type: re_sdk_types::tensor_data::TensorDataType,
 ) -> components::ValueRange {
     let (min, max) = re_viewer_context::gpu_bridge::data_range_heuristic(
         tensor_stats.finite_range,

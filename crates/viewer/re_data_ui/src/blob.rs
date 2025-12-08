@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
-use re_types::components::{Blob, MediaType, VideoTimestamp};
-use re_types::{ComponentDescriptor, ComponentIdentifier, RowId, archetypes, components};
+use re_sdk_types::components::{Blob, MediaType, VideoTimestamp};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, RowId, archetypes, components};
 use re_types_core::Component as _;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{UiExt as _, icons};
@@ -88,7 +88,7 @@ impl EntityDataUi for Blob {
 }
 
 /// Show EXIF data about the given blob (image), if possible.
-fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatypes::Blob) {
+fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_sdk_types::datatypes::Blob) {
     let exif_result = ui.ctx().memory_mut(|mem| {
         // Cache EXIF parsing to avoid re-parsing every frame.
         // The parsing is really fast, so this is not really needed.
@@ -126,7 +126,7 @@ fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatype
 /// Utility for displaying additional UI for blobs.
 pub struct BlobUi {
     component: ComponentIdentifier,
-    blob: re_types::datatypes::Blob,
+    blob: re_sdk_types::datatypes::Blob,
 
     /// Additional image ui if any.
     image: Option<ImageUi>,
@@ -197,7 +197,7 @@ impl BlobUi {
         entity_path: &re_log_types::EntityPath,
         blob_component_descriptor: &ComponentDescriptor,
         blob_row_id: Option<RowId>,
-        blob: re_types::datatypes::Blob,
+        blob: re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Self {

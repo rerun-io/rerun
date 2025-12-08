@@ -1,6 +1,6 @@
-use re_types::Archetype as _;
-use re_types::archetypes::EncodedImage;
-use re_types::components::{MediaType, Opacity};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::EncodedImage;
+use re_sdk_types::components::{MediaType, Opacity};
 use re_view::HybridResults;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageDecodeCache, QueryContext, ViewContext, ViewContextCollection,

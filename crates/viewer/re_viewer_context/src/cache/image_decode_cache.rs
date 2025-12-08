@@ -8,12 +8,10 @@ use re_depth_compression::ros_rvl::{
 };
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_types::{
-    ComponentIdentifier,
-    components::{ImageBuffer, ImageFormat as ImageFormatComponent, MediaType},
-    datatypes::{Blob, ChannelDatatype, ColorModel},
-    image::{ImageKind, ImageLoadError},
-};
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::{ImageBuffer, ImageFormat as ImageFormatComponent, MediaType};
+use re_sdk_types::datatypes::{Blob, ChannelDatatype, ColorModel};
+use re_sdk_types::image::{ImageKind, ImageLoadError};
 
 use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
@@ -30,7 +28,7 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches the results of decoding [`re_types::archetypes::EncodedImage`] and [`re_types::archetypes::EncodedDepthImage`].
+/// Caches the results of decoding [`re_sdk_types::archetypes::EncodedImage`] and [`re_sdk_types::archetypes::EncodedDepthImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
     cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,
@@ -382,7 +380,7 @@ mod tests {
     use super::*;
 
     use image::{ColorType, ImageEncoder as _, codecs::png::PngEncoder};
-    use re_types::datatypes::ImageFormat as ImageFormatDatatype;
+    use re_sdk_types::datatypes::ImageFormat as ImageFormatDatatype;
 
     #[test]
     fn entry_encoded_depth_guesses_png_media_type() {

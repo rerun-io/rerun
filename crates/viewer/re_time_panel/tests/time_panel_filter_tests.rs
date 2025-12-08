@@ -3,9 +3,9 @@
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::TimePoint;
+use re_sdk_types::archetypes::Points3D;
 use re_test_context::TestContext;
 use re_time_panel::{StreamsTreeData, TimePanel, TimePanelSource};
-use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::blueprint_timeline;
 use re_viewport_blueprint::ViewportBlueprint;

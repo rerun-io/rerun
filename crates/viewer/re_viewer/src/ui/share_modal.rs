@@ -381,7 +381,7 @@ mod tests {
             builder.with_archetype(
                 re_chunk::RowId::new(),
                 [(timeline, re_chunk::TimeInt::ZERO)],
-                &re_types::archetypes::Points2D::new([(0., 0.), (1., 1.)]),
+                &re_sdk_types::archetypes::Points2D::new([(0., 0.), (1., 1.)]),
             )
         });
 

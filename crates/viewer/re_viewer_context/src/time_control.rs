@@ -7,8 +7,8 @@ use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
 };
-use re_types::blueprint::archetypes::TimePanelBlueprint;
-use re_types::blueprint::components::{LoopMode, PlayState};
+use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
+use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use vec1::Vec1;
 
 use crate::NeedsRepaint;
@@ -51,14 +51,14 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.save_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_timeline(),
-            &re_types::blueprint::components::TimelineName::from(timeline.as_str()),
+            &re_sdk_types::blueprint::components::TimelineName::from(timeline.as_str()),
         );
     }
 
     fn timeline(&self) -> Option<TimelineName> {
         let (_, timeline) = self
             .current_blueprint()
-            .latest_at_component_quiet::<re_types::blueprint::components::TimelineName>(
+            .latest_at_component_quiet::<re_sdk_types::blueprint::components::TimelineName>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
             TimePanelBlueprint::descriptor_timeline().component,
@@ -78,14 +78,14 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.save_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_playback_speed(),
-            &re_types::blueprint::components::PlaybackSpeed(playback_speed.into()),
+            &re_sdk_types::blueprint::components::PlaybackSpeed(playback_speed.into()),
         );
     }
 
     fn playback_speed(&self) -> Option<f64> {
         let (_, playback_speed) = self
             .current_blueprint()
-            .latest_at_component_quiet::<re_types::blueprint::components::PlaybackSpeed>(
+            .latest_at_component_quiet::<re_sdk_types::blueprint::components::PlaybackSpeed>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
             TimePanelBlueprint::descriptor_playback_speed().component,
@@ -98,14 +98,14 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.save_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_fps(),
-            &re_types::blueprint::components::Fps(fps.into()),
+            &re_sdk_types::blueprint::components::Fps(fps.into()),
         );
     }
 
     fn fps(&self) -> Option<f64> {
         let (_, fps) = self
             .current_blueprint()
-            .latest_at_component_quiet::<re_types::blueprint::components::Fps>(
+            .latest_at_component_quiet::<re_sdk_types::blueprint::components::Fps>(
                 &time_panel_blueprint_entity_path(),
                 self.blueprint_query(),
                 TimePanelBlueprint::descriptor_fps().component,
@@ -158,8 +158,8 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         self.save_blueprint_component(
             time_panel_blueprint_entity_path(),
             &TimePanelBlueprint::descriptor_time_selection(),
-            &re_types::blueprint::components::AbsoluteTimeRange(
-                re_types::datatypes::AbsoluteTimeRange {
+            &re_sdk_types::blueprint::components::AbsoluteTimeRange(
+                re_sdk_types::datatypes::AbsoluteTimeRange {
                     min: time_range.min.as_i64().into(),
                     max: time_range.max.as_i64().into(),
                 },
@@ -170,7 +170,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
     fn time_selection(&self) -> Option<AbsoluteTimeRange> {
         let (_, time_range) = self
             .current_blueprint()
-            .latest_at_component_quiet::<re_types::blueprint::components::AbsoluteTimeRange>(
+            .latest_at_component_quiet::<re_sdk_types::blueprint::components::AbsoluteTimeRange>(
             &time_panel_blueprint_entity_path(),
             self.blueprint_query(),
             TimePanelBlueprint::descriptor_time_selection().component,

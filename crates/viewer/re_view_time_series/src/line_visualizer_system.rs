@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_types::components::{AggregationPolicy, Color, StrokeWidth};
-use re_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_view::{
     RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,

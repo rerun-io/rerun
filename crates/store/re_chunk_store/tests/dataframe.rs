@@ -8,8 +8,8 @@ use re_chunk_store::{
 };
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{EntityPath, build_frame_nr};
+use re_sdk_types::{AnyValues, AsComponents as _};
 use re_sorbet::ChunkColumnDescriptors;
-use re_types::{AnyValues, AsComponents as _};
 
 #[test]
 /// Tests whether the store has the expected schema after populating it with a chunk.

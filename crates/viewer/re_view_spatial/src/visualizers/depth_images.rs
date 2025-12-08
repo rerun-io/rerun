@@ -2,12 +2,10 @@ use nohash_hasher::IntMap;
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
-use re_types::{
-    Archetype as _,
-    archetypes::DepthImage,
-    components::{Colormap, DepthMeter, FillRatio, ImageFormat},
-    image::ImageKind,
-};
+use re_sdk_types::archetypes::DepthImage;
+use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
+use re_sdk_types::image::ImageKind;
+use re_sdk_types::{Archetype as _, ArchetypeName, ComponentIdentifier};
 use re_view::HybridResults;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
@@ -56,9 +54,9 @@ pub(super) fn process_depth_image_data(
     ent_context: &SpatialSceneEntityContext<'_>,
     transforms: &TransformTreeContext,
     images: impl Iterator<Item = DepthImageComponentData>,
-    archetype_name: re_types::ArchetypeName,
-    depth_meter_identifier: re_types::ComponentIdentifier,
-    colormap_identifier: re_types::ComponentIdentifier,
+    archetype_name: ArchetypeName,
+    depth_meter_identifier: ComponentIdentifier,
+    colormap_identifier: ComponentIdentifier,
 ) {
     let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
 
@@ -337,7 +335,7 @@ pub(super) fn execute_depth_visualizer<V, A, F>(
 ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError>
 where
     V: VisualizerSystem + IdentifiedViewSystem,
-    A: re_types::Archetype,
+    A: re_sdk_types::Archetype,
     F: for<'a> FnMut(
         &mut SpatialViewVisualizerData,
         &mut DepthCloudEntities,

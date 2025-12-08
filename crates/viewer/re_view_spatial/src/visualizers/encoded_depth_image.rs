@@ -1,4 +1,4 @@
-use re_types::{
+use re_sdk_types::{
     Archetype as _,
     archetypes::EncodedDepthImage,
     components::{Colormap, ImageFormat, MediaType},

@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
-use re_types::archetypes::{Scalars, SeriesLines};
+use re_sdk_types::archetypes::{Scalars, SeriesLines};
 
 use crate::parsers::cdr;
 use crate::parsers::decode::{MessageParser, ParserContext};

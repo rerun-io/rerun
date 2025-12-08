@@ -8,8 +8,8 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathSubs, StoreId, TimePoint, Timeline};
-use re_types::archetypes::Points2D;
-use re_types::components::Position2D;
+use re_sdk_types::archetypes::Points2D;
+use re_sdk_types::components::Position2D;
 use re_types_core::ViewClassIdentifier;
 use re_viewer_context::{
     Caches, PerVisualizerInViewClass, StoreContext, ViewClassRegistry, VisualizableEntities,

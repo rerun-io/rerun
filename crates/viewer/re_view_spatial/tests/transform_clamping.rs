@@ -1,9 +1,9 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::blueprint::archetypes::EyeControls3D;
-use re_types::components::Position3D;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -23,8 +23,11 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::STATIC,
-                &re_types::archetypes::Boxes3D::from_half_sizes([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)])
-                    .with_colors([0xFF0000FF]),
+                &re_sdk_types::archetypes::Boxes3D::from_half_sizes([
+                    (1.0, 1.0, 1.0),
+                    (2.0, 2.0, 2.0),
+                ])
+                .with_colors([0xFF0000FF]),
             )
         });
 
@@ -32,7 +35,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::STATIC,
-                &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+                &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                     [(5.0, 0.0, 0.0)],
                     [(1.0, 1.0, 1.0)],
                 )
@@ -45,7 +48,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+                    &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                         [(0.0, 5.0, 0.0)], // translation <- `InstancePoses3D`-like Translation3D`
                         [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
                     )
@@ -58,7 +61,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                     // This means that the scales "scales the translation".
                     // Prior to 0.24, the translation and the scale were on "the same transform",
                     // therefore we'd apply scale first.
-                    &re_types::archetypes::InstancePoses3D::new()
+                    &re_sdk_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
@@ -68,14 +71,14 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::Boxes3D::update_fields()
+                    &re_sdk_types::archetypes::Boxes3D::update_fields()
                         .with_centers([(5.0, 0.0, 0.0)])
                         .with_colors([0xFF00FFFF]),
                 )
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::InstancePoses3D::new()
+                    &re_sdk_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
@@ -86,7 +89,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::STATIC,
-                &re_types::archetypes::Ellipsoids3D::from_half_sizes([
+                &re_sdk_types::archetypes::Ellipsoids3D::from_half_sizes([
                     (1.0, 1.0, 1.0),
                     (2.0, 2.0, 2.0),
                 ])
@@ -98,7 +101,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::STATIC,
-                &re_types::archetypes::Ellipsoids3D::from_centers_and_half_sizes(
+                &re_sdk_types::archetypes::Ellipsoids3D::from_centers_and_half_sizes(
                     [(5.0, 0.0, 0.0)],
                     [(1.0, 1.0, 1.0)],
                 )
@@ -111,7 +114,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::Ellipsoids3D::from_centers_and_half_sizes(
+                    &re_sdk_types::archetypes::Ellipsoids3D::from_centers_and_half_sizes(
                         [(0.0, 5.0, 0.0)],
                         [(1.0, 1.0, 1.0)],
                     )
@@ -120,7 +123,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::InstancePoses3D::new()
+                    &re_sdk_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
@@ -130,14 +133,14 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::Ellipsoids3D::update_fields()
+                    &re_sdk_types::archetypes::Ellipsoids3D::update_fields()
                         .with_centers([(5.0, 0.0, 0.0)])
                         .with_colors([0xFF00FFFF]),
                 )
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::InstancePoses3D::new()
+                    &re_sdk_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )
         });
@@ -147,14 +150,14 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::Points3D::new([(0.0, -2.0, 0.0), (0.0, 1.0, 0.0)])
+                    &re_sdk_types::archetypes::Points3D::new([(0.0, -2.0, 0.0), (0.0, 1.0, 0.0)])
                         .with_colors([0x0000FFFF, 0xFF0000FF])
                         .with_radii([-15.]),
                 )
                 .with_archetype(
                     RowId::new(),
                     TimePoint::STATIC,
-                    &re_types::archetypes::InstancePoses3D::new().with_translations([
+                    &re_sdk_types::archetypes::InstancePoses3D::new().with_translations([
                         (1.0, 1.0, 1.0),
                         (2.0, 2.0, 2.0),
                         (3.0, 3.0, 3.0),
@@ -169,12 +172,12 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                     .with_archetype(
                         RowId::new(),
                         TimePoint::STATIC,
-                        &re_types::archetypes::TransformAxes3D::new(1.0),
+                        &re_sdk_types::archetypes::TransformAxes3D::new(1.0),
                     )
                     .with_archetype(
                         RowId::new(),
                         TimePoint::STATIC,
-                        &re_types::archetypes::InstancePoses3D::new()
+                        &re_sdk_types::archetypes::InstancePoses3D::new()
                             .with_translations([
                                 (-1.0, -1.0, 0.0),
                                 (1.0, -1.0, 0.0),
@@ -196,8 +199,8 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             test_context.log_entity("base", |builder| {
                 builder.with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &re_types::archetypes::Transform3D::from_rotation(
-                        re_types::components::RotationAxisAngle::new(
+                    &re_sdk_types::archetypes::Transform3D::from_rotation(
+                        re_sdk_types::components::RotationAxisAngle::new(
                             glam::Vec3::Z,
                             0.5 * std::f32::consts::PI,
                         ),
@@ -223,7 +226,7 @@ fn test_transform_clamping(base_transform: BaseTransform) {
                 test_context.log_entity(path, |builder| {
                     builder.with_archetype_auto_row(
                         TimePoint::STATIC,
-                        &re_types::archetypes::CoordinateFrame::new("base"),
+                        &re_sdk_types::archetypes::CoordinateFrame::new("base"),
                     )
                 });
             }
@@ -232,8 +235,8 @@ fn test_transform_clamping(base_transform: BaseTransform) {
             test_context.log_entity("transforms", |builder| {
                 builder.with_archetype_auto_row(
                     TimePoint::STATIC,
-                    &re_types::archetypes::Transform3D::from_rotation(
-                        re_types::components::RotationAxisAngle::new(
+                    &re_sdk_types::archetypes::Transform3D::from_rotation(
+                        re_sdk_types::components::RotationAxisAngle::new(
                             glam::Vec3::Z,
                             0.5 * std::f32::consts::PI,
                         ),

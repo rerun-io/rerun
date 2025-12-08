@@ -1,8 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{Archetype as _, archetypes};
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
@@ -91,14 +91,16 @@ fn setup_blueprint(
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
             ctx.store_context.blueprint.tree(),
-            re_types::blueprint::archetypes::VisualBounds2D::name(),
+            re_sdk_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(
             property_path.clone(),
-            &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
-                x_range: [-4.0, 4.0].into(),
-                y_range: [-1.1, 2.6].into(),
-            }),
+            &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
+                re_sdk_types::datatypes::Range2D {
+                    x_range: [-4.0, 4.0].into(),
+                    y_range: [-1.1, 2.6].into(),
+                },
+            ),
         );
 
         if let Some(arrow_overrides) = arrow_overrides {

@@ -3,10 +3,10 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
-use re_types::ViewClassIdentifier;
-use re_types::blueprint::archetypes::{self as blueprint_archetypes};
-use re_types::blueprint::components::{self as blueprint_components, ViewOrigin};
-use re_types::components::{Name, Visible};
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrigin};
+use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
@@ -314,7 +314,7 @@ impl ViewBlueprint {
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
             self.entity_path(),
-            &re_types::archetypes::Clear::recursive(),
+            &re_sdk_types::archetypes::Clear::recursive(),
         );
     }
 
@@ -455,8 +455,8 @@ mod tests {
     use re_chunk::{ComponentIdentifier, RowId};
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
     use re_log_types::{StoreKind, TimePoint};
+    use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
-    use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{
         IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass,
         ViewClassPlaceholder, VisualizableEntities,
