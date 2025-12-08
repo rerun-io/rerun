@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
-use crate::{Channel, DataSourceMessage, LogSource, SendError, SmartMessage, SmartMessagePayload};
+use crate::{
+    Channel, DataSourceMessage, LoadCommand, LogSource, SendError, SmartMessage,
+    SmartMessagePayload,
+};
 
 #[derive(Clone)]
 pub struct LogSender {
     tx: crossbeam::channel::Sender<SmartMessage>,
+    rx: crossbeam::channel::Receiver<LoadCommand>,
     source: Arc<LogSource>,
     channel: Arc<Channel>,
 }
@@ -12,11 +16,13 @@ pub struct LogSender {
 impl LogSender {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage>,
+        rx: crossbeam::channel::Receiver<LoadCommand>,
         source: Arc<LogSource>,
         channel: Arc<Channel>,
     ) -> Self {
         Self {
             tx,
+            rx,
             source,
             channel,
         }
