@@ -44,8 +44,6 @@ pub struct VisualizerEntitySubscriber {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AllComponentsRequirement {
     /// Assigns each required component an index.
-    ///
-    /// The components stored in here, and how the are handled depends on [`Self::requirement_mode`].
     required_components_indices: IntMap<ComponentIdentifier, usize>,
 }
 
