@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
-use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{self, AggregationPolicy, Color, StrokeWidth};
+use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
 use re_view::{
     RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,
@@ -33,14 +33,17 @@ impl IdentifiedViewSystem for SeriesLinesSystem {
 
 impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info
-            .queried
-            .extend(archetypes::SeriesLines::all_components().iter().cloned());
-
-        query_info.relevant_archetype = archetypes::SeriesLines::name().into();
-
-        query_info
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesLines::name().into(),
+            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+                std::iter::once(components::Scalar::arrow_datatype()).collect(),
+            ),
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesLines::all_components().iter())
+                .cloned()
+                .collect(),
+        }
     }
 
     fn execute(
