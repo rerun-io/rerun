@@ -7,10 +7,17 @@ chunk_byte_size: u64
 chunk_entity_path: Utf8
 chunk_id: FixedSizeBinary[16]
 chunk_is_static: bool
+chunk_num_rows: u64
 elapsed_time:end: Duration(ns) [
     rerun:index: "elapsed time"
 ]
 elapsed_time:example_MyPoints:colors:end: Duration(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "elapsed time"
+]
+elapsed_time:example_MyPoints:colors:num_rows: u64 [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:colors"
     rerun:component_type: "example.MyColor"
@@ -28,10 +35,19 @@ elapsed_time:example_MyPoints:points:end: Duration(ns) [
     rerun:component_type: "example.MyPoint"
     rerun:index: "elapsed time"
 ]
+elapsed_time:example_MyPoints:points:num_rows: u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
+]
 elapsed_time:example_MyPoints:points:start: Duration(ns) [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:points"
     rerun:component_type: "example.MyPoint"
+    rerun:index: "elapsed time"
+]
+elapsed_time:num_rows: u64 [
     rerun:index: "elapsed time"
 ]
 elapsed_time:start: Duration(ns) [
@@ -64,6 +80,12 @@ frame_nr:example_MyPoints:colors:end: i64 [
     rerun:component_type: "example.MyColor"
     rerun:index: "frame_nr"
 ]
+frame_nr:example_MyPoints:colors:num_rows: u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "frame_nr"
+]
 frame_nr:example_MyPoints:colors:start: i64 [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:colors"
@@ -76,10 +98,19 @@ frame_nr:example_MyPoints:points:end: i64 [
     rerun:component_type: "example.MyPoint"
     rerun:index: "frame_nr"
 ]
+frame_nr:example_MyPoints:points:num_rows: u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
+]
 frame_nr:example_MyPoints:points:start: i64 [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:points"
     rerun:component_type: "example.MyPoint"
+    rerun:index: "frame_nr"
+]
+frame_nr:num_rows: u64 [
     rerun:index: "frame_nr"
 ]
 frame_nr:start: i64 [
@@ -89,6 +120,12 @@ log_time:end: Timestamp(ns) [
     rerun:index: "log_time"
 ]
 log_time:example_MyPoints:colors:end: Timestamp(ns) [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:colors"
+    rerun:component_type: "example.MyColor"
+    rerun:index: "log_time"
+]
+log_time:example_MyPoints:colors:num_rows: u64 [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:colors"
     rerun:component_type: "example.MyColor"
@@ -106,10 +143,19 @@ log_time:example_MyPoints:points:end: Timestamp(ns) [
     rerun:component_type: "example.MyPoint"
     rerun:index: "log_time"
 ]
+log_time:example_MyPoints:points:num_rows: u64 [
+    rerun:archetype: "example.MyPoints"
+    rerun:component: "example.MyPoints:points"
+    rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
+]
 log_time:example_MyPoints:points:start: Timestamp(ns) [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:points"
     rerun:component_type: "example.MyPoint"
+    rerun:index: "log_time"
+]
+log_time:num_rows: u64 [
     rerun:index: "log_time"
 ]
 log_time:start: Timestamp(ns) [

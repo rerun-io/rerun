@@ -5,14 +5,14 @@ use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::{
-    ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline, TimelineName,
-};
+use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, StoreKind};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId};
 use re_types_core::ComponentDescriptor;
 
 use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
+
+// TODO: probably should have more drastic checks for chunk_num_rows
 
 // ---
 
@@ -40,6 +40,8 @@ pub struct RrdFooter {
     pub manifests: HashMap<StoreId, RrdManifest>,
 }
 
+// TODO: update the snippet
+//
 /// The payload found in [`RrdFooter`]s.
 ///
 /// Each `RrdManifest` corresponds to one, and exactly one, RRD stream (i.e. recording).
@@ -554,6 +556,7 @@ impl RrdManifest {
     fn check_global_columns_are_correct(&self) -> CodecResult<()> {
         _ = self.col_chunk_id()?;
         _ = self.col_chunk_is_static()?;
+        _ = self.col_chunk_num_rows()?;
         _ = self.col_chunk_entity_path()?;
         _ = self.col_chunk_byte_offset()?;
         _ = self.col_chunk_byte_size()?;
@@ -584,6 +587,19 @@ impl RrdManifest {
                             }
                         }
 
+                        "num_rows" => {
+                            if field.data_type() != Self::field_chunk_num_rows().data_type() {
+                                return Err(crate::CodecError::from(ChunkError::Malformed {
+                                    reason: format!(
+                                        "field '{}' should be {} but is actually {}",
+                                        field.name(),
+                                        Self::field_chunk_num_rows().data_type(),
+                                        field.data_type(),
+                                    ),
+                                }));
+                            }
+                        }
+
                         suffix => {
                             return Err(crate::CodecError::from(ChunkError::Malformed {
                                 reason: format!(
@@ -598,6 +614,7 @@ impl RrdManifest {
                     match field.name().as_str() {
                         Self::FIELD_CHUNK_ID
                         | Self::FIELD_CHUNK_IS_STATIC
+                        | Self::FIELD_CHUNK_NUM_ROWS
                         | Self::FIELD_CHUNK_BYTE_SIZE
                         | Self::FIELD_CHUNK_BYTE_OFFSET
                         | Self::FIELD_CHUNK_ENTITY_PATH => {}
@@ -871,6 +888,7 @@ impl RrdManifest {
 impl RrdManifest {
     pub const FIELD_CHUNK_ID: &str = "chunk_id";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const FIELD_CHUNK_NUM_ROWS: &str = "chunk_num_rows";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
@@ -886,6 +904,15 @@ impl RrdManifest {
         Field::new(
             Self::FIELD_CHUNK_IS_STATIC,
             arrow::datatypes::DataType::Boolean,
+            nullable,
+        )
+    }
+
+    pub fn field_chunk_num_rows() -> Field {
+        let nullable = false; // every chunk has a number of rows
+        Field::new(
+            Self::FIELD_CHUNK_NUM_ROWS,
+            arrow::datatypes::DataType::UInt64,
             nullable,
         )
     }
@@ -913,6 +940,15 @@ impl RrdManifest {
 
     pub fn field_index_end(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
         Self::any_index_field(timeline, timeline.datatype(), desc, "end")
+    }
+
+    pub fn field_index_num_rows(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
+        Self::any_index_field(
+            timeline,
+            arrow::datatypes::DataType::UInt64,
+            desc,
+            "num_rows",
+        )
     }
 
     pub fn field_index_has_data(timeline: &Timeline, desc: &ComponentDescriptor) -> Field {
@@ -1092,6 +1128,32 @@ impl RrdManifest {
     /// This is free.
     pub fn col_chunk_is_static(&self) -> CodecResult<impl Iterator<Item = bool>> {
         Ok(self.col_chunk_is_static_raw()?.iter().flatten())
+    }
+
+    /// Returns the raw Arrow data for the num-rows column.
+    pub fn col_chunk_num_rows_raw(&self) -> CodecResult<&UInt64Array> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::FIELD_CHUNK_NUM_ROWS;
+        self.data
+            .column_by_name(name)
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
+            })?
+            .downcast_array_ref::<UInt64Array>()
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
+                ))
+            })
+    }
+
+    /// Returns an iterator over the decoded Arrow data for the num-rows column.
+    ///
+    /// This is free.
+    pub fn col_chunk_num_rows(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_num_rows_raw()?.iter().flatten())
     }
 
     /// Returns the raw Arrow data for the byte-offset column.
