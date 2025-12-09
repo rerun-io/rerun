@@ -2,7 +2,8 @@
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
 use re_log_encoding::RrdManifest;
-use re_log_types::{AbsoluteTimeRange, LogMsg, StoreId, TableMsg, TimelineName, impl_into_enum};
+
+use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
 
 /// Message from a data source.
 ///
@@ -58,20 +59,6 @@ impl DataSourceMessage {
 /// If you're not in a ui context you can safely ignore these.
 #[derive(Clone, Debug)]
 pub enum DataSourceUiCommand {
-    /// Mark a time range as valid.
-    ///
-    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
-    /// Visually, it is outside of the normal time range and shown greyed out.
-    ///
-    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
-    AddValidTimeRange {
-        store_id: StoreId,
-
-        /// If `None`, signals that all timelines are entirely valid.
-        timeline: Option<TimelineName>,
-        time_range: AbsoluteTimeRange,
-    },
-
     /// Navigate to time/entities/anchors/etc. that are set in a `re_uri::Fragment`.
     SetUrlFragment {
         store_id: StoreId,

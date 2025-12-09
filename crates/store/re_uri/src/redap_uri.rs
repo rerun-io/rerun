@@ -133,7 +133,7 @@ mod tests {
     use re_log_types::DataPath;
 
     use super::*;
-    use crate::{DatasetSegmentUri, Fragment, Scheme, TimeSelection};
+    use crate::{DatasetSegmentUri, Fragment, Scheme};
 
     #[test]
     fn scheme_conversion() {
@@ -194,7 +194,6 @@ mod tests {
             origin,
             dataset_id,
             segment_id,
-            time_range,
             fragment,
         }) = address
         else {
@@ -209,7 +208,6 @@ mod tests {
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
         assert_eq!(segment_id, "sid");
-        assert_eq!(time_range, None);
         assert_eq!(fragment, Default::default());
     }
 
@@ -246,7 +244,6 @@ mod tests {
             origin,
             dataset_id,
             segment_id,
-            time_range,
             fragment,
         }) = address
         else {
@@ -261,7 +258,6 @@ mod tests {
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
         assert_eq!(segment_id, "sid");
-        assert_eq!(time_range, None);
         assert_eq!(
             fragment,
             Fragment {
@@ -284,7 +280,6 @@ mod tests {
             origin,
             dataset_id,
             segment_id,
-            time_range,
             fragment,
         }) = address
         else {
@@ -299,120 +294,7 @@ mod tests {
             "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
         assert_eq!(segment_id, "sid");
-        assert_eq!(time_range, None);
         assert_eq!(fragment, Fragment::default());
-    }
-
-    #[test]
-    fn test_dataset_data_url_time_range_sequence_to_address() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@100..200";
-        let address: RedapUri = url.parse().unwrap();
-
-        let RedapUri::DatasetData(DatasetSegmentUri {
-            origin,
-            dataset_id,
-            segment_id,
-            time_range,
-            fragment,
-        }) = address
-        else {
-            panic!("Expected recording");
-        };
-
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(
-            dataset_id,
-            "1830B33B45B963E7774455beb91701ae".parse().unwrap()
-        );
-        assert_eq!(segment_id, "sid");
-        assert_eq!(
-            time_range,
-            Some(TimeSelection {
-                timeline: re_log_types::Timeline::new_sequence("timeline"),
-                range: re_log_types::AbsoluteTimeRange::new(100, 200),
-            })
-        );
-        assert_eq!(fragment, Default::default());
-    }
-
-    #[test]
-    fn test_dataset_data_url_time_range_timepoint_to_address() {
-        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
-        let address: RedapUri = url.parse().unwrap();
-
-        let RedapUri::DatasetData(DatasetSegmentUri {
-            origin,
-            dataset_id,
-            segment_id,
-            time_range,
-            fragment,
-        }) = address
-        else {
-            panic!("Expected recording");
-        };
-
-        assert_eq!(origin.scheme, Scheme::Rerun);
-        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-        assert_eq!(origin.port, 1234);
-        assert_eq!(
-            dataset_id,
-            "1830B33B45B963E7774455beb91701ae".parse().unwrap()
-        );
-        assert_eq!(segment_id, "sid");
-        assert_eq!(
-            time_range,
-            Some(TimeSelection {
-                timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                range: re_log_types::AbsoluteTimeRange::new(
-                    1_640_995_203_123_456_789,
-                    1_640_995_213_123_456_789,
-                ),
-            })
-        );
-        assert_eq!(fragment, Default::default());
-    }
-
-    #[test]
-    fn test_dataset_data_url_time_range_temporal() {
-        for url in [
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1.23s..72s",
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?segment_id=sid&time_range=timeline@1230ms..1m12s",
-        ] {
-            let address: RedapUri = url.parse().unwrap();
-
-            let RedapUri::DatasetData(DatasetSegmentUri {
-                origin,
-                dataset_id,
-                segment_id,
-                time_range,
-                fragment,
-            }) = address
-            else {
-                panic!("Expected recording");
-            };
-
-            assert_eq!(origin.scheme, Scheme::Rerun);
-            assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
-            assert_eq!(origin.port, 1234);
-            assert_eq!(
-                dataset_id,
-                "1830B33B45B963E7774455beb91701ae".parse().unwrap()
-            );
-            assert_eq!(segment_id, "sid");
-            assert_eq!(
-                time_range,
-                Some(TimeSelection {
-                    timeline: re_log_types::Timeline::new_duration("timeline"),
-                    range: re_log_types::AbsoluteTimeRange::new(
-                        re_log_types::TimeInt::from_secs(1.23),
-                        re_log_types::TimeInt::from_secs(72.0),
-                    ),
-                })
-            );
-            assert_eq!(fragment, Default::default());
-        }
     }
 
     #[test]
