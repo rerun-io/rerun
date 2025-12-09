@@ -732,12 +732,6 @@ impl App {
 
         let Ok(url) =
             ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
-                .map(|mut url| {
-                    // We don't want the time range in the history url, as that actually leads
-                    // to a subset of the current data!
-                    url.clear_time_range();
-                    url
-                })
         else {
             return;
         };
@@ -1392,7 +1386,11 @@ impl App {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { selection, when } = fragment;
+        let re_uri::Fragment {
+            selection,
+            when,
+            time_selection,
+        } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -1413,14 +1411,24 @@ impl App {
                 .send_system(SystemCommand::set_selection(item.clone()));
         }
 
+        let mut time_commands = Vec::new();
+        if let Some(time_selection) = time_selection {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(
+                *time_selection.timeline.name(),
+            ));
+            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+        }
+
         if let Some((timeline, timecell)) = when {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+        }
+
+        if !time_commands.is_empty() {
             self.command_sender
                 .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    time_commands: vec![
-                        TimeControlCommand::SetActiveTimeline(timeline),
-                        TimeControlCommand::SetTime(timecell.value.into()),
-                    ],
+                    time_commands,
                 });
         }
     }
@@ -1955,21 +1963,21 @@ impl App {
                 }
             }
 
-            UICommand::CopyTimeRangeLink => {
+            UICommand::CopyTimeSelectionLink => {
                 match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
                     Ok(mut url) => {
-                        if let Some(time_range) = url.time_range_mut() {
+                        if let Some(fragment) = url.fragment_mut() {
                             let time_ctrl = storage_context
                                 .hub
                                 .active_store_id()
                                 .and_then(|id| self.state.time_control(id));
 
                             if let Some(time_ctrl) = &time_ctrl
-                                && let Some(loop_selection) = time_ctrl.loop_selection()
+                                && let Some(time_selection) = time_ctrl.time_selection()
                             {
-                                *time_range = Some(re_uri::TimeSelection {
+                                fragment.time_selection = Some(re_uri::TimeSelection {
                                     timeline: *time_ctrl.timeline(),
-                                    range: loop_selection.to_int(),
+                                    range: time_selection.to_int(),
                                 });
                             } else {
                                 re_log::warn!("No timeline selection to copy");
@@ -2557,21 +2565,6 @@ impl App {
         channel_source: &LogSource,
     ) {
         match ui_command {
-            DataSourceUiCommand::AddValidTimeRange {
-                store_id,
-                timeline,
-                time_range,
-            } => {
-                self.command_sender
-                    .send_system(SystemCommand::TimeControlCommands {
-                        store_id,
-                        time_commands: vec![TimeControlCommand::AddValidTimeRange {
-                            timeline,
-                            time_range,
-                        }],
-                    });
-            }
-
             DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
                     Ok(fragment) => {

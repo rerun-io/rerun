@@ -28,11 +28,8 @@ impl TimelineAxis {
 
     /// Total uncollapsed time within a certain bound.
     #[inline]
-    pub fn sum_time_lengths_within(&self, bound: AbsoluteTimeRange) -> u64 {
-        self.ranges
-            .iter()
-            .map(|t| t.intersection(bound).map_or(0, |t| t.abs_length()))
-            .sum()
+    pub fn sum_time_lengths(&self) -> u64 {
+        self.ranges.iter().map(|t| t.abs_length()).sum()
     }
 }
 
