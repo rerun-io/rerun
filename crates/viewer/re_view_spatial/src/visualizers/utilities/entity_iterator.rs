@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_log_types::{TimeInt, TimelineName};
 use re_types::Archetype;
 use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
@@ -23,14 +25,14 @@ pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item
 ///
 /// Returns an empty vector if values is empty.
 #[inline]
-pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T> {
+pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Cow<'_, [T]> {
     if values.len() == clamped_len {
         // Happy path
-        values.to_vec() // TODO(emilk): return a slice reference instead, in a `Cow` or similar
+        values.into()
     } else if let Some(last) = values.last() {
         if values.len() == 1 {
             // Commo happy path
-            vec![last.clone(); clamped_len]
+            vec![last.clone(); clamped_len].into()
         } else if values.len() < clamped_len {
             // Clamp
             let mut vec = Vec::with_capacity(clamped_len);
@@ -39,14 +41,14 @@ pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T
                 last.clone(),
                 clamped_len - values.len(),
             ));
-            vec
+            vec.into()
         } else {
             // Trim
             values.iter().take(clamped_len).cloned().collect()
         }
     } else {
         // Empty input
-        Vec::new()
+        Vec::new().into()
     }
 }
 
@@ -54,10 +56,14 @@ pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Vec<T
 ///
 /// If the input slice is empty, the second argument is repeated `clamped_len` times.
 #[inline]
-pub fn clamped_vec_or<T: Clone>(values: &[T], clamped_len: usize, if_empty: &T) -> Vec<T> {
+pub fn clamped_vec_or<'a, T: Clone>(
+    values: &'a [T],
+    clamped_len: usize,
+    if_empty: &T,
+) -> Cow<'a, [T]> {
     let clamped = clamped_vec_or_empty(values, clamped_len);
     if clamped.is_empty() {
-        vec![if_empty.clone(); clamped_len]
+        vec![if_empty.clone(); clamped_len].into()
     } else {
         clamped
     }
