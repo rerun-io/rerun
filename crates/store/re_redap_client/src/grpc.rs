@@ -445,9 +445,8 @@ async fn stream_segment_from_server(
                 return Ok(()); // cancelled
             }
 
-            // TODO: emilk: fix viewer
-            if false {
-                // if store_id.is_recording() {
+            const DOWNLOAD_CHUNKS_ON_DEMAND: bool = false;
+            if store_id.is_recording() && DOWNLOAD_CHUNKS_ON_DEMAND {
                 // TODO Always load _some_ chunks (all the static ones, for instance):
                 if false {
                     // Prioritize the chunks:
