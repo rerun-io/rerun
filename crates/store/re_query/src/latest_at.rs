@@ -5,7 +5,7 @@ use arrow::array::ArrayRef as ArrowArrayRef;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
-use re_chunk::{Chunk, ComponentIdentifier, RowId, UnitChunkShared};
+use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::components::ClearIsRecursive;
@@ -61,6 +61,10 @@ impl QueryCache {
             store.entity_has_component_on_timeline(&query.timeline(), entity_path, *component)
         });
 
+        // TODO: jesus christ what do we do with this
+        // TODO: maybe we just always keep clears or something? doesnt really matter for this
+        // week's PoC anyhow
+
         // Query-time clears
         // -----------------
         //
@@ -109,8 +113,12 @@ impl QueryCache {
 
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
-                if let Some(cached) = cache.latest_at(&store, query, &clear_entity_path, component)
-                {
+
+                let (chunks, chunk_ids_missing) =
+                    cache.latest_at(&store, query, &clear_entity_path, component);
+                results.missing_chunk_ids.extend(chunk_ids_missing);
+
+                if let Some(cached) = chunks {
                     // TODO(andreas): Should clear also work if the component is not fully tagged?
                     let found_recursive_clear = cached
                         .component_mono::<ClearIsRecursive>(component)
@@ -140,6 +148,7 @@ impl QueryCache {
         for component in components {
             let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component);
 
+            // TODO: this is why we still get chunks, but im not quite sure why
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
                     .write()
@@ -149,7 +158,12 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, component) {
+
+            let (chunks, chunk_ids_missing) =
+                cache.latest_at(&store, query, entity_path, component);
+            results.missing_chunk_ids.extend(chunk_ids_missing);
+
+            if let Some(cached) = chunks {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
@@ -213,6 +227,8 @@ pub struct LatestAtResults {
     ///
     /// Each [`UnitChunkShared`] MUST always contain the corresponding component.
     pub components: IntMap<ComponentIdentifier, UnitChunkShared>,
+
+    pub missing_chunk_ids: Vec<ChunkId>,
 }
 
 impl LatestAtResults {
@@ -223,6 +239,7 @@ impl LatestAtResults {
             query,
             compound_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
+            missing_chunk_ids: Default::default(),
         }
     }
 }
@@ -621,7 +638,7 @@ impl LatestAtCache {
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
-    ) -> Option<UnitChunkShared> {
+    ) -> (Option<UnitChunkShared>, Vec<ChunkId>) {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_type} @ {query:?}"));
 
@@ -633,18 +650,27 @@ impl LatestAtCache {
             pending_invalidations: _,
         } = self;
 
+        per_query_time.clear(); // TODO: why is everything broken 🫠
+
         if let Some(cached) = per_query_time.get(&query.at()) {
-            return Some(cached.unit.clone());
+            return (Some(cached.unit.clone()), vec![]);
         }
 
-        let ((data_time, _row_id), unit) = store
-            .latest_at_relevant_chunks(query, entity_path, component)
+        // TODO: interestingly, if the chunk IDs missing are clear chunks, maybe none of the
+        // results below make any sense then
+        let (chunks, chunk_ids_missing) =
+            store.latest_at_relevant_chunks_larger_than_ram(query, entity_path, component);
+
+        let Some(((data_time, _row_id), unit)) = chunks
             .into_iter()
             .filter_map(|chunk| {
                 let chunk = chunk.latest_at(query, component).into_unit()?;
                 chunk.index(&query.timeline()).map(|index| (index, chunk))
             })
-            .max_by_key(|(index, _chunk)| *index)?;
+            .max_by_key(|(index, _chunk)| *index)
+        else {
+            return (None, chunk_ids_missing);
+        };
 
         let cached = per_query_time
             .entry(data_time)
@@ -665,9 +691,10 @@ impl LatestAtCache {
                 });
         }
 
-        Some(cached.unit)
+        (Some(cached.unit), chunk_ids_missing)
     }
 
+    // TODO: this seems broken? which is not exactly good news
     pub fn handle_pending_invalidation(&mut self) {
         let Self {
             cache_key: _,

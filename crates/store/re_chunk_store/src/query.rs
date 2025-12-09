@@ -593,6 +593,63 @@ impl ChunkStore {
         chunks
     }
 
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`] and [`ComponentIdentifier`].
+    ///
+    /// The returned vector is guaranteed free of duplicates, by definition.
+    ///
+    /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
+    /// oblivious to the data therein.
+    /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
+    /// that a query has more than one relevant chunk.
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
+    /// determine what exact row contains the final result.
+    ///
+    /// If the entity has static component data associated with it, it will unconditionally
+    /// override any temporal component data.
+    pub fn latest_at_relevant_chunks_larger_than_ram(
+        &self,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!(format!("{query:?}"));
+
+        // Reminder: if a chunk has been indexed for a given component, then it must contain at
+        // least one non-null value for that column.
+
+        if let Some(static_chunk) = self
+            .static_chunk_ids_per_entity
+            .get(entity_path)
+            .and_then(|static_chunks_per_component| static_chunks_per_component.get(&component))
+            .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+        {
+            return (vec![Arc::clone(static_chunk)], vec![]);
+        }
+
+        let (chunks, chunk_ids_missing) = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .and_then(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline.get(&query.timeline())
+            })
+            .and_then(|temporal_chunk_ids_per_component| {
+                temporal_chunk_ids_per_component.get(&component)
+            })
+            .map(|temporal_chunk_ids_per_time| {
+                self.latest_at_larger_than_ram(query, temporal_chunk_ids_per_time)
+            })
+            .unwrap_or_else(|| (vec![], vec![]));
+
+        debug_assert!(
+            chunks.iter().map(|chunk| chunk.id()).all_unique(),
+            "{entity_path}:{component} @ {query:?}",
+        );
+
+        (chunks, chunk_ids_missing)
+    }
+
     /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
     ///
     /// Optionally include static data.
@@ -675,6 +732,96 @@ impl ChunkStore {
         chunks
     }
 
+    /// Returns the most-relevant chunk(s) for the given [`LatestAtQuery`].
+    ///
+    /// Optionally include static data.
+    ///
+    /// The [`ChunkStore`] always work at the [`Chunk`] level (as opposed to the row level): it is
+    /// oblivious to the data therein.
+    /// For that reason, and because [`Chunk`]s are allowed to temporally overlap, it is possible
+    /// that a query has more than one relevant chunk.
+    ///
+    /// The returned vector is free of duplicates.
+    ///
+    /// The caller should filter the returned chunks further (see [`Chunk::latest_at`]) in order to
+    /// determine what exact row contains the final result.
+    pub fn latest_at_relevant_chunks_for_all_components_larger_than_ram(
+        &self,
+        query: &LatestAtQuery,
+        entity_path: &EntityPath,
+        include_static: bool,
+    ) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+        re_tracing::profile_function!(format!("{query:?}"));
+
+        let (chunks, chunk_ids_missing) = if include_static {
+            let empty = Default::default();
+            let static_chunks_per_component = self
+                .static_chunk_ids_per_entity
+                .get(entity_path)
+                .unwrap_or(&empty);
+
+            // All static chunks for the given entity
+            let static_chunks = static_chunks_per_component
+                .values()
+                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
+                .cloned();
+
+            // All temporal chunks for the given entity, filtered by components
+            // for which we already have static chunks.
+            let (temporal_chunks, temporal_chunk_ids_missing): (Vec<_>, Vec<_>) = self
+                .temporal_chunk_ids_per_entity_per_component
+                .get(entity_path)
+                .and_then(|temporal_chunk_ids_per_timeline_per_component| {
+                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
+                })
+                .map(|temporal_chunk_ids_per_component| {
+                    temporal_chunk_ids_per_component
+                        .iter()
+                        .filter(|(component_type, _)| {
+                            !static_chunks_per_component.contains_key(component_type)
+                        })
+                        .map(|(_, chunk_id_set)| chunk_id_set)
+                })
+                .into_iter()
+                .flatten()
+                .map(|temporal_chunk_ids_per_time| {
+                    self.latest_at_larger_than_ram(query, temporal_chunk_ids_per_time)
+                })
+                .unzip();
+
+            let chunks = static_chunks
+                .chain(temporal_chunks.into_iter().flatten())
+                // Deduplicate before passing it along.
+                // Both temporal and static chunk "sets" here may have duplicates in them,
+                // so we de-duplicate them together to reduce the number of allocations.
+                .unique_by(|chunk| chunk.id())
+                .collect_vec();
+
+            (
+                chunks,
+                temporal_chunk_ids_missing
+                    .into_iter()
+                    .flatten()
+                    .collect_vec(),
+            )
+        } else {
+            // This cannot yield duplicates by definition.
+            self.temporal_chunk_ids_per_entity
+                .get(entity_path)
+                .and_then(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.get(&query.timeline())
+                })
+                .map(|temporal_chunk_ids_per_time| {
+                    self.latest_at_larger_than_ram(query, temporal_chunk_ids_per_time)
+                })
+                .unwrap_or_else(|| (vec![], vec![]))
+        };
+
+        debug_assert!(chunks.iter().map(|chunk| chunk.id()).all_unique());
+
+        (chunks, chunk_ids_missing)
+    }
+
     fn latest_at(
         &self,
         query: &LatestAtQuery,
@@ -725,6 +872,67 @@ impl ChunkStore {
                 .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
                 .collect(),
         )
+    }
+
+    // TODO: im not entirely sure why this returns an Option actually?
+    fn latest_at_larger_than_ram(
+        &self,
+        query: &LatestAtQuery,
+        temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
+    ) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!();
+
+        let Some(upper_bound) = temporal_chunk_ids_per_time
+            .per_start_time
+            .range(..=query.at())
+            .next_back()
+            .map(|(time, _)| *time)
+        else {
+            return (vec![], vec![]);
+        };
+
+        // Overlapped chunks
+        // =================
+        //
+        // To deal with potentially overlapping chunks, we keep track of the longest
+        // interval in the entire map, which gives us an upper bound on how much we
+        // would need to walk backwards in order to find all potential overlaps.
+        //
+        // This is a fairly simple solution that scales much better than interval-tree
+        // based alternatives, both in terms of complexity and performance, in the normal
+        // case where most chunks in a collection have similar lengths.
+        //
+        // The most degenerate case -- a single chunk overlaps everything else -- results
+        // in `O(n)` performance, which gets amortized by the query cache.
+        // If that turns out to be a problem in practice, we can experiment with more
+        // complex solutions then.
+        let lower_bound = upper_bound.as_i64().saturating_sub(
+            temporal_chunk_ids_per_time
+                .max_interval_length
+                .saturating_cast(),
+        );
+
+        let temporal_chunk_ids = temporal_chunk_ids_per_time
+            .per_start_time
+            .range(..=query.at())
+            .rev()
+            .take_while(|(time, _)| time.as_i64() >= lower_bound)
+            .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
+            .copied()
+            .collect_vec();
+
+        let chunks = temporal_chunk_ids
+            .iter()
+            .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned())
+            .collect();
+
+        let chunk_ids_missing = temporal_chunk_ids
+            .into_iter()
+            .filter(|chunk_id| !self.chunks_per_chunk_id.contains_key(chunk_id))
+            .collect();
+
+        (chunks, chunk_ids_missing)
     }
 }
 

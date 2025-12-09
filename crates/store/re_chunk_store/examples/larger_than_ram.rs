@@ -1,8 +1,9 @@
 use itertools::Itertools as _;
-use re_chunk::{RangeQuery, Timeline};
+
+use re_chunk::{LatestAtQuery, RangeQuery, TimeInt, Timeline};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
-use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
-use re_query::RangeResults;
+use re_log_types::{AbsoluteTimeRange, StoreKind};
+use re_query::{LatestAtResults, QueryCache, RangeResults};
 use re_sdk_types::{Archetype, archetypes::Boxes3D};
 
 fn main() {
@@ -17,8 +18,7 @@ fn main() {
         .collect_vec();
     assert!(recordings.len() == 1);
 
-    let mut store = recordings.into_iter().next().unwrap();
-    dbg!(store.num_chunks());
+    let store = recordings.into_iter().next().unwrap();
 
     let static_chunk_ids = store
         .iter_chunks()
@@ -44,39 +44,22 @@ fn main() {
     let store_handle = ChunkStoreHandle::new(store);
     let caches = re_query::QueryCache::new(store_handle.clone());
 
-    let entity_path = "/world/anns";
-    // let entity_path = "/world/ego_vehicle/trajectory";
-    // let timeline = Timeline::log_time();
-    let timeline = Timeline::new_timestamp("timestamp");
-    let query = RangeQuery::new(*timeline.name(), AbsoluteTimeRange::EVERYTHING);
-    eprintln!("query:{query:?}");
-
-    {
-        let results: RangeResults = caches.range(
-            &query,
-            &entity_path.into(),
-            Boxes3D::all_component_identifiers(),
-        );
-        eprintln!(
-            "query found {} actual chunks and {} chunks that need to be downloaded",
-            results
-                .components
-                .values()
-                .map(|chunks| chunks.len())
-                .sum::<usize>(),
-            results.missing.len(),
-        );
-    }
+    do_latestat_query(&caches);
+    do_range_query(&caches);
 
     if true {
         let mut store = store_handle.write();
         // TODO: what about STATIC
-        store.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
-        store.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
-        store.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
-        store.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
-        store.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
-        dbg!(store.num_chunks());
+
+        let num_chunks_before_gc = store.num_chunks();
+        for _ in 0..5 {
+            store.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
+        }
+        let num_chunks_after_gc = store.num_chunks();
+
+        eprintln!(
+            "\n⚠️ Running garbage collection:\n* {num_chunks_before_gc} chunks before\n* {num_chunks_after_gc} chunks after\n"
+        );
 
         {
             for id in &static_chunk_ids {
@@ -86,27 +69,69 @@ fn main() {
                 assert!(store.chunk(id).is_none()); // ⚠️is_none()
             }
         }
+
+        for chunk in store.iter_chunks() {
+            assert!(chunk.is_static());
+        }
     }
 
-    // First, get the (potentially cached) results for this query.
+    do_latestat_query(&caches);
+    do_range_query(&caches);
+}
+
+fn do_latestat_query(caches: &QueryCache) {
+    let entity_path = "/world/anns";
+    // let entity_path = "/world/ego_vehicle/trajectory";
+    // let timeline = Timeline::log_time();
+    let timeline = Timeline::new_timestamp("timestamp");
+    let query = LatestAtQuery::new(*timeline.name(), TimeInt::MAX);
+    // eprintln!("query:{query:?}");
+
+    {
+        let results: LatestAtResults = caches.latest_at(
+            &query,
+            &entity_path.into(),
+            Boxes3D::all_component_identifiers(),
+        );
+        // dbg!(results.components.values().map(|c| c.id()).collect_vec());
+        assert!(results.components.values().all(|chunk| !chunk.is_static()));
+        eprintln!(
+            "LatesAt query found {} actual chunks and {} chunks that need to be downloaded",
+            results.components.len(),
+            results.missing_chunk_ids.len(),
+        );
+    }
+}
+
+fn do_range_query(caches: &QueryCache) {
+    let entity_path = "/world/anns";
+    // let entity_path = "/world/ego_vehicle/trajectory";
+    // let timeline = Timeline::log_time();
+    let timeline = Timeline::new_timestamp("timestamp");
+    let query = RangeQuery::new(*timeline.name(), AbsoluteTimeRange::EVERYTHING);
+    // eprintln!("query:{query:?}");
+
     {
         let results: RangeResults = caches.range(
             &query,
             &entity_path.into(),
             Boxes3D::all_component_identifiers(),
         );
+        assert!(
+            results
+                .components
+                .values()
+                .flatten()
+                .all(|chunk| !chunk.is_static())
+        );
         eprintln!(
-            "query found {} actual chunks and {} chunks that need to be downloaded",
+            "Range query found {} actual chunks and {} chunks that need to be downloaded",
             results
                 .components
                 .values()
                 .map(|chunks| chunks.len())
                 .sum::<usize>(),
-            results.missing.len(),
+            results.missing_chunk_ids.len(),
         );
-    }
-
-    for chunk in store_handle.read().iter_chunks() {
-        assert!(chunk.is_static());
     }
 }

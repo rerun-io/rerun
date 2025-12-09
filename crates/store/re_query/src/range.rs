@@ -2,9 +2,10 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use ahash::HashMap;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
+
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
@@ -59,7 +60,7 @@ impl QueryCache {
 
             let (cached, missing) =
                 cache.range_larger_than_ram(&store, query, entity_path, component);
-            results.missing.extend(missing);
+            results.missing_chunk_ids.extend(missing);
             if !cached.is_empty() {
                 results.add(component, cached);
             }
@@ -85,7 +86,7 @@ pub struct RangeResults {
     /// Results for each individual component.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
 
-    pub missing: Vec<ChunkId>,
+    pub missing_chunk_ids: Vec<ChunkId>,
 }
 
 impl RangeResults {
@@ -94,7 +95,7 @@ impl RangeResults {
         Self {
             query,
             components: Default::default(),
-            missing: Default::default(),
+            missing_chunk_ids: Default::default(),
         }
     }
 

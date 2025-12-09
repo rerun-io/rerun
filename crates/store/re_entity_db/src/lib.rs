@@ -4,6 +4,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO: how do we deal with the entity DB GC? this needs to be LRU too or we're gonna have a bad time.
+// -> actually, i didnt even make the store GC a LRU yet.
+
 mod chunk_index;
 pub mod entity_db;
 pub mod entity_tree;
