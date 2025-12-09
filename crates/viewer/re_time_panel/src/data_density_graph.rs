@@ -13,9 +13,7 @@ use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use super::time_ranges_ui::TimeRangesUi;
-use crate::recursive_chunks_per_timeline_subscriber::{
-    MaybeChunk, PathRecursiveChunksPerTimelineStoreSubscriber,
-};
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use crate::time_panel::TimePanelItem;
 
 // ----------------------------------------------------------------------------
@@ -397,29 +395,7 @@ pub fn draw_loaded_indicator_bar(
     let mut start = TimeInt::MAX;
     let mut end = TimeInt::MIN;
 
-    let unloaded_ranges = PathRecursiveChunksPerTimelineStoreSubscriber::access(
-        db.store_id(),
-        |chunks_per_timeline| {
-            let Some(info) = chunks_per_timeline.path_recursive_chunks_for_entity_and_timeline(
-                &re_log_types::EntityPath::root(),
-                time_ctrl.timeline().name(),
-            ) else {
-                return Vec::new();
-            };
-
-            info.recursive_chunks_info
-                .values()
-                .inspect(|i| {
-                    start = start.min(i.resolved_time_range.min);
-                    end = end.max(i.resolved_time_range.max);
-                })
-                .filter(|info| matches!(info.chunk, MaybeChunk::Unloaded(_)))
-                .map(|info| info.resolved_time_range)
-                .collect()
-        },
-    )
-    .into_iter()
-    .flatten();
+    let unloaded_ranges: Vec<AbsoluteTimeRange> = todo!();
 
     if let Some(start) = time_ranges_ui.x_from_time(start.into())
         && let Some(end) = time_ranges_ui.x_from_time(end.into())
@@ -512,7 +488,10 @@ pub fn build_density_graph<'a>(
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let (chunk_ranges, total_events): (Vec<(MaybeChunk, AbsoluteTimeRange, u64)>, u64) = {
+    let (chunk_ranges, total_events): (
+        Vec<(Arc<re_chunk_store::Chunk>, AbsoluteTimeRange, u64)>,
+        u64,
+    ) = {
         re_tracing::profile_scope!("collect chunks");
 
         let engine = db.storage_engine();
@@ -529,8 +508,7 @@ pub fn build_density_graph<'a>(
                         let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk.num_events_for_component(component).map(|num_events| {
                             total_num_events += num_events;
-                            // (MaybeChunk::Loaded(chunk), time_range, num_events)
-                                (MaybeChunk::Unloaded(Arc::new(crate::recursive_chunks_per_timeline_subscriber::UnloadedChunk { id: chunk.id(), entity_path: chunk.entity_path().clone(), heap_size_bytes: 0, components: Default::default() })), time_range, num_events)
+                            (chunk, time_range, num_events)
                         })
                     })
                     .collect(),
@@ -592,28 +570,19 @@ pub fn build_density_graph<'a>(
         }
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
-            match chunk {
-                MaybeChunk::Loaded(chunk) => {
-                    let should_render_individual_events = can_render_individual_events
-                        && if chunk.is_timeline_sorted(timeline) {
-                            num_events_in_chunk < config.max_events_in_sorted_chunk
-                        } else {
-                            num_events_in_chunk < config.max_events_in_unsorted_chunk
-                        };
+            let should_render_individual_events = can_render_individual_events
+                && if chunk.is_timeline_sorted(timeline) {
+                    num_events_in_chunk < config.max_events_in_sorted_chunk
+                } else {
+                    num_events_in_chunk < config.max_events_in_unsorted_chunk
+                };
 
-                    if should_render_individual_events {
-                        for (time, num_events) in
-                            chunk.num_events_cumulative_per_unique_time(timeline)
-                        {
-                            data.add_chunk_point(time, num_events as usize);
-                        }
-                    } else {
-                        data.add_chunk_range(time_range, num_events_in_chunk);
-                    }
+            if should_render_individual_events {
+                for (time, num_events) in chunk.num_events_cumulative_per_unique_time(timeline) {
+                    data.add_chunk_point(time, num_events as usize);
                 }
-                MaybeChunk::Unloaded(_) => {
-                    data.add_unloaded_chunk_range(time_range, num_events_in_chunk);
-                }
+            } else {
+                data.add_chunk_range(time_range, num_events_in_chunk);
             }
         }
     }
