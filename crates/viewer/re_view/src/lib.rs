@@ -118,6 +118,23 @@ pub fn clamped_vec_or<'a, T: Clone>(
     }
 }
 
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// If the input slice is empty, the second argument is repeated `clamped_len` times.
+#[inline]
+pub fn clamped_vec_or_else<T: Clone>(
+    values: &[T],
+    clamped_len: usize,
+    if_empty: impl Fn() -> T,
+) -> Cow<'_, [T]> {
+    let clamped = clamped_vec_or_empty(values, clamped_len);
+    if clamped.is_empty() {
+        vec![if_empty(); clamped_len].into()
+    } else {
+        clamped
+    }
+}
+
 #[test]
 fn test_clamped_vec() {
     assert_eq!(clamped_vec_or_empty::<i32>(&[], 0), Vec::<i32>::default());
