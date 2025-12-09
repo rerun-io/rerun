@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use nohash_hasher::IntMap;
 use re_chunk::{EntityPath, TimelineName};
 use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
 use re_log_types::{
@@ -9,7 +8,6 @@ use re_log_types::{
 };
 use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
-use vec1::Vec1;
 
 use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
@@ -244,13 +242,13 @@ pub enum TimeControlCommand {
     /// Set playback fps.
     SetFps(f32),
 
-    /// Set the current loop selection without enabling looping.
-    SetLoopSelection(AbsoluteTimeRange),
+    /// Set the current time selection without enabling looping.
+    SetTimeSelection(AbsoluteTimeRange),
 
-    /// Remove the current loop selection.
+    /// Remove the current time selection.
     ///
     /// If the current loop mode is selection, turns off looping.
-    RemoveLoopSelection,
+    RemoveTimeSelection,
 
     /// Sets the current time cursor.
     SetTime(TimeReal),
@@ -263,22 +261,6 @@ pub enum TimeControlCommand {
     /// The view will instead fall back to the default which is
     /// showing all received data.
     ResetTimeView,
-
-    /// Mark up a time range as valid (fully loaded).
-    ///
-    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
-    /// Visually, it is outside of the normal time range and shown greyed out.
-    ///
-    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
-    //
-    // TODO(andreas): The source of truth for this should probably in recording properties as it is just that,
-    // a property of the data!
-    // However, as of writing it's hard to inject _additional_ properties upon recording loading.
-    // For an attempt of modelling this as a serialized recordign property see `andreas/valid-ranges-rec-props` branch.
-    AddValidTimeRange {
-        timeline: Option<TimelineName>,
-        time_range: AbsoluteTimeRange,
-    },
 }
 
 /// State per timeline.
@@ -298,7 +280,7 @@ struct TimeState {
 
     /// Selected time range, if any.
     #[serde(default)]
-    loop_selection: Option<AbsoluteTimeRangeF>,
+    time_selection: Option<AbsoluteTimeRangeF>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -315,7 +297,7 @@ impl TimeState {
             time: time.into(),
             last_paused_time: None,
             fps: 30.0, // TODO(emilk): estimate based on data
-            loop_selection: Default::default(),
+            time_selection: Default::default(),
             view: None,
         }
     }
@@ -354,11 +336,6 @@ pub struct TimeControl {
 
     states: BTreeMap<TimelineName, TimeState>,
 
-    /// Valid time ranges for each timeline.
-    ///
-    /// If a timeline is not in the map, all it's ranges are considered to be valid.
-    valid_time_ranges: IntMap<TimelineName, Vec1<AbsoluteTimeRange>>,
-
     /// If true, we are either in [`PlayState::Playing`] or [`PlayState::Following`].
     playing: bool,
 
@@ -381,7 +358,6 @@ impl Default for TimeControl {
         Self {
             timeline: ActiveTimeline::Auto(default_timeline([])),
             states: Default::default(),
-            valid_time_ranges: Default::default(),
             playing: true,
             following: true,
             speed: 1.0,
@@ -461,7 +437,7 @@ impl TimeControl {
         }
         // If we are on a new timeline insert that new state at the start. Or end if we're following.
         else if let Some(times_per_timeline) = times_per_timeline
-            && let Some(full_valid_range) = self.full_valid_range(times_per_timeline)
+            && let Some(full_valid_range) = self.full_range(times_per_timeline)
         {
             self.states.insert(
                 *self.timeline.name(),
@@ -512,14 +488,14 @@ impl TimeControl {
             let bp_loop_section = blueprint_ctx.time_selection();
             // If we've switched timeline, use the new timeline's cached time selection.
             if old_timeline != timeline {
-                match state.loop_selection {
+                match state.time_selection {
                     Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
                     None => {
                         blueprint_ctx.clear_time_selection();
                     }
                 }
             } else {
-                state.loop_selection = bp_loop_section.map(|r| r.into());
+                state.time_selection = bp_loop_section.map(|r| r.into());
             }
 
             match play_state {
@@ -564,7 +540,7 @@ impl TimeControl {
             self.select_valid_timeline(times_per_timeline);
         }
 
-        let Some(full_valid_range) = self.full_valid_range(times_per_timeline) else {
+        let Some(full_valid_range) = self.full_range(times_per_timeline) else {
             return TimeControlResponse::no_repaint(); // we have no data on this timeline yet, so bail
         };
 
@@ -617,7 +593,7 @@ impl TimeControl {
 
                 let loop_range = match self.loop_mode {
                     LoopMode::Off => None,
-                    LoopMode::Selection => state.loop_selection,
+                    LoopMode::Selection => state.time_selection,
                     LoopMode::All => Some(full_valid_range.into()),
                 };
 
@@ -634,23 +610,6 @@ impl TimeControl {
                     && loop_range.max < new_time
                 {
                     new_time = loop_range.min; // loop!
-                }
-
-                // Confine cursor to valid ranges.
-                {
-                    let valid_ranges = self
-                        .valid_time_ranges
-                        .get(self.timeline.name())
-                        .cloned()
-                        .unwrap_or_else(|| Vec1::new(AbsoluteTimeRange::EVERYTHING));
-
-                    // The valid range index that the time cursor is either contained in or just behind.
-                    let next_valid_range_idx =
-                        valid_ranges.partition_point(|range| range.max() < new_time);
-                    let clamp_range = valid_ranges
-                        .get(next_valid_range_idx)
-                        .unwrap_or_else(|| valid_ranges.last());
-                    new_time = new_time.clamp(clamp_range.min().into(), clamp_range.max().into());
                 }
 
                 self.update_time(new_time);
@@ -831,12 +790,12 @@ impl TimeControl {
                 if let Some(state) = self.states.get(timeline_name) {
                     // Use the new timeline's cached time selection.
                     if let Some(blueprint_ctx) = blueprint_ctx {
-                        match state.loop_selection {
+                        match state.time_selection {
                             Some(selection) => blueprint_ctx.set_time_selection(selection.to_int()),
                             None => blueprint_ctx.clear_time_selection(),
                         }
                     }
-                } else if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                } else if let Some(full_valid_range) = self.full_range(times_per_timeline) {
                     self.states
                         .insert(*timeline_name, TimeState::new(full_valid_range.min));
                 }
@@ -913,7 +872,7 @@ impl TimeControl {
                 NeedsRepaint::Yes
             }
             TimeControlCommand::MoveBeginning => {
-                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                if let Some(full_valid_range) = self.full_range(times_per_timeline) {
                     self.states
                         .entry(*self.timeline.name())
                         .or_insert_with(|| TimeState::new(full_valid_range.min))
@@ -925,7 +884,7 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::MoveEnd => {
-                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                if let Some(full_valid_range) = self.full_range(times_per_timeline) {
                     self.states
                         .entry(*self.timeline.name())
                         .or_insert_with(|| TimeState::new(full_valid_range.max))
@@ -936,7 +895,7 @@ impl TimeControl {
                 }
             }
             TimeControlCommand::Restart => {
-                if let Some(full_valid_range) = self.full_valid_range(times_per_timeline) {
+                if let Some(full_valid_range) = self.full_range(times_per_timeline) {
                     self.following = false;
 
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
@@ -976,25 +935,25 @@ impl TimeControl {
                     NeedsRepaint::No
                 }
             }
-            TimeControlCommand::SetLoopSelection(time_range) => {
+            TimeControlCommand::SetTimeSelection(time_range) => {
                 if let Some(state) = self.states.get_mut(self.timeline.name()) {
                     if let Some(blueprint_ctx) = blueprint_ctx {
                         blueprint_ctx.set_time_selection(*time_range);
                     }
 
-                    state.loop_selection = Some((*time_range).into());
+                    state.time_selection = Some((*time_range).into());
 
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
                 }
             }
-            TimeControlCommand::RemoveLoopSelection => {
+            TimeControlCommand::RemoveTimeSelection => {
                 if let Some(state) = self.states.get_mut(self.timeline.name()) {
                     if let Some(blueprint_ctx) = blueprint_ctx {
                         blueprint_ctx.clear_time_selection();
                     }
-                    state.loop_selection = None;
+                    state.time_selection = None;
                     if self.loop_mode == LoopMode::Selection {
                         self.loop_mode = LoopMode::Off;
 
@@ -1039,13 +998,6 @@ impl TimeControl {
                 } else {
                     NeedsRepaint::No
                 }
-            }
-            TimeControlCommand::AddValidTimeRange {
-                timeline,
-                time_range,
-            } => {
-                self.mark_time_range_valid(*timeline, *time_range);
-                NeedsRepaint::Yes
             }
         }
     }
@@ -1164,8 +1116,8 @@ impl TimeControl {
             };
 
             let range = self
-                .loop_selection()
-                .or_else(|| self.full_valid_range(times_per_timeline).map(|r| r.into()));
+                .time_selection()
+                .or_else(|| self.full_range(times_per_timeline).map(|r| r.into()));
             if let Some(range) = range {
                 if time == range.min && new_time < range.min {
                     // jump right to the end
@@ -1179,29 +1131,6 @@ impl TimeControl {
                 } else if new_time > range.max {
                     // we are right at the start, wrap to the end
                     new_time = range.max;
-                }
-            }
-
-            // if we're outside of a valid time range, move forward/back to the nearest valid range
-            let forward = seconds >= 0.0;
-            let mut valid_ranges = self.valid_time_ranges_for(*self.timeline().name());
-            if !forward {
-                valid_ranges.reverse();
-            }
-            for valid_range in valid_ranges {
-                if new_time < TimeReal::from(valid_range.min()) {
-                    if forward {
-                        new_time = TimeReal::from(valid_range.min());
-                        break;
-                    }
-                } else if new_time > TimeReal::from(valid_range.max()) {
-                    if !forward {
-                        new_time = TimeReal::from(valid_range.max());
-                        break;
-                    }
-                } else {
-                    // we're inside a valid range
-                    break;
                 }
             }
 
@@ -1336,80 +1265,6 @@ impl TimeControl {
         self.timeline.typ()
     }
 
-    /// Mark up a time range as valid.
-    ///
-    /// Everything outside can still be navigated to, but will be considered potentially lacking some data and therefore "invalid".
-    /// Visually, it is outside of the normal time range and shown greyed out.
-    ///
-    /// If timeline is `None`, this signals that all timelines are considered to be valid entirely.
-    //
-    // TODO(andreas): The source of truth for this should probably in recording properties as it is just that,
-    // a property of the data!
-    // However, as of writing it's hard to inject _additional_ properties upon recording loading.
-    // For an attempt of modelling this as a serialized recordign property see `andreas/valid-ranges-rec-props` branch.
-    fn mark_time_range_valid(
-        &mut self,
-        timeline: Option<TimelineName>,
-        time_range: AbsoluteTimeRange,
-    ) {
-        if let Some(timeline) = timeline {
-            match self.valid_time_ranges.entry(timeline) {
-                std::collections::hash_map::Entry::Vacant(entry) => {
-                    entry.insert(Vec1::new(time_range));
-                }
-                std::collections::hash_map::Entry::Occupied(mut entry) => {
-                    let ranges = entry.get_mut();
-
-                    // TODO(andreas): Could do this more efficiently by using binary search to insert and then merging more intelligently.
-                    // But we don't expect a lot of ranges, so let's keep it simple.
-                    ranges.push(time_range);
-                    ranges.sort_by_key(|r| r.min);
-
-                    // Remove overlapping ranges by merging them
-                    let mut merged = Vec1::new(*ranges.first());
-                    for range in ranges.iter().skip(1) {
-                        let last = merged.last_mut();
-                        if last.max >= range.min {
-                            // Extend existing range instead of adding a new one.
-                            *last = AbsoluteTimeRange::new(last.min, last.max.max(range.max));
-                        } else {
-                            merged.push(*range);
-                        }
-                    }
-                    *ranges = merged;
-                }
-            }
-        } else {
-            self.valid_time_ranges.clear();
-        }
-    }
-
-    /// Returns the valid time ranges for a given timeline.
-    ///
-    /// Ranges are guaranteed to be non-overlapping and sorted by their min.
-    ///
-    /// If everything is valid, returns a single `AbsoluteTimeRange::EVERYTHING)`.
-    ///
-    /// See also [`Self.mark_time_range_valid`].
-    pub fn valid_time_ranges_for(&self, timeline: TimelineName) -> Vec1<AbsoluteTimeRange> {
-        self.valid_time_ranges
-            .get(&timeline)
-            .cloned()
-            .unwrap_or_else(|| Vec1::new(AbsoluteTimeRange::EVERYTHING))
-    }
-
-    /// The maximum extent of the valid time ranges into the past and future.
-    ///
-    /// There may be gaps in validity of this range.
-    ///
-    /// See also [`Self.mark_time_range_valid`].
-    pub fn max_valid_range_for(&self, timeline: TimelineName) -> AbsoluteTimeRange {
-        self.valid_time_ranges
-            .get(&timeline)
-            .map(|ranges| AbsoluteTimeRange::new(ranges.first().min, ranges.last().max))
-            .unwrap_or(AbsoluteTimeRange::EVERYTHING)
-    }
-
     /// The current time.
     pub fn time(&self) -> Option<TimeReal> {
         self.states
@@ -1454,7 +1309,7 @@ impl TimeControl {
     /// The current loop range, if selection looping is turned on.
     pub fn active_loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
         if self.loop_mode == LoopMode::Selection {
-            self.states.get(self.timeline().name())?.loop_selection
+            self.states.get(self.timeline().name())?.time_selection
         } else {
             None
         }
@@ -1462,22 +1317,17 @@ impl TimeControl {
 
     /// The full range of times for the current timeline, skipping times outside of the valid data ranges
     /// at the start and end.
-    fn full_valid_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
-        times_per_timeline.get(self.timeline().name()).map(|stats| {
-            let data_range = range(&stats.per_time);
-            let max_valid_range_for = self.max_valid_range_for(*self.timeline().name());
-            AbsoluteTimeRange::new(
-                data_range.min.max(max_valid_range_for.min),
-                data_range.max.min(max_valid_range_for.max),
-            )
-        })
+    fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
+        times_per_timeline
+            .get(self.timeline().name())
+            .map(|stats| range(&stats.per_time))
     }
 
     /// The selected slice of time that is called the "loop selection".
     ///
     /// This can still return `Some` even if looping is currently off.
-    pub fn loop_selection(&self) -> Option<AbsoluteTimeRangeF> {
-        self.states.get(self.timeline().name())?.loop_selection
+    pub fn time_selection(&self) -> Option<AbsoluteTimeRangeF> {
+        self.states.get(self.timeline().name())?.time_selection
     }
 
     /// Is the current time in the selection range (if any), or at the current time mark?
@@ -1664,59 +1514,6 @@ mod tests {
         assert_eq!(
             default_timeline([&custom_timeline0]),
             custom_timeline0.timeline
-        );
-    }
-
-    #[test]
-    fn test_valid_ranges() {
-        let mut time_control = TimeControl::default();
-        let timeline = TimelineName::new("test");
-
-        // Test default behavior - everything should be valid
-        assert_eq!(
-            time_control.valid_time_ranges_for(timeline),
-            vec1::vec1![AbsoluteTimeRange::EVERYTHING]
-        );
-
-        // Test adding a single range
-        let range1 = AbsoluteTimeRange::new(TimeInt::new_temporal(100), TimeInt::new_temporal(200));
-        time_control.mark_time_range_valid(Some(timeline), range1);
-        assert_eq!(
-            time_control.valid_time_ranges_for(timeline),
-            vec1::vec1![range1]
-        );
-
-        // Test adding a non-overlapping range (should remain separate)
-        let range2 = AbsoluteTimeRange::new(TimeInt::new_temporal(300), TimeInt::new_temporal(400));
-        time_control.mark_time_range_valid(Some(timeline), range2);
-        assert_eq!(
-            time_control.valid_time_ranges_for(timeline),
-            vec1::vec1![range1, range2]
-        );
-
-        // Test adding a range extending an existing range (should merge)
-        let range3 = AbsoluteTimeRange::new(TimeInt::new_temporal(150), TimeInt::new_temporal(250));
-        let range1_extended = AbsoluteTimeRange::new(range1.min, range3.max);
-        time_control.mark_time_range_valid(Some(timeline), range3);
-        assert_eq!(
-            time_control.valid_time_ranges_for(timeline),
-            vec1::vec1![range1_extended, range2]
-        );
-
-        // Test adding a range that connects two existing ranges
-        let range4 = AbsoluteTimeRange::new(TimeInt::new_temporal(150), TimeInt::new_temporal(300));
-        let new_combined_range = AbsoluteTimeRange::new(range1_extended.min, range2.max);
-        time_control.mark_time_range_valid(Some(timeline), range4);
-        assert_eq!(
-            time_control.valid_time_ranges_for(timeline),
-            vec1::vec1![new_combined_range]
-        );
-
-        // Clear everything. back to default behavior.
-        time_control.mark_time_range_valid(None, AbsoluteTimeRange::EVERYTHING);
-        assert_eq!(
-            time_control.valid_time_ranges_for(timeline),
-            vec1::vec1![AbsoluteTimeRange::EVERYTHING]
         );
     }
 }

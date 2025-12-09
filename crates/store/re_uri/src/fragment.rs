@@ -1,5 +1,7 @@
 use re_log_types::{DataPath, TimeCell, TimelineName};
 
+use crate::TimeSelection;
+
 /// We use the `#fragment` of the URI to point to a specific entity or time.
 ///
 /// ```
@@ -21,11 +23,17 @@ pub struct Fragment {
 
     /// Select this timeline and this time
     pub when: Option<(TimelineName, TimeCell)>,
+
+    pub time_selection: Option<TimeSelection>,
 }
 
 impl std::fmt::Display for Fragment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { selection, when } = self;
+        let Self {
+            selection,
+            when,
+            time_selection,
+        } = self;
 
         let mut did_write = false;
 
@@ -39,6 +47,14 @@ impl std::fmt::Display for Fragment {
                 write!(f, "&")?;
             }
             write!(f, "when={timeline}@{time_cell}")?;
+            did_write = true;
+        }
+
+        if let Some(time_selection) = time_selection {
+            if did_write {
+                write!(f, "&")?;
+            }
+            write!(f, "time_selection={time_selection}")?;
         }
 
         Ok(())
@@ -51,6 +67,7 @@ impl std::str::FromStr for Fragment {
     fn from_str(fragment: &str) -> Result<Self, Self::Err> {
         let mut selection = None;
         let mut when = None;
+        let mut time_selection = None;
 
         for part in split_on_unescaped_ampersand(fragment) {
             // If there isn't an equals in this part we skip it as it doesn't contain any data.
@@ -79,6 +96,12 @@ impl std::str::FromStr for Fragment {
                             }
                         }
                     }
+                    "time_selection" => match value.parse() {
+                        Ok(selection) => time_selection = Some(selection),
+                        Err(err) => {
+                            return Err(format!("Bad time selection {part:?}: {err}"));
+                        }
+                    },
                     _ => {
                         return Err(format!(
                             "Unknown key {key:?}. Expected either 'selection' or 'time'"
@@ -88,7 +111,11 @@ impl std::str::FromStr for Fragment {
             }
         }
 
-        Ok(Self { selection, when })
+        Ok(Self {
+            selection,
+            when,
+            time_selection,
+        })
     }
 }
 
@@ -103,9 +130,13 @@ impl Fragment {
     /// True if this fragment doesn't contain any information.
     pub fn is_empty(&self) -> bool {
         // Keep this as a destruction so there is a compile error if a new field isn't handled here.
-        let Self { selection, when } = self;
+        let Self {
+            selection,
+            when,
+            time_selection,
+        } = self;
 
-        selection.is_none() && when.is_none()
+        selection.is_none() && when.is_none() && time_selection.is_none()
     }
 }
 
@@ -187,6 +218,7 @@ fn test_parse_fragment() {
             Fragment {
                 selection: Some("/entity/path".parse().unwrap()),
                 when: None,
+                time_selection: None,
             },
         ),
         (
@@ -197,6 +229,7 @@ fn test_parse_fragment() {
                     "log_time".into(),
                     "2022-01-01T00:00:03.123456789Z".parse().unwrap(),
                 )),
+                time_selection: None,
             },
         ),
         (
@@ -207,6 +240,30 @@ fn test_parse_fragment() {
                     "log_time".into(),
                     "2022-01-01T00:00:03.123456789Z".parse().unwrap(),
                 )),
+                time_selection: None,
+            },
+        ),
+        (
+            "when=log_time@2022-01-01T00:00:03.123456789Z&time_selection=log_time@2022-01-01T00:00:01.123456789Z..2022-01-01T00:00:10.123456789Z",
+            Fragment {
+                selection: None,
+                when: Some((
+                    "log_time".into(),
+                    "2022-01-01T00:00:03.123456789Z".parse().unwrap(),
+                )),
+                time_selection: Some(TimeSelection {
+                    timeline: re_log_types::Timeline::log_time(),
+                    range: re_log_types::AbsoluteTimeRange::new(
+                        "2022-01-01T00:00:01.123456789Z"
+                            .parse::<TimeCell>()
+                            .unwrap()
+                            .value,
+                        "2022-01-01T00:00:10.123456789Z"
+                            .parse::<TimeCell>()
+                            .unwrap()
+                            .value,
+                    ),
+                }),
             },
         ),
     ];

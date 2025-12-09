@@ -1,6 +1,6 @@
 use re_log_types::StoreId;
 
-use crate::{Error, Fragment, Origin, RedapUri, TimeSelection};
+use crate::{Error, Fragment, Origin, RedapUri};
 
 /// URI pointing at the data underlying a dataset.
 ///
@@ -17,7 +17,6 @@ pub struct DatasetSegmentUri {
     // Query parameters: these affect what data is returned.
     /// Currently mandatory.
     pub segment_id: String,
-    pub time_range: Option<TimeSelection>,
 
     // Fragment parameters: these affect what the viewer focuses on:
     pub fragment: Fragment,
@@ -29,7 +28,6 @@ impl std::fmt::Display for DatasetSegmentUri {
             origin,
             dataset_id,
             segment_id,
-            time_range,
             fragment,
         } = self;
 
@@ -38,9 +36,6 @@ impl std::fmt::Display for DatasetSegmentUri {
         // ?query:
         {
             write!(f, "?segment_id={segment_id}")?;
-        }
-        if let Some(time_range) = time_range {
-            write!(f, "&time_range={time_range}")?;
         }
 
         // #fragment:
@@ -57,7 +52,6 @@ impl DatasetSegmentUri {
     pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
         let mut segment_id = None;
         let mut legacy_partition_id = None;
-        let mut time_range = None;
 
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
@@ -68,12 +62,6 @@ impl DatasetSegmentUri {
 
                 "segment_id" => {
                     segment_id = Some(value.to_string());
-                }
-                "time_range" => {
-                    // `+` means whitespace in URLs.
-                    // Ideally `+` should be encoded as `%2B`, but in case we missed that:
-                    let value = value.replace(' ', "");
-                    time_range = Some(value.parse::<TimeSelection>()?);
                 }
                 _ => {
                     // We ignore unknown query keys that may be from urls from prior/newer versions.
@@ -102,7 +90,6 @@ impl DatasetSegmentUri {
             origin,
             dataset_id,
             segment_id,
-            time_range,
             fragment,
         })
     }
@@ -113,11 +100,9 @@ impl DatasetSegmentUri {
             origin: _,     // Mandatory
             dataset_id: _, // Mandatory
             segment_id: _, // Mandatory
-            time_range,
             fragment,
         } = &mut self;
 
-        *time_range = None;
         *fragment = Default::default();
 
         self
@@ -129,7 +114,6 @@ impl DatasetSegmentUri {
             origin: _,     // Mandatory
             dataset_id: _, // Mandatory
             segment_id: _, // Mandatory
-            time_range: _,
             fragment,
         } = &mut self;
 
