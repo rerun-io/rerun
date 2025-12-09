@@ -11,6 +11,8 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
+use crate::{TimelineStats, TimesPerTimeline};
+
 /// Is the following chunk loaded?
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum LoadState {
@@ -86,6 +88,8 @@ pub struct RrdManifestIndex {
     /// Full time range per timeline
     pub timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
+    pub times_per_timeline: TimesPerTimeline,
+
     native_temporal_map: re_log_encoding::NativeTemporalMap,
 }
 
@@ -106,6 +110,16 @@ impl RrdManifestIndex {
                 for (_comp, chunks) in comps {
                     for (_chink_id, chunk_range) in chunks {
                         timeline_range = timeline_range.union(*chunk_range);
+
+                        // TODO: this is a bad idea
+                        let timeline_stats = self
+                            .times_per_timeline
+                            .0
+                            .entry(*timeline.name())
+                            .or_insert_with(|| TimelineStats::new(*timeline));
+                        *timeline_stats.per_time.entry(chunk_range.min).or_default() += 1;
+                        *timeline_stats.per_time.entry(chunk_range.max).or_default() += 1;
+                        timeline_stats.total_count += 2;
                     }
                 }
 

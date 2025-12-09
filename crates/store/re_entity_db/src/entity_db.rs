@@ -468,7 +468,11 @@ impl EntityDb {
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.times_per_timeline
+        if self.rrd_manifest_index.has_manifest() {
+            &self.rrd_manifest_index.times_per_timeline
+        } else {
+            &self.times_per_timeline
+        }
     }
 
     pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
