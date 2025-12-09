@@ -387,6 +387,60 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 // ----------------------------------------------------------------------------
 
+pub fn draw_loaded_indicator_bar(
+    ui: &egui::Ui,
+    time_ranges_ui: &TimeRangesUi,
+    db: &re_entity_db::EntityDb,
+    time_ctrl: &TimeControl,
+    y: f32,
+) {
+    let mut start = TimeInt::MAX;
+    let mut end = TimeInt::MIN;
+
+    let unloaded_ranges = PathRecursiveChunksPerTimelineStoreSubscriber::access(
+        db.store_id(),
+        |chunks_per_timeline| {
+            let Some(info) = chunks_per_timeline.path_recursive_chunks_for_entity_and_timeline(
+                &re_log_types::EntityPath::root(),
+                time_ctrl.timeline().name(),
+            ) else {
+                return Vec::new();
+            };
+
+            info.recursive_chunks_info
+                .values()
+                .inspect(|i| {
+                    start = start.min(i.resolved_time_range.min);
+                    end = end.max(i.resolved_time_range.max);
+                })
+                .filter(|info| matches!(info.chunk, MaybeChunk::Unloaded(_)))
+                .map(|info| info.resolved_time_range)
+                .collect()
+        },
+    )
+    .into_iter()
+    .flatten();
+
+    if let Some(start) = time_ranges_ui.x_from_time(start.into())
+        && let Some(end) = time_ranges_ui.x_from_time(end.into())
+    {
+        let x = Rangef::new(start as f32, end as f32);
+        ui.painter()
+            .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
+    }
+
+    for range in unloaded_ranges {
+        if let Some(start) = time_ranges_ui.x_from_time(range.min.into())
+            && let Some(end) = time_ranges_ui.x_from_time(range.max.into())
+        {
+            let x = Rangef::new(start.floor() as f32, end.ceil() as f32);
+
+            ui.painter()
+                .hline(x, y, ui.visuals().widgets.noninteractive.bg_stroke);
+        }
+    }
+}
+
 /// Returns the hovered time, if any.
 #[expect(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
@@ -412,15 +466,7 @@ pub fn data_density_graph_ui(
         DensityGraphBuilderConfig::default(),
     );
 
-    data.unloaded_density_graph.paint(
-        data_density_graph_painter,
-        row_rect.y_range(),
-        time_area_painter,
-        ui.tokens().density_graph_outside_valid_ranges,
-        &time_ranges_ui.segments,
-        ui.tokens().density_graph_outside_valid_ranges,
-    );
-
+    data.unloaded_density_graph.buckets = smooth(&data.unloaded_density_graph.buckets);
     data.density_graph.buckets = smooth(&data.density_graph.buckets);
 
     data.density_graph.paint(
@@ -428,6 +474,14 @@ pub fn data_density_graph_ui(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
+    );
+
+    // Prioritise showing what isn't loaded yet.
+    data.unloaded_density_graph.paint(
+        data_density_graph_painter,
+        row_rect.y_range(),
+        time_area_painter,
+        ui.tokens().density_graph_outside_valid_ranges,
     );
 
     if let Some(pointer) = data.hovered_pos {
@@ -438,29 +492,6 @@ pub fn data_density_graph_ui(
         data.hovered_time.map(|t| t.round())
     }
 }
-
-/*
-fn unloaded_data_ui(
-    ui: &egui::Ui,
-    time_area_painter: &egui::Painter,
-    data: &DensityGraphBuilder<'_>,
-    y_range: Rangef,
-) {
-    for range in &data. {
-        time_area_painter.hline(
-            range.range,
-            fast_midpoint(y_range.min, y_range.max),
-            egui::Stroke::new(
-                y_range.span() * 0.25
-                    + (range.num_events as f64 / (100.0 + range.num_events as f64)
-                        * y_range.span() as f64
-                        * 0.25) as f32,
-                ui.tokens().density_graph_outside_valid_ranges,
-            ),
-        );
-    }
-}
-*/
 
 pub fn build_density_graph<'a>(
     ui: &'a egui::Ui,

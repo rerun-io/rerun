@@ -113,14 +113,20 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
 
             let chunk_info = ChunkTimelineInfo {
                 // chunk: MaybeChunk::Loaded(chunk.clone()),
-                chunk: MaybeChunk::Unloaded(Arc::new(
-                    crate::recursive_chunks_per_timeline_subscriber::UnloadedChunk {
-                        id: chunk.id(),
-                        entity_path: chunk.entity_path().clone(),
-                        heap_size_bytes: 0,
-                        components: Default::default(),
-                    },
-                )),
+                chunk: if chunk.id().as_u128().is_multiple_of(5)
+                    || chunk.id().as_u128().is_multiple_of(7)
+                {
+                    MaybeChunk::Unloaded(Arc::new(
+                        crate::recursive_chunks_per_timeline_subscriber::UnloadedChunk {
+                            id: chunk.id(),
+                            entity_path: chunk.entity_path().clone(),
+                            heap_size_bytes: 0,
+                            components: Default::default(),
+                        },
+                    ))
+                } else {
+                    MaybeChunk::Loaded(chunk.clone())
+                },
                 num_events: chunk.num_events_cumulative(), // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
                 resolved_time_range: time_column.time_range(),
             };
