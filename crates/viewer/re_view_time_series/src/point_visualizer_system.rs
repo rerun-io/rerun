@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
-use re_sdk_types::components::{Color, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
+use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
@@ -34,14 +34,17 @@ impl IdentifiedViewSystem for SeriesPointsSystem {
 
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info
-            .queried
-            .extend(archetypes::SeriesPoints::all_components().iter().cloned());
-
-        query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
-
-        query_info
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesPoints::name().into(),
+            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+                std::iter::once(components::Scalar::arrow_datatype()).collect(),
+            ),
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesPoints::all_components().iter())
+                .cloned()
+                .collect(),
+        }
     }
 
     fn execute(
