@@ -19,7 +19,7 @@ use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass, PropertyOverrides,
     QueryRange, ViewClassRegistry, ViewId, ViewState, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities,
+    VisualizableEntities, VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -420,18 +420,24 @@ impl QueryExpressionEvaluator<'_> {
         // and aren't directly included.
         let exact_included = filter_evaluation.matches_exactly;
         if exact_included || !children.is_empty() || !visualizers.is_empty() {
+            let visualizer_instructions = visualizers
+                .iter()
+                .map(|visualizer| re_viewer_context::VisualizerInstruction {
+                    visualizer_type: *visualizer,
+                    property_overrides: PropertyOverrides {
+                        component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
+                    },
+                })
+                .collect();
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
-                    visualizers,
+                    visualizer_instructions,
                     tree_prefix_only: !matches_filter,
-                    property_overrides: PropertyOverrides {
-                        component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
-                        visible: true, // Determined later during `update_overrides_recursive`.
-                        interactive: true, // Determined later during `update_overrides_recursive`.
-                        override_path: self.override_base_path.join(entity_path),
-                        query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
-                    },
+                    visible: true, // Determined later during `update_overrides_recursive`.
+                    interactive: true, // Determined later during `update_overrides_recursive`.
+                    override_path: self.override_base_path.join(entity_path),
+                    query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
                 },
                 children,
             }))
@@ -489,50 +495,60 @@ impl<'a> DataQueryPropertyResolver<'a> {
         let Some(node) = query_result.tree.lookup_node_mut(handle) else {
             return;
         };
-        let property_overrides = &mut node.data_result.property_overrides;
-
         // Set defaults for time-range/visible/interactive.
-        property_overrides.query_range = default_query_range.clone();
-        property_overrides.visible = parent_visible;
-        property_overrides.interactive = parent_interactive;
+        node.data_result.query_range = default_query_range.clone();
+        node.data_result.visible = parent_visible;
+        node.data_result.interactive = parent_interactive;
 
-        let override_path = &property_overrides.override_path;
+        let override_path = &node.data_result.override_path;
 
         // Update visualizers from overrides.
         // So far, `visualizers` is set to the available visualizers.
-        // TODO(andreas): Seems strange, why don't allow force overriding?
-        if !node.data_result.visualizers.is_empty() {
+        if !node.data_result.visualizer_instructions.is_empty() {
             // If the user has overridden the visualizers, update which visualizers are used.
+            // TODO: loop
             if let Some(viz_override) = blueprint
                 .latest_at(
                     blueprint_query,
-                    override_path,
+                    &node.data_result.override_path,
                     [blueprint_archetypes::VisualizerOverrides::descriptor_ranges().component],
                 )
                 .component_batch::<blueprint_components::VisualizerOverride>(
                     blueprint_archetypes::VisualizerOverrides::descriptor_ranges().component,
                 )
             {
-                node.data_result.visualizers = viz_override
+                node.data_result.visualizer_instructions = viz_override
                     .into_iter()
-                    .map(|vis| vis.as_str().into())
+                    .map(|vis| VisualizerInstruction {
+                        visualizer_type: vis.as_str().into(),
+                        property_overrides: PropertyOverrides {
+                            component_overrides: IntMap::default(),
+                        },
+                    })
                     .collect();
             } else {
                 // Otherwise ask the `ViewClass` to choose.
-                node.data_result.visualizers = self
+                node.data_result.visualizer_instructions = self
                     .view
                     .class(self.view_class_registry)
                     .choose_default_visualizers(
                         &node.data_result.entity_path,
                         self.visualizable_entities_per_visualizer,
                         self.indicated_entities_per_visualizer,
-                    );
+                    )
+                    .into_iter()
+                    .map(|v| VisualizerInstruction {
+                        visualizer_type: v,
+                        property_overrides: PropertyOverrides {
+                            component_overrides: IntMap::default(),
+                        },
+                    })
+                    .collect();
             }
         }
 
         // Gather overrides.
-        let component_overrides = &mut property_overrides.component_overrides;
-        if let Some(override_subtree) = blueprint.tree().subtree(override_path) {
+        if let Some(override_subtree) = blueprint.tree().subtree(&node.data_result.override_path) {
             for component in blueprint
                 .storage_engine()
                 .store()
@@ -560,7 +576,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                                     range.timeline.as_str() == active_timeline.name().as_str()
                                 })
                             {
-                                property_overrides.query_range =
+                                node.data_result.query_range =
                                     QueryRange::TimeRange(time_range.0.range.clone());
                             }
                         }
@@ -570,7 +586,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         {
                             if let Some(visible_array) = component_data.as_boolean_opt() {
                                 // We already checked for non-empty above, so this should be safe.
-                                property_overrides.visible = visible_array.value(0);
+                                node.data_result.visible = visible_array.value(0);
                             }
                         }
                         // Interactive override.
@@ -580,22 +596,25 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             && let Some(interactive_array) = component_data.as_boolean_opt()
                         {
                             // We already checked for non-empty above, so this should be safe.
-                            property_overrides.interactive = interactive_array.value(0);
+                            node.data_result.interactive = interactive_array.value(0);
                         }
 
                         // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
-                        component_overrides.insert(
-                            component,
-                            OverridePath::blueprint_path(override_path.clone()),
-                        );
+                        // TODO: Need to drill into per visualizer instruction overrides. For now just distribute all overrides to all instructions.
+                        for instruction in &mut node.data_result.visualizer_instructions {
+                            instruction.property_overrides.component_overrides.insert(
+                                component,
+                                OverridePath::blueprint_path(override_path.clone()),
+                            );
+                        }
                     }
                 }
             }
         }
 
         let children = node.children.clone(); // Borrow-checker workaround.
-        let visible = property_overrides.visible;
-        let interactive = property_overrides.interactive;
+        let visible = node.data_result.visible;
+        let interactive = node.data_result.interactive;
 
         for child in children {
             self.update_overrides_recursive(
@@ -825,7 +844,7 @@ mod tests {
                     visited.push("/**".to_owned());
                 } else if result.tree_prefix_only {
                     visited.push(format!("{}/**", result.entity_path));
-                    assert!(result.visualizers.is_empty());
+                    assert!(result.visualizer_instructions.is_empty());
                 } else {
                     visited.push(result.entity_path.to_string());
                 }

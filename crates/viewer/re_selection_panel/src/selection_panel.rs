@@ -13,7 +13,7 @@ use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
     ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
     SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ViewStates, ViewerContext, VisualizerInstruction, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -528,6 +528,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
         data_result,
         [component],
         query_shadowed_components,
+        &VisualizerInstruction::placeholder(), // coordinate frames aren't associated with any particualr visualizer
     );
 
     let override_path = data_result.override_path();

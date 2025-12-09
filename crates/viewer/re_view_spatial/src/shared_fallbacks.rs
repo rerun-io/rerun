@@ -1,7 +1,9 @@
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
-use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
+use re_viewer_context::{
+    IdentifiedViewSystem as _, QueryContext, ViewStateExt as _, VisualizerInstruction,
+};
 
 use crate::{SpatialViewState, visualizers};
 
@@ -74,14 +76,20 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 .lookup_result_by_path(ctx.target_entity_path.hash())
                 .cloned()
                 .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&visualizers::CamerasVisualizer::identifier())
+                    // TODO(andreas): What if there's several camera visualizers?
+                    if let Some(camera_visualizer_instruction) = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instruction| {
+                            instruction.visualizer_type
+                                == visualizers::CamerasVisualizer::identifier()
+                        })
                     {
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<archetypes::Pinhole>(
                                 ctx.view_ctx,
                                 ctx.query,
+                                camera_visualizer_instruction,
                             );
 
                         Some(
@@ -142,6 +150,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
                         &query,
+                        &VisualizerInstruction::placeholder(),
                     );
 
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
