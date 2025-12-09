@@ -89,7 +89,7 @@ impl SeriesPointsSystem {
             {
                 match result {
                     Err(LoadSeriesError::ViewPropertyQuery(err)) => {
-                        return Err(err.into());
+                        return Err(err);
                     }
                     Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
                         output.report_error_for(entity_path, error);
@@ -103,7 +103,7 @@ impl SeriesPointsSystem {
             for data_result in data_results {
                 match Self::load_series(ctx, query, time_per_pixel, data_result) {
                     Err(LoadSeriesError::ViewPropertyQuery(err)) => {
-                        return Err(err.into());
+                        return Err(err);
                     }
                     Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
                         output.report_error_for(entity_path, error);
