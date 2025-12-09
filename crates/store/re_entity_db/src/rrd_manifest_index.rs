@@ -275,7 +275,7 @@ impl RrdManifestIndex {
 
     pub fn unloaded_time_ranges_for(
         &self,
-        timeline: &re_chunk::TimelineName,
+        timeline: &re_chunk::Timeline,
         entity: &re_chunk::EntityPath,
         component: Option<re_chunk::ComponentIdentifier>,
     ) -> Vec<(AbsoluteTimeRange, u64)> {
@@ -308,7 +308,7 @@ impl RrdManifestIndex {
                         LoadState::Loaded => false,
                     })
             })
-            .map(|(_, range)| ((*range).into(), 1))
+            .map(|(_, range)| (*range, 1))
             .collect()
     }
 }
