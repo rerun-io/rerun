@@ -1,5 +1,3 @@
-Test the sync
-
 # Design guidelines
 Guidelines for UI design, covering GUI, CLI, documentation, log messages, etc
 
