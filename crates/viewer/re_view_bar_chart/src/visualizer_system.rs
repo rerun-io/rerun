@@ -7,7 +7,7 @@ use re_types::{
     components::{self, Length},
     datatypes,
 };
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_view::{DataResultQuery as _, RangeResultsExt as _, clamped_vec_or_else};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
@@ -62,31 +62,28 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                 let abscissa: components::TensorData =
                     results.get_mono_with_fallback(BarChart::descriptor_abscissa().component);
                 let color = results.get_mono_with_fallback(BarChart::descriptor_color().component);
-                let widths = if let Some(chunked_widths) =
-                    results.get_required_chunks(BarChart::descriptor_widths().component)
-                {
-                    let mut widths = Vec::with_capacity(length as usize);
-                    for slice in chunked_widths
-                        .iter()
-                        .flat_map(|chunk| chunk.iter_slices::<f32>())
-                    {
-                        widths.extend_from_slice(slice);
-                    }
-                    widths
-                } else {
-                    let fallback_width: Length = typed_fallback_for(
+                let widths =
+                    results.iter_as(view_query.timeline, BarChart::descriptor_widths().component);
+                let widths: &[f32] = widths
+                    .slice::<f32>()
+                    .next()
+                    .map_or(&[], |((_time, _row), slice)| slice);
+
+                let widths = clamped_vec_or_else(widths, length as usize, || {
+                    typed_fallback_for::<Length>(
                         &ctx.query_context(data_result, &view_query.latest_at_query()),
                         BarChart::descriptor_widths().component,
-                    );
-                    vec![fallback_width.0.into(); length as usize]
-                };
+                    )
+                    .0
+                    .into()
+                });
                 self.charts.insert(
                     data_result.entity_path.clone(),
                     BarChartData {
                         abscissa: abscissa.0.clone(),
                         values: tensor.0.clone(),
                         color,
-                        widths,
+                        widths: widths.into(),
                     },
                 );
             }
