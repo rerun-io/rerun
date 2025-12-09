@@ -138,10 +138,16 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             max_row.saturating_sub(1)
         };
 
+        // Get the raw array to check if it's a nested type (StructArray, ListArray, etc.).
+        let array = self.unit.component_batch_raw(component);
+        let is_nested = array
+            .as_ref()
+            .is_some_and(|arr| arr.data_type().is_nested());
+
         if num_instances <= 1 {
             // Allow editing recording properties:
             if entity_path.starts_with(&EntityPath::properties())
-                && let Some(array) = self.unit.component_batch_raw(component)
+                && let Some(array) = &array
                 && ctx.component_ui_registry().try_show_edit_ui(
                     ctx,
                     ui,
@@ -171,6 +177,17 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             );
         } else if ui_layout.is_single_line() {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
+        } else if is_nested && ui_layout == UiLayout::SelectionPanel {
+            // For nested types (StructArray, ListArray, etc.) in the SelectionPanel,
+            // use the arrow tree view which provides collapsible/expandable UI.
+            if let Some(array) = &array {
+                re_arrow_ui::arrow_ui(
+                    ui,
+                    ui_layout,
+                    ctx.app_options().timestamp_format,
+                    array.as_ref(),
+                );
+            }
         } else {
             let table_style = re_ui::TableStyle::Dense;
             ui_layout
