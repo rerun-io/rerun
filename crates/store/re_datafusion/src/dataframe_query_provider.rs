@@ -19,7 +19,7 @@ use datafusion::physical_expr::{
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use futures_util::{Stream, StreamExt as _};
+use futures_util::{Stream, StreamExt as _, TryStreamExt as _};
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
@@ -446,7 +446,7 @@ async fn chunk_store_cpu_worker_thread(
 /// See `group_chunk_infos_by_segment_id` and `execute` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
-    mut client: ConnectionClient,
+    client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ApiResult<ChunksWithSegment>>,
 ) -> Result<(), DataFusionError> {
@@ -458,31 +458,46 @@ async fn chunk_stream_io_loop(
     // batches with different segments in the same request). However, quick testing shows that this
     // is at least 2x slower than sending all segments in one request. Consider providing ordering
     // guarantees server side in the future.
-    for chunk_info in chunk_infos {
-        let fetch_chunks_request = FetchChunksRequest {
-            chunk_infos: vec![chunk_info],
-        };
 
-        let fetch_chunks_response_stream = client
-            .inner()
-            .fetch_chunks(fetch_chunks_request)
-            .instrument(tracing::trace_span!("chunk_stream_io_loop"))
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner();
+    // Convert to concurrent processing using buffered streams
+    const CONCURRENT_REQUESTS: usize = 16; // Adjust based on your needs
 
-        // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
-        // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-            fetch_chunks_response_stream,
-        );
+    futures_util::stream::iter(chunk_infos)
+        .map(|chunk_info| {
+            let mut client = client.clone();
+            let output_channel = output_channel.clone();
+            async move {
+                let fetch_chunks_request = FetchChunksRequest {
+                    chunk_infos: vec![chunk_info],
+                };
 
-        while let Some(chunk_and_segment_id) = chunk_stream.next().await {
-            if output_channel.send(chunk_and_segment_id).await.is_err() {
-                break;
+                let fetch_chunks_response_stream = client
+                    .inner()
+                    .fetch_chunks(fetch_chunks_request)
+                    .instrument(tracing::trace_span!("chunk_stream_io_loop"))
+                    .await
+                    .map_err(|err| exec_datafusion_err!("{err}"))?
+                    .into_inner();
+
+                // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
+                // and the app layer (Arrow).
+                let mut chunk_stream =
+                    re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+                        fetch_chunks_response_stream,
+                    );
+
+                while let Some(chunk_and_segment_id) = chunk_stream.next().await {
+                    if output_channel.send(chunk_and_segment_id).await.is_err() {
+                        break;
+                    }
+                }
+
+                Ok::<(), DataFusionError>(())
             }
-        }
-    }
+        })
+        .buffered(CONCURRENT_REQUESTS)
+        .try_collect::<Vec<_>>()
+        .await?;
 
     Ok(())
 }
