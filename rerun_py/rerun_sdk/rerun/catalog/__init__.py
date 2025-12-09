@@ -4,7 +4,6 @@ from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,
-    DataframeQueryView as DataframeQueryView,
     DataFusionTable as DataFusionTable,
     EntryId as EntryId,
     EntryKind as EntryKind,
@@ -26,5 +25,5 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient
-from ._entry import DatasetEntry as DatasetEntry, Entry as Entry, TableEntry as TableEntry
+from ._entry import DatasetEntry as DatasetEntry, DatasetView as DatasetView, Entry as Entry, TableEntry as TableEntry
 from ._schema import Schema as Schema

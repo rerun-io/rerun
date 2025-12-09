@@ -16,15 +16,14 @@ def test_df_count(readonly_test_dataset: DatasetEntry) -> None:
     See issue https://github.com/rerun-io/rerun/issues/10894 for additional context.
     """
 
-    count = readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**").df().count()
+    count = readonly_test_dataset.reader(index="time_1").count()
 
     assert count > 0
 
 
 def test_df_aggregation(readonly_test_dataset: DatasetEntry) -> None:
     results = (
-        readonly_test_dataset.dataframe_query_view(index="time_1", contents="/**")
-        .df()
+        readonly_test_dataset.reader(index="time_1")
         .unnest_columns("/obj1:Points3D:positions")
         .aggregate(
             [],

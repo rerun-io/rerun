@@ -8,7 +8,7 @@ import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
 
-from rerun_bindings import DatasetEntryInternal, TableEntryInternal, TableInsertMode
+from rerun_bindings import DatasetEntryInternal, DatasetViewInternal, TableEntryInternal, TableInsertMode
 
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
     import datafusion
 
+    from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnSelector, Recording
+
     from . import (
         CatalogClient,
-        DataframeQueryView,
         DataFusionTable,
         EntryId,
         EntryKind,
@@ -32,12 +33,6 @@ if TYPE_CHECKING:
         Tasks,
         VectorDistanceMetric,
     )
-
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnSelector, Recording
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -331,65 +326,138 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Download a partition from the dataset."""
         return self.download_segment(partition_id)
 
-    def dataframe_query_view(
+    def filter_segments(self, segment_ids: Sequence[str] | Any) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given segment IDs.
+
+        Parameters
+        ----------
+        segment_ids : Sequence[str] | datafusion.DataFrame
+            A list of segment ID strings or a DataFusion DataFrame with a
+            column named 'rerun_segment_id'.
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the given segments.
+
+        Examples
+        --------
+        ```python
+        # Filter to specific segments
+        view = dataset.filter_segments(["recording_0", "recording_1"])
+
+        # Filter using a DataFrame
+        good_segments = metadata_table.df().filter(col("success"))
+        view = dataset.filter_segments(good_segments)
+
+        # Read data from the filtered view
+        df = view.reader(index="timeline")
+        ```
+
+        """
+
+        # Handle DataFrame input by extracting segment IDs
+        if hasattr(segment_ids, "collect"):
+            # It's a DataFrame - extract rerun_segment_id column
+            ids = []
+            for batch in segment_ids.select("rerun_segment_id").collect():
+                for value in batch.column("rerun_segment_id"):
+                    ids.append(value.as_py())
+            segment_ids = ids
+
+        return DatasetView(self._internal.filter_segments(list(segment_ids)))
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given entity paths.
+
+        Entity path expressions support wildcards:
+        - `"/points/**"` matches all entities under /points
+        - `"-/text/**"` excludes all entities under /text
+
+        Parameters
+        ----------
+        exprs : Sequence[str]
+            Entity path expressions.
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the matching entity paths.
+
+        Examples
+        --------
+        ```python
+        # Filter to specific entity paths
+        view = dataset.filter_contents(["/points/**"])
+
+        # Exclude certain paths
+        view = dataset.filter_contents(["/points/**", "-/text/**"])
+
+        # Chain with segment filters
+        view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+        ```
+
+        """
+
+        return DatasetView(self._internal.filter_contents(list(exprs)))
+
+    def reader(
         self,
         *,
         index: str | None,
-        contents: Any,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-    ) -> DataframeQueryView:
+        fill_latest_at: bool = False,
+    ) -> datafusion.DataFrame:
         """
-        Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
-
-        The only type of index currently supported is the name of a timeline, or `None` (see below
-        for details).
-
-        The view will only contain a single row for each unique value of the index
-        that is associated with a component column that was included in the view.
-        Component columns that are not included via the view contents will not
-        impact the rows that make up the view. If the same entity / component pair
-        was logged to a given index multiple times, only the most recent row will be
-        included in the view, as determined by the `row_id` column. This will
-        generally be the last value logged, as row_ids are guaranteed to be
-        monotonically increasing when data is sent from a single process.
-
-        If `None` is passed as the index, the view will contain only static columns (among those
-        specified) and no index columns. It will also contain a single row per segment.
+        Create a reader over this dataset as a DataFusion DataFrame.
 
         Parameters
         ----------
         index : str | None
-            The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
-        contents : ViewContentsLike
-            The content specification for the view.
-
-            This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
-            specifying multiple content-expressions and a respective list of components to select within
-            that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
-        include_semantically_empty_columns : bool, optional
-            Whether to include columns that are semantically empty, by default `False`.
-
-            Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-        include_tombstone_columns : bool, optional
-            Whether to include tombstone columns, by default `False`.
-
-            Tombstone columns are components used to represent clears. However, even without the clear
-            tombstone columns, the view will still apply the clear semantics when resolving row contents.
+            The index (timeline) to use for the view.
+            Pass `None` to read only static data.
+        include_semantically_empty_columns : bool
+            Whether to include columns that are semantically empty.
+        include_tombstone_columns : bool
+            Whether to include tombstone columns.
+        fill_latest_at : bool
+            Whether to fill null values with the latest valid data.
 
         Returns
         -------
-        DataframeQueryView
-            The view of the dataset.
+        datafusion.DataFrame
+            A DataFusion DataFrame over the dataset's data.
 
         """
-
-        return self._internal.dataframe_query_view(
+        # Create a DatasetView that includes all contents and delegate to its reader
+        view = self.filter_contents(["/**"])
+        return view.reader(
             index=index,
-            contents=contents,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
         )
+
+    def get_index_ranges(self, index: str) -> datafusion.DataFrame:
+        """
+        Get the min/max values for the specified index per segment.
+
+        Parameters
+        ----------
+        index : str
+            The name of the index (timeline) to compute ranges for.
+
+        Returns
+        -------
+        datafusion.DataFrame
+            A DataFrame with columns: rerun_segment_id, {index}:min, {index}:max
+
+        """
+        view = self.filter_contents(["/**"])
+        return view.get_index_ranges(index)
 
     def create_fts_index(
         self,
@@ -501,6 +569,345 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return self._internal.do_maintenance(
             optimize_indexes, retrain_indexes, compact_fragments, cleanup_before, unsafe_allow_recent_cleanup
         )
+
+
+class DatasetView:
+    """
+    A filtered view over a dataset in the catalog.
+
+    A `DatasetView` provides lazy filtering over a dataset's segments and entity paths.
+    Filters are composed lazily and only applied when data is actually read.
+
+    Create a `DatasetView` by calling `filter_segments()` or `filter_contents()` on a
+    `DatasetEntry`.
+
+    Examples
+    --------
+    ```python
+    # Filter to specific segments
+    view = dataset.filter_segments(["recording_0", "recording_1"])
+
+    # Filter to specific entity paths
+    view = dataset.filter_contents(["/points/**"])
+
+    # Chain filters
+    view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+
+    # Read data
+    df = view.reader(index="timeline")
+    ```
+
+    """
+
+    def __init__(self, internal: DatasetViewInternal) -> None:
+        """
+        Create a new DatasetView wrapper.
+
+        Parameters
+        ----------
+        internal : DatasetViewInternal
+            The internal Rust-side DatasetView object.
+
+        """
+        self._internal = internal
+
+    @property
+    def dataset(self) -> DatasetEntry:
+        return DatasetEntry(self._internal.dataset)
+
+    def schema(self) -> Schema:
+        """
+        Return the filtered schema for this view.
+
+        The schema reflects any content filters applied to the view.
+
+        Returns
+        -------
+        Schema
+            The filtered schema.
+
+        """
+        from ._schema import Schema
+
+        return Schema(self._internal.schema())
+
+    def arrow_schema(self) -> pa.Schema:
+        """
+        Return the filtered Arrow schema for this view.
+
+        Returns
+        -------
+        pa.Schema
+            The filtered Arrow schema.
+
+        """
+        return self._internal.arrow_schema()
+
+    def segment_ids(self) -> list[str]:
+        """
+        Return the segment IDs for this view.
+
+        If segment filters have been applied, only matching segments are returned.
+
+        Returns
+        -------
+        list[str]
+            The list of segment IDs.
+
+        """
+        return self._internal.segment_ids()
+
+    def segment_table(
+        self,
+        join_meta: TableEntry | datafusion.DataFrame | None = None,
+        join_key: str = "rerun_segment_id",
+    ) -> datafusion.DataFrame:
+        """
+        Return the segment metadata table as a DataFusion DataFrame.
+
+        Note: The table is not automatically filtered by segment filters.
+        Use the returned DataFrame's filter methods if needed.
+
+        Parameters
+        ----------
+        join_meta
+            Optional metadata table or DataFrame to join with the segment table.
+        join_key
+            The column name to use for joining, defaults to "rerun_segment_id".
+
+        Returns
+        -------
+        The segment metadata table.
+
+        """
+
+        segment_table_df = self.dataset.segment_table().df()
+
+        filtered_segment_ids = self._internal.filtered_segment_ids
+        if filtered_segment_ids is not None:
+            from datafusion import col, functions as F, literal
+
+            segment_table_df = segment_table_df.filter(
+                F.in_list(col("rerun_segment_id"), [literal(seg) for seg in filtered_segment_ids])
+            )
+
+        if join_meta is not None:
+            # TODO: needs reviewing/improving
+            # Handle TableEntry by getting its DataFrame
+            # SDK TableEntry uses .df(), draft TableEntry wrapper uses .reader()
+            if hasattr(join_meta, "df") and callable(join_meta.df):
+                join_meta = join_meta.df()
+            elif hasattr(join_meta, "reader") and callable(join_meta.reader):
+                join_meta = join_meta.reader()
+
+            if join_key not in segment_table_df.schema().names:
+                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
+            if join_key not in join_meta.schema().names:
+                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
+
+            meta_join_key = join_key + "_meta"
+            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
+
+            return segment_table_df.join(
+                join_meta,
+                left_on=join_key,
+                right_on=meta_join_key,
+                how="left",
+            ).drop(meta_join_key)
+
+        return segment_table_df
+
+    def download_segment(self, segment_id: str):
+        """
+        Download a specific segment from the dataset.
+
+        Parameters
+        ----------
+        segment_id : str
+            The ID of the segment to download.
+
+        Returns
+        -------
+        Recording
+            The downloaded recording.
+
+        """
+
+        return self.dataset.download_segment(segment_id)
+
+    def reader(
+        self,
+        *,
+        index: str | None,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        fill_latest_at: bool = False,
+        using_index_values: dict[str, Any] | datafusion.DataFrame | None = None,
+    ) -> datafusion.DataFrame:
+        """
+        Create a reader over this DatasetView as a DataFusion DataFrame.
+
+        Parameters
+        ----------
+        index : str | None
+            The index (timeline) to use for the view.
+            Pass `None` to read only static data.
+        include_semantically_empty_columns : bool
+            Whether to include columns that are semantically empty.
+        include_tombstone_columns : bool
+            Whether to include tombstone columns.
+        fill_latest_at : bool
+            Whether to fill null values with the latest valid data.
+        using_index_values : dict[str, IndexValuesLike] | datafusion.DataFrame | None
+            If provided, specifies the exact index values to sample for each segment.
+            Can be either:
+            - A dictionary mapping segment IDs to arrays of index values (numpy datetime64 or int64)
+            - A DataFusion DataFrame with columns 'rerun_segment_id' and the index name
+
+            Segments not included in the dictionary will have no rows in the result.
+            Use with `fill_latest_at=True` to populate rows with the most recent data.
+
+        Returns
+        -------
+        datafusion.DataFrame
+            A DataFusion DataFrame over the view's data.
+
+        """
+        import logging
+
+        import numpy as np
+
+        # Convert DataFrame to dict if needed
+        if using_index_values is not None and hasattr(using_index_values, "collect"):
+            if index is None:
+                raise ValueError("index must be provided when using_index_values is a DataFrame")
+
+            # It's a DataFrame - convert to dict[str, np.array]
+            rows = using_index_values.select("rerun_segment_id", index).to_pylist()
+
+            using_index_values_dict: dict[str, list] = {}
+            for row in rows:
+                seg_id = row["rerun_segment_id"]
+                if seg_id not in using_index_values_dict:
+                    using_index_values_dict[seg_id] = []
+                using_index_values_dict[seg_id].append(row[index])
+
+            # Convert lists to numpy arrays with datetime64 dtype
+            # The values from to_pylist() are Python datetime objects that need explicit dtype
+            using_index_values = {k: np.array(v, dtype="datetime64[ns]") for k, v in using_index_values_dict.items()}
+
+        # Warn about segment IDs in using_index_values that don't exist in the dataset
+        if using_index_values is not None:
+            valid_segment_ids = set(self.segment_ids())
+            unknown_segments = [seg for seg in using_index_values.keys() if seg not in valid_segment_ids]
+            if unknown_segments:
+                logging.warning(
+                    "Index values for the following inexistent or filtered segments were ignored: "
+                    f"{', '.join(unknown_segments)}"
+                )
+
+        return self._internal.reader(
+            index=index,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
+            using_index_values=using_index_values,
+        )
+
+    def get_index_ranges(self, index: str) -> datafusion.DataFrame:
+        """
+        Get the min/max values for the specified index per segment.
+
+        Parameters
+        ----------
+        index : str
+            The name of the index (timeline) to compute ranges for.
+
+        Returns
+        -------
+        datafusion.DataFrame
+            A DataFrame with columns: rerun_segment_id, {index}:min, {index}:max
+
+        """
+        import datafusion.functions as F
+        from datafusion import col
+
+        df = self.reader(index=index)
+        min_expr = F.min(col(index)).alias(f"{index}:min")
+        max_expr = F.max(col(index)).alias(f"{index}:max")
+        return df.aggregate(["rerun_segment_id"], [min_expr, max_expr])
+
+    def filter_segments(self, segment_ids: Sequence[str] | datafusion.DataFrame) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given segment IDs.
+
+        Filters are composed: if this view already has a segment filter,
+        the result is the intersection of both filters.
+
+        Parameters
+        ----------
+        segment_ids : Sequence[str] | datafusion.DataFrame
+            Either a list of segment ID strings or a DataFusion DataFrame
+            with a column named 'rerun_segment_id'.
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the given segments.
+
+        """
+        # Handle DataFrame input by extracting segment IDs
+        if hasattr(segment_ids, "collect"):
+            # It's a DataFrame - extract rerun_segment_id column
+            ids = []
+            for batch in segment_ids.select("rerun_segment_id").collect():
+                for value in batch.column("rerun_segment_id"):
+                    ids.append(value.as_py())
+            segment_ids = ids
+
+        return DatasetView(self._internal.filter_segments(list(segment_ids)))
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """
+        Return a new DatasetView filtered to the given entity paths.
+
+        Entity path expressions support wildcards:
+        - `"/points/**"` matches all entities under /points
+        - `"-/text/**"` excludes all entities under /text
+
+        Parameters
+        ----------
+        exprs : Sequence[str]
+            Entity path expressions.
+
+        Returns
+        -------
+        DatasetView
+            A new view filtered to the matching entity paths.
+
+        """
+        return DatasetView(self._internal.filter_contents(list(exprs)))
+
+    def __repr__(self) -> str:
+        """Return a string representation of the DatasetView."""
+
+        # TODO: review this
+
+        dataset_str = str(self.dataset)
+
+        segment_count = self._internal.segment_filter_count
+        if segment_count is not None:
+            segment_str = f"{segment_count} segments"
+        else:
+            segment_str = "all segments"
+
+        content_filters = self._internal.content_filters
+        if content_filters:
+            content_str = f"content_filters={content_filters!r}"
+        else:
+            content_str = "no content filter"
+
+        return f"DatasetView({dataset_str}, {segment_str}, {content_str})"
 
 
 class TableEntry(Entry[TableEntryInternal]):

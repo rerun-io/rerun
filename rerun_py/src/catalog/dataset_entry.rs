@@ -24,7 +24,6 @@ use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use super::dataframe_query::PyDataframeQueryView;
 use super::task::PyTasks;
 use super::{
     PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
@@ -166,7 +165,7 @@ impl PyDatasetEntryInternal {
     }
 
     /// Returns a list of segment IDs for the dataset.
-    fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
+    pub fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         connection.get_dataset_segment_ids(self_.py(), self_.entry_details.id)
@@ -487,77 +486,6 @@ impl PyDatasetEntryInternal {
             store: handle,
             cache,
         })
-    }
-
-    #[allow(
-        clippy::allow_attributes,
-        rustdoc::private_doc_tests,
-        rustdoc::invalid_rust_codeblocks
-    )]
-    /// Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
-    ///
-    /// The only type of index currently supported is the name of a timeline, or `None` (see below
-    /// for details).
-    ///
-    /// The view will only contain a single row for each unique value of the index
-    /// that is associated with a component column that was included in the view.
-    /// Component columns that are not included via the view contents will not
-    /// impact the rows that make up the view. If the same entity / component pair
-    /// was logged to a given index multiple times, only the most recent row will be
-    /// included in the view, as determined by the `row_id` column. This will
-    /// generally be the last value logged, as row_ids are guaranteed to be
-    /// monotonically increasing when data is sent from a single process.
-    ///
-    /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per segment.
-    ///
-    /// Parameters
-    /// ----------
-    /// index : str | None
-    ///     The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
-    /// contents : ViewContentsLike
-    ///     The content specification for the view.
-    ///
-    ///     This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
-    ///     specifying multiple content-expressions and a respective list of components to select within
-    ///     that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
-    /// include_semantically_empty_columns : bool, optional
-    ///     Whether to include columns that are semantically empty, by default `False`.
-    ///
-    ///     Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-    /// include_tombstone_columns : bool, optional
-    ///     Whether to include tombstone columns, by default `False`.
-    ///
-    ///     Tombstone columns are components used to represent clears. However, even without the clear
-    ///     tombstone columns, the view will still apply the clear semantics when resolving row contents.
-    ///
-    /// Returns
-    /// -------
-    /// DataframeQueryView
-    ///     The view of the dataset.
-    #[pyo3(signature = (
-        *,
-        index,
-        contents,
-        include_semantically_empty_columns = false,
-        include_tombstone_columns = false,
-    ))]
-    fn dataframe_query_view(
-        self_: Py<Self>,
-        index: Option<String>,
-        contents: Py<PyAny>,
-        include_semantically_empty_columns: bool,
-        include_tombstone_columns: bool,
-        py: Python<'_>,
-    ) -> PyResult<PyDataframeQueryView> {
-        PyDataframeQueryView::new(
-            self_,
-            index,
-            contents,
-            include_semantically_empty_columns,
-            include_tombstone_columns,
-            py,
-        )
     }
 
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`
@@ -944,6 +872,40 @@ impl PyDatasetEntryInternal {
             cleanup_before,
             unsafe_allow_recent_cleanup,
         )
+    }
+
+    /// Returns a new `DatasetView` filtered to the given segment IDs.
+    ///
+    /// Parameters
+    /// ----------
+    /// segment_ids : list[str]
+    ///     A list of segment ID strings to filter to.
+    ///
+    /// Returns
+    /// -------
+    /// DatasetViewInternal
+    ///     A new view filtered to the given segments.
+    fn filter_segments(
+        self_: PyRef<'_, Self>,
+        segment_ids: Vec<String>,
+    ) -> super::PyDatasetViewInternal {
+        let filter: std::collections::HashSet<String> = segment_ids.into_iter().collect();
+        super::PyDatasetViewInternal::new(Py::from(self_), Some(filter), vec![])
+    }
+
+    /// Returns a new `DatasetView` filtered to the given entity paths.
+    ///
+    /// Parameters
+    /// ----------
+    /// exprs : list[str]
+    ///     Entity path expressions like `"/points/**"`, `"-/text/**"`.
+    ///
+    /// Returns
+    /// -------
+    /// DatasetViewInternal
+    ///     A new view filtered to the given entity paths.
+    fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> super::PyDatasetViewInternal {
+        super::PyDatasetViewInternal::new(Py::from(self_), None, exprs)
     }
 
     pub fn __str__(self_: PyRef<'_, Self>) -> String {

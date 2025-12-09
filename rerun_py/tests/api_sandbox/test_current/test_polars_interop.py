@@ -113,11 +113,10 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_segment_id(
-            "simple_recording_0", "simple_recording_2"
-        )
+        # Create a view filtered to specific segments
+        view = ds.filter_segments(["simple_recording_0", "simple_recording_2"])
 
-        df = view.df().to_polars()
+        df = view.reader(index="timeline").to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
 Schema([('rerun_segment_id', String),

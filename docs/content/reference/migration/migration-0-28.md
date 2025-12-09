@@ -230,3 +230,63 @@ The `Schema` class and related column descriptor/selector types have moved from 
 | `from rerun.dataframe import IndexColumnSelector`       | `from rerun.catalog import IndexColumnSelector`        |
 
 The previous import paths are still supported but will be removed in a future release.
+
+## Python SDK: new `DatasetView` API for filtering datasets
+
+A new `DatasetView` class has been introduced for filtering and reading from datasets. It provides a cleaner, lazily-evaluated API for working with subsets of dataset data.
+
+### Creating a DatasetView
+
+Use `filter_segments()` or `filter_contents()` on a `DatasetEntry` to create a `DatasetView`:
+
+```python
+from rerun.catalog import CatalogClient
+
+client = CatalogClient("rerun+http://localhost:51234")
+dataset = client.get_dataset(name="my_dataset")
+
+# Filter to specific segments
+view = dataset.filter_segments(["recording_0", "recording_1"])
+
+# Filter to specific entity paths
+view = dataset.filter_contents(["/points/**"])
+
+# Chain filters
+view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**", "-/text/**"])
+```
+
+### Reading data
+
+Use `reader()` to get a DataFusion DataFrame:
+
+```python
+df = view.reader(index="timeline")
+```
+
+### Available methods
+
+| Method | Description |
+|--------|-------------|
+| `filter_segments(segment_ids)` | Filter to specific segment IDs (list or DataFrame with `rerun_segment_id` column) |
+| `filter_contents(exprs)` | Filter to specific entity paths (supports wildcards like `/points/**`) |
+| `segment_ids()` | Get the list of segment IDs in this view |
+| `segment_table()` | Get segment metadata as a DataFusion DataFrame |
+| `schema()` | Get the filtered schema |
+| `arrow_schema()` | Get the filtered Arrow schema |
+| `reader(index=...)` | Create a DataFusion DataFrame reader |
+| `get_index_ranges(index)` | Get min/max values per segment for an index |
+| `download_segment(segment_id)` | Download a specific segment as a Recording |
+
+### Deprecation of `dataframe_query_view()`
+
+The `DatasetEntry.dataframe_query_view()` method is deprecated. Use the new `DatasetView` API instead:
+
+```python
+# Before (deprecated)
+view = dataset.dataframe_query_view(index="timeline", contents={"/points": ["Position2D"]})
+df = view.df()
+
+# After
+view = dataset.filter_contents(["/points/**"])
+df = view.reader(index="timeline")
+```

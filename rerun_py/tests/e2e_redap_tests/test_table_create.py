@@ -30,7 +30,7 @@ def test_create_table(entry_factory: EntryFactory, tmp_path: pathlib.Path) -> No
 def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path: pathlib.Path) -> None:
     table_name = "dataset_to_table"
 
-    df = prefilled_catalog.dataset.dataframe_query_view(index="time_1", contents="/**").df()
+    df = prefilled_catalog.dataset.reader(index="time_1")
     original_schema = df.schema()
 
     table_entry = prefilled_catalog.factory.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
