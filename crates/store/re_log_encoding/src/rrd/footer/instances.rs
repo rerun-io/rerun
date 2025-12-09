@@ -1,12 +1,16 @@
 use std::collections::{BTreeMap, HashMap};
 
 use arrow::array::{BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
+use arrow::buffer::NullBuffer;
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
+use re_chunk::{
+    ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline, TimelineName,
+};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_protos::common::v1alpha1::TimeRange;
 use re_types_core::ComponentDescriptor;
 
 use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
@@ -208,7 +212,8 @@ impl RrdManifest {
         };
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
-        let mut maps: IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>> = IntMap::default();
+        let mut per_entity: IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>> =
+            IntMap::default();
 
         let chunk_ids = self.col_chunk_id()?;
         let chunk_entity_paths = self.col_chunk_entity_path()?;
@@ -228,28 +233,209 @@ impl RrdManifest {
         for (i, (chunk_id, is_static, entity_path)) in
             itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
         {
-            if is_static {
-                for (f, has_static_component_data) in &has_static_component_data {
-                    let has_static_component_data = has_static_component_data.value(i);
-                    if !has_static_component_data {
-                        continue;
-                    }
+            if !is_static {
+                continue;
+            }
 
-                    let component = f.metadata().get("rerun:component").unwrap();
-                    let component = ComponentIdentifier::new(component);
-
-                    let static_chunk_ids_per_component =
-                        maps.entry(entity_path.clone()).or_default();
-
-                    // TODO: well that's a problem, what are supposed to be the winning semantics here again?
-                    static_chunk_ids_per_component
-                        .entry(component)
-                        .and_modify(|id| *id = chunk_id);
+            for (f, has_static_component_data) in &has_static_component_data {
+                let has_static_component_data = has_static_component_data.value(i);
+                if !has_static_component_data {
+                    continue;
                 }
+
+                let component = f.metadata().get("rerun:component").unwrap();
+                let component = ComponentIdentifier::new(component);
+
+                let per_component = per_entity.entry(entity_path.clone()).or_default();
+
+                // TODO: well that's a problem, what are supposed to be the winning semantics here again?
+                per_component
+                    .entry(component)
+                    .and_modify(|id| *id = chunk_id);
             }
         }
 
-        Ok(maps)
+        Ok(per_entity)
+    }
+
+    pub fn to_native_temporal(
+        &self,
+    ) -> CodecResult<IntMap<EntityPath, IntMap<TimelineName, IntMap<ComponentIdentifier, TimeRange>>>>
+    {
+        use arrow::array::{
+            ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
+            DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
+            RecordBatch, RecordBatchOptions, TimestampMicrosecondArray, TimestampMillisecondArray,
+            TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
+        };
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        fn downcast_index_as_int64_slice(array: &ArrayRef) -> Option<&[i64]> {
+            let values = match array.data_type() {
+                arrow::datatypes::DataType::Int64 => {
+                    array.downcast_array_ref::<Int64Array>()?.values()
+                }
+
+                arrow::datatypes::DataType::Timestamp(time_unit, None) => match time_unit {
+                    arrow::datatypes::TimeUnit::Second => {
+                        array.downcast_array_ref::<TimestampSecondArray>()?.values()
+                    }
+
+                    arrow::datatypes::TimeUnit::Millisecond => array
+                        .downcast_array_ref::<TimestampMillisecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Microsecond => array
+                        .downcast_array_ref::<TimestampMicrosecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Nanosecond => array
+                        .downcast_array_ref::<TimestampNanosecondArray>()?
+                        .values(),
+                },
+
+                arrow::datatypes::DataType::Duration(time_unit) => match time_unit {
+                    arrow::datatypes::TimeUnit::Second => {
+                        array.downcast_array_ref::<DurationSecondArray>()?.values()
+                    }
+
+                    arrow::datatypes::TimeUnit::Millisecond => array
+                        .downcast_array_ref::<DurationMillisecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Microsecond => array
+                        .downcast_array_ref::<DurationMicrosecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Nanosecond => array
+                        .downcast_array_ref::<DurationNanosecondArray>()?
+                        .values(),
+                },
+
+                _ => return None,
+            };
+
+            Some(values)
+        }
+
+        let fields = self.data.schema_ref().fields();
+        let columns = self.data.columns();
+        let indexes = fields
+            .iter()
+            .filter_map(|f| {
+                f.metadata()
+                    .get("rerun:index")
+                    .and_then(|index| f.metadata().get("rerun:component").map(|c| (index, c)))
+            })
+            .unique()
+            .collect_vec();
+
+        let mut per_entity: IntMap<
+            EntityPath,
+            IntMap<TimelineName, IntMap<ComponentIdentifier, TimeRange>>,
+        > = IntMap::default();
+
+        let chunk_ids = self.col_chunk_id()?;
+        let chunk_entity_paths = self.col_chunk_entity_path()?;
+        let chunk_is_static = self.col_chunk_is_static()?;
+
+        for (i, (chunk_id, is_static, entity_path)) in
+            itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
+        {
+            if is_static {
+                continue;
+            }
+
+            for (index, component) in &indexes {
+                let index = index.as_str();
+                if index == "rerun:static" {
+                    continue;
+                }
+
+                pub fn is_index(field: &arrow::datatypes::Field) -> bool {
+                    field.metadata().contains_key("rerun:index")
+                }
+
+                pub fn get_index_name(field: &arrow::datatypes::Field) -> Option<&str> {
+                    field.metadata().get("rerun:index").map(|s| s.as_str())
+                }
+
+                pub fn get_index_kind(field: &arrow::datatypes::Field) -> Option<&str> {
+                    field.metadata().get("rerun:index_kind").map(|s| s.as_str())
+                }
+
+                pub fn is_specific_index(
+                    field: &arrow::datatypes::Field,
+                    index_name: &str,
+                ) -> bool {
+                    get_index_name(field) == Some(index_name)
+                }
+
+                pub fn is_index_static(field: &arrow::datatypes::Field) -> bool {
+                    is_specific_index(field, "static")
+                }
+
+                pub fn is_index_start(field: &arrow::datatypes::Field) -> bool {
+                    field.name().ends_with(":start")
+                }
+
+                pub fn is_index_end(field: &arrow::datatypes::Field) -> bool {
+                    field.name().ends_with(":end")
+                }
+
+                pub fn is_index_global_temporal(field: &arrow::datatypes::Field) -> bool {
+                    is_index(field)
+                        && !is_index_static(field)
+                        && !field.metadata().contains_key("rerun:component")
+                }
+
+                let col_start = itertools::izip!(fields, columns).find(|(f, _col)| {
+                    is_specific_index(f, index)
+                        && is_index_start(f)
+                        && f.metadata().get("rerun:component") == Some(component)
+                });
+                let col_end = itertools::izip!(fields, columns).find(|(f, _col)| {
+                    is_specific_index(f, index)
+                        && is_index_end(f)
+                        && f.metadata().get("rerun:component") == Some(component)
+                });
+
+                let (Some((col_start_field, col_start)), Some((_col_end_field, col_end))) =
+                    (col_start, col_end)
+                else {
+                    unreachable!();
+                };
+
+                let col_start_raw = downcast_index_as_int64_slice(col_start).unwrap();
+                let col_end_raw = downcast_index_as_int64_slice(col_end).unwrap();
+
+                // So we don't have to pay the virtual call cost for every `is_valid()` call.
+                let col_start_nulls = col_start
+                    .nulls()
+                    .cloned()
+                    .unwrap_or_else(|| NullBuffer::new_valid(col_start.len()));
+                let col_end_nulls = col_end
+                    .nulls()
+                    .cloned()
+                    .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
+
+                if !col_start_nulls.is_valid(i) || !col_start_nulls.is_valid(i) {
+                    continue;
+                }
+
+                let component = ComponentIdentifier::new(component);
+                let timeline = TimelineName::new(index);
+
+                let per_timeline = per_entity.entry(entity_path.clone()).or_default();
+                let per_component = per_timeline.entry(timeline).or_default();
+
+                let start = col_start_raw[i];
+                let end = col_end_raw[i];
+                *per_component.entry(component).or_default() = TimeRange { start, end };
+            }
+        }
+
+        Ok(per_entity)
     }
 }
 

@@ -818,23 +818,6 @@ impl ChunkStore {
     // TODO: we should probably not allow insert_chunk() on that thing...
     // TODO: can this even fail?
     pub fn from_rrd_manifest(rrd_manifest: &RrdManifest) -> anyhow::Result<Self> {
-        let chunk_ids = rrd_manifest.col_chunk_id()?;
-        let chunk_entity_paths = rrd_manifest.col_chunk_entity_path()?;
-        let chunk_is_static = rrd_manifest.col_chunk_is_static()?;
-
-        let has_static_component_data = itertools::izip!(
-            rrd_manifest.data.schema_ref().fields().iter(),
-            rrd_manifest.data.columns(),
-        )
-        .filter(|(f, c)| f.name().ends_with(":has_static_data"))
-        .map(|(f, c)| {
-            (f, {
-                c.downcast_array_ref::<arrow::array::BooleanArray>()
-                    .unwrap() // TODO
-            })
-        })
-        .collect_vec();
-
         use arrow::array::{
             ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
             DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
@@ -842,68 +825,10 @@ impl ChunkStore {
             TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
         };
         use re_arrow_util::ArrowArrayDowncastRef as _;
-        fn downcast_index_as_int64_slice(array: &ArrayRef) -> Option<&[i64]> {
-            let values = match array.data_type() {
-                arrow::datatypes::DataType::Int64 => {
-                    array.downcast_array_ref::<Int64Array>()?.values()
-                }
 
-                arrow::datatypes::DataType::Timestamp(time_unit, None) => match time_unit {
-                    arrow::datatypes::TimeUnit::Second => {
-                        array.downcast_array_ref::<TimestampSecondArray>()?.values()
-                    }
-
-                    arrow::datatypes::TimeUnit::Millisecond => array
-                        .downcast_array_ref::<TimestampMillisecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Microsecond => array
-                        .downcast_array_ref::<TimestampMicrosecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Nanosecond => array
-                        .downcast_array_ref::<TimestampNanosecondArray>()?
-                        .values(),
-                },
-
-                arrow::datatypes::DataType::Duration(time_unit) => match time_unit {
-                    arrow::datatypes::TimeUnit::Second => {
-                        array.downcast_array_ref::<DurationSecondArray>()?.values()
-                    }
-
-                    arrow::datatypes::TimeUnit::Millisecond => array
-                        .downcast_array_ref::<DurationMillisecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Microsecond => array
-                        .downcast_array_ref::<DurationMicrosecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Nanosecond => array
-                        .downcast_array_ref::<DurationNanosecondArray>()?
-                        .values(),
-                },
-
-                _ => return None,
-            };
-
-            Some(values)
-        }
-
-        let has_temporal_component_data = itertools::izip!(
-            rrd_manifest.data.schema_ref().fields().iter(),
-            rrd_manifest.data.columns(),
-        )
-        .filter(|(f, c)| {
-            f.name().ends_with(":start") && f.metadata().contains_key("rerun:component")
-        })
-        // TODO: we don't know what the type is... gotta check the datatype
-        // .map(|(f, c)| {
-        //     use re_arrow_util::ArrowArrayDowncastRef as _;
-        //     c.downcast_array_ref::<arrow::array::BooleanArray>()
-        //         .unwrap(); // TODO
-        // })
-        .collect_vec();
+        let chunk_ids = rrd_manifest.col_chunk_id()?;
+        let chunk_entity_paths = rrd_manifest.col_chunk_entity_path()?;
+        let chunk_is_static = rrd_manifest.col_chunk_is_static()?;
 
         let mut store = ChunkStore::new(
             rrd_manifest.store_id.clone(),
@@ -932,43 +857,7 @@ impl ChunkStore {
 
         // TODO: well we need a col_arbitrary_component thing?
 
-        // TODO: normally we could use the sorbet schema to determine what kind of components
-        // we're dealing with, but given that everything is a hack right now and the schema is
-        // fake.. 🫠
-        let components = rrd_manifest
-            .data
-            .schema_ref()
-            .fields()
-            .iter()
-            .filter_map(|f| f.metadata().get("rerun:component"))
-            .map(|comp| ComponentIdentifier::new(comp))
-            .collect_vec();
-
-        for (i, (chunk_id, is_static, entity_path)) in
-            itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
-        {
-            if is_static {
-                for (f, has_static_component_data) in &has_static_component_data {
-                    let has_static_component_data = has_static_component_data.value(i);
-                    if !has_static_component_data {
-                        continue;
-                    }
-
-                    let component = f.metadata().get("rerun:component").unwrap();
-                    let component = ComponentIdentifier::new(component);
-
-                    let static_chunk_ids_per_component = static_chunk_ids_per_entity
-                        .entry(entity_path.clone())
-                        .or_default();
-
-                    // TODO: well that's a problem, what are supposed to be the winning semantics here again?
-                    static_chunk_ids_per_component
-                        .entry(component)
-                        .and_modify(|id| *id = chunk_id);
-                }
-            } else {
-            }
-        }
+        *static_chunk_ids_per_entity = rrd_manifest.to_native_static()?;
 
         dbg!(&static_chunk_ids_per_entity);
 
