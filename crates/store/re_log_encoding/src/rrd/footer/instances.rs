@@ -142,7 +142,7 @@ pub type NativeStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkI
 
 pub type NativeTemporalMap = IntMap<
     EntityPath,
-    IntMap<TimelineName, IntMap<ComponentIdentifier, BTreeMap<ChunkId, AbsoluteTimeRange>>>,
+    IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, AbsoluteTimeRange>>>,
 >;
 
 impl RrdManifest {
@@ -398,7 +398,12 @@ impl RrdManifest {
                 }
 
                 let component = ComponentIdentifier::new(component);
-                let timeline = TimelineName::new(index);
+                let timeline = match col_start.data_type() {
+                    arrow::datatypes::DataType::Int64 => Timeline::new_sequence(index),
+                    arrow::datatypes::DataType::Timestamp(_, _) => Timeline::new_timestamp(index),
+                    arrow::datatypes::DataType::Duration(_) => Timeline::new_duration(index),
+                    _ => unreachable!(), // TODO
+                };
 
                 let per_timeline = per_entity.entry(entity_path.clone()).or_default();
                 let per_component = per_timeline.entry(timeline).or_default();

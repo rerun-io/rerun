@@ -858,7 +858,7 @@ impl ChunkStore {
                             let per_timeline = temporal_chunk_ids_per_entity_per_component
                                 .entry(entity_path.clone())
                                 .or_default();
-                            let per_component = per_timeline.entry(timeline).or_default();
+                            let per_component = per_timeline.entry(*timeline.name()).or_default();
 
                             let ChunkIdSetPerTime {
                                 max_interval_length,
@@ -887,7 +887,7 @@ impl ChunkStore {
                                 max_interval_length,
                                 per_start_time,
                                 per_end_time,
-                            } = per_timeline.entry(timeline).or_default();
+                            } = per_timeline.entry(*timeline.name()).or_default();
 
                             *max_interval_length =
                                 (*max_interval_length).max(time_range.abs_length());
