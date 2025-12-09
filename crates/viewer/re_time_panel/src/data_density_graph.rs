@@ -422,7 +422,7 @@ pub fn paint_loaded_indicator_bar(
 ) {
     let Some(mut ranges) = db
         .rrd_manifest_index()
-        .time_ranges_all_chunks(*time_ctrl.timeline())
+        .time_ranges_all_chunks(time_ctrl.timeline())
     else {
         return;
     };

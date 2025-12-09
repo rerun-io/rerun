@@ -848,7 +848,7 @@ fn prefetch_chunks(
     rx_log.for_each(|rx| {
         if rx.source() == data_source
             && let Some(rb) =
-                rrd_manifest.time_range_missing_chunks(*time_ctrl.timeline(), query_range)
+                rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range)
             && 0 < rb.num_rows()
             && rx
                 .send_command(re_log_channel::LoadCommand::LoadChunks(rb))

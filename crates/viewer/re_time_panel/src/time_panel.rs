@@ -1629,13 +1629,35 @@ fn initialize_time_ranges_ui(
 
     let mut time_range = Vec::new();
 
-    let timeline = time_ctrl.timeline().name();
-    if let Some(times) = entity_db.time_histogram(timeline) {
-        // NOTE: `times` can be empty if a GC wiped everything.
-        if !times.is_empty() {
+    let timeline = time_ctrl.timeline();
+    if let Some(times) = entity_db.time_histogram(timeline.name()) {
+        if times.is_empty() {
+            // NOTE: `times` can be empty if a GC wiped everything.
+        } else {
             let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
             time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
+        }
+    } else {
+        // Use the manifest instead!
+        if entity_db.rrd_manifest_index().manifest().is_none() {
+            re_log::debug!("{:?} has no manifest index (yet?)", entity_db.store_id());
+        } else {
+            match entity_db
+                .rrd_manifest_index()
+                .timeline_range(timeline.name())
+            {
+                Some(range) => {
+                    dbg!(range);
+                    let timeline_axis = TimelineAxis::solid(range); // TODO: support gaps
+                    time_view =
+                        time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
+                    time_range.extend(timeline_axis.ranges);
+                }
+                None => {
+                    re_log::debug_once!("{:?} has no timeline range", entity_db.store_id());
+                }
+            }
         }
     }
 

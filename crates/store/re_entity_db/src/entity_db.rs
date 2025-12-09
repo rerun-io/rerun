@@ -556,6 +556,9 @@ impl EntityDb {
     }
 
     pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+        re_tracing::profile_function!();
+        re_log::debug!("Received RrdManifest for {:?}", self.store_id());
+
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");
         }

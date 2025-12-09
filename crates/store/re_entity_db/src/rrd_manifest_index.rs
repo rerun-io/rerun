@@ -123,7 +123,7 @@ impl RrdManifestIndex {
         Ok(())
     }
 
-    /// False when streaming from the SDK over a proxy
+    /// False for recordings streamed from SDK via proxy
     pub fn has_manifest(&self) -> bool {
         self.manifest.is_some()
     }
@@ -224,11 +224,16 @@ impl RrdManifestIndex {
         }
     }
 
+    /// When do we have data on this timeline?
+    pub fn timeline_range(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
+        self.timelines.get(timeline).copied()
+    }
+
     /// Returns the yet-to-be-loaded chunks
     #[must_use]
     pub fn time_range_missing_chunks(
         &self,
-        timeline: Timeline,
+        timeline: &Timeline,
         query_range: AbsoluteTimeRange,
     ) -> Option<RecordBatch> {
         re_tracing::profile_function!();
@@ -242,11 +247,11 @@ impl RrdManifestIndex {
         let chunk_is_static = manifest.col_chunk_is_static().ok()?;
         let start_column = manifest
             .data
-            .column_by_name(RrdManifest::field_index_start(&timeline, None).name())?
+            .column_by_name(RrdManifest::field_index_start(timeline, None).name())?
             .as_primitive_opt::<Int64Type>()?;
         let end_column = manifest
             .data
-            .column_by_name(RrdManifest::field_index_end(&timeline, None).name())?
+            .column_by_name(RrdManifest::field_index_end(timeline, None).name())?
             .as_primitive_opt::<Int64Type>()?;
 
         for (row_idx, (chunk_id, chunk_is_static, start_time, end_time)) in
@@ -273,18 +278,18 @@ impl RrdManifestIndex {
     #[must_use]
     pub fn time_ranges_all_chunks(
         &self,
-        timeline: Timeline,
+        timeline: &Timeline,
     ) -> Option<Vec<(LoadState, AbsoluteTimeRange)>> {
         let manifest = self.manifest.as_ref()?;
 
         let chunk_id = manifest.col_chunk_id().ok()?;
         let start_column = manifest
             .data
-            .column_by_name(RrdManifest::field_index_start(&timeline, None).name())?
+            .column_by_name(RrdManifest::field_index_start(timeline, None).name())?
             .as_primitive_opt::<Int64Type>()?;
         let end_column = manifest
             .data
-            .column_by_name(RrdManifest::field_index_end(&timeline, None).name())?
+            .column_by_name(RrdManifest::field_index_end(timeline, None).name())?
             .as_primitive_opt::<Int64Type>()?;
 
         let chunks = izip!(chunk_id, start_column, end_column)
