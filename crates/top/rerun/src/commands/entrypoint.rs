@@ -1228,7 +1228,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         match msg {
-                            DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                            DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                                 let mut_db =
                                     match store_id.kind() {
                                         re_log_types::StoreKind::Recording => rec
@@ -1241,7 +1241,7 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
                                             }),
                                     };
 
-                                mut_db.add_chunk_index_message(chunk_index);
+                                mut_db.add_rrd_manifest_message(*rrd_manifest);
                             }
 
                             DataSourceMessage::LogMsg(msg) => {

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use arrow::error::ArrowError;
-use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
@@ -16,7 +15,10 @@ use re_protos::common::v1alpha1::ext::SegmentId;
 use re_uri::{Origin, TimeSelection};
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::{ApiError, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams};
+use crate::{
+    ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
+    SegmentQueryParams,
+};
 
 #[cfg(target_arch = "wasm32")]
 pub async fn channel(origin: Origin) -> ApiResult<tonic_web_wasm_client::Client> {
@@ -455,8 +457,34 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
+    let manifest_result = client
+        .get_rrd_manifest(dataset_id, segment_id.clone())
+        .await;
+    match manifest_result {
+        Ok(rrd_manifest) => {
+            if tx
+                .send(DataSourceMessage::RrdManifest(
+                    store_id.clone(),
+                    rrd_manifest.into(),
+                ))
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(()); // cancelled
+            }
+        }
+        Err(err) => {
+            if err.kind == ApiErrorKind::Unimplemented {
+                // TODO(RR-3110): implement rrd manifest on cloud
+            } else {
+                re_log::warn!("Failed to load RRD manifest: {err}");
+            }
+        }
+    }
+
     // Retrieve the chunk IDs we're interested in:
-    let chunk_index_messages = client
+    // TODO(RR-3110): use the rrd manifest instead
+    let batches = client
         .query_dataset_chunk_index(SegmentQueryParams {
             dataset_id,
             segment_id: segment_id.clone(),
@@ -467,11 +495,6 @@ async fn stream_segment_from_server(
             }),
         })
         .await?;
-
-    let batches = chunk_index_messages
-        .iter()
-        .map(|m| m.record_batch().clone())
-        .collect_vec();
 
     if batches.is_empty() {
         re_log::info!("Empty recording"); // We likely won't get here even on empty recording
@@ -484,16 +507,6 @@ async fn stream_segment_from_server(
     // Prioritize the chunks:
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
-
-    for msg in chunk_index_messages {
-        if tx
-            .send(DataSourceMessage::ChunkIndexMessage(store_id.clone(), msg))
-            .is_err()
-        {
-            re_log::debug!("Receiver disconnected");
-            return Ok(()); // cancelled
-        }
-    }
 
     // Fetch the chunks base on the ids:
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
