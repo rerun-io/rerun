@@ -3,6 +3,7 @@ use arrow::array::{AsArray as _, Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use arrow::datatypes::Int64Type;
 use itertools::{Itertools as _, izip};
+use parking_lot::Mutex;
 use re_chunk::{ChunkId, Timeline};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
@@ -23,9 +24,32 @@ pub enum LoadState {
 }
 
 /// Info about a single chunk that we know ahead of loading it.
-#[derive(Clone, Debug, Default)]
 pub struct ChunkInfo {
-    pub state: LoadState,
+    pub state: Mutex<LoadState>, // Mutex here is a bit ugly…
+}
+
+impl Clone for ChunkInfo {
+    fn clone(&self) -> Self {
+        Self {
+            state: Mutex::new(*self.state.lock()),
+        }
+    }
+}
+
+impl std::fmt::Debug for ChunkInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ChunkInfo")
+            .field("state", &*self.state.lock())
+            .finish()
+    }
+}
+
+impl Default for ChunkInfo {
+    fn default() -> Self {
+        Self {
+            state: Mutex::new(LoadState::Unloaded),
+        }
+    }
 }
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
@@ -94,7 +118,7 @@ impl RrdManifestIndex {
             let num_loaded = self
                 .remote_chunks
                 .values()
-                .filter(|c| c.state == LoadState::Loaded)
+                .filter(|c| *c.state.lock() == LoadState::Loaded)
                 .count();
             Some(num_loaded as f32 / num_remote_chunks as f32)
         }
@@ -102,7 +126,7 @@ impl RrdManifestIndex {
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
         let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
-        chunk_info.state = LoadState::Loaded;
+        *chunk_info.state.lock() = LoadState::Loaded;
     }
 
     pub fn on_events(&mut self, store_events: &[ChunkStoreEvent]) {
@@ -118,7 +142,7 @@ impl RrdManifestIndex {
             match event.kind {
                 re_chunk_store::ChunkStoreDiffKind::Addition => {
                     if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                        chunk_info.state = LoadState::Loaded;
+                        *chunk_info.state.lock() = LoadState::Loaded;
                     } else if let Some(source) = event.split_source {
                         // The added chunk was the result of splitting another chunk:
                         self.parents.entry(chunk_id).or_default().insert(source);
@@ -140,14 +164,14 @@ impl RrdManifestIndex {
         self.has_deleted = true;
 
         if let Some(chunk_info) = self.remote_chunks.get_mut(chunk_id) {
-            chunk_info.state = LoadState::Unloaded;
+            *chunk_info.state.lock() = LoadState::Unloaded;
         } else if let Some(parents) = self.parents.remove(chunk_id) {
             // Mark all ancestors as not being fully loaded:
 
             let mut ancestors = parents.into_iter().collect_vec();
             while let Some(chunk_id) = ancestors.pop() {
                 if let Some(chunk_info) = self.remote_chunks.get_mut(&chunk_id) {
-                    chunk_info.state = LoadState::Unloaded;
+                    *chunk_info.state.lock() = LoadState::Unloaded;
                 } else if let Some(grandparents) = self.parents.get(&chunk_id) {
                     ancestors.extend(grandparents);
                 } else {
@@ -165,17 +189,19 @@ impl RrdManifestIndex {
     /// Returns the yet-to-be-loaded chunks
     #[must_use]
     pub fn time_range_missing_chunks(
-        &mut self,
+        &self,
         timeline: Timeline,
         query_range: AbsoluteTimeRange,
     ) -> Option<RecordBatch> {
+        re_tracing::profile_function!();
         // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
 
-        let manifest = self.manifest.as_mut()?;
+        let manifest = self.manifest.as_ref()?;
 
         let mut indices = vec![];
 
-        let chunk_id = manifest.col_chunk_id().unwrap();
+        let chunk_id = manifest.col_chunk_id().ok()?;
+        let chunk_is_static = manifest.col_chunk_is_static().ok()?;
         let start_column = manifest
             .data
             .column_by_name(RrdManifest::field_index_start(&timeline, None).name())?
@@ -185,18 +211,20 @@ impl RrdManifestIndex {
             .column_by_name(RrdManifest::field_index_end(&timeline, None).name())?
             .as_primitive_opt::<Int64Type>()?;
 
-        for (row_idx, (chunk_id, start_time, end_time)) in
-            izip!(chunk_id, start_column, end_column).enumerate()
+        for (row_idx, (chunk_id, chunk_is_static, start_time, end_time)) in
+            izip!(chunk_id, chunk_is_static, start_column, end_column).enumerate()
         {
             let chunk_range = AbsoluteTimeRange::new(
                 start_time.unwrap_or_default(),
                 end_time.unwrap_or_default(),
             );
-            if chunk_range.intersects(query_range) {
-                let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
-                if chunk_info.state == LoadState::Unloaded {
-                    chunk_info.state = LoadState::InTransit;
-                    indices.push(row_idx as i32);
+            let include = chunk_is_static || chunk_range.intersects(query_range);
+            if include {
+                if let Some(chunk_info) = self.remote_chunks.get(&chunk_id) {
+                    if *chunk_info.state.lock() == LoadState::Unloaded {
+                        *chunk_info.state.lock() = LoadState::InTransit;
+                        indices.push(row_idx as i32);
+                    }
                 }
             }
         }
@@ -230,7 +258,7 @@ impl RrdManifestIndex {
 
                 let chunk_info = self.remote_chunks.get(&chunk_id)?;
 
-                Some((chunk_info.state, chunk_range))
+                Some((*chunk_info.state.lock(), chunk_range))
             })
             .collect();
 

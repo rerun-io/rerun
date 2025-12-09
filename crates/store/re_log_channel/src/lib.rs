@@ -20,7 +20,7 @@ pub use self::sender::LogSender;
 /// An instruction sent from the viewer to the remote (gRPC only).
 pub enum LoadCommand {
     /// Needs `chunk_key` column
-    LoadChunk(RecordBatch),
+    LoadChunks(RecordBatch),
 }
 
 // --- Source ---

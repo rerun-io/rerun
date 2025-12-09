@@ -108,7 +108,7 @@ fn do_latestat_query(caches: &QueryCache) {
         // dbg!(results.components.values().map(|c| c.id()).collect_vec());
         assert!(results.components.values().all(|chunk| !chunk.is_static()));
         eprintln!(
-            "LatesAt query found {} actual chunks and {} chunks that need to be downloaded",
+            "LatestAt query found {} actual chunks and {} chunks that need to be downloaded",
             results.components.len(),
             results.missing_chunk_ids.len(),
         );

@@ -437,12 +437,38 @@ async fn stream_segment_from_server(
             if tx
                 .send(DataSourceMessage::RrdManifest(
                     store_id.clone(),
-                    rrd_manifest.into(),
+                    rrd_manifest.clone().into(),
                 ))
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
                 return Ok(()); // cancelled
+            }
+
+            // TODO: emilk: fix viewer
+            if false {
+                // if store_id.is_recording() {
+                // TODO Always load _some_ chunks (all the static ones, for instance):
+                if false {
+                    // Prioritize the chunks:
+                    let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                        ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                    })?;
+                }
+
+                re_log::debug!("Waiting for viewer to tell me what to load…");
+                loop {
+                    if let Ok(cmd) = tx.recv_cmd() {
+                        match cmd {
+                            re_log_channel::LoadCommand::LoadChunks(batch) => {
+                                load_chunks(client, tx, &store_id, batch).await?;
+                            }
+                        }
+                    } else {
+                        re_log::debug!("Receiver disconnected");
+                        return Ok(()); // cancelled
+                    }
+                }
             }
         }
         Err(err) => {
@@ -478,7 +504,7 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    load_chunks(client, tx, store_id, batch).await?;
+    load_chunks(client, tx, &store_id, batch).await?;
 
     Ok(())
 }
@@ -487,9 +513,15 @@ async fn stream_segment_from_server(
 async fn load_chunks(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
-    store_id: StoreId,
+    store_id: &StoreId,
     batch: RecordBatch,
 ) -> Result<(), ApiError> {
+    if batch.num_rows() == 0 {
+        return Ok(());
+    }
+
+    re_log::debug!("Requesting {} chunks from server…", batch.num_rows());
+
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
     while let Some(chunks) = chunk_stream.next().await {
@@ -515,6 +547,9 @@ async fn load_chunks(
             }
         }
     }
+
+    re_log::debug!("Finished downloading {} chunks.", batch.num_rows());
+
     Ok(())
 }
 

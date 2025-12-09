@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crossbeam::channel::RecvError;
+
 use crate::{
     Channel, DataSourceMessage, LoadCommand, LogSource, SendError, SmartMessage,
     SmartMessagePayload,
@@ -119,5 +121,13 @@ impl LogSender {
     #[inline]
     pub fn len(&self) -> usize {
         self.tx.len()
+    }
+
+    /// Block until we receive a command from a [`LogSender`].
+    ///
+    /// Return an error if there is no more [`LogSender`]s.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn recv_cmd(&self) -> Result<LoadCommand, RecvError> {
+        self.rx.recv()
     }
 }
