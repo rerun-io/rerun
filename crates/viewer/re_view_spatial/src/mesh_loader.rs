@@ -2,11 +2,12 @@ use itertools::Itertools as _;
 
 use re_renderer::{RenderContext, mesh::GpuMesh};
 use re_types::{components::MediaType, datatypes};
+use re_view::clamped_vec_or;
 use re_viewer_context::{
     ImageInfo, StoredBlobCacheKey, gpu_bridge::texture_creation_desc_from_color_image,
 };
 
-use crate::{caches::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
+use crate::caches::AnyMesh;
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {

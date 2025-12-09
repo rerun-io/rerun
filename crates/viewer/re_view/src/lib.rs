@@ -15,6 +15,8 @@ mod query;
 mod results_ext;
 mod view_property_ui;
 
+use std::borrow::Cow;
+
 pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
@@ -57,4 +59,78 @@ pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<
             .chain(std::iter::repeat(last))
             .take(clamped_len),
     )
+}
+
+/// Iterate over all the values in the slice, then repeat the last value forever.
+///
+/// If the input slice is empty, the second argument is returned forever.
+#[inline]
+pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> + Clone {
+    let repeated = values.last().unwrap_or(if_empty);
+    values.iter().chain(std::iter::repeat(repeated))
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// Returns an empty vector if values is empty.
+#[inline]
+pub fn clamped_vec_or_empty<T: Clone>(values: &[T], clamped_len: usize) -> Cow<'_, [T]> {
+    if values.len() == clamped_len {
+        // Happy path
+        values.into()
+    } else if let Some(last) = values.last() {
+        if values.len() == 1 {
+            // Commo happy path
+            vec![last.clone(); clamped_len].into()
+        } else if values.len() < clamped_len {
+            // Clamp
+            let mut vec = Vec::with_capacity(clamped_len);
+            vec.extend(values.iter().cloned());
+            vec.extend(std::iter::repeat_n(
+                last.clone(),
+                clamped_len - values.len(),
+            ));
+            vec.into()
+        } else {
+            // Trim
+            values.iter().take(clamped_len).cloned().collect()
+        }
+    } else {
+        // Empty input
+        Vec::new().into()
+    }
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// If the input slice is empty, the second argument is repeated `clamped_len` times.
+#[inline]
+pub fn clamped_vec_or<'a, T: Clone>(
+    values: &'a [T],
+    clamped_len: usize,
+    if_empty: &T,
+) -> Cow<'a, [T]> {
+    let clamped = clamped_vec_or_empty(values, clamped_len);
+    if clamped.is_empty() {
+        vec![if_empty.clone(); clamped_len].into()
+    } else {
+        clamped
+    }
+}
+
+#[test]
+fn test_clamped_vec() {
+    assert_eq!(clamped_vec_or_empty::<i32>(&[], 0), Vec::<i32>::default());
+    assert_eq!(clamped_vec_or_empty::<i32>(&[], 3), Vec::<i32>::default());
+    assert_eq!(
+        clamped_vec_or_empty::<i32>(&[1, 2, 3], 0),
+        Vec::<i32>::default()
+    );
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 1), vec![1]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 2), vec![1, 2]);
+    assert_eq!(clamped_vec_or_empty::<i32>(&[1, 2, 3], 3), vec![1, 2, 3]);
+    assert_eq!(
+        clamped_vec_or_empty::<i32>(&[1, 2, 3], 5),
+        vec![1, 2, 3, 3, 3]
+    );
 }
