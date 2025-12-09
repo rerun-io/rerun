@@ -2,7 +2,7 @@ use ahash::{HashMap, HashSet};
 use arrow::array::{AsArray as _, Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use arrow::datatypes::Int64Type;
-use itertools::{Itertools as _, izip};
+use itertools::{Either, Itertools as _, izip};
 use parking_lot::Mutex;
 use re_chunk::{ChunkId, Timeline};
 use re_chunk_store::ChunkStoreEvent;
@@ -80,11 +80,15 @@ pub struct RrdManifestIndex {
     ///
     /// If so, we have run some GC and should not show progress bar.
     has_deleted: bool,
+
+    native_temporal_map: re_log_encoding::NativeTemporalMap,
 }
 
 impl RrdManifestIndex {
     pub fn append(&mut self, manifest: RrdManifest) -> CodecResult<()> {
         re_tracing::profile_function!();
+
+        self.native_temporal_map = manifest.to_native_temporal()?;
 
         for chunk_id in manifest.col_chunk_id()? {
             self.remote_chunks.entry(chunk_id).or_default();
@@ -97,6 +101,10 @@ impl RrdManifestIndex {
     /// The full manifest, if known.
     pub fn manifest(&self) -> Option<&RrdManifest> {
         self.manifest.as_ref()
+    }
+
+    pub fn native_temporal_map(&self) -> &re_log_encoding::NativeTemporalMap {
+        &self.native_temporal_map
     }
 
     /// [0, 1], how many chunks have been loaded?
@@ -263,6 +271,45 @@ impl RrdManifestIndex {
             .collect();
 
         Some(chunks)
+    }
+
+    pub fn unloaded_time_ranges_for(
+        &self,
+        timeline: &re_chunk::TimelineName,
+        entity: &re_chunk::EntityPath,
+        component: Option<re_chunk::ComponentIdentifier>,
+    ) -> Vec<(AbsoluteTimeRange, u64)> {
+        let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
+            return Vec::new();
+        };
+
+        let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline) else {
+            return Vec::new();
+        };
+
+        let component_ranges = if let Some(component) = component {
+            let Some(component_ranges) = entity_ranges.get(&component) else {
+                return Vec::new();
+            };
+
+            Either::Left(std::iter::once(component_ranges))
+        } else {
+            Either::Right(entity_ranges.values())
+        };
+
+        component_ranges
+            .into_iter()
+            .flatten()
+            .filter(|(chunk, _)| {
+                self.remote_chunks
+                    .get(chunk)
+                    .is_none_or(|c| match *c.state.lock() {
+                        LoadState::InTransit | LoadState::Unloaded => true,
+                        LoadState::Loaded => false,
+                    })
+            })
+            .map(|(_, range)| ((*range).into(), 1))
+            .collect()
     }
 }
 
