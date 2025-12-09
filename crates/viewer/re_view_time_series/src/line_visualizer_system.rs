@@ -39,7 +39,6 @@ impl VisualizerSystem for SeriesLinesSystem {
             .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
         query_info.relevant_archetype = archetypes::SeriesLines::name().into();
-        query_info.required = re_viewer_context::RequiredComponents::None; // TODO: that's a hack, don't push that :)
 
         query_info
     }
