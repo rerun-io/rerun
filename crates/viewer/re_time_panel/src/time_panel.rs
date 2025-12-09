@@ -320,6 +320,14 @@ impl TimePanel {
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
 
+            data_density_graph::draw_loaded_indicator_bar(
+                ui,
+                &self.time_ranges_ui,
+                entity_db,
+                time_ctrl,
+                top_row_rect.bottom(),
+            );
+
             ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
             // Add extra margin on the left which was intentionally missing on the controls.
