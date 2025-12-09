@@ -1,14 +1,15 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use arrow::array::{BooleanArray, FixedSizeBinaryArray, StringArray, UInt64Array};
 use arrow::datatypes::Field;
 use itertools::Itertools as _;
+use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{EntityPath, StoreId};
+use re_log_types::{EntityPath, StoreId, StoreKind};
 use re_types_core::ComponentDescriptor;
 
-use crate::CodecResult;
+use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
 
 // ---
 
@@ -132,6 +133,124 @@ pub struct RrdManifest {
     // TODO(cmc): should we slap a sorbet:version on this? that probably should be part of the sorbet ABI as
     // much as anything else?
     pub data: arrow::array::RecordBatch,
+}
+
+impl RrdManifest {
+    // TODO
+    pub fn from_rrd_bytes(rrd_bytes: &[u8]) -> CodecResult<Option<Self>> {
+        let stream_footer = match crate::StreamFooter::from_rrd_bytes(rrd_bytes) {
+            Ok(footer) => footer,
+
+            // That was in fact _not_ a footer.
+            Err(crate::CodecError::FrameDecoding(_)) => return Ok(None),
+
+            err @ Err(_) => err?,
+        };
+
+        if stream_footer.entries.len() != 1 {
+            re_log::warn!(
+                num_manifests = stream_footer.entries.len(),
+                "detected recording with unsupported number of manifests, falling back to slow path",
+            );
+            return Ok(None);
+        }
+
+        let StreamFooterEntry {
+            rrd_footer_byte_span_from_start_excluding_header,
+            crc_excluding_header,
+        } = stream_footer.entries[0];
+
+        let rrd_footer_byte_span = rrd_footer_byte_span_from_start_excluding_header;
+        if rrd_footer_byte_span.start == 0 || rrd_footer_byte_span.len == 0 {
+            re_log::warn!(
+                num_manifests = stream_footer.entries.len(),
+                "detected recording with corrupt footer, falling back to slow path",
+            );
+            return Ok(None);
+        }
+
+        let rrd_footer_bytes =
+            &rrd_bytes[rrd_footer_byte_span.try_cast::<usize>().unwrap().range()];
+
+        let crc = crate::StreamFooter::compute_crc(&rrd_footer_bytes);
+        if crc != crc_excluding_header {
+            return Err(crate::CodecError::CrcMismatch {
+                expected: crc_excluding_header,
+                got: crc,
+            });
+        }
+
+        let rrd_footer =
+            re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&rrd_footer_bytes)?;
+        Ok(rrd_footer
+            .manifests
+            .iter()
+            .find(|manifest| {
+                manifest
+                    .store_id
+                    .as_ref()
+                    .map(|id| id.kind() == re_protos::common::v1alpha1::StoreKind::Recording)
+                    .unwrap_or(false)
+            })
+            .map(|manifest| manifest.to_application(()))
+            .transpose()?)
+    }
+
+    // TODO
+    pub fn to_native_static(
+        &self,
+    ) -> CodecResult<IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>> {
+        use arrow::array::{
+            ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
+            DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
+            RecordBatch, RecordBatchOptions, TimestampMicrosecondArray, TimestampMillisecondArray,
+            TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
+        };
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let mut maps: IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>> = IntMap::default();
+
+        let chunk_ids = self.col_chunk_id()?;
+        let chunk_entity_paths = self.col_chunk_entity_path()?;
+        let chunk_is_static = self.col_chunk_is_static()?;
+
+        let has_static_component_data =
+            itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
+                .filter(|(f, c)| f.name().ends_with(":has_static_data"))
+                .map(|(f, c)| {
+                    (f, {
+                        c.downcast_array_ref::<arrow::array::BooleanArray>()
+                            .unwrap() // TODO
+                    })
+                })
+                .collect_vec();
+
+        for (i, (chunk_id, is_static, entity_path)) in
+            itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
+        {
+            if is_static {
+                for (f, has_static_component_data) in &has_static_component_data {
+                    let has_static_component_data = has_static_component_data.value(i);
+                    if !has_static_component_data {
+                        continue;
+                    }
+
+                    let component = f.metadata().get("rerun:component").unwrap();
+                    let component = ComponentIdentifier::new(component);
+
+                    let static_chunk_ids_per_component =
+                        maps.entry(entity_path.clone()).or_default();
+
+                    // TODO: well that's a problem, what are supposed to be the winning semantics here again?
+                    static_chunk_ids_per_component
+                        .entry(component)
+                        .and_modify(|id| *id = chunk_id);
+                }
+            }
+        }
+
+        Ok(maps)
+    }
 }
 
 // Schema fields are stored as Vecs, but we don't want their order to matter when performing comparisons.

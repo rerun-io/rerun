@@ -2,11 +2,22 @@ use itertools::Itertools as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery, TimeInt, Timeline};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 use re_query::{LatestAtResults, QueryCache, RangeResults};
 use re_sdk_types::{Archetype, archetypes::Boxes3D};
 
 fn main() {
+    // TODO: this is the future!!1!
+
+    let nuscenes_rrd = "/home/cmc/dev/rerun-io/rerun/nuscenes.rrd";
+    let rrd_bytes = std::fs::read(nuscenes_rrd).unwrap();
+    let rrd_manifest = RrdManifest::from_rrd_bytes(&rrd_bytes).unwrap().unwrap();
+    dbg!(rrd_manifest.to_native_static().unwrap());
+    // let store = ChunkStore::from_rrd_manifest(&rrd_manifest).unwrap();
+
+    // ---
+
     let nuscenes_rrd = "/home/cmc/dev/rerun-io/rerun/nuscenes.rrd";
     let stores =
         ChunkStore::from_rrd_filepath(&ChunkStoreConfig::COMPACTION_DISABLED, nuscenes_rrd)

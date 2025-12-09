@@ -3,8 +3,11 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 use arrow::datatypes::DataType as ArrowDataType;
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
+use re_log_encoding::RrdManifest;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
@@ -425,6 +428,8 @@ pub struct ChunkStore {
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
+    //
+    // TODO: well garbage collection needs to be LRU based so this gotta die anyway
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].
@@ -806,5 +811,167 @@ impl ChunkStore {
             .into_iter()
             .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
             .collect())
+    }
+
+    // TODO: ye im not aiming for quality nor performance here
+    //
+    // TODO: we should probably not allow insert_chunk() on that thing...
+    // TODO: can this even fail?
+    pub fn from_rrd_manifest(rrd_manifest: &RrdManifest) -> anyhow::Result<Self> {
+        let chunk_ids = rrd_manifest.col_chunk_id()?;
+        let chunk_entity_paths = rrd_manifest.col_chunk_entity_path()?;
+        let chunk_is_static = rrd_manifest.col_chunk_is_static()?;
+
+        let has_static_component_data = itertools::izip!(
+            rrd_manifest.data.schema_ref().fields().iter(),
+            rrd_manifest.data.columns(),
+        )
+        .filter(|(f, c)| f.name().ends_with(":has_static_data"))
+        .map(|(f, c)| {
+            (f, {
+                c.downcast_array_ref::<arrow::array::BooleanArray>()
+                    .unwrap() // TODO
+            })
+        })
+        .collect_vec();
+
+        use arrow::array::{
+            ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
+            DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
+            RecordBatch, RecordBatchOptions, TimestampMicrosecondArray, TimestampMillisecondArray,
+            TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
+        };
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+        fn downcast_index_as_int64_slice(array: &ArrayRef) -> Option<&[i64]> {
+            let values = match array.data_type() {
+                arrow::datatypes::DataType::Int64 => {
+                    array.downcast_array_ref::<Int64Array>()?.values()
+                }
+
+                arrow::datatypes::DataType::Timestamp(time_unit, None) => match time_unit {
+                    arrow::datatypes::TimeUnit::Second => {
+                        array.downcast_array_ref::<TimestampSecondArray>()?.values()
+                    }
+
+                    arrow::datatypes::TimeUnit::Millisecond => array
+                        .downcast_array_ref::<TimestampMillisecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Microsecond => array
+                        .downcast_array_ref::<TimestampMicrosecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Nanosecond => array
+                        .downcast_array_ref::<TimestampNanosecondArray>()?
+                        .values(),
+                },
+
+                arrow::datatypes::DataType::Duration(time_unit) => match time_unit {
+                    arrow::datatypes::TimeUnit::Second => {
+                        array.downcast_array_ref::<DurationSecondArray>()?.values()
+                    }
+
+                    arrow::datatypes::TimeUnit::Millisecond => array
+                        .downcast_array_ref::<DurationMillisecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Microsecond => array
+                        .downcast_array_ref::<DurationMicrosecondArray>()?
+                        .values(),
+
+                    arrow::datatypes::TimeUnit::Nanosecond => array
+                        .downcast_array_ref::<DurationNanosecondArray>()?
+                        .values(),
+                },
+
+                _ => return None,
+            };
+
+            Some(values)
+        }
+
+        let has_temporal_component_data = itertools::izip!(
+            rrd_manifest.data.schema_ref().fields().iter(),
+            rrd_manifest.data.columns(),
+        )
+        .filter(|(f, c)| {
+            f.name().ends_with(":start") && f.metadata().contains_key("rerun:component")
+        })
+        // TODO: we don't know what the type is... gotta check the datatype
+        // .map(|(f, c)| {
+        //     use re_arrow_util::ArrowArrayDowncastRef as _;
+        //     c.downcast_array_ref::<arrow::array::BooleanArray>()
+        //         .unwrap(); // TODO
+        // })
+        .collect_vec();
+
+        let mut store = ChunkStore::new(
+            rrd_manifest.store_id.clone(),
+            // TODO: very important because we dont do linage tracking atm
+            ChunkStoreConfig::COMPACTION_DISABLED,
+        );
+
+        // TODO: okay well, let's see what's the minimum we can get away with i guess
+        let ChunkStore {
+            id: _,
+            config: _,
+            time_type_registry,
+            type_registry,
+            per_column_metadata,
+            chunks_per_chunk_id: _, // TODO: by definition, we never fill that one!
+            chunk_ids_per_min_row_id,
+            temporal_chunk_ids_per_entity_per_component,
+            temporal_chunk_ids_per_entity,
+            temporal_chunks_stats: _, // TODO: and we're lacking some info in footers
+            static_chunk_ids_per_entity,
+            static_chunks_stats: _, // TODO: and we're lacking some info in footers
+            insert_id: _,
+            gc_id: _,
+            event_id: _,
+        } = &mut store;
+
+        // TODO: well we need a col_arbitrary_component thing?
+
+        // TODO: normally we could use the sorbet schema to determine what kind of components
+        // we're dealing with, but given that everything is a hack right now and the schema is
+        // fake.. 🫠
+        let components = rrd_manifest
+            .data
+            .schema_ref()
+            .fields()
+            .iter()
+            .filter_map(|f| f.metadata().get("rerun:component"))
+            .map(|comp| ComponentIdentifier::new(comp))
+            .collect_vec();
+
+        for (i, (chunk_id, is_static, entity_path)) in
+            itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
+        {
+            if is_static {
+                for (f, has_static_component_data) in &has_static_component_data {
+                    let has_static_component_data = has_static_component_data.value(i);
+                    if !has_static_component_data {
+                        continue;
+                    }
+
+                    let component = f.metadata().get("rerun:component").unwrap();
+                    let component = ComponentIdentifier::new(component);
+
+                    let static_chunk_ids_per_component = static_chunk_ids_per_entity
+                        .entry(entity_path.clone())
+                        .or_default();
+
+                    // TODO: well that's a problem, what are supposed to be the winning semantics here again?
+                    static_chunk_ids_per_component
+                        .entry(component)
+                        .and_modify(|id| *id = chunk_id);
+                }
+            } else {
+            }
+        }
+
+        dbg!(&static_chunk_ids_per_entity);
+
+        Ok(store)
     }
 }
