@@ -67,6 +67,8 @@ impl SeriesLinesSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        use rayon::prelude::*;
+
         let mut output = VisualizerExecutionOutput::default();
 
         let plot_mem =
@@ -75,40 +77,21 @@ impl SeriesLinesSystem {
 
         let data_results = query.iter_visible_data_results(Self::identifier());
 
-        let parallel_loading = true;
-        if parallel_loading {
-            use rayon::prelude::*;
-            re_tracing::profile_wait!("load_series");
-            for result in data_results
-                .collect_vec()
-                .par_iter()
-                .map(|data_result| Self::load_series(ctx, query, time_per_pixel, data_result))
-                .collect::<Vec<_>>()
-            {
-                match result {
-                    Err(LoadSeriesError::ViewPropertyQuery(err)) => {
-                        return Err(err.into());
-                    }
-                    Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
-                        output.report_error_for(entity_path, error);
-                    }
-                    Ok(one_series) => {
-                        self.all_series.extend(one_series);
-                    }
+        for result in data_results
+            .collect_vec()
+            .par_iter()
+            .map(|data_result| Self::load_series(ctx, query, time_per_pixel, data_result))
+            .collect::<Vec<_>>()
+        {
+            match result {
+                Err(LoadSeriesError::ViewPropertyQuery(err)) => {
+                    return Err(err.into());
                 }
-            }
-        } else {
-            for data_result in data_results {
-                match Self::load_series(ctx, query, time_per_pixel, data_result) {
-                    Err(LoadSeriesError::ViewPropertyQuery(err)) => {
-                        return Err(err.into());
-                    }
-                    Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
-                        output.report_error_for(entity_path, error);
-                    }
-                    Ok(series) => {
-                        self.all_series.extend(series);
-                    }
+                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
+                    output.report_error_for(entity_path, error);
+                }
+                Ok(series) => {
+                    self.all_series.extend(series);
                 }
             }
         }
