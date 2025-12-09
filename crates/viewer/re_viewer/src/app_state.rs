@@ -9,7 +9,7 @@ use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_channel::LogReceiverSet;
-use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::{PanelState, PlayState};
@@ -211,6 +211,10 @@ impl AppState {
         runtime: &AsyncRuntimeHandle,
     ) {
         re_tracing::profile_function!();
+
+        if let Some(time_ctrl) = self.time_controls.get(store_context.recording.store_id()) {
+            prefetch_chunks(rx_log, store_context.recording, time_ctrl);
+        }
 
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
@@ -815,6 +819,46 @@ impl AppState {
                 .map(|undo_state| undo_state.blueprint_query())
         }
     }
+}
+
+fn prefetch_chunks(
+    rx_log: &LogReceiverSet,
+    recording: &EntityDb,
+    time_ctrl: &TimeControl,
+) -> Option<()> {
+    re_tracing::profile_function!();
+    let current_time = time_ctrl.time_i64()?;
+    let timeline = time_ctrl.timeline();
+    let buffer_time = match timeline.typ() {
+        re_log_types::TimeType::Sequence => 30,
+        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 2_000_000_000,
+    };
+    let query_range = AbsoluteTimeRange::new(
+        current_time.saturating_sub(buffer_time),
+        current_time.saturating_add(buffer_time),
+    );
+    let data_source = recording.data_source.as_ref()?;
+    let rrd_manifest = recording.rrd_manifest_index();
+
+    #[expect(clippy::question_mark)]
+    if rrd_manifest.manifest().is_none() {
+        return None;
+    }
+
+    rx_log.for_each(|rx| {
+        if rx.source() == data_source
+            && let Some(rb) =
+                rrd_manifest.time_range_missing_chunks(*time_ctrl.timeline(), query_range)
+            && 0 < rb.num_rows()
+            && rx
+                .send_command(re_log_channel::LoadCommand::LoadChunks(rb))
+                .is_err()
+        {
+            re_log::warn!("The receiver is gone.");
+        }
+    });
+
+    None
 }
 
 /// Updates the query results for the given viewport UI.

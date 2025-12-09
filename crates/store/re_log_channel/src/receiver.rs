@@ -2,6 +2,8 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
+use crossbeam::channel::SendError;
+
 use crate::{Channel, LoadCommand, LogSource, SmartMessage, TryRecvError};
 
 pub struct LogReceiver {
@@ -112,5 +114,10 @@ impl LogReceiver {
     #[inline]
     pub fn len(&self) -> usize {
         self.rx.len()
+    }
+
+    /// Send a command to the other end
+    pub fn send_command(&self, rb: LoadCommand) -> Result<(), SendError<LoadCommand>> {
+        self.tx.send(rb)
     }
 }
