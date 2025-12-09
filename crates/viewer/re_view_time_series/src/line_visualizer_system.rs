@@ -12,13 +12,12 @@ use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
-use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
     collect_series_visibility, determine_num_series,
 };
-use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
+use crate::{LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
@@ -58,21 +57,6 @@ impl VisualizerSystem for SeriesLinesSystem {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-}
-
-/// Error that can occur when loading a single series.
-enum LoadSeriesError {
-    ViewPropertyQuery(ViewPropertyQueryError),
-    EntitySpecificVisualizerError {
-        entity_path: EntityPath,
-        error: String,
-    },
-}
-
-impl From<ViewPropertyQueryError> for LoadSeriesError {
-    fn from(err: ViewPropertyQueryError) -> Self {
-        Self::ViewPropertyQuery(err)
     }
 }
 
@@ -172,7 +156,7 @@ impl SeriesLinesSystem {
             else {
                 return Err(LoadSeriesError::EntitySpecificVisualizerError {
                     entity_path: data_result.entity_path.clone(),
-                    error: "No scalar data found".to_owned(),
+                    error: "No valid scalar data found".to_owned(),
                 });
             };
 
