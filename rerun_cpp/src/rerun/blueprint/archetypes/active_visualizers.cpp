@@ -8,9 +8,9 @@
 namespace rerun::blueprint::archetypes {
     ActiveVisualizers ActiveVisualizers::clear_fields() {
         auto archetype = ActiveVisualizers();
-        archetype.ranges =
+        archetype.instruction_ids =
             ComponentBatch::empty<rerun::blueprint::components::VisualizerInstructionId>(
-                Descriptor_ranges
+                Descriptor_instruction_ids
             )
                 .value_or_throw();
         return archetype;
@@ -19,15 +19,15 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> ActiveVisualizers::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
         columns.reserve(1);
-        if (ranges.has_value()) {
-            columns.push_back(ranges.value().partitioned(lengths_).value_or_throw());
+        if (instruction_ids.has_value()) {
+            columns.push_back(instruction_ids.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
 
     Collection<ComponentColumn> ActiveVisualizers::columns() {
-        if (ranges.has_value()) {
-            return columns(std::vector<uint32_t>(ranges.value().length(), 1));
+        if (instruction_ids.has_value()) {
+            return columns(std::vector<uint32_t>(instruction_ids.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -43,8 +43,8 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(1);
 
-        if (archetype.ranges.has_value()) {
-            cells.push_back(archetype.ranges.value());
+        if (archetype.instruction_ids.has_value()) {
+            cells.push_back(archetype.instruction_ids.value());
         }
 
         return rerun::take_ownership(std::move(cells));

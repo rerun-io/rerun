@@ -16,5 +16,5 @@ table ActiveVisualizers (
     "attr.python.aliases": "str | Sequence[str]"
 ) {
    /// Id's of the visualizers that should be active.
-   ranges: [rerun.blueprint.components.VisualizerInstructionId] ("attr.rerun.component_required", order: 1000);
+   instruction_ids: [rerun.blueprint.components.VisualizerInstructionId] ("attr.rerun.component_required", order: 1000);
 }

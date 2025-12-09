@@ -37,25 +37,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct ActiveVisualizers {
     /// Id's of the visualizers that should be active.
-    pub ranges: Option<SerializedComponentBatch>,
+    pub instruction_ids: Option<SerializedComponentBatch>,
 }
 
 impl ActiveVisualizers {
-    /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::instruction_ids`].
     ///
     /// The corresponding component is [`crate::blueprint::components::VisualizerInstructionId`].
     #[inline]
-    pub fn descriptor_ranges() -> ComponentDescriptor {
+    pub fn descriptor_instruction_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: Some("rerun.blueprint.archetypes.ActiveVisualizers".into()),
-            component: "ActiveVisualizers:ranges".into(),
+            component: "ActiveVisualizers:instruction_ids".into(),
             component_type: Some("rerun.blueprint.components.VisualizerInstructionId".into()),
         }
     }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [ActiveVisualizers::descriptor_ranges()]);
+    std::sync::LazyLock::new(|| [ActiveVisualizers::descriptor_instruction_ids()]);
 
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
@@ -64,7 +64,7 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [ActiveVisualizers::descriptor_ranges()]);
+    std::sync::LazyLock::new(|| [ActiveVisualizers::descriptor_instruction_ids()]);
 
 impl ActiveVisualizers {
     /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
@@ -109,10 +109,12 @@ impl ::re_types_core::Archetype for ActiveVisualizers {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let ranges = arrays_by_descr
-            .get(&Self::descriptor_ranges())
-            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_ranges()));
-        Ok(Self { ranges })
+        let instruction_ids = arrays_by_descr
+            .get(&Self::descriptor_instruction_ids())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_instruction_ids())
+            });
+        Ok(Self { instruction_ids })
     }
 }
 
@@ -120,7 +122,9 @@ impl ::re_types_core::AsComponents for ActiveVisualizers {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
-        std::iter::once(self.ranges.clone()).flatten().collect()
+        std::iter::once(self.instruction_ids.clone())
+            .flatten()
+            .collect()
     }
 }
 
@@ -130,12 +134,15 @@ impl ActiveVisualizers {
     /// Create a new `ActiveVisualizers`.
     #[inline]
     pub fn new(
-        ranges: impl IntoIterator<
+        instruction_ids: impl IntoIterator<
             Item = impl Into<crate::blueprint::components::VisualizerInstructionId>,
         >,
     ) -> Self {
         Self {
-            ranges: try_serialize_field(Self::descriptor_ranges(), ranges),
+            instruction_ids: try_serialize_field(
+                Self::descriptor_instruction_ids(),
+                instruction_ids,
+            ),
         }
     }
 
@@ -150,22 +157,23 @@ impl ActiveVisualizers {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            ranges: Some(SerializedComponentBatch::new(
+            instruction_ids: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::VisualizerInstructionId::arrow_empty(),
-                Self::descriptor_ranges(),
+                Self::descriptor_instruction_ids(),
             )),
         }
     }
 
     /// Id's of the visualizers that should be active.
     #[inline]
-    pub fn with_ranges(
+    pub fn with_instruction_ids(
         mut self,
-        ranges: impl IntoIterator<
+        instruction_ids: impl IntoIterator<
             Item = impl Into<crate::blueprint::components::VisualizerInstructionId>,
         >,
     ) -> Self {
-        self.ranges = try_serialize_field(Self::descriptor_ranges(), ranges);
+        self.instruction_ids =
+            try_serialize_field(Self::descriptor_instruction_ids(), instruction_ids);
         self
     }
 }
@@ -173,6 +181,6 @@ impl ActiveVisualizers {
 impl ::re_byte_size::SizeBytes for ActiveVisualizers {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.ranges.heap_size_bytes()
+        self.instruction_ids.heap_size_bytes()
     }
 }

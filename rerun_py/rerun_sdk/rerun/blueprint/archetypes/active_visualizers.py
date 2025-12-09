@@ -39,27 +39,27 @@ class ActiveVisualizers(Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
-    def __init__(self: Any, ranges: datatypes.Utf8ArrayLike) -> None:
+    def __init__(self: Any, instruction_ids: datatypes.Utf8ArrayLike) -> None:
         """
         Create a new instance of the ActiveVisualizers archetype.
 
         Parameters
         ----------
-        ranges:
+        instruction_ids:
             Id's of the visualizers that should be active.
 
         """
 
         # You can define your own __init__ function as a member of ActiveVisualizersExt in active_visualizers_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(ranges=ranges)
+            self.__attrs_init__(instruction_ids=instruction_ids)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            ranges=None,
+            instruction_ids=None,
         )
 
     @classmethod
@@ -74,7 +74,7 @@ class ActiveVisualizers(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        ranges: datatypes.Utf8ArrayLike | None = None,
+        instruction_ids: datatypes.Utf8ArrayLike | None = None,
     ) -> ActiveVisualizers:
         """
         Update only some specific fields of a `ActiveVisualizers`.
@@ -83,7 +83,7 @@ class ActiveVisualizers(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        ranges:
+        instruction_ids:
             Id's of the visualizers that should be active.
 
         """
@@ -91,7 +91,7 @@ class ActiveVisualizers(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "ranges": ranges,
+                "instruction_ids": instruction_ids,
             }
 
             if clear_unset:
@@ -108,7 +108,7 @@ class ActiveVisualizers(Archetype):
         """Clear all the fields of a `ActiveVisualizers`."""
         return cls.from_fields(clear_unset=True)
 
-    ranges: blueprint_components.VisualizerInstructionIdBatch | None = field(
+    instruction_ids: blueprint_components.VisualizerInstructionIdBatch | None = field(
         metadata={"component": True},
         default=None,
         converter=blueprint_components.VisualizerInstructionIdBatch._converter,  # type: ignore[misc]

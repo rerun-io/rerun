@@ -31,16 +31,16 @@ namespace rerun::blueprint::archetypes {
     ///
     struct ActiveVisualizers {
         /// Id's of the visualizers that should be active.
-        std::optional<ComponentBatch> ranges;
+        std::optional<ComponentBatch> instruction_ids;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] =
             "rerun.blueprint.archetypes.ActiveVisualizers";
 
-        /// `ComponentDescriptor` for the `ranges` field.
-        static constexpr auto Descriptor_ranges = ComponentDescriptor(
-            ArchetypeName, "ActiveVisualizers:ranges",
+        /// `ComponentDescriptor` for the `instruction_ids` field.
+        static constexpr auto Descriptor_instruction_ids = ComponentDescriptor(
+            ArchetypeName, "ActiveVisualizers:instruction_ids",
             Loggable<rerun::blueprint::components::VisualizerInstructionId>::ComponentType
         );
 
@@ -52,10 +52,12 @@ namespace rerun::blueprint::archetypes {
         ActiveVisualizers& operator=(ActiveVisualizers&& other) = default;
 
         explicit ActiveVisualizers(
-            Collection<rerun::blueprint::components::VisualizerInstructionId> _ranges
+            Collection<rerun::blueprint::components::VisualizerInstructionId> _instruction_ids
         )
-            : ranges(ComponentBatch::from_loggable(std::move(_ranges), Descriptor_ranges)
-                         .value_or_throw()) {}
+            : instruction_ids(ComponentBatch::from_loggable(
+                                  std::move(_instruction_ids), Descriptor_instruction_ids
+              )
+                                  .value_or_throw()) {}
 
         /// Update only some specific fields of a `ActiveVisualizers`.
         static ActiveVisualizers update_fields() {
@@ -66,10 +68,13 @@ namespace rerun::blueprint::archetypes {
         static ActiveVisualizers clear_fields();
 
         /// Id's of the visualizers that should be active.
-        ActiveVisualizers with_ranges(
-            const Collection<rerun::blueprint::components::VisualizerInstructionId>& _ranges
+        ActiveVisualizers with_instruction_ids(
+            const Collection<rerun::blueprint::components::VisualizerInstructionId>&
+                _instruction_ids
         ) && {
-            ranges = ComponentBatch::from_loggable(_ranges, Descriptor_ranges).value_or_throw();
+            instruction_ids =
+                ComponentBatch::from_loggable(_instruction_ids, Descriptor_instruction_ids)
+                    .value_or_throw();
             return std::move(*this);
         }
 

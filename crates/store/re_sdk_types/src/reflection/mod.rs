@@ -3327,8 +3327,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![ArchetypeFieldReflection {
-                    name: "ranges",
-                    display_name: "Ranges",
+                    name: "instruction_ids",
+                    display_name: "Instruction ids",
                     component_type: "rerun.blueprint.components.VisualizerInstructionId".into(),
                     docstring_md: "Id's of the visualizers that should be active.",
                     is_required: true,
