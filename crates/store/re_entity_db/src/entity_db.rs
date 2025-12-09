@@ -479,6 +479,12 @@ impl EntityDb {
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
+        // TODO(emilk): merge the two sources instead
+
+        if self.rrd_manifest_index().has_manifest() {
+            return self.rrd_manifest_index.timelines.get(timeline).copied();
+        }
+
         let hist = self.time_histogram_per_timeline.get(timeline)?;
         let min = hist.min_key()?;
         let max = hist.max_key()?;

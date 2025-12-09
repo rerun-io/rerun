@@ -1,10 +1,12 @@
+use std::collections::BTreeMap;
+
 use ahash::{HashMap, HashSet};
 use arrow::array::{AsArray as _, Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use arrow::datatypes::Int64Type;
 use itertools::{Either, Itertools as _, izip};
 use parking_lot::Mutex;
-use re_chunk::{ChunkId, Timeline};
+use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
@@ -81,6 +83,9 @@ pub struct RrdManifestIndex {
     /// If so, we have run some GC and should not show progress bar.
     has_deleted: bool,
 
+    /// Full time range per timeline
+    pub timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
+
     native_temporal_map: re_log_encoding::NativeTemporalMap,
 }
 
@@ -90,12 +95,37 @@ impl RrdManifestIndex {
 
         self.native_temporal_map = manifest.to_native_temporal()?;
 
+        for (_ent_map, timelines) in &self.native_temporal_map {
+            for (timeline, comps) in timelines {
+                let mut timeline_range = self
+                    .timelines
+                    .get(timeline.name())
+                    .copied()
+                    .unwrap_or(AbsoluteTimeRange::EMPTY);
+
+                for (_comp, chunks) in comps {
+                    for (_chink_id, chunk_range) in chunks {
+                        timeline_range = timeline_range.union(*chunk_range);
+                    }
+                }
+
+                if timeline_range != AbsoluteTimeRange::EMPTY {
+                    self.timelines.insert(*timeline.name(), timeline_range);
+                }
+            }
+        }
+
         for chunk_id in manifest.col_chunk_id()? {
             self.remote_chunks.entry(chunk_id).or_default();
             // TODO(RR-2999): update chunk info?
         }
         self.manifest = Some(manifest);
         Ok(())
+    }
+
+    /// False when streaming from the SDK over a proxy
+    pub fn has_manifest(&self) -> bool {
+        self.manifest.is_some()
     }
 
     /// The full manifest, if known.

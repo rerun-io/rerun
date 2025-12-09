@@ -287,7 +287,6 @@ impl PyDatasetEntryInternal {
             dataset_id: self_.entry_details.id.id,
             segment_id,
 
-            time_range,
             //TODO(ab): add support for this
             fragment: Default::default(),
         }
