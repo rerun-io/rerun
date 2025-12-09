@@ -1,3 +1,5 @@
+#![expect(clippy::collapsible_if)] // TODO
+
 use std::collections::BTreeSet;
 use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::collections::hash_map::Entry as HashMapEntry;

@@ -79,7 +79,7 @@ pub enum ChunkStoreError {
     // TODO: error msg, docs, whatever
     #[error("TODO")]
     ChunksNotLoadedYet {
-        rrd_manifest: re_log_encoding::RrdManifest,
+        rrd_manifest: Box<re_log_encoding::RrdManifest>,
     },
 }
 

@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)] // TODO
+
 use itertools::Itertools as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery, TimeInt, Timeline};
@@ -5,7 +7,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_encoding::RrdManifest;
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 use re_query::{LatestAtResults, QueryCache, RangeResults};
-use re_sdk_types::{Archetype, archetypes::Boxes3D};
+use re_sdk_types::{Archetype as _, archetypes::Boxes3D};
 
 fn main() {
     // TODO: this is the future!!1!
