@@ -204,6 +204,39 @@ impl RrdManifestIndex {
 
         take_record_batch(&manifest.data, &Int32Array::from(indices)).ok()
     }
+
+    #[must_use]
+    pub fn time_ranges_all_chunks(
+        &self,
+        timeline: Timeline,
+    ) -> Option<Vec<(LoadState, AbsoluteTimeRange)>> {
+        let manifest = self.manifest.as_ref()?;
+
+        let chunk_id = manifest.col_chunk_id().unwrap();
+        let start_column = manifest
+            .data
+            .column_by_name(RrdManifest::field_index_start(&timeline, None).name())?
+            .as_primitive_opt::<Int64Type>()?;
+        let end_column = manifest
+            .data
+            .column_by_name(RrdManifest::field_index_end(&timeline, None).name())?
+            .as_primitive_opt::<Int64Type>()?;
+
+        let chunks = izip!(chunk_id, start_column, end_column)
+            .filter_map(|(chunk_id, start_time, end_time)| {
+                let chunk_range = AbsoluteTimeRange::new(
+                    start_time.unwrap_or_default(),
+                    end_time.unwrap_or_default(),
+                );
+
+                let chunk_info = self.remote_chunks.get(&chunk_id)?;
+
+                Some((chunk_info.state, chunk_range))
+            })
+            .collect();
+
+        Some(chunks)
+    }
 }
 
 #[track_caller]

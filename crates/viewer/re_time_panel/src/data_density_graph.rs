@@ -385,34 +385,56 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 // ----------------------------------------------------------------------------
 
-pub fn draw_loaded_indicator_bar(
+pub fn paint_loaded_indicator_bar(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
     db: &re_entity_db::EntityDb,
     time_ctrl: &TimeControl,
     y: f32,
 ) {
-    let mut start = TimeInt::MAX;
-    let mut end = TimeInt::MIN;
+    let Some(mut ranges) = db
+        .rrd_manifest_index()
+        .time_ranges_all_chunks(*time_ctrl.timeline())
+    else {
+        return;
+    };
 
-    let unloaded_ranges: Vec<AbsoluteTimeRange> = todo!();
+    ranges.dedup_by(|(a_loaded, a_range), (b_loaded, b_range)| {
+        if a_loaded == b_loaded {
+            a_range.max = b_range.max;
 
-    if let Some(start) = time_ranges_ui.x_from_time(start.into())
-        && let Some(end) = time_ranges_ui.x_from_time(end.into())
-    {
-        let x = Rangef::new(start as f32, end as f32);
-        ui.painter()
-            .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
-    }
+            true
+        } else {
+            a_range.max = b_range.min;
 
-    for range in unloaded_ranges {
+            false
+        }
+    });
+
+    for (load_state, range) in ranges {
         if let Some(start) = time_ranges_ui.x_from_time(range.min.into())
             && let Some(end) = time_ranges_ui.x_from_time(range.max.into())
         {
-            let x = Rangef::new(start.floor() as f32, end.ceil() as f32);
+            let x = Rangef::new(start as f32, end as f32);
 
-            ui.painter()
-                .hline(x, y, ui.visuals().widgets.noninteractive.bg_stroke);
+            match load_state {
+                re_entity_db::LoadState::Unloaded => {}
+                re_entity_db::LoadState::InTransit => {
+                    let dashed_line = egui::Shape::dashed_line_with_offset(
+                        &[egui::pos2(x.min, y), egui::pos2(x.max, y)],
+                        ui.visuals().widgets.noninteractive.fg_stroke,
+                        &[3.0],
+                        &[2.0],
+                        ui.input(|i| i.time % 1e5) as f32,
+                    );
+
+                    ui.painter().add(dashed_line);
+                }
+                re_entity_db::LoadState::Loaded => {
+                    ui.painter()
+                        .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
+                }
+            }
         }
     }
 }
