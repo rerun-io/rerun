@@ -208,12 +208,6 @@ impl RrdManifest {
 
     // TODO
     pub fn to_native_static(&self) -> CodecResult<NativeStaticMap> {
-        use arrow::array::{
-            ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
-            DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
-            RecordBatch, RecordBatchOptions, TimestampMicrosecondArray, TimestampMillisecondArray,
-            TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
-        };
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
         let mut per_entity: NativeStaticMap = IntMap::default();
@@ -226,10 +220,11 @@ impl RrdManifest {
             itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
                 .filter(|(f, c)| f.name().ends_with(":has_static_data"))
                 .map(|(f, c)| {
-                    (f, {
+                    (
+                        f,
                         c.downcast_array_ref::<arrow::array::BooleanArray>()
-                            .unwrap() // TODO
-                    })
+                            .unwrap(), // TODO
+                    )
                 })
                 .collect_vec();
 
@@ -264,10 +259,9 @@ impl RrdManifest {
 
     pub fn to_native_temporal(&self) -> CodecResult<NativeTemporalMap> {
         use arrow::array::{
-            ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
-            DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
-            RecordBatch, RecordBatchOptions, TimestampMicrosecondArray, TimestampMillisecondArray,
-            TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
+            ArrayRef, DurationMicrosecondArray, DurationMillisecondArray, DurationNanosecondArray,
+            DurationSecondArray, Int64Array, TimestampMicrosecondArray, TimestampMillisecondArray,
+            TimestampNanosecondArray, TimestampSecondArray,
         };
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
@@ -350,16 +344,8 @@ impl RrdManifest {
                     continue;
                 }
 
-                pub fn is_index(field: &arrow::datatypes::Field) -> bool {
-                    field.metadata().contains_key("rerun:index")
-                }
-
                 pub fn get_index_name(field: &arrow::datatypes::Field) -> Option<&str> {
                     field.metadata().get("rerun:index").map(|s| s.as_str())
-                }
-
-                pub fn get_index_kind(field: &arrow::datatypes::Field) -> Option<&str> {
-                    field.metadata().get("rerun:index_kind").map(|s| s.as_str())
                 }
 
                 pub fn is_specific_index(
@@ -369,22 +355,12 @@ impl RrdManifest {
                     get_index_name(field) == Some(index_name)
                 }
 
-                pub fn is_index_static(field: &arrow::datatypes::Field) -> bool {
-                    is_specific_index(field, "static")
-                }
-
                 pub fn is_index_start(field: &arrow::datatypes::Field) -> bool {
                     field.name().ends_with(":start")
                 }
 
                 pub fn is_index_end(field: &arrow::datatypes::Field) -> bool {
                     field.name().ends_with(":end")
-                }
-
-                pub fn is_index_global_temporal(field: &arrow::datatypes::Field) -> bool {
-                    is_index(field)
-                        && !is_index_static(field)
-                        && !field.metadata().contains_key("rerun:component")
                 }
 
                 let col_start = itertools::izip!(fields, columns).find(|(f, _col)| {
@@ -417,7 +393,7 @@ impl RrdManifest {
                     .cloned()
                     .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
 
-                if !col_start_nulls.is_valid(i) || !col_start_nulls.is_valid(i) {
+                if !col_start_nulls.is_valid(i) || !col_end_nulls.is_valid(i) {
                     continue;
                 }
 
