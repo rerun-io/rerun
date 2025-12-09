@@ -9,8 +9,7 @@ use re_chunk::{
     ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline, TimelineName,
 };
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{EntityPath, StoreId, StoreKind};
-use re_protos::common::v1alpha1::TimeRange;
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, StoreKind};
 use re_types_core::ComponentDescriptor;
 
 use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
@@ -143,7 +142,7 @@ pub type NativeStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkI
 
 pub type NativeTemporalMap = IntMap<
     EntityPath,
-    IntMap<TimelineName, IntMap<ComponentIdentifier, BTreeMap<ChunkId, TimeRange>>>,
+    IntMap<TimelineName, IntMap<ComponentIdentifier, BTreeMap<ChunkId, AbsoluteTimeRange>>>,
 >;
 
 impl RrdManifest {
@@ -255,7 +254,8 @@ impl RrdManifest {
                 // TODO: well that's a problem, what are supposed to be the winning semantics here again?
                 per_component
                     .entry(component)
-                    .and_modify(|id| *id = chunk_id);
+                    .and_modify(|id| *id = chunk_id)
+                    .or_insert(chunk_id);
             }
         }
 
@@ -430,7 +430,11 @@ impl RrdManifest {
 
                 let start = col_start_raw[i];
                 let end = col_end_raw[i];
-                *per_chunk.entry(chunk_id).or_default() = TimeRange { start, end };
+                let time_range = AbsoluteTimeRange::new(start, end);
+                per_chunk
+                    .entry(chunk_id)
+                    .and_modify(|tr| *tr = time_range)
+                    .or_insert(time_range);
             }
         }
 

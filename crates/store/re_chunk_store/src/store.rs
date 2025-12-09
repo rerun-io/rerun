@@ -818,19 +818,7 @@ impl ChunkStore {
     // TODO: we should probably not allow insert_chunk() on that thing...
     // TODO: can this even fail?
     pub fn from_rrd_manifest(rrd_manifest: &RrdManifest) -> anyhow::Result<Self> {
-        use arrow::array::{
-            ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
-            DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
-            RecordBatch, RecordBatchOptions, TimestampMicrosecondArray, TimestampMillisecondArray,
-            TimestampNanosecondArray, TimestampSecondArray, UInt64Array,
-        };
-        use re_arrow_util::ArrowArrayDowncastRef as _;
-
-        let chunk_ids = rrd_manifest.col_chunk_id()?;
-        let chunk_entity_paths = rrd_manifest.col_chunk_entity_path()?;
-        let chunk_is_static = rrd_manifest.col_chunk_is_static()?;
-
-        let mut store = ChunkStore::new(
+        let mut store = Self::new(
             rrd_manifest.store_id.clone(),
             // TODO: very important because we dont do linage tracking atm
             ChunkStoreConfig::COMPACTION_DISABLED,
@@ -844,7 +832,7 @@ impl ChunkStore {
             type_registry,
             per_column_metadata,
             chunks_per_chunk_id: _, // TODO: by definition, we never fill that one!
-            chunk_ids_per_min_row_id,
+            chunk_ids_per_min_row_id: _, // TODO: what do we do with this one, remind me?
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_chunks_stats: _, // TODO: and we're lacking some info in footers
@@ -861,12 +849,61 @@ impl ChunkStore {
 
         let xxx = rrd_manifest.to_native_temporal()?;
 
-        // *temporal_chunk_ids_per_entity = xxx.into_iter().map(|(entity_path, per_timeline)| {
-        //     (entity_path, per_timeline.)
-        //
-        // }).collect();
+        // TODO: just return flat vecs rather than this mess.
+        for (entity_path, per_timeline) in xxx {
+            for (timeline, per_component) in per_timeline {
+                for (component, per_chunk) in per_component {
+                    for (chunk_id, time_range) in per_chunk {
+                        {
+                            let per_timeline = temporal_chunk_ids_per_entity_per_component
+                                .entry(entity_path.clone())
+                                .or_default();
+                            let per_component = per_timeline.entry(timeline).or_default();
 
-        dbg!(&static_chunk_ids_per_entity);
+                            let ChunkIdSetPerTime {
+                                max_interval_length,
+                                per_start_time,
+                                per_end_time,
+                            } = per_component.entry(component).or_default();
+
+                            *max_interval_length =
+                                (*max_interval_length).max(time_range.abs_length());
+                            per_start_time
+                                .entry(time_range.min)
+                                .or_default()
+                                .insert(chunk_id);
+                            per_end_time
+                                .entry(time_range.max)
+                                .or_default()
+                                .insert(chunk_id);
+                        }
+
+                        {
+                            let per_timeline = temporal_chunk_ids_per_entity
+                                .entry(entity_path.clone())
+                                .or_default();
+
+                            let ChunkIdSetPerTime {
+                                max_interval_length,
+                                per_start_time,
+                                per_end_time,
+                            } = per_timeline.entry(timeline).or_default();
+
+                            *max_interval_length =
+                                (*max_interval_length).max(time_range.abs_length());
+                            per_start_time
+                                .entry(time_range.min)
+                                .or_default()
+                                .insert(chunk_id);
+                            per_end_time
+                                .entry(time_range.max)
+                                .or_default()
+                                .insert(chunk_id);
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(store)
     }

@@ -17,6 +17,17 @@ fn main() {
     // dbg!(rrd_manifest.to_native_temporal().unwrap());
     let store = ChunkStore::from_rrd_manifest(&rrd_manifest).unwrap();
 
+    let store_handle = ChunkStoreHandle::new(store);
+    let caches = re_query::QueryCache::new(store_handle.clone());
+
+    do_latestat_query(&caches);
+    do_range_query(&caches);
+
+    eprintln!("------");
+    eprintln!("------");
+    eprintln!("------");
+    eprintln!("------");
+
     // ---
 
     let nuscenes_rrd = "/home/cmc/dev/rerun-io/rerun/nuscenes.rrd";
