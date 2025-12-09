@@ -5,7 +5,7 @@ use re_types::{
     archetypes::Boxes2D,
     components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels},
 };
-use re_view::{process_annotation_slices, process_color_slice};
+use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
@@ -13,9 +13,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{UiLabelTarget, entity_iterator::clamped_or},
+    contexts::SpatialSceneEntityContext, view_kind::SpatialViewKind, visualizers::UiLabelTarget,
 };
 
 use super::{

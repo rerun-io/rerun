@@ -2,11 +2,12 @@ use itertools::Itertools as _;
 
 use re_renderer::{RenderContext, mesh::GpuMesh};
 use re_types::{components::MediaType, datatypes};
+use re_view::clamped_vec_or;
 use re_viewer_context::{
     ImageInfo, StoredBlobCacheKey, gpu_bridge::texture_creation_desc_from_color_image,
 };
 
-use crate::{caches::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
+use crate::caches::AnyMesh;
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {
@@ -153,7 +154,7 @@ impl LoadedMesh {
 
         let vertex_normals = if let Some(normals) = vertex_normals {
             re_tracing::profile_scope!("collect_normals");
-            clamped_vec_or(normals, num_positions, &glam::Vec3::ZERO)
+            clamped_vec_or(normals, num_positions, &glam::Vec3::ZERO).into()
         } else {
             // TODO(andreas): Calculate normals
             vec![glam::Vec3::ZERO; num_positions]
@@ -161,7 +162,7 @@ impl LoadedMesh {
 
         let vertex_texcoords = if let Some(texcoords) = vertex_texcoords {
             re_tracing::profile_scope!("collect_texcoords");
-            clamped_vec_or(texcoords, num_positions, &glam::Vec2::ZERO)
+            clamped_vec_or(texcoords, num_positions, &glam::Vec2::ZERO).into()
         } else {
             vec![glam::Vec2::ZERO; num_positions]
         };

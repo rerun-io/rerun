@@ -5,7 +5,7 @@ use re_types::{
     archetypes::Arrows3D,
     components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D},
 };
-use re_view::{process_annotation_slices, process_color_slice};
+use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
@@ -18,8 +18,7 @@ use crate::{
 };
 
 use super::{
-    SpatialViewVisualizerData, entity_iterator::clamped_or, process_labels_3d,
-    process_radius_slice, utilities::LabeledBatch,
+    SpatialViewVisualizerData, process_labels_3d, process_radius_slice, utilities::LabeledBatch,
 };
 
 // ---
