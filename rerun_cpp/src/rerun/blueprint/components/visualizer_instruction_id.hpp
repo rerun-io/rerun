@@ -14,28 +14,28 @@
 namespace rerun::blueprint::components {
     /// **Component**: Single visualizer override the visualizers for an entity.
     ///
-    /// For details see `archetypes::VisualizerOverrides`.
+    /// For details see `archetypes::ActiveVisualizers`.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
-    struct VisualizerOverride {
+    struct VisualizerInstructionId {
         /// Names of a visualizer that should be active.
         rerun::datatypes::Utf8 visualizer;
 
       public:
-        VisualizerOverride() = default;
+        VisualizerInstructionId() = default;
 
-        VisualizerOverride(rerun::datatypes::Utf8 visualizer_)
+        VisualizerInstructionId(rerun::datatypes::Utf8 visualizer_)
             : visualizer(std::move(visualizer_)) {}
 
-        VisualizerOverride& operator=(rerun::datatypes::Utf8 visualizer_) {
+        VisualizerInstructionId& operator=(rerun::datatypes::Utf8 visualizer_) {
             visualizer = std::move(visualizer_);
             return *this;
         }
 
-        VisualizerOverride(std::string value_) : visualizer(std::move(value_)) {}
+        VisualizerInstructionId(std::string value_) : visualizer(std::move(value_)) {}
 
-        VisualizerOverride& operator=(std::string value_) {
+        VisualizerInstructionId& operator=(std::string value_) {
             visualizer = std::move(value_);
             return *this;
         }
@@ -49,23 +49,23 @@ namespace rerun::blueprint::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::VisualizerOverride)
+        sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::VisualizerInstructionId)
     );
 
     /// \private
     template <>
-    struct Loggable<blueprint::components::VisualizerOverride> {
+    struct Loggable<blueprint::components::VisualizerInstructionId> {
         static constexpr std::string_view ComponentType =
-            "rerun.blueprint.components.VisualizerOverride";
+            "rerun.blueprint.components.VisualizerInstructionId";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
         }
 
-        /// Serializes an array of `rerun::blueprint:: components::VisualizerOverride` into an arrow array.
+        /// Serializes an array of `rerun::blueprint:: components::VisualizerInstructionId` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const blueprint::components::VisualizerOverride* instances, size_t num_instances
+            const blueprint::components::VisualizerInstructionId* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
                 return Loggable<rerun::datatypes::Utf8>::to_arrow(nullptr, 0);

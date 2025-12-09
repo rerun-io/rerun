@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// of the visualizer system. It is not intended to be a long-term solution, but provides
 /// enough utility to be useful in the short term.
 ///
-/// **NOTE**: Rerun `v0.24` changed the behavior of [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides], so that currently they only
+/// **NOTE**: Rerun `v0.24` changed the behavior of [`archetypes::ActiveVisualizers`][crate::blueprint::archetypes::ActiveVisualizers], so that currently they only
 /// work with time series views. We plan to bring this feature for all views in future versions.
 ///
 /// This can only be used as part of blueprints. It will have no effect if used
@@ -35,27 +35,27 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
-pub struct VisualizerOverrides {
-    /// Names of the visualizers that should be active.
+pub struct ActiveVisualizers {
+    /// Id's of the visualizers that should be active.
     pub ranges: Option<SerializedComponentBatch>,
 }
 
-impl VisualizerOverrides {
+impl ActiveVisualizers {
     /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::VisualizerOverride`].
+    /// The corresponding component is [`crate::blueprint::components::VisualizerInstructionId`].
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualizerOverrides".into()),
-            component: "VisualizerOverrides:ranges".into(),
-            component_type: Some("rerun.blueprint.components.VisualizerOverride".into()),
+            archetype: Some("rerun.blueprint.archetypes.ActiveVisualizers".into()),
+            component: "ActiveVisualizers:ranges".into(),
+            component_type: Some("rerun.blueprint.components.VisualizerInstructionId".into()),
         }
     }
 }
 
 static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [VisualizerOverrides::descriptor_ranges()]);
+    std::sync::LazyLock::new(|| [ActiveVisualizers::descriptor_ranges()]);
 
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
@@ -64,22 +64,22 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
 static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
-    std::sync::LazyLock::new(|| [VisualizerOverrides::descriptor_ranges()]);
+    std::sync::LazyLock::new(|| [ActiveVisualizers::descriptor_ranges()]);
 
-impl VisualizerOverrides {
+impl ActiveVisualizers {
     /// The total number of components in the archetype: 1 required, 0 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 1usize;
 }
 
-impl ::re_types_core::Archetype for VisualizerOverrides {
+impl ::re_types_core::Archetype for ActiveVisualizers {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisualizerOverrides".into()
+        "rerun.blueprint.archetypes.ActiveVisualizers".into()
     }
 
     #[inline]
     fn display_name() -> &'static str {
-        "Visualizer overrides"
+        "Active visualizers"
     }
 
     #[inline]
@@ -116,7 +116,7 @@ impl ::re_types_core::Archetype for VisualizerOverrides {
     }
 }
 
-impl ::re_types_core::AsComponents for VisualizerOverrides {
+impl ::re_types_core::AsComponents for ActiveVisualizers {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
         use ::re_types_core::Archetype as _;
@@ -124,49 +124,53 @@ impl ::re_types_core::AsComponents for VisualizerOverrides {
     }
 }
 
-impl ::re_types_core::ArchetypeReflectionMarker for VisualizerOverrides {}
+impl ::re_types_core::ArchetypeReflectionMarker for ActiveVisualizers {}
 
-impl VisualizerOverrides {
-    /// Create a new `VisualizerOverrides`.
+impl ActiveVisualizers {
+    /// Create a new `ActiveVisualizers`.
     #[inline]
     pub fn new(
-        ranges: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisualizerOverride>>,
+        ranges: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::VisualizerInstructionId>,
+        >,
     ) -> Self {
         Self {
             ranges: try_serialize_field(Self::descriptor_ranges(), ranges),
         }
     }
 
-    /// Update only some specific fields of a `VisualizerOverrides`.
+    /// Update only some specific fields of a `ActiveVisualizers`.
     #[inline]
     pub fn update_fields() -> Self {
         Self::default()
     }
 
-    /// Clear all the fields of a `VisualizerOverrides`.
+    /// Clear all the fields of a `ActiveVisualizers`.
     #[inline]
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
             ranges: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::VisualizerOverride::arrow_empty(),
+                crate::blueprint::components::VisualizerInstructionId::arrow_empty(),
                 Self::descriptor_ranges(),
             )),
         }
     }
 
-    /// Names of the visualizers that should be active.
+    /// Id's of the visualizers that should be active.
     #[inline]
     pub fn with_ranges(
         mut self,
-        ranges: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisualizerOverride>>,
+        ranges: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::VisualizerInstructionId>,
+        >,
     ) -> Self {
         self.ranges = try_serialize_field(Self::descriptor_ranges(), ranges);
         self
     }
 }
 
-impl ::re_byte_size::SizeBytes for VisualizerOverrides {
+impl ::re_byte_size::SizeBytes for ActiveVisualizers {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.ranges.heap_size_bytes()

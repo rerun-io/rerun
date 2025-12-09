@@ -23,22 +23,22 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Single visualizer override the visualizers for an entity.
 ///
-/// For details see [`archetypes::VisualizerOverrides`][crate::blueprint::archetypes::VisualizerOverrides].
+/// For details see [`archetypes::ActiveVisualizers`][crate::blueprint::archetypes::ActiveVisualizers].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[repr(transparent)]
-pub struct VisualizerOverride(
+pub struct VisualizerInstructionId(
     /// Names of a visualizer that should be active.
     pub crate::datatypes::Utf8,
 );
 
-impl ::re_types_core::WrapperComponent for VisualizerOverride {
+impl ::re_types_core::WrapperComponent for VisualizerInstructionId {
     type Datatype = crate::datatypes::Utf8;
 
     #[inline]
     fn name() -> ComponentType {
-        "rerun.blueprint.components.VisualizerOverride".into()
+        "rerun.blueprint.components.VisualizerInstructionId".into()
     }
 
     #[inline]
@@ -47,22 +47,22 @@ impl ::re_types_core::WrapperComponent for VisualizerOverride {
     }
 }
 
-::re_types_core::macros::impl_into_cow!(VisualizerOverride);
+::re_types_core::macros::impl_into_cow!(VisualizerInstructionId);
 
-impl<T: Into<crate::datatypes::Utf8>> From<T> for VisualizerOverride {
+impl<T: Into<crate::datatypes::Utf8>> From<T> for VisualizerInstructionId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8> for VisualizerOverride {
+impl std::borrow::Borrow<crate::datatypes::Utf8> for VisualizerInstructionId {
     #[inline]
     fn borrow(&self) -> &crate::datatypes::Utf8 {
         &self.0
     }
 }
 
-impl std::ops::Deref for VisualizerOverride {
+impl std::ops::Deref for VisualizerInstructionId {
     type Target = crate::datatypes::Utf8;
 
     #[inline]
@@ -71,14 +71,14 @@ impl std::ops::Deref for VisualizerOverride {
     }
 }
 
-impl std::ops::DerefMut for VisualizerOverride {
+impl std::ops::DerefMut for VisualizerInstructionId {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
         &mut self.0
     }
 }
 
-impl ::re_byte_size::SizeBytes for VisualizerOverride {
+impl ::re_byte_size::SizeBytes for VisualizerInstructionId {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.0.heap_size_bytes()
