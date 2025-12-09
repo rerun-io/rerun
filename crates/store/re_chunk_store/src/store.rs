@@ -859,6 +859,13 @@ impl ChunkStore {
 
         *static_chunk_ids_per_entity = rrd_manifest.to_native_static()?;
 
+        let xxx = rrd_manifest.to_native_temporal()?;
+
+        // *temporal_chunk_ids_per_entity = xxx.into_iter().map(|(entity_path, per_timeline)| {
+        //     (entity_path, per_timeline.)
+        //
+        // }).collect();
+
         dbg!(&static_chunk_ids_per_entity);
 
         Ok(store)

@@ -139,6 +139,13 @@ pub struct RrdManifest {
     pub data: arrow::array::RecordBatch,
 }
 
+pub type NativeStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
+
+pub type NativeTemporalMap = IntMap<
+    EntityPath,
+    IntMap<TimelineName, IntMap<ComponentIdentifier, BTreeMap<ChunkId, TimeRange>>>,
+>;
+
 impl RrdManifest {
     // TODO
     pub fn from_rrd_bytes(rrd_bytes: &[u8]) -> CodecResult<Option<Self>> {
@@ -201,9 +208,7 @@ impl RrdManifest {
     }
 
     // TODO
-    pub fn to_native_static(
-        &self,
-    ) -> CodecResult<IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>> {
+    pub fn to_native_static(&self) -> CodecResult<NativeStaticMap> {
         use arrow::array::{
             ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
             DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
@@ -212,8 +217,7 @@ impl RrdManifest {
         };
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
-        let mut per_entity: IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>> =
-            IntMap::default();
+        let mut per_entity: NativeStaticMap = IntMap::default();
 
         let chunk_ids = self.col_chunk_id()?;
         let chunk_entity_paths = self.col_chunk_entity_path()?;
@@ -258,10 +262,7 @@ impl RrdManifest {
         Ok(per_entity)
     }
 
-    pub fn to_native_temporal(
-        &self,
-    ) -> CodecResult<IntMap<EntityPath, IntMap<TimelineName, IntMap<ComponentIdentifier, TimeRange>>>>
-    {
+    pub fn to_native_temporal(&self) -> CodecResult<NativeTemporalMap> {
         use arrow::array::{
             ArrayRef, BinaryArray, BooleanArray, DurationMicrosecondArray,
             DurationMillisecondArray, DurationNanosecondArray, DurationSecondArray, Int64Array,
@@ -330,10 +331,7 @@ impl RrdManifest {
             .unique()
             .collect_vec();
 
-        let mut per_entity: IntMap<
-            EntityPath,
-            IntMap<TimelineName, IntMap<ComponentIdentifier, TimeRange>>,
-        > = IntMap::default();
+        let mut per_entity: NativeTemporalMap = Default::default();
 
         let chunk_ids = self.col_chunk_id()?;
         let chunk_entity_paths = self.col_chunk_entity_path()?;
@@ -428,10 +426,11 @@ impl RrdManifest {
 
                 let per_timeline = per_entity.entry(entity_path.clone()).or_default();
                 let per_component = per_timeline.entry(timeline).or_default();
+                let per_chunk = per_component.entry(component).or_default();
 
                 let start = col_start_raw[i];
                 let end = col_end_raw[i];
-                *per_component.entry(component).or_default() = TimeRange { start, end };
+                *per_chunk.entry(chunk_id).or_default() = TimeRange { start, end };
             }
         }
 
