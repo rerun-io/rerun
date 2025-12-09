@@ -14,7 +14,7 @@ use re_log_types::{AbsoluteTimeRange, StoreKind};
 use crate::{TimelineStats, TimesPerTimeline};
 
 /// Is the following chunk loaded?
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LoadState {
     /// The chunk is not loaded, nor being loaded.
     #[default]
@@ -293,33 +293,25 @@ impl RrdManifestIndex {
     pub fn time_ranges_all_chunks(
         &self,
         timeline: &Timeline,
-    ) -> Option<Vec<(LoadState, AbsoluteTimeRange)>> {
-        let manifest = self.manifest.as_ref()?;
+    ) -> Vec<(LoadState, AbsoluteTimeRange)> {
+        let mut time_ranges_all_chunks = Vec::new();
 
-        let chunk_id = manifest.col_chunk_id().ok()?;
-        let start_column = manifest
-            .data
-            .column_by_name(RrdManifest::field_index_start(timeline, None).name())?
-            .as_primitive_opt::<Int64Type>()?;
-        let end_column = manifest
-            .data
-            .column_by_name(RrdManifest::field_index_end(timeline, None).name())?
-            .as_primitive_opt::<Int64Type>()?;
+        for timelines in self.native_temporal_map.values() {
+            let Some(entity_component_chunks) = timelines.get(timeline) else {
+                continue;
+            };
 
-        let chunks = izip!(chunk_id, start_column, end_column)
-            .filter_map(|(chunk_id, start_time, end_time)| {
-                let chunk_range = AbsoluteTimeRange::new(
-                    start_time.unwrap_or_default(),
-                    end_time.unwrap_or_default(),
-                );
+            for chunks in entity_component_chunks.values() {
+                for (chunk_id, range) in chunks {
+                    let Some(info) = self.remote_chunks.get(chunk_id) else {
+                        continue;
+                    };
+                    time_ranges_all_chunks.push((*info.state.lock(), *range));
+                }
+            }
+        }
 
-                let chunk_info = self.remote_chunks.get(&chunk_id)?;
-
-                Some((*chunk_info.state.lock(), chunk_range))
-            })
-            .collect();
-
-        Some(chunks)
+        time_ranges_all_chunks
     }
 
     pub fn unloaded_time_ranges_for(

@@ -320,14 +320,6 @@ impl TimePanel {
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
 
-            data_density_graph::paint_loaded_indicator_bar(
-                ui,
-                &self.time_ranges_ui,
-                entity_db,
-                time_ctrl,
-                top_row_rect.bottom(),
-            );
-
             ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
             // Add extra margin on the left which was intentionally missing on the controls.
@@ -341,6 +333,7 @@ impl TimePanel {
                     entity_db,
                     ui,
                     time_commands,
+                    top_row_rect.bottom(),
                 );
             });
         });
@@ -415,6 +408,7 @@ impl TimePanel {
         }
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn expanded_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -423,6 +417,7 @@ impl TimePanel {
         entity_db: &re_entity_db::EntityDb,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
+        top_row_y: f32,
     ) {
         re_tracing::profile_function!();
 
@@ -476,6 +471,15 @@ impl TimePanel {
             debug_assert!(time_x_left < right);
             Rangef::new(time_x_left, right)
         };
+
+        data_density_graph::paint_loaded_indicator_bar(
+            ui,
+            &self.time_ranges_ui,
+            entity_db,
+            time_ctrl,
+            top_row_y,
+            time_fg_x_range,
+        );
 
         let side_margin = 26.0; // chosen so that the scroll bar looks approximately centered in the default gap
         self.time_ranges_ui = initialize_time_ranges_ui(
