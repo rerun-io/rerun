@@ -320,7 +320,7 @@ impl TimePanel {
                 ui.visuals().widgets.noninteractive.bg_stroke,
             );
 
-            data_density_graph::draw_loaded_indicator_bar(
+            data_density_graph::paint_loaded_indicator_bar(
                 ui,
                 &self.time_ranges_ui,
                 entity_db,

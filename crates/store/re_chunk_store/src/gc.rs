@@ -370,7 +370,8 @@ impl ChunkStore {
             //     "detected dangling chunks -- there's a GC bug"
             // );
             // dbg!(&chunk_ids_dangling);
-            if false && !chunk_ids_dangling.is_empty() {
+            let s = false;
+            if s && !chunk_ids_dangling.is_empty() {
                 re_tracing::profile_scope!("dangling");
 
                 chunk_ids_per_min_row_id
