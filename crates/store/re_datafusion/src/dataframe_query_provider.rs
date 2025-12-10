@@ -15,7 +15,7 @@ use datafusion::error::DataFusionError;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
-    EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
+    EquivalenceProperties, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
@@ -264,8 +264,8 @@ impl SegmentStreamExec {
                 ));
             }
             vec![
-                LexOrdering::new(physical_ordering)
-                    .expect("LexOrdering should return Some since input is not empty"),
+                // LexOrdering::new(physical_ordering)
+                //     .expect("LexOrdering should return Some since input is not empty"),
             ]
         } else {
             vec![]
