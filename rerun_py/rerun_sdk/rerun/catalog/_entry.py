@@ -24,13 +24,16 @@ _BatchesType: TypeAlias = (
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnSelector, Recording
+    from rerun.dataframe import Recording
 
     from . import (
         CatalogClient,
+        ComponentColumnDescriptor,
+        ComponentColumnSelector,
         DataFusionTable,
         EntryId,
         EntryKind,
+        IndexColumnSelector,
         IndexConfig,
         IndexingResult,
         IndexValuesLike,
@@ -805,8 +808,6 @@ class DatasetView:
 
     def __repr__(self) -> str:
         """Return a string representation of the DatasetView."""
-
-        # TODO: review this
 
         dataset_str = str(self.dataset)
 
