@@ -26,7 +26,7 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<SegmentId, B
                     "test_entity",
                     &archetypes::Points3D::new([(x as f32, 0.0, 0.0)]),
                 )
-                .expect("Failed to log points 3d");
+                .expect("Failed to log points 3D");
         }
 
         stream.flush_with_timeout(Duration::from_secs(60))?;
