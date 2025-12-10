@@ -346,12 +346,12 @@ fn selection_context_menu(
     if ui
         .add_enabled(
             is_on_selection && copy_command.is_ok() && has_time_range,
-            egui::Button::new("Copy link to trimmed time range"),
+            egui::Button::new("Copy link to time selection"),
         )
         .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
             format!("Can't share links to the current recording: {err}")
         } else if !has_time_range {
-            "The current recording doesn't support time range links".to_owned()
+            "The current recording doesn't support time selection links".to_owned()
         } else {
             "Open the context menu on selected time to copy link".to_owned()
         })
