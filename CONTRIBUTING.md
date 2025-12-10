@@ -1,7 +1,8 @@
 # Contributing to Rerun
 This is written for anyone who wants to contribute to the Rerun repository.
 
-FYI, this is going to do awesome stuff through the universe repo
+FYI, this is going to do awesome stuff through the universe repo.
+This time with proper attribution.
 
 
 ## See also
