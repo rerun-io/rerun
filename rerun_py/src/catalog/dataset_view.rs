@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashSet};
 use std::sync::Arc;
 
 use arrow::datatypes::Schema as ArrowSchema;
@@ -6,15 +6,19 @@ use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::{PyCapsule, PyDict, PyDictMethods as _};
+use pyo3::types::PyCapsule;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
-use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
+#[cfg(feature = "perf_telemetry")]
+use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 use tracing::instrument;
 
-use super::{PyDatasetEntryInternal, PySchemaInternal, to_py_err};
+#[cfg(feature = "perf_telemetry")]
+use crate::catalog::trace_context::with_trace_span;
+use crate::catalog::{PyDatasetEntryInternal, PySchemaInternal, to_py_err};
 use crate::dataframe::IndexValuesLike;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -83,232 +87,6 @@ impl PyDatasetViewInternal {
         SorbetColumnDescriptors {
             columns: filtered_columns,
         }
-    }
-
-    /// Build a `ViewContentsSelector` from content filters.
-    fn build_view_contents(&self, schema: &ArrowSchema) -> Option<ViewContentsSelector> {
-        let descriptors = schema
-            .fields()
-            .iter()
-            .map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()))
-            .filter_map(Result::ok)
-            .collect::<Vec<_>>();
-
-        let component_descriptors = descriptors
-            .iter()
-            .filter_map(|descriptor| {
-                if let ColumnDescriptor::Component(component) = descriptor {
-                    Some(component)
-                } else {
-                    None
-                }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let filter = self.resolved_entity_path_filter();
-
-        // Build contents map: entity_path -> None (all components for that entity)
-        let contents: ViewContentsSelector = component_descriptors
-            .iter()
-            .filter(|comp| filter.matches(&comp.entity_path))
-            .map(|comp| (comp.entity_path.clone(), None))
-            .collect();
-
-        if contents.is_empty() {
-            None
-        } else {
-            Some(contents)
-        }
-    }
-
-    /// Convert a TableProvider to a DataFusion DataFrame.
-    fn provider_to_dataframe<'py>(
-        py: Python<'py>,
-        provider: Arc<dyn TableProvider>,
-        ctx: Bound<'py, PyAny>,
-    ) -> PyResult<Bound<'py, PyAny>> {
-        // Create a capsule for the table provider
-        let runtime = get_tokio_runtime().handle().clone();
-        let ffi_provider = FFI_TableProvider::new(provider, true, Some(runtime));
-        let capsule_name = cr"datafusion_table_provider".into();
-        let capsule = PyCapsule::new(py, ffi_provider, Some(capsule_name))?;
-
-        // Use exec to create a wrapper class with __datafusion_table_provider__
-        let builtins = py.import("builtins")?;
-        let exec_fn = builtins.getattr("exec")?;
-        let globals = pyo3::types::PyDict::new(py);
-        globals.set_item("capsule", capsule)?;
-
-        exec_fn.call1((
-            r#"
-class TableProviderWrapper:
-    def __datafusion_table_provider__(self):
-        return capsule
-wrapper = TableProviderWrapper()
-"#,
-            globals.clone(),
-        ))?;
-
-        let wrapper = globals.get_item("wrapper")?;
-
-        ctx.call_method1("read_table", (wrapper,))
-    }
-
-    /// Handle reader with per-segment using_index_values.
-    ///
-    /// This creates a separate query for each segment with its specific index values,
-    /// then unions all the results together.
-    #[expect(clippy::too_many_arguments)]
-    fn reader_with_using_index_values<'py>(
-        py: Python<'py>,
-        dataset: &Py<PyDatasetEntryInternal>,
-        segment_filter: &Option<HashSet<String>>,
-        index: Option<String>,
-        include_semantically_empty_columns: bool,
-        include_tombstone_columns: bool,
-        fill_latest_at: bool,
-        view_contents: Option<ViewContentsSelector>,
-        using_index_values_dict: Bound<'py, PyDict>,
-    ) -> PyResult<Bound<'py, PyAny>> {
-        // Parse the dictionary: segment_id -> IndexValuesLike
-        let mut per_segment_index_values: HashMap<String, _> = HashMap::new();
-        for (key, value) in using_index_values_dict.iter() {
-            let segment_id: String = key.extract()?;
-            let index_values: IndexValuesLike<'_> = value.extract()?;
-            let converted = index_values.to_index_values()?;
-            per_segment_index_values.insert(segment_id, converted);
-        }
-
-        // Get all valid segment IDs for this view
-        let dataset_borrowed = dataset.borrow(py);
-        let all_dataset_segment_ids = PyDatasetEntryInternal::segment_ids(dataset_borrowed)?;
-        let all_segment_ids: HashSet<String> = match segment_filter {
-            Some(filter) => all_dataset_segment_ids
-                .into_iter()
-                .filter(|id| filter.contains(id))
-                .collect(),
-            None => all_dataset_segment_ids.into_iter().collect(),
-        };
-
-        // Filter to only segments that exist in our view
-        let segments_to_query: Vec<_> = per_segment_index_values
-            .keys()
-            .filter(|seg| all_segment_ids.contains(*seg))
-            .cloned()
-            .collect();
-
-        // Get dataset info
-        let dataset_borrowed = dataset.borrow(py);
-        let dataset_id = dataset_borrowed.entry_id();
-        let connection = dataset_borrowed.client().borrow(py).connection().clone();
-        let client = dataset_borrowed.client().borrow(py);
-        let ctx = client.ctx(py)?;
-        let ctx = ctx.bind(py).clone();
-        drop(client);
-        drop(dataset_borrowed);
-
-        if segments_to_query.is_empty() {
-            // Return an empty DataFrame with the correct schema
-            // We'll create a provider with empty index values for any segment
-            let query_expression = QueryExpression {
-                view_contents,
-                include_semantically_empty_columns,
-                include_tombstone_columns,
-                include_static_columns: re_chunk_store::StaticColumnSelection::Both,
-                filtered_index: index.map(Into::into),
-                filtered_index_range: None,
-                filtered_index_values: None,
-                using_index_values: Some(std::collections::BTreeSet::new()),
-                filtered_is_not_null: None,
-                sparse_fill_strategy: if fill_latest_at {
-                    SparseFillStrategy::LatestAtGlobal
-                } else {
-                    SparseFillStrategy::None
-                },
-                selection: None,
-            };
-
-            // Use any single segment from the view (or empty if none)
-            let segment_ids: Vec<String> = all_segment_ids.into_iter().take(1).collect();
-
-            let provider = wait_for_future(py, async move {
-                DataframeQueryTableProvider::new(
-                    connection.origin().clone(),
-                    connection.connection_registry().clone(),
-                    dataset_id,
-                    &query_expression,
-                    &segment_ids,
-                    #[cfg(not(target_arch = "wasm32"))]
-                    None,
-                )
-                .await
-            })
-            .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
-            .map_err(to_py_err)?;
-
-            return Self::provider_to_dataframe(py, provider, ctx);
-        }
-
-        // Create a query for each segment and union the results
-        let mut result_df: Option<Bound<'_, PyAny>> = None;
-
-        for segment_id in segments_to_query {
-            let index_values = per_segment_index_values
-                .remove(&segment_id)
-                .expect("segment_id was in segments_to_query");
-
-            let query_expression = QueryExpression {
-                view_contents: view_contents.clone(),
-                include_semantically_empty_columns,
-                include_tombstone_columns,
-                include_static_columns: if index.is_none() {
-                    re_chunk_store::StaticColumnSelection::StaticOnly
-                } else {
-                    re_chunk_store::StaticColumnSelection::Both
-                },
-                filtered_index: index.clone().map(Into::into),
-                filtered_index_range: None,
-                filtered_index_values: None,
-                using_index_values: Some(index_values),
-                filtered_is_not_null: None,
-                sparse_fill_strategy: if fill_latest_at {
-                    SparseFillStrategy::LatestAtGlobal
-                } else {
-                    SparseFillStrategy::None
-                },
-                selection: None,
-            };
-
-            let segment_ids = vec![segment_id];
-            let connection_clone = connection.clone();
-
-            let provider = wait_for_future(py, async move {
-                DataframeQueryTableProvider::new(
-                    connection_clone.origin().clone(),
-                    connection_clone.connection_registry().clone(),
-                    dataset_id,
-                    &query_expression,
-                    &segment_ids,
-                    #[cfg(not(target_arch = "wasm32"))]
-                    None,
-                )
-                .await
-            })
-            .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
-            .map_err(to_py_err)?;
-
-            let segment_df = Self::provider_to_dataframe(py, provider, ctx.to_owned())?;
-
-            result_df = Some(match result_df {
-                None => segment_df,
-                Some(existing) => existing.call_method1("union", (segment_df,))?,
-            });
-        }
-
-        result_df.ok_or_else(|| {
-            pyo3::exceptions::PyRuntimeError::new_err("No segments to query (unexpected)")
-        })
     }
 }
 
@@ -396,7 +174,9 @@ impl PyDatasetViewInternal {
         }
     }
 
-    /// Create a reader over this DatasetView as a DataFusion DataFrame.
+    /// Create a reader over this DatasetView.
+    ///
+    /// Returns a DataFusion DataFrame.
     ///
     /// Parameters
     /// ----------
@@ -408,9 +188,8 @@ impl PyDatasetViewInternal {
     ///     Whether to include tombstone columns.
     /// fill_latest_at : bool
     ///     Whether to fill null values with the latest valid data.
-    /// using_index_values : dict[str, IndexValuesLike] | None
-    ///     If provided, a dictionary mapping segment IDs to the specific index values
-    ///     to sample from that segment. Segments not in the dictionary will have no rows.
+    /// using_index_values : IndexValuesLike | None
+    ///     If provided, the specific index values to sample from all segments.
     #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
@@ -427,92 +206,64 @@ impl PyDatasetViewInternal {
         include_semantically_empty_columns: bool,
         include_tombstone_columns: bool,
         fill_latest_at: bool,
-        using_index_values: Option<Bound<'py, PyDict>>,
+        using_index_values: Option<IndexValuesLike<'_>>,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
 
-        // Get the arrow schema to build view contents
-        let dataset = self_.dataset.borrow(py);
-        let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset)?;
-        drop(dataset);
+        // Convert IndexValuesLike to BTreeSet<TimeInt>
+        let using_index_values = using_index_values
+            .map(|v| v.to_index_values())
+            .transpose()?;
 
-        let view_contents = self_.build_view_contents(&schema);
-
-        let static_only = index.is_none();
-
-        // If using_index_values is provided, we need to handle per-segment queries
-        if let Some(using_index_values_dict) = using_index_values {
-            return Self::reader_with_using_index_values(
-                py,
-                &self_.dataset,
-                &self_.segment_filter,
-                index,
-                include_semantically_empty_columns,
-                include_tombstone_columns,
-                fill_latest_at,
-                view_contents,
-                using_index_values_dict,
-            );
-        }
-
-        let query_expression = QueryExpression {
-            view_contents,
+        // Create internal reader with query parameters
+        let reader = DatasetViewReader::new(
+            self_.dataset.clone_ref(py),
+            self_.segment_filter.clone(),
+            self_.content_filters.clone(),
+            index,
             include_semantically_empty_columns,
             include_tombstone_columns,
-            include_static_columns: if static_only {
-                re_chunk_store::StaticColumnSelection::StaticOnly
-            } else {
-                re_chunk_store::StaticColumnSelection::Both
+            fill_latest_at,
+            using_index_values,
+        );
+
+        // Build table provider and return DataFrame directly
+        // We use a helper struct that implements __datafusion_table_provider__
+        let helper = Py::new(
+            py,
+            DatasetViewReaderHelper {
+                provider: reader.as_table_provider(py)?,
             },
-            filtered_index: index.map(Into::into),
-            filtered_index_range: None,
-            filtered_index_values: None,
-            using_index_values: None,
-            filtered_is_not_null: None,
-            sparse_fill_strategy: if fill_latest_at {
-                SparseFillStrategy::LatestAtGlobal
-            } else {
-                SparseFillStrategy::None
-            },
-            selection: None,
-        };
+        )?;
 
-        // Get segment IDs to use
-        let segment_ids: Vec<String> = match &self_.segment_filter {
-            Some(filter) => filter.iter().cloned().collect(),
-            None => vec![],
-        };
+        #[cfg(feature = "perf_telemetry")]
+        {
+            with_trace_span!(py, "reader", {
+                // Get context and call read_table with the helper
+                let dataset = self_.dataset.borrow(py);
+                let client = dataset.client().borrow(py);
+                let ctx = client.ctx(py)?;
+                let ctx = ctx.bind(py);
 
-        // Create table provider
-        let dataset = self_.dataset.borrow(py);
-        let dataset_id = dataset.entry_id();
-        let connection = dataset.client().borrow(py).connection().clone();
-        drop(dataset);
+                drop(client);
+                drop(dataset);
 
-        let provider = wait_for_future(py, async move {
-            DataframeQueryTableProvider::new(
-                connection.origin().clone(),
-                connection.connection_registry().clone(),
-                dataset_id,
-                &query_expression,
-                &segment_ids,
-                #[cfg(not(target_arch = "wasm32"))]
-                None,
-            )
-            .await
-        })
-        .map(|p| Arc::new(p) as Arc<dyn TableProvider>)
-        .map_err(to_py_err)?;
+                ctx.call_method1("read_table", (helper,))
+            })
+        }
+        #[cfg(not(feature = "perf_telemetry"))]
+        {
+            // Get context and call read_table with the helper
+            let dataset = self_.dataset.borrow(py);
+            let client = dataset.client().borrow(py);
+            let ctx = client.ctx(py)?;
+            let ctx = ctx.bind(py);
 
-        // Register with DataFusion context and return DataFrame
-        let dataset = self_.dataset.borrow(py);
-        let client = dataset.client().borrow(py);
-        let ctx = client.ctx(py)?;
-        let ctx = ctx.bind(py).clone();
-        drop(client);
-        drop(dataset);
+            drop(client);
+            drop(dataset);
 
-        Self::provider_to_dataframe(py, provider, ctx)
+            ctx.call_method1("read_table", (helper,))
+        }
     }
 
     /// Returns a new DatasetView filtered to the given segment IDs.
@@ -590,5 +341,188 @@ impl PyDatasetViewInternal {
                 Some(combined_filters),
             ),
         )
+    }
+}
+
+// ================================================================================================
+// DatasetViewReader - internal helper struct (not exposed to Python)
+// ================================================================================================
+
+/// Internal helper that holds query parameters and builds the table provider.
+///
+/// This is an implementation detail used by `DatasetView.reader()` to build the table provider.
+/// It is NOT exposed to Python.
+struct DatasetViewReader {
+    dataset: Py<PyDatasetEntryInternal>,
+    segment_filter: Option<HashSet<String>>,
+    content_filters: Vec<String>,
+    index: Option<String>,
+    include_semantically_empty_columns: bool,
+    include_tombstone_columns: bool,
+    fill_latest_at: bool,
+    using_index_values: Option<BTreeSet<TimeInt>>,
+}
+
+impl DatasetViewReader {
+    #[expect(clippy::too_many_arguments)]
+    fn new(
+        dataset: Py<PyDatasetEntryInternal>,
+        segment_filter: Option<HashSet<String>>,
+        content_filters: Vec<String>,
+        index: Option<String>,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: Option<BTreeSet<TimeInt>>,
+    ) -> Self {
+        Self {
+            dataset,
+            segment_filter,
+            content_filters,
+            index,
+            include_semantically_empty_columns,
+            include_tombstone_columns,
+            fill_latest_at,
+            using_index_values,
+        }
+    }
+
+    /// Get the resolved entity path filter from content filter expressions.
+    fn resolved_entity_path_filter(&self) -> ResolvedEntityPathFilter {
+        if self.content_filters.is_empty() {
+            EntityPathFilter::parse_forgiving("/**").resolve_without_substitutions()
+        } else {
+            let expr = self.content_filters.join(" ");
+            EntityPathFilter::parse_forgiving(&expr).resolve_without_substitutions()
+        }
+    }
+
+    /// Build a `ViewContentsSelector` from content filters.
+    fn build_view_contents(&self, schema: &ArrowSchema) -> Option<ViewContentsSelector> {
+        let descriptors = schema
+            .fields()
+            .iter()
+            .map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()))
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>();
+
+        let component_descriptors = descriptors
+            .iter()
+            .filter_map(|descriptor| {
+                if let ColumnDescriptor::Component(component) = descriptor {
+                    Some(component)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let filter = self.resolved_entity_path_filter();
+
+        let contents: ViewContentsSelector = component_descriptors
+            .iter()
+            .filter(|comp| filter.matches(&comp.entity_path))
+            .map(|comp| (comp.entity_path.clone(), None))
+            .collect();
+
+        if contents.is_empty() {
+            None
+        } else {
+            Some(contents)
+        }
+    }
+
+    /// Create a table provider with the stored query parameters.
+    fn as_table_provider(&self, py: Python<'_>) -> PyResult<Arc<dyn TableProvider + Send>> {
+        let dataset = self.dataset.borrow(py);
+        let dataset_id = dataset.entry_id();
+        let schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset)?;
+        let connection = dataset.client().borrow(py).connection().clone();
+        drop(dataset);
+
+        let view_contents = self.build_view_contents(&schema);
+        let segment_ids: Vec<String> = match &self.segment_filter {
+            Some(filter) => filter.iter().cloned().collect(),
+            None => vec![],
+        };
+
+        let static_only = self.index.is_none();
+
+        let query_expression = QueryExpression {
+            view_contents,
+            include_semantically_empty_columns: self.include_semantically_empty_columns,
+            include_tombstone_columns: self.include_tombstone_columns,
+            include_static_columns: if static_only {
+                re_chunk_store::StaticColumnSelection::StaticOnly
+            } else {
+                re_chunk_store::StaticColumnSelection::Both
+            },
+            filtered_index: self.index.clone().map(Into::into),
+            filtered_index_range: None,
+            filtered_index_values: None,
+            using_index_values: self.using_index_values.clone(),
+            filtered_is_not_null: None,
+            sparse_fill_strategy: if self.fill_latest_at {
+                SparseFillStrategy::LatestAtGlobal
+            } else {
+                SparseFillStrategy::None
+            },
+            selection: None,
+        };
+
+        // Capture trace context to propagate into async query execution
+        #[cfg(all(feature = "perf_telemetry", not(target_arch = "wasm32")))]
+        let trace_headers_opt = {
+            let trace_headers = extract_trace_context_from_contextvar(py);
+            if trace_headers.traceparent.is_empty() {
+                None
+            } else {
+                Some(trace_headers)
+            }
+        };
+        #[cfg(not(all(feature = "perf_telemetry", not(target_arch = "wasm32"))))]
+        let trace_headers_opt = None;
+
+        wait_for_future(py, async move {
+            DataframeQueryTableProvider::new(
+                connection.origin().clone(),
+                connection.connection_registry().clone(),
+                dataset_id,
+                &query_expression,
+                &segment_ids,
+                #[cfg(not(target_arch = "wasm32"))]
+                trace_headers_opt,
+            )
+            .await
+        })
+        .map(|p| Arc::new(p) as Arc<dyn TableProvider + Send>)
+        .map_err(to_py_err)
+    }
+}
+
+// ================================================================================================
+// DatasetViewReaderHelper - minimal pyclass that implements __datafusion_table_provider__
+// ================================================================================================
+
+/// Internal helper pyclass that wraps a table provider and implements the DataFusion protocol.
+///
+/// This is NOT exported to Python users. It's used internally by `DatasetView.reader()` to pass
+/// the table provider to DataFusion's `read_table()` method.
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")]
+struct DatasetViewReaderHelper {
+    provider: Arc<dyn TableProvider + Send>,
+}
+
+#[pymethods]
+impl DatasetViewReaderHelper {
+    fn __datafusion_table_provider__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyCapsule>> {
+        let capsule_name = cr"datafusion_table_provider".into();
+        let runtime = get_tokio_runtime().handle().clone();
+        let provider = FFI_TableProvider::new(Arc::clone(&self.provider), true, Some(runtime));
+        PyCapsule::new(py, provider, Some(capsule_name))
     }
 }

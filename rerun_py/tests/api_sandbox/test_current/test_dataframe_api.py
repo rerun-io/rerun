@@ -68,7 +68,7 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
-        # Define the index values to query at
+        # Define the index values to query at (applied to ALL segments)
         index_values = np.array(
             [
                 datetime.datetime(1999, 12, 31, 23, 59, 59),
@@ -78,14 +78,12 @@ def test_dataframe_api_using_index_values(simple_dataset_prefix: Path) -> None:
             dtype=np.datetime64,
         )
 
-        # Create a view with all segments and query using per-segment index values
+        # Create a view with all segments and query using global index values
         view = ds.filter_contents(["/**"])
-        # Apply the same index values to all segments
-        using_index_values = dict.fromkeys(ds.segment_ids(), index_values)
 
         df = view.reader(
             index="timeline",
-            using_index_values=using_index_values,
+            using_index_values=index_values,
             fill_latest_at=True,
         ).sort("rerun_segment_id", "timeline")
 

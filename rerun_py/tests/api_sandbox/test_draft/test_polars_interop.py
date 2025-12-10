@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import rerun_draft as rr
-from datafusion import col, lit
-from datafusion.functions import in_list
 from inline_snapshot import snapshot as inline_snapshot
 
 if TYPE_CHECKING:
@@ -77,12 +75,8 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        df = (
-            ds.reader(index="timeline")
-            # All former view-level filtering happens now in datafusion and is (hopefully) pushed back
-            .filter(in_list(col("rerun_segment_id"), [lit("simple_recording_0"), lit("simple_recording_2")]))
-            .to_polars()
-        )
+        # Use filter_segments to filter before reading, then convert to polars
+        df = ds.filter_segments(["simple_recording_0", "simple_recording_2"]).reader(index="timeline").to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
 Schema([('rerun_segment_id', String),

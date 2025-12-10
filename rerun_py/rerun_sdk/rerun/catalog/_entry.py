@@ -8,7 +8,12 @@ import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
 
-from rerun_bindings import DatasetEntryInternal, DatasetViewInternal, TableEntryInternal, TableInsertMode
+from rerun_bindings import (
+    DatasetEntryInternal,
+    DatasetViewInternal,
+    TableEntryInternal,
+    TableInsertMode,
+)
 
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
@@ -29,6 +34,7 @@ if TYPE_CHECKING:
         EntryKind,
         IndexConfig,
         IndexingResult,
+        IndexValuesLike,
         Schema,
         Tasks,
         VectorDistanceMetric,
@@ -410,9 +416,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
+        using_index_values: IndexValuesLike | None = None,
     ) -> datafusion.DataFrame:
         """
-        Create a reader over this dataset as a DataFusion DataFrame.
+        Create a reader over this dataset.
+
+        Returns a DataFusion DataFrame.
 
         Parameters
         ----------
@@ -425,11 +434,15 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             Whether to include tombstone columns.
         fill_latest_at : bool
             Whether to fill null values with the latest valid data.
+        using_index_values : IndexValuesLike | None
+            If provided, specifies the exact index values to sample for all segments.
+            Can be a numpy array (datetime64[ns] or int64), a pyarrow Array, or a sequence.
+            Use with `fill_latest_at=True` to populate rows with the most recent data.
 
         Returns
         -------
         datafusion.DataFrame
-            A DataFusion DataFrame over the dataset's data.
+            A DataFusion DataFrame.
 
         """
         # Create a DatasetView that includes all contents and delegate to its reader
@@ -439,25 +452,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
             fill_latest_at=fill_latest_at,
+            using_index_values=using_index_values,
         )
-
-    def get_index_ranges(self, index: str) -> datafusion.DataFrame:
-        """
-        Get the min/max values for the specified index per segment.
-
-        Parameters
-        ----------
-        index : str
-            The name of the index (timeline) to compute ranges for.
-
-        Returns
-        -------
-        datafusion.DataFrame
-            A DataFrame with columns: rerun_segment_id, {index}:min, {index}:max
-
-        """
-        view = self.filter_contents(["/**"])
-        return view.get_index_ranges(index)
 
     def create_fts_index(
         self,
@@ -742,10 +738,12 @@ class DatasetView:
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
-        using_index_values: dict[str, Any] | datafusion.DataFrame | None = None,
+        using_index_values: IndexValuesLike | None = None,
     ) -> datafusion.DataFrame:
         """
-        Create a reader over this DatasetView as a DataFusion DataFrame.
+        Create a reader over this DatasetView.
+
+        Returns a DataFusion DataFrame.
 
         Parameters
         ----------
@@ -758,54 +756,33 @@ class DatasetView:
             Whether to include tombstone columns.
         fill_latest_at : bool
             Whether to fill null values with the latest valid data.
-        using_index_values : dict[str, IndexValuesLike] | datafusion.DataFrame | None
-            If provided, specifies the exact index values to sample for each segment.
-            Can be either:
-            - A dictionary mapping segment IDs to arrays of index values (numpy datetime64 or int64)
-            - A DataFusion DataFrame with columns 'rerun_segment_id' and the index name
-
-            Segments not included in the dictionary will have no rows in the result.
+        using_index_values : IndexValuesLike | None
+            If provided, specifies the exact index values to sample for all segments.
+            Can be a numpy array (datetime64[ns] or int64), a pyarrow Array, or a sequence.
             Use with `fill_latest_at=True` to populate rows with the most recent data.
 
         Returns
         -------
         datafusion.DataFrame
-            A DataFusion DataFrame over the view's data.
+            A DataFusion DataFrame.
+
+        Examples
+        --------
+        ```python
+        # Read as DataFusion DataFrame
+        df = view.reader(index="timeline")
+
+        # Use specific index values with fill_latest_at
+        import numpy as np
+        timestamps = np.array([...], dtype="datetime64[ns]")
+        df = view.reader(
+            index="timeline",
+            using_index_values=timestamps,
+            fill_latest_at=True
+        )
+        ```
 
         """
-        import logging
-
-        import numpy as np
-
-        # Convert DataFrame to dict if needed
-        if using_index_values is not None and hasattr(using_index_values, "collect"):
-            if index is None:
-                raise ValueError("index must be provided when using_index_values is a DataFrame")
-
-            # It's a DataFrame - convert to dict[str, np.array]
-            rows = using_index_values.select("rerun_segment_id", index).to_pylist()
-
-            using_index_values_dict: dict[str, list] = {}
-            for row in rows:
-                seg_id = row["rerun_segment_id"]
-                if seg_id not in using_index_values_dict:
-                    using_index_values_dict[seg_id] = []
-                using_index_values_dict[seg_id].append(row[index])
-
-            # Convert lists to numpy arrays with datetime64 dtype
-            # The values from to_pylist() are Python datetime objects that need explicit dtype
-            using_index_values = {k: np.array(v, dtype="datetime64[ns]") for k, v in using_index_values_dict.items()}
-
-        # Warn about segment IDs in using_index_values that don't exist in the dataset
-        if using_index_values is not None:
-            valid_segment_ids = set(self.segment_ids())
-            unknown_segments = [seg for seg in using_index_values.keys() if seg not in valid_segment_ids]
-            if unknown_segments:
-                logging.warning(
-                    "Index values for the following inexistent or filtered segments were ignored: "
-                    f"{', '.join(unknown_segments)}"
-                )
-
         return self._internal.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,

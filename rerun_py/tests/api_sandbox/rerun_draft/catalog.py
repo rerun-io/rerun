@@ -256,10 +256,63 @@ class DatasetEntry(Entry):
         index: str | None,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
+        using_index_values: dict[str, IndexValuesLike] | IndexValuesLike | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
-        # Delegate to the SDK's DatasetView.reader() which now supports using_index_values
+        """
+        Create a reader over this dataset.
+
+        Returns a DataFusion DataFrame.
+
+        Parameters
+        ----------
+        index : str | None
+            The index (timeline) to use for the view.
+        include_semantically_empty_columns : bool
+            Whether to include columns that are semantically empty.
+        include_tombstone_columns : bool
+            Whether to include tombstone columns.
+        using_index_values : dict[str, IndexValuesLike] | IndexValuesLike | None
+            If a dict is provided, keys are segment IDs and values are the index values
+            to sample for that segment (per-segment semantics).
+            If a single IndexValuesLike is provided, it applies to all segments.
+        fill_latest_at : bool
+            Whether to fill null values with the latest valid data.
+
+        """
+        # Handle dict-based using_index_values (per-segment semantics)
+        if isinstance(using_index_values, dict):
+            # Call reader per segment and union the results
+            dfs = []
+            for segment_id, segment_index_values in using_index_values.items():
+                view = self._inner.filter_segments([segment_id]).filter_contents(["/**"])
+                df = view.reader(
+                    index=index,
+                    include_semantically_empty_columns=include_semantically_empty_columns,
+                    include_tombstone_columns=include_tombstone_columns,
+                    fill_latest_at=fill_latest_at,
+                    using_index_values=segment_index_values,
+                )
+                dfs.append(df)
+
+            if not dfs:
+                # Return empty result with schema from dataset
+                view = self._inner.filter_contents(["/**"])
+                return view.reader(
+                    index=index,
+                    include_semantically_empty_columns=include_semantically_empty_columns,
+                    include_tombstone_columns=include_tombstone_columns,
+                    fill_latest_at=fill_latest_at,
+                    using_index_values=None,
+                ).limit(0)
+
+            # Union all DataFrames
+            result = dfs[0]
+            for df in dfs[1:]:
+                result = result.union(df)
+            return result
+
+        # Simple case: single IndexValuesLike or None
         view = self._inner.filter_contents(["/**"])
         return view.reader(
             index=index,
