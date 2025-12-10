@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, Any
 
 import datafusion
 from rerun import catalog as _catalog
-from rerun.dataframe import IndexColumnDescriptor
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
 
     import pyarrow as pa
+    from rerun.dataframe import IndexColumnDescriptor
 
     from rerun_bindings import IndexValuesLike  # noqa: TID251
 
@@ -289,8 +289,8 @@ class DatasetEntry(Entry):
 
     def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
         # Use the SDK's DatasetView.get_index_ranges()
-        view = self._inner.filter_contents(["/**"])
-        return view.get_index_ranges(str(index) if isinstance(index, IndexColumnDescriptor) else index)
+        view = self.filter_contents(["/**"])
+        return view.get_index_ranges(index)
 
     def create_fts_search_index(
         self,
@@ -360,11 +360,7 @@ class DatasetEntry(Entry):
         or a sequence of segment ID strings.
         """
         # Wrap in draft mock's DatasetView which adds dict-based using_index_values support
-        return DatasetView(
-            self._inner.filter_segments(
-                list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
-            )
-        )
+        return DatasetView(self._inner.filter_segments(segment_ids))
 
     def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
         """Returns a new DatasetView filtered to the given entity paths."""
@@ -402,21 +398,6 @@ class DatasetView:
 
     def arrow_schema(self) -> pa.Schema:
         return self._inner.arrow_schema()
-
-    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
-        """Returns a new DatasetView filtered to the given segment IDs."""
-        return DatasetView(
-            self._inner.filter_segments(
-                list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
-            )
-        )
-
-    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
-        """Returns a new DatasetView filtered to the given entity paths."""
-        return DatasetView(self._inner.filter_contents(list(exprs)))
-
-    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
-        return self._inner.get_index_ranges(str(index) if isinstance(index, IndexColumnDescriptor) else index)
 
     def reader(
         self,
@@ -507,6 +488,37 @@ class DatasetView:
             using_index_values=using_index_values,
         )
 
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+        import datafusion.functions as F
+        from datafusion import col
+
+        schema = self.schema()
+        exprs = []
+
+        for index_column in schema.index_columns():
+            exprs.append(F.min(col(index_column.name)).alias(f"{index_column.name}:min"))
+            exprs.append(F.max(col(index_column.name)).alias(f"{index_column.name}:max"))
+
+        # TODO(ab, jleibs): we're still unsure about these, so let's keep them aside for now.
+        # for component_column in schema.component_columns():
+        #     if component_column.name.startswith("property:"):
+        #         continue
+        #     exprs.append(F.count(col(component_column.name)).alias(f"count({component_column.name})"))
+
+        return self.reader(index=index).aggregate("rerun_segment_id", exprs)
+
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+        """Returns a new DatasetView filtered to the given segment IDs."""
+        return DatasetView(
+            self._inner.filter_segments(
+                list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
+            )
+        )
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """Returns a new DatasetView filtered to the given entity paths."""
+        return DatasetView(self._inner.filter_contents(list(exprs)))
+
     def _dataframe_to_index_values_dict(
         self, df: datafusion.DataFrame, index: str | None
     ) -> dict[str, IndexValuesLike]:
@@ -590,7 +602,7 @@ class TableEntry(Entry):
         This operation is lazy. The data will not be read from the source table until consumed
         from the DataFrame.
         """
-        return self._inner.df()
+        return self._inner.reader()
 
     def arrow_schema(self) -> pa.Schema:
         """Returns the schema of the table."""

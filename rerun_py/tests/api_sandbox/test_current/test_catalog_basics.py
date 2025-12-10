@@ -33,7 +33,7 @@ def test_catalog_basics(tmp_path: Path) -> None:
         assert sorted([t.name for t in tables_with_hidden]) == ["__entries", "my_table"]
 
         # Test the underlying __entries table via get_table
-        df = client.get_table(name="__entries").df()
+        df = client.get_table(name="__entries").reader()
 
         assert str(df.schema()) == inline_snapshot("""\
 id: fixed_size_binary[16] not null

@@ -45,7 +45,7 @@ def test_dataset_view_filter_segments(complex_dataset_prefix: Path, tmp_path: Pa
         # Filter to only successful segments using DataFrame
         from datafusion import col
 
-        good_segments = meta.df().filter(col("success"))
+        good_segments = meta.reader().filter(col("success"))
         good_view = ds.filter_segments(good_segments)
 
         assert sorted(good_view.segment_ids()) == [
@@ -133,20 +133,3 @@ def test_dataset_view_reader(complex_dataset_prefix: Path) -> None:
         # Should have rows from the filtered segment with text data
         assert "rerun_segment_id" in df.schema().names
         assert "/text:TextLog:text" in df.schema().names
-
-
-def test_dataset_view_get_index_ranges(complex_dataset_prefix: Path) -> None:
-    """Test getting index ranges from a DatasetView."""
-    with rr.server.Server() as server:
-        client = server.client()
-        ds = client.create_dataset("complex_dataset")
-        ds.register_prefix(complex_dataset_prefix.as_uri())
-
-        view = ds.filter_segments(["complex_recording_0"])
-        ranges_df = view.get_index_ranges("timeline")
-
-        # Should have columns for min/max
-        column_names = ranges_df.schema().names
-        assert "rerun_segment_id" in column_names
-        assert "timeline:min" in column_names
-        assert "timeline:max" in column_names

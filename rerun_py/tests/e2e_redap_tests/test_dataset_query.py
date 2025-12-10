@@ -21,14 +21,11 @@ def test_component_filtering(readonly_test_dataset: DatasetEntry) -> None:
 
     component_path = "/obj2:Points3D:positions"
 
-    filter_on_dataframe = (
-        readonly_test_dataset.reader(index="time_1").filter(col(component_path).is_not_null()).collect_partitioned()
-    )
+    filtered_rb = readonly_test_dataset.reader(index="time_1").filter(col(component_path).is_not_null()).collect()
 
-    for outer in filter_on_dataframe:
-        for inner in outer:
-            column = inner.column(component_path)
-            assert column.null_count == 0
+    for rb in filtered_rb:
+        column = rb.column(component_path)
+        assert column.null_count == 0
 
 
 def test_segment_ordering(readonly_test_dataset: DatasetEntry) -> None:
@@ -65,8 +62,8 @@ def test_segment_ordering(readonly_test_dataset: DatasetEntry) -> None:
 
 
 def test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -> None:
-    for rb in readonly_test_dataset.reader(index="time_1").execute_stream():
-        assert rb.to_pyarrow().num_rows > 0
+    for rb_stream in readonly_test_dataset.reader(index="time_1").execute_stream():
+        assert rb_stream.to_pyarrow().num_rows > 0
 
     for segment_batch in readonly_test_dataset.segment_table().to_arrow_reader():
         assert segment_batch.num_rows > 0

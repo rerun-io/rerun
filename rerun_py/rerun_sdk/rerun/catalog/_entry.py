@@ -4,6 +4,7 @@ from abc import ABC
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 
+import datafusion
 import pyarrow as pa
 from pyarrow import RecordBatchReader
 from typing_extensions import deprecated
@@ -22,8 +23,6 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime
-
-    import datafusion
 
     from rerun.dataframe import ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnSelector, Recording
 
@@ -332,13 +331,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Download a partition from the dataset."""
         return self.download_segment(partition_id)
 
-    def filter_segments(self, segment_ids: Sequence[str] | Any) -> DatasetView:
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
         """
         Return a new DatasetView filtered to the given segment IDs.
 
         Parameters
         ----------
-        segment_ids : Sequence[str] | datafusion.DataFrame
+        segment_ids
             A list of segment ID strings or a DataFusion DataFrame with a
             column named 'rerun_segment_id'.
 
@@ -363,14 +362,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         """
 
-        # Handle DataFrame input by extracting segment IDs
-        if hasattr(segment_ids, "collect"):
-            # It's a DataFrame - extract rerun_segment_id column
-            ids = []
-            for batch in segment_ids.select("rerun_segment_id").collect():
-                for value in batch.column("rerun_segment_id"):
-                    ids.append(value.as_py())
-            segment_ids = ids
+        if isinstance(segment_ids, datafusion.DataFrame):
+            segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
@@ -445,9 +438,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             A DataFusion DataFrame.
 
         """
-        # Create a DatasetView that includes all contents and delegate to its reader
-        view = self.filter_contents(["/**"])
-        return view.reader(
+
+        return self.filter_contents(["/**"]).reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
@@ -659,10 +651,7 @@ class DatasetView:
         join_key: str = "rerun_segment_id",
     ) -> datafusion.DataFrame:
         """
-        Return the segment metadata table as a DataFusion DataFrame.
-
-        Note: The table is not automatically filtered by segment filters.
-        Use the returned DataFrame's filter methods if needed.
+        Return the segment table as a DataFusion DataFrame.
 
         Parameters
         ----------
@@ -688,12 +677,7 @@ class DatasetView:
             )
 
         if join_meta is not None:
-            # TODO: needs reviewing/improving
-            # Handle TableEntry by getting its DataFrame
-            # SDK TableEntry uses .df(), draft TableEntry wrapper uses .reader()
-            if hasattr(join_meta, "df") and callable(join_meta.df):
-                join_meta = join_meta.df()
-            elif hasattr(join_meta, "reader") and callable(join_meta.reader):
+            if isinstance(join_meta, TableEntry):
                 join_meta = join_meta.reader()
 
             if join_key not in segment_table_df.schema().names:
@@ -713,7 +697,7 @@ class DatasetView:
 
         return segment_table_df
 
-    def download_segment(self, segment_id: str):
+    def download_segment(self, segment_id: str) -> Recording:
         """
         Download a specific segment from the dataset.
 
@@ -747,40 +731,23 @@ class DatasetView:
 
         Parameters
         ----------
-        index : str | None
+        index
             The index (timeline) to use for the view.
             Pass `None` to read only static data.
-        include_semantically_empty_columns : bool
+        include_semantically_empty_columns
             Whether to include columns that are semantically empty.
-        include_tombstone_columns : bool
+        include_tombstone_columns
             Whether to include tombstone columns.
-        fill_latest_at : bool
+        fill_latest_at
             Whether to fill null values with the latest valid data.
-        using_index_values : IndexValuesLike | None
+        using_index_values
             If provided, specifies the exact index values to sample for all segments.
             Can be a numpy array (datetime64[ns] or int64), a pyarrow Array, or a sequence.
             Use with `fill_latest_at=True` to populate rows with the most recent data.
 
         Returns
         -------
-        datafusion.DataFrame
-            A DataFusion DataFrame.
-
-        Examples
-        --------
-        ```python
-        # Read as DataFusion DataFrame
-        df = view.reader(index="timeline")
-
-        # Use specific index values with fill_latest_at
-        import numpy as np
-        timestamps = np.array([...], dtype="datetime64[ns]")
-        df = view.reader(
-            index="timeline",
-            using_index_values=timestamps,
-            fill_latest_at=True
-        )
-        ```
+        A DataFusion DataFrame.
 
         """
         return self._internal.reader(
@@ -790,29 +757,6 @@ class DatasetView:
             fill_latest_at=fill_latest_at,
             using_index_values=using_index_values,
         )
-
-    def get_index_ranges(self, index: str) -> datafusion.DataFrame:
-        """
-        Get the min/max values for the specified index per segment.
-
-        Parameters
-        ----------
-        index : str
-            The name of the index (timeline) to compute ranges for.
-
-        Returns
-        -------
-        datafusion.DataFrame
-            A DataFrame with columns: rerun_segment_id, {index}:min, {index}:max
-
-        """
-        import datafusion.functions as F
-        from datafusion import col
-
-        df = self.reader(index=index)
-        min_expr = F.min(col(index)).alias(f"{index}:min")
-        max_expr = F.max(col(index)).alias(f"{index}:max")
-        return df.aggregate(["rerun_segment_id"], [min_expr, max_expr])
 
     def filter_segments(self, segment_ids: Sequence[str] | datafusion.DataFrame) -> DatasetView:
         """
@@ -833,14 +777,8 @@ class DatasetView:
             A new view filtered to the given segments.
 
         """
-        # Handle DataFrame input by extracting segment IDs
-        if hasattr(segment_ids, "collect"):
-            # It's a DataFrame - extract rerun_segment_id column
-            ids = []
-            for batch in segment_ids.select("rerun_segment_id").collect():
-                for value in batch.column("rerun_segment_id"):
-                    ids.append(value.as_py())
-            segment_ids = ids
+        if isinstance(segment_ids, datafusion.DataFrame):
+            segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
         return DatasetView(self._internal.filter_segments(list(segment_ids)))
 
@@ -872,9 +810,9 @@ class DatasetView:
 
         dataset_str = str(self.dataset)
 
-        segment_count = self._internal.segment_filter_count
-        if segment_count is not None:
-            segment_str = f"{segment_count} segments"
+        filter_segment_ids = self._internal.filtered_segment_ids
+        if filter_segment_ids is not None:
+            segment_str = f"{len(filter_segment_ids)} segments"
         else:
             segment_str = "all segments"
 
@@ -899,10 +837,10 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self._internal.__datafusion_table_provider__()
 
-    def df(self) -> datafusion.DataFrame:
+    def reader(self) -> datafusion.DataFrame:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
-        return self._internal.df()
+        return self._internal.reader()
 
     def to_arrow_reader(self) -> pa.RecordBatchReader:
         """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
@@ -918,7 +856,7 @@ class TableEntry(Entry[TableEntryInternal]):
     def arrow_schema(self) -> pa.Schema:
         """Returns the Arrow schema of the table."""
 
-        return self.df().schema()
+        return self.reader().schema()
 
     # ---
 

@@ -24,7 +24,7 @@ def test_entries_to_polars(tmp_path: Path) -> None:
         assert sorted([e.name for e in entries]) == ["my_dataset", "my_table"]
 
         # Test get_table for raw __entries table access with polars conversion
-        df = client.get_table(name="__entries").df().to_polars()
+        df = client.get_table(name="__entries").reader().to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot(
             """\
@@ -61,7 +61,7 @@ def test_table_to_polars(tmp_path: Path) -> None:
         )
         table.append(int16=[12], string_list=[["a", "b", "c"]])
 
-        df = client.get_table(name="my_table").df().to_polars()
+        df = client.get_table(name="my_table").reader().to_polars()
 
         assert str(df) == inline_snapshot("""\
 shape: (1, 2)
