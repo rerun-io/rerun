@@ -1,15 +1,15 @@
 use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashSet};
-use arrow::array::{Int32Array, Int64Array, RecordBatch};
+use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use itertools::{Either, Itertools as _, izip};
 use parking_lot::Mutex;
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
+use re_arrow_util::RecordBatchExt as _;
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, NativeTemporalMapEntry, RrdManifest};
-use re_log_types::{AbsoluteTimeRange, StoreKind};
+use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
 
 use crate::{TimelineStats, TimesPerTimeline};
 
@@ -99,7 +99,7 @@ impl RrdManifestIndex {
 
         self.native_temporal_map = manifest.to_native_temporal()?;
 
-        for (_ent_map, timelines) in &self.native_temporal_map {
+        for timelines in self.native_temporal_map.values() {
             for (timeline, comps) in timelines {
                 let mut timeline_range = self
                     .timelines
@@ -107,8 +107,8 @@ impl RrdManifestIndex {
                     .copied()
                     .unwrap_or(AbsoluteTimeRange::EMPTY);
 
-                for (_comp, chunks) in comps {
-                    for (_chink_id, entry) in chunks {
+                for chunks in comps.values() {
+                    for entry in chunks.values() {
                         let NativeTemporalMapEntry {
                             time_range: chunk_range,
                             num_rows, // TODO: Emil, wanna do something with this?
@@ -260,27 +260,23 @@ impl RrdManifestIndex {
         let Some(manifest) = self.manifest.as_ref() else {
             anyhow::bail!("No manifest");
         };
+        let record_batch = &manifest.data;
 
         let mut indices = vec![];
 
         let chunk_id = manifest.col_chunk_id()?;
         let chunk_is_static = manifest.col_chunk_is_static()?;
-        let start_column = manifest
-            .data
-            .try_get_column(RrdManifest::field_index_start(timeline, None).name())?
-            .try_downcast_array_ref::<Int64Array>()?;
-        let end_column = manifest
-            .data
-            .try_get_column(RrdManifest::field_index_end(timeline, None).name())?
-            .try_downcast_array_ref::<Int64Array>()?;
+        let (_, start_column) = TimeType::from_arrow_array(
+            record_batch.try_get_column(RrdManifest::field_index_start(timeline, None).name())?,
+        )?;
+        let (_, end_column) = TimeType::from_arrow_array(
+            record_batch.try_get_column(RrdManifest::field_index_end(timeline, None).name())?,
+        )?;
 
         for (row_idx, (chunk_id, chunk_is_static, start_time, end_time)) in
             izip!(chunk_id, chunk_is_static, start_column, end_column).enumerate()
         {
-            let chunk_range = AbsoluteTimeRange::new(
-                start_time.unwrap_or_default(),
-                end_time.unwrap_or_default(),
-            );
+            let chunk_range = AbsoluteTimeRange::new(*start_time, *end_time);
             let include = chunk_is_static || chunk_range.intersects(query_range);
             if include {
                 if let Some(chunk_info) = self.remote_chunks.get(&chunk_id) {
