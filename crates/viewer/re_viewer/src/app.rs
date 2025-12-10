@@ -817,7 +817,7 @@ impl App {
 
     fn run_system_command(
         &mut self,
-        _from_where: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
+        sent_from: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
         cmd: SystemCommand,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
@@ -872,7 +872,7 @@ impl App {
                     }
                     StoreKind::Blueprint => {
                         if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
-                            let blueprint_ctx: Option<&'static AppBlueprintCtx> = None;
+                            let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
                                 target_store.times_per_timeline(),
@@ -884,7 +884,7 @@ impl App {
                             }
                         }
                     }
-                };
+                }
             }
             SystemCommand::SetUrlFragment { store_id, fragment } => {
                 // This adds new system commands, which will be handled later in the loop.
@@ -1104,7 +1104,9 @@ impl App {
 
             SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
-                    "Update {} entities: {}",
+                    "{}:{} Update {} entities: {}",
+                    sent_from.file(),
+                    sent_from.line(),
                     store_id.kind(),
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
