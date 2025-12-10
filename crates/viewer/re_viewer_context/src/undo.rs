@@ -202,8 +202,8 @@ impl BlueprintUndoState {
 
 fn max_blueprint_time(blueprint_db: &EntityDb) -> TimeInt {
     blueprint_db
-        .time_histogram(&blueprint_timeline())
-        .and_then(|times| times.max_key())
+        .time_range_for(&blueprint_timeline())
+        .map(|range| range.max.as_i64())
         .map_or(TimeInt::ZERO, TimeInt::new_temporal)
 }
 
