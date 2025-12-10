@@ -121,7 +121,7 @@ impl TransformFramesUi {
 
     pub fn data_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, layout: UiLayout) {
         match layout {
-            UiLayout::Tooltip => self.show_transforms(ctx, layout, ui),
+            UiLayout::Tooltip => {} // Don't show in tooltips.
             UiLayout::List | UiLayout::SelectionPanel => {
                 ui.collapsing("Transform frame parents", |ui| {
                     egui::Frame::new()
