@@ -845,8 +845,6 @@ fn prefetch_chunks(
         return None;
     }
 
-    re_log::debug!("Looking for chunks to pre-fetch…");
-
     let mut found_source = false;
 
     rx_log.for_each(|rx| {
@@ -854,13 +852,14 @@ fn prefetch_chunks(
             found_source = true;
             match rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range) {
                 Ok(rb) => {
-                    re_log::debug!("Asking for {} more chunks", rb.num_rows());
-                    if 0 < rb.num_rows()
-                        && rx
+                    if 0 < rb.num_rows() {
+                        re_log::debug!("Asking for {} more chunks", rb.num_rows());
+                        if rx
                             .send_command(re_log_channel::LoadCommand::LoadChunks(rb))
                             .is_err()
-                    {
-                        re_log::warn!("The receiver is gone.");
+                        {
+                            re_log::warn!("The receiver is gone.");
+                        }
                     }
                 }
                 Err(err) => {
