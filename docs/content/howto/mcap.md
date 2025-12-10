@@ -42,7 +42,7 @@ To map MCAP messages to Rerun entities we make the following assumptions:
 * MCAP topics corresponds to Rerun entities.
 * Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](../concepts/chunks.md).
 * The contents of an MCAP message will be extracted to Rerun components and grouped under a corresponding Rerun archetype.
-* `log_time` and `publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../concepts/timelines.md).
+* `message_log_time` and `message_publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../concepts/timelines.md).
 
 ### Layered architecture
 
