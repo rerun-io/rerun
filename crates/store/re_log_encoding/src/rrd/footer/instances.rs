@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType};
 use re_types_core::ComponentDescriptor;
 
 use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
@@ -268,58 +268,11 @@ impl RrdManifest {
     }
 
     pub fn to_native_temporal(&self) -> CodecResult<NativeTemporalMap> {
-        use arrow::array::{
-            ArrayRef, DurationMicrosecondArray, DurationMillisecondArray, DurationNanosecondArray,
-            DurationSecondArray, Int64Array, TimestampMicrosecondArray, TimestampMillisecondArray,
-            TimestampNanosecondArray, TimestampSecondArray,
-        };
+        use arrow::array::ArrayRef;
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
         fn downcast_index_as_int64_slice(array: &ArrayRef) -> Option<&[i64]> {
-            let values = match array.data_type() {
-                arrow::datatypes::DataType::Int64 => {
-                    array.downcast_array_ref::<Int64Array>()?.values()
-                }
-
-                arrow::datatypes::DataType::Timestamp(time_unit, None) => match time_unit {
-                    arrow::datatypes::TimeUnit::Second => {
-                        array.downcast_array_ref::<TimestampSecondArray>()?.values()
-                    }
-
-                    arrow::datatypes::TimeUnit::Millisecond => array
-                        .downcast_array_ref::<TimestampMillisecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Microsecond => array
-                        .downcast_array_ref::<TimestampMicrosecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Nanosecond => array
-                        .downcast_array_ref::<TimestampNanosecondArray>()?
-                        .values(),
-                },
-
-                arrow::datatypes::DataType::Duration(time_unit) => match time_unit {
-                    arrow::datatypes::TimeUnit::Second => {
-                        array.downcast_array_ref::<DurationSecondArray>()?.values()
-                    }
-
-                    arrow::datatypes::TimeUnit::Millisecond => array
-                        .downcast_array_ref::<DurationMillisecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Microsecond => array
-                        .downcast_array_ref::<DurationMicrosecondArray>()?
-                        .values(),
-
-                    arrow::datatypes::TimeUnit::Nanosecond => array
-                        .downcast_array_ref::<DurationNanosecondArray>()?
-                        .values(),
-                },
-
-                _ => return None,
-            };
-
+            let (_typ, values) = TimeType::from_arrow_array(array).ok()?;
             Some(values)
         }
 
