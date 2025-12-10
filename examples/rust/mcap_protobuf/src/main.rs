@@ -9,12 +9,12 @@ use re_arrow_combinators::{
     semantic::{BinaryToListUInt8, StringToVideoCodecUInt32, TimeSpecToNanos},
 };
 use re_log_types::TimeType;
-use rerun::external::re_log;
+use rerun::external::{re_log, re_sdk_types::reflection::ComponentDescriptorExt};
 use rerun::lenses::{Lens, LensesSink, Op, OpError};
 use rerun::sink::GrpcSink;
 use rerun::{
-    CoordinateFrame, EncodedImage, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
-    VideoStream,
+    ComponentDescriptor, CoordinateFrame, EncodedImage, InstancePoses3D, Pinhole, Transform3D,
+    TransformAxes3D, VideoStream,
 };
 use rerun::{dataframe::EntityPathFilter, lenses::OutputMode};
 
@@ -340,6 +340,82 @@ fn main() -> anyhow::Result<()> {
     })?
     .build();
 
+    // Destructures a custom GripperStatus message into component columns.
+    const GRIPPER_STATUS_SCHEMA_NAME: &str = "schemas.proto.GripperStatus";
+    let gripper_status_lens = Lens::for_input_column(
+        EntityPathFilter::all(),
+        format!("{GRIPPER_STATUS_SCHEMA_NAME}:message"),
+    )
+    .output_columns(|out| {
+        out.time(
+            TIME_NAME,
+            args.epoch.time_type(),
+            [
+                Op::access_field("timestamp"),
+                Op::func(list_timespec_to_list_nanos),
+            ],
+        )
+        .component(
+            ComponentDescriptor::partial("claw_state")
+                .with_builtin_archetype(GRIPPER_STATUS_SCHEMA_NAME),
+            [Op::access_field("claw_state")],
+        )
+        .component(
+            ComponentDescriptor::partial("error_code")
+                .with_builtin_archetype(GRIPPER_STATUS_SCHEMA_NAME),
+            [Op::access_field("error_code")],
+        )
+        .component(
+            ComponentDescriptor::partial("position")
+                .with_builtin_archetype(GRIPPER_STATUS_SCHEMA_NAME),
+            [Op::access_field("position")],
+        )
+        .component(
+            ComponentDescriptor::partial("current")
+                .with_builtin_archetype(GRIPPER_STATUS_SCHEMA_NAME),
+            [Op::access_field("current")],
+        )
+    })?
+    .build();
+
+    // Destructures a custom JointState message into component columns.
+    const JOINT_STATE_SCHEMA_NAME: &str = "schemas.proto.JointState";
+    let joint_states_lens = Lens::for_input_column(
+        EntityPathFilter::all(),
+        format!("{JOINT_STATE_SCHEMA_NAME}:message"),
+    )
+    .output_columns(|out| {
+        out.time(
+            TIME_NAME,
+            args.epoch.time_type(),
+            [
+                Op::access_field("timestamp"),
+                Op::func(list_timespec_to_list_nanos),
+            ],
+        )
+        .component(
+            ComponentDescriptor::partial("joint_names")
+                .with_builtin_archetype(JOINT_STATE_SCHEMA_NAME),
+            [Op::access_field("joint_names")],
+        )
+        .component(
+            ComponentDescriptor::partial("joint_positions")
+                .with_builtin_archetype(JOINT_STATE_SCHEMA_NAME),
+            [Op::access_field("joint_positions")],
+        )
+        .component(
+            ComponentDescriptor::partial("joint_velocities")
+                .with_builtin_archetype(JOINT_STATE_SCHEMA_NAME),
+            [Op::access_field("joint_velocities")],
+        )
+        .component(
+            ComponentDescriptor::partial("joint_efforts")
+                .with_builtin_archetype(JOINT_STATE_SCHEMA_NAME),
+            [Op::access_field("joint_efforts")],
+        )
+    })?
+    .build();
+
     let lenses_sink = LensesSink::new(GrpcSink::default())
         .output_mode(OutputMode::ForwardUnmatched)
         .with_lens(image_lens)
@@ -347,7 +423,9 @@ fn main() -> anyhow::Result<()> {
         .with_lens(instance_poses_lens)
         .with_lens(video_lens)
         .with_lens(transforms_lens)
-        .with_lens(pinhole_lens);
+        .with_lens(pinhole_lens)
+        .with_lens(gripper_status_lens)
+        .with_lens(joint_states_lens);
 
     let (rec, _serve_guard) = args.rerun.init("rerun_example_mcap_protobuf")?;
     rec.set_sink(Box::new(lenses_sink));
