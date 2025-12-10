@@ -30,12 +30,29 @@ pub enum LoadState {
 /// Info about a single chunk that we know ahead of loading it.
 pub struct ChunkInfo {
     pub state: Mutex<LoadState>, // Mutex here is a bit ugly…
+    /// None for static chunks
+    pub temporal: Option<TemporalChunkInfo>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TemporalChunkInfo {
+    pub timeline: Timeline,
+
+    /// The time range covered by this entry.
+    pub time_range: AbsoluteTimeRange,
+
+    /// The number of rows in the original chunk which are associated with this entry.
+    ///
+    /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
+    /// entry it might be less, since chunks allow sparse components.
+    pub num_rows: u64,
 }
 
 impl Clone for ChunkInfo {
     fn clone(&self) -> Self {
         Self {
             state: Mutex::new(*self.state.lock()),
+            temporal: self.temporal,
         }
     }
 }
@@ -52,6 +69,7 @@ impl Default for ChunkInfo {
     fn default() -> Self {
         Self {
             state: Mutex::new(LoadState::Unloaded),
+            temporal: None,
         }
     }
 }
@@ -110,8 +128,28 @@ impl RrdManifestIndex {
             // TODO(RR-2999): update chunk info?
         }
 
+        for timelines in self.native_temporal_map.values() {
+            for (&timeline, comps) in timelines {
+                for chunks in comps.values() {
+                    for (&chunk_id, entry) in chunks {
+                        let chunk_info = self.remote_chunks.entry(chunk_id).or_default();
+                        chunk_info.temporal = Some(TemporalChunkInfo {
+                            timeline,
+                            time_range: entry.time_range,
+                            num_rows: entry.num_rows,
+                        });
+                    }
+                }
+            }
+        }
+
         self.manifest = Some(manifest);
         Ok(())
+    }
+
+    /// Info about a chunk that is in the manifest
+    pub fn remote_chunk_info(&self, chunk_id: &ChunkId) -> Option<&ChunkInfo> {
+        self.remote_chunks.get(chunk_id)
     }
 
     fn update_timeline_stats(&mut self) {

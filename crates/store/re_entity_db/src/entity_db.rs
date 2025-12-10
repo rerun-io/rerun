@@ -564,6 +564,9 @@ impl EntityDb {
         re_tracing::profile_function!();
         re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
+        self.time_histogram_per_timeline
+            .on_rrd_manifest(&rrd_manifest);
+
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");
         }
@@ -649,7 +652,8 @@ impl EntityDb {
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
         self.times_per_timeline.on_events(store_events);
-        self.time_histogram_per_timeline.on_events(store_events);
+        self.time_histogram_per_timeline
+            .on_events(&self.rrd_manifest_index, store_events);
         self.rrd_manifest_index
             .entity_tree
             .on_store_additions(store_events);

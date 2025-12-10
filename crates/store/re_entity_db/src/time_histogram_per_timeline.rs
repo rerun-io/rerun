@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 use re_chunk::TimelineName;
-use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
+use re_log_encoding::RrdManifestTemporalMapEntry;
+
+use crate::RrdManifestIndex;
 
 // ---
 
@@ -52,7 +55,36 @@ impl TimeHistogramPerTimeline {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 
-    pub fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
+    /// If we know the manifest ahead of time, we can pre-populate
+    /// the histogram with a rough estimate of the final form.
+    pub fn on_rrd_manifest(
+        &mut self,
+        rrd_manifest: &re_log_encoding::RrdManifest,
+    ) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
+
+        let native_temporal_map = rrd_manifest.get_temporal_data_as_a_map()?;
+
+        for timelines in native_temporal_map.values() {
+            for (timeline, comps) in timelines {
+                let histogram = self.times.entry(*timeline.name()).or_default();
+                for chunks in comps.values() {
+                    for entry in chunks.values() {
+                        let RrdManifestTemporalMapEntry {
+                            time_range,
+                            num_rows,
+                        } = *entry;
+
+                        apply_fake(Application::Add, histogram, time_range, num_rows);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
         re_tracing::profile_function!();
 
         for &(timeline_name, times) in times_per_timeline {
@@ -63,7 +95,7 @@ impl TimeHistogramPerTimeline {
         }
     }
 
-    pub fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
+    fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
         re_tracing::profile_function!();
 
         for &(timeline_name, times) in times_per_timeline {
@@ -77,27 +109,8 @@ impl TimeHistogramPerTimeline {
             }
         }
     }
-}
 
-// NOTE: This is only to let people know that this is in fact a [`ChunkStoreSubscriber`], so they A) don't try
-// to implement it on their own and B) don't try to register it.
-impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
-    #[inline]
-    fn name(&self) -> String {
-        "rerun.store_subscriber.TimeHistogramPerTimeline".into()
-    }
-
-    #[inline]
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
+    pub fn on_events(&mut self, rrd_manifest_index: &RrdManifestIndex, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         for event in events {
@@ -107,13 +120,72 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
                 .iter()
                 .map(|(&timeline_name, time_column)| (timeline_name, time_column.times_raw()))
                 .collect_vec();
+
+            let original_chunk_id = if let Some(chunk_id) = event.diff.split_source {
+                chunk_id
+            } else {
+                event.chunk.id()
+            };
+
             match event.kind {
                 ChunkStoreDiffKind::Addition => {
+                    if let Some(info) = rrd_manifest_index.remote_chunk_info(&original_chunk_id)
+                        && let Some(info) = &info.temporal
+                    {
+                        // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
+                        let histogram = self.times.entry(*info.timeline.name()).or_default();
+                        apply_fake(
+                            Application::Remove,
+                            histogram,
+                            info.time_range,
+                            info.num_rows,
+                        );
+                    }
+
                     self.add(&times, event.num_components() as _);
                 }
                 ChunkStoreDiffKind::Deletion => {
                     self.remove(&times, event.num_components() as _);
+
+                    // We GCed the full chunk, so add back the fake:
+
+                    if let Some(info) = rrd_manifest_index.remote_chunk_info(&original_chunk_id)
+                        && let Some(info) = &info.temporal
+                    {
+                        // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
+                        let histogram = self.times.entry(*info.timeline.name()).or_default();
+                        apply_fake(Application::Add, histogram, info.time_range, info.num_rows);
+                    }
                 }
+            }
+        }
+    }
+}
+
+enum Application {
+    Add,
+    Remove,
+}
+
+fn apply_fake(
+    application: Application,
+    histogram: &mut re_int_histogram::Int64Histogram,
+    time_range: re_log_types::AbsoluteTimeRange,
+    num_rows: u64,
+) {
+    // Assume even spread of chunk (for now):
+    let num_pieces = u64::min(num_rows, 10);
+    let inc = (num_rows / num_pieces) as _;
+    for i in 0..num_pieces {
+        let offset = i as i64 * (time_range.abs_length() / num_pieces) as i64;
+        let position = time_range.min.as_i64().saturating_add(offset);
+
+        match application {
+            Application::Add => {
+                histogram.increment(position, inc);
+            }
+            Application::Remove => {
+                histogram.decrement(position, inc);
             }
         }
     }
