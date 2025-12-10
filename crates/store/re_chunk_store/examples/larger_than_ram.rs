@@ -16,7 +16,7 @@ fn main() {
     let rrd_bytes = std::fs::read(nuscenes_rrd).unwrap();
     let rrd_manifest = RrdManifest::from_rrd_bytes(&rrd_bytes).unwrap().unwrap();
     // dbg!(rrd_manifest.to_native_static().unwrap());
-    // dbg!(rrd_manifest.to_native_temporal().unwrap());
+    dbg!(rrd_manifest.to_native_temporal().unwrap());
     let store = ChunkStore::from_rrd_manifest(&rrd_manifest).unwrap();
 
     let store_handle = ChunkStoreHandle::new(store);

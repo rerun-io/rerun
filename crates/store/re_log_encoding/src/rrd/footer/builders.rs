@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, BooleanArray, RecordBatch, StringArray, UInt64Array};
+use arrow::array::{Array as _, ArrayRef, BooleanArray, RecordBatch, StringArray, UInt64Array};
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use re_chunk::{Chunk, ChunkId};
 use re_log_types::{
@@ -89,7 +89,10 @@ impl RrdManifestBuilder {
         self.column_entity_paths.push(chunk.entity_path().clone());
 
         if chunk.is_static() {
-            for desc in chunk.components().component_descriptors() {
+            for (desc, list_array) in itertools::izip!(
+                chunk.components().component_descriptors(),
+                chunk.components().list_arrays()
+            ) {
                 let column = self.columns_static.entry(desc.clone()).or_insert_with(|| {
                     RrdManifestIndexColumn::new_padded(
                         self.column_chunk_ids.len().saturating_sub(1),
@@ -106,8 +109,7 @@ impl RrdManifestBuilder {
                 starts_inclusive.push(TimeInt::STATIC);
                 ends_inclusive.push(TimeInt::STATIC);
 
-                // TODO: this is definitely not correct, right?
-                num_rows.push(chunk_batch.num_rows() as u64);
+                num_rows.push(list_array.null_count() as u64);
 
                 // If we're here, it's necessarily `true`. Falsy values can only be
                 // introduced by padding and/or temporal columns (see below).
@@ -387,8 +389,6 @@ impl RrdManifestBuilder {
 
 // ---
 
-// TODO: we need a chunk-level num_rows tho
-
 impl RrdManifestBuilder {
     fn static_index_fields(&self) -> Vec<Field> {
         self.columns_static
@@ -396,7 +396,7 @@ impl RrdManifestBuilder {
             .flat_map(|desc| {
                 [
                     RrdManifest::field_has_static_data(desc),
-                    // TODO: for static too?
+                    // TODO: for static too? eeeeeeh probably, somewhat, i guess, maybe
                     // RrdManifest::field_index_num_rows(Some(desc)),
                 ]
             })
@@ -466,7 +466,6 @@ struct RrdManifestIndexColumn {
     has_static_data: Vec<bool>,
 
     // TODO
-    // TODO: should this be optional?
     num_rows: Vec<u64>,
 }
 
@@ -477,7 +476,7 @@ impl RrdManifestIndexColumn {
             starts_inclusive: vec![TimeInt::STATIC; n],
             ends_inclusive: vec![TimeInt::STATIC; n],
             has_static_data: vec![false; n],
-            num_rows: vec![0; n], // TODO: or None?
+            num_rows: vec![0; n],
         }
     }
 
@@ -493,6 +492,6 @@ impl RrdManifestIndexColumn {
         starts.extend(std::iter::repeat_n(TimeInt::STATIC, n));
         ends.extend(std::iter::repeat_n(TimeInt::STATIC, n));
         has_static_data.extend(std::iter::repeat_n(false, n));
-        num_rows.extend(std::iter::repeat_n(0, n)); // TODO: or None?
+        num_rows.extend(std::iter::repeat_n(0, n));
     }
 }

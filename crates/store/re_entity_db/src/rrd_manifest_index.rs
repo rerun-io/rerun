@@ -8,7 +8,7 @@ use parking_lot::Mutex;
 use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
-use re_log_encoding::{CodecResult, RrdManifest};
+use re_log_encoding::{CodecResult, NativeTemporalMapEntry, RrdManifest};
 use re_log_types::{AbsoluteTimeRange, StoreKind};
 
 use crate::{TimelineStats, TimesPerTimeline};
@@ -108,7 +108,12 @@ impl RrdManifestIndex {
                     .unwrap_or(AbsoluteTimeRange::EMPTY);
 
                 for (_comp, chunks) in comps {
-                    for (_chink_id, chunk_range) in chunks {
+                    for (_chink_id, entry) in chunks {
+                        let NativeTemporalMapEntry {
+                            time_range: chunk_range,
+                            num_rows, // TODO: Emil, wanna do something with this?
+                        } = entry;
+
                         timeline_range = timeline_range.union(*chunk_range);
 
                         // TODO: this is a bad idea
@@ -306,11 +311,16 @@ impl RrdManifestIndex {
             };
 
             for chunks in entity_component_chunks.values() {
-                for (chunk_id, range) in chunks {
+                for (chunk_id, entry) in chunks {
+                    let NativeTemporalMapEntry {
+                        time_range,
+                        num_rows: _, // TODO: Isse, wanna do something with this?
+                    } = entry;
+
                     let Some(info) = self.remote_chunks.get(chunk_id) else {
                         continue;
                     };
-                    time_ranges_all_chunks.push((*info.state.lock(), *range));
+                    time_ranges_all_chunks.push((*info.state.lock(), *time_range));
                 }
             }
         }
@@ -355,7 +365,7 @@ impl RrdManifestIndex {
                         LoadState::Loaded => false,
                     })
             })
-            .map(|(_, range)| (*range, 1))
+            .map(|(_, entry)| (entry.time_range, 1))
             .collect()
     }
 }

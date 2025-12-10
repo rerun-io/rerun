@@ -142,9 +142,17 @@ pub struct RrdManifest {
 
 pub type NativeStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
 
+#[derive(Debug, Clone, Copy)]
+pub struct NativeTemporalMapEntry {
+    pub time_range: AbsoluteTimeRange,
+
+    // TODO: aka num_events or something
+    pub num_rows: u64,
+}
+
 pub type NativeTemporalMap = IntMap<
     EntityPath,
-    IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, AbsoluteTimeRange>>>,
+    IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, NativeTemporalMapEntry>>>,
 >;
 
 impl RrdManifest {
@@ -365,6 +373,12 @@ impl RrdManifest {
                     field.name().ends_with(":end")
                 }
 
+                pub fn is_index_num_rows(field: &arrow::datatypes::Field) -> bool {
+                    field.name().ends_with(":num_rows")
+                }
+
+                // TODO: obviously all of this stuff should be done only once, not every iteration 🫠
+
                 let col_start = itertools::izip!(fields, columns).find(|(f, _col)| {
                     is_specific_index(f, index)
                         && is_index_start(f)
@@ -373,6 +387,11 @@ impl RrdManifest {
                 let col_end = itertools::izip!(fields, columns).find(|(f, _col)| {
                     is_specific_index(f, index)
                         && is_index_end(f)
+                        && f.metadata().get("rerun:component") == Some(component)
+                });
+                let col_num_rows = itertools::izip!(fields, columns).find(|(f, _col)| {
+                    is_specific_index(f, index)
+                        && is_index_num_rows(f)
                         && f.metadata().get("rerun:component") == Some(component)
                 });
 
@@ -384,6 +403,14 @@ impl RrdManifest {
 
                 let col_start_raw = downcast_index_as_int64_slice(col_start).unwrap();
                 let col_end_raw = downcast_index_as_int64_slice(col_end).unwrap();
+                // TODO: optional because BW, but do we care? maybe, maybe not
+                let col_num_rows = col_num_rows.as_ref().map(|(f, col_num_rows)| {
+                    let values: &[u64] = col_num_rows
+                        .downcast_array_ref::<UInt64Array>()
+                        .unwrap()
+                        .values();
+                    values
+                });
 
                 // So we don't have to pay the virtual call cost for every `is_valid()` call.
                 let col_start_nulls = col_start
@@ -413,11 +440,17 @@ impl RrdManifest {
 
                 let start = col_start_raw[i];
                 let end = col_end_raw[i];
-                let time_range = AbsoluteTimeRange::new(start, end);
+                let entry = NativeTemporalMapEntry {
+                    time_range: AbsoluteTimeRange::new(start, end),
+                    // TODO: i mean if BW then this sucks anyway, cause now you cannot
+                    // differentiate 0 from not present...
+                    num_rows: col_num_rows.as_ref().unwrap()[i],
+                };
+
                 per_chunk
                     .entry(chunk_id)
-                    .and_modify(|tr| *tr = time_range)
-                    .or_insert(time_range);
+                    .and_modify(|tr| *tr = entry)
+                    .or_insert(entry);
             }
         }
 
