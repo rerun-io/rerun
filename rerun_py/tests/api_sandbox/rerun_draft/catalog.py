@@ -17,9 +17,6 @@ if TYPE_CHECKING:
 
     from rerun_bindings import IndexValuesLike  # noqa: TID251
 
-# Re-export DatasetView from the SDK since it now exists there
-DatasetView = _catalog.DatasetView
-
 
 class CatalogClient:
     """Client for a remote Rerun catalog server."""
@@ -256,7 +253,7 @@ class DatasetEntry(Entry):
         index: str | None,
         include_semantically_empty_columns: bool = False,
         include_tombstone_columns: bool = False,
-        using_index_values: dict[str, IndexValuesLike] | IndexValuesLike | None = None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         """
@@ -272,54 +269,22 @@ class DatasetEntry(Entry):
             Whether to include columns that are semantically empty.
         include_tombstone_columns : bool
             Whether to include tombstone columns.
-        using_index_values : dict[str, IndexValuesLike] | IndexValuesLike | None
+        using_index_values : dict[str, IndexValuesLike] | datafusion.DataFrame | None
             If a dict is provided, keys are segment IDs and values are the index values
             to sample for that segment (per-segment semantics).
-            If a single IndexValuesLike is provided, it applies to all segments.
+            If a DataFrame is provided, it must have 'rerun_segment_id' and index columns.
         fill_latest_at : bool
             Whether to fill null values with the latest valid data.
 
         """
-        # Handle dict-based using_index_values (per-segment semantics)
-        if isinstance(using_index_values, dict):
-            # Call reader per segment and union the results
-            dfs = []
-            for segment_id, segment_index_values in using_index_values.items():
-                view = self._inner.filter_segments([segment_id]).filter_contents(["/**"])
-                df = view.reader(
-                    index=index,
-                    include_semantically_empty_columns=include_semantically_empty_columns,
-                    include_tombstone_columns=include_tombstone_columns,
-                    fill_latest_at=fill_latest_at,
-                    using_index_values=segment_index_values,
-                )
-                dfs.append(df)
-
-            if not dfs:
-                # Return empty result with schema from dataset
-                view = self._inner.filter_contents(["/**"])
-                return view.reader(
-                    index=index,
-                    include_semantically_empty_columns=include_semantically_empty_columns,
-                    include_tombstone_columns=include_tombstone_columns,
-                    fill_latest_at=fill_latest_at,
-                    using_index_values=None,
-                ).limit(0)
-
-            # Union all DataFrames
-            result = dfs[0]
-            for df in dfs[1:]:
-                result = result.union(df)
-            return result
-
-        # Simple case: single IndexValuesLike or None
-        view = self._inner.filter_contents(["/**"])
+        # Delegate to DatasetView which handles all the complex logic
+        view = DatasetView(self._inner.filter_contents(["/**"]))
         return view.reader(
             index=index,
             include_semantically_empty_columns=include_semantically_empty_columns,
             include_tombstone_columns=include_tombstone_columns,
-            fill_latest_at=fill_latest_at,
             using_index_values=using_index_values,
+            fill_latest_at=fill_latest_at,
         )
 
     def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
@@ -394,15 +359,186 @@ class DatasetEntry(Entry):
         Takes either a DataFusion DataFrame with a column named 'rerun_segment_id'
         or a sequence of segment ID strings.
         """
-        # Delegate to the SDK's filter_segments which returns a DatasetView
-        return self._inner.filter_segments(
-            list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
+        # Wrap in draft mock's DatasetView which adds dict-based using_index_values support
+        return DatasetView(
+            self._inner.filter_segments(
+                list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
+            )
         )
 
     def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
         """Returns a new DatasetView filtered to the given entity paths."""
-        # Delegate to the SDK's filter_contents which returns a DatasetView
-        return self._inner.filter_contents(list(exprs))
+        # Wrap in draft mock's DatasetView which adds dict-based using_index_values support
+        return DatasetView(self._inner.filter_contents(list(exprs)))
+
+
+class DatasetView:
+    """
+    A filtered view of a dataset.
+
+    This is a wrapper around the SDK's DatasetView that adds dict-based
+    using_index_values support for the reader() method.
+    """
+
+    def __init__(self, inner: _catalog.DatasetView) -> None:
+        self._inner = inner
+
+    def __repr__(self) -> str:
+        return repr(self._inner)
+
+    def segment_ids(self) -> list[str]:
+        return self._inner.segment_ids()
+
+    def segment_table(
+        self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
+    ) -> datafusion.DataFrame:
+        # Need to unwrap TableEntry for the SDK
+        if isinstance(join_meta, TableEntry):
+            join_meta = join_meta.reader()
+        return self._inner.segment_table(join_meta=join_meta, join_key=join_key)
+
+    def schema(self) -> _catalog.Schema:
+        return self._inner.schema()
+
+    def arrow_schema(self) -> pa.Schema:
+        return self._inner.arrow_schema()
+
+    def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
+        """Returns a new DatasetView filtered to the given segment IDs."""
+        return DatasetView(
+            self._inner.filter_segments(
+                list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
+            )
+        )
+
+    def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
+        """Returns a new DatasetView filtered to the given entity paths."""
+        return DatasetView(self._inner.filter_contents(list(exprs)))
+
+    def get_index_ranges(self, index: str | IndexColumnDescriptor) -> datafusion.DataFrame:
+        return self._inner.get_index_ranges(str(index) if isinstance(index, IndexColumnDescriptor) else index)
+
+    def reader(
+        self,
+        *,
+        index: str | None,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | None = None,
+        fill_latest_at: bool = False,
+    ) -> datafusion.DataFrame:
+        """
+        Create a reader over this dataset view.
+
+        Returns a DataFusion DataFrame.
+
+        Parameters
+        ----------
+        index : str | None
+            The index (timeline) to use for the view.
+        include_semantically_empty_columns : bool
+            Whether to include columns that are semantically empty.
+        include_tombstone_columns : bool
+            Whether to include tombstone columns.
+        using_index_values : dict[str, IndexValuesLike] | datafusion.DataFrame | None
+            If a dict is provided, keys are segment IDs and values are the index values
+            to sample for that segment (per-segment semantics).
+            If a DataFrame is provided, it must have 'rerun_segment_id' and index columns.
+        fill_latest_at : bool
+            Whether to fill null values with the latest valid data.
+
+        """
+        import logging
+
+        # Convert DataFrame to dict form first
+        if isinstance(using_index_values, datafusion.DataFrame):
+            using_index_values = self._dataframe_to_index_values_dict(using_index_values, index)
+
+        # Handle dict-based using_index_values (per-segment semantics)
+        if isinstance(using_index_values, dict):
+            # Get available segment IDs in this view
+            available_segments = set(self._inner.segment_ids())
+
+            # Check for segments in dict that don't exist or are filtered out
+            requested_segments = set(using_index_values.keys())
+            missing_segments = requested_segments - available_segments
+            if missing_segments:
+                logging.warning(
+                    f"Index values for the following inexistent or filtered segments were ignored: {', '.join(sorted(missing_segments))}"
+                )
+
+            # Call reader per segment and union the results
+            dfs = []
+            for segment_id, segment_index_values in using_index_values.items():
+                if segment_id not in available_segments:
+                    continue
+                view = self._inner.filter_segments([segment_id])
+                df = view.reader(
+                    index=index,
+                    include_semantically_empty_columns=include_semantically_empty_columns,
+                    include_tombstone_columns=include_tombstone_columns,
+                    fill_latest_at=fill_latest_at,
+                    using_index_values=segment_index_values,
+                )
+                dfs.append(df)
+
+            if not dfs:
+                # Return empty result with schema from view
+                return self._inner.reader(
+                    index=index,
+                    include_semantically_empty_columns=include_semantically_empty_columns,
+                    include_tombstone_columns=include_tombstone_columns,
+                    fill_latest_at=fill_latest_at,
+                    using_index_values=None,
+                ).limit(0)
+
+            # Union all DataFrames
+            result = dfs[0]
+            for df in dfs[1:]:
+                result = result.union(df)
+            return result
+
+        # Simple case: None
+        return self._inner.reader(
+            index=index,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
+            using_index_values=using_index_values,
+        )
+
+    def _dataframe_to_index_values_dict(
+        self, df: datafusion.DataFrame, index: str | None
+    ) -> dict[str, IndexValuesLike]:
+        """Convert a DataFrame with segment_id + index columns to a dict."""
+        import numpy as np
+
+        table = df.to_arrow_table()
+
+        if "rerun_segment_id" not in table.schema.names:
+            raise ValueError("using_index_values DataFrame must have a 'rerun_segment_id' column")
+
+        if index is None:
+            raise ValueError("index must be provided when using_index_values is a DataFrame")
+
+        if index not in table.schema.names:
+            raise ValueError(f"using_index_values DataFrame must have an '{index}' column")
+
+        # Group by segment_id
+        segment_id_col = table.column("rerun_segment_id")
+        index_col = table.column(index)
+
+        # Build dict of segment_id -> index values
+        index_values_by_segment: dict[str, list] = {}
+        for i in range(table.num_rows):
+            seg_id = segment_id_col[i].as_py()
+            idx_val = index_col[i].as_py()
+            if seg_id not in index_values_by_segment:
+                index_values_by_segment[seg_id] = []
+            index_values_by_segment[seg_id].append(idx_val)
+
+        # Convert to numpy arrays
+        return {seg_id: np.array(vals, dtype="datetime64[ns]") for seg_id, vals in index_values_by_segment.items()}
 
 
 class TableEntry(Entry):
