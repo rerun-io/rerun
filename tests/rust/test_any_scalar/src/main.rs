@@ -44,12 +44,6 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
         let cos_array = Arc::new(arrow::array::Float64Array::from(vec![cos_value]));
         let cos_scaled_array = Arc::new(arrow::array::Float64Array::from(vec![cos_value * 0.5]));
 
-        let float64_archetype = DynamicArchetype::new("Float64Scalars")
-            .with_component_from_data("cos", cos_array)
-            .with_component_from_data("cos_scaled", cos_scaled_array);
-
-        rec.log("float64", &float64_archetype)?;
-
         // 3. Log using DynamicArchetype with Float32 (sigmoid curve)
         let sigmoid_value = sigmoid_curve(x_f32);
         let sigmoid_array = Arc::new(arrow::array::Float32Array::from(vec![sigmoid_value]));
@@ -57,8 +51,15 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
             Arc::new(arrow::array::Float32Array::from(vec![sigmoid_value * 0.5]));
 
         let float32_archetype = DynamicArchetype::new("Float32Scalars")
-            .with_component_from_data("sigmoid", sigmoid_array)
+            .with_component_from_data("sigmoid", sigmoid_array.clone())
             .with_component_from_data("sigmoid_scaled", sigmoid_scaled_array);
+
+        let float64_archetype = DynamicArchetype::new("Float64Scalars")
+            .with_component_from_data("cos", cos_array)
+            .with_component_from_data("cos_scaled", cos_scaled_array)
+            .with_component_from_data("sigmoid", sigmoid_array);
+
+        rec.log("float64", &float64_archetype)?;
 
         rec.log("float32", &float32_archetype)?;
 
