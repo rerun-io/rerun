@@ -598,12 +598,20 @@ fn menu_add_new_visualizer(
     for visualizer_type in available_visualizers {
         if ui.button(visualizer_type.as_str()).clicked() {
             // To add a visualizer we have to do two things:
-            // * add an element to the ist of active visualizer ids
+            // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
 
             let new_id = uuid::Uuid::new_v4().to_string(); // TODO: figure out a better id scheme.
-            let new_instruction =
-                VisualizerInstruction::new(new_id, *visualizer_type, override_base_path);
+
+            // TODO: just writing nonsense into the component map. Figure out how to get proper component mappings.
+            let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
+
+            let new_instruction = VisualizerInstruction::new(
+                new_id,
+                *visualizer_type,
+                override_base_path,
+                component_mappings,
+            );
 
             let archetype = ActiveVisualizers::new(
                 active_visualizers
