@@ -115,6 +115,7 @@ pub trait ViewClass: Send + Sync {
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
+        // TODO: have to emit mappings here as well. How about a `RecommendedVisualizer` struct?
         let available_visualizers =
             visualizable_entities_per_visualizer
                 .iter()

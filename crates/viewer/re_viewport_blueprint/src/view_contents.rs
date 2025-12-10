@@ -390,17 +390,14 @@ impl QueryExpressionEvaluator<'_> {
         let matches_filter = filter_evaluation.matches;
         *num_matching_entities += matches_filter as usize;
 
-        // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
-        // on the view.
-        let visualizers: SmallVec<[_; 4]> = if matches_filter {
-            self.visualizers_per_entity
+        // If there are no visualizers at all, we can skip over some things.
+        // Also, it's nice to inform the UI about how many entities we could show.
+        let any_visualizers_available = matches_filter
+            && self
+                .visualizers_per_entity
                 .get(&entity_path.hash())
-                .cloned()
-                .unwrap_or_default()
-        } else {
-            Default::default()
-        };
-        *num_visualized_entities += !visualizers.is_empty() as usize;
+                .is_some_and(|visualizer| !visualizer.is_empty());
+        *num_visualized_entities += any_visualizers_available as usize;
 
         let children: SmallVec<[_; 4]> = tree
             .children
@@ -419,20 +416,12 @@ impl QueryExpressionEvaluator<'_> {
         // Since we recurse downwards, this prunes any branches that don't have anything to contribute to the scene
         // and aren't directly included.
         let exact_included = filter_evaluation.matches_exactly;
-        if exact_included || !children.is_empty() || !visualizers.is_empty() {
-            let visualizer_instructions = visualizers
-                .iter()
-                .map(|visualizer| re_viewer_context::VisualizerInstruction {
-                    visualizer_type: *visualizer,
-                    property_overrides: PropertyOverrides {
-                        component_overrides: IntMap::default(), // Determined later during `update_overrides_recursive`.
-                    },
-                })
-                .collect();
+        if exact_included || !children.is_empty() || any_visualizers_available {
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
-                    visualizer_instructions,
+                    any_visualizers_available,
+                    visualizer_instructions: Default::default(), // Determined later during `update_overrides_recursive`.
                     tree_prefix_only: !matches_filter,
                     visible: true, // Determined later during `update_overrides_recursive`.
                     interactive: true, // Determined later during `update_overrides_recursive`.
@@ -504,23 +493,24 @@ impl<'a> DataQueryPropertyResolver<'a> {
 
         // Update visualizers from overrides.
         // So far, `visualizers` is set to the available visualizers.
-        if !node.data_result.visualizer_instructions.is_empty() {
+        if node.data_result.any_visualizers_available {
             // If the user has overridden the visualizers, update which visualizers are used.
-            // TODO: loop
-            if let Some(viz_override) = blueprint
+            let id_component =
+                blueprint_archetypes::ActiveVisualizers::descriptor_instruction_ids().component;
+
+            if let Some(visualizer_instruction_ids) = blueprint
                 .latest_at(
                     blueprint_query,
                     &node.data_result.override_path,
-                    [blueprint_archetypes::ActiveVisualizers::descriptor_ranges().component],
+                    [id_component],
                 )
-                .component_batch::<blueprint_components::VisualizerInstructionId>(
-                    blueprint_archetypes::ActiveVisualizers::descriptor_ranges().component,
-                )
+                .component_batch::<blueprint_components::VisualizerInstructionId>(id_component)
             {
-                node.data_result.visualizer_instructions = viz_override
+                node.data_result.visualizer_instructions = visualizer_instruction_ids
                     .into_iter()
-                    .map(|vis| VisualizerInstruction {
-                        visualizer_type: vis.as_str().into(),
+                    .map(|instruction_id| VisualizerInstruction {
+                        id: instruction_id.0.into(),
+                        visualizer_type: "TODO WRONG".into(), // TODO: fetch type
                         property_overrides: PropertyOverrides {
                             component_overrides: IntMap::default(),
                         },
@@ -537,7 +527,9 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         self.indicated_entities_per_visualizer,
                     )
                     .into_iter()
-                    .map(|v| VisualizerInstruction {
+                    .enumerate()
+                    .map(|(i, v)| VisualizerInstruction {
+                        id: i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
                         visualizer_type: v,
                         property_overrides: PropertyOverrides {
                             component_overrides: IntMap::default(),

@@ -45,11 +45,14 @@ pub struct PropertyOverrides {
 
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
+pub type VisualizerInstructionId = String;
+
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
     pub visualizer_type: ViewSystemIdentifier,
     pub property_overrides: PropertyOverrides,
-    // visualizer_id: String,
+    pub id: VisualizerInstructionId, // TODO(andreas,aedm): rly a string?
+                                     // TODO(andreas,aedm): add mappings.
 }
 
 impl VisualizerInstruction {
@@ -58,6 +61,7 @@ impl VisualizerInstruction {
     /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
     pub fn placeholder() -> Self {
         Self {
+            id: "___PLACEHOLDER___".into(),
             visualizer_type: "___PLACEHOLDER___".into(),
             property_overrides: PropertyOverrides {
                 component_overrides: IntMap::default(),
@@ -76,6 +80,9 @@ pub struct DataResult {
     // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
     // multi-RRD or blueprint-static data references.
     pub entity_path: EntityPath,
+
+    /// There are any visualizers that can run on this data result.
+    pub any_visualizers_available: bool,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
     // pub visualizers: SmallVisualizerSet,
