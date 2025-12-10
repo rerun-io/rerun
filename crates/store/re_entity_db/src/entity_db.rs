@@ -471,21 +471,13 @@ impl EntityDb {
         &self.times_per_timeline
     }
 
-    pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
-        self.time_histogram_per_timeline
-            .get(timeline)
-            .is_some_and(|hist| !hist.is_empty())
-    }
-
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        let hist = self.time_histogram_per_timeline.get(timeline)?;
-        let min = hist.min_key()?;
-        let max = hist.max_key()?;
-        Some(AbsoluteTimeRange::new(min, max))
+        self.storage_engine().store().time_range(timeline)
     }
 
     /// Histogram of all events on the timeeline, of all entities.
+    #[deprecated = "TODO(RR-3164): remove TimeHistogram"]
     pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
         self.time_histogram_per_timeline.get(timeline)
     }

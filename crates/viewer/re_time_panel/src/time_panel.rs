@@ -1623,6 +1623,7 @@ fn initialize_time_ranges_ui(
 
     let timeline = time_ctrl.timeline().name();
     let valid_time_ranges = time_ctrl.valid_time_ranges_for(*timeline);
+    #[expect(deprecated)] // TODO(RR-3164): remove TimeHistogram"
     if let Some(times) = entity_db.time_histogram(timeline) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
