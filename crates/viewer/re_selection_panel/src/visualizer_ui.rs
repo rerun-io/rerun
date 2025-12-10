@@ -420,6 +420,36 @@ fn visualizer_components(
                     );
                 });
             }
+
+            // Source component (if available)
+            ui.push_id("source_component", |ui| {
+                let component_map = instruction
+                    .component_mappings
+                    .iter()
+                    .find(|mapping| mapping.target == component_descr.component);
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
+                        // Text field with the source component name.
+                        let source_component = component_map
+                            .map(|mapping| mapping.source.as_str())
+                            .unwrap_or_default();
+                        ui.label(source_component);
+
+                        editable_blueprint_component_list_item(
+                            &query_ctx,
+                            ui,
+                            "Override",
+                            override_path.clone(),
+                            component_descr,
+                            *row_id,
+                            raw_override.as_ref(),
+                        )
+                        .on_hover_text(
+                            "Override value for this specific entity in the current view",
+                        );
+                    }),
+                );
+            });
         };
 
         let default_open = false;
