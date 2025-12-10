@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashSet};
-use arrow::array::{AsArray as _, Int32Array, RecordBatch};
+use arrow::array::{Int32Array, Int64Array, RecordBatch};
 use arrow::compute::take_record_batch;
-use arrow::datatypes::Int64Type;
 use itertools::{Either, Itertools as _, izip};
 use parking_lot::Mutex;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest};
@@ -244,29 +244,30 @@ impl RrdManifestIndex {
     }
 
     /// Returns the yet-to-be-loaded chunks
-    #[must_use]
     pub fn time_range_missing_chunks(
         &self,
         timeline: &Timeline,
         query_range: AbsoluteTimeRange,
-    ) -> Option<RecordBatch> {
+    ) -> anyhow::Result<RecordBatch> {
         re_tracing::profile_function!();
         // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
 
-        let manifest = self.manifest.as_ref()?;
+        let Some(manifest) = self.manifest.as_ref() else {
+            anyhow::bail!("No manifest");
+        };
 
         let mut indices = vec![];
 
-        let chunk_id = manifest.col_chunk_id().ok()?;
-        let chunk_is_static = manifest.col_chunk_is_static().ok()?;
+        let chunk_id = manifest.col_chunk_id()?;
+        let chunk_is_static = manifest.col_chunk_is_static()?;
         let start_column = manifest
             .data
-            .column_by_name(RrdManifest::field_index_start(timeline, None).name())?
-            .as_primitive_opt::<Int64Type>()?;
+            .try_get_column(RrdManifest::field_index_start(timeline, None).name())?
+            .try_downcast_array_ref::<Int64Array>()?;
         let end_column = manifest
             .data
-            .column_by_name(RrdManifest::field_index_end(timeline, None).name())?
-            .as_primitive_opt::<Int64Type>()?;
+            .try_get_column(RrdManifest::field_index_end(timeline, None).name())?
+            .try_downcast_array_ref::<Int64Array>()?;
 
         for (row_idx, (chunk_id, chunk_is_static, start_time, end_time)) in
             izip!(chunk_id, chunk_is_static, start_column, end_column).enumerate()
@@ -286,7 +287,10 @@ impl RrdManifestIndex {
             }
         }
 
-        take_record_batch(&manifest.data, &Int32Array::from(indices)).ok()
+        Ok(take_record_batch(
+            &manifest.data,
+            &Int32Array::from(indices),
+        )?)
     }
 
     #[must_use]
@@ -320,6 +324,8 @@ impl RrdManifestIndex {
         entity: &re_chunk::EntityPath,
         component: Option<re_chunk::ComponentIdentifier>,
     ) -> Vec<(AbsoluteTimeRange, u64)> {
+        re_tracing::profile_function!();
+
         let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
             return Vec::new();
         };

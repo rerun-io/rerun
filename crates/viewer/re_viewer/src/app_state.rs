@@ -845,18 +845,34 @@ fn prefetch_chunks(
         return None;
     }
 
+    re_log::debug!("Looking for chunks to pre-fetch…");
+
+    let mut found_source = false;
+
     rx_log.for_each(|rx| {
-        if rx.source() == data_source
-            && let Some(rb) =
-                rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range)
-            && 0 < rb.num_rows()
-            && rx
-                .send_command(re_log_channel::LoadCommand::LoadChunks(rb))
-                .is_err()
-        {
-            re_log::warn!("The receiver is gone.");
+        if rx.source() == data_source {
+            found_source = true;
+            match rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range) {
+                Ok(rb) => {
+                    re_log::debug!("Asking for {} more chunks", rb.num_rows());
+                    if 0 < rb.num_rows()
+                        && rx
+                            .send_command(re_log_channel::LoadCommand::LoadChunks(rb))
+                            .is_err()
+                    {
+                        re_log::warn!("The receiver is gone.");
+                    }
+                }
+                Err(err) => {
+                    re_log::debug!("time_range_missing_chunks failed: {err}");
+                }
+            }
         }
     });
+
+    if !found_source {
+        re_log::debug!("Failed to find the source");
+    }
 
     None
 }

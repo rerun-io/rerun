@@ -447,12 +447,32 @@ async fn stream_segment_from_server(
 
             const DOWNLOAD_CHUNKS_ON_DEMAND: bool = false;
             if store_id.is_recording() && DOWNLOAD_CHUNKS_ON_DEMAND {
-                // TODO Always load _some_ chunks (all the static ones, for instance):
-                if false {
+                if true {
+                    let mut rrd_manifest = rrd_manifest;
                     // Prioritize the chunks:
-                    let batch = sort_batch(&rrd_manifest.data).map_err(|err| {
+                    rrd_manifest.data = sort_batch(&rrd_manifest.data).map_err(|err| {
                         ApiError::invalid_arguments(err, "Failed to sort chunk index")
                     })?;
+
+                    // Pick everything static and a couple more things:
+                    let mut idx = 0;
+                    let mut num_temporal_to_load = 32;
+                    for chunk_is_static in rrd_manifest.col_chunk_is_static().unwrap() {
+                        idx += 1;
+                        if !chunk_is_static {
+                            num_temporal_to_load -= 1;
+                            if num_temporal_to_load == 0 {
+                                break;
+                            }
+                        }
+                    }
+
+                    let batch_trimmed = rrd_manifest.data.slice(0, idx);
+                    re_log::debug!(
+                        "Pre-fetching the first {} chunks…",
+                        batch_trimmed.num_rows()
+                    );
+                    load_chunks(client, tx, &store_id, batch_trimmed).await?;
                 }
 
                 re_log::debug!("Waiting for viewer to tell me what to load…");

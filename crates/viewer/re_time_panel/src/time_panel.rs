@@ -1652,7 +1652,6 @@ fn initialize_time_ranges_ui(
                 .timeline_range(timeline.name())
             {
                 Some(range) => {
-                    dbg!(range);
                     let timeline_axis = TimelineAxis::solid(range); // TODO: support gaps
                     time_view =
                         time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
