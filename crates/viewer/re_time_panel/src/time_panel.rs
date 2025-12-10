@@ -277,11 +277,13 @@ impl TimePanel {
             },
         );
 
-        ctx.command_sender()
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: entity_db.store_id().clone(),
-                time_commands,
-            });
+        if !time_commands.is_empty() {
+            ctx.command_sender()
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: entity_db.store_id().clone(),
+                    time_commands,
+                });
+        }
     }
 
     pub fn show_expanded_with_header(
