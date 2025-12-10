@@ -576,14 +576,15 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         self.visualizable_entities_per_visualizer,
                         self.indicated_entities_per_visualizer,
                     )
+                    .0 // TODO
                     .into_iter()
                     .enumerate()
-                    .map(|(i, visualizer_type)| {
+                    .map(|(i, (visualizer_type, component_mappings))| {
                         VisualizerInstruction::new(
                             i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
                             visualizer_type,
                             &node.data_result.override_base_path,
-                            VisualizerComponentMappings::default(), // TODO(jochen): put component mappings here.
+                            component_mappings,
                         )
                     })
                     .collect();
