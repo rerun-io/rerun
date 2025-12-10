@@ -1,6 +1,8 @@
 # Contributing to Rerun
 This is written for anyone who wants to contribute to the Rerun repository.j
 
+Do whatever you want
+
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
 * [`BUILD.md`](BUILD.md)
