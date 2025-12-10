@@ -31,7 +31,8 @@ use super::{
     PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
-use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
+use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
+use crate::dataframe::{AnyComponentColumn, PyRecording};
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
@@ -160,7 +161,7 @@ impl PyDatasetEntryInternal {
     }
 
     /// Return the schema of the data contained in the dataset.
-    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchema> {
+    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         Self::fetch_schema(&self_)
     }
 
@@ -962,12 +963,12 @@ impl PyDatasetEntryInternal {
         Ok(schema)
     }
 
-    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
+    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let arrow_schema = Self::fetch_arrow_schema(self_)?;
         let schema = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
             .map_err(to_py_err)?;
 
-        Ok(PySchema { schema })
+        Ok(PySchemaInternal { schema })
     }
 }
 

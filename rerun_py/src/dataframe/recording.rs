@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyDict;
-use pyo3::{Bound, Py, PyAny, PyResult, pyclass, pymethods};
+use pyo3::types::{PyDict, PyModule};
+use pyo3::{Bound, Py, PyAny, PyObject, PyResult, Python, pyclass, pymethods};
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
     ChunkStoreHandle, QueryExpression, SparseFillStrategy, StaticColumnSelection,
@@ -13,7 +13,8 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::EntityPathFilter;
 use re_sorbet::TimeColumnSelector;
 
-use super::{PyRecordingView, PySchema};
+use super::PyRecordingView;
+use crate::catalog::PySchemaInternal;
 
 /// A single Rerun recording.
 ///
@@ -129,10 +130,15 @@ impl PyRecording {
 #[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self) -> PySchema {
-        PySchema {
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = PySchemaInternal {
             schema: self.store.read().schema().into(),
-        }
+        };
+
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     #[allow(
