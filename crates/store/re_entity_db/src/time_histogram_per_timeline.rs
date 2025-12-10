@@ -18,18 +18,13 @@ pub struct TimeHistogramPerTimeline {
     times: BTreeMap<TimelineName, TimeHistogram>,
 
     /// Extra bookkeeping used to seed any timelines that include static msgs.
-    num_static_messages: u64,
+    has_static: bool,
 }
 
 impl TimeHistogramPerTimeline {
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.times.is_empty() && self.num_static_messages == 0
-    }
-
-    #[inline]
-    pub fn is_static(&self) -> bool {
-        self.num_static_messages > 0
+        self.times.is_empty() && !self.has_static
     }
 
     #[inline]
@@ -52,11 +47,6 @@ impl TimeHistogramPerTimeline {
         self.times.iter()
     }
 
-    #[inline]
-    pub fn num_static_messages(&self) -> u64 {
-        self.num_static_messages
-    }
-
     /// Total number of temporal messages over all timelines.
     pub fn num_temporal_messages(&self) -> u64 {
         self.times.values().map(|hist| hist.total_count()).sum()
@@ -65,24 +55,10 @@ impl TimeHistogramPerTimeline {
     pub fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
         re_tracing::profile_function!();
 
-        if times_per_timeline.is_empty() {
-            self.num_static_messages = self
-                .num_static_messages
-                .checked_add(n as u64)
-                .unwrap_or_else(|| {
-                    re_log::debug!(
-                        current = self.num_static_messages,
-                        added = n,
-                        "bookkeeping overflowed"
-                    );
-                    u64::MAX
-                });
-        } else {
-            for &(timeline_name, times) in times_per_timeline {
-                let histogram = self.times.entry(timeline_name).or_default();
-                for &time in times {
-                    histogram.increment(time, n);
-                }
+        for &(timeline_name, times) in times_per_timeline {
+            let histogram = self.times.entry(timeline_name).or_default();
+            for &time in times {
+                histogram.increment(time, n);
             }
         }
     }
@@ -90,28 +66,13 @@ impl TimeHistogramPerTimeline {
     pub fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
         re_tracing::profile_function!();
 
-        if times_per_timeline.is_empty() {
-            self.num_static_messages = self
-                .num_static_messages
-                .checked_sub(n as u64)
-                .unwrap_or_else(|| {
-                    // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
-                    re_log::debug!(
-                        current = self.num_static_messages,
-                        removed = n,
-                        "bookkeeping underflowed"
-                    );
-                    u64::MIN
-                });
-        } else {
-            for &(timeline_name, times) in times_per_timeline {
-                if let Some(histo) = self.times.get_mut(&timeline_name) {
-                    for &time in times {
-                        histo.decrement(time, n);
-                    }
-                    if histo.is_empty() {
-                        self.times.remove(&timeline_name);
-                    }
+        for &(timeline_name, times) in times_per_timeline {
+            if let Some(histo) = self.times.get_mut(&timeline_name) {
+                for &time in times {
+                    histo.decrement(time, n);
+                }
+                if histo.is_empty() {
+                    self.times.remove(&timeline_name);
                 }
             }
         }
