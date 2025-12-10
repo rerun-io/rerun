@@ -15,7 +15,7 @@ use re_log_channel::{
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_sdk_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
@@ -764,10 +764,7 @@ impl App {
                             ))
                         });
                     }
-                    // We don't want the time range in the web url, as that actually leads
-                    // to a subset of the current data! And is not in the fragment so
-                    // would be added to history.
-                    url.clear_time_range();
+
                     url
                 })
                 // History entries expect the url parameter, not the full url, therefore don't pass a base url.
@@ -1438,6 +1435,7 @@ impl App {
                 *time_selection.timeline.name(),
             ));
             time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
         }
 
         if let Some((timeline, timecell)) = when {

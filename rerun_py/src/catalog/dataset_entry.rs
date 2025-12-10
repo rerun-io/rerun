@@ -271,24 +271,11 @@ impl PyDatasetEntryInternal {
             .transpose()?;
         let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
 
-        let time_range: Option<re_uri::TimeSelection> =
-            timeline.map(|name| re_uri::TimeSelection {
-                timeline: re_chunk::Timeline::new_timestamp(name),
-                range: re_log_types::AbsoluteTimeRange::new(
-                    start_i64
-                        .map(|start| start.try_into().expect("start time must be valid"))
-                        .unwrap_or(re_log_types::NonMinI64::MIN),
-                    end_i64
-                        .map(|end| end.try_into().expect("end time must be valid"))
-                        .unwrap_or(re_log_types::NonMinI64::MAX),
-                ),
-            });
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
             segment_id,
 
-            time_range,
             //TODO(ab): add support for this
             fragment: Default::default(),
         }

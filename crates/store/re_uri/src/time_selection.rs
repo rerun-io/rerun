@@ -8,6 +8,7 @@ pub struct TimeSelection {
     pub timeline: Timeline,
     pub range: AbsoluteTimeRange,
 }
+
 impl TimeSelection {
     pub fn format(&self, timestamp_format: re_log_types::TimestampFormat) -> String {
         format!(
