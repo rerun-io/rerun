@@ -191,7 +191,7 @@ impl DataFusionQuery {
         }
 
         //
-        // Collect record batches
+        // Execute the query
         //
 
         let stream = dataframe.execute_stream().await?;
