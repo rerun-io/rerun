@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
-use itertools::{Either, Itertools as _, izip};
+use arrow::datatypes::Int64Type;
+use itertools::{Itertools as _, izip};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk::{ChunkId, Timeline, TimelineName};
@@ -88,8 +89,11 @@ pub struct RrdManifestIndex {
     /// Full time range per timeline
     pub timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
+    pub entity_tree: crate::EntityTree,
+
     pub times_per_timeline: TimesPerTimeline,
 
+    native_static_map: re_log_encoding::NativeStaticMap,
     native_temporal_map: re_log_encoding::NativeTemporalMap,
 }
 
@@ -99,6 +103,19 @@ impl RrdManifestIndex {
 
         self.native_temporal_map = manifest.to_native_temporal()?;
 
+        self.update_timeline_stats();
+        self.update_entity_tree();
+
+        for chunk_id in manifest.col_chunk_id()? {
+            self.remote_chunks.entry(chunk_id).or_default();
+            // TODO(RR-2999): update chunk info?
+        }
+
+        self.manifest = Some(manifest);
+        Ok(())
+    }
+
+    fn update_timeline_stats(&mut self) {
         for timelines in self.native_temporal_map.values() {
             for (timeline, comps) in timelines {
                 let mut timeline_range = self
@@ -133,13 +150,16 @@ impl RrdManifestIndex {
                 }
             }
         }
+    }
 
-        for chunk_id in manifest.col_chunk_id()? {
-            self.remote_chunks.entry(chunk_id).or_default();
-            // TODO(RR-2999): update chunk info?
+    fn update_entity_tree(&mut self) {
+        for entity in self
+            .native_static_map
+            .keys()
+            .chain(self.native_temporal_map.keys())
+        {
+            self.entity_tree.on_new_entity(entity);
         }
-        self.manifest = Some(manifest);
-        Ok(())
     }
 
     /// False for recordings streamed from SDK via proxy
@@ -335,38 +355,71 @@ impl RrdManifestIndex {
         component: Option<re_chunk::ComponentIdentifier>,
     ) -> Vec<(AbsoluteTimeRange, u64)> {
         re_tracing::profile_function!();
+        if let Some(component) = component {
+            let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
+                return Vec::new();
+            };
 
-        let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
-            return Vec::new();
-        };
+            let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline) else {
+                return Vec::new();
+            };
 
-        let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline) else {
-            return Vec::new();
-        };
-
-        let component_ranges = if let Some(component) = component {
             let Some(component_ranges) = entity_ranges.get(&component) else {
                 return Vec::new();
             };
 
-            Either::Left(std::iter::once(component_ranges))
+            component_ranges
+                .iter()
+                .filter(|(chunk, _)| {
+                    self.remote_chunks
+                        .get(chunk)
+                        .is_none_or(|c| match *c.state.lock() {
+                            LoadState::InTransit | LoadState::Unloaded => true,
+                            LoadState::Loaded => false,
+                        })
+                })
+                .map(|(_, entry)| (entry.time_range, 1))
+                .collect()
         } else {
-            Either::Right(entity_ranges.values())
-        };
+            // If we don't have a specific component we want to include the entity's children
+            let mut res = Vec::new();
 
-        component_ranges
-            .into_iter()
-            .flatten()
-            .filter(|(chunk, _)| {
+            self.unloaded_time_ranges_for_entity(&mut res, timeline, entity);
+
+            res
+        }
+    }
+
+    fn unloaded_time_ranges_for_entity(
+        &self,
+        ranges: &mut Vec<(AbsoluteTimeRange, u64)>,
+        timeline: &re_chunk::Timeline,
+        entity: &re_chunk::EntityPath,
+    ) {
+        if let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity)
+            && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
+        {
+            for (_, entry) in entity_ranges.values().flatten().filter(|(chunk, _)| {
                 self.remote_chunks
                     .get(chunk)
                     .is_none_or(|c| match *c.state.lock() {
                         LoadState::InTransit | LoadState::Unloaded => true,
                         LoadState::Loaded => false,
                     })
-            })
-            .map(|(_, entry)| (entry.time_range, 1))
-            .collect()
+            }) {
+                // TODO: Count
+                ranges.push((entry.time_range, 1));
+            }
+        }
+
+        if let Some(tree) = self.entity_tree.subtree(entity) {
+            tree.visit_children_recursively(|child| {
+                // TODO: Feels unnecessary to always do this check
+                if child != entity {
+                    self.unloaded_time_ranges_for_entity(ranges, timeline, child);
+                }
+            });
+        }
     }
 }
 
