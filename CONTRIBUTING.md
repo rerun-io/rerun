@@ -1,5 +1,7 @@
 # Contributing to Rerun
-This is written for anyone who wants to contribute to the Rerun repository.
+This is written for anyone who wants to contribute to the Rerun repository.j
+
+The endless cycle of CI testing.
 
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
