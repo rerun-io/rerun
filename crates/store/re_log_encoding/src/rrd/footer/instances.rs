@@ -12,8 +12,6 @@ use re_types_core::ComponentDescriptor;
 
 use crate::{CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
 
-// TODO: probably should have more drastic checks for chunk_num_rows
-
 // ---
 
 /// This is the payload that is carried in messages of type `::End` in RRD streams.
@@ -40,7 +38,7 @@ pub struct RrdFooter {
     pub manifests: HashMap<StoreId, RrdManifest>,
 }
 
-// TODO: update the snippet
+// TODO: update the snippet (but first fix the counts)
 //
 /// The payload found in [`RrdFooter`]s.
 ///
@@ -233,6 +231,8 @@ impl RrdManifest {
 
     /// Computes a map-based representation of the static data in this RRD manifest.
     pub fn get_static_data_as_a_map(&self) -> CodecResult<RrdManifestStaticMap> {
+        re_tracing::profile_function!();
+
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
         let mut per_entity: RrdManifestStaticMap = IntMap::default();
@@ -284,7 +284,8 @@ impl RrdManifest {
 
                 let per_component = per_entity.entry(entity_path.clone()).or_default();
 
-                // TODO: well that's a problem, what are supposed to be the winning semantics here again?
+                // TODO(cmc): technically we sould follow the usual crazy semantics to decide which
+                // static chunk for which component in case of conflicts etc but, it's fine for now.
                 per_component
                     .entry(component)
                     .and_modify(|id| *id = chunk_id)
@@ -299,13 +300,7 @@ impl RrdManifest {
     pub fn get_temporal_data_as_a_map(&self) -> CodecResult<RrdManifestTemporalMap> {
         re_tracing::profile_function!();
 
-        use arrow::array::ArrayRef;
         use re_arrow_util::ArrowArrayDowncastRef as _;
-
-        fn downcast_index_as_int64_slice(array: &ArrayRef) -> Option<&[i64]> {
-            let (_typ, values) = TimeType::from_arrow_array(array).ok()?;
-            Some(values)
-        }
 
         let fields = self.data.schema_ref().fields();
         let columns = self.data.columns();
@@ -325,6 +320,105 @@ impl RrdManifest {
         let chunk_entity_paths = self.col_chunk_entity_path()?;
         let chunk_is_static = self.col_chunk_is_static()?;
 
+        struct IndexColumns<'a> {
+            component: &'a String,
+            time_type: TimeType,
+
+            col_start_nulls: NullBuffer,
+            col_start_raw: &'a [i64],
+
+            col_end_nulls: NullBuffer,
+            col_end_raw: &'a [i64],
+
+            col_num_rows_raw: &'a [u64],
+        }
+
+        let mut columns_per_index = HashMap::<String, IndexColumns<'_>>::new();
+        for (index, component) in indexes {
+            let index = index.as_str();
+            if index == "rerun:static" {
+                continue;
+            }
+
+            pub fn get_index_name(field: &arrow::datatypes::Field) -> Option<&str> {
+                field.metadata().get("rerun:index").map(|s| s.as_str())
+            }
+
+            pub fn is_specific_index(field: &arrow::datatypes::Field, index_name: &str) -> bool {
+                get_index_name(field) == Some(index_name)
+            }
+
+            let Some((_, col_start)) = itertools::izip!(fields, columns).find(|(f, _col)| {
+                is_specific_index(f, index)
+                    && f.name().ends_with(":start")
+                    && f.metadata().get("rerun:component") == Some(component)
+            }) else {
+                return Err(crate::CodecError::from(ChunkError::Malformed {
+                    reason: format!("start index is missing for {component}"),
+                }));
+            };
+            let Some((_, col_end)) = itertools::izip!(fields, columns).find(|(f, _col)| {
+                is_specific_index(f, index)
+                    && f.name().ends_with(":end")
+                    && f.metadata().get("rerun:component") == Some(component)
+            }) else {
+                return Err(crate::CodecError::from(ChunkError::Malformed {
+                    reason: format!("end index is missing for {component}"),
+                }));
+            };
+            let Some((field_num_rows, col_num_rows)) =
+                itertools::izip!(fields, columns).find(|(f, _col)| {
+                    is_specific_index(f, index)
+                        && f.name().ends_with(":num_rows")
+                        && f.metadata().get("rerun:component") == Some(component)
+                })
+            else {
+                return Err(crate::CodecError::from(ChunkError::Malformed {
+                    reason: format!("num_rows index is missing for {component}"),
+                }));
+            };
+
+            let (time_type, col_start_raw) = TimeType::from_arrow_array(col_start)
+                .map_err(crate::CodecError::ArrowDeserialization)?;
+            let (_, col_end_raw) = TimeType::from_arrow_array(col_end)
+                .map_err(crate::CodecError::ArrowDeserialization)?;
+            let col_num_rows_raw: &[u64] = col_num_rows
+                .downcast_array_ref::<UInt64Array>()
+                .ok_or_else(|| {
+                    crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                        format!(
+                            "'{}' should be a BooleanArray, but it's a {} instead",
+                            field_num_rows.name(),
+                            col_num_rows.data_type(),
+                        ),
+                    ))
+                })?
+                .values();
+
+            // So we don't have to pay the virtual call cost for every `is_valid()` call.
+            let col_start_nulls = col_start
+                .nulls()
+                .cloned()
+                .unwrap_or_else(|| NullBuffer::new_valid(col_start.len()));
+            let col_end_nulls = col_end
+                .nulls()
+                .cloned()
+                .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
+
+            columns_per_index.insert(
+                index.to_owned(),
+                IndexColumns {
+                    component,
+                    time_type,
+                    col_start_nulls,
+                    col_start_raw,
+                    col_end_nulls,
+                    col_end_raw,
+                    col_num_rows_raw,
+                },
+            );
+        }
+
         for (i, (chunk_id, is_static, entity_path)) in
             itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
         {
@@ -332,77 +426,23 @@ impl RrdManifest {
                 continue;
             }
 
-            for (index, component) in &indexes {
-                let index = index.as_str();
-                if index == "rerun:static" {
-                    continue;
-                }
-
-                pub fn get_index_name(field: &arrow::datatypes::Field) -> Option<&str> {
-                    field.metadata().get("rerun:index").map(|s| s.as_str())
-                }
-
-                pub fn is_specific_index(
-                    field: &arrow::datatypes::Field,
-                    index_name: &str,
-                ) -> bool {
-                    get_index_name(field) == Some(index_name)
-                }
-
-                // TODO: obviously all of this stuff should be done only once, not every iteration 🫠
-
-                let col_start = itertools::izip!(fields, columns).find(|(f, _col)| {
-                    is_specific_index(f, index)
-                        && f.name().ends_with(":start")
-                        && f.metadata().get("rerun:component") == Some(component)
-                });
-                let col_end = itertools::izip!(fields, columns).find(|(f, _col)| {
-                    is_specific_index(f, index)
-                        && f.name().ends_with(":end")
-                        && f.metadata().get("rerun:component") == Some(component)
-                });
-                let col_num_rows = itertools::izip!(fields, columns).find(|(f, _col)| {
-                    is_specific_index(f, index)
-                        && f.name().ends_with(":num_rows")
-                        && f.metadata().get("rerun:component") == Some(component)
-                });
-
-                let (Some((_, col_start)), Some((_, col_end))) = (col_start, col_end) else {
-                    unreachable!();
-                };
-
-                let col_start_raw = downcast_index_as_int64_slice(col_start).unwrap();
-                let col_end_raw = downcast_index_as_int64_slice(col_end).unwrap();
-                // TODO: optional because BW, but do we care? maybe, maybe not
-                let col_num_rows = col_num_rows.as_ref().map(|(f, col_num_rows)| {
-                    let values: &[u64] = col_num_rows
-                        .downcast_array_ref::<UInt64Array>()
-                        .unwrap()
-                        .values();
-                    values
-                });
-
-                // So we don't have to pay the virtual call cost for every `is_valid()` call.
-                let col_start_nulls = col_start
-                    .nulls()
-                    .cloned()
-                    .unwrap_or_else(|| NullBuffer::new_valid(col_start.len()));
-                let col_end_nulls = col_end
-                    .nulls()
-                    .cloned()
-                    .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
+            for (index, columns) in &columns_per_index {
+                let IndexColumns {
+                    component,
+                    time_type,
+                    col_start_nulls,
+                    col_start_raw,
+                    col_end_nulls,
+                    col_end_raw,
+                    col_num_rows_raw,
+                } = columns;
 
                 if !col_start_nulls.is_valid(i) || !col_end_nulls.is_valid(i) {
                     continue;
                 }
 
                 let component = ComponentIdentifier::new(component);
-                let timeline = match col_start.data_type() {
-                    arrow::datatypes::DataType::Int64 => Timeline::new_sequence(index),
-                    arrow::datatypes::DataType::Timestamp(_, _) => Timeline::new_timestamp(index),
-                    arrow::datatypes::DataType::Duration(_) => Timeline::new_duration(index),
-                    _ => unreachable!(), // TODO
-                };
+                let timeline = Timeline::new(index.as_str(), *time_type);
 
                 let per_timeline = per_entity.entry(entity_path.clone()).or_default();
                 let per_component = per_timeline.entry(timeline).or_default();
@@ -410,11 +450,10 @@ impl RrdManifest {
 
                 let start = col_start_raw[i];
                 let end = col_end_raw[i];
+                let num_rows = col_num_rows_raw[i];
                 let entry = RrdManifestTemporalMapEntry {
                     time_range: AbsoluteTimeRange::new(start, end),
-                    // TODO: i mean if BW then this sucks anyway, cause now you cannot
-                    // differentiate 0 from not present...
-                    num_rows: col_num_rows.as_ref().unwrap()[i],
+                    num_rows,
                 };
 
                 per_chunk
@@ -569,7 +608,7 @@ impl RrdManifest {
     /// Cheap.
     fn check_index_columns_are_correct(&self) -> CodecResult<()> {
         {
-            // All columns either end in :has_static_data or :start or :end (or are global).
+            // All columns either end in :has_static_data or :num_rows or :start or :end (or are global).
             for field in self.data.schema().fields() {
                 if let Some((_, suffix)) = field.name().rsplit_once(':') {
                     match suffix {
@@ -683,6 +722,38 @@ impl RrdManifest {
                                 field_counterpart.data_type()
                             ),
                         }));
+                    }
+                }
+            }
+        }
+
+        {
+            // All `:start` columns should have a matching `:num_rows`.
+            for field in self.data.schema().fields() {
+                if let Some((prefix, "num_rows")) = field.name().rsplit_once(':') {
+                    let field_num_rows = self
+                        .data
+                        .schema_ref()
+                        .field_with_name(&format!("{prefix}:num_rows"))
+                        .map_err(|_err| {
+                            crate::CodecError::from(ChunkError::Malformed {
+                                reason: format!(
+                                    "field '{}' does not have matching `:num_rows` field",
+                                    field.name()
+                                ),
+                            })
+                        })?;
+
+                    match field_num_rows.data_type() {
+                        arrow::datatypes::DataType::UInt64 => {}
+                        datatype => {
+                            return Err(crate::CodecError::from(ChunkError::Malformed {
+                                reason: format!(
+                                    "field '{}' is {datatype} while it should be UInt64Array",
+                                    field_num_rows.name(),
+                                ),
+                            }));
+                        }
                     }
                 }
             }
