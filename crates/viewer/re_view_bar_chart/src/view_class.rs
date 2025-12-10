@@ -114,7 +114,7 @@ impl ViewClass for BarChartView {
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&BarChartVisualizerSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
             std::iter::once(BarChartVisualizerSystem::identifier()).collect()
         } else {

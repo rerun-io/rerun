@@ -75,7 +75,7 @@ pub struct VisualizerQueryInfo {
     /// Order should reflect order in archetype docs & user code as well as possible.
     ///
     /// Note that we need full descriptors here in order to write overrides from the UI.
-    pub queried: SortedComponentSet,
+    pub queried: SortedComponentSet, // TODO(grtlr, wumpf): This can probably be removed?
 }
 
 impl VisualizerQueryInfo {

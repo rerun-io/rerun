@@ -1,23 +1,45 @@
 //! Various strongly typed sets of entities to express intent and avoid mistakes.
 
 use nohash_hasher::{IntMap, IntSet};
+use re_chunk::ComponentIdentifier;
 use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
+use vec1::smallvec_v1::SmallVec1;
 
 use crate::ViewSystemIdentifier;
+
+/// Describes why a given entity was marked as visualizable.
+#[derive(Clone, Debug)]
+pub enum VisualizableReason {
+    /// The entity is visualizable because all entities are visualizable for this type.
+    Always,
+
+    /// [`crate::RequiredComponents::AllComponents`] matched for this entity.
+    ExactMatchAll,
+
+    /// [`crate::RequiredComponents::AnyComponent`] matched for this entity.
+    ExactMatchAny,
+
+    /// [`crate::RequiredComponents::AnyPhysicalDatatype`] matched for this entity with the given components.
+    // TODO(grtlr, andreas): Should primitive-castables live in the same struct? Probably only relevant if we care about conversions outside of the actual querysite.
+    DatatypeMatchAny {
+        components: SmallVec1<[ComponentIdentifier; 1]>,
+    },
+}
 
 /// List of entities that are visualizable with a given visualizer.
 ///
 /// Note that this filter latches:
 /// An entity is marked visualizable if it at any point in time on any timeline has all required components.
 ///
-/// We evaluate this filtering step entirely by store subscriber.
-/// This in turn implies that this can *not* be influenced by individual view setups.
+/// We evaluate this filtering step entirely by store subscriber and provide a reason
+/// for why this entity was deemed visualizable. This in turn implies that this can
+/// *not* be influenced by individual view setups.
 #[derive(Default, Clone, Debug)]
-pub struct VisualizableEntities(pub IntSet<EntityPath>);
+pub struct VisualizableEntities(pub IntMap<EntityPath, VisualizableReason>);
 
 impl std::ops::Deref for VisualizableEntities {
-    type Target = IntSet<EntityPath>;
+    type Target = IntMap<EntityPath, VisualizableReason>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {

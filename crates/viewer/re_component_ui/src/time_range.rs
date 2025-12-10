@@ -16,11 +16,11 @@ pub fn time_range_multiline_edit_or_view_ui(
 ) -> egui::Response {
     let time_type = ctx.time_ctrl.time_type();
 
-    let time_drag_value = if let Some(times) = ctx
+    let time_drag_value = if let Some(range) = ctx
         .recording()
-        .time_histogram(ctx.time_ctrl.timeline().name())
+        .time_range_for(ctx.time_ctrl.timeline().name())
     {
-        TimeDragValue::from_time_histogram(times)
+        TimeDragValue::from_abs_time_range(range)
     } else {
         TimeDragValue::from_time_range(0..=0)
     };
@@ -103,11 +103,11 @@ pub fn time_range_singleline_view_ui(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, TimeRange>,
 ) -> egui::Response {
-    let time_drag_value = if let Some(times) = ctx
+    let time_drag_value = if let Some(range) = ctx
         .recording()
-        .time_histogram(ctx.time_ctrl.timeline().name())
+        .time_range_for(ctx.time_ctrl.timeline().name())
     {
-        TimeDragValue::from_time_histogram(times)
+        TimeDragValue::from_abs_time_range(range)
     } else {
         TimeDragValue::from_time_range(0..=0)
     };
