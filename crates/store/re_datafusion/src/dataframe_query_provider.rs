@@ -234,7 +234,7 @@ impl SegmentStreamExec {
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
 
-        let orderings: Vec<PhysicalSortExpr> = if projected_schema
+        let _orderings: Vec<PhysicalSortExpr> = if projected_schema
             .fields()
             .iter()
             .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
@@ -263,16 +263,12 @@ impl SegmentStreamExec {
                     SortOptions::new(false, true),
                 ));
             }
-            vec![
-                // LexOrdering::new(physical_ordering)
-                //     .expect("LexOrdering should return Some since input is not empty"),
-            ]
+            vec![]
         } else {
             vec![]
         };
 
-        let eq_properties =
-            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
+        let eq_properties = EquivalenceProperties::new(Arc::clone(&projected_schema));
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
