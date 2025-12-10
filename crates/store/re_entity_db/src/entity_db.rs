@@ -473,24 +473,9 @@ impl EntityDb {
         }
     }
 
-    pub fn has_any_data_on_timeline(&self, timeline: &TimelineName) -> bool {
-        self.time_histogram_per_timeline
-            .get(timeline)
-            .is_some_and(|hist| !hist.is_empty())
-    }
-
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        // TODO(emilk): merge the two sources instead
-
-        if self.rrd_manifest_index().has_manifest() {
-            return self.rrd_manifest_index.timelines.get(timeline).copied();
-        }
-
-        let hist = self.time_histogram_per_timeline.get(timeline)?;
-        let min = hist.min_key()?;
-        let max = hist.max_key()?;
-        Some(AbsoluteTimeRange::new(min, max))
+        self.storage_engine().store().time_range(timeline)
     }
 
     /// Histogram of all events on the timeeline, of all entities.

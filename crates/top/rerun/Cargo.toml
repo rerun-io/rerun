@@ -36,7 +36,7 @@ default = [
 ]
 
 ## Support the `rerun auth` command
-auth = ["re_auth/cli"]
+auth = ["re_auth/cli", "dep:jiff", "dep:url"]
 
 ## Enable anonymized telemetry using our analytics SDK.
 analytics = [
@@ -197,9 +197,11 @@ puffin.workspace = true
 rayon.workspace = true
 
 # Native, optional:
-re_perf_telemetry = { workspace = true, optional = true }
 clap = { workspace = true, optional = true, features = ["derive"] }
+jiff = { workspace = true, optional = true }
+re_perf_telemetry = { workspace = true, features = ["tracy"], optional = true }
 unindent = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

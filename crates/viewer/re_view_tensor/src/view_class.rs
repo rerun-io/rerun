@@ -109,7 +109,7 @@ Set the displayed dimensions in a selection panel.",
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizable_entities_per_visualizer
             .get(&TensorSystem::identifier())
-            .is_some_and(|entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains_key(entity_path))
         {
             std::iter::once(TensorSystem::identifier()).collect()
         } else {
