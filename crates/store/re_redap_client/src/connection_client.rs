@@ -1,7 +1,8 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_types::EntryId;
+use re_log_encoding::RrdManifest;
+use re_log_types::{EntryId, StoreId};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -14,17 +15,18 @@ use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceCli
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
     FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-    GetDatasetSchemaRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
-    QueryDatasetResponse, QueryTasksOnCompletionResponse, QueryTasksResponse,
-    ReadDatasetEntryRequest, ReadTableEntryRequest, RegisterWithDatasetResponse,
-    ScanSegmentTableRequest, ScanSegmentTableResponse, WriteTableRequest,
+    GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentTableSchemaRequest,
+    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionResponse,
+    QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
+    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
-use re_types_core::ChunkIndexMessage;
+use tap::Pipe as _;
 use tokio_stream::{Stream, StreamExt as _};
 use tonic::codegen::{Body, StdError};
 use tonic::{IntoStreamingRequest as _, Status};
@@ -365,12 +367,45 @@ where
             })
     }
 
+    /// Get the full [`RrdManifest`] of a recording.
+    pub async fn get_rrd_manifest(
+        &mut self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult<RrdManifest> {
+        self.inner()
+            .get_rrd_manifest(
+                tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
+                    segment_id: Some(segment_id.clone().into()),
+                })
+                .with_entry_id(dataset_id)
+                .map_err(|err| ApiError::tonic(err, "failed building /GetRrdManifest request"))?,
+            )
+            .await
+            .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?
+            .into_inner()
+            .data
+            .ok_or_else(|| {
+                let err = missing_field!(GetRrdManifestResponse, "data");
+                ApiError::serialization(err, "missing field in /GetRrdManifest response")
+            })?
+            .pipe(RecordBatch::try_from)
+            .map_err(|err| ApiError::serialization(err, "failed parsing /GetRrdManifest response"))
+            .map(|data| {
+                RrdManifest {
+                    // TODO(cmc): fix this
+                    store_id: StoreId::empty_recording().with_recording_id(segment_id.to_string()),
+                    sorbet_schema: arrow::datatypes::Schema::empty(),
+                    sorbet_schema_sha256: Default::default(),
+                    data,
+                }
+            })
+    }
+
     /// Fetches all chunks ids for a specified segment.
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
-    ///
-    /// The result is compatible with [`ChunkIndexMessage`].
     pub async fn query_dataset_raw(
         &mut self,
         params: SegmentQueryParams,
@@ -425,7 +460,7 @@ where
     pub async fn query_dataset_chunk_index(
         &mut self,
         params: SegmentQueryParams,
-    ) -> ApiResult<Vec<ChunkIndexMessage>> {
+    ) -> ApiResult<Vec<RecordBatch>> {
         self.query_dataset_raw(params)
             .await?
             .collect::<Vec<_>>()
@@ -449,12 +484,8 @@ where
                 })
             })
             .map(|batch| {
-                let rb = arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
-                    ApiError::serialization(err, "failed converting to RecordBatch")
-                })?;
-                ChunkIndexMessage::from_record_batch(rb).map_err(|err| {
-                    ApiError::serialization(err, "failed creating ChunkIndexMessage")
-                })
+                arrow::array::RecordBatch::try_from(batch?)
+                    .map_err(|err| ApiError::serialization(err, "failed converting to RecordBatch"))
             })
             .collect()
     }

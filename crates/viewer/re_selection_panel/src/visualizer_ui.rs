@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 use re_chunk::RowId;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
-use re_sdk_types::blueprint::archetypes::VisualizerOverrides;
+use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -102,7 +102,7 @@ pub fn visualizer_ui_impl(
     let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
         let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
         if response.clicked() {
-            let archetype = VisualizerOverrides::new(
+            let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
                     .filter(|v| v.visualizer_type != vis_name)
@@ -597,7 +597,7 @@ fn menu_add_new_visualizer(
 
     for viz in available_visualizers {
         if ui.button(viz.as_str()).clicked() {
-            let archetype = VisualizerOverrides::new(
+            let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
                     .map(|v| &v.visualizer_type)

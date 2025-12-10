@@ -511,10 +511,10 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 .latest_at(
                     blueprint_query,
                     &node.data_result.override_path,
-                    [blueprint_archetypes::VisualizerOverrides::descriptor_ranges().component],
+                    [blueprint_archetypes::ActiveVisualizers::descriptor_ranges().component],
                 )
-                .component_batch::<blueprint_components::VisualizerOverride>(
-                    blueprint_archetypes::VisualizerOverrides::descriptor_ranges().component,
+                .component_batch::<blueprint_components::VisualizerInstructionId>(
+                    blueprint_archetypes::ActiveVisualizers::descriptor_ranges().component,
                 )
             {
                 node.data_result.visualizer_instructions = viz_override

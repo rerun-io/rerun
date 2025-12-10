@@ -2313,9 +2313,9 @@ impl App {
             };
 
             match msg {
-                DataSourceMessage::ChunkIndexMessage(store_id, chunk_index) => {
+                DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
                     let entity_db = store_hub.entity_db_mut(&store_id);
-                    entity_db.add_chunk_index_message(chunk_index);
+                    entity_db.add_rrd_manifest_message(*rrd_manifest);
                 }
 
                 DataSourceMessage::LogMsg(msg) => {
