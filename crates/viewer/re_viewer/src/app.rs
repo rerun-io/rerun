@@ -827,51 +827,64 @@ impl App {
                 store_id,
                 time_commands,
             } => {
-                if store_id.is_recording() {
-                    store_hub.set_active_recording_id(store_id.clone());
-                }
-                store_hub.read_context(); // IMPORTANT! This materializes the blueprint on-demand
+                match store_id.kind() {
+                    StoreKind::Recording => {
+                        store_hub.set_active_recording_id(store_id.clone()); // Switch to this recording
+                        let (storage_ctx, store_ctx) = store_hub.read_context(); // Materialize the target blueprint on-demand
+                        if let Some(store_ctx) = store_ctx {
+                            let target_blueprint = store_ctx.blueprint;
+                            let blueprint_query =
+                                self.state.blueprint_query_for_viewer(target_blueprint);
 
-                if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
-                    let (time_ctrl, blueprint_ctx) = if store_id.is_blueprint() {
-                        (&mut self.state.blueprint_time_control, None)
-                    } else if let Some(target_blueprint) =
-                        store_hub.active_blueprint_for_app(store_id.application_id())
-                    {
-                        let blueprint_query =
-                            self.state.blueprint_query_for_viewer(target_blueprint);
+                            let blueprint_ctx = AppBlueprintCtx {
+                                command_sender: &self.command_sender,
+                                current_blueprint: target_blueprint,
+                                default_blueprint: storage_ctx
+                                    .hub
+                                    .default_blueprint_for_app(store_id.application_id()),
+                                blueprint_query,
+                            };
 
-                        let ctx = AppBlueprintCtx {
-                            command_sender: &self.command_sender,
-                            current_blueprint: target_blueprint,
-                            default_blueprint: store_hub
-                                .default_blueprint_for_app(store_id.application_id()),
-                            blueprint_query,
-                        };
+                            let time_ctrl = self
+                                .state
+                                .time_control_mut(store_ctx.recording, &blueprint_ctx);
 
-                        (self.state.time_control_mut(target_store, &ctx), Some(ctx))
-                    } else {
-                        return;
-                    };
+                            let response = time_ctrl.handle_time_commands(
+                                Some(&blueprint_ctx),
+                                store_ctx.recording.times_per_timeline(),
+                                &time_commands,
+                            );
 
-                    let response = time_ctrl.handle_time_commands(
-                        blueprint_ctx.as_ref(),
-                        target_store.times_per_timeline(),
-                        &time_commands,
-                    );
+                            if response.needs_repaint == NeedsRepaint::Yes {
+                                self.egui_ctx.request_repaint();
+                            }
 
-                    if response.needs_repaint == NeedsRepaint::Yes {
-                        self.egui_ctx.request_repaint();
+                            handle_time_ctrl_event(
+                                store_ctx.recording,
+                                self.event_dispatcher.as_ref(),
+                                &response,
+                            );
+                        } else {
+                            re_log::error!(
+                                "Skipping time control command because of missing blueprint"
+                            );
+                        }
                     }
+                    StoreKind::Blueprint => {
+                        if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
+                            let blueprint_ctx: Option<&'static AppBlueprintCtx> = None;
+                            let response = self.state.blueprint_time_control.handle_time_commands(
+                                blueprint_ctx,
+                                target_store.times_per_timeline(),
+                                &time_commands,
+                            );
 
-                    if !store_id.is_blueprint() {
-                        handle_time_ctrl_event(
-                            target_store,
-                            self.event_dispatcher.as_ref(),
-                            &response,
-                        );
+                            if response.needs_repaint == NeedsRepaint::Yes {
+                                self.egui_ctx.request_repaint();
+                            }
+                        }
                     }
-                }
+                };
             }
             SystemCommand::SetUrlFragment { store_id, fragment } => {
                 // This adds new system commands, which will be handled later in the loop.
