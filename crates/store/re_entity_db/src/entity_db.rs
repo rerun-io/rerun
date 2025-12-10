@@ -477,7 +477,6 @@ impl EntityDb {
     }
 
     /// Histogram of all events on the timeeline, of all entities.
-    #[deprecated = "TODO(RR-3164): remove TimeHistogram"]
     pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
         self.time_histogram_per_timeline.get(timeline)
     }
