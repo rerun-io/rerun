@@ -564,8 +564,12 @@ impl EntityDb {
         re_tracing::profile_function!();
         re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
-        self.time_histogram_per_timeline
-            .on_rrd_manifest(&rrd_manifest);
+        if let Err(err) = self
+            .time_histogram_per_timeline
+            .on_rrd_manifest(&rrd_manifest)
+        {
+            re_log::error!("Failed to ingest RRD Manifest: {err}");
+        }
 
         if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
             re_log::error!("Failed to load RRD Manifest: {err}");

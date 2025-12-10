@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use emath::lerp;
 use itertools::Itertools as _;
 use re_chunk::TimelineName;
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
@@ -162,9 +163,23 @@ impl TimeHistogramPerTimeline {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 enum Application {
     Add,
     Remove,
+}
+
+impl Application {
+    fn apply(self, histogram: &mut re_int_histogram::Int64Histogram, position: i64, inc: u32) {
+        match self {
+            Self::Add => {
+                histogram.increment(position, inc);
+            }
+            Self::Remove => {
+                histogram.decrement(position, inc);
+            }
+        }
+    }
 }
 
 fn apply_fake(
@@ -173,19 +188,32 @@ fn apply_fake(
     time_range: re_log_types::AbsoluteTimeRange,
     num_rows: u64,
 ) {
+    if num_rows == 0 {
+        return;
+    }
+
     // Assume even spread of chunk (for now):
     let num_pieces = u64::min(num_rows, 10);
-    let inc = (num_rows / num_pieces) as _;
-    for i in 0..num_pieces {
-        let offset = i as i64 * (time_range.abs_length() / num_pieces) as i64;
-        let position = time_range.min.as_i64().saturating_add(offset);
 
-        match application {
-            Application::Add => {
-                histogram.increment(position, inc);
-            }
-            Application::Remove => {
-                histogram.decrement(position, inc);
+    if num_pieces == 1 || time_range.min == time_range.max {
+        let position = time_range.center();
+        application.apply(histogram, position.as_i64(), num_rows as u32);
+    } else {
+        let inc = (num_rows / num_pieces) as _;
+        for i in 0..num_pieces {
+            let position = lerp(
+                time_range.min.as_f64()..=time_range.max.as_f64(),
+                i as f64 / (num_pieces as f64 - 1.0),
+            )
+            .round() as i64;
+
+            match application {
+                Application::Add => {
+                    histogram.increment(position, inc);
+                }
+                Application::Remove => {
+                    histogram.decrement(position, inc);
+                }
             }
         }
     }
