@@ -1419,6 +1419,7 @@ impl App {
                     store_id,
                     time_commands: vec![
                         TimeControlCommand::SetActiveTimeline(timeline),
+                        TimeControlCommand::SetPlayState(PlayState::Paused),
                         TimeControlCommand::SetTime(timecell.value.into()),
                     ],
                 });
