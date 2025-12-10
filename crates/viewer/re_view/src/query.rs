@@ -45,10 +45,11 @@ pub fn range_with_blueprint_resolved_data<'a>(
     let results = {
         // Apply component mappings when querying the recording.
         for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.source) {
-                components.insert(mapping.target);
+            if components.remove(&mapping.target) {
+                components.insert(mapping.source);
             }
         }
+
         let mut results =
             ctx.recording_engine()
                 .cache()
@@ -56,8 +57,13 @@ pub fn range_with_blueprint_resolved_data<'a>(
 
         // Apply mapping to the results.
         for mapping in &visualizer_instruction.component_mappings {
-            if let Some(chunk) = results.components.remove(&mapping.source) {
-                results.components.insert(mapping.target, chunk);
+            if let Some(mut chunks) = results.components.remove(&mapping.source) {
+                // TODO: revisit
+                for chunk in chunks.iter_mut() {
+                    *chunk = chunk.with_renamed_component(mapping.source, mapping.target);
+                }
+
+                results.components.insert(mapping.target, chunks);
             }
         }
 
@@ -123,6 +129,11 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         // Apply mapping to the results.
         for mapping in &visualizer_instruction.component_mappings {
             if let Some(chunk) = results.components.remove(&mapping.source) {
+                let chunk = std::sync::Arc::new(
+                    chunk.with_renamed_component(mapping.source, mapping.target),
+                )
+                .to_unit()
+                .expect("The source chunk was a unit chunk.");
                 results.components.insert(mapping.target, chunk);
             }
         }
