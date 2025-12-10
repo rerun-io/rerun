@@ -98,7 +98,7 @@ pub async fn start_with_dataset_url() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-pub async fn start_with_dataset_url_with_fragment() {
+pub async fn start_with_segment_url_with_fragment() {
     let (server, segment_id) = TestServer::spawn().await.with_test_data().await;
 
     let dataset_id =
@@ -133,5 +133,5 @@ pub async fn start_with_dataset_url_with_fragment() {
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
-    harness.snapshot("start_with_dataset_url");
+    harness.snapshot("start_with_segment_fragment_url");
 }
