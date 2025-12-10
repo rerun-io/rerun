@@ -38,3 +38,11 @@ pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests -m "not local_o
 
 Note: When using `--resource-prefix` with remote storage (s3://, gs://, etc.), local-only tests are automatically skipped.
 
+
+## Inventory of existing markers
+
+- `benchmark`: Marks performance benchmark tests. These tests may take longer to run and are typically used for performance regression testing.
+- `cloud_only`: Marks tests that should only run against remote redap stacks (e.g., Cloud deployments). These tests may rely on features not available in local OSS servers.
+- `creates_table`: Marks tests as creating a table (which requires providing a server-accessible path). This is semantically equivalent to `local_only` , but it reminds us that we need to clean this up (RR-2969)
+- `local_only`: Marks tests that should only run against a local OSS server. These tests may rely on features not available in remote deployments (e.g., direct filesystem access).
+- `slow`: Marks tests that are slow to run and you may want to skip in a tight dev loop",
