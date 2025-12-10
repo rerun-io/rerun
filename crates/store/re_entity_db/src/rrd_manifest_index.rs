@@ -426,7 +426,14 @@ impl RrdManifestIndex {
             // If we don't have a specific component we want to include the entity's children
             let mut res = Vec::new();
 
-            self.unloaded_time_ranges_for_entity(&mut res, timeline, entity);
+            if let Some(tree) = self.entity_tree.subtree(entity) {
+                tree.visit_children_recursively(|child| {
+                    self.unloaded_time_ranges_for_entity(&mut res, timeline, child);
+                });
+            } else {
+                re_log::warn_once!("Missing tree for {entity}");
+                self.unloaded_time_ranges_for_entity(&mut res, timeline, entity);
+            }
 
             res
         }
@@ -439,6 +446,7 @@ impl RrdManifestIndex {
         entity: &re_chunk::EntityPath,
     ) {
         re_tracing::profile_function!();
+
         if let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity)
             && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
         {
@@ -452,15 +460,6 @@ impl RrdManifestIndex {
             }) {
                 ranges.push((entry.time_range, entry.num_rows));
             }
-        }
-
-        if let Some(tree) = self.entity_tree.subtree(entity) {
-            tree.visit_children_recursively(|child| {
-                // TODO: Feels unnecessary to always do this check
-                if child != entity {
-                    self.unloaded_time_ranges_for_entity(ranges, timeline, child);
-                }
-            });
         }
     }
 }
