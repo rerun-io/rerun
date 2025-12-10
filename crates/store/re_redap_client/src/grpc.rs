@@ -545,8 +545,10 @@ async fn load_chunks(
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
-            // TODO: Remove sleep
-            std::thread::sleep(std::time::Duration::from_secs_f64(0.1));
+            if !chunk.is_static() {
+                // TODO: Remove sleep
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
             if tx
                 .send(
                     LogMsg::ArrowMsg(
