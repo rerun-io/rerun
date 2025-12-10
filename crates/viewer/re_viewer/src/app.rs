@@ -827,6 +827,11 @@ impl App {
                 store_id,
                 time_commands,
             } => {
+                if store_id.is_recording() {
+                    store_hub.set_active_recording_id(store_id.clone());
+                }
+                store_hub.read_context(); // IMPORTANT! This materializes the blueprint on-demand
+
                 if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
                     let (time_ctrl, blueprint_ctx) = if store_id.is_blueprint() {
                         (&mut self.state.blueprint_time_control, None)
