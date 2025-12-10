@@ -216,6 +216,17 @@ fn visualizer_components(
         instruction,
     );
 
+    // Query component mappings
+    // TODO: maybe merge this into HybridLatestAtResults?
+    // let mut components = query_info.queried_components().collect::<IntSet<_>>();
+    // let mappings = query_overrides(
+    //     ctx.viewer_ctx,
+    //     visualizer_instruction,
+    //     components.iter().copied(),
+    // );
+
+    let mut changed_component_mappings = vec![];
+
     // TODO(andreas): Should we show required components in a special way?
     for component_descr in sorted_component_list_by_archetype_for_ui(
         ctx.viewer_ctx.reflection(),
@@ -420,6 +431,48 @@ fn visualizer_components(
                     );
                 });
             }
+
+            // Source component (if available)
+            ui.push_id("source_component", |ui| {
+                let component_map = instruction
+                    .component_mappings
+                    .iter()
+                    .find(|mapping| mapping.target == component_descr.component);
+                ui.list_item_flat_noninteractive(
+                    list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
+                        // Text field with the source component name.
+                        // let source_str_ref = component_map.map(|mapping| mapping.source.as_str());
+                        // let mut source_str = source_str_ref.unwrap_or_default().to_owned();
+
+                        let mut source = component_map.map_or_else(String::default, |mapping| {
+                            mapping.source.as_str().to_owned()
+                        });
+
+                        let response = ui.text_edit_singleline(&mut source);
+                        if response.changed() {
+                            changed_component_mappings.push(
+                                re_viewer_context::VisualizerComponentMapping {
+                                    source: source.into(),
+                                    target: component_descr.component,
+                                },
+                            );
+                        }
+
+                        // editable_blueprint_component_list_item(
+                        //     &query_ctx,
+                        //     ui,
+                        //     "Override",
+                        //     override_path.clone(),
+                        //     component_descr,
+                        //     *row_id,
+                        //     raw_override.as_ref(),
+                        // )
+                        // .on_hover_text(
+                        //     "Override value for this specific entity in the current view",
+                        // );
+                    }),
+                );
+            });
         };
 
         let default_open = false;
@@ -462,6 +515,23 @@ fn visualizer_components(
                 component_type.data_ui_recording(ctx.viewer_ctx, ui, UiLayout::Tooltip);
             });
         }
+    }
+
+    if !changed_component_mappings.is_empty() {
+        let mut new_instruction = instruction.clone();
+        for mapping in changed_component_mappings {
+            // Owerwrite the mapping in the new instruction.
+            if let Some(orig_mapping) = new_instruction
+                .component_mappings
+                .iter_mut()
+                .find(|m| m.target == mapping.target)
+            {
+                orig_mapping.source = mapping.source;
+            } else {
+                new_instruction.component_mappings.push(mapping);
+            }
+        }
+        new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
     }
 }
 
