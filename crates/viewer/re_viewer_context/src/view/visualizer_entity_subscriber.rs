@@ -1,7 +1,7 @@
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::IntMap;
-use re_chunk::{ArchetypeName, ArrowArray, ComponentIdentifier};
+use re_chunk::{ArchetypeName, ArrowArray as _, ComponentIdentifier};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
