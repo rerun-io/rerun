@@ -670,7 +670,11 @@ impl EntityDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) -> Vec<ChunkStoreEvent> {
+    pub fn purge_fraction_of_ram(
+        &mut self,
+        fraction_to_purge: f32,
+        time_cursor: Option<(Timeline, TimeInt)>, // TODO: clement, use this!
+    ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));

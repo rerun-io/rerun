@@ -799,10 +799,19 @@ impl StoreHub {
     }
 
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
+    ///
+    /// `time_cursor_for` can be used for more intelligent targeting of what is to be removed.
     //
     // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
     // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+    pub fn purge_fraction_of_ram(
+        &mut self,
+        fraction_to_purge: f32,
+        time_cursor_for: &dyn Fn(
+            &StoreId,
+        )
+            -> Option<(re_log_types::Timeline, re_log_types::TimeInt)>,
+    ) {
         re_tracing::profile_function!();
 
         #[expect(clippy::iter_over_hash_type)]
@@ -829,7 +838,8 @@ impl StoreHub {
             .stats()
             .total()
             .total_size_bytes;
-        let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge);
+        let store_events = entity_db
+            .purge_fraction_of_ram(fraction_to_purge, time_cursor_for(entity_db.store_id()));
         let store_size_after = entity_db
             .storage_engine()
             .store()
