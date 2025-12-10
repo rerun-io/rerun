@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import datafusion as dfn
 import numpy as np
@@ -19,6 +19,9 @@ from .types import (
     VectorDistanceMetricLike as VectorDistanceMetricLike,
     ViewContentsLike as ViewContentsLike,
 )
+
+if TYPE_CHECKING:
+    from rerun.catalog import Schema
 
 # NOTE
 #
@@ -177,61 +180,13 @@ class VectorDistanceMetric(Enum):  # type: ignore[misc]
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
 
-class Schema:
-    """
-    The schema representing a set of available columns.
-
-    Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
-    [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
-    """
-
-    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
-        """Iterate over all the column descriptors in the schema."""
-
-    def index_columns(self) -> list[IndexColumnDescriptor]:
-        """Return a list of all the index columns in the schema."""
-
-    def component_columns(self) -> list[ComponentColumnDescriptor]:
-        """Return a list of all the component columns in the schema."""
-
-    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
-        """
-        Look up the column descriptor for a specific entity path and component.
-
-        Parameters
-        ----------
-        entity_path : str
-            The entity path to look up.
-        component : str
-            The component to look up. Example: `Points3D:positions`.
-
-        Returns
-        -------
-        Optional[ComponentColumnDescriptor]
-            The column descriptor, if it exists.
-
-        """
-
+class SchemaInternal:
+    def index_columns(self) -> list[IndexColumnDescriptor]: ...
+    def component_columns(self) -> list[ComponentColumnDescriptor]: ...
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None: ...
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
-    ) -> ComponentColumnDescriptor:
-        """
-        Look up the column descriptor for a specific selector.
-
-        Parameters
-        ----------
-        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
-            The selector to look up.
-
-            String arguments are expected to follow the following format:
-            `"<entity_path>:<component_type>"`
-
-        Returns
-        -------
-        ComponentColumnDescriptor
-            The column descriptor, if it exists. Raise an exception otherwise.
-
-        """
+    ) -> ComponentColumnDescriptor: ...
 
 class RecordingView:
     """
@@ -1298,7 +1253,7 @@ class DatasetEntryInternal:
 
     @property
     def manifest_url(self) -> str: ...
-    def schema(self) -> Schema: ...
+    def schema(self) -> SchemaInternal: ...
     def arrow_schema(self) -> pa.Schema: ...
 
     # ---
