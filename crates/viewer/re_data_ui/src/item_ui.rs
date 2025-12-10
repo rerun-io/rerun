@@ -255,6 +255,28 @@ pub fn instance_path_button_to(
     instance_path_button_to_ex(ctx, query, db, ui, view_id, instance_path, text, true)
 }
 
+/// Show a selectable label for an instance path, optionally with an icon.
+fn instance_path_selectable_label(
+    ui: &mut egui::Ui,
+    is_selected: bool,
+    text: impl Into<egui::WidgetText>,
+    query: &re_chunk_store::LatestAtQuery,
+    db: &re_entity_db::EntityDb,
+    instance_path: &InstancePath,
+    with_icon: bool,
+) -> egui::Response {
+    if with_icon {
+        ui.selectable_label_with_icon(
+            instance_path_icon(&query.timeline(), db, instance_path),
+            text,
+            is_selected,
+            re_ui::LabelStyle::Normal,
+        )
+    } else {
+        ui.selectable_label(is_selected, text)
+    }
+}
+
 /// Show an instance id and make it selectable.
 #[expect(clippy::too_many_arguments)]
 fn instance_path_button_to_ex(
@@ -273,16 +295,15 @@ fn instance_path_button_to_ex(
         Item::InstancePath(instance_path.clone())
     };
 
-    let response = if with_icon {
-        ui.selectable_label_with_icon(
-            instance_path_icon(&query.timeline(), db, instance_path),
-            text,
-            ctx.is_selected_or_loading(&item),
-            re_ui::LabelStyle::Normal,
-        )
-    } else {
-        ui.selectable_label(ctx.is_selected_or_loading(&item), text)
-    };
+    let response = instance_path_selectable_label(
+        ui,
+        ctx.is_selected_or_loading(&item),
+        text,
+        query,
+        db,
+        instance_path,
+        with_icon,
+    );
 
     let response = response.on_hover_ui(|ui| {
         let include_subtree = false;
@@ -567,15 +588,15 @@ pub fn instance_hover_card_ui(
         return;
     }
 
-    ui.horizontal(|ui| {
-        let subtype_string = if instance_path.instance.is_all() {
-            "Entity"
-        } else {
-            "Entity instance"
-        };
-        ui.strong(subtype_string);
-        ui.label(instance_path.syntax_highlighted(ui.style()));
-    });
+    instance_path_selectable_label(
+        ui,
+        false,
+        instance_path.syntax_highlighted(ui.style()),
+        query,
+        db,
+        instance_path,
+        true,
+    );
 
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.
