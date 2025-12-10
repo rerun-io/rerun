@@ -890,7 +890,7 @@ impl PyDatasetEntryInternal {
         segment_ids: Vec<String>,
     ) -> super::PyDatasetViewInternal {
         let filter: std::collections::HashSet<String> = segment_ids.into_iter().collect();
-        super::PyDatasetViewInternal::new(Py::from(self_), Some(filter), vec![])
+        super::PyDatasetViewInternal::new(Py::from(self_), Some(filter), None)
     }
 
     /// Returns a new `DatasetView` filtered to the given entity paths.
@@ -905,7 +905,7 @@ impl PyDatasetEntryInternal {
     /// DatasetViewInternal
     ///     A new view filtered to the given entity paths.
     fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> super::PyDatasetViewInternal {
-        super::PyDatasetViewInternal::new(Py::from(self_), None, exprs)
+        super::PyDatasetViewInternal::new(Py::from(self_), None, Some(exprs))
     }
 
     pub fn __str__(self_: PyRef<'_, Self>) -> String {

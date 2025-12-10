@@ -6,7 +6,7 @@ use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::{PyDict, PyDictMethods as _, PyCapsule};
+use pyo3::types::{PyCapsule, PyDict, PyDictMethods as _};
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
@@ -30,7 +30,8 @@ pub struct PyDatasetViewInternal {
     // logical plan and lazily execute it instead of materializing the segment IDs.
     segment_filter: Option<HashSet<String>>,
 
-    /// Content filters: entity path expressions like "/points/**", "-/text/**"
+    /// Content filters: entity path expressions like "/points/**", "-/text/**". If empty,
+    /// everything is included.
     content_filters: Vec<String>,
 }
 
@@ -39,12 +40,12 @@ impl PyDatasetViewInternal {
     pub fn new(
         dataset: Py<PyDatasetEntryInternal>,
         segment_filter: Option<HashSet<String>>,
-        content_filters: Vec<String>,
+        content_filters: Option<Vec<String>>,
     ) -> Self {
         Self {
             dataset,
             segment_filter,
-            content_filters,
+            content_filters: content_filters.unwrap_or_default(),
         }
     }
 
@@ -563,7 +564,7 @@ impl PyDatasetViewInternal {
             Self::new(
                 self_.dataset.clone_ref(py),
                 Some(combined_filter),
-                self_.content_filters.clone(),
+                Some(self_.content_filters.clone()),
             ),
         )
     }
@@ -586,7 +587,7 @@ impl PyDatasetViewInternal {
             Self::new(
                 self_.dataset.clone_ref(py),
                 self_.segment_filter.clone(),
-                combined_filters,
+                Some(combined_filters),
             ),
         )
     }
