@@ -103,13 +103,11 @@ impl RrdManifestBuilder {
                     starts_inclusive,
                     ends_inclusive,
                     has_static_data,
-                    num_rows,
+                    num_rows: _, // irrelevant for static data
                 } = column;
 
                 starts_inclusive.push(TimeInt::STATIC);
                 ends_inclusive.push(TimeInt::STATIC);
-
-                num_rows.push(list_array.null_count() as u64);
 
                 // If we're here, it's necessarily `true`. Falsy values can only be
                 // introduced by padding and/or temporal columns (see below).
@@ -192,7 +190,11 @@ impl RrdManifestBuilder {
                     ends_inclusive.push(time_range.max());
                 }
 
-                num_rows.push(component_col.list_array.null_count() as u64);
+                let chunk_num_rows = component_col
+                    .list_array
+                    .len()
+                    .saturating_sub(component_col.list_array.null_count());
+                num_rows.push(chunk_num_rows as u64);
 
                 has_static_data.push(true); // temporal component-level column
             }

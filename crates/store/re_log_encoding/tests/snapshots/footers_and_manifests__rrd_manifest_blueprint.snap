@@ -25,5 +25,5 @@ expression: rrd_manifest_blueprint_sequential.data.format_snapshot(true)
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ frame_nr:TimePanelBlueprint:fps:end      ┆ 0                                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ frame_nr:TimePanelBlueprint:fps:num_rows ┆ 0                                │
+│ frame_nr:TimePanelBlueprint:fps:num_rows ┆ 1                                │
 └──────────────────────────────────────────┴──────────────────────────────────┘
