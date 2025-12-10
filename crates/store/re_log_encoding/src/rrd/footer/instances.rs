@@ -284,7 +284,7 @@ impl RrdManifest {
 
                 let per_component = per_entity.entry(entity_path.clone()).or_default();
 
-                // TODO(cmc): technically we sould follow the usual crazy semantics to decide which
+                // TODO(cmc): technically we should follow the usual crazy semantics to decide which
                 // static chunk for which component in case of conflicts etc but, it's fine for now.
                 per_component
                     .entry(component)
