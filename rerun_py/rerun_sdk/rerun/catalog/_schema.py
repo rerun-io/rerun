@@ -19,9 +19,6 @@ class Schema:
     The schema representing a set of available columns for a dataset.
 
     A schema contains both index columns (timelines) and component columns (entity/component data).
-
-    This class wraps the internal schema representation and provides a Pythonic interface
-    for inspecting the available columns in a dataset.
     """
 
     def __init__(self, inner: SchemaInternal) -> None:
