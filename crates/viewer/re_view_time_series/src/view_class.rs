@@ -324,7 +324,7 @@ impl ViewClass for TimeSeriesView {
         {
             indicated_entities
                 .0
-                .extend(maybe_visualizable.iter().cloned());
+                .extend(maybe_visualizable.keys().cloned());
         }
 
         // Ensure we don't modify this list anymore before we check the `include_entity`.
@@ -386,7 +386,7 @@ impl ViewClass for TimeSeriesView {
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
+                    if ents.contains_key(entity_path) {
                         Some(visualizer)
                     } else {
                         None

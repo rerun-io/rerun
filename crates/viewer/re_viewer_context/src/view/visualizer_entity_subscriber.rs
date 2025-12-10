@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use ahash::HashMap;
 use bit_vec::BitVec;
 use nohash_hasher::IntMap;
@@ -6,10 +8,11 @@ use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
 use re_sdk_types::ComponentSet;
 use re_types_core::SerializedComponentColumn;
+use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, RequiredComponents, ViewSystemIdentifier,
-    VisualizableEntities, VisualizerSystem,
+    VisualizableEntities, VisualizerSystem, typed_entity_collections::VisualizableReason,
 };
 
 use super::visualizer_system::DatatypeSet;
@@ -235,7 +238,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     store_mapping
                         .visualizable_entities
                         .0
-                        .insert(entity_path.clone());
+                        .insert(entity_path.clone(), VisualizableReason::Always);
                 }
                 Requirement::AllComponents(AllComponentsRequirement {
                     required_components_indices,
@@ -288,7 +291,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         store_mapping
                             .visualizable_entities
                             .0
-                            .insert(entity_path.clone());
+                            .insert(entity_path.clone(), VisualizableReason::ExactMatchAll);
                     }
                 }
                 Requirement::AnyComponent(AnyComponentRequirement {
@@ -323,7 +326,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         store_mapping
                             .visualizable_entities
                             .0
-                            .insert(entity_path.clone());
+                            .insert(entity_path.clone(), VisualizableReason::ExactMatchAny);
                     }
                 }
                 Requirement::AnyPhysicalDatatype(AnyPhysicalDatatypeRequirement {
@@ -335,14 +338,33 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                     #[expect(clippy::iter_over_hash_type)]
                     for SerializedComponentColumn {
                         list_array,
-                        descriptor: _,
+                        descriptor,
                     } in event.diff.chunk.components().values()
                     {
                         if relevant_datatypes.contains(&list_array.value_type()) {
                             // The component might be present, but logged completely empty.
                             if !list_array.values().is_empty() {
                                 has_any_datatype = true;
-                                break;
+
+                                // Track the component that matched
+                                match store_mapping
+                                    .visualizable_entities
+                                    .0
+                                    .entry(entity_path.clone())
+                                {
+                                    Entry::Occupied(mut occupied_entry) => {
+                                        if let VisualizableReason::DatatypeMatchAny { components } =
+                                            occupied_entry.get_mut()
+                                        {
+                                            components.push(descriptor.component);
+                                        }
+                                    }
+                                    Entry::Vacant(vacant_entry) => {
+                                        vacant_entry.insert(VisualizableReason::DatatypeMatchAny {
+                                            components: SmallVec1::new(descriptor.component),
+                                        });
+                                    }
+                                }
                             }
                         }
                     }
@@ -354,11 +376,6 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                             event.store_id,
                             self.visualizer
                         );
-
-                        store_mapping
-                            .visualizable_entities
-                            .0
-                            .insert(entity_path.clone());
                     }
                 }
             }
