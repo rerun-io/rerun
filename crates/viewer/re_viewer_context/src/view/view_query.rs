@@ -55,7 +55,7 @@ pub struct VisualizerInstruction {
 impl VisualizerInstruction {
     /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
     /// but rather from the "general" blueprint overrides for the entity.
-    /// This is used for special properites like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
+    /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
     pub fn placeholder() -> Self {
         Self {
             visualizer_type: "___PLACEHOLDER___".into(),
