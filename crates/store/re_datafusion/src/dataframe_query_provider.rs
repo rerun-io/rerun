@@ -234,7 +234,7 @@ impl SegmentStreamExec {
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
 
-        let orderings = if projected_schema
+        let orderings: Vec<PhysicalSortExpr> = if projected_schema
             .fields()
             .iter()
             .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
