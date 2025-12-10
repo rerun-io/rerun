@@ -374,6 +374,27 @@ impl Chunk {
             && *timelines == other.timelines
             && components.0 == other.components.0
     }
+
+    // TODO: document
+    pub fn with_renamed_component(
+        &self,
+        source: ComponentIdentifier,
+        target: ComponentIdentifier,
+    ) -> Self {
+        let mut new_chunk = self.clone();
+        if let Some(old_entry) = new_chunk.components.remove(&source) {
+            new_chunk.components.insert(SerializedComponentColumn {
+                descriptor: ComponentDescriptor {
+                    component: target,
+                    archetype: old_entry.descriptor.archetype, // TODO: that's inconsistent with target.
+                    component_type: old_entry.descriptor.component_type, // TODO: that's just a lie.
+                },
+                list_array: old_entry.list_array,
+            });
+        }
+
+        new_chunk
+    }
 }
 
 impl Clone for Chunk {
