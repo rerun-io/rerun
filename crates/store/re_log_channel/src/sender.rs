@@ -126,6 +126,9 @@ impl LogSender {
     /// Block until we receive a command from a [`LogSender`].
     ///
     /// Return an error if there is no more [`LogSender`]s.
+    ///
+    /// Note: This is only implemented for non-wasm targets since we cannot make
+    /// blocking calls on web.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn recv_cmd(&self) -> Result<LoadCommand, RecvError> {
         self.rx.recv()
