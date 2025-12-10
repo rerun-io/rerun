@@ -338,7 +338,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                         descriptor: _,
                     } in event.diff.chunk.components().values()
                     {
-                        if relevant_datatypes.contains(list_array.data_type()) {
+                        if relevant_datatypes.contains(&list_array.value_type()) {
                             // The component might be present, but logged completely empty.
                             if !list_array.values().is_empty() {
                                 has_any_datatype = true;
