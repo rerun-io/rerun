@@ -48,4 +48,3 @@ web-sys = { workspace = true, features = ["Storage"] }
 
 [dev-dependencies]
 regex-lite.workspace = true
-
