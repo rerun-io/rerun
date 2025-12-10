@@ -89,10 +89,7 @@ impl RrdManifestBuilder {
         self.column_entity_paths.push(chunk.entity_path().clone());
 
         if chunk.is_static() {
-            for (desc, list_array) in itertools::izip!(
-                chunk.components().component_descriptors(),
-                chunk.components().list_arrays()
-            ) {
+            for desc in chunk.components().component_descriptors() {
                 let column = self.columns_static.entry(desc.clone()).or_insert_with(|| {
                     RrdManifestIndexColumn::new_padded(
                         self.column_chunk_ids.len().saturating_sub(1),
