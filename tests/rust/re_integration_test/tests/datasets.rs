@@ -129,7 +129,10 @@ pub async fn start_with_segment_url_with_fragment() {
     viewer_test_utils::step_until(
         "Redap recording id appears",
         &mut harness,
-        |harness| harness.query_by_label_contains("Streams").is_some(),
+        |harness| {
+            harness.query_by_label_contains("Streams").is_some()
+                && harness.query_by_label("Loading etries…").is_none()
+        },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
