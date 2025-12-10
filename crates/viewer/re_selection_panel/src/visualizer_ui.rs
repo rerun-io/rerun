@@ -11,7 +11,8 @@ use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item}
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState, VisualizerSystem,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
+    VisualizerInstruction, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -32,9 +33,13 @@ pub fn visualizer_ui(
         return;
     };
     let all_visualizers = ctx.new_visualizer_collection();
-    let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
-    let available_inactive_visualizers =
-        available_inactive_visualizers(ctx, &data_result, &active_visualizers);
+    let active_visualizers: Vec<_> = data_result
+        .visualizer_instructions
+        .iter()
+        .cloned()
+        .sorted_by_key(|instr| instr.visualizer_type)
+        .collect();
+    let available_visualizers = available_inactive_visualizers(ctx, &data_result);
 
     let button = ui
         .small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
@@ -44,10 +49,10 @@ pub fn visualizer_ui(
                 ui,
                 &data_result,
                 &active_visualizers,
-                &available_inactive_visualizers,
+                &available_visualizers,
             );
         })
-        .enabled(!available_inactive_visualizers.is_empty())
+        .enabled(!available_visualizers.is_empty())
         .on_hover_text("Add additional visualizers")
         .on_disabled_hover_text("No additional visualizers available");
 
@@ -88,7 +93,7 @@ pub fn visualizer_ui_impl(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     data_result: &DataResult,
-    active_visualizers: &[ViewSystemIdentifier],
+    active_visualizers: &[VisualizerInstruction],
     all_visualizers: &VisualizerCollection,
     visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
 ) {
@@ -100,8 +105,8 @@ pub fn visualizer_ui_impl(
             let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
-                    .filter(|v| *v != &vis_name)
-                    .map(|v| v.as_str()),
+                    .filter(|v| v.visualizer_type != vis_name)
+                    .map(|v| v.visualizer_type.as_str()),
             );
 
             ctx.save_blueprint_archetype(override_path.clone(), &archetype);
@@ -118,10 +123,13 @@ pub fn visualizer_ui_impl(
             );
         }
 
-        for &visualizer_id in active_visualizers {
+        for visualizer_instruction in active_visualizers {
+            let visualizer_id = visualizer_instruction.visualizer_type; // TODO: use the real visualizer id as key.
+            let visualizer_type = visualizer_instruction.visualizer_type;
+
             ui.push_id(visualizer_id, |ui| {
                 // List all components that the visualizer may consume.
-                if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_id) {
+                if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
                     let error_string =
                         visualizer_errors
@@ -137,7 +145,7 @@ pub fn visualizer_ui_impl(
                         .show_flat(
                             ui,
                             list_item::LabelContent::new(
-                                egui::RichText::new(format!("{visualizer_id}"))
+                                egui::RichText::new(format!("{visualizer_type}"))
                                     .size(10.0)
                                     .color(
                                         design_tokens_of_visuals(ui.visuals())
@@ -155,16 +163,16 @@ pub fn visualizer_ui_impl(
                         ui.error_label(error_string);
                     }
 
-                    visualizer_components(ctx, ui, data_result, visualizer);
+                    visualizer_components(ctx, ui, data_result, visualizer, visualizer_instruction);
                 } else {
                     ui.list_item_flat_noninteractive(
                         list_item::LabelContent::new(format!(
-                            "{visualizer_id} (unknown visualizer)"
+                            "{visualizer_type} (unknown visualizer type)"
                         ))
                         .weak(true)
                         .min_desired_width(150.0)
                         .with_buttons(|ui| {
-                            remove_visualizer_button(ui, visualizer_id);
+                            remove_visualizer_button(ui, visualizer_type);
                         })
                         .with_always_show_buttons(true),
                     );
@@ -189,6 +197,7 @@ fn visualizer_components(
     ui: &mut egui::Ui,
     data_result: &DataResult,
     visualizer: &dyn VisualizerSystem,
+    instruction: &VisualizerInstruction,
 ) {
     let query_info = visualizer.visualizer_query_info();
 
@@ -204,6 +213,7 @@ fn visualizer_components(
         data_result,
         query_info.queried_components(),
         query_shadowed_defaults,
+        instruction,
     );
 
     // TODO(andreas): Should we show required components in a special way?
@@ -578,19 +588,19 @@ fn menu_add_new_visualizer(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
     data_result: &DataResult,
-    active_visualizers: &[ViewSystemIdentifier],
-    inactive_visualizers: &[ViewSystemIdentifier],
+    active_visualizers: &[VisualizerInstruction],
+    available_visualizers: &[ViewSystemIdentifier],
 ) {
     let override_path = data_result.override_path();
 
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-    // Present an option to enable any visualizer that isn't already enabled.
-    for viz in inactive_visualizers {
+    for viz in available_visualizers {
         if ui.button(viz.as_str()).clicked() {
             let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
+                    .map(|v| &v.visualizer_type)
                     .chain(std::iter::once(viz))
                     .map(|v| v.as_str()),
             );
@@ -606,15 +616,12 @@ fn menu_add_new_visualizer(
 fn available_inactive_visualizers(
     ctx: &ViewContext<'_>,
     data_result: &DataResult,
-    active_visualizers: &[ViewSystemIdentifier],
 ) -> Vec<ViewSystemIdentifier> {
     let view_class = ctx.view_class_entry();
 
     ctx.viewer_ctx
         .iter_visualizable_entities_for_view_class(view_class.identifier)
-        .filter(|(vis, ents)| {
-            ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
-        })
+        .filter(|(_vis, ents)| ents.contains(&data_result.entity_path))
         .map(|(vis, _)| vis)
         .sorted()
         .collect::<Vec<_>>()

@@ -33,7 +33,7 @@ pub use view_context_system::{
 };
 pub use view_query::{
     DataResult, OverridePath, PerSystemDataResults, PropertyOverrides, SmallVisualizerSet,
-    ViewQuery,
+    ViewQuery, VisualizerInstruction,
 };
 pub use view_states::ViewStates;
 pub use visualizer_system::{

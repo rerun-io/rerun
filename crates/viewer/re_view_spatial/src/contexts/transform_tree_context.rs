@@ -11,10 +11,12 @@ use re_view::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
-    ViewContextSystemOncePerFrameResult, typed_fallback_for,
+    ViewContextSystemOncePerFrameResult, VisualizerInstruction, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewProperty;
 use vec1::smallvec_v1::SmallVec1;
+
+use crate::visualizers::CamerasVisualizer;
 
 type FrameIdMapping = IntMap<TransformFrameIdHash, TransformFrameId>;
 
@@ -201,6 +203,7 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result,
                     [transform_frame_id_component],
                     query_shadowed_components,
+                    &VisualizerInstruction::placeholder(), // Coordinate frame is not visualizer-specific.
                 )
             })
             .collect::<Vec<_>>();
@@ -423,20 +426,44 @@ fn lookup_image_plane_distance(
     // We're letting it slide for now since it's kinda hard to get into that situation.
     let entity_path_hash = *entity_path.first();
 
+    let plane_dist_component = archetypes::Pinhole::descriptor_image_plane_distance().component;
+
     ctx.query_result
         .tree
         .lookup_result_by_path(entity_path_hash)
-        .cloned()
         .map(|data_result| {
-            data_result
-                .latest_at_with_blueprint_resolved_data_for_component(
-                    ctx,
-                    latest_at_query,
-                    archetypes::Pinhole::descriptor_image_plane_distance().component,
-                )
-                .get_mono_with_fallback::<ImagePlaneDistance>(
-                    archetypes::Pinhole::descriptor_image_plane_distance().component,
-                )
+            // If there's any pinhole that could have an override for this use it.
+            // TODO(andreas): But what if there's many pinholes visualizers?
+            if let Some(visualizer_instruction) = data_result
+                .visualizer_instructions
+                .iter()
+                .find(|instruction| instruction.visualizer_type == CamerasVisualizer::identifier())
+            {
+                data_result
+                    .latest_at_with_blueprint_resolved_data_for_component(
+                        ctx,
+                        latest_at_query,
+                        plane_dist_component,
+                        visualizer_instruction,
+                    )
+                    .get_mono_with_fallback::<ImagePlaneDistance>(plane_dist_component)
+            } else {
+                ctx.viewer_ctx
+                    .recording_engine()
+                    .cache()
+                    .latest_at(
+                        latest_at_query,
+                        &data_result.entity_path,
+                        [plane_dist_component],
+                    )
+                    .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
+                    .unwrap_or_else(|| {
+                        typed_fallback_for(
+                            &ctx.query_context(data_result, latest_at_query),
+                            plane_dist_component,
+                        )
+                    })
+            }
         })
         .unwrap_or_default()
         .into()
@@ -483,6 +510,7 @@ impl EntityTransformIdMapping {
                 origin_data_result,
                 [transform_frame_id_component],
                 query_shadowed_components,
+                &VisualizerInstruction::placeholder(), // Coordinate frame is not visualizer-specific.
             );
 
             mapping.determine_frame_id_mapping_for(ctx, &results);

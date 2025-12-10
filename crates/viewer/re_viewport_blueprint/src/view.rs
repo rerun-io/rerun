@@ -699,7 +699,9 @@ mod tests {
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
 
-                let component_overrides = &result.property_overrides.component_overrides;
+                let first_instruction = result.visualizer_instructions.first().unwrap();
+                let component_overrides = &first_instruction.property_overrides.component_overrides;
+
                 let mut expected_overrides = expected_overrides
                     .get(&result.entity_path)
                     .cloned()

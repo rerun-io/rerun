@@ -68,7 +68,8 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
             let Some(transform_info) = transform_info_for_entity_or_report_error(
                 transforms,
                 &data_result.entity_path,
@@ -121,6 +122,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 data_result,
                 [axis_length_identifier, show_frame_identifier],
                 false,
+                instruction,
             );
 
             let axis_length: f32 = results

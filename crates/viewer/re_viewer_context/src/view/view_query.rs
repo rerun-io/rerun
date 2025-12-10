@@ -41,6 +41,51 @@ pub struct PropertyOverrides {
     // TODO(jleibs): Consider something like `tinymap` for this.
     // TODO(andreas): Should be a `Cow` to not do as many clones.
     pub component_overrides: IntMap<ComponentIdentifier, OverridePath>,
+}
+
+pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
+
+#[derive(Clone, Debug)]
+pub struct VisualizerInstruction {
+    pub visualizer_type: ViewSystemIdentifier,
+    pub property_overrides: PropertyOverrides,
+    // visualizer_id: String,
+}
+
+impl VisualizerInstruction {
+    /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
+    /// but rather from the "general" blueprint overrides for the entity.
+    /// This is used for special properites like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
+    pub fn placeholder() -> Self {
+        Self {
+            visualizer_type: "___PLACEHOLDER___".into(),
+            property_overrides: PropertyOverrides {
+                component_overrides: IntMap::default(),
+            },
+        }
+    }
+}
+
+/// This is the primary mechanism through which data is passed to a `View`.
+///
+/// It contains everything necessary to properly use this data in the context of the
+/// `ViewSystem`s that it is a part of.
+#[derive(Clone, Debug)]
+pub struct DataResult {
+    /// Where to retrieve the data from.
+    // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
+    // multi-RRD or blueprint-static data references.
+    pub entity_path: EntityPath,
+
+    /// Which `ViewSystems`s to pass the `DataResult` to.
+    // pub visualizers: SmallVisualizerSet,
+    pub visualizer_instructions: SmallVec<[VisualizerInstruction; 1]>,
+
+    /// If true, this path is not actually included in the query results and is just here
+    /// because of a common prefix.
+    ///
+    /// If this is true, `visualizers` must be empty.
+    pub tree_prefix_only: bool,
 
     /// Whether the entity is visible.
     ///
@@ -62,36 +107,13 @@ pub struct PropertyOverrides {
     pub query_range: QueryRange,
 }
 
-pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
-
-/// This is the primary mechanism through which data is passed to a `View`.
-///
-/// It contains everything necessary to properly use this data in the context of the
-/// `ViewSystem`s that it is a part of.
-#[derive(Clone, Debug)]
-pub struct DataResult {
-    /// Where to retrieve the data from.
-    // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
-    // multi-RRD or blueprint-static data references.
-    pub entity_path: EntityPath,
-
-    /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub visualizers: SmallVisualizerSet,
-
-    /// If true, this path is not actually included in the query results and is just here
-    /// because of a common prefix.
-    ///
-    /// If this is true, `visualizers` must be empty.
-    pub tree_prefix_only: bool,
-
-    /// The accumulated property overrides for this `DataResult`.
-    pub property_overrides: PropertyOverrides,
-}
-
 impl DataResult {
+    /// The override path for this data result.
+    ///
+    /// This is **not** the override path for a concrete visualizer instruction yet.
     #[inline]
     pub fn override_path(&self) -> &EntityPath {
-        &self.property_overrides.override_path
+        &self.override_path
     }
 
     /// Overrides the `visible` behavior such that the given value becomes set next frame.
@@ -116,7 +138,7 @@ impl DataResult {
 
             if parent_visibility == new_value {
                 ctx.clear_blueprint_component(
-                    self.property_overrides.override_path.clone(),
+                    self.override_path.clone(),
                     EntityBehavior::descriptor_visible(),
                 );
                 return;
@@ -124,7 +146,7 @@ impl DataResult {
         }
 
         ctx.save_blueprint_archetype(
-            self.property_overrides.override_path.clone(),
+            self.override_path.clone(),
             &blueprint_archetypes::EntityBehavior::update_fields().with_visible(new_value),
         );
     }
@@ -151,7 +173,7 @@ impl DataResult {
 
             if parent_interactivity == new_value {
                 ctx.clear_blueprint_component(
-                    self.property_overrides.override_path.clone(),
+                    self.override_path.clone(),
                     EntityBehavior::descriptor_interactive(),
                 );
                 return;
@@ -159,29 +181,35 @@ impl DataResult {
         }
 
         ctx.save_blueprint_archetype(
-            self.property_overrides.override_path.clone(),
+            self.override_path.clone(),
             &blueprint_archetypes::EntityBehavior::update_fields().with_interactive(new_value),
         );
     }
 
+    // TODO: only checks first visualizer instruction.
     fn has_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
-        self.property_overrides
-            .component_overrides
-            .get(&component)
-            .is_some_and(|OverridePath { store_kind, path }| {
-                match store_kind {
-                    StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(
-                        ctx.blueprint_query,
-                        path,
-                        [component],
-                    ),
-                    StoreKind::Recording => {
-                        ctx.recording()
-                            .latest_at(&ctx.current_query(), path, [component])
-                    }
-                }
-                .get(component)
-                .is_some()
+        self.visualizer_instructions
+            .first()
+            .is_some_and(|instruction| {
+                instruction
+                    .property_overrides
+                    .component_overrides
+                    .get(&component)
+                    .is_some_and(|OverridePath { store_kind, path }| {
+                        match store_kind {
+                            StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(
+                                ctx.blueprint_query,
+                                path,
+                                [component],
+                            ),
+                            StoreKind::Recording => {
+                                ctx.recording()
+                                    .latest_at(&ctx.current_query(), path, [component])
+                            }
+                        }
+                        .get(component)
+                        .is_some()
+                    })
             })
     }
 
@@ -191,7 +219,7 @@ impl DataResult {
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_visible(&self) -> bool {
-        self.property_overrides.visible
+        self.visible
     }
 
     /// Shorthand for checking for interactivity on data overrides.
@@ -200,12 +228,12 @@ impl DataResult {
     // TODO(#6541): Check the datastore.
     #[inline]
     pub fn is_interactive(&self) -> bool {
-        self.property_overrides.interactive
+        self.interactive
     }
 
     /// Returns the query range for this data result.
     pub fn query_range(&self) -> &QueryRange {
-        &self.property_overrides.query_range
+        &self.query_range
     }
 }
 
@@ -222,6 +250,7 @@ pub struct ViewQuery<'s> {
     /// All [`DataResult`]s that are queried by active visualizers.
     ///
     /// Contains also invisible objects, use `iter_visible_data_results` to iterate over visible ones.
+    // TODO: this seems weird now, because within a dataresult we STILL have to iterate & filter for visualizers
     pub per_visualizer_data_results: PerSystemDataResults<'s>,
 
     /// The timeline we're on.
@@ -238,10 +267,10 @@ pub struct ViewQuery<'s> {
 
 impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
-    pub fn iter_visible_data_results<'a>(
+    pub fn iter_visualizer_instruction_for<'a>(
         &'a self,
         visualizer: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = &'a DataResult>
+    ) -> impl Iterator<Item = (&'a DataResult, &'a VisualizerInstruction)> + 'a
     where
         's: 'a,
     {
@@ -249,7 +278,18 @@ impl<'s> ViewQuery<'s> {
             itertools::Either::Left(std::iter::empty()),
             |results| {
                 itertools::Either::Right(
-                    results.iter().filter(|result| result.is_visible()).copied(),
+                    results
+                        .iter()
+                        .filter(|result| result.is_visible())
+                        .flat_map(move |result| {
+                            result
+                                .visualizer_instructions
+                                .iter()
+                                .filter_map(move |instruction| {
+                                    (instruction.visualizer_type == visualizer)
+                                        .then_some((*result, instruction))
+                                })
+                        }),
                 )
             },
         )

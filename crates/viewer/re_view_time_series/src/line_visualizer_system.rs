@@ -73,7 +73,7 @@ impl SeriesLinesSystem {
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
         let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
 
-        let data_results = query.iter_visible_data_results(Self::identifier());
+        let data_results = query.iter_visualizer_instruction_for(Self::identifier());
 
         let parallel_loading = true;
         if parallel_loading {
@@ -83,9 +83,9 @@ impl SeriesLinesSystem {
                 .collect_vec()
                 .par_iter()
                 .map(
-                    |data_result| -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
+                    |(data_result, instruction)| -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
                         let mut series = vec![];
-                        Self::load_series(ctx, query, time_per_pixel, data_result, &mut series)?;
+                        Self::load_series(ctx, query, time_per_pixel, data_result, instruction, &mut series)?;
                         Ok(series)
                     },
                 )
@@ -95,8 +95,15 @@ impl SeriesLinesSystem {
             }
         } else {
             let mut series = vec![];
-            for data_result in data_results {
-                Self::load_series(ctx, query, time_per_pixel, data_result, &mut series)?;
+            for (data_result, instruction) in data_results {
+                Self::load_series(
+                    ctx,
+                    query,
+                    time_per_pixel,
+                    data_result,
+                    instruction,
+                    &mut series,
+                )?;
             }
             self.all_series = series;
         }
@@ -109,6 +116,7 @@ impl SeriesLinesSystem {
         view_query: &ViewQuery<'_>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
+        instruction: &re_viewer_context::VisualizerInstruction,
         all_series: &mut Vec<PlotSeries>,
     ) -> Result<(), ViewPropertyQueryError> {
         re_tracing::profile_function!();
@@ -136,6 +144,7 @@ impl SeriesLinesSystem {
                 data_result,
                 archetypes::Scalars::all_component_identifiers()
                     .chain(archetypes::SeriesLines::all_component_identifiers()),
+                instruction,
             );
 
             // If we have no scalars, we can't do anything.
@@ -187,6 +196,7 @@ impl SeriesLinesSystem {
                 data_result,
                 archetypes::SeriesLines::all_component_identifiers(),
                 query_shadowed_components,
+                instruction,
             );
 
             collect_colors(
