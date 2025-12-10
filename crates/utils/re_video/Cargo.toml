@@ -106,7 +106,6 @@ re_log = { workspace = true, features = ["setup"] }
 
 # For build.rs:
 [build-dependencies]
-re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
 [[example]]
