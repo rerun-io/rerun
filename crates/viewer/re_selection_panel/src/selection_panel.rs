@@ -528,10 +528,10 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
         data_result,
         [component],
         query_shadowed_components,
-        &VisualizerInstruction::placeholder(), // coordinate frames aren't associated with any particular visualizer
+        &VisualizerInstruction::placeholder(data_result), // coordinate frames aren't associated with any particular visualizer
     );
 
-    let override_path = data_result.override_path();
+    let override_path = data_result.override_base_path();
 
     let result_override = query_result.overrides.get(component);
     let raw_override = result_override

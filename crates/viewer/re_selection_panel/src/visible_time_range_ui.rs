@@ -48,7 +48,13 @@ pub fn visible_time_range_ui_for_data_result(
 ) {
     let query_range = data_result.query_range.clone();
     let is_view = false;
-    visible_time_range_ui(ctx, ui, query_range, data_result.override_path(), is_view);
+    visible_time_range_ui(
+        ctx,
+        ui,
+        query_range,
+        data_result.override_base_path(),
+        is_view,
+    );
 }
 
 /// Draws ui for a visible time range from a given override path and a resulting query range.

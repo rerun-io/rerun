@@ -150,7 +150,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
                         &query,
-                        &VisualizerInstruction::placeholder(),
+                        &VisualizerInstruction::placeholder(data_result),
                     );
 
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(

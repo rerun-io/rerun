@@ -203,7 +203,7 @@ impl ViewContextSystem for TransformTreeContext {
                     data_result,
                     [transform_frame_id_component],
                     query_shadowed_components,
-                    &VisualizerInstruction::placeholder(), // Coordinate frame is not visualizer-specific.
+                    &VisualizerInstruction::placeholder(data_result), // Coordinate frame is not visualizer-specific.
                 )
             })
             .collect::<Vec<_>>();
@@ -510,7 +510,7 @@ impl EntityTransformIdMapping {
                 origin_data_result,
                 [transform_frame_id_component],
                 query_shadowed_components,
-                &VisualizerInstruction::placeholder(), // Coordinate frame is not visualizer-specific.
+                &VisualizerInstruction::placeholder(origin_data_result), // Coordinate frame is not visualizer-specific.
             );
 
             mapping.determine_frame_id_mapping_for(ctx, &results);

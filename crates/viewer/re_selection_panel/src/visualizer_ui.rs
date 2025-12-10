@@ -3,6 +3,7 @@ use re_chunk::RowId;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
+use re_sdk_types::external::uuid;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -97,22 +98,23 @@ pub fn visualizer_ui_impl(
     all_visualizers: &VisualizerCollection,
     visualizer_errors: &PerVisualizer<VisualizerExecutionErrorState>,
 ) {
-    let override_path = data_result.override_path();
+    let override_base_path = data_result.override_base_path();
 
-    let remove_visualizer_button = |ui: &mut egui::Ui, vis_name: ViewSystemIdentifier| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
-        if response.clicked() {
-            let archetype = ActiveVisualizers::new(
-                active_visualizers
-                    .iter()
-                    .filter(|v| v.visualizer_type != vis_name)
-                    .map(|v| v.visualizer_type.as_str()),
-            );
+    let remove_visualizer_button =
+        |ui: &mut egui::Ui, visualizer_id: &re_viewer_context::VisualizerInstructionId| {
+            let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Close");
+            if response.clicked() {
+                let archetype = ActiveVisualizers::new(
+                    active_visualizers
+                        .iter()
+                        .filter(|v| &v.id != visualizer_id)
+                        .map(|v| v.id.as_str()),
+                );
 
-            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
-        }
-        response
-    };
+                ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
+            }
+            response
+        };
 
     list_item::list_item_scope(ui, "visualizers", |ui| {
         if active_visualizers.is_empty() {
@@ -124,19 +126,17 @@ pub fn visualizer_ui_impl(
         }
 
         for visualizer_instruction in active_visualizers {
-            let visualizer_id = visualizer_instruction.visualizer_type; // TODO: use the real visualizer id as key.
             let visualizer_type = visualizer_instruction.visualizer_type;
 
-            ui.push_id(visualizer_id, |ui| {
+            ui.push_id(&visualizer_instruction.id, |ui| {
                 // List all components that the visualizer may consume.
-                if let Ok(visualizer) = all_visualizers.get_by_identifier(visualizer_type) {
+                if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
-                    let error_string =
-                        visualizer_errors
-                            .get(&visualizer_id)
-                            .and_then(|error_state| {
-                                error_state.error_string_for(&data_result.entity_path)
-                            });
+                    let error_string = visualizer_errors
+                        .get(&visualizer_type) // TODO: track errors per visualizer id, not per visualizer type.
+                        .and_then(|error_state| {
+                            error_state.error_string_for(&data_result.entity_path)
+                        });
 
                     ui.list_item()
                         .with_y_offset(1.0)
@@ -154,7 +154,7 @@ pub fn visualizer_ui_impl(
                             )
                             .min_desired_width(150.0)
                             .with_buttons(|ui| {
-                                remove_visualizer_button(ui, visualizer_id);
+                                remove_visualizer_button(ui, &visualizer_instruction.id);
                             })
                             .with_always_show_buttons(true),
                         );
@@ -172,7 +172,7 @@ pub fn visualizer_ui_impl(
                         .weak(true)
                         .min_desired_width(150.0)
                         .with_buttons(|ui| {
-                            remove_visualizer_button(ui, visualizer_type);
+                            remove_visualizer_button(ui, &visualizer_instruction.id);
                         })
                         .with_always_show_buttons(true),
                     );
@@ -262,7 +262,7 @@ fn visualizer_components(
                 ),
             };
 
-        let override_path = data_result.override_path();
+        let override_path = &instruction.override_path;
 
         let value_fn = |ui: &mut egui::Ui, _style| {
             // Edit ui can only handle a single value.
@@ -591,21 +591,30 @@ fn menu_add_new_visualizer(
     active_visualizers: &[VisualizerInstruction],
     available_visualizers: &[ViewSystemIdentifier],
 ) {
-    let override_path = data_result.override_path();
+    let override_base_path = data_result.override_base_path();
 
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
-    for viz in available_visualizers {
-        if ui.button(viz.as_str()).clicked() {
+    for visualizer_type in available_visualizers {
+        if ui.button(visualizer_type.as_str()).clicked() {
+            // To add a visualizer we have to do two things:
+            // * add an element to the ist of active visualizer ids
+            // * add a visualizer type information for that new visualizer instruction
+
+            let new_id = uuid::Uuid::new_v4().to_string(); // TODO: figure out a better id scheme.
+            let new_instruction =
+                VisualizerInstruction::new(new_id, *visualizer_type, override_base_path);
+
             let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
-                    .map(|v| &v.visualizer_type)
-                    .chain(std::iter::once(viz))
+                    .map(|v| &v.id)
+                    .chain(std::iter::once(&new_instruction.id))
                     .map(|v| v.as_str()),
             );
+            ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
 
-            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
+            new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 
             ui.close();
         }

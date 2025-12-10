@@ -35,9 +35,8 @@ pub fn range_with_blueprint_resolved_data<'a>(
 
     let overrides = query_overrides(
         ctx.viewer_ctx,
-        data_result,
-        components.iter().copied(),
         visualizer_instruction,
+        components.iter().copied(),
     );
 
     // No need to query for components that have overrides.
@@ -82,9 +81,8 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let mut components = components.into_iter().collect::<IntSet<_>>();
     let overrides = query_overrides(
         ctx.viewer_ctx,
-        data_result,
-        components.iter().copied(),
         visualizer_instruction,
+        components.iter().copied(),
     );
 
     // No need to query for components that have overrides unless opted in!
@@ -153,12 +151,10 @@ pub fn query_archetype_with_history<'a>(
     }
 }
 
-// TODO: queries only first visualizer instruction.
 pub fn query_overrides(
     ctx: &ViewerContext<'_>,
-    data_result: &re_viewer_context::DataResult,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     components: impl IntoIterator<Item = ComponentIdentifier>,
-    _visualizer_instruction: &re_viewer_context::VisualizerInstruction, // TODO(andreas): use this for redirecting of overrides. TODO(andreas): this probably should only be an id, not the whole instruction
 ) -> LatestAtResults {
     // First see if any components have overrides.
     let mut overrides = LatestAtResults::empty("<overrides>".into(), ctx.current_query());
@@ -166,34 +162,15 @@ pub fn query_overrides(
     let blueprint_engine = &ctx.store_context.blueprint.storage_engine();
 
     for component in components {
-        if let Some(instruction) = data_result.visualizer_instructions.first()
-            && let Some(override_value) = instruction
-                .property_overrides
-                .component_overrides
-                .get(&component)
+        if visualizer_instruction
+            .component_overrides
+            .contains(&component)
         {
-            let current_query = match override_value.store_kind {
-                re_log_types::StoreKind::Recording => ctx.current_query(),
-                re_log_types::StoreKind::Blueprint => ctx.blueprint_query.clone(),
-            };
-
-            let component_override_result = match override_value.store_kind {
-                re_log_types::StoreKind::Recording => {
-                    // TODO(jleibs): This probably is not right, but this code path is not used
-                    // currently. This may want to use range_query instead depending on how
-                    // component override data-references are resolved.
-                    blueprint_engine.cache().latest_at(
-                        &current_query,
-                        &override_value.path,
-                        [component],
-                    )
-                }
-                re_log_types::StoreKind::Blueprint => blueprint_engine.cache().latest_at(
-                    &current_query,
-                    &override_value.path,
-                    [component],
-                ),
-            };
+            let component_override_result = blueprint_engine.cache().latest_at(
+                ctx.blueprint_query,
+                &visualizer_instruction.override_path,
+                [component],
+            );
 
             // If we successfully find a non-empty override, add it to our results.
 
@@ -204,7 +181,7 @@ pub fn query_overrides(
             // This is extra tricky since the promise hasn't been resolved yet so we can't
             // actually look at the data.
             if let Some(value) = component_override_result.get(component) {
-                let index = value.index(&current_query.timeline());
+                let index = value.index(&ctx.blueprint_query.timeline());
 
                 // NOTE: This can never happen, but I'd rather it happens than an unwrap.
                 debug_assert!(index.is_some(), "{value:#?}");

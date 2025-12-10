@@ -17,9 +17,9 @@ use re_sdk_types::blueprint::{
 use re_sdk_types::{Archetype as _, Loggable as _, ViewClassIdentifier};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, OverridePath, PerVisualizer, PerVisualizerInViewClass, PropertyOverrides,
-    QueryRange, ViewClassRegistry, ViewId, ViewState, ViewSystemIdentifier, ViewerContext,
-    VisualizableEntities, VisualizerInstruction,
+    IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewClassRegistry,
+    ViewId, ViewState, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -86,6 +86,12 @@ impl ViewContents {
     /// Has to be kept in sync with similar occurrences in other SDK languages.
     const OVERRIDES_PREFIX: &'static str = "overrides";
 
+    /// Visualizers prefix.
+    ///
+    /// At this prefix we store entity global information.
+    /// After that come visualizer instruction ids in the path hierarchy.
+    const VISUALIZERS_PREFIX: &'static str = "visualizers";
+
     /// Creates a new [`ViewContents`].
     ///
     /// This [`ViewContents`] is ephemeral. It must be saved by calling
@@ -119,6 +125,7 @@ impl ViewContents {
         Self::blueprint_entity_path_for_id(id)
             .join(&EntityPath::from_single_string(Self::OVERRIDES_PREFIX))
             .join(entity_path)
+            .join(&EntityPath::from_single_string(Self::VISUALIZERS_PREFIX))
     }
 
     /// Attempt to load a [`ViewContents`] from the blueprint store.
@@ -289,7 +296,7 @@ impl ViewContents {
         let executor = QueryExpressionEvaluator {
             visualizers_per_entity: &visualizers_per_entity,
             entity_path_filter: &self.entity_path_filter,
-            override_base_path: Self::override_path_for_entity(self.view_id, &EntityPath::root()),
+            view_id: self.view_id,
         };
 
         let mut num_matching_entities = 0;
@@ -317,7 +324,8 @@ impl ViewContents {
                 if entities.is_empty() {
                     continue;
                 }
-                let Ok(visualizer) = visualizer_collection.get_by_identifier(*visualizer) else {
+                let Ok(visualizer) = visualizer_collection.get_by_type_identifier(*visualizer)
+                else {
                     continue;
                 };
                 components_for_defaults
@@ -367,7 +375,7 @@ impl ViewContents {
 struct QueryExpressionEvaluator<'a> {
     visualizers_per_entity: &'a IntMap<EntityPathHash, SmallVec<[ViewSystemIdentifier; 4]>>,
     entity_path_filter: &'a ResolvedEntityPathFilter,
-    override_base_path: EntityPath,
+    view_id: ViewId,
 }
 
 impl QueryExpressionEvaluator<'_> {
@@ -425,7 +433,10 @@ impl QueryExpressionEvaluator<'_> {
                     tree_prefix_only: !matches_filter,
                     visible: true, // Determined later during `update_overrides_recursive`.
                     interactive: true, // Determined later during `update_overrides_recursive`.
-                    override_path: self.override_base_path.join(entity_path),
+                    override_base_path: ViewContents::override_path_for_entity(
+                        self.view_id,
+                        entity_path,
+                    ),
                     query_range: QueryRange::default(), // Determined later during `update_overrides_recursive`.
                 },
                 children,
@@ -489,7 +500,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
         node.data_result.visible = parent_visible;
         node.data_result.interactive = parent_interactive;
 
-        let override_path = &node.data_result.override_path;
+        let override_base_path = &node.data_result.override_base_path;
 
         // Update visualizers from overrides.
         // So far, `visualizers` is set to the available visualizers.
@@ -497,23 +508,38 @@ impl<'a> DataQueryPropertyResolver<'a> {
             // If the user has overridden the visualizers, update which visualizers are used.
             let id_component =
                 blueprint_archetypes::ActiveVisualizers::descriptor_instruction_ids().component;
+            let type_component =
+                blueprint_archetypes::VisualizerInstruction::descriptor_visualizer_type().component;
 
             if let Some(visualizer_instruction_ids) = blueprint
                 .latest_at(
                     blueprint_query,
-                    &node.data_result.override_path,
+                    &node.data_result.override_base_path,
                     [id_component],
                 )
                 .component_batch::<blueprint_components::VisualizerInstructionId>(id_component)
             {
                 node.data_result.visualizer_instructions = visualizer_instruction_ids
                     .into_iter()
-                    .map(|instruction_id| VisualizerInstruction {
-                        id: instruction_id.0.into(),
-                        visualizer_type: "TODO WRONG".into(), // TODO: fetch type
-                        property_overrides: PropertyOverrides {
-                            component_overrides: IntMap::default(),
-                        },
+                    .map(|instruction_id| {
+                        let instruction_id = instruction_id.0.into();
+
+                        let visualizer_override_path = VisualizerInstruction::override_path_for(
+                            &node.data_result.override_base_path,
+                            &instruction_id,
+                        );
+                        let visualizer_type = blueprint
+                            .latest_at(blueprint_query, &visualizer_override_path, [type_component])
+                            .component_mono_quiet::<blueprint_components::VisualizerType>(
+                                type_component,
+                            )
+                            .map_or_else(|| "No type specified".into(), |vt| vt.as_str().into());
+
+                        VisualizerInstruction::new(
+                            instruction_id,
+                            visualizer_type,
+                            &node.data_result.override_base_path,
+                        )
                     })
                     .collect();
             } else {
@@ -528,78 +554,87 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     )
                     .into_iter()
                     .enumerate()
-                    .map(|(i, v)| VisualizerInstruction {
-                        id: i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
-                        visualizer_type: v,
-                        property_overrides: PropertyOverrides {
-                            component_overrides: IntMap::default(),
-                        },
+                    .map(|(i, visualizer_type)| {
+                        VisualizerInstruction::new(
+                            i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
+                            visualizer_type,
+                            &node.data_result.override_base_path,
+                        )
                     })
                     .collect();
             }
         }
 
-        // Gather overrides.
-        if let Some(override_subtree) = blueprint.tree().subtree(&node.data_result.override_path) {
+        // Gather "special" overrides directly on the base path (per entity).
+        for component in blueprint
+            .storage_engine()
+            .store()
+            .all_components_for_entity(override_base_path)
+            .unwrap_or_default()
+        {
+            if let Some(component_data) = blueprint
+                    .storage_engine()
+                    .cache()
+                    .latest_at(blueprint_query, override_base_path, [component])
+                    .component_batch_raw(component)
+                &&
+                    // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
+                     !component_data.is_empty()
+            {
+                // Handle special overrides:
+                //
+                // Visible time range override.
+                if component
+                    == blueprint_archetypes::VisibleTimeRanges::descriptor_ranges().component
+                {
+                    if let Ok(visible_time_ranges) =
+                        blueprint_components::VisibleTimeRange::from_arrow(&component_data)
+                        && let Some(time_range) = visible_time_ranges.iter().find(|range| {
+                            range.timeline.as_str() == active_timeline.name().as_str()
+                        })
+                    {
+                        node.data_result.query_range =
+                            QueryRange::TimeRange(time_range.0.range.clone());
+                    }
+                }
+                // Visible override.
+                else if component
+                    == blueprint_archetypes::EntityBehavior::descriptor_visible().component
+                {
+                    if let Some(visible_array) = component_data.as_boolean_opt() {
+                        // We already checked for non-empty above, so this should be safe.
+                        node.data_result.visible = visible_array.value(0);
+                    }
+                }
+                // Interactive override.
+                else if component
+                    == blueprint_archetypes::EntityBehavior::descriptor_interactive().component
+                    && let Some(interactive_array) = component_data.as_boolean_opt()
+                {
+                    // We already checked for non-empty above, so this should be safe.
+                    node.data_result.interactive = interactive_array.value(0);
+                }
+            }
+        }
+
+        // Gather real overrides on visualizer instruction specific path.
+        // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
+        for instruction in &mut node.data_result.visualizer_instructions {
             for component in blueprint
                 .storage_engine()
                 .store()
-                .all_components_for_entity(&override_subtree.path)
+                .all_components_for_entity(&instruction.override_path)
                 .unwrap_or_default()
             {
                 if let Some(component_data) = blueprint
-                    .storage_engine()
-                    .cache()
-                    .latest_at(blueprint_query, override_path, [component])
-                    .component_batch_raw(component)
-                {
+                        .storage_engine()
+                        .cache()
+                        .latest_at(blueprint_query, &instruction.override_path, [component])
+                        .component_batch_raw(component) &&
                     // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
-                    if !component_data.is_empty() {
-                        // Handle special overrides:
-                        //
-                        // Visible time range override.
-                        if component
-                            == blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()
-                                .component
-                        {
-                            if let Ok(visible_time_ranges) =
-                                blueprint_components::VisibleTimeRange::from_arrow(&component_data)
-                                && let Some(time_range) = visible_time_ranges.iter().find(|range| {
-                                    range.timeline.as_str() == active_timeline.name().as_str()
-                                })
-                            {
-                                node.data_result.query_range =
-                                    QueryRange::TimeRange(time_range.0.range.clone());
-                            }
-                        }
-                        // Visible override.
-                        else if component
-                            == blueprint_archetypes::EntityBehavior::descriptor_visible().component
-                        {
-                            if let Some(visible_array) = component_data.as_boolean_opt() {
-                                // We already checked for non-empty above, so this should be safe.
-                                node.data_result.visible = visible_array.value(0);
-                            }
-                        }
-                        // Interactive override.
-                        else if component
-                            == blueprint_archetypes::EntityBehavior::descriptor_interactive()
-                                .component
-                            && let Some(interactive_array) = component_data.as_boolean_opt()
-                        {
-                            // We already checked for non-empty above, so this should be safe.
-                            node.data_result.interactive = interactive_array.value(0);
-                        }
-
-                        // TODO(andreas): Why not keep the component data while we're here? Could speed up things a lot down the line.
-                        // TODO: Need to drill into per visualizer instruction overrides. For now just distribute all overrides to all instructions.
-                        for instruction in &mut node.data_result.visualizer_instructions {
-                            instruction.property_overrides.component_overrides.insert(
-                                component,
-                                OverridePath::blueprint_path(override_path.clone()),
-                            );
-                        }
-                    }
+                     !component_data.is_empty()
+                {
+                    instruction.component_overrides.insert(component);
                 }
             }
         }
