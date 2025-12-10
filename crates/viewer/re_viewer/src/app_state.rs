@@ -864,7 +864,7 @@ fn prefetch_chunks(
                     }
                 }
                 Err(err) => {
-                    re_log::debug!("time_range_missing_chunks failed: {err}");
+                    re_log::debug_once!("time_range_missing_chunks failed: {err}");
                 }
             }
         }

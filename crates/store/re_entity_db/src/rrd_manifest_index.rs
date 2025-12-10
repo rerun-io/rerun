@@ -316,6 +316,10 @@ impl RrdManifestIndex {
                     let Some(info) = self.remote_chunks.get(chunk_id) else {
                         continue;
                     };
+                    debug_assert!(
+                        time_range.min <= time_range.max,
+                        "Unexpected negative time range in RRD manifest"
+                    );
                     time_ranges_all_chunks.push((*info.state.lock(), *time_range));
                 }
             }

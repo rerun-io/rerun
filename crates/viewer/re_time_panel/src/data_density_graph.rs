@@ -495,6 +495,8 @@ pub fn paint_loaded_indicator_bar(
         if let Some(start) = time_ranges_ui.x_from_time(range.min.into())
             && let Some(end) = time_ranges_ui.x_from_time(range.max.into())
         {
+            debug_assert!(range.min <= range.max, "Negative time-range");
+            debug_assert!(start <= end, "Negative x-range");
             let range = Rangef::new(start as f32, end as f32);
 
             while delayed_ranges
@@ -518,7 +520,7 @@ pub fn paint_loaded_indicator_bar(
     for (load_state, x) in drawn_ranges {
         let x = x.intersection(x_range);
 
-        if x.span() == 0.0 {
+        if x.span() <= 0.0 {
             continue;
         }
 
