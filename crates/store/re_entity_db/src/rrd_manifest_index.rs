@@ -321,6 +321,8 @@ impl RrdManifestIndex {
         &self,
         timeline: &Timeline,
     ) -> Vec<(LoadState, AbsoluteTimeRange)> {
+        re_tracing::profile_function!();
+
         let mut time_ranges_all_chunks = Vec::new();
 
         for timelines in self.native_temporal_map.values() {
@@ -357,6 +359,7 @@ impl RrdManifestIndex {
         component: Option<re_chunk::ComponentIdentifier>,
     ) -> Vec<(AbsoluteTimeRange, u64)> {
         re_tracing::profile_function!();
+
         if let Some(component) = component {
             let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity) else {
                 return Vec::new();
@@ -380,7 +383,7 @@ impl RrdManifestIndex {
                             LoadState::Loaded => false,
                         })
                 })
-                .map(|(_, entry)| (entry.time_range, 1))
+                .map(|(_, entry)| (entry.time_range, entry.num_rows))
                 .collect()
         } else {
             // If we don't have a specific component we want to include the entity's children
@@ -409,8 +412,7 @@ impl RrdManifestIndex {
                         LoadState::Loaded => false,
                     })
             }) {
-                // TODO: Count
-                ranges.push((entry.time_range, 1));
+                ranges.push((entry.time_range, entry.num_rows));
             }
         }
 
