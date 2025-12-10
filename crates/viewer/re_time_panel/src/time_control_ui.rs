@@ -110,6 +110,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         if time_ctrl.time_type() == TimeType::Sequence
             && let Some(mut fps) = time_ctrl.fps()
         {
+            let old_fps = fps;
             ui.scope(|ui| {
                 ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
 
@@ -121,7 +122,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 )
                 .on_hover_text("Frames per second");
             });
-            time_commands.push(TimeControlCommand::SetFps(fps));
+            if old_fps != fps {
+                time_commands.push(TimeControlCommand::SetFps(fps));
+            }
         }
     }
 
