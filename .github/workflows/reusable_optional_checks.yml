@@ -1,0 +1,31 @@
+name: "Rust Checks: Lints, Tests, Docs"
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      CHANNEL:
+        required: false
+        type: string # enum: 'nightly', 'main', or 'pr'
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-checks_rust
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+
+  check-patches:
+    name: Verify no patches for crates.io to prevent publishing
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+      - name: Check for patch.crates-io
+        run: pixi run python scripts/ci/check_crate_patches.py
