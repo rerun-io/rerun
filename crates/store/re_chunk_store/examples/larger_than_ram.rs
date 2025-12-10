@@ -14,9 +14,13 @@ fn main() {
 
     let nuscenes_rrd = "/home/cmc/dev/rerun-io/rerun/nuscenes.rrd";
     let rrd_bytes = std::fs::read(nuscenes_rrd).unwrap();
-    let rrd_manifest = RrdManifest::from_rrd_bytes(&rrd_bytes).unwrap().unwrap();
-    // dbg!(rrd_manifest.to_native_static().unwrap());
-    dbg!(rrd_manifest.to_native_temporal().unwrap());
+    let rrd_manifests = RrdManifest::from_rrd_bytes(&rrd_bytes).unwrap();
+    let rrd_manifest = rrd_manifests
+        .into_iter()
+        .find(|m| m.store_id.kind() == StoreKind::Recording)
+        .unwrap();
+    dbg!(rrd_manifest.get_static_data_as_a_map().unwrap());
+    dbg!(rrd_manifest.get_temporal_data_as_a_map().unwrap());
     let store = ChunkStore::from_rrd_manifest(&rrd_manifest).unwrap();
 
     let store_handle = ChunkStoreHandle::new(store);

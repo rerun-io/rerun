@@ -6,7 +6,7 @@ use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
-use re_log_encoding::{NativeTemporalMapEntry, RrdManifest};
+use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimeType};
 use re_types_core::{ComponentDescriptor, ComponentType};
 
@@ -844,16 +844,16 @@ impl ChunkStore {
 
         // TODO: well we need a col_arbitrary_component thing?
 
-        *static_chunk_ids_per_entity = rrd_manifest.to_native_static()?;
+        *static_chunk_ids_per_entity = rrd_manifest.get_static_data_as_a_map()?;
 
-        let xxx = rrd_manifest.to_native_temporal()?;
+        let xxx = rrd_manifest.get_temporal_data_as_a_map()?;
 
         // TODO: just return flat vecs rather than this mess.
         for (entity_path, per_timeline) in xxx {
             for (timeline, per_component) in per_timeline {
                 for (component, per_chunk) in per_component {
                     for (chunk_id, entry) in per_chunk {
-                        let NativeTemporalMapEntry {
+                        let RrdManifestTemporalMapEntry {
                             time_range,
                             num_rows: _,
                         } = entry;

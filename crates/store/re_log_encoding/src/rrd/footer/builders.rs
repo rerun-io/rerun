@@ -465,7 +465,7 @@ struct RrdManifestIndexColumn {
     /// Each row indicates whether the corresponding chunk contains static data for the related component.
     has_static_data: Vec<bool>,
 
-    // TODO
+    /// Each row contains the number of rows in the corresponding chunk.
     num_rows: Vec<u64>,
 }
 

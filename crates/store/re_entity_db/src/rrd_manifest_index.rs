@@ -3,13 +3,12 @@ use std::collections::BTreeMap;
 use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
-use arrow::datatypes::Int64Type;
 use itertools::{Itertools as _, izip};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
-use re_log_encoding::{CodecResult, NativeTemporalMapEntry, RrdManifest};
+use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
 
 use crate::{TimelineStats, TimesPerTimeline};
@@ -93,15 +92,15 @@ pub struct RrdManifestIndex {
 
     pub times_per_timeline: TimesPerTimeline,
 
-    native_static_map: re_log_encoding::NativeStaticMap,
-    native_temporal_map: re_log_encoding::NativeTemporalMap,
+    native_static_map: re_log_encoding::RrdManifestStaticMap,
+    native_temporal_map: re_log_encoding::RrdManifestTemporalMap,
 }
 
 impl RrdManifestIndex {
     pub fn append(&mut self, manifest: RrdManifest) -> CodecResult<()> {
         re_tracing::profile_function!();
 
-        self.native_temporal_map = manifest.to_native_temporal()?;
+        self.native_temporal_map = manifest.get_temporal_data_as_a_map()?;
 
         self.update_timeline_stats();
         self.update_entity_tree();
@@ -126,7 +125,7 @@ impl RrdManifestIndex {
 
                 for chunks in comps.values() {
                     for entry in chunks.values() {
-                        let NativeTemporalMapEntry {
+                        let RrdManifestTemporalMapEntry {
                             time_range: chunk_range,
                             num_rows: _, // TODO: Emil, wanna do something with this?
                         } = entry;
@@ -172,7 +171,7 @@ impl RrdManifestIndex {
         self.manifest.as_ref()
     }
 
-    pub fn native_temporal_map(&self) -> &re_log_encoding::NativeTemporalMap {
+    pub fn native_temporal_map(&self) -> &re_log_encoding::RrdManifestTemporalMap {
         &self.native_temporal_map
     }
 
@@ -332,7 +331,7 @@ impl RrdManifestIndex {
 
             for chunks in entity_component_chunks.values() {
                 for (chunk_id, entry) in chunks {
-                    let NativeTemporalMapEntry {
+                    let RrdManifestTemporalMapEntry {
                         time_range,
                         num_rows: _, // TODO: Isse, wanna do something with this?
                     } = entry;

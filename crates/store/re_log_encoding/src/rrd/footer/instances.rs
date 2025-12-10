@@ -140,86 +140,102 @@ pub struct RrdManifest {
     pub data: arrow::array::RecordBatch,
 }
 
-pub type NativeStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
+/// A map based representation of the static data within an [`RrdManifest`].
+pub type RrdManifestStaticMap = IntMap<EntityPath, IntMap<ComponentIdentifier, ChunkId>>;
 
+/// The individual entries in an [`RrdManifestTemporalMap`].
 #[derive(Debug, Clone, Copy)]
-pub struct NativeTemporalMapEntry {
+pub struct RrdManifestTemporalMapEntry {
+    /// The time range covered by this entry.
     pub time_range: AbsoluteTimeRange,
 
-    // TODO: aka num_events or something
+    /// The number of rows in the original chunk which are associated with this entry.
+    ///
+    /// At most, this is the same as the number of rows in the chunk as a whole. For a specific
+    /// entry it might be less, since chunks allow sparse components.
     pub num_rows: u64,
 }
 
-pub type NativeTemporalMap = IntMap<
+/// A map based representation of the temporal data within an [`RrdManifest`].
+pub type RrdManifestTemporalMap = IntMap<
     EntityPath,
-    IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, NativeTemporalMapEntry>>>,
+    IntMap<Timeline, IntMap<ComponentIdentifier, BTreeMap<ChunkId, RrdManifestTemporalMapEntry>>>,
 >;
 
 impl RrdManifest {
-    // TODO
-    pub fn from_rrd_bytes(rrd_bytes: &[u8]) -> CodecResult<Option<Self>> {
+    /// High-level helper to parse [`RrdManifest`]s from raw RRD bytes.
+    ///
+    /// This does not decode all the data, but rather goes straight to the RRD footer (if any).
+    ///
+    /// * Returns `None` if no valid footer was found.
+    /// * Returns an error if either the footer or any of the manifests are corrupt.
+    ///
+    /// Usage:
+    /// ```text,ignore
+    /// let rrd_bytes = std::fs::read("/path/to/my/recording.rrd");
+    /// let rrd_manifests = RrdManifest::from_rrd_bytes(&rrd_bytes)?;
+    /// let rrd_manifest = rrd_manifests
+    ///     .into_iter()
+    ///     .find(|m| m.store_id.kind() == StoreKind::Recording)?;
+    /// ```
+    pub fn from_rrd_bytes(rrd_bytes: &[u8]) -> CodecResult<Vec<Self>> {
         let stream_footer = match crate::StreamFooter::from_rrd_bytes(rrd_bytes) {
             Ok(footer) => footer,
 
             // That was in fact _not_ a footer.
-            Err(crate::CodecError::FrameDecoding(_)) => return Ok(None),
+            Err(crate::CodecError::FrameDecoding(_)) => return Ok(vec![]),
 
             err @ Err(_) => err?,
         };
 
-        if stream_footer.entries.len() != 1 {
-            re_log::warn!(
-                num_manifests = stream_footer.entries.len(),
-                "detected recording with unsupported number of manifests, falling back to slow path",
+        let mut manifests = Vec::new();
+
+        for entry in stream_footer.entries {
+            let StreamFooterEntry {
+                rrd_footer_byte_span_from_start_excluding_header,
+                crc_excluding_header,
+            } = entry;
+
+            let rrd_footer_byte_span = rrd_footer_byte_span_from_start_excluding_header;
+
+            let rrd_footer_byte_span = rrd_footer_byte_span
+                .try_cast::<usize>()
+                .ok_or_else(|| {
+                    crate::CodecError::FrameDecoding(
+                        "RRD footer too large for native bit width".to_owned(),
+                    )
+                })?
+                .range();
+
+            let rrd_footer_bytes = &rrd_bytes[rrd_footer_byte_span];
+
+            let crc = crate::StreamFooter::compute_crc(rrd_footer_bytes);
+            if crc != crc_excluding_header {
+                return Err(crate::CodecError::CrcMismatch {
+                    expected: crc_excluding_header,
+                    got: crc,
+                });
+            }
+
+            let rrd_footer =
+                re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes)?;
+            manifests.extend(
+                rrd_footer
+                    .manifests
+                    .iter()
+                    .map(|manifest| manifest.to_application(()))
+                    .collect::<Result<Vec<_>, _>>()?,
             );
-            return Ok(None);
         }
 
-        let StreamFooterEntry {
-            rrd_footer_byte_span_from_start_excluding_header,
-            crc_excluding_header,
-        } = stream_footer.entries[0];
-
-        let rrd_footer_byte_span = rrd_footer_byte_span_from_start_excluding_header;
-        if rrd_footer_byte_span.start == 0 || rrd_footer_byte_span.len == 0 {
-            re_log::warn!(
-                num_manifests = stream_footer.entries.len(),
-                "detected recording with corrupt footer, falling back to slow path",
-            );
-            return Ok(None);
-        }
-
-        let rrd_footer_bytes =
-            &rrd_bytes[rrd_footer_byte_span.try_cast::<usize>().unwrap().range()];
-
-        let crc = crate::StreamFooter::compute_crc(rrd_footer_bytes);
-        if crc != crc_excluding_header {
-            return Err(crate::CodecError::CrcMismatch {
-                expected: crc_excluding_header,
-                got: crc,
-            });
-        }
-
-        let rrd_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes)?;
-        rrd_footer
-            .manifests
-            .iter()
-            .find(|manifest| {
-                manifest
-                    .store_id
-                    .as_ref()
-                    .map(|id| id.kind() == re_protos::common::v1alpha1::StoreKind::Recording)
-                    .unwrap_or(false)
-            })
-            .map(|manifest| manifest.to_application(()))
-            .transpose()
+        Ok(manifests)
     }
 
-    // TODO
-    pub fn to_native_static(&self) -> CodecResult<NativeStaticMap> {
+    /// Computes a map-based representation of the static data in this RRD manifest.
+    pub fn get_static_data_as_a_map(&self) -> CodecResult<RrdManifestStaticMap> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
-        let mut per_entity: NativeStaticMap = IntMap::default();
+        let mut per_entity: RrdManifestStaticMap = IntMap::default();
 
         let chunk_ids = self.col_chunk_id()?;
         let chunk_entity_paths = self.col_chunk_entity_path()?;
@@ -229,13 +245,19 @@ impl RrdManifest {
             itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
                 .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
                 .map(|(f, c)| {
-                    (
-                        f,
-                        c.downcast_array_ref::<arrow::array::BooleanArray>()
-                            .unwrap(), // TODO
-                    )
+                    c.downcast_array_ref::<arrow::array::BooleanArray>()
+                        .ok_or_else(|| {
+                            crate::CodecError::ArrowDeserialization(
+                                arrow::error::ArrowError::SchemaError(format!(
+                                    "'{}' should be a BooleanArray, but it's a {} instead",
+                                    f.name(),
+                                    c.data_type(),
+                                )),
+                            )
+                        })
+                        .map(|c| (f, c))
                 })
-                .collect_vec();
+                .collect::<Result<Vec<_>, _>>()?;
 
         for (i, (chunk_id, is_static, entity_path)) in
             itertools::izip!(chunk_ids, chunk_is_static, chunk_entity_paths).enumerate()
@@ -250,7 +272,14 @@ impl RrdManifest {
                     continue;
                 }
 
-                let component = f.metadata().get("rerun:component").unwrap();
+                let Some(component) = f.metadata().get("rerun:component") else {
+                    return Err(crate::CodecError::from(ChunkError::Malformed {
+                        reason: format!(
+                            "column '{}' is missing rerun:component metadata",
+                            f.name()
+                        ),
+                    }));
+                };
                 let component = ComponentIdentifier::new(component);
 
                 let per_component = per_entity.entry(entity_path.clone()).or_default();
@@ -266,8 +295,8 @@ impl RrdManifest {
         Ok(per_entity)
     }
 
-    /// Convert it to a more convenient structure.
-    pub fn to_native_temporal(&self) -> CodecResult<NativeTemporalMap> {
+    /// Computes a map-based representation of the temporal data in this RRD manifest.
+    pub fn get_temporal_data_as_a_map(&self) -> CodecResult<RrdManifestTemporalMap> {
         re_tracing::profile_function!();
 
         use arrow::array::ArrayRef;
@@ -290,7 +319,7 @@ impl RrdManifest {
             .unique()
             .collect_vec();
 
-        let mut per_entity: NativeTemporalMap = Default::default();
+        let mut per_entity: RrdManifestTemporalMap = Default::default();
 
         let chunk_ids = self.col_chunk_id()?;
         let chunk_entity_paths = self.col_chunk_entity_path()?;
@@ -320,33 +349,21 @@ impl RrdManifest {
                     get_index_name(field) == Some(index_name)
                 }
 
-                pub fn is_index_start(field: &arrow::datatypes::Field) -> bool {
-                    field.name().ends_with(":start")
-                }
-
-                pub fn is_index_end(field: &arrow::datatypes::Field) -> bool {
-                    field.name().ends_with(":end")
-                }
-
-                pub fn is_index_num_rows(field: &arrow::datatypes::Field) -> bool {
-                    field.name().ends_with(":num_rows")
-                }
-
                 // TODO: obviously all of this stuff should be done only once, not every iteration 🫠
 
                 let col_start = itertools::izip!(fields, columns).find(|(f, _col)| {
                     is_specific_index(f, index)
-                        && is_index_start(f)
+                        && f.name().ends_with(":start")
                         && f.metadata().get("rerun:component") == Some(component)
                 });
                 let col_end = itertools::izip!(fields, columns).find(|(f, _col)| {
                     is_specific_index(f, index)
-                        && is_index_end(f)
+                        && f.name().ends_with(":end")
                         && f.metadata().get("rerun:component") == Some(component)
                 });
                 let col_num_rows = itertools::izip!(fields, columns).find(|(f, _col)| {
                     is_specific_index(f, index)
-                        && is_index_num_rows(f)
+                        && f.name().ends_with(":num_rows")
                         && f.metadata().get("rerun:component") == Some(component)
                 });
 
@@ -393,7 +410,7 @@ impl RrdManifest {
 
                 let start = col_start_raw[i];
                 let end = col_end_raw[i];
-                let entry = NativeTemporalMapEntry {
+                let entry = RrdManifestTemporalMapEntry {
                     time_range: AbsoluteTimeRange::new(start, end),
                     // TODO: i mean if BW then this sucks anyway, cause now you cannot
                     // differentiate 0 from not present...
