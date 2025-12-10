@@ -669,8 +669,8 @@ impl App {
     }
 
     fn run_pending_system_commands(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
-        while let Some(cmd) = self.command_receiver.recv_system() {
-            self.run_system_command(cmd, store_hub, egui_ctx);
+        while let Some((from_where, cmd)) = self.command_receiver.recv_system() {
+            self.run_system_command(from_where, cmd, store_hub, egui_ctx);
         }
     }
 
@@ -817,6 +817,7 @@ impl App {
 
     fn run_system_command(
         &mut self,
+        _from_where: &std::panic::Location<'_>, // Who sent this command? Useful for debugging!
         cmd: SystemCommand,
         store_hub: &mut StoreHub,
         egui_ctx: &egui::Context,
