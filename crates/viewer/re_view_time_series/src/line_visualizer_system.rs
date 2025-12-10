@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
-use re_sdk_types::{Archetype as _, archetypes};
+use re_sdk_types::components::{self, AggregationPolicy, Color, StrokeWidth};
+use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
 use re_view::{
     RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,
@@ -12,13 +12,12 @@ use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
-use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
     collect_series_visibility, determine_num_series,
 };
-use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
+use crate::{LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
@@ -34,14 +33,17 @@ impl IdentifiedViewSystem for SeriesLinesSystem {
 
 impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info
-            .queried
-            .extend(archetypes::SeriesLines::all_components().iter().cloned());
-
-        query_info.relevant_archetype = archetypes::SeriesLines::name().into();
-
-        query_info
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesLines::name().into(),
+            required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
+                std::iter::once(components::Scalar::arrow_datatype()).collect(),
+            ),
+            queried: archetypes::Scalars::all_components()
+                .iter()
+                .chain(archetypes::SeriesLines::all_components().iter())
+                .cloned()
+                .collect(),
+        }
     }
 
     fn execute(
@@ -52,8 +54,7 @@ impl VisualizerSystem for SeriesLinesSystem {
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query)?;
-        Ok(VisualizerExecutionOutput::default())
+        self.load_scalars(ctx, query)
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -66,8 +67,12 @@ impl SeriesLinesSystem {
         &mut self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-    ) -> Result<(), ViewPropertyQueryError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        use rayon::prelude::*;
+
+        let mut output = VisualizerExecutionOutput::default();
 
         let plot_mem =
             egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
@@ -75,40 +80,28 @@ impl SeriesLinesSystem {
 
         let data_results = query.iter_visualizer_instruction_for(Self::identifier());
 
-        let parallel_loading = true;
-        if parallel_loading {
-            use rayon::prelude::*;
-            re_tracing::profile_wait!("load_series");
-            for mut one_series in data_results
-                .collect_vec()
-                .par_iter()
-                .map(
-                    |(data_result, instruction)| -> Result<Vec<PlotSeries>, ViewPropertyQueryError> {
-                        let mut series = vec![];
-                        Self::load_series(ctx, query, time_per_pixel, data_result, instruction, &mut series)?;
-                        Ok(series)
-                    },
-                )
-                .collect::<Result<Vec<_>, ViewPropertyQueryError>>()?
-            {
-                self.all_series.append(&mut one_series);
+        for result in data_results
+            .collect_vec()
+            .par_iter()
+            .map(|(data_result, instruction)| {
+                Self::load_series(ctx, query, time_per_pixel, data_result, instruction)
+            })
+            .collect::<Vec<_>>()
+        {
+            match result {
+                Err(LoadSeriesError::ViewPropertyQuery(err)) => {
+                    return Err(err.into());
+                }
+                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, error }) => {
+                    output.report_error_for(entity_path, error);
+                }
+                Ok(series) => {
+                    self.all_series.extend(series);
+                }
             }
-        } else {
-            let mut series = vec![];
-            for (data_result, instruction) in data_results {
-                Self::load_series(
-                    ctx,
-                    query,
-                    time_per_pixel,
-                    data_result,
-                    instruction,
-                    &mut series,
-                )?;
-            }
-            self.all_series = series;
         }
 
-        Ok(())
+        Ok(output)
     }
 
     fn load_series(
@@ -117,8 +110,7 @@ impl SeriesLinesSystem {
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
-        all_series: &mut Vec<PlotSeries>,
-    ) -> Result<(), ViewPropertyQueryError> {
+    ) -> Result<Vec<PlotSeries>, LoadSeriesError> {
         re_tracing::profile_function!();
 
         let current_query = ctx.current_query();
@@ -151,7 +143,10 @@ impl SeriesLinesSystem {
             let Some(all_scalar_chunks) =
                 results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
             else {
-                return Ok(());
+                return Err(LoadSeriesError::EntitySpecificVisualizerError {
+                    entity_path: data_result.entity_path.clone(),
+                    error: "No valid scalar data found".to_owned(),
+                });
             };
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default values.
@@ -302,6 +297,8 @@ impl SeriesLinesSystem {
                 &archetypes::SeriesLines::descriptor_names(),
             );
 
+            let mut series = Vec::with_capacity(num_series);
+
             debug_assert_eq!(points_per_series.len(), series_names.len());
             for (instance, (points, label, visible)) in itertools::izip!(
                 points_per_series.into_iter(),
@@ -325,11 +322,11 @@ impl SeriesLinesSystem {
                     view_query,
                     label,
                     aggregator,
-                    all_series,
+                    &mut series,
                 );
             }
 
-            Ok(())
+            Ok(series)
         }
     }
 }

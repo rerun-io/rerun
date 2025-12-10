@@ -37,7 +37,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
 
         // Make this visualizer available for any entity with Transform3D components
-        query_info.required = RequiredComponents::Any(
+        query_info.required = RequiredComponents::AnyComponent(
             Transform3D::all_component_identifiers()
                 .chain(CoordinateFrame::all_component_identifiers())
                 .chain(InstancePoses3D::all_component_identifiers())
