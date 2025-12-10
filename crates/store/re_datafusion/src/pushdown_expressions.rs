@@ -1,11 +1,11 @@
 use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
-use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
-use datafusion::parquet::data_type::AsBytes;
+use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown, lit};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_sorbet::metadata::RERUN_KIND;
+use std::ops::Not;
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
     if let Expr::Column(_) = expr.left.as_ref() {
@@ -137,8 +137,31 @@ pub(crate) fn apply_filter_expr_to_queries(
                 _ => None,
             }
         }
-        Expr::Between(_between_expr) => None,
-        Expr::InList(_list_expr) => None,
+        Expr::Between(between_expr) => {
+            let left = between_expr
+                .expr
+                .as_ref()
+                .clone()
+                .gt_eq(between_expr.low.as_ref().clone());
+            let right = between_expr
+                .expr
+                .as_ref()
+                .clone()
+                .lt_eq(between_expr.high.as_ref().clone());
+
+            let mut expr = left.and(right);
+            if between_expr.negated {
+                expr = expr.not();
+            }
+
+            apply_filter_expr_to_queries(queries, &expr, schema)?
+        }
+        Expr::InList(list_expr) => {
+            let expr = list_expr.list.iter().fold(lit(true), |acc, item| {
+                acc.or(list_expr.expr.as_ref().clone().eq(item.clone()))
+            });
+            apply_filter_expr_to_queries(queries, &expr, schema)?
+        }
         _ => None,
     })
 }

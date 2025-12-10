@@ -14,12 +14,13 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
-use datafusion::catalog::{Session, TableProvider};
+use datafusion::catalog::{MemTable, Session, TableProvider};
 use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
+use datafusion::prelude::SessionContext;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
@@ -264,8 +265,7 @@ impl TableProvider for DataframeQueryTableProvider {
         // TODO(tsaucer) the multiple requests can produce identical chunks
         // so we need to limit these down to distinct values
 
-        let chunk_info_batches: Arc<Vec<RecordBatch>> =
-            Arc::new(chunk_info_batches.into_iter().flatten().collect());
+        let chunk_info_batches = Arc::new(compute_unique_chunk_info_ids(chunk_info_batches).await?);
 
         // Find the first column selection that is a component
         if query_expression.filtered_is_not_null.is_none() {
@@ -550,6 +550,27 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
         columns_always_include_global_indexes: false,
         columns_always_include_component_indexes: false,
     }
+}
+
+async fn compute_unique_chunk_info_ids(
+    chunk_info_batches: Vec<Vec<RecordBatch>>,
+) -> Result<Vec<RecordBatch>, DataFusionError> {
+    let chunk_info_batches = chunk_info_batches
+        .into_iter()
+        .filter(|inner| !inner.is_empty())
+        .collect::<Vec<_>>();
+    if chunk_info_batches.is_empty() {
+        return Ok(vec![]);
+    }
+    let ctx = SessionContext::new();
+    let table = Arc::new(MemTable::try_new(
+        chunk_info_batches[0][0].schema(),
+        chunk_info_batches,
+    )?);
+
+    let df = ctx.read_table(table)?.distinct()?;
+
+    df.collect().await
 }
 
 #[cfg(test)]
