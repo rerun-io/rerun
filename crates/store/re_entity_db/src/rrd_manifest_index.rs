@@ -401,6 +401,7 @@ impl RrdManifestIndex {
         timeline: &re_chunk::Timeline,
         entity: &re_chunk::EntityPath,
     ) {
+        re_tracing::profile_function!();
         if let Some(entity_ranges_per_timeline) = self.native_temporal_map.get(entity)
             && let Some(entity_ranges) = entity_ranges_per_timeline.get(timeline)
         {

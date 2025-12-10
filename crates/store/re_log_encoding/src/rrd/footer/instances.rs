@@ -266,7 +266,10 @@ impl RrdManifest {
         Ok(per_entity)
     }
 
+    /// Convert it to a more convenient structure.
     pub fn to_native_temporal(&self) -> CodecResult<NativeTemporalMap> {
+        re_tracing::profile_function!();
+
         use arrow::array::ArrayRef;
         use re_arrow_util::ArrowArrayDowncastRef as _;
 
