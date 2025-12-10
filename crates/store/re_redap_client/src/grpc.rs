@@ -445,7 +445,7 @@ async fn stream_segment_from_server(
                 return Ok(()); // cancelled
             }
 
-            const DOWNLOAD_CHUNKS_ON_DEMAND: bool = false;
+            const DOWNLOAD_CHUNKS_ON_DEMAND: bool = true; // TODO
             if store_id.is_recording() && DOWNLOAD_CHUNKS_ON_DEMAND {
                 if true {
                     let mut rrd_manifest = rrd_manifest;
