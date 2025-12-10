@@ -927,10 +927,13 @@ impl PyDatasetEntryInternal {
 
     pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let arrow_schema = Self::fetch_arrow_schema(self_)?;
-        let schema = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
+        let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
             .map_err(to_py_err)?;
 
-        Ok(PySchemaInternal { schema })
+        Ok(PySchemaInternal {
+            columns,
+            metadata: arrow_schema.metadata,
+        })
     }
 }
 
