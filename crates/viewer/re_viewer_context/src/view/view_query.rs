@@ -6,7 +6,7 @@ use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
-use re_sdk_types::blueprint::components::VisualizerComponentMapping;
+use re_sdk_types::blueprint::components::VisualizerComponentMapping as BlueprintVisualizerComponentMapping;
 use smallvec::SmallVec;
 
 use crate::blueprint_helpers::BlueprintContext as _;
@@ -17,6 +17,16 @@ use crate::{
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
 pub type VisualizerInstructionId = String;
+
+/// A single component mapping for a visualizer instruction.
+#[derive(Clone, Debug)]
+pub struct VisualizerComponentMapping {
+    pub source: ComponentIdentifier,
+    pub target: ComponentIdentifier,
+}
+
+/// A list of component mappings for a visualizer instruction.
+pub type VisualizerComponentMappings = SmallVec<[VisualizerComponentMapping; 2]>;
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
@@ -30,7 +40,9 @@ pub struct VisualizerInstruction {
     /// Note that this does *not* take into account tree propagation of any special components
     /// like `Visible`, `Interactive` or transform components.
     pub component_overrides: IntSet<ComponentIdentifier>,
-    // TODO(andreas,aedm): add mappings.
+
+    /// List of component mapping pairs.
+    pub component_mappings: VisualizerComponentMappings,
 }
 
 impl VisualizerInstruction {
@@ -38,12 +50,14 @@ impl VisualizerInstruction {
         id: VisualizerInstructionId,
         visualizer_type: ViewSystemIdentifier,
         override_base_path: &EntityPath,
+        component_mappings: VisualizerComponentMappings,
     ) -> Self {
         Self {
             override_path: Self::override_path_for(override_base_path, &id),
             id,
             visualizer_type,
             component_overrides: IntSet::default(),
+            component_mappings,
         }
     }
 
@@ -63,14 +77,21 @@ impl VisualizerInstruction {
             visualizer_type: "___PLACEHOLDER___".into(),
             component_overrides: IntSet::default(),
             override_path: data_result.override_base_path.clone(),
+            component_mappings: VisualizerComponentMappings::default(),
         }
     }
 
     pub fn write_instruction_to_blueprint(&self, ctx: &ViewerContext<'_>) {
+        let component_mappings = self.component_mappings.iter().map(|mapping| {
+            re_sdk_types::blueprint::datatypes::VisualizerComponentMapping {
+                source: mapping.source.as_str().into(),
+                target: mapping.target.as_str().into(),
+            }
+        });
         let new_visualizer_instruction =
             re_sdk_types::blueprint::archetypes::VisualizerInstruction::new(
                 self.visualizer_type.as_str(),
-                std::iter::empty::<VisualizerComponentMapping>(), // TODO: also pass in the component mapping from ViusualizerInstruction once it's there.
+                component_mappings,
             );
         ctx.save_blueprint_archetype(self.override_path.clone(), &new_visualizer_instruction);
     }

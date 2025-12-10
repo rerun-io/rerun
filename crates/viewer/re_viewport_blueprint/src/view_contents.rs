@@ -19,7 +19,7 @@ use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewClassRegistry,
     ViewId, ViewState, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
-    VisualizerInstruction,
+    VisualizerComponentMapping, VisualizerComponentMappings, VisualizerInstruction,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -512,6 +512,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 blueprint_archetypes::ActiveVisualizers::descriptor_instruction_ids().component;
             let type_component =
                 blueprint_archetypes::VisualizerInstruction::descriptor_visualizer_type().component;
+            let component_map_component =
+                blueprint_archetypes::VisualizerInstruction::descriptor_component_map().component;
 
             if let Some(visualizer_instruction_ids) = blueprint
                 .latest_at(
@@ -537,10 +539,30 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             )
                             .map_or_else(|| "No type specified".into(), |vt| vt.as_str().into());
 
+                        let component_mappings = blueprint
+                            .latest_at(
+                                blueprint_query,
+                                &visualizer_override_path,
+                                [component_map_component],
+                            )
+                            .component_batch::<blueprint_components::VisualizerComponentMapping>(
+                                component_map_component,
+                            )
+                            .map_or_else(VisualizerComponentMappings::default, |mappings| {
+                                mappings
+                                    .into_iter()
+                                    .map(|mapping| VisualizerComponentMapping {
+                                        source: mapping.source.as_str().into(),
+                                        target: mapping.target.as_str().into(),
+                                    })
+                                    .collect()
+                            });
+
                         VisualizerInstruction::new(
                             instruction_id,
                             visualizer_type,
                             &node.data_result.override_base_path,
+                            component_mappings,
                         )
                     })
                     .collect();
@@ -561,6 +583,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                             i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
                             visualizer_type,
                             &node.data_result.override_base_path,
+                            VisualizerComponentMappings::default(), // TODO(jochen): put component mappings here.
                         )
                     })
                     .collect();
