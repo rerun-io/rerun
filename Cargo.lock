@@ -9941,7 +9941,6 @@ dependencies = [
  "js-sys",
  "parking_lot",
  "poll-promise",
- "re_build_info",
  "re_byte_size",
  "re_log",
  "re_mp4",
