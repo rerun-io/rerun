@@ -42,10 +42,27 @@ pub fn range_with_blueprint_resolved_data<'a>(
     // No need to query for components that have overrides.
     components.retain(|component| overrides.get(*component).is_none());
 
-    let results =
-        ctx.recording_engine()
-            .cache()
-            .range(range_query, &data_result.entity_path, components);
+    let results = {
+        // Apply component mappings when querying the recording.
+        for mapping in &visualizer_instruction.component_mappings {
+            if components.remove(&mapping.source) {
+                components.insert(mapping.target);
+            }
+        }
+        let mut results =
+            ctx.recording_engine()
+                .cache()
+                .range(range_query, &data_result.entity_path, components);
+
+        // Apply mapping to the results.
+        for mapping in &visualizer_instruction.component_mappings {
+            if let Some(chunk) = results.components.remove(&mapping.source) {
+                results.components.insert(mapping.target, chunk);
+            }
+        }
+
+        results
+    };
 
     HybridRangeResults {
         overrides,
@@ -90,11 +107,28 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         components.retain(|component| overrides.get(*component).is_none());
     }
 
-    let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
-        latest_at_query,
-        &data_result.entity_path,
-        components,
-    );
+    let results = {
+        // Apply component mappings when querying the recording.
+        for mapping in &visualizer_instruction.component_mappings {
+            if components.remove(&mapping.source) {
+                components.insert(mapping.target);
+            }
+        }
+        let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
+            latest_at_query,
+            &data_result.entity_path,
+            components,
+        );
+
+        // Apply mapping to the results.
+        for mapping in &visualizer_instruction.component_mappings {
+            if let Some(chunk) = results.components.remove(&mapping.source) {
+                results.components.insert(mapping.target, chunk);
+            }
+        }
+
+        results
+    };
 
     HybridLatestAtResults {
         overrides,
