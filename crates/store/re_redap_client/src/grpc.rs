@@ -457,7 +457,11 @@ async fn stream_segment_from_server(
                     // Pick everything static and a couple more things:
                     let mut idx = 0;
                     let mut num_temporal_to_load = 32;
-                    for chunk_is_static in rrd_manifest.col_chunk_is_static().unwrap() {
+                    let col_chunk_is_static =
+                        rrd_manifest.col_chunk_is_static().map_err(|err| {
+                            ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
+                        })?;
+                    for chunk_is_static in col_chunk_is_static {
                         idx += 1;
                         if !chunk_is_static {
                             num_temporal_to_load -= 1;

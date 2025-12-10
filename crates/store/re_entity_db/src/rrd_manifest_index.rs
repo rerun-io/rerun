@@ -128,7 +128,7 @@ impl RrdManifestIndex {
                     for entry in chunks.values() {
                         let NativeTemporalMapEntry {
                             time_range: chunk_range,
-                            num_rows, // TODO: Emil, wanna do something with this?
+                            num_rows: _, // TODO: Emil, wanna do something with this?
                         } = entry;
 
                         timeline_range = timeline_range.union(*chunk_range);
@@ -302,7 +302,9 @@ impl RrdManifestIndex {
                 if let Some(chunk_info) = self.remote_chunks.get(&chunk_id) {
                     if *chunk_info.state.lock() == LoadState::Unloaded {
                         *chunk_info.state.lock() = LoadState::InTransit;
-                        indices.push(row_idx as i32);
+                        if let Ok(row_idx) = i32::try_from(row_idx) {
+                            indices.push(row_idx);
+                        }
                     }
                 }
             }

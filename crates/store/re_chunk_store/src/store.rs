@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
 use arrow::datatypes::DataType as ArrowDataType;
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimelineName};
@@ -825,7 +824,7 @@ impl ChunkStore {
         );
 
         // TODO: okay well, let's see what's the minimum we can get away with i guess
-        let ChunkStore {
+        let Self {
             id: _,
             config: _,
             time_type_registry,

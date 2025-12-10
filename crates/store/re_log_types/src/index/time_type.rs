@@ -1,11 +1,11 @@
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, DurationNanosecondArray, Int64Array, TimestampNanosecondArray};
+use arrow::array::{DurationNanosecondArray, Int64Array, TimestampNanosecondArray};
 use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::DataType as ArrowDataType;
 use arrow::error::ArrowError;
-use re_arrow_util::{ArrowArrayDowncastRef as _, WrongDatatypeError};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use super::TimeInt;
 use crate::{AbsoluteTimeRange, TimestampFormat};

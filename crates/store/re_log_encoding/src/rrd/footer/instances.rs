@@ -192,7 +192,7 @@ impl RrdManifest {
         let rrd_footer_bytes =
             &rrd_bytes[rrd_footer_byte_span.try_cast::<usize>().unwrap().range()];
 
-        let crc = crate::StreamFooter::compute_crc(&rrd_footer_bytes);
+        let crc = crate::StreamFooter::compute_crc(rrd_footer_bytes);
         if crc != crc_excluding_header {
             return Err(crate::CodecError::CrcMismatch {
                 expected: crc_excluding_header,
@@ -200,9 +200,8 @@ impl RrdManifest {
             });
         }
 
-        let rrd_footer =
-            re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&rrd_footer_bytes)?;
-        Ok(rrd_footer
+        let rrd_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(rrd_footer_bytes)?;
+        rrd_footer
             .manifests
             .iter()
             .find(|manifest| {
@@ -213,7 +212,7 @@ impl RrdManifest {
                     .unwrap_or(false)
             })
             .map(|manifest| manifest.to_application(()))
-            .transpose()?)
+            .transpose()
     }
 
     // TODO
@@ -228,7 +227,7 @@ impl RrdManifest {
 
         let has_static_component_data =
             itertools::izip!(self.data.schema_ref().fields().iter(), self.data.columns(),)
-                .filter(|(f, c)| f.name().ends_with(":has_static_data"))
+                .filter(|(f, _c)| f.name().ends_with(":has_static_data"))
                 .map(|(f, c)| {
                     (
                         f,
@@ -348,9 +347,7 @@ impl RrdManifest {
                         && f.metadata().get("rerun:component") == Some(component)
                 });
 
-                let (Some((col_start_field, col_start)), Some((_col_end_field, col_end))) =
-                    (col_start, col_end)
-                else {
+                let (Some((_, col_start)), Some((_, col_end))) = (col_start, col_end) else {
                     unreachable!();
                 };
 
