@@ -8,16 +8,16 @@ use datafusion::execution::SendableRecordBatchStream;
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt as _, TryStreamExt as _};
 use parking_lot::Mutex;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
-use re_sorbet::{BatchType, SorbetBatch, SorbetError, SorbetSchema};
+use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 use re_viewer_context::AsyncRuntimeHandle;
 
+use crate::ColumnFilter;
 use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
 use crate::table_selection::TableSelectionState;
-use crate::{ColumnFilter, RequestedObject};
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -271,7 +271,7 @@ impl DataFusionQuery {
 ///
 /// It's guaranteed that the first event is either [`QueryEvent::Schema`] or [`QueryEvent::Error`].
 #[derive(Debug)]
-enum QueryEvent {
+pub enum QueryEvent {
     Schema {
         original_schema: SchemaRef,
         sorbet_schema: re_sorbet::SorbetSchema,
@@ -293,9 +293,6 @@ impl PartialEq for DataFusionQuery {
             && query_data == &other.query_data
     }
 }
-
-type RequestedDataFusionQueryResult =
-    RequestedObject<Result<DataFusionQueryResult, DataFusionError>>;
 
 /// Helper struct to manage the datafusion async query and the resulting `SorbetBatch`.
 #[derive(Clone)]

@@ -258,7 +258,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let requested_query_result = table_state.results.as_ref();
 
-        let mut is_table_update_in_progress = false;
+        let is_table_update_in_progress;
         let query_result = match (requested_query_result, &table_state.last_query_results) {
             (Some(Ok(query_result)), _) => {
                 is_table_update_in_progress = !query_result.finished;
@@ -267,7 +267,6 @@ impl<'a> DataFusionTableWidget<'a> {
 
             (Some(Err(err)), _) => {
                 let error = format!("Could not load table: {err}");
-                drop(requested_query_result);
 
                 ui.horizontal(|ui| {
                     ui.error_label(&error);
@@ -316,7 +315,6 @@ impl<'a> DataFusionTableWidget<'a> {
             &column_blueprint_fn,
         );
 
-        drop(requested_query_result);
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
         }
