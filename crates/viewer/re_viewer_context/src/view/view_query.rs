@@ -6,7 +6,6 @@ use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
-use re_sdk_types::blueprint::components::VisualizerComponentMapping as BlueprintVisualizerComponentMapping;
 use smallvec::SmallVec;
 
 use crate::blueprint_helpers::BlueprintContext as _;
@@ -145,7 +144,7 @@ impl DataResult {
     /// The override path for this data result.
     ///
     /// This is **not** the override path for a concrete visualizer instruction yet.
-    /// Refer to [`PropertyOverrides::override_path`] for that.
+    /// Refer to [`VisualizerInstruction::override_path`] for that.
     ///
     /// There are certain special "overrides" that are global to the entire entity (in the context of a view).
     /// Some of them are:
@@ -153,7 +152,7 @@ impl DataResult {
     /// - `CoordinateFrame`
     /// - `VisibleTimeRanges`
     ///
-    /// All other overrides, are specific to a visualizer instruction and should use [`PropertyOverrides::override_path`].
+    /// All other overrides, are specific to a visualizer instruction and should use [`VisualizerInstruction::override_path`].
     #[inline]
     pub fn override_base_path(&self) -> &EntityPath {
         &self.override_base_path

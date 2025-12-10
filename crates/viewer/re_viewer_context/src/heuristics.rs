@@ -30,8 +30,9 @@ where
         return ViewSpawnHeuristics::empty();
     };
 
-    let recommended_views = visualizable_entities
-        .intersection(indicator_matching_entities)
+    let recommended_views = indicator_matching_entities
+        .iter()
+        .filter(|entity| visualizable_entities.contains_key(entity))
         .filter_map(|entity| {
             if include_entity(entity) {
                 Some(RecommendedView::new_single_entity(entity.clone()))

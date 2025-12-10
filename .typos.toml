@@ -18,6 +18,7 @@ extend-exclude = [
 
 [default.extend-words]
 FUL = "FUL" # forward-up-left coordinate system
+Isse = "Isse" # It's a name
 lod = "lod" # level-of-detail
 ND = "ND" # np.NDArray
 opf = "opf" # Open Photogrammetry Format (OPF) file

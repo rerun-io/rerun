@@ -628,7 +628,7 @@ fn menu_add_new_visualizer(
     for visualizer_type in available_visualizers {
         if ui.button(visualizer_type.as_str()).clicked() {
             // To add a visualizer we have to do two things:
-            // * add an element to the ist of active visualizer ids
+            // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
 
             let new_id = uuid::Uuid::new_v4().to_string(); // TODO: figure out a better id scheme.
@@ -673,7 +673,9 @@ fn available_inactive_visualizers(
 
     ctx.viewer_ctx
         .iter_visualizable_entities_for_view_class(view_class.identifier)
-        .filter(|(_vis, ents)| ents.contains(&data_result.entity_path))
+        .filter(|(_vis, visualizable_ents)| {
+            visualizable_ents.contains_key(&data_result.entity_path)
+        })
         .map(|(vis, _)| vis)
         .sorted()
         .collect::<Vec<_>>()

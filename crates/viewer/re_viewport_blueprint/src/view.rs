@@ -459,7 +459,7 @@ mod tests {
     use re_test_context::TestContext;
     use re_viewer_context::{
         IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder,
-        VisualizableEntities,
+        VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -494,21 +494,19 @@ mod tests {
             visualizable_entities
                 .0
                 .entry("Points3D".into())
-                .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
+                .or_insert_with(|| {
+                    VisualizableEntities(
+                        entity_paths
+                            .into_iter()
+                            .map(|ent| (ent, VisualizableReason::Always))
+                            .collect(),
+                    )
+                });
         }
 
         let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
             view_class_identifier: ViewClassPlaceholder::identifier(),
-            per_visualizer: visualizable_entities
-                .0
-                .iter()
-                .map(|(id, entities)| {
-                    (
-                        *id,
-                        VisualizableEntities(entities.iter().cloned().collect()),
-                    )
-                })
-                .collect(),
+            per_visualizer: visualizable_entities.0.clone(),
         };
 
         // Basic blueprint - a single view that queries everything.
