@@ -47,9 +47,6 @@ elapsed_time:example_MyPoints:points:start: Duration(ns) [
     rerun:component_type: "example.MyPoint"
     rerun:index: "elapsed time"
 ]
-elapsed_time:num_rows: u64 [
-    rerun:index: "elapsed time"
-]
 elapsed_time:start: Duration(ns) [
     rerun:index: "elapsed time"
 ]
@@ -110,9 +107,6 @@ frame_nr:example_MyPoints:points:start: i64 [
     rerun:component_type: "example.MyPoint"
     rerun:index: "frame_nr"
 ]
-frame_nr:num_rows: u64 [
-    rerun:index: "frame_nr"
-]
 frame_nr:start: i64 [
     rerun:index: "frame_nr"
 ]
@@ -153,9 +147,6 @@ log_time:example_MyPoints:points:start: Timestamp(ns) [
     rerun:archetype: "example.MyPoints"
     rerun:component: "example.MyPoints:points"
     rerun:component_type: "example.MyPoint"
-    rerun:index: "log_time"
-]
-log_time:num_rows: u64 [
     rerun:index: "log_time"
 ]
 log_time:start: Timestamp(ns) [

@@ -27,7 +27,7 @@ pub struct RrdManifestBuilder {
     /// Reminder: a chunk is either fully static, or fully temporal.
     column_chunk_is_static: Vec<bool>,
 
-    // TODO
+    // Each row carries the number of rows in the associated chunk.
     column_chunk_num_rows: Vec<u64>,
 
     /// Each row indicates where in the backing storage does the chunk start, in number of bytes.
@@ -141,7 +141,7 @@ impl RrdManifestBuilder {
                 starts_inclusive,
                 ends_inclusive,
                 has_static_data,
-                num_rows,
+                num_rows: _, // irrelevant for chunk-level columns, since times are always dense
             } = &mut column.index;
 
             let time_range = time_column.time_range();
@@ -153,20 +153,19 @@ impl RrdManifestBuilder {
                 ends_inclusive.push(time_range.max());
             }
 
-            // TODO: this is definitely not correct, right?
-            num_rows.push(chunk_batch.num_rows() as u64);
-
             has_static_data.push(false); // temporal chunk-level column
 
             for (component, time_range) in time_column.time_range_per_component(chunk.components())
             {
-                let Some(desc) = chunk.components().get_descriptor(component) else {
+                let Some(component_col) = chunk.components().get(component) else {
                     return Err(crate::CodecError::ArrowDeserialization(
                         arrow::error::ArrowError::SchemaError(
                             "internally inconsistent chunk metadata, this is a bug".to_owned(),
                         ),
                     ));
                 };
+
+                let desc = &component_col.descriptor;
 
                 let column = self
                     .columns
@@ -193,8 +192,7 @@ impl RrdManifestBuilder {
                     ends_inclusive.push(time_range.max());
                 }
 
-                // TODO: this is definitely not correct, right?
-                num_rows.push(chunk_batch.num_rows() as u64);
+                num_rows.push(component_col.list_array.null_count() as u64);
 
                 has_static_data.push(true); // temporal component-level column
             }
@@ -333,18 +331,14 @@ impl RrdManifestBuilder {
                 .map(|entity_path| entity_path.to_string()),
         )) as ArrayRef;
 
-        let columns_static = columns_static.into_iter().flat_map(|(_desc, col)| {
-            [
-                create_index_has_data_array(col.has_static_data),
-                // create_num_rows_array(col.num_rows),
-            ]
-        });
+        let columns_static = columns_static
+            .into_iter()
+            .flat_map(|(_desc, col)| [create_index_has_data_array(col.has_static_data)]);
 
         let columns_temporal = columns_temporal.values().flat_map(|col| {
             [
                 create_index_bound_array(col.timeline.typ(), &col.index.starts_inclusive),
                 create_index_bound_array(col.timeline.typ(), &col.index.ends_inclusive),
-                create_num_rows_array(col.index.num_rows.clone()),
             ]
         });
 
@@ -393,13 +387,7 @@ impl RrdManifestBuilder {
     fn static_index_fields(&self) -> Vec<Field> {
         self.columns_static
             .keys()
-            .flat_map(|desc| {
-                [
-                    RrdManifest::field_has_static_data(desc),
-                    // TODO: for static too? eeeeeeh probably, somewhat, i guess, maybe
-                    // RrdManifest::field_index_num_rows(Some(desc)),
-                ]
-            })
+            .flat_map(|desc| [RrdManifest::field_has_static_data(desc)])
             .collect()
     }
 
@@ -410,7 +398,6 @@ impl RrdManifestBuilder {
                 [
                     RrdManifest::field_index_start(&col.timeline, None),
                     RrdManifest::field_index_end(&col.timeline, None),
-                    RrdManifest::field_index_num_rows(&col.timeline, None),
                 ]
             })
             .collect()
@@ -466,6 +453,9 @@ struct RrdManifestIndexColumn {
     has_static_data: Vec<bool>,
 
     /// Each row contains the number of rows in the corresponding chunk.
+    ///
+    /// This is irrelevant for chunk-level indexes, since times are always dense (i.e. the number
+    /// of rows of every timeline always matches the number of rows of the chunk itself).
     num_rows: Vec<u64>,
 }
 

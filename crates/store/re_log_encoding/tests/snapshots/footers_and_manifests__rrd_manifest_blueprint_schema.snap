@@ -35,9 +35,6 @@ frame_nr:TimePanelBlueprint:fps:start: i64 [
 frame_nr:end: i64 [
     rerun:index: "frame_nr"
 ]
-frame_nr:num_rows: u64 [
-    rerun:index: "frame_nr"
-]
 frame_nr:start: i64 [
     rerun:index: "frame_nr"
 ]
