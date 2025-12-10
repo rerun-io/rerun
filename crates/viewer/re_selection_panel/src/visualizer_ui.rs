@@ -604,12 +604,7 @@ fn menu_add_new_visualizer(
             let new_id = uuid::Uuid::new_v4().to_string(); // TODO: figure out a better id scheme.
 
             // TODO: just writing nonsense into the component map. Figure out how to get proper component mappings.
-            let component_mappings = re_viewer_context::VisualizerComponentMappings::from_iter([
-                re_viewer_context::VisualizerComponentMapping {
-                    source: "Pinkie Pie".into(),
-                    target: "Rainbow Dash".into(),
-                },
-            ]);
+            let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
 
             let new_instruction = VisualizerInstruction::new(
                 new_id,
