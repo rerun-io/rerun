@@ -8,7 +8,7 @@ use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
 use rerun::external::re_viewer_context::{
     HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
-    PerVisualizerInViewClass, SelectionHighlight, SmallVisualizerSet, SystemExecutionOutput,
+    PerVisualizerInViewClass, RecommendedVisualizers, SelectionHighlight, SystemExecutionOutput,
     UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemRegistrator, ViewerContext, VisualizableEntities,
@@ -134,14 +134,14 @@ impl ViewClass for ColorCoordinatesView {
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
+    ) -> RecommendedVisualizers {
         if visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
             .is_some_and(|entities| entities.contains_key(entity_path))
         {
-            SmallVisualizerSet::from_slice(&[Points3DColorVisualizer::identifier()])
+            RecommendedVisualizers::default(Points3DColorVisualizer::identifier())
         } else {
-            SmallVisualizerSet::new()
+            RecommendedVisualizers::empty()
         }
     }
 

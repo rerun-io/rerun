@@ -13,6 +13,7 @@ use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
 };
 
+// TODO: That can probably go away?
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
 pub type VisualizerInstructionId = String;
