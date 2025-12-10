@@ -1,7 +1,11 @@
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
+use arrow::array::{DurationNanosecondArray, Int64Array, TimestampNanosecondArray};
+use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::DataType as ArrowDataType;
+use arrow::error::ArrowError;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 
 use super::TimeInt;
 use crate::{AbsoluteTimeRange, TimestampFormat};
@@ -191,10 +195,10 @@ impl TimeType {
     ) -> arrow::array::ArrayRef {
         let times = times.into();
         match self {
-            Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
-            Self::DurationNs => Arc::new(arrow::array::DurationNanosecondArray::new(times, None)),
+            Self::Sequence => Arc::new(Int64Array::new(times, None)),
+            Self::DurationNs => Arc::new(DurationNanosecondArray::new(times, None)),
             // TODO(zehiko) add back timezone support (#9310)
-            Self::TimestampNs => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
+            Self::TimestampNs => Arc::new(TimestampNanosecondArray::new(times, None)),
         }
     }
 
@@ -213,7 +217,7 @@ impl TimeType {
                             Some(time.as_i64())
                         }
                     })
-                    .collect::<arrow::array::Int64Array>(),
+                    .collect::<Int64Array>(),
             ),
 
             Self::DurationNs => Arc::new(
@@ -225,7 +229,7 @@ impl TimeType {
                             Some(time.as_i64())
                         }
                     })
-                    .collect::<arrow::array::DurationNanosecondArray>(),
+                    .collect::<DurationNanosecondArray>(),
             ),
 
             Self::TimestampNs => Arc::new(
@@ -238,8 +242,27 @@ impl TimeType {
                         }
                     })
                     // TODO(zehiko) add back timezone support (#9310)
-                    .collect::<arrow::array::TimestampNanosecondArray>(),
+                    .collect::<TimestampNanosecondArray>(),
             ),
+        }
+    }
+
+    /// Take an array of time values, and based on its data type,
+    /// figure out its [`TimeType`] and contents.
+    pub fn from_arrow_array(
+        array: &dyn arrow::array::Array,
+    ) -> Result<(Self, &ScalarBuffer<i64>), ArrowError> {
+        if let Some(array) = array.downcast_array_ref::<TimestampNanosecondArray>() {
+            Ok((Self::TimestampNs, array.values()))
+        } else if let Some(array) = array.downcast_array_ref::<DurationNanosecondArray>() {
+            Ok((Self::DurationNs, array.values()))
+        } else if let Some(array) = array.downcast_array_ref::<Int64Array>() {
+            Ok((Self::Sequence, array.values()))
+        } else {
+            Err(ArrowError::SchemaError(format!(
+                "Expected one of TimestampNanosecond, DurationNanosecond, Int64, got: {}",
+                array.data_type()
+            )))
         }
     }
 }
