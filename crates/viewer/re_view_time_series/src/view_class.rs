@@ -984,7 +984,7 @@ fn update_series_visibility_overrides_from_plot(
             continue;
         };
 
-        let override_path = result.override_path();
+        let override_path = result.override_base_path(); // TODO: VERY wrong. should use instruction.
         let descriptor = match series.kind {
             PlotSeriesKind::Continuous => Some(SeriesLines::descriptor_visible_series()),
             PlotSeriesKind::Scatter(_) => Some(SeriesPoints::descriptor_visible_series()),

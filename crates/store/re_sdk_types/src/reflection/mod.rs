@@ -510,13 +510,33 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <VisualizerOverride as Component>::name(),
+            <VisualizerComponentMapping as Component>::name(),
             ComponentReflection {
-                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "Associate components of an entity to components of a visualizer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
-                custom_placeholder: Some(VisualizerOverride::default().to_arrow()?),
-                datatype: VisualizerOverride::arrow_datatype(),
-                verify_arrow_array: VisualizerOverride::verify_arrow_array,
+                custom_placeholder: Some(VisualizerComponentMapping::default().to_arrow()?),
+                datatype: VisualizerComponentMapping::arrow_datatype(),
+                verify_arrow_array: VisualizerComponentMapping::verify_arrow_array,
+            },
+        ),
+        (
+            <VisualizerInstructionId as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.ActiveVisualizers.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(VisualizerInstructionId::default().to_arrow()?),
+                datatype: VisualizerInstructionId::arrow_datatype(),
+                verify_arrow_array: VisualizerInstructionId::verify_arrow_array,
+            },
+        ),
+        (
+            <VisualizerType as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The type of the visualizer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(VisualizerType::default().to_arrow()?),
+                datatype: VisualizerType::arrow_datatype(),
+                verify_arrow_array: VisualizerType::verify_arrow_array,
             },
         ),
         (
@@ -3369,6 +3389,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.blueprint.archetypes.ActiveVisualizers"),
+            ArchetypeReflection {
+                display_name: "Active visualizers",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                view_types: &[],
+                fields: vec![ArchetypeFieldReflection {
+                    name: "instruction_ids",
+                    display_name: "Instruction ids",
+                    component_type: "rerun.blueprint.components.VisualizerInstructionId".into(),
+                    docstring_md: "Id's of the visualizers that should be active.",
+                    is_required: true,
+                }],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
@@ -4342,19 +4378,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.VisualizerOverrides"),
+            ArchetypeName::new("rerun.blueprint.archetypes.VisualizerInstruction"),
             ArchetypeReflection {
-                display_name: "Visualizer overrides",
+                display_name: "Visualizer instruction",
                 deprecation_summary: None,
                 scope: Some("blueprint"),
                 view_types: &[],
-                fields: vec![ArchetypeFieldReflection {
-                    name: "ranges",
-                    display_name: "Ranges",
-                    component_type: "rerun.blueprint.components.VisualizerOverride".into(),
-                    docstring_md: "Names of the visualizers that should be active.",
-                    is_required: true,
-                }],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "visualizer_type",
+                        display_name: "Visualizer type",
+                        component_type: "rerun.blueprint.components.VisualizerType".into(),
+                        docstring_md: "The type of the visualizer.",
+                        is_required: true,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "component_map",
+                        display_name: "Component map",
+                        component_type: "rerun.blueprint.components.VisualizerComponentMapping"
+                            .into(),
+                        docstring_md: "The component mapping pairs.",
+                        is_required: false,
+                    },
+                ],
             },
         ),
     ];

@@ -44,7 +44,7 @@ where
 
     let system_identifier = System::identifier();
 
-    for data_result in query.iter_visible_data_results(system_identifier) {
+    for (data_result, instruction) in query.iter_visualizer_instruction_for(system_identifier) {
         let entity_path = &data_result.entity_path;
 
         let Some(transform_info) = transform_info_for_archetype_or_report_error(
@@ -71,7 +71,7 @@ where
             output,
         };
 
-        let results = data_result.query_archetype_with_history::<A>(ctx, query);
+        let results = data_result.query_archetype_with_history::<A>(ctx, query, instruction);
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
         query_ctx.archetype_name = Some(A::name());

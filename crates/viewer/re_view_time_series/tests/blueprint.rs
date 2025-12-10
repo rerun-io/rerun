@@ -182,7 +182,7 @@ fn setup_blueprint(
         ctx.save_blueprint_archetype(
             cos_override_path.clone(),
             // Override which visualizer to use for the `cos` plot.
-            &blueprint::archetypes::VisualizerOverrides::new(["SeriesPoints"]),
+            &blueprint::archetypes::ActiveVisualizers::new(["SeriesPoints"]),
         );
         ctx.save_blueprint_archetype(
             cos_override_path,

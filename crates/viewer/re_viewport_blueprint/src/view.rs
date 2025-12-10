@@ -455,8 +455,8 @@ mod tests {
 
     use ahash::HashSet;
     use re_chunk::{ComponentIdentifier, RowId};
+    use re_log_types::TimePoint;
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
-    use re_log_types::{StoreKind, TimePoint};
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
@@ -699,31 +699,18 @@ mod tests {
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
 
-                let component_overrides = &result.property_overrides.component_overrides;
+                let first_instruction = result.visualizer_instructions.first().unwrap();
+                let component_overrides = &first_instruction.component_overrides;
+
                 let mut expected_overrides = expected_overrides
                     .get(&result.entity_path)
                     .cloned()
                     .unwrap_or_default();
 
-                for (component, override_path) in component_overrides {
-                    assert_eq!(
-                        override_path.store_kind,
-                        StoreKind::Blueprint,
-                        "Scenario {i}"
-                    );
-
+                for component in component_overrides {
                     assert!(
                         expected_overrides.remove(component),
-                        "Scenario {i}: expected override for {component} at {override_path:?} but got none"
-                    );
-
-                    assert_eq!(
-                        override_path,
-                        &OverridePath {
-                            store_kind: StoreKind::Blueprint,
-                            path: override_root.join(&node.data_result.entity_path),
-                        },
-                        "Scenario {i}"
+                        "Scenario {i}: expected override for {component} but got none"
                     );
                 }
                 assert!(expected_overrides.is_empty(), "Scenario {i}");

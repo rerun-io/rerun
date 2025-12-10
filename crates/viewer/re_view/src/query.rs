@@ -27,12 +27,17 @@ pub fn range_with_blueprint_resolved_data<'a>(
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
 ) -> HybridRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
     let mut components = components.into_iter().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, components.iter().copied());
+    let overrides = query_overrides(
+        ctx.viewer_ctx,
+        visualizer_instruction,
+        components.iter().copied(),
+    );
 
     // No need to query for components that have overrides.
     components.retain(|component| overrides.get(*component).is_none());
@@ -69,11 +74,16 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     query_shadowed_components: bool,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
     let mut components = components.into_iter().collect::<IntSet<_>>();
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, components.iter().copied());
+    let overrides = query_overrides(
+        ctx.viewer_ctx,
+        visualizer_instruction,
+        components.iter().copied(),
+    );
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
@@ -103,6 +113,7 @@ pub fn query_archetype_with_history<'a>(
     query_range: &QueryRange,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     data_result: &'a re_viewer_context::DataResult,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
 ) -> HybridResults<'a> {
     match query_range {
         QueryRange::TimeRange(time_range) => {
@@ -119,6 +130,7 @@ pub fn query_archetype_with_history<'a>(
                 &range_query,
                 data_result,
                 components,
+                visualizer_instruction,
             );
             (range_query, results).into()
         }
@@ -132,6 +144,7 @@ pub fn query_archetype_with_history<'a>(
                 data_result,
                 components,
                 query_shadowed_defaults,
+                visualizer_instruction,
             );
             (latest_query, results).into()
         }
@@ -140,7 +153,7 @@ pub fn query_archetype_with_history<'a>(
 
 pub fn query_overrides(
     ctx: &ViewerContext<'_>,
-    data_result: &re_viewer_context::DataResult,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     components: impl IntoIterator<Item = ComponentIdentifier>,
 ) -> LatestAtResults {
     // First see if any components have overrides.
@@ -148,35 +161,16 @@ pub fn query_overrides(
 
     let blueprint_engine = &ctx.store_context.blueprint.storage_engine();
 
-    // TODO(jleibs): partitioning overrides by path
     for component in components {
-        if let Some(override_value) = data_result
-            .property_overrides
+        if visualizer_instruction
             .component_overrides
-            .get(&component)
+            .contains(&component)
         {
-            let current_query = match override_value.store_kind {
-                re_log_types::StoreKind::Recording => ctx.current_query(),
-                re_log_types::StoreKind::Blueprint => ctx.blueprint_query.clone(),
-            };
-
-            let component_override_result = match override_value.store_kind {
-                re_log_types::StoreKind::Recording => {
-                    // TODO(jleibs): This probably is not right, but this code path is not used
-                    // currently. This may want to use range_query instead depending on how
-                    // component override data-references are resolved.
-                    blueprint_engine.cache().latest_at(
-                        &current_query,
-                        &override_value.path,
-                        [component],
-                    )
-                }
-                re_log_types::StoreKind::Blueprint => blueprint_engine.cache().latest_at(
-                    &current_query,
-                    &override_value.path,
-                    [component],
-                ),
-            };
+            let component_override_result = blueprint_engine.cache().latest_at(
+                ctx.blueprint_query,
+                &visualizer_instruction.override_path,
+                [component],
+            );
 
             // If we successfully find a non-empty override, add it to our results.
 
@@ -187,7 +181,7 @@ pub fn query_overrides(
             // This is extra tricky since the promise hasn't been resolved yet so we can't
             // actually look at the data.
             if let Some(value) = component_override_result.get(component) {
-                let index = value.index(&current_query.timeline());
+                let index = value.index(&ctx.blueprint_query.timeline());
 
                 // NOTE: This can never happen, but I'd rather it happens than an unwrap.
                 debug_assert!(index.is_some(), "{value:#?}");
@@ -205,6 +199,7 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridLatestAtResults<'a>;
 
     fn latest_at_with_blueprint_resolved_data_for_component<'a>(
@@ -212,6 +207,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridLatestAtResults<'a>;
 
     /// Queries for the given components, taking into account:
@@ -222,6 +218,7 @@ pub trait DataResultQuery {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         component_descriptors: impl IntoIterator<Item = ComponentIdentifier>,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridResults<'a>;
 
     /// Queries for all components of an archetype, taking into account:
@@ -231,8 +228,14 @@ pub trait DataResultQuery {
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridResults<'a> {
-        self.query_components_with_history(ctx, view_query, A::all_component_identifiers())
+        self.query_components_with_history(
+            ctx,
+            view_query,
+            A::all_component_identifiers(),
+            visualizer_instruction,
+        )
     }
 }
 
@@ -241,6 +244,7 @@ impl DataResultQuery for DataResult {
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridLatestAtResults<'a> {
         let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
@@ -250,6 +254,7 @@ impl DataResultQuery for DataResult {
             self,
             A::all_component_identifiers(),
             query_shadowed_components,
+            visualizer_instruction,
         )
     }
 
@@ -258,6 +263,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
         component: ComponentIdentifier,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridLatestAtResults<'a> {
         let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
@@ -267,6 +273,7 @@ impl DataResultQuery for DataResult {
             self,
             std::iter::once(component),
             query_shadowed_components,
+            visualizer_instruction,
         )
     }
 
@@ -275,6 +282,7 @@ impl DataResultQuery for DataResult {
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
         components: impl IntoIterator<Item = ComponentIdentifier>,
+        visualizer_instruction: &re_viewer_context::VisualizerInstruction,
     ) -> HybridResults<'a> {
         query_archetype_with_history(
             ctx,
@@ -283,6 +291,7 @@ impl DataResultQuery for DataResult {
             self.query_range(),
             components,
             self,
+            visualizer_instruction,
         )
     }
 }

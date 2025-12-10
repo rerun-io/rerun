@@ -72,9 +72,9 @@ pub fn new_view_query<'a>(ctx: &'a ViewerContext<'a>, view: &'a ViewBlueprint) -
         re_tracing::profile_scope!("per_system_data_results");
 
         query_result.tree.visit(&mut |node| {
-            for system in &node.data_result.visualizers {
+            for instruction in &node.data_result.visualizer_instructions {
                 per_visualizer_data_results
-                    .entry(*system)
+                    .entry(instruction.visualizer_type)
                     .or_default()
                     .push(&node.data_result);
             }
