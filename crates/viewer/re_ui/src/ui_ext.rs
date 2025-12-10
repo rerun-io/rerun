@@ -795,8 +795,8 @@ pub trait UiExt {
 
         if ui.is_rect_visible(rect) {
             let visuals = if ui.is_tooltip() {
-                // Style the label as highlighted in a tooltip, even though it's not interactive.
-                ui.style().visuals.widgets.hovered
+                // Style the label like an inactive interactive widget, even though it's non-interactive in tooltips.
+                ui.style().visuals.widgets.inactive
             } else {
                 ui.style().interact_selectable(&response, selected)
             };
