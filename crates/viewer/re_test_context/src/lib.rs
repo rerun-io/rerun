@@ -681,7 +681,7 @@ impl TestContext {
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_commands(&self, egui_ctx: &egui::Context) {
-        while let Some(command) = self.command_receiver.recv_system() {
+        while let Some((_from_where, command)) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {

@@ -1,4 +1,5 @@
 #![expect(clippy::unwrap_used)] // TODO
+#![expect(clippy::disallowed_macros)] // TODO
 
 use itertools::Itertools as _;
 

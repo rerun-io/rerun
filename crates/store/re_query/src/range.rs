@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use ahash::HashMap;
-use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 

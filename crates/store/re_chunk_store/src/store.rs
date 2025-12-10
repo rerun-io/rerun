@@ -1,3 +1,5 @@
+#![expect(unused_variables)] // TODO
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
