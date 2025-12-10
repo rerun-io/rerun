@@ -771,25 +771,35 @@ pub trait UiExt {
                 )
             });
 
-            ui.is_enabled() && (enough_space || long_enough_text) && contains_pointer
+            ui.is_enabled()
+                && !ui.is_tooltip()
+                && (enough_space || long_enough_text)
+                && contains_pointer
         };
 
         if show_copy_button {
             desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
         }
 
-        let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
+        let (widget_type, sense) = if ui.is_tooltip() {
+            // We don't want interaction in tooltips.
+            (egui::WidgetType::Label, egui::Sense::empty())
+        } else {
+            (egui::WidgetType::SelectableLabel, egui::Sense::click())
+        };
+
+        let (rect, response) = ui.allocate_at_least(desired_size, sense);
         response.widget_info(|| {
-            egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
-                ui.is_enabled(),
-                selected,
-                galley.text(),
-            )
+            egui::WidgetInfo::selected(widget_type, ui.is_enabled(), selected, galley.text())
         });
 
         if ui.is_rect_visible(rect) {
-            let visuals = ui.style().interact_selectable(&response, selected);
+            let visuals = if ui.is_tooltip() {
+                // Style the label as highlighted in a tooltip, even though it's not interactive.
+                ui.style().visuals.widgets.hovered
+            } else {
+                ui.style().interact_selectable(&response, selected)
+            };
 
             // Draw background on interaction.
             if selected || (response.hovered() || response.highlighted() || response.has_focus()) {
