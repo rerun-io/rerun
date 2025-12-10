@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
 use std::sync::Arc;
 
-use crate::pushdown_expressions::apply_filter_expr_to_queries;
+use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
     TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
@@ -47,7 +47,6 @@ pub struct DataframeQueryTableProvider {
     query_dataset_request: QueryDatasetRequest,
     sort_index: Option<Index>,
     dataset_id: EntryId,
-    // chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
 
     /// passing trace headers between phases of execution pipeline helps keep
@@ -139,7 +138,6 @@ impl DataframeQueryTableProvider {
             query_expression: query_expression.to_owned(),
             query_dataset_request,
             sort_index: query_expression.filtered_index,
-            // chunk_info_batches,
             dataset_id,
             client,
             #[cfg(not(target_arch = "wasm32"))]
@@ -312,16 +310,11 @@ impl TableProvider for DataframeQueryTableProvider {
                     if Some(col) == column_selector.as_ref() {
                         Ok(TableProviderFilterPushDown::Exact)
                     } else {
-                        let returned_queries = apply_filter_expr_to_queries(
-                            vec![self.query_dataset_request.clone()],
+                        filter_expr_is_supported(
                             filter_expr,
+                            &self.query_dataset_request,
                             &self.schema,
-                        )?;
-                        if let Some(_) = returned_queries {
-                            Ok(TableProviderFilterPushDown::Inexact)
-                        } else {
-                            Ok(TableProviderFilterPushDown::Unsupported)
-                        }
+                        )
                     }
                 })
                 .collect::<Result<Vec<_>, DataFusionError>>()?)
@@ -329,16 +322,7 @@ impl TableProvider for DataframeQueryTableProvider {
             Ok(filters
                 .iter()
                 .map(|filter_expr| {
-                    let returned_queries = apply_filter_expr_to_queries(
-                        vec![self.query_dataset_request.clone()],
-                        filter_expr,
-                        &self.schema,
-                    )?;
-                    if let Some(_) = returned_queries {
-                        Ok(TableProviderFilterPushDown::Inexact)
-                    } else {
-                        Ok(TableProviderFilterPushDown::Unsupported)
-                    }
+                    filter_expr_is_supported(filter_expr, &self.query_dataset_request, &self.schema)
                 })
                 .collect::<Result<Vec<_>, DataFusionError>>()?)
         }

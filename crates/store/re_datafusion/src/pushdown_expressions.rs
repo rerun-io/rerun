@@ -1,6 +1,7 @@
 use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
-use datafusion::logical_expr::{BinaryExpr, Expr, Operator};
+use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
+use datafusion::parquet::data_type::AsBytes;
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::common::v1alpha1::ext::SegmentId;
@@ -23,6 +24,21 @@ fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
         left: Box::new(expr.right.as_ref().clone()),
         op,
         right: Box::new(expr.left.as_ref().clone()),
+    }
+}
+
+pub(crate) fn filter_expr_is_supported(
+    filter_expr: &Expr,
+    query_dataset_request: &QueryDatasetRequest,
+    schema: &SchemaRef,
+) -> Result<TableProviderFilterPushDown, DataFusionError> {
+    let returned_queries =
+        apply_filter_expr_to_queries(vec![query_dataset_request.clone()], filter_expr, schema)?;
+
+    if returned_queries.is_some() {
+        Ok(TableProviderFilterPushDown::Inexact)
+    } else {
+        Ok(TableProviderFilterPushDown::Unsupported)
     }
 }
 
@@ -175,13 +191,26 @@ fn known_filter_column(
             let segment_id: SegmentId = value.into();
             KnownFilterColumn::SegmentId(segment_id)
         } else if is_time_index(col_expr.name(), schema) {
-            // TODO(tsaucer) support all time types
             let value = match value {
-                ScalarValue::Int64(Some(v)) => v,
-                ScalarValue::TimestampNanosecond(Some(v), _) => v,
+                ScalarValue::UInt8(Some(v)) => *v as i64,
+                ScalarValue::UInt16(Some(v)) => *v as i64,
+                ScalarValue::UInt32(Some(v)) => *v as i64,
+                ScalarValue::UInt64(Some(v)) => *v as i64,
+                ScalarValue::Int8(Some(v)) => *v as i64,
+                ScalarValue::Int16(Some(v)) => *v as i64,
+                ScalarValue::Int32(Some(v)) => *v as i64,
+                ScalarValue::Int64(Some(v)) => *v,
+                ScalarValue::TimestampSecond(Some(v), _) => *v * 1_000_000_000,
+                ScalarValue::TimestampMillisecond(Some(v), _) => *v * 1_000_000,
+                ScalarValue::TimestampMicrosecond(Some(v), _) => *v * 1_000,
+                ScalarValue::TimestampNanosecond(Some(v), _) => *v,
+                ScalarValue::DurationSecond(Some(v)) => *v * 1_000_000_000,
+                ScalarValue::DurationMillisecond(Some(v)) => *v * 1_000_000,
+                ScalarValue::DurationMicrosecond(Some(v)) => *v * 1_000,
+                ScalarValue::DurationNanosecond(Some(v)) => *v,
                 _ => return KnownFilterColumn::Unknown,
             };
-            let time = TimeInt::new_temporal(*value);
+            let time = TimeInt::new_temporal(value);
             KnownFilterColumn::Index(col_expr.name().to_owned(), time)
         } else {
             KnownFilterColumn::Unknown
