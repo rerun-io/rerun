@@ -350,7 +350,7 @@ impl TimePanel {
     ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
-        let time_range = entity_db.time_range_for(time_ctrl.timeline().name());
+        let time_range = entity_db.time_range_for(time_ctrl.timeline_name());
         let has_more_than_one_time_point =
             time_range.is_some_and(|time_range| time_range.min() != time_range.max());
 
@@ -425,7 +425,7 @@ impl TimePanel {
                 ui.label(
                     egui::RichText::from(format!(
                         "Waiting for timeline: {}",
-                        time_ctrl.timeline().name()
+                        time_ctrl.timeline_name()
                     ))
                     .heading()
                     .strong(),
@@ -543,14 +543,16 @@ impl TimePanel {
             ui.visuals().widgets.noninteractive.bg_stroke,
         );
 
-        paint_ticks::paint_time_ranges_and_ticks(
-            &self.time_ranges_ui,
-            ui,
-            &time_area_painter,
-            timeline_rect.top()..=timeline_rect.bottom(),
-            time_ctrl.time_type(),
-            ctx.app_options().timestamp_format,
-        );
+        if let Some(time_type) = time_ctrl.time_type() {
+            paint_ticks::paint_time_ranges_and_ticks(
+                &self.time_ranges_ui,
+                ui,
+                &time_area_painter,
+                timeline_rect.top()..=timeline_rect.bottom(),
+                time_type,
+                ctx.app_options().timestamp_format,
+            );
+        }
         paint_time_ranges_gaps(
             &self.time_ranges_ui,
             ui,
@@ -825,7 +827,7 @@ impl TimePanel {
         if is_visible {
             let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
                 &entity_db.storage_engine(),
-                time_ctrl.timeline().name(),
+                time_ctrl.timeline_name(),
                 entity_path,
             );
             if tree_has_data_in_current_timeline {
@@ -908,7 +910,7 @@ impl TimePanel {
                     entity_path: entity_path.clone(),
                     component: Some(component),
                 };
-                let timeline = time_ctrl.timeline();
+                let timeline = time_ctrl.timeline_name();
 
                 let response = ui
                     .list_item()
@@ -947,17 +949,17 @@ impl TimePanel {
                         store.num_static_events_for_component(entity_path, component);
                     let num_temporal_messages = store
                         .num_temporal_events_for_component_on_timeline(
-                            time_ctrl.timeline().name(),
+                            time_ctrl.timeline_name(),
                             entity_path,
                             component,
                         );
                     let total_num_messages = num_static_messages + num_temporal_messages;
 
                     if total_num_messages == 0 {
-                        ui.label(ui.ctx().warning_text(format!(
-                            "No event logged on timeline {:?}",
-                            timeline.name()
-                        )));
+                        ui.label(
+                            ui.ctx()
+                                .warning_text(format!("No event logged on timeline {timeline:?}")),
+                        );
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {
                             let kind = if is_static { "Static" } else { "Temporal" };
@@ -996,7 +998,7 @@ impl TimePanel {
                             // can be confusing.
                             if is_static {
                                 let query = re_chunk_store::LatestAtQuery::new(
-                                    *time_ctrl.timeline().name(),
+                                    *time_ctrl.timeline_name(),
                                     TimeInt::MAX,
                                 );
                                 let ui_layout = UiLayout::Tooltip;
@@ -1019,7 +1021,7 @@ impl TimePanel {
                 if is_visible {
                     let component_has_data_in_current_timeline = store
                         .entity_has_component_on_timeline(
-                            time_ctrl.timeline().name(),
+                            time_ctrl.timeline_name(),
                             entity_path,
                             component,
                         );
@@ -1354,9 +1356,7 @@ impl TimePanel {
         entity_db: &re_entity_db::EntityDb,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
-        let timeline = time_ctrl.timeline();
-
-        let Some(time_range) = entity_db.time_range_for(timeline.name()) else {
+        let Some(time_range) = entity_db.time_range_for(time_ctrl.timeline_name()) else {
             // We have no data on this timeline
             return;
         };
@@ -1364,10 +1364,10 @@ impl TimePanel {
         if time_range.min() == time_range.max() {
             // Only one time point - showing a slider that can't be moved is just annoying
         } else {
-            let space_needed_for_current_time = match timeline.typ() {
-                re_chunk_store::TimeType::Sequence => 100.0,
-                re_chunk_store::TimeType::DurationNs => 200.0,
-                re_chunk_store::TimeType::TimestampNs => 220.0,
+            let space_needed_for_current_time = match time_ctrl.time_type() {
+                Some(re_chunk_store::TimeType::Sequence) | None => 100.0,
+                Some(re_chunk_store::TimeType::DurationNs) => 200.0,
+                Some(re_chunk_store::TimeType::TimestampNs) => 220.0,
             };
 
             let mut time_range_rect = ui.available_rect_before_wrap();
@@ -1448,9 +1448,8 @@ impl TimePanel {
     ) {
         if let Some(time_int) = time_ctrl.time_int()
             && let Some(time) = time_ctrl.time()
+            && let Some(time_type) = time_ctrl.time_type()
         {
-            let time_type = time_ctrl.time_type();
-
             /// Pick number of decimals to show based on zoom level
             ///
             /// The zoom level is expressed as nanoseconds per ui point (logical pixel).
@@ -1623,11 +1622,13 @@ fn initialize_time_ranges_ui(
 
     let mut time_range = Vec::new();
 
-    let timeline = time_ctrl.timeline().name();
-    if let Some(times) = entity_db.time_histogram(timeline) {
+    let timeline = time_ctrl.timeline_name();
+    if let Some(times) = entity_db.time_histogram(timeline)
+        && let Some(time_type) = time_ctrl.time_type()
+    {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
-            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
+            let timeline_axis = TimelineAxis::new(time_type, times);
             time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
         }
@@ -1886,13 +1887,15 @@ fn timeline_properties_context_menu(
     let has_fragment = url.as_mut().is_ok_and(|url| {
         if let Some(fragment) = url.fragment_mut() {
             fragment.time_selection = None;
-            fragment.when = Some((
-                *time_ctrl.timeline().name(),
-                re_log_types::TimeCell {
-                    typ: time_ctrl.time_type(),
-                    value: hovered_time.floor().into(),
-                },
-            ));
+            fragment.when = time_ctrl.time_type().map(|typ| {
+                (
+                    *time_ctrl.timeline_name(),
+                    re_log_types::TimeCell {
+                        typ,
+                        value: hovered_time.floor().into(),
+                    },
+                )
+            });
             true
         } else {
             false

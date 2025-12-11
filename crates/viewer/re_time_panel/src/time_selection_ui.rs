@@ -61,9 +61,12 @@ pub fn loop_selection_ui(
     timeline_rect: &Rect,
     time_commands: &mut Vec<TimeControlCommand>,
 ) {
+    let Some(time_type) = time_ctrl.time_type() else {
+        return;
+    };
     if time_ctrl.time_selection().is_none() && time_ctrl.loop_mode() == LoopMode::Selection {
         // Helpfully select a time slice
-        if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
+        if let Some(selection) = initial_time_selection(time_ranges_ui, time_type) {
             time_commands.push(TimeControlCommand::SetTimeSelection(selection.to_int()));
         }
     }
@@ -115,8 +118,6 @@ pub fn loop_selection_ui(
                 let right_edge_rect =
                     Rect::from_x_y_ranges(rect.right()..=rect.right(), rect.y_range())
                         .expand(interact_radius);
-
-                let time_type = time_ctrl.time_type();
 
                 // Check middle first, so that the edges "wins" (are on top)
                 let middle_response = ui

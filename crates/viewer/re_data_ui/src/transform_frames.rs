@@ -77,7 +77,7 @@ impl TransformFramesUi {
         });
 
         let frame_ids = transform_cache.frame_id_registry();
-        let transforms = transform_cache.transforms_for_timeline(*ctx.time_ctrl.timeline().name());
+        let transforms = transform_cache.transforms_for_timeline(*ctx.time_ctrl.timeline_name());
 
         let mut frames = Vec::new();
 
