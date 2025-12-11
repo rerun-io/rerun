@@ -931,6 +931,7 @@ impl StoreHub {
                     protect_latest: 1, // keep the latest instance of everything, or we will forget things that haven't changed in a while
                     time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
                     protected_time_ranges,
+                    furthest_from: None,
                 });
                 if !store_events.is_empty() {
                     re_log::debug!("Garbage-collected blueprint store");

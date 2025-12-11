@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use ahash::{HashSet, HashSetExt};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
@@ -39,6 +40,75 @@ impl ChunkStore {
             .cloned()
             .chain(self.temporal_chunk_ids_per_entity.keys().cloned())
             .collect()
+    }
+
+    // TODO
+    // TODO: does this stuff somehow needs to be aware of protect_latest?
+    pub fn find_temporal_chunk_furthest_away2(
+        &self,
+        timeline: &TimelineName,
+        time: TimeInt,
+        ignoring: &HashSet<ChunkId>,
+    ) -> Option<&Arc<Chunk>> {
+        self.chunks_per_chunk_id
+            .values()
+            .filter(|chunk| !chunk.is_static() && !ignoring.contains(&chunk.id()))
+            .filter_map(|chunk| {
+                let times = chunk.timelines().get(timeline)?;
+
+                // TODO: what is the added value vs. just using the time range?
+                // -> large mostly empty chunk dont go insane is what: document that
+
+                // TODO: that seems very incorrect to me.
+                // let max_dist = if times.is_sorted() {
+                //     let max_dist_idx = times.times_raw().partition_point(|t| *t <= time.as_i64());
+                //     times
+                //         .times_raw()
+                //         .get(max_dist_idx.saturating_sub(1))
+                //         .map(|t| t.abs_diff(time.as_i64()))
+                // } else {
+                //     times
+                //         .times()
+                //         .map(|t| t.as_i64().abs_diff(time.as_i64()))
+                //         .max()
+                // };
+
+                // TODO: iterating the chunk themselves can be accelerated using the
+                // max-interval-size trick as usual, right?
+                // -> well, a range query will do that for us
+
+                // TODO: not max_dist, but you get the idea
+                // TODO: also, re-accelerate this
+                let max_dist = times
+                    .times()
+                    .map(|t| t.as_i64().abs_diff(time.as_i64()))
+                    .min();
+
+                max_dist.map(|max_dist| (chunk, max_dist))
+            })
+            .max_by_key(|(_chunk, dist)| *dist)
+            .map(|(chunk, _)| chunk)
+    }
+
+    pub fn find_temporal_chunks_furthest_away2(
+        &self,
+        timeline: &TimelineName,
+        time: TimeInt,
+    ) -> impl Iterator<Item = &Arc<Chunk>> {
+        let mut ignoring = HashSet::new();
+        std::iter::from_fn(move || {
+            let chunk = self.find_temporal_chunk_furthest_away2(timeline, time, &ignoring)?;
+            eprintln!(
+                "pivot: {} ({} rows) @ {} with {:?}",
+                chunk.id(),
+                chunk.num_rows(),
+                chunk.entity_path(),
+                // chunk.components().keys(),
+                chunk.time_range_per_component(),
+            );
+            ignoring.insert(chunk.id());
+            Some(chunk)
+        })
     }
 
     /// Retrieve all [`EntityPath`]s in the store.

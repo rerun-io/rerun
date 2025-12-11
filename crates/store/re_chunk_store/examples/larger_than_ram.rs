@@ -12,28 +12,29 @@ use re_sdk_types::{Archetype as _, archetypes::Boxes3D};
 
 fn main() {
     // TODO: this is the future!!1!
+    if false {
+        let nuscenes_rrd = "/home/cmc/dev/rerun-io/rerun/nuscenes.rrd";
+        let rrd_bytes = std::fs::read(nuscenes_rrd).unwrap();
+        let rrd_manifests = RrdManifest::from_rrd_bytes(&rrd_bytes).unwrap();
+        let rrd_manifest = rrd_manifests
+            .into_iter()
+            .find(|m| m.store_id.kind() == StoreKind::Recording)
+            .unwrap();
+        dbg!(rrd_manifest.get_static_data_as_a_map().unwrap());
+        dbg!(rrd_manifest.get_temporal_data_as_a_map().unwrap());
+        let store = ChunkStore::from_rrd_manifest(&rrd_manifest).unwrap();
 
-    let nuscenes_rrd = "/home/cmc/dev/rerun-io/rerun/nuscenes.rrd";
-    let rrd_bytes = std::fs::read(nuscenes_rrd).unwrap();
-    let rrd_manifests = RrdManifest::from_rrd_bytes(&rrd_bytes).unwrap();
-    let rrd_manifest = rrd_manifests
-        .into_iter()
-        .find(|m| m.store_id.kind() == StoreKind::Recording)
-        .unwrap();
-    dbg!(rrd_manifest.get_static_data_as_a_map().unwrap());
-    dbg!(rrd_manifest.get_temporal_data_as_a_map().unwrap());
-    let store = ChunkStore::from_rrd_manifest(&rrd_manifest).unwrap();
+        let store_handle = ChunkStoreHandle::new(store);
+        let caches = re_query::QueryCache::new(store_handle.clone());
 
-    let store_handle = ChunkStoreHandle::new(store);
-    let caches = re_query::QueryCache::new(store_handle.clone());
+        do_latestat_query(&caches);
+        do_range_query(&caches);
 
-    do_latestat_query(&caches);
-    do_range_query(&caches);
-
-    eprintln!("------");
-    eprintln!("------");
-    eprintln!("------");
-    eprintln!("------");
+        eprintln!("------");
+        eprintln!("------");
+        eprintln!("------");
+        eprintln!("------");
+    }
 
     // ---
 
