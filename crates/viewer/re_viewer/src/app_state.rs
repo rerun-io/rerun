@@ -185,7 +185,7 @@ impl AppState {
 
         // is there an active loop selection?
         time_ctrl
-            .loop_selection()
+            .time_selection()
             .map(|q| (*time_ctrl.timeline().name(), q))
     }
 

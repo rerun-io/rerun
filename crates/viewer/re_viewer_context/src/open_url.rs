@@ -258,15 +258,13 @@ impl ViewerOpenUrl {
                     },
                 ))
             });
-        }
+            fragment.time_selection = time_ctrl.and_then(|time_ctrl| {
+                let time_selection = time_ctrl.time_selection()?;
 
-        if let Some(time_range) = this.time_range_mut()
-            && let Some(time_ctrl) = time_ctrl
-            && let Some(loop_selection) = time_ctrl.loop_selection()
-        {
-            *time_range = Some(re_uri::TimeSelection {
-                timeline: *time_ctrl.timeline(),
-                range: loop_selection.to_int(),
+                Some(re_uri::TimeSelection {
+                    timeline: *time_ctrl.timeline(),
+                    range: time_selection.to_int(),
+                })
             });
         }
 
@@ -670,40 +668,6 @@ impl ViewerOpenUrl {
             Self::ChunkStoreBrowser => None,
         }
     }
-
-    /// Time selection embedded in the URL if supported.
-    pub fn time_range_mut(&mut self) -> Option<&mut Option<re_uri::TimeSelection>> {
-        match self {
-            Self::IntraRecordingSelection(..) => None,
-            Self::RrdHttpUrl(..) => None,
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(..) => None,
-            Self::RedapDatasetSegment(uri) => Some(&mut uri.time_range),
-            Self::RedapProxy(..) => None,
-            Self::RedapCatalog(..) => None,
-            Self::RedapEntry(..) => None,
-            Self::WebEventListener => None,
-            Self::WebViewerUrl {
-                base_url: _,
-                url_parameters,
-            } => {
-                if url_parameters.len() == 1 {
-                    url_parameters.first_mut().time_range_mut()
-                } else {
-                    None
-                }
-            }
-            Self::Settings => None,
-            Self::ChunkStoreBrowser => None,
-        }
-    }
-
-    /// If there is a time range in this url, set it to none.
-    pub fn clear_time_range(&mut self) {
-        if let Some(time_range) = self.time_range_mut() {
-            *time_range = None;
-        }
-    }
 }
 
 /// Combines a base url, for example a web viewer url
@@ -1071,6 +1035,7 @@ mod tests {
                     value: re_log_types::NonMinI64::ONE,
                 },
             )),
+            time_selection: None,
         };
 
         uri.fragment = fragment.clone();
@@ -1275,7 +1240,7 @@ mod tests {
     }
 
     #[test]
-    fn test_query_and_fragment_uri() {
+    fn test_fragment_uri() {
         let uri_out = [
             (
                 "rerun+http://localhost:51234/",
@@ -1289,49 +1254,33 @@ mod tests {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
-                    time_range: None,
                     fragment: Default::default(),
                 }),
             ),
             (
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s",
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time@+1.096s..+2.097s",
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
-                    time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
-                    fragment: Default::default(),
-                }),
-            ),
-            (
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@+1.096s..+2.097s#when=stable_time@+3.990s",
-                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
-                    dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
-                    time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                     fragment: re_uri::Fragment {
-                        when: Some((
-                            "stable_time".into(),
-                            re_log_types::TimeCell::from_str("+3.990s").unwrap(),
-                        )),
+                        time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                         ..Default::default()
                     },
                 }),
             ),
             (
-                // Test missing `+`, and percent-endoded `+` (%2B):
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1&time_range=stable_time@1.096s..%2B2.097s#when=stable_time@3.990s",
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time@+1.096s..+2.097s&when=stable_time@+3.990s",
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
                     segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
-                    time_range: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                     fragment: re_uri::Fragment {
                         when: Some((
                             "stable_time".into(),
                             re_log_types::TimeCell::from_str("+3.990s").unwrap(),
                         )),
+                        time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                         ..Default::default()
                     },
                 }),

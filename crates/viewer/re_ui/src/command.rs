@@ -117,7 +117,7 @@ pub enum UICommand {
     Share,
     CopyDirectLink,
 
-    CopyTimeRangeLink,
+    CopyTimeSelectionLink,
 
     CopyEntityHierarchy,
 
@@ -353,7 +353,7 @@ impl UICommand {
                 "Try to copy a shareable link to the current screen. This is not supported for all data sources & viewer states.",
             ),
 
-            Self::CopyTimeRangeLink => (
+            Self::CopyTimeSelectionLink => (
                 "Copy link to selected time range",
                 "Copy a link to the part of the active recording within the loop selection bounds.",
             ),
@@ -527,7 +527,7 @@ impl UICommand {
             Self::Share => smallvec![cmd(Key::L)],
             Self::CopyDirectLink => smallvec![],
 
-            Self::CopyTimeRangeLink => smallvec![],
+            Self::CopyTimeSelectionLink => smallvec![],
 
             Self::CopyEntityHierarchy => smallvec![ctrl_shift(Key::E)],
 

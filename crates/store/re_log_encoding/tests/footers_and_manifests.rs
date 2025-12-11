@@ -327,7 +327,6 @@ fn footer_empty() {
                 cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-                is_partial: false,
             },
         }))
     }
@@ -393,7 +392,6 @@ fn generate_recording(
             cloned_from: None,
             store_source: re_log_types::StoreSource::Unknown,
             store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-            is_partial: false,
         },
     }))
     .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))
@@ -530,7 +528,6 @@ fn generate_blueprint(
             cloned_from: None,
             store_source: re_log_types::StoreSource::Unknown,
             store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
-            is_partial: false,
         },
     }))
     .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))

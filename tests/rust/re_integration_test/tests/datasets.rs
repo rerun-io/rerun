@@ -3,7 +3,10 @@ use std::{str::FromStr as _, time::Duration};
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::{HarnessExt as _, TestServer};
-use re_sdk::{TimeCell, external::re_tuid};
+use re_sdk::{
+    TimeCell, Timeline,
+    external::{re_log_types::AbsoluteTimeRange, re_tuid},
+};
 use re_viewer::{
     external::{re_chunk::TimelineName, re_viewer_context::open_url::ViewerOpenUrl},
     viewer_test_utils::{self, HarnessOptions},
@@ -111,13 +114,16 @@ pub async fn start_with_segment_url_with_fragment() {
         },
         dataset_id,
         segment_id: segment_id.id().to_owned(),
-        time_range: None,
         fragment: re_uri::Fragment {
             selection: None,
             when: Some((
                 TimelineName::new("test_time"),
                 TimeCell::new(re_sdk::time::TimeType::Sequence, 10),
             )),
+            time_selection: Some(re_uri::TimeSelection {
+                timeline: Timeline::new_sequence("test_time"),
+                range: AbsoluteTimeRange::new(2, 8),
+            }),
         },
     });
 
