@@ -191,12 +191,7 @@ impl ViewClass for TimeSeriesView {
                 let times_per_timeline = ctx.viewer_ctx().recording().times_per_timeline();
                 let (timeline_min, timeline_max) = times_per_timeline
                     .get(ctx.viewer_ctx().time_ctrl.timeline().name())
-                    .and_then(|stats| {
-                        Some((
-                            *stats.per_time.keys().next()?,
-                            *stats.per_time.keys().next_back()?,
-                        ))
-                    })
+                    .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
                     .unzip();
                 ctx.view_state()
                     .as_any()
