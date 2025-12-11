@@ -3381,7 +3381,7 @@ checksum = "d01d34e845f01c62e3fded726961092e70417d66570c499b9817ab24674ca4ed"
 dependencies = [
  "ahash",
  "egui",
- "ehttp 0.6.0",
+ "ehttp",
  "enum-map",
  "image",
  "log",
@@ -3463,9 +3463,9 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59a81c221a1e4dad06cb9c9deb19aea1193a5eea084e8cd42d869068132bf876"
+checksum = "04499d3c719edecfad5c9b46031726c8540905d73be6d7e4f9788c4a298da908"
 dependencies = [
  "async-channel",
  "document-features",
@@ -3477,20 +3477,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-streams",
- "web-sys",
-]
-
-[[package]]
-name = "ehttp"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04499d3c719edecfad5c9b46031726c8540905d73be6d7e4f9788c4a298da908"
-dependencies = [
- "document-features",
- "js-sys",
- "ureq",
- "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -8339,7 +8325,7 @@ version = "0.28.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "directories",
- "ehttp 0.5.0",
+ "ehttp",
  "jiff",
  "re_build_info",
  "re_log",
@@ -8406,7 +8392,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "directories",
- "ehttp 0.5.0",
+ "ehttp",
  "getrandom 0.3.3",
  "http",
  "indicatif",
@@ -9052,7 +9038,7 @@ dependencies = [
  "arrow",
  "bytes",
  "criterion",
- "ehttp 0.5.0",
+ "ehttp",
  "insta",
  "itertools 0.14.0",
  "js-sys",
@@ -9361,7 +9347,7 @@ name = "re_redap_client"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
  "arrow",
- "ehttp 0.5.0",
+ "ehttp",
  "itertools 0.14.0",
  "jiff",
  "re_arrow_util",
@@ -9625,7 +9611,7 @@ dependencies = [
  "chrono",
  "clap",
  "datafusion",
- "ehttp 0.5.0",
+ "ehttp",
  "futures",
  "http",
  "itertools 0.14.0",
@@ -10253,7 +10239,7 @@ dependencies = [
  "egui-wgpu",
  "egui_kittest",
  "egui_plot",
- "ehttp 0.5.0",
+ "ehttp",
  "emath",
  "glam",
  "image",
