@@ -325,8 +325,10 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
+    /// Open a modal to add a new server.
     OpenAddServerModal,
 
+    /// Open a modal to edit an existing server.
     OpenEditServerModal(EditRedapServerModalCommand),
 
     /// Add a server with an optional JWT token.
