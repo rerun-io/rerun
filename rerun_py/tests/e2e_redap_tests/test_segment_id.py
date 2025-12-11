@@ -15,14 +15,6 @@ def test_segment_ids(entry_factory: EntryFactory, resource_prefix: str, snapshot
     tasks = ds.register_prefix(resource_prefix + "dataset")
     tasks.wait(timeout_secs=50)
 
-
-def test_segment_ids(entry_factory: EntryFactory, resource_prefix: str, snapshot: SnapshotAssertion) -> None:
-    """Test that we can successfully collect information about segments."""
-
-    ds = entry_factory.create_dataset("test_dataset")
-    tasks = ds.register_prefix(resource_prefix + "dataset")
-    tasks.wait(timeout_secs=50)
-
     table = (
         ds.segment_table()
         .df()
