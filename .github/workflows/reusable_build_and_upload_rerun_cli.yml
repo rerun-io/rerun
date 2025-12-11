@@ -109,7 +109,7 @@ jobs:
           echo "bin_name=$bin_name" >> "$GITHUB_OUTPUT"
 
   build-rerun-cli:
-    name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
+    name: Build rerun-cli (${{ needs.set-config.outputs.TARGET }})
     timeout-minutes: 60
 
     needs: [set-config]
@@ -142,7 +142,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust and Authenticate to GCS
+      - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
           cache_key_suffix: "${{ inputs.PLATFORM }}"
