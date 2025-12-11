@@ -58,7 +58,7 @@ PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 EXECUTABLE_EXTENSION = ".exe"
 # Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
 # This ensures uv targets .venv instead of the pixi environment.
-PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi;${PATH}"
+PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
 
 # python-dev
 
