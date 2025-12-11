@@ -25,7 +25,7 @@ class SegmentRegistrationResult:
     @property
     def is_success(self) -> bool:
         """Returns True if the registration was successful."""
-        return self.error is not None
+        return self.error is None
 
     @property
     def is_error(self) -> bool:
