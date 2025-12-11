@@ -161,7 +161,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         // The only way to make sure the build datetime is up-to-date is to run
         // `build.rs` on every build, and there is really no good way of doing
         // so except to manually check if any files have changed:
-        rebuild_if_crate_changed(crate_name);
+        // rebuild_if_crate_changed(crate_name);
     } else {
         set_env("RE_BUILD_DATETIME", "");
     }
