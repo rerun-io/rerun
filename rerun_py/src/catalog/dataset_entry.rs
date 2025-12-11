@@ -223,11 +223,11 @@ impl PyDatasetEntryInternal {
     ///     The name of the timeline to display.
     ///
     /// start: int | datetime | None
-    ///     The start time for the segment.
+    ///     The start selected time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// end: int | datetime | None
-    ///     The end time for the segment.
+    ///     The end selected time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// Examples
@@ -281,7 +281,7 @@ impl PyDatasetEntryInternal {
                 selection: None,
                 when: timeline.and_then(|timeline| {
                     Some((
-                        TimelineName::new(timeline),
+                        re_chunk::TimelineName::new(timeline),
                         start_i64
                             .map(|start| start.try_into().expect("start time must be valid"))
                             .unwrap_or(re_log_types::NonMinI64::MIN),

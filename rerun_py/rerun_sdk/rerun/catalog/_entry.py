@@ -208,11 +208,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The name of the timeline to display.
 
         start: int | datetime | None
-            The start time for the segment.
+            The start selected time for the segment.
             Integer for ticks, or datetime/nanoseconds for timestamps.
 
         end: int | datetime | None
-            The end time for the segment.
+            The end selected time for the segment.
             Integer for ticks, or datetime/nanoseconds for timestamps.
 
         Examples
