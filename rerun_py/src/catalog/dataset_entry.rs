@@ -290,18 +290,16 @@ impl PyDatasetEntryInternal {
                         ),
                     )
                 }),
-                time_selection: timeline.and_then(|timeline| {
-                    re_uri::TimeSelection {
-                        timeline: re_chunk::Timeline::new_timestamp(timeline),
-                        range: re_log_types::AbsoluteTimeRange::new(
-                            start_i64
-                                .map(|start| start.try_into().expect("start time must be valid"))
-                                .unwrap_or(re_log_types::NonMinI64::MIN),
-                            end_i64
-                                .map(|end| end.try_into().expect("end time must be valid"))
-                                .unwrap_or(re_log_types::NonMinI64::MAX),
-                        ),
-                    }
+                time_selection: timeline.map(|timeline| re_uri::TimeSelection {
+                    timeline: re_chunk::Timeline::new_timestamp(timeline),
+                    range: re_log_types::AbsoluteTimeRange::new(
+                        start_i64
+                            .map(|start| start.try_into().expect("start time must be valid"))
+                            .unwrap_or(re_log_types::NonMinI64::MIN),
+                        end_i64
+                            .map(|end| end.try_into().expect("end time must be valid"))
+                            .unwrap_or(re_log_types::NonMinI64::MAX),
+                    ),
                 }),
             },
         }
