@@ -429,8 +429,6 @@ pub struct ChunkStore {
     /// All [`ChunkId`]s currently in the store, indexed by the smallest [`RowId`] in each of them.
     ///
     /// This is effectively all chunks in global data order. Used for garbage collection.
-    //
-    // TODO: well garbage collection needs to be LRU based so this gotta die anyway
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, ChunkId>,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentIdentifier`].

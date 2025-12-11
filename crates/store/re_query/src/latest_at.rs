@@ -14,9 +14,6 @@ use re_types_core::{Component, archetypes};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
 
-// TODO: what about the query cache? that's very annoying. we could just disable it for the POC, I
-// guess.
-
 // --- Public API ---
 
 /// Compute the ordering of two data indices, making sure to deal with `STATIC` data appropriately.

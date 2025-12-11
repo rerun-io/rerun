@@ -653,8 +653,10 @@ impl EntityDb {
     pub fn purge_fraction_of_ram(
         &mut self,
         fraction_to_purge: f32,
-        time_cursor: Option<(Timeline, TimeInt)>, // TODO: clement, use this!
+        time_cursor: Option<(Timeline, TimeInt)>,
     ) -> Vec<ChunkStoreEvent> {
+        eprintln!("---");
+
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
@@ -670,6 +672,8 @@ impl EntityDb {
             // exactly how far back the latest-at is of each component at the current time…
             // …but maybe it doesn't have to be perfect.
             protected_time_ranges: Default::default(),
+
+            furthest_from: time_cursor.map(|(timeline, time)| (*timeline.name(), time)),
         });
 
         if store_events.is_empty() {

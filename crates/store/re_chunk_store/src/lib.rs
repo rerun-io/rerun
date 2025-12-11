@@ -75,12 +75,6 @@ pub enum ChunkStoreError {
         value: String,
         err: Box<dyn std::error::Error + Send + Sync>,
     },
-
-    // TODO: error msg, docs, whatever
-    #[error("TODO")]
-    ChunksNotLoadedYet {
-        rrd_manifest: Box<re_log_encoding::RrdManifest>,
-    },
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
