@@ -138,13 +138,13 @@ Additionally, the new methods accept an optional `include_hidden` parameter:
 
 The following methods that returned `datafusion.DataFrame` objects have been removed without deprecation:
 
-| Removed method                                   | Replacement                                                             |
-|--------------------------------------------------|-------------------------------------------------------------------------|
-| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries").df()`                        |
-| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries").df()` filtered by entry kind |
-| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries").df()` filtered by entry kind |
+| Removed method                                   | Replacement                                                                  |
+|--------------------------------------------------|------------------------------------------------------------------------------|
+| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries").reader()`                         |
+| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries").reader()` filtered by entry kind  |
+| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries").reader()` filtered by entry kind  |
 
-The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries").df()`.
+The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries").reader()`.
 
 ## Python SDK: entry name listing methods now support `include_hidden`
 
@@ -177,7 +177,7 @@ df = client.get_table(name="my_table")  # returns DataFrame
 
 # After (0.28)
 table_entry = client.get_table(name="my_table")  # returns TableEntry
-df = table_entry.df()  # call df() to get the DataFrame
+df = table_entry.reader()  # call reader() to get the DataFrame
 ```
 
 This change aligns `get_table()` with `get_dataset()`, which returns a `DatasetEntry`. Both methods now consistently return entry objects that provide access to metadata and data.
@@ -231,62 +231,80 @@ The `Schema` class and related column descriptor/selector types have moved from 
 
 The previous import paths are still supported but will be removed in a future release.
 
-## Python SDK: new `DatasetView` API for filtering datasets
+## Python SDK: `DatasetEntry.dataframe_query_view()` replaced by `DatasetEntry.reader()`
 
-A new `DatasetView` class has been introduced for filtering and reading from datasets. It provides a cleaner, lazily-evaluated API for working with subsets of dataset data.
+The `DatasetEntry.dataframe_query_view()` method and the `DataframeQueryView` class have been removed. Their functionality is now available through `DatasetEntry.reader()`, optionally combined with `DatasetEntry.filter_segments()` and `DatasetEntry.filter_contents()` which return a `DatasetView`.
 
-### Creating a DatasetView
+### Migration paths
 
-Use `filter_segments()` or `filter_contents()` on a `DatasetEntry` to create a `DatasetView`:
+**Index selection**: Now a parameter to `reader()`:
 
 ```python
-from rerun.catalog import CatalogClient
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.df()
 
-client = CatalogClient("rerun+http://localhost:51234")
-dataset = client.get_dataset(name="my_dataset")
-
-# Filter to specific segments
-view = dataset.filter_segments(["recording_0", "recording_1"])
-
-# Filter to specific entity paths
-view = dataset.filter_contents(["/points/**"])
-
-# Chain filters
-view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**", "-/text/**"])
+# After (0.28)
+df = dataset.reader(index="timeline")
 ```
 
-### Reading data
-
-Use `reader()` to get a DataFusion DataFrame:
+**Content filtering**: Use `filter_contents()` to create a `DatasetView`:
 
 ```python
-df = view.reader(index="timeline")
-```
-
-### Available methods
-
-| Method | Description |
-|--------|-------------|
-| `filter_segments(segment_ids)` | Filter to specific segment IDs (list or DataFrame with `rerun_segment_id` column) |
-| `filter_contents(exprs)` | Filter to specific entity paths (supports wildcards like `/points/**`) |
-| `segment_ids()` | Get the list of segment IDs in this view |
-| `segment_table()` | Get segment metadata as a DataFusion DataFrame |
-| `schema()` | Get the filtered schema |
-| `arrow_schema()` | Get the filtered Arrow schema |
-| `reader(index=...)` | Create a DataFusion DataFrame reader |
-| `get_index_ranges(index)` | Get min/max values per segment for an index |
-| `download_segment(segment_id)` | Download a specific segment as a Recording |
-
-### Deprecation of `dataframe_query_view()`
-
-The `DatasetEntry.dataframe_query_view()` method is deprecated. Use the new `DatasetView` API instead:
-
-```python
-# Before (deprecated)
+# Before (0.27)
 view = dataset.dataframe_query_view(index="timeline", contents={"/points": ["Position2D"]})
 df = view.df()
 
-# After
+# After (0.28)
 view = dataset.filter_contents(["/points/**"])
 df = view.reader(index="timeline")
+```
+
+**Segment filtering**: Use `filter_segments()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.filter_partition_id(["recording_0"]).df()
+
+# After (0.28)
+view = dataset.filter_segments(["recording_0"])
+df = view.reader(index="timeline")
+```
+
+**Row filtering**: Use DataFusion filtering on the returned DataFrame:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.filter_is_not_null(...).df()
+
+# After (0.28)
+from datafusion import col
+df = dataset.reader(index="timeline").filter(col("my_column").is_not_null())
+```
+
+**Latest-at fill**: Now a parameter to `reader()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline", fill_latest_at=True)
+df = view.df()
+
+# After (0.28)
+df = dataset.reader(index="timeline", fill_latest_at=True)
+```
+
+## Python SDK: `TableEntry.df()` renamed to `TableEntry.reader()`
+
+The `TableEntry.df()` method has been renamed to `TableEntry.reader()` for consistency with `DatasetView.reader()`. This is a **breaking change**.
+
+```python
+# Before (0.27)
+table = client.get_table(name="my_table")
+df = table.df()
+
+# After (0.28)
+table = client.get_table(name="my_table")
+df = table.reader()
 ```
