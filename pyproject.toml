@@ -17,12 +17,16 @@ dev = [
   "ruff==0.12.10",
   "mypy==1.14.1",
   "nbqa==1.9.1",
-  # Type stubs for mypy
+  # Packages needed for running scripts + their type stubs for mypy
+  "pandas>=2.0",
   "pandas-stubs==2.3.3.251201",
+  "requests>=2.28",
   "types-requests==2.32.4.20250913",
+  "tqdm>=4.60",
   "types-tqdm==4.67.0.20250809",
+  "colorama>=0.4",
   "types-colorama>=0.4.15",
-  "types-Pillow>=10.0.0",
+  "Pillow>=10.0.0",  # has py.typed, no stubs needed
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
   "semver>=3.0,<3.1",
@@ -41,6 +45,8 @@ dev = [
   "ipywidgets>=8.0",
   # Example dependencies (needed for linting examples)
   "platformdirs>=4.0",
+  # Script dependencies (needed for linting scripts)
+  "google-cloud-storage>=2.9.0",
 ]
 
 [tool.uv]
