@@ -2722,6 +2722,7 @@ impl App {
 
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
+                && 0 < counted_diff
             {
                 re_log::debug!(
                     "Freed up {} ({:.1}%)",
