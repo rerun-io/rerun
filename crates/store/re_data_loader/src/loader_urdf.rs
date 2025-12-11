@@ -7,7 +7,7 @@ use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_sdk_types::archetypes::{Asset3D, Transform3D};
+use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
 use re_sdk_types::datatypes::Vec3D;
 use re_sdk_types::external::glam;
 use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
@@ -278,6 +278,15 @@ fn log_robot(
         .map(|prefix| prefix / EntityPath::from_single_string(urdf_tree.name.clone()))
         .unwrap_or_else(|| EntityPath::from_single_string(urdf_tree.name.clone()));
 
+    // The robot's root coordinate frame_id.
+    send_archetype(
+        tx,
+        store_id,
+        entity_path.clone(),
+        timepoint,
+        &CoordinateFrame::update_fields().with_frame(urdf_tree.root.name.clone()),
+    )?;
+
     walk_tree(
         &urdf_tree,
         tx,
@@ -341,8 +350,8 @@ fn log_joint(
         name: _,
         joint_type,
         origin,
-        parent: _,
-        child: _,
+        parent,
+        child,
         axis,
         limit,
         calibration,
@@ -351,7 +360,24 @@ fn log_joint(
         safety_controller,
     } = joint;
 
-    send_transform(tx, store_id, joint_path.clone(), origin, timepoint)?;
+    // A joint's own coordinate frame is that of its parent link.
+    send_archetype(
+        tx,
+        store_id,
+        joint_path.clone(),
+        timepoint,
+        &CoordinateFrame::update_fields().with_frame(parent.link.clone()),
+    )?;
+    // Send the joint origin, i.e. the default transform from parent link to child link.
+    send_transform(
+        tx,
+        store_id,
+        joint_path.clone(),
+        origin,
+        timepoint,
+        parent.link.clone(),
+        child.link.clone(),
+    )?;
 
     log_debug_format(
         tx,
@@ -400,13 +426,28 @@ fn log_joint(
     Ok(())
 }
 
-fn transform_from_pose(origin: &urdf_rs::Pose) -> Transform3D {
+fn transform_from_pose(
+    origin: &urdf_rs::Pose,
+    parent_frame: String,
+    child_frame: String,
+) -> Transform3D {
     let urdf_rs::Pose { xyz, rpy } = origin;
     let translation = [xyz[0] as f32, xyz[1] as f32, xyz[2] as f32];
     let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
     Transform3D::update_fields()
         .with_translation(translation)
         .with_quaternion(quaternion)
+        .with_parent_frame(parent_frame)
+        .with_child_frame(child_frame)
+}
+
+fn instance_poses_from_pose(origin: &urdf_rs::Pose) -> InstancePoses3D {
+    let urdf_rs::Pose { xyz, rpy } = origin;
+    let translation = Vec3D::new(xyz[0] as f32, xyz[1] as f32, xyz[2] as f32);
+    let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
+    InstancePoses3D::update_fields()
+        .with_translations(vec![translation])
+        .with_quaternions(vec![quaternion])
 }
 
 fn send_transform(
@@ -415,21 +456,40 @@ fn send_transform(
     entity_path: EntityPath,
     origin: &urdf_rs::Pose,
     timepoint: &TimePoint,
+    parent_frame: String,
+    child_frame: String,
 ) -> anyhow::Result<()> {
-    let urdf_rs::Pose { xyz, rpy } = origin;
-    let is_identity = xyz.0 == [0.0, 0.0, 0.0] && rpy.0 == [0.0, 0.0, 0.0];
+    send_archetype(
+        tx,
+        store_id,
+        entity_path,
+        timepoint,
+        &transform_from_pose(origin, parent_frame, child_frame),
+    )
+}
 
-    if is_identity {
-        Ok(()) // avoid noise
-    } else {
-        send_archetype(
-            tx,
-            store_id,
-            entity_path,
-            timepoint,
-            &transform_from_pose(origin),
-        )
-    }
+fn send_instance_pose_with_frame(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    entity_path: EntityPath,
+    timepoint: &TimePoint,
+    origin: &urdf_rs::Pose,
+    parent_frame: String,
+) -> anyhow::Result<()> {
+    send_archetype(
+        tx,
+        store_id,
+        entity_path.clone(),
+        timepoint,
+        &instance_poses_from_pose(origin),
+    )?;
+    send_archetype(
+        tx,
+        store_id,
+        entity_path,
+        timepoint,
+        &CoordinateFrame::update_fields().with_frame(parent_frame),
+    )
 }
 
 /// Log the given value using its `Debug` formatting.
@@ -481,6 +541,16 @@ fn log_link(
         timepoint,
     )?;
 
+    // Log coordinate frame ID of the link.
+    let link_name = link.name.clone();
+    send_archetype(
+        tx,
+        store_id,
+        link_entity.clone(),
+        timepoint,
+        &CoordinateFrame::update_fields().with_frame(link_name.clone()),
+    )?;
+
     for (i, visual) in visual.iter().enumerate() {
         let urdf_rs::Visual {
             name,
@@ -488,8 +558,8 @@ fn log_link(
             geometry,
             material,
         } = visual;
-        let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
-        let vis_entity = link_entity / EntityPathPart::new(name);
+        let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
+        let visual_entity = link_entity / EntityPathPart::new(visual_name.clone());
 
         // Prefer inline defined material properties if present, otherwise fall back to global material.
         let material = material.as_ref().and_then(|mat| {
@@ -500,10 +570,25 @@ fn log_link(
             }
         });
 
-        send_transform(tx, store_id, vis_entity.clone(), origin, timepoint)?;
+        // A visual geometry has no frame ID of its own and has a constant pose,
+        // so we attach it to the link using an instance pose.
+        send_instance_pose_with_frame(
+            tx,
+            store_id,
+            visual_entity.clone(),
+            timepoint,
+            origin,
+            link_name.clone(),
+        )?;
 
         log_geometry(
-            urdf_tree, tx, store_id, vis_entity, geometry, material, timepoint,
+            urdf_tree,
+            tx,
+            store_id,
+            visual_entity,
+            geometry,
+            material,
+            timepoint,
         )?;
     }
 
@@ -513,10 +598,19 @@ fn log_link(
             origin,
             geometry,
         } = collision;
-        let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
-        let collision_entity = link_entity / EntityPathPart::new(name);
+        let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
+        let collision_entity = link_entity / EntityPathPart::new(collision_name.clone());
 
-        send_transform(tx, store_id, collision_entity.clone(), origin, timepoint)?;
+        // A collision geometry has no frame ID of its own and has a constant pose,
+        // so we attach it to the link using an instance pose.
+        send_instance_pose_with_frame(
+            tx,
+            store_id,
+            collision_entity.clone(),
+            timepoint,
+            origin,
+            link_name.clone(),
+        )?;
 
         log_geometry(
             urdf_tree,
