@@ -7,7 +7,27 @@ use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 // ---
 
 /// Number of messages per time.
-pub type TimeHistogram = re_int_histogram::Int64Histogram;
+#[derive(Default, Clone)]
+pub struct TimeHistogram(re_int_histogram::Int64Histogram);
+
+impl std::ops::Deref for TimeHistogram {
+    type Target = re_int_histogram::Int64Histogram;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl TimeHistogram {
+    pub fn increment(&mut self, time: i64, n: u32) {
+        self.0.increment(time, n);
+    }
+
+    pub fn decrement(&mut self, time: i64, n: u32) {
+        self.0.decrement(time, n);
+    }
+}
 
 /// Number of messages per time per timeline.
 ///
