@@ -41,22 +41,23 @@ jobs:
           echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"
 
   build-search-index:
-    runs-on: ubuntu-latest-16-cores
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     strategy:
       matrix:
         # We have to use a nightly version because rustdoc json format is unstable.
         toolchain: ["nightly-2025-09-16"]
     needs: [get-version]
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(needs.set-config.outputs.RUNNER, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache_key: "build-linux"
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           # pinned to a specific version that happens to work with current `rustdoc-types`
           toolchains: ${{ matrix.toolchain }}
 

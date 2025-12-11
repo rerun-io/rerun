@@ -63,6 +63,11 @@ jobs:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
     runs-on: ${{ matrix.runs_on }}
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(matrix.runs_on, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
+
       # Skipping the entire step would apparently require a separate job, not doing that here.
       # Instead we keep checking for the `matrix.pr_ci` flag.
       # See https://stackoverflow.com/questions/77186893/how-can-i-skip-the-whole-job-for-a-matrix-match-in-github-action
@@ -81,11 +86,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
-          cache_key: ${{ matrix.cache_key }}
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          cache_key_suffix: ${{ matrix.uid }}
 
       # Workaround for ASAN issues on Github images https://github.com/actions/runner-images/issues/9491
       - name: Fix kernel mmap rnd bits

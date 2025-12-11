@@ -1,31 +1,12 @@
 # This action sets up:
 # - The correct version of Rust based on the `rust-toolchain` file
 # - All components + targets specified in `rust-toolchain`
-# - Caching of individual compilation requests via `sccache` and GCS
-#   - Uses our own `rerun-io/sccache-action` which supports GCS
 # - `cargo nextest`
-#
-# Note that due to the use of GCS as an sccache storage backend,
-# this action also sets up GCP credentials as a side effect.
-# There is no harm to setting up the credentials twice accidentally,
-# but care should be taken not to do that, as it's wasteful.
+# - Caching
 
 name: "Setup Rust"
 
 inputs:
-  cache_key:
-    type: string
-    required: true
-  save_cache:
-    type: boolean
-    required: false
-    default: false
-  workload_identity_provider:
-    type: string
-    required: true
-  service_account:
-    type: string
-    required: true
   toolchains:
     type: string
     required: false
@@ -34,6 +15,15 @@ inputs:
     type: string
     required: false
     description: "One or more space separated target triplets that will be ensured to be supported."
+  cache_key_suffix:
+    type: string
+    required: false
+    description: "Optional suffix for cache key (e.g., matrix values)"
+  save_cache:
+    type: boolean
+    required: false
+    default: true
+    description: "Whether to save the cache"
 
 runs:
   using: "composite"
@@ -52,12 +42,6 @@ runs:
         clang --version
         which clang
       shell: bash --noprofile --norc -euo pipefail {0}
-
-    - name: Set up GCP credentials
-      uses: google-github-actions/auth@v2
-      with:
-        workload_identity_provider: ${{ inputs.workload_identity_provider }}
-        service_account: ${{ inputs.service_account }}
 
     - name: Ensure correct version of Rust is installed
       shell: bash --noprofile --norc -euo pipefail {0}
@@ -80,21 +64,27 @@ runs:
           rustup install $toolchain
         done
 
-    - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.8.0
-      with:
-        version: "v0.10.0"
-        use_gcs: true
-        gcs_bucket: rerun-sccache
-        gcs_read_only: false
-
-    - name: Verify sccache
-      shell: bash --noprofile --norc -euo pipefail {0}
-      run: |
-        sccache --show-stats
-
     # Recommended way to install nextest on CI.
     - name: Install latest nextest release
       uses: taiki-e/install-action@v2.48.7
       with:
         tool: nextest@0.9.89
+
+    - name: Compute branch for cache key
+      id: branch
+      shell: bash --noprofile --norc -euo pipefail {0}
+      run: |
+        BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+        echo "name=$(echo "$BRANCH" | tr '/' '-' | tr ':' '-')" >> $GITHUB_OUTPUT
+
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: "v1-rust"
+        shared-key: "${{ steps.branch.outputs.name }}-${{ github.job }}${{ inputs.cache_key_suffix && format('-{0}', inputs.cache_key_suffix) || '' }}"
+        add-job-id-key: "false"
+        cache-all-crates: "true"
+        cache-workspace-crates: "true"
+        cache-targets: "true"
+        cache-on-failure: "true"
+        save-if: ${{ inputs.save_cache }}

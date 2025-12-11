@@ -44,9 +44,13 @@ jobs:
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-latest-16-cores
     needs: [get-commit-sha]
+    runs-on: runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache
     steps:
+      - uses: runs-on/action@v2
+        with:
+          metrics: cpu,network,memory,disk,io
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release-commit }}
@@ -61,11 +65,6 @@ jobs:
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-web"
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - uses: prefix-dev/setup-pixi@v0.9.1
         with:
