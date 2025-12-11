@@ -43,8 +43,8 @@ tests = [
   "semver>=3.0,<3.1",
   "syrupy==5.0.0",
   "tomli==2.0.1",
-  "torch>=2.5",  # Needs numpy 2 support
-  "rerun-sdk[datafusion]"
+  "torch>=2.5", # Needs numpy 2 support
+  "rerun-sdk[datafusion]",
 ]
 notebook = ["rerun-notebook==0.28.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
