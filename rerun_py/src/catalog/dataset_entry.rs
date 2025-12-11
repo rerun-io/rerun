@@ -279,8 +279,8 @@ impl PyDatasetEntryInternal {
             //TODO(ab): add support for this
             fragment: re_uri::Fragment {
                 selection: None,
-                when: timeline.and_then(|timeline| {
-                    Some((
+                when: timeline.map(|timeline| {
+                    (
                         re_chunk::TimelineName::new(timeline),
                         re_sdk::TimeCell::new(
                             re_log_types::TimeType::TimestampNs,
@@ -288,10 +288,10 @@ impl PyDatasetEntryInternal {
                                 .map(|start| start.try_into().expect("start time must be valid"))
                                 .unwrap_or(re_log_types::NonMinI64::MIN),
                         ),
-                    ))
+                    )
                 }),
                 time_selection: timeline.and_then(|timeline| {
-                    Some(re_uri::TimeSelection {
+                    re_uri::TimeSelection {
                         timeline: re_chunk::Timeline::new_timestamp(timeline),
                         range: re_log_types::AbsoluteTimeRange::new(
                             start_i64
@@ -301,7 +301,7 @@ impl PyDatasetEntryInternal {
                                 .map(|end| end.try_into().expect("end time must be valid"))
                                 .unwrap_or(re_log_types::NonMinI64::MAX),
                         ),
-                    })
+                    }
                 }),
             },
         }
