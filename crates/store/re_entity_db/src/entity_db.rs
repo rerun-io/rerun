@@ -155,44 +155,42 @@ impl EntityDb {
         let storage_engine = self.storage_engine();
         let store = storage_engine.store();
 
-        self.rrd_manifest_index
-            .entity_tree
-            .visit_children_recursively(|entity_path| {
-                if entity_path.is_root() {
-                    return;
-                }
-                let depth = entity_path.len() - 1;
-                let indent = "  ".repeat(depth);
-                text.push_str(&format!("{indent}{entity_path}\n"));
-                let Some(components) = store.all_components_for_entity_sorted(entity_path) else {
-                    return;
-                };
-                for component in components {
-                    let component_indent = "  ".repeat(depth + 1);
-                    if let Some(component_descr) =
-                        store.entity_component_descriptor(entity_path, component)
-                        && let Some(component_type) = &component_descr.component_type
-                    {
-                        if let Some(datatype) = store.lookup_datatype(component_type) {
-                            text.push_str(&format!(
-                                "{}{}: {}\n",
-                                component_indent,
-                                component_type.short_name(),
-                                re_arrow_util::format_data_type(&datatype)
-                            ));
-                        } else {
-                            text.push_str(&format!(
-                                "{}{}\n",
-                                component_indent,
-                                component_type.short_name()
-                            ));
-                        }
+        self.tree().visit_children_recursively(|entity_path| {
+            if entity_path.is_root() {
+                return;
+            }
+            let depth = entity_path.len() - 1;
+            let indent = "  ".repeat(depth);
+            text.push_str(&format!("{indent}{entity_path}\n"));
+            let Some(components) = store.all_components_for_entity_sorted(entity_path) else {
+                return;
+            };
+            for component in components {
+                let component_indent = "  ".repeat(depth + 1);
+                if let Some(component_descr) =
+                    store.entity_component_descriptor(entity_path, component)
+                    && let Some(component_type) = &component_descr.component_type
+                {
+                    if let Some(datatype) = store.lookup_datatype(component_type) {
+                        text.push_str(&format!(
+                            "{}{}: {}\n",
+                            component_indent,
+                            component_type.short_name(),
+                            re_arrow_util::format_data_type(&datatype)
+                        ));
                     } else {
-                        // Fallback to component identifier
-                        text.push_str(&format!("{component_indent}{component}\n"));
+                        text.push_str(&format!(
+                            "{}{}\n",
+                            component_indent,
+                            component_type.short_name()
+                        ));
                     }
+                } else {
+                    // Fallback to component identifier
+                    text.push_str(&format!("{component_indent}{component}\n"));
                 }
-            });
+            }
+        });
         text
     }
 
@@ -518,10 +516,7 @@ impl EntityDb {
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.rrd_manifest_index
-            .entity_tree
-            .subtree(entity_path)
-            .is_some()
+        self.tree().subtree(entity_path).is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
@@ -887,7 +882,7 @@ impl EntityDb {
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.rrd_manifest_index.entity_tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return Default::default();
         };
 
@@ -910,7 +905,7 @@ impl EntityDb {
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.rrd_manifest_index.entity_tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return Default::default();
         };
 
@@ -933,7 +928,7 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.rrd_manifest_index.entity_tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return false;
         };
 
@@ -957,7 +952,7 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.rrd_manifest_index.entity_tree.subtree(entity_path) else {
+        let Some(subtree) = self.tree().subtree(entity_path) else {
             return false;
         };
 

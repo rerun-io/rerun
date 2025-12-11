@@ -26,14 +26,6 @@ impl TimelineAxis {
         }
     }
 
-    #[inline]
-    pub fn solid(timerange: AbsoluteTimeRange) -> Self {
-        re_tracing::profile_function!();
-        Self {
-            ranges: vec1::vec1![timerange],
-        }
-    }
-
     /// Total uncollapsed time within a certain bound.
     #[inline]
     pub fn sum_time_lengths(&self) -> u64 {

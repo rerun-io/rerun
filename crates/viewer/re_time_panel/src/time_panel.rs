@@ -1644,26 +1644,6 @@ fn initialize_time_ranges_ui(
             time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
         }
-    } else {
-        // Use the manifest instead!
-        if entity_db.rrd_manifest_index().manifest().is_none() {
-            re_log::debug!("{:?} has no manifest index (yet?)", entity_db.store_id());
-        } else {
-            match entity_db
-                .rrd_manifest_index()
-                .timeline_range(timeline.name())
-            {
-                Some(range) => {
-                    let timeline_axis = TimelineAxis::solid(range); // TODO: support gaps
-                    time_view =
-                        time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
-                    time_range.extend(timeline_axis.ranges);
-                }
-                None => {
-                    re_log::debug_once!("{:?} has no timeline range", entity_db.store_id());
-                }
-            }
-        }
     }
 
     TimeRangesUi::new(

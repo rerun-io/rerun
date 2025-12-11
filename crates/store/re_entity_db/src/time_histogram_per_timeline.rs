@@ -189,6 +189,31 @@ impl TimeHistogramPerTimeline {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 
+    fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
+        re_tracing::profile_function!();
+
+        let histogram = self
+            .times
+            .entry(*timeline.name())
+            .or_insert_with(|| TimeHistogram::new(*timeline));
+        for &time in times {
+            histogram.increment(time, n);
+        }
+    }
+
+    fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
+        re_tracing::profile_function!();
+
+        if let Some(histogram) = self.times.get_mut(timeline.name()) {
+            for &time in times {
+                histogram.decrement(time, n);
+            }
+            if histogram.is_empty() {
+                self.times.remove(timeline.name());
+            }
+        }
+    }
+
     /// If we know the manifest ahead of time, we can pre-populate
     /// the histogram with a rough estimate of the final form.
     pub fn on_rrd_manifest(
@@ -297,31 +322,6 @@ impl TimeHistogramPerTimeline {
                         }
                     }
                 }
-            }
-        }
-    }
-
-    fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
-        re_tracing::profile_function!();
-
-        let histogram = self
-            .times
-            .entry(*timeline.name())
-            .or_insert_with(|| TimeHistogram::new(*timeline));
-        for &time in times {
-            histogram.increment(time, n);
-        }
-    }
-
-    fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
-        re_tracing::profile_function!();
-
-        if let Some(histogram) = self.times.get_mut(timeline.name()) {
-            for &time in times {
-                histogram.decrement(time, n);
-            }
-            if histogram.is_empty() {
-                self.times.remove(timeline.name());
             }
         }
     }
