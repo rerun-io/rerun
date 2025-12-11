@@ -345,9 +345,9 @@ impl RrdManifest {
             .filter_map(|f| {
                 f.metadata()
                     .get("rerun:index")
-                    .and_then(|index| f.metadata().get("rerun:component").map(|c| (index, c)))
+                    .and_then(|index| f.metadata().get("rerun:component").map(|c| (index, c, f)))
             })
-            .unique()
+            .filter(|(_index, _component, field)| field.name().ends_with(":start"))
             .collect_vec();
 
         let mut per_entity: RrdManifestTemporalMap = Default::default();
@@ -357,6 +357,7 @@ impl RrdManifest {
         let chunk_is_static = self.col_chunk_is_static()?;
 
         struct IndexColumns<'a> {
+            index: &'a str,
             component: &'a String,
             time_type: TimeType,
 
@@ -370,7 +371,7 @@ impl RrdManifest {
         }
 
         let mut columns_per_index = HashMap::<String, IndexColumns<'_>>::new();
-        for (index, component) in indexes {
+        for (index, component, field) in indexes {
             let index = index.as_str();
             if index == "rerun:static" {
                 continue;
@@ -442,8 +443,9 @@ impl RrdManifest {
                 .unwrap_or_else(|| NullBuffer::new_valid(col_end.len()));
 
             columns_per_index.insert(
-                index.to_owned(),
+                field.name().to_owned(),
                 IndexColumns {
+                    index,
                     component,
                     time_type,
                     col_start_nulls,
@@ -462,8 +464,9 @@ impl RrdManifest {
                 continue;
             }
 
-            for (index, columns) in &columns_per_index {
+            for columns in columns_per_index.values() {
                 let IndexColumns {
+                    index,
                     component,
                     time_type,
                     col_start_nulls,
@@ -478,7 +481,7 @@ impl RrdManifest {
                 }
 
                 let component = ComponentIdentifier::new(component);
-                let timeline = Timeline::new(index.as_str(), *time_type);
+                let timeline = Timeline::new(*index, *time_type);
 
                 let per_timeline = per_entity.entry(entity_path.clone()).or_default();
                 let per_component = per_timeline.entry(timeline).or_default();
