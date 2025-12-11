@@ -1,5 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
+use std::collections::BTreeMap;
+
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
@@ -36,14 +38,34 @@ fn simple_manifest() {
 
     let rrd_manifest_batch = &rrd_manifest.data;
 
-    // TODO: gotta make this deterministic order
+    let static_map = rrd_manifest
+        .get_static_data_as_a_map()
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
+        .collect::<BTreeMap<_, _>>();
+
+    let temporal_map = rrd_manifest
+        .get_temporal_data_as_a_map()
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k,
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
+                    .collect::<BTreeMap<_, _>>(),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
     insta::assert_snapshot!(
         "simple_manifest_batch_native_map_static",
-        format!("{:#?}", rrd_manifest.get_static_data_as_a_map()),
+        format!("{:#?}", static_map),
     );
     insta::assert_snapshot!(
         "simple_manifest_batch_native_map_temporal",
-        format!("{:#?}", rrd_manifest.get_temporal_data_as_a_map()),
+        format!("{:#?}", temporal_map),
     );
 
     insta::assert_snapshot!(

@@ -347,7 +347,7 @@ impl RrdManifest {
                     .get("rerun:index")
                     .and_then(|index| f.metadata().get("rerun:component").map(|c| (index, c, f)))
             })
-            .unique_by(|(index, component, _field)| (*index, *component))
+            .filter(|(_index, _component, field)| field.name().ends_with(":start"))
             .collect_vec();
 
         let mut per_entity: RrdManifestTemporalMap = Default::default();
