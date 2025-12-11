@@ -122,7 +122,16 @@ pub trait RecordBatchExt {
     fn try_get_column(&self, name: &str) -> Result<&ArrayRef, MissingColumnError> {
         self.inner()
             .column_by_name(name)
-            .ok_or_else(|| MissingColumnError::new(name))
+            .ok_or_else(|| MissingColumnError {
+                missing: name.to_owned(),
+                available: self
+                    .inner()
+                    .schema()
+                    .fields()
+                    .iter()
+                    .map(|f| f.name().clone())
+                    .collect(),
+            })
     }
 }
 
