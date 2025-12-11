@@ -43,16 +43,20 @@ impl TimelineStats {
         self.total_count
     }
 
+    pub fn min_opt(&self) -> Option<TimeInt> {
+        self.per_time.keys().next().copied()
+    }
+
     pub fn min(&self) -> TimeInt {
-        self.per_time.keys().next().copied().unwrap_or(TimeInt::MIN)
+        self.min_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn max_opt(&self) -> Option<TimeInt> {
+        self.per_time.keys().next_back().copied()
     }
 
     pub fn max(&self) -> TimeInt {
-        self.per_time
-            .keys()
-            .next_back()
-            .copied()
-            .unwrap_or(TimeInt::MIN)
+        self.max_opt().unwrap_or(TimeInt::MIN)
     }
 
     pub fn range(&self) -> AbsoluteTimeRange {
