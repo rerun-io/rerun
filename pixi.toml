@@ -81,6 +81,8 @@ RERUN_DEV_ENVIRONMENT = "true"
 #   it breaks compilation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
 default = ["base", "wheel-build"]
 
+uv = ["base", "uv"]
+
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
 py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
 
@@ -373,6 +375,22 @@ js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-packag
 
 js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
 
+[feature.uv.dependencies]
+uv = ">=0.9.17"
+
+[feature.uv.tasks]
+uv-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
+uv-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+  "rerun-build-native-and-web-release",
+] }
+# Run the Python tests.
+uv-test = { cmd = "uv run python -m pytest -vv rerun_py/tests", depends-on = ["uv-build"] }
+uv-check = "uv run ruff check"
+uv-lint = "uv run mypy --no-warn-unused-ignore"
+
+snapshots = "python scripts/snapshots.py"
+
+
 [feature.wheel-build.tasks]
 # Build and install a development version of the rerun-sdk Python package.
 #
@@ -572,7 +590,7 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
 lychee = "0.20.1.*"
-mypy = "1.14.1.*"
+#mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 nbqa = "*"
 nbstripout = "*"
@@ -580,11 +598,11 @@ ninja = "1.11.1.*"
 numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=8.4.2"
-pytest-benchmark = ">=4.0.0,<4.1"
+#pytest = ">=8.4.2"
+#pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
-semver = ">=3.0,<3.1"
+#semver = ">=3.0,<3.1"
 syrupy = "5.0.0.*" # Snapshot testing with pytest
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
@@ -613,7 +631,7 @@ types-requests = ">=2.31,<3" # Type hint stubs
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*" # for `wasm-opt`
-maturin = "==1.8.1"
+#maturin = "==1.8.1"
 nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
@@ -679,7 +697,7 @@ numpy = ">=2" # Rerun still needs numpy <2. Enforce this outside of the pypi dep
 # This is very similar to `pixi run py-build`, and dispatches to maturin by way of PEP621.
 # However, pixi doesn't know how to track the rust dependencies of the python package, so
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
-rerun-sdk = { path = "rerun_py", editable = true }
+#rerun-sdk = { path = "rerun_py", editable = true }
 
 # The same applies to the notebook.
 # However, in order to build rerun-notebook and thus to even activate environments with the
