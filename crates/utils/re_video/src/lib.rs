@@ -37,7 +37,13 @@ pub use {
 #[cfg(with_ffmpeg)]
 pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
 
-/// Returns information about this crate
-pub fn build_info() -> re_build_info::BuildInfo {
-    re_build_info::build_info!()
+pub fn enabled_features() -> &'static [&'static str] {
+    &[
+        #[cfg(feature = "av1")]
+        "av1",
+        #[cfg(feature = "ffmpeg")]
+        "ffmpeg",
+        #[cfg(feature = "nasm")]
+        "nasm",
+    ]
 }

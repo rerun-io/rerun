@@ -9,10 +9,10 @@ use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, RecommendedView, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+    Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
+    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -145,21 +145,7 @@ impl ViewClass for GraphView {
         ctx: &ViewerContext<'_>,
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
-        // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
-        if let Some(maybe_visualizable) = ctx
-            .visualizable_entities_per_visualizer
-            .get(&NodeVisualizer::identifier())
-        {
-            ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
-                if include_entity(&entity) {
-                    Some(RecommendedView::new_single_entity(entity))
-                } else {
-                    None
-                }
-            }))
-        } else {
-            ViewSpawnHeuristics::empty()
-        }
+        suggest_view_for_each_entity::<NodeVisualizer>(ctx, include_entity)
     }
 
     /// Additional UI displayed when the view is selected.

@@ -610,7 +610,10 @@ where
 
     if args.version {
         println!("{build_info}");
-        println!("Video features: {}", re_video::build_info().features);
+        println!(
+            "Video features: {}",
+            re_video::enabled_features().iter().join(" ")
+        );
         return Ok(0);
     }
 

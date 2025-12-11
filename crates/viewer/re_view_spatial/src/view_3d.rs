@@ -327,13 +327,7 @@ impl ViewClass for SpatialView3D {
 
         let visualizable: HashSet<&ViewSystemIdentifier> = visualizable_entities_per_visualizer
             .iter()
-            .filter_map(|(visualizer, ents)| {
-                if ents.contains(entity_path) {
-                    Some(visualizer)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(visualizer, ents)| ents.contains_key(entity_path).then_some(visualizer))
             .collect();
 
         let indicated: HashSet<&ViewSystemIdentifier> = indicated_entities_per_visualizer
