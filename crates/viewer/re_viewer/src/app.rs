@@ -587,7 +587,7 @@ impl App {
                 // we want to diff state changes.
                 let should_diff_state = true;
                 let response = time_ctrl.update(
-                    recording.timeline_hisograms(),
+                    recording.timeline_histograms(),
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -612,7 +612,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.timeline_hisograms(),
+                    bp_ctx.current_blueprint.timeline_histograms(),
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -851,7 +851,7 @@ impl App {
 
                             let response = time_ctrl.handle_time_commands(
                                 Some(&blueprint_ctx),
-                                store_ctx.recording.timeline_hisograms(),
+                                store_ctx.recording.timeline_histograms(),
                                 &time_commands,
                             );
 
@@ -875,7 +875,7 @@ impl App {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
-                                target_store.timeline_hisograms(),
+                                target_store.timeline_histograms(),
                                 &time_commands,
                             );
 

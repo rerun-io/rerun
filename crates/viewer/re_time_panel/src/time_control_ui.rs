@@ -13,7 +13,7 @@ impl TimeControlUi {
     pub fn timeline_selector_ui(
         &self,
         time_ctrl: &TimeControl,
-        timeline_hisograms: &TimeHistogramPerTimeline,
+        timeline_histograms: &TimeHistogramPerTimeline,
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
@@ -26,7 +26,7 @@ impl TimeControlUi {
             let response = egui::ComboBox::from_id_salt("timeline")
                 .selected_text(time_ctrl.timeline().name().as_str())
                 .show_ui(ui, |ui| {
-                    for histogram in timeline_hisograms.histograms() {
+                    for histogram in timeline_histograms.histograms() {
                         let timeline = &histogram.timeline();
                         if ui
                             .selectable_label(

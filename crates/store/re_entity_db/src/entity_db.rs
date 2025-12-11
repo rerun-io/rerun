@@ -457,7 +457,7 @@ impl EntityDb {
     }
 
     /// When do we have data on each timeline?
-    pub fn timeline_hisograms(&self) -> &TimeHistogramPerTimeline {
+    pub fn timeline_histograms(&self) -> &TimeHistogramPerTimeline {
         &self.time_histogram_per_timeline
     }
 
