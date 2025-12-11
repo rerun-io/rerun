@@ -439,35 +439,69 @@ fn visualizer_components(
             }
 
             // Source component (if available)
-            ui.push_id("source_component", |ui| {
-                let component_map = instruction
-                    .component_mappings
-                    .iter()
-                    .find(|mapping| mapping.target == component_descr.component);
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
-                        let source =
-                            component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
+            // Source component (if available)
+            // println!("component_descr: {:?}", component_descr);
 
-                        if let Some(all_components_for_entity) = &all_components_for_entity {
-                            egui::ComboBox::new("source_component", "")
-                                .selected_text(source)
-                                .show_ui(ui, |ui| {
-                                    for component in all_components_for_entity {
-                                        if ui.button(component.as_str()).clicked() {
-                                            changed_component_mappings.push(
+            if let Some(target_component_type) = &component_descr.component_type
+                && let Some(all_components_for_entity) = &all_components_for_entity
+            {
+                if let Some(target_component_datatype) = ctx
+                    .viewer_ctx
+                    .recording_engine()
+                    .store()
+                    .lookup_datatype(target_component_type)
+                {
+                    // println!("component_type: {:?}", target_component_datatype);
+
+                    ui.push_id("source_component", |ui| {
+                        let component_map = instruction
+                            .component_mappings
+                            .iter()
+                            .find(|mapping| mapping.target == component_descr.component);
+
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Source component").value_fn(
+                                |ui, _| {
+                                    let source = component_map
+                                        .map_or_else(|| "", |mapping| mapping.source.as_str());
+
+                                    egui::ComboBox::new("source_component", "")
+                                        .selected_text(source)
+                                        .show_ui(ui, |ui| {
+                                            for component in all_components_for_entity {
+                                                let Some(source_component_metadata) = ctx
+                                                    .viewer_ctx
+                                                    .recording_engine()
+                                                    .store()
+                                                    .get_component_type(
+                                                        &data_result.entity_path,
+                                                        *component,
+                                                    )
+                                                else {
+                                                    continue;
+                                                };
+                                                if source_component_metadata.1
+                                                    != target_component_datatype
+                                                {
+                                                    continue;
+                                                };
+
+                                                if ui.button(component.as_str()).clicked() {
+                                                    changed_component_mappings.push(
                                                 re_viewer_context::VisualizerComponentMapping {
                                                     source: component.clone(),
                                                     target: component_descr.component,
                                                 },
                                             );
-                                        }
-                                    }
-                                });
-                        }
-                    }),
-                );
-            });
+                                                }
+                                            }
+                                        });
+                                },
+                            ),
+                        );
+                    });
+                }
+            }
         };
 
         let default_open = false;
