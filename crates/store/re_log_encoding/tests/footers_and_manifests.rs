@@ -13,7 +13,7 @@ use re_protos::external::prost::Message as _;
 
 #[test]
 fn simple_manifest() {
-    let rrd_manifest_batch = {
+    let rrd_manifest = {
         let mut builder = RrdManifestBuilder::default();
         let mut byte_offset_excluding_header = 0;
         for msg in generate_recording_chunks(1) {
@@ -30,8 +30,21 @@ fn simple_manifest() {
 
             byte_offset_excluding_header += chunk_byte_size;
         }
-        builder.into_record_batch().unwrap()
+
+        builder.build(StoreId::empty_recording()).unwrap()
     };
+
+    let rrd_manifest_batch = &rrd_manifest.data;
+
+    // TODO: gotta make this deterministic order
+    insta::assert_snapshot!(
+        "simple_manifest_batch_native_map_static",
+        format!("{:#?}", rrd_manifest.get_static_data_as_a_map()),
+    );
+    insta::assert_snapshot!(
+        "simple_manifest_batch_native_map_temporal",
+        format!("{:#?}", rrd_manifest.get_temporal_data_as_a_map()),
+    );
 
     insta::assert_snapshot!(
         "simple_manifest_batch",

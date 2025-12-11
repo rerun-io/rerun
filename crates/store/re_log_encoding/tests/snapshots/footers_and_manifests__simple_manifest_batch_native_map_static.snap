@@ -1,0 +1,27 @@
+---
+source: crates/store/re_log_encoding/tests/footers_and_manifests.rs
+expression: "format!(\"{:#?}\", rrd_manifest.get_static_data_as_a_map())"
+---
+Ok(
+    {
+        /my_entity2: {
+            "example.MyPoints:labels": ChunkId(
+                00000000000000010000000000000003,
+            ),
+            "example.MyPoints:colors": ChunkId(
+                00000000000000010000000000000003,
+            ),
+            "example.MyPoints:points": ChunkId(
+                00000000000000010000000000000003,
+            ),
+        },
+        /my_entity1: {
+            "example.MyPoints:labels": ChunkId(
+                00000000000000010000000000000002,
+            ),
+            "example.MyPoints:colors": ChunkId(
+                00000000000000010000000000000002,
+            ),
+        },
+    },
+)
