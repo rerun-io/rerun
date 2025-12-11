@@ -239,7 +239,8 @@ impl RrdManifestIndex {
         entity: &re_chunk::EntityPath,
         timeline: &TimelineName,
     ) -> bool {
-        self.entity_has_static_data(entity) || self.entity_has_data_on_timeline(entity, timeline)
+        self.entity_has_static_data(entity)
+            || self.entity_has_temporal_data_on_timeline(entity, timeline)
     }
 
     /// False for recordings streamed from SDK via proxy
