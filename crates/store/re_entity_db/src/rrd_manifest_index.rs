@@ -373,10 +373,7 @@ impl RrdManifestIndex {
 
             for chunks in entity_component_chunks.values() {
                 for (chunk_id, entry) in chunks {
-                    let RrdManifestTemporalMapEntry {
-                        time_range,
-                        num_rows: _, // TODO: Isse, wanna do something with this?
-                    } = entry;
+                    let RrdManifestTemporalMapEntry { time_range, .. } = entry;
 
                     let Some(info) = self.remote_chunks.get(chunk_id) else {
                         continue;
