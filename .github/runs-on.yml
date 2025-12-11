@@ -1,0 +1,17 @@
+runners:
+  # We don't specify `ram` as it's almost never a bottleneck:
+  # Usually the ratio of cores to memory is 2-4x.
+
+  arm64-ubuntu-large:
+    cpu: [16, 32]
+    family: ["c7g", "m7g"]
+    volume: 250gb
+    spot: price-capacity-optimized
+    image: ubuntu24-full-arm64
+
+  x64-ubuntu-large:
+    cpu: [16, 32]
+    family: ["c7", "m7"]
+    volume: 250gb
+    spot: price-capacity-optimized
+    image: ubuntu24-full-x64
