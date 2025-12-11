@@ -7,11 +7,11 @@ use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_sdk_types::archetypes::{Asset3D, Transform3D};
+use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, Transform3D};
 use re_sdk_types::datatypes::Vec3D;
 use re_sdk_types::external::glam;
 use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
-use urdf_rs::{Geometry, Joint, Link, LinkName, Material, Robot, Vec3, Vec4};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
