@@ -31,7 +31,7 @@ def test_create_table_and_append(tmp_path: Path) -> None:
         table.append(id=[2, 3, 4], value=[20.3, 15.7, 30.2], enabled=[False, True, False])
 
         # Read the table back
-        df = table.df()
+        df = table.reader()
 
         assert str(df.sort("id")) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────┐
@@ -81,7 +81,7 @@ def test_write_table_with_record_batches(tmp_path: Path) -> None:
         table.append([batch1, batch2])
 
         # Query the table
-        df = client.get_table(name="scores_table").df()
+        df = client.get_table(name="scores_table").reader()
 
         assert str(df.sort("id")) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────┐
@@ -123,7 +123,7 @@ def test_table_overwrite_mode(tmp_path: Path) -> None:
 
         table.append(batch1)
 
-        df_after_append = client.get_table(name="data_table").df()
+        df_after_append = client.get_table(name="data_table").reader()
         assert str(df_after_append.sort("id")) == inline_snapshot("""\
 ┌────────────────────┬─────────────────────┐
 │ id                 ┆ category            │
@@ -143,7 +143,7 @@ def test_table_overwrite_mode(tmp_path: Path) -> None:
 
         table.overwrite(batch2)
 
-        df_after_overwrite = client.get_table(name="data_table").df()
+        df_after_overwrite = client.get_table(name="data_table").reader()
         assert str(df_after_overwrite.sort("id")) == inline_snapshot("""\
 ┌────────────────────┬─────────────────────┐
 │ id                 ┆ category            │
@@ -171,7 +171,7 @@ def test_read_table(tmp_path: Path) -> None:
 
         # Method 1: get_table - returns a TableEntry, call df() to get DataFrame
         table_entry = client.get_table(name="products")
-        df1 = table_entry.df()
+        df1 = table_entry.reader()
         assert str(df1.sort("product_id")) == inline_snapshot("""\
 ┌────────────────────┬────────────────────┐
 │ product_id         ┆ price              │

@@ -10744,7 +10744,6 @@ dependencies = [
  "datafusion-ffi",
  "document-features",
  "futures",
- "indent",
  "infer",
  "itertools 0.14.0",
  "jiff",

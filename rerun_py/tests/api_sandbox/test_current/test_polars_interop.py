@@ -24,7 +24,7 @@ def test_entries_to_polars(tmp_path: Path) -> None:
         assert sorted([e.name for e in entries]) == ["my_dataset", "my_table"]
 
         # Test get_table for raw __entries table access with polars conversion
-        df = client.get_table(name="__entries").df().to_polars()
+        df = client.get_table(name="__entries").reader().to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot(
             """\
@@ -61,7 +61,7 @@ def test_table_to_polars(tmp_path: Path) -> None:
         )
         table.append(int16=[12], string_list=[["a", "b", "c"]])
 
-        df = client.get_table(name="my_table").df().to_polars()
+        df = client.get_table(name="my_table").reader().to_polars()
 
         assert str(df) == inline_snapshot("""\
 shape: (1, 2)
@@ -113,11 +113,10 @@ def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        view = ds.dataframe_query_view(index="timeline", contents="/**").filter_segment_id(
-            "simple_recording_0", "simple_recording_2"
-        )
+        # Create a view filtered to specific segments
+        view = ds.filter_segments(["simple_recording_0", "simple_recording_2"])
 
-        df = view.df().to_polars()
+        df = view.reader(index="timeline").to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
 Schema([('rerun_segment_id', String),
