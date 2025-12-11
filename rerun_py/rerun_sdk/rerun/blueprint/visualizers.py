@@ -36,3 +36,141 @@ TextLog = "TextLog"
 TransformAxes3D = "Transform3DArrows"
 VideoFrameReference = "VideoFrameReference"
 VideoStream = "VideoStream"
+
+
+# Experimental API for configuring visualizers
+class experimental:
+    """Experimental APIs for configuring visualizers."""
+
+    # This part is handwritten
+    class Visualizer:
+        def __init__(self, visualizer_type: str, *, overrides=None, mappings=None) -> None:
+            self.visualizer_type = visualizer_type
+            self.overrides = overrides
+            self.mappings = mappings or []
+
+        # TODO(grtlr,andreas): Implementation of new blueprint API goes here
+
+    class Arrows2D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Arrows2D", overrides=overrides, mappings=mappings)
+
+    class Arrows3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Arrows3D", overrides=overrides, mappings=mappings)
+
+    class Asset3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Asset3D", overrides=overrides, mappings=mappings)
+
+    class BarChart(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("BarChart", overrides=overrides, mappings=mappings)
+
+    class Boxes2D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Boxes2D", overrides=overrides, mappings=mappings)
+
+    class Boxes3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Boxes3D", overrides=overrides, mappings=mappings)
+
+    class Capsules3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Capsules3D", overrides=overrides, mappings=mappings)
+
+    class Cylinders3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Cylinders3D", overrides=overrides, mappings=mappings)
+
+    class DepthImage(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("DepthImage", overrides=overrides, mappings=mappings)
+
+    class Ellipsoids3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Ellipsoids3D", overrides=overrides, mappings=mappings)
+
+    class EncodedImage(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("EncodedImage", overrides=overrides, mappings=mappings)
+
+    class GeoLineStrings(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("GeoLineStrings", overrides=overrides, mappings=mappings)
+
+    class GeoPoints(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("GeoPoints", overrides=overrides, mappings=mappings)
+
+    class GraphEdges(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("GraphEdges", overrides=overrides, mappings=mappings)
+
+    class GraphNodes(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("GraphNodes", overrides=overrides, mappings=mappings)
+
+    class Image(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Image", overrides=overrides, mappings=mappings)
+
+    class LineStrips2D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Lines2D", overrides=overrides, mappings=mappings)
+
+    class LineStrips3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Lines3D", overrides=overrides, mappings=mappings)
+
+    class Mesh3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Mesh3D", overrides=overrides, mappings=mappings)
+
+    class Pinhole(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Cameras", overrides=overrides, mappings=mappings)
+
+    class Points2D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Points2D", overrides=overrides, mappings=mappings)
+
+    class Points3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Points3D", overrides=overrides, mappings=mappings)
+
+    class SegmentationImage(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("SegmentationImage", overrides=overrides, mappings=mappings)
+
+    class SeriesLines(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("SeriesLines", overrides=overrides, mappings=mappings)
+
+    class SeriesPoints(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("SeriesPoints", overrides=overrides, mappings=mappings)
+
+    class Tensor(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Tensor", overrides=overrides, mappings=mappings)
+
+    class TextDocument(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("TextDocument", overrides=overrides, mappings=mappings)
+
+    class TextLog(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("TextLog", overrides=overrides, mappings=mappings)
+
+    class TransformAxes3D(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("Transform3DArrows", overrides=overrides, mappings=mappings)
+
+    class VideoFrameReference(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("VideoFrameReference", overrides=overrides, mappings=mappings)
+
+    class VideoStream(Visualizer):
+        def __init__(self, *, overrides=None, mappings=None) -> None:
+            super().__init__("VideoStream", overrides=overrides, mappings=mappings)
