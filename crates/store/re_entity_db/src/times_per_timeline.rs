@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
+use std::ops::Bound;
 
 use re_chunk::TimelineName;
 use re_chunk_store::{ChunkStoreEvent, ChunkStoreSubscriber};
-use re_log_types::{TimeInt, Timeline};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeInt, TimeReal, Timeline};
 
 // ---
 
@@ -11,7 +12,7 @@ pub type TimeCounts = BTreeMap<TimeInt, u64>;
 #[derive(Clone, Debug)]
 pub struct TimelineStats {
     pub timeline: Timeline,
-    pub per_time: TimeCounts,
+    per_time: TimeCounts,
     pub total_count: u64,
 }
 
@@ -24,6 +25,15 @@ impl TimelineStats {
         }
     }
 
+    pub fn insert(&mut self, time: TimeInt, count: u64) {
+        *self.per_time.entry(time).or_default() += count;
+        self.total_count += count;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.num_events() == 0
+    }
+
     pub fn num_events(&self) -> u64 {
         debug_assert_eq!(
             self.per_time.values().sum::<u64>(),
@@ -31,6 +41,85 @@ impl TimelineStats {
             "[DEBUG ASSERT] book keeping drifted"
         );
         self.total_count
+    }
+
+    pub fn min_opt(&self) -> Option<TimeInt> {
+        self.per_time.keys().next().copied()
+    }
+
+    pub fn min(&self) -> TimeInt {
+        self.min_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn max_opt(&self) -> Option<TimeInt> {
+        self.per_time.keys().next_back().copied()
+    }
+
+    pub fn max(&self) -> TimeInt {
+        self.max_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn range(&self) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(self.min(), self.max())
+    }
+
+    pub fn step_fwd_time(&self, time: TimeReal) -> TimeInt {
+        if let Some((next, _)) = self
+            .per_time
+            .range((Bound::Excluded(time.floor()), Bound::Unbounded))
+            .next()
+        {
+            *next
+        } else {
+            self.min()
+        }
+    }
+
+    pub fn step_back_time(&self, time: TimeReal) -> TimeInt {
+        if let Some((previous, _)) = self.per_time.range(..time.ceil()).next_back() {
+            *previous
+        } else {
+            self.max()
+        }
+    }
+
+    pub fn step_fwd_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        if time < loop_range.min || loop_range.max <= time {
+            loop_range.min
+        } else if let Some((next, _)) = self
+            .per_time
+            .range((
+                Bound::Excluded(time.floor()),
+                Bound::Included(loop_range.max.floor()),
+            ))
+            .next()
+        {
+            TimeReal::from(*next)
+        } else {
+            self.step_fwd_time(time).into()
+        }
+    }
+
+    pub fn step_back_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        if time <= loop_range.min || loop_range.max < time {
+            loop_range.max
+        } else if let Some((previous, _)) = self
+            .per_time
+            .range(loop_range.min.ceil()..time.ceil())
+            .next_back()
+        {
+            TimeReal::from(*previous)
+        } else {
+            self.step_back_time(time).into()
+        }
     }
 }
 
