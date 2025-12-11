@@ -15,7 +15,26 @@ dev = [
   "rerun_notebook",
   "maturin>=1.0.0",
   "ruff==0.12.10",
-  "mypy==1.14.0",
+  "mypy==1.14.1",
+  "nbqa==1.9.1",
+  # Type stubs for mypy
+  "pandas-stubs==2.3.3.251201",
+  "types-requests==2.32.4.20250913",
+  "types-tqdm==4.67.0.20250809",
+  "types-colorama>=0.4.15",
+  "types-Pillow>=10.0.0",
+  # Typed packages needed for linting scripts/examples
+  "attrs>=23.1.0",
+  "semver>=3.0,<3.1",
+  "tomlkit>=0.12",
+  "GitPython>=3.1",
+  "PyGithub>=2.0",
+  "Jinja2>=3.1",
+  "rich>=13.0",
+  # Testing packages (typed, needed for linting tests)
+  "pytest>=8.0",
+  "inline-snapshot>=0.31",
+  "syrupy>=4.0",
 ]
 
 [tool.uv]
@@ -29,7 +48,7 @@ rerun-notebook = { workspace = true }
 members = ["rerun_py", "rerun_notebook"]
 
 [tool.ruff]
-src = ["rerun_py", "rerun_notebook"]
+src = ["rerun_py", "rerun_py/rerun_sdk", "rerun_notebook"]
 extend-exclude = [
   "crates",
   "target",
@@ -110,6 +129,9 @@ files = [
   "rerun_notebook/src/rerun_notebook",
   "tests/python",
 ]
+# These paths allow mypy to find rerun and rerun_bindings without needing
+# to run maturin develop first (which installs the .pth file).
+mypy_path = ["rerun_py", "rerun_py/rerun_sdk"]
 namespace_packages = true
 show_error_codes = true
 strict = true
@@ -137,6 +159,7 @@ module = [
   "cv2.*",
   "rerun.*",
   "huggingface_hub.*",
+  "polars.*",
 ]
 ignore_missing_imports = true
 

@@ -79,12 +79,10 @@ RERUN_DEV_ENVIRONMENT = "true"
 #   lead to unexpected (lengthy) Rerun build during environment creation.
 # - The cpp feature cannot be included in the default environment because
 #   it breaks compilation of the rerun client on linux. See: https://github.com/rerun-io/rerun/issues/6852
-default = ["base", "wheel-build"]
-
-uv = ["base", "uv"]
+default = ["base"]
 
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
-py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
+py = ["base", "python-dev", "python-tasks", "py-test-deps", "wheel-build"]
 
 # The py-docs environment is for building docs for the python package.
 py-docs = ["base", "python-docs"]
@@ -110,18 +108,17 @@ cpp = ["base", "cpp"]
 # ```
 
 # Just the deps for running snippet comparisons.
-wheel-test-min = ["base", "cpp", "py-test-deps", "python-pypi", "wheel-build", "wheel-test"]
+wheel-test-min = ["base", "cpp", "py-test-deps", "python-pypi", "wheel-test"]
 
 # The full deps for running all examples
-wheel-test = ["base", "wheel-test", "wheel-build", "py-test-deps", "examples-common", "python-pypi"]
+wheel-test = ["base", "wheel-test", "py-test-deps", "examples-common", "python-pypi"]
 
 # Example environments
 
 # These environments use the dev version of the python package.
 # The package will be installed in editable mode, so changes to the python code will be reflected immediately.
 # However, any changes to do the rust bindings will require running `pixi run py-build-examples`.
-examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
-# examples-ocr = ["examples-ocr", "wheel-build"]
+examples = ["examples-common", "python-dev", "examples-tasks"]
 
 # This environment uses the pypi-published version of the python package. This avoids the need to
 # build the package from source if you just want to try running the examples locally.
@@ -303,17 +300,18 @@ nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scri
 
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
-py-fmt = { cmd = "ruff check --fix --config rerun_py/pyproject.toml {{ files }} && ruff format --config rerun_py/pyproject.toml {{ files }}", args = [
+py-fmt = { cmd = "uv run ruff check --fix {{ files }} && uv run ruff format --config rerun_py/pyproject.toml {{ files }}", args = [
   { arg = "files", default = "." },
 ] }
-py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
+py-fmt-check = "uv run ruff check && ruff format --check"
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
 # I couldn't get the config to work correctly, so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-py-lint-nb-rerun = { cmd = "nbqa mypy examples/notebook scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml --cache-dir .mypy_cache_rerun_nb ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+# MYPYPATH is set to allow mypy to find rerun and rerun_bindings without needing maturin develop.
+py-lint-nb-rerun = { cmd = "MYPYPATH=rerun_py:rerun_py/rerun_sdk:rerun_notebook/src uv run nbqa mypy --no-warn-unused-ignore examples/notebook scripts/ tests/python/ docs/snippets/ --cache-dir .mypy_cache_rerun_nb " }
 # Need to run this in env with rerun installed
-py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
+py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
@@ -348,7 +346,7 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 
 
 # Lint markdown
-mdlint = "python scripts/ci/mdlint.py"
+mdlint = "vpython scripts/ci/mdlint.py"
 
 # Setup JS tools
 js-setup = "npm i -g yarn"
@@ -375,11 +373,7 @@ js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-packag
 
 js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
 
-[feature.uv.dependencies]
-uv = ">=0.9.17"
-
-[feature.uv.tasks]
-uv-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
+uv-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uv run python scripts/ci/fix_rerun_pth.py"
 uv-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
@@ -590,26 +584,25 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
 lychee = "0.20.1.*"
-#mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
-nbqa = "*"
 nbstripout = "*"
 ninja = "1.11.1.*"
-numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-#pytest = ">=8.4.2"
-#pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
-#semver = ">=3.0,<3.1"
-syrupy = "5.0.0.*" # Snapshot testing with pytest
+semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.37.2"
 gh = ">=2.79.0,<3"
+binaryen = "117.*" # for `wasm-opt`
+nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
+packaging = ">=24.0,<25" # For `publish_wheels.py`
+pip = ">=23"
+wheel = ">=0.38,<0.39"
 
 
 [feature.base.pypi-dependencies]
@@ -628,15 +621,7 @@ types-decorator = "*" # Type hint stubs
 types-Deprecated = "==1.2.9.2" # Type hint stubs
 types-pytz = "*" # Type hint stubs
 types-requests = ">=2.31,<3" # Type hint stubs
-
-[feature.wheel-build.dependencies]
-binaryen = "117.*" # for `wasm-opt`
-#maturin = "==1.8.1"
-nodejs = ">=22.0" # rerun_notebook needs nodejs to build the wheel
-packaging = ">=24.0,<25" # For `publish_wheels.py`
-pip = ">=23"
-pyarrow = "18.0.0.*"
-wheel = ">=0.38,<0.39"
+uv = "==0.9.17"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
