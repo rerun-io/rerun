@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_chunk::{EntityPath, TimelineName};
-use re_entity_db::{TimeCounts, TimelineStats, TimesPerTimeline};
+use re_entity_db::{TimelineStats, TimesPerTimeline};
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
@@ -649,7 +649,7 @@ impl TimeControl {
         if should_diff_state
             && times_per_timeline
                 .get(self.timeline.name())
-                .is_some_and(|stats| !stats.per_time.is_empty())
+                .is_some_and(|stats| !stats.is_empty())
         {
             self.diff_with(&mut response, old_timeline, old_playing, old_state);
         }
@@ -1031,12 +1031,12 @@ impl TimeControl {
                     && let Some(timeline_stats) = times_per_timeline.get(self.timeline.name())
                 {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                        if max(&timeline_stats.per_time) <= state.time {
-                            let new_time = min(&timeline_stats.per_time);
+                        if timeline_stats.max() <= state.time {
+                            let new_time = timeline_stats.min();
                             state.time = new_time.into();
                         }
                     } else {
-                        let new_time = min(&timeline_stats.per_time);
+                        let new_time = timeline_stats.min();
                         self.states
                             .insert(*self.timeline.name(), TimeState::new(new_time));
                     }
@@ -1050,7 +1050,7 @@ impl TimeControl {
                     && let Some(timeline_stats) = times_per_timeline.get(self.timeline.name())
                 {
                     // Set the time to the max:
-                    let new_time = max(&timeline_stats.per_time);
+                    let new_time = timeline_stats.max();
                     self.states
                         .entry(*self.timeline.name())
                         .or_insert_with(|| TimeState::new(new_time))
@@ -1073,9 +1073,9 @@ impl TimeControl {
 
         if let Some(time) = self.time() {
             let new_time = if let Some(loop_range) = self.active_loop_selection() {
-                step_back_time_looped(time, &timeline_stats.per_time, &loop_range)
+                timeline_stats.step_back_time_looped(time, &loop_range)
             } else {
-                step_back_time(time, &timeline_stats.per_time).into()
+                timeline_stats.step_back_time(time).into()
             };
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
@@ -1097,9 +1097,9 @@ impl TimeControl {
 
         if let Some(time) = self.time() {
             let new_time = if let Some(loop_range) = self.active_loop_selection() {
-                step_fwd_time_looped(time, &stats.per_time, &loop_range)
+                stats.step_fwd_time_looped(time, &loop_range)
             } else {
-                step_fwd_time(time, &stats.per_time).into()
+                stats.step_fwd_time(time).into()
             };
 
             if let Some(state) = self.states.get_mut(self.timeline.name()) {
@@ -1183,9 +1183,9 @@ impl TimeControl {
             // Start from beginning if we are at the end:
             if let Some(stats) = times_per_timeline.get(self.timeline.name())
                 && let Some(state) = self.states.get_mut(self.timeline.name())
-                && max(&stats.per_time) <= state.time
+                && stats.max() <= state.time
             {
-                let new_time = min(&stats.per_time);
+                let new_time = stats.min();
                 state.time = new_time.into();
                 self.playing = true;
                 self.following = false;
@@ -1320,7 +1320,7 @@ impl TimeControl {
     fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
         times_per_timeline
             .get(self.timeline().name())
-            .map(|stats| range(&stats.per_time))
+            .map(|stats| stats.range())
     }
 
     /// The selected slice of time that is called the "loop selection".
@@ -1360,18 +1360,6 @@ impl TimeControl {
     }
 }
 
-fn min(values: &TimeCounts) -> TimeInt {
-    *values.keys().next().unwrap_or(&TimeInt::MIN)
-}
-
-fn max(values: &TimeCounts) -> TimeInt {
-    *values.keys().next_back().unwrap_or(&TimeInt::MIN)
-}
-
-fn range(values: &TimeCounts) -> AbsoluteTimeRange {
-    AbsoluteTimeRange::new(min(values), max(values))
-}
-
 /// Pick the timeline that should be the default, by number of elements and prioritizing user-defined ones.
 fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) -> Timeline {
     re_tracing::profile_function!();
@@ -1397,74 +1385,14 @@ fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) 
     }
 }
 
-fn step_fwd_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
-    if let Some((next, _)) = values
-        .range((
-            std::ops::Bound::Excluded(time.floor()),
-            std::ops::Bound::Unbounded,
-        ))
-        .next()
-    {
-        *next
-    } else {
-        min(values)
-    }
-}
-
-fn step_back_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
-    if let Some((previous, _)) = values.range(..time.ceil()).next_back() {
-        *previous
-    } else {
-        max(values)
-    }
-}
-
-fn step_fwd_time_looped(
-    time: TimeReal,
-    values: &TimeCounts,
-    loop_range: &AbsoluteTimeRangeF,
-) -> TimeReal {
-    if time < loop_range.min || loop_range.max <= time {
-        loop_range.min
-    } else if let Some((next, _)) = values
-        .range((
-            std::ops::Bound::Excluded(time.floor()),
-            std::ops::Bound::Included(loop_range.max.floor()),
-        ))
-        .next()
-    {
-        TimeReal::from(*next)
-    } else {
-        step_fwd_time(time, values).into()
-    }
-}
-
-fn step_back_time_looped(
-    time: TimeReal,
-    values: &TimeCounts,
-    loop_range: &AbsoluteTimeRangeF,
-) -> TimeReal {
-    if time <= loop_range.min || loop_range.max < time {
-        loop_range.max
-    } else if let Some((previous, _)) = values.range(loop_range.min.ceil()..time.ceil()).next_back()
-    {
-        TimeReal::from(*previous)
-    } else {
-        step_back_time(time, values).into()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn with_events(timeline: Timeline, num: u64) -> TimelineStats {
-        TimelineStats {
-            timeline,
-            // Dummy `TimeInt` because were only interested in the counts.
-            per_time: std::iter::once((TimeInt::ZERO, num)).collect(),
-            total_count: num,
-        }
+        let mut stats = TimelineStats::new(timeline);
+        stats.insert(TimeInt::ZERO, num);
+        stats
     }
 
     #[test]

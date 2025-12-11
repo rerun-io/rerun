@@ -46,6 +46,3 @@ tokio.workspace = true
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true
-
-[build-dependencies]
-re_build_tools.workspace = true

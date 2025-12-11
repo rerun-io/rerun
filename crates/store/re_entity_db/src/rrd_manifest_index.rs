@@ -104,7 +104,7 @@ pub struct RrdManifestIndex {
     has_deleted: bool,
 
     /// Full time range per timeline
-    pub timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
+    timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
     pub entity_tree: crate::EntityTree,
 
@@ -165,7 +165,7 @@ impl RrdManifestIndex {
                     for entry in chunks.values() {
                         let RrdManifestTemporalMapEntry {
                             time_range: chunk_range,
-                            num_rows: _, // TODO: Emil, wanna do something with this?
+                            num_rows,
                         } = entry;
 
                         timeline_range = timeline_range.union(*chunk_range);
@@ -176,9 +176,8 @@ impl RrdManifestIndex {
                             .0
                             .entry(*timeline.name())
                             .or_insert_with(|| TimelineStats::new(*timeline));
-                        *timeline_stats.per_time.entry(chunk_range.min).or_default() += 1;
-                        *timeline_stats.per_time.entry(chunk_range.max).or_default() += 1;
-                        timeline_stats.total_count += 2;
+                        timeline_stats.insert(chunk_range.min, num_rows / 2);
+                        timeline_stats.insert(chunk_range.max, num_rows - num_rows / 2);
                     }
                 }
 
