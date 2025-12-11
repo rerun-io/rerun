@@ -12,13 +12,15 @@ use crate::{ATTR_RERUN_VISUALIZER, ATTR_RERUN_VISUALIZER_NONE, ObjectKind, Objec
 pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> String {
     let mut code = String::new();
 
-    code.push_indented(0, format!("# {}\n\n", autogen_warning!()), 1);
+    code.push_indented(0, format!("# {}", autogen_warning!()), 3);
     code.push_indented(
         0,
         "\"\"\"Constants for the names of the visualizers.\"\"\"",
         2,
     );
     code.push_unindented("from __future__ import annotations\n\n", 0);
+
+    code.push_indented(0, "from typing import Any", 2);
 
     let mut visualizers: Vec<(String, String)> = Vec::new();
     let mut archetypes_without_attr = Vec::new();
@@ -60,7 +62,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
 
     // Generate string constants
     for (archetype_name, visualizer_id) in &visualizers {
-        code.push_indented(0, format!("{archetype_name} = \"{visualizer_id}\""), 1);
+        code.push_indented(0, format!("{archetype_name} = {visualizer_id:?}"), 1);
     }
 
     // TODO(RR-3173): This should not be experimental anymore.
@@ -69,7 +71,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
     code.push_indented(0, "class experimental:", 1);
     code.push_indented(
         1,
-        "\"\"\"Experimental APIs for configuring visualizers.\"\"\"",
+        "\"\"\"Experimental APIs for configuring visualizer overrides.\"\"\"",
         2,
     );
 
@@ -78,7 +80,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
     code.push_indented(1, "class Visualizer:", 1);
     code.push_indented(
         2,
-        "def __init__(self, visualizer_type: str, *, overrides=None, mappings=None):",
+        "def __init__(self, visualizer_type: str, *, overrides: Any = None, mappings: Any = None) -> None:",
         1,
     );
     code.push_indented(3, "self.visualizer_type = visualizer_type", 1);
@@ -95,7 +97,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
         code.push_indented(1, format!("class {archetype_name}(Visualizer):"), 1);
         code.push_indented(
             2,
-            "def __init__(self, *, overrides=None, mappings=None):",
+            "def __init__(self, *, overrides: Any = None, mappings: Any = None) -> None:",
             1,
         );
         code.push_indented(
