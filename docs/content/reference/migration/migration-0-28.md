@@ -314,3 +314,29 @@ df = table.reader()
 <!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
 
 This method is deprecated and will be removed in a future release.
+
+## Python SDK: `register()` and `register_batch()` merged into unified `register()` API
+
+The `DatasetEntry.register()` and `DatasetEntry.register_batch()` methods have been merged into a single `register()` method that returns a `RegistrationHandle`. The `DatasetEntry.register_prefix()` now also returns a `RegistrationHandle`. The `Tasks` and `Task` classes have been removed. The `recording_layer` parameter has been renamed to `layer_name`.
+
+Single URI registration:
+
+```python
+# Before (0.27)
+segment_id = dataset.register("s3://bucket/recording.rrd")
+
+# After (0.28)
+segment_id = dataset.register("s3://bucket/recording.rrd").wait()[0]
+```
+
+Batch registration:
+
+```python
+# Before (0.27)
+handle = dataset.register_batch(["file:///uri1.rrd", "file:///uri2.rrd"], recording_layers=["base", "base"])
+segment_ids = handle.wait()
+
+# After (0.28)
+handle = dataset.register(["file:///uri1.rrd", "file:///uri2.rrd"], layer_name="base")
+segment_ids = handle.wait()
+```
