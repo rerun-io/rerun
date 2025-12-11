@@ -131,7 +131,7 @@ impl DensityGraph {
         )
     }
 
-    pub fn add_point(&mut self, x: f32, count: f32) {
+    pub fn add_point(&mut self, x: f32, count: f32, loaded: bool) {
         debug_assert!(0.0 <= count);
 
         let i = self.bucket_index_from_x(x);
@@ -145,11 +145,13 @@ impl DensityGraph {
             && let Some(bucket) = self.buckets.get_mut(i)
         {
             bucket.density += (1.0 - fract) * count;
+            bucket.loaded &= loaded;
         }
         if let Ok(i) = usize::try_from(i + 1)
             && let Some(bucket) = self.buckets.get_mut(i)
         {
             bucket.density += fract * count;
+            bucket.loaded &= loaded;
         }
     }
 
@@ -164,7 +166,7 @@ impl DensityGraph {
 
         if min_x == max_x {
             let center_x = lerp(min_x..=max_x, 0.5);
-            self.add_point(center_x, count);
+            self.add_point(center_x, count, loaded);
             return;
         }
 
@@ -556,36 +558,6 @@ pub fn paint_loaded_indicator_bar(
         return;
     }
 
-    /*
-    drawn_ranges.dedup_by(|(a_loaded, a_range), (b_loaded, b_range)| {
-        match a_loaded.cmp(&b_loaded) {
-            std::cmp::Ordering::Less => {
-                if b_range.span() < MIN_SPAN {
-                    *b_loaded = *a_loaded;
-                    b_range.min = a_range.min;
-                    b_range.max = a_range.max.max(b_range.max);
-                    true
-                } else {
-                    false
-                }
-            }
-            std::cmp::Ordering::Equal => {
-                b_range.min = a_range.min;
-                true
-            }
-            std::cmp::Ordering::Greater => {
-                if a_range.span() < MIN_SPAN {
-                    b_range.min = a_range.min;
-                    b_range.max = a_range.max.max(b_range.max);
-                    true
-                } else {
-                    false
-                }
-            }
-        }
-    });
-    */
-
     for x in loaded_ranges_on_timeline {
         ui.painter()
             .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
@@ -759,7 +731,7 @@ pub fn build_density_graph<'a>(
                 for (time, num_events) in
                     chunk.num_events_cumulative_per_unique_time(timeline.name())
                 {
-                    data.add_chunk_point(time, num_events as usize);
+                    data.add_chunk_point(time, num_events as usize, true);
                 }
             } else {
                 data.add_chunk_range(time_range, num_events_in_chunk, true);
@@ -893,12 +865,12 @@ impl<'a> DensityGraphBuilder<'a> {
         }
     }
 
-    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize) {
+    fn add_chunk_point(&mut self, time: TimeInt, num_events: usize, loaded: bool) {
         let Some(x) = self.time_ranges_ui.x_from_time_f32(time.into()) else {
             return;
         };
 
-        self.density_graph.add_point(x, num_events as _);
+        self.density_graph.add_point(x, num_events as _, loaded);
 
         if let Some(pointer_pos) = self.pointer_pos
             && self.row_rect.y_range().contains(pointer_pos.y)
@@ -949,87 +921,6 @@ impl<'a> DensityGraphBuilder<'a> {
             }
         }
     }
-
-    /*
-    fn add_unloaded_range(&mut self, time_range: AbsoluteTimeRange, num_events: u64) {
-        if num_events == 0 {
-            return;
-        }
-
-        let (Some(min_x), Some(max_x)) = (
-            self.time_ranges_ui.x_from_time_f32(time_range.min().into()),
-            self.time_ranges_ui.x_from_time_f32(time_range.max().into()),
-        ) else {
-            return;
-        };
-
-        let range = Rangef::new(min_x, max_x);
-
-        const CUTOFF: f32 = 1.0;
-
-        let found_index = self.unloaded_ranges.binary_search_by(|r| {
-            use std::cmp::Ordering;
-            if range.max + CUTOFF < r.range.min {
-                Ordering::Less
-            } else if range.min - CUTOFF > r.range.max {
-                Ordering::Greater
-            } else {
-                Ordering::Equal
-            }
-        });
-
-        match found_index {
-            Ok(merge_index) => {
-                let merge_range = &mut self.unloaded_ranges[merge_index];
-                merge_range.num_events += num_events;
-                merge_range.range = Rangef::new(
-                    merge_range.range.min.min(range.min),
-                    merge_range.range.max.max(range.max),
-                );
-
-                let mut drain_from = None;
-                for i in (0..merge_index).rev() {
-                    if self.unloaded_ranges[i].range.max + CUTOFF
-                        < self.unloaded_ranges[merge_index].range.min
-                    {
-                        break;
-                    }
-                    drain_from = Some(i);
-
-                    self.unloaded_ranges[merge_index].range.min = self.unloaded_ranges[i].range.min;
-                    self.unloaded_ranges[merge_index].num_events +=
-                        self.unloaded_ranges[i].num_events;
-                }
-
-                let mut drain_to = None;
-                for i in merge_index + 1..self.unloaded_ranges.len() {
-                    if self.unloaded_ranges[i].range.min - CUTOFF
-                        > self.unloaded_ranges[merge_index].range.max
-                    {
-                        break;
-                    }
-                    drain_to = Some(i);
-
-                    self.unloaded_ranges[merge_index].range.max = self.unloaded_ranges[i].range.max;
-                    self.unloaded_ranges[merge_index].num_events +=
-                        self.unloaded_ranges[i].num_events;
-                }
-
-                if let Some(drain_to) = drain_to {
-                    self.unloaded_ranges.drain(merge_index + 1..=drain_to);
-                }
-
-                if let Some(drain_from) = drain_from {
-                    self.unloaded_ranges.drain(drain_from..merge_index);
-                }
-            }
-            Err(new_index) => {
-                self.unloaded_ranges
-                    .insert(new_index, UnloadedRange { num_events, range });
-            }
-        }
-    }
-    */
 }
 
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
