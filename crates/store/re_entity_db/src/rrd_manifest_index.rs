@@ -4,6 +4,7 @@ use ahash::{HashMap, HashSet};
 use arrow::array::{Int32Array, RecordBatch};
 use arrow::compute::take_record_batch;
 use itertools::{Itertools as _, izip};
+use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk::{ChunkId, Timeline, TimelineName};
@@ -13,18 +14,19 @@ use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
 
 use crate::{TimelineStats, TimesPerTimeline};
 
+// The order here is used for priority to show the state in the ui (lower is more prioritized)
 /// Is the following chunk loaded?
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LoadState {
     /// The chunk is not loaded, nor being loaded.
     #[default]
-    Unloaded,
+    Unloaded = 0,
 
     /// We have requested it.
-    InTransit,
+    InTransit = 1,
 
     /// We have the chole chunk in memory.
-    Loaded,
+    Loaded = 2,
 }
 
 /// Info about a single chunk that we know ahead of loading it.
@@ -107,6 +109,8 @@ pub struct RrdManifestIndex {
     timelines: BTreeMap<TimelineName, AbsoluteTimeRange>,
 
     pub entity_tree: crate::EntityTree,
+    entity_has_temporal_data_on_timeline: IntMap<re_chunk::EntityPath, IntSet<TimelineName>>,
+    entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
     pub times_per_timeline: TimesPerTimeline,
 
@@ -118,10 +122,13 @@ impl RrdManifestIndex {
     pub fn append(&mut self, manifest: RrdManifest) -> CodecResult<()> {
         re_tracing::profile_function!();
 
+        self.native_static_map = manifest.get_static_data_as_a_map()?;
         self.native_temporal_map = manifest.get_temporal_data_as_a_map()?;
 
         self.update_timeline_stats();
         self.update_entity_tree();
+        self.update_entity_temporal_data();
+        self.update_entity_static_data();
 
         for chunk_id in manifest.col_chunk_id()? {
             self.remote_chunks.entry(chunk_id).or_default();
@@ -196,6 +203,43 @@ impl RrdManifestIndex {
         {
             self.entity_tree.on_new_entity(entity);
         }
+    }
+
+    fn update_entity_temporal_data(&mut self) {
+        for (entity, timelines) in &self.native_temporal_map {
+            self.entity_has_temporal_data_on_timeline
+                .entry(entity.clone())
+                .or_default()
+                .extend(timelines.keys().map(|t| *t.name()));
+        }
+    }
+
+    fn update_entity_static_data(&mut self) {
+        for entity in self.native_static_map.keys() {
+            self.entity_has_static_data.insert(entity.clone());
+        }
+    }
+
+    pub fn entity_has_temporal_data_on_timeline(
+        &self,
+        entity: &re_chunk::EntityPath,
+        timeline: &TimelineName,
+    ) -> bool {
+        self.entity_has_temporal_data_on_timeline
+            .get(entity)
+            .is_some_and(|timelines| timelines.contains(timeline))
+    }
+
+    pub fn entity_has_static_data(&self, entity: &re_chunk::EntityPath) -> bool {
+        self.entity_has_static_data.contains(entity)
+    }
+
+    pub fn entity_has_data_on_timeline(
+        &self,
+        entity: &re_chunk::EntityPath,
+        timeline: &TimelineName,
+    ) -> bool {
+        self.entity_has_static_data(entity) || self.entity_has_data_on_timeline(entity, timeline)
     }
 
     /// False for recordings streamed from SDK via proxy

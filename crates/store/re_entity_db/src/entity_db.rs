@@ -954,7 +954,9 @@ impl EntityDb {
 
         subtree
             .find_first_child_recursive(|path| {
-                engine.store().entity_has_data_on_timeline(timeline, path)
+                self.rrd_manifest_index
+                    .entity_has_data_on_timeline(path, timeline)
+                    || engine.store().entity_has_data_on_timeline(timeline, path)
             })
             .is_some()
     }
@@ -976,11 +978,31 @@ impl EntityDb {
 
         subtree
             .find_first_child_recursive(|path| {
-                engine
-                    .store()
-                    .entity_has_temporal_data_on_timeline(timeline, path)
+                self.rrd_manifest_index
+                    .entity_has_temporal_data_on_timeline(path, timeline)
+                    || engine
+                        .store()
+                        .entity_has_temporal_data_on_timeline(timeline, path)
             })
             .is_some()
+    }
+
+    /// Returns true if an entity has any temporal data on the given timeline.
+    ///
+    /// This ignores static data.
+    pub fn entity_has_temporal_data_on_timeline(
+        &self,
+        engine: &StorageEngineReadGuard<'_>,
+        timeline: &TimelineName,
+        entity_path: &EntityPath,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.rrd_manifest_index
+            .entity_has_temporal_data_on_timeline(entity_path, timeline)
+            || engine
+                .store()
+                .entity_has_temporal_data_on_timeline(timeline, entity_path)
     }
 }
 

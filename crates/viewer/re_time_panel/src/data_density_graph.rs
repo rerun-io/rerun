@@ -497,7 +497,7 @@ pub fn paint_loaded_indicator_bar(
         {
             debug_assert!(range.min <= range.max, "Negative time-range");
             debug_assert!(start <= end, "Negative x-range");
-            let range = Rangef::new(start as f32, end as f32);
+            let range = Rangef::new(start.floor() as f32, end.ceil() as f32);
 
             while delayed_ranges
                 .last()
@@ -517,6 +517,35 @@ pub fn paint_loaded_indicator_bar(
         delayed_ranges.sort_by(cmp);
     }
 
+    const MIN_SPAN: f32 = 15.0;
+    drawn_ranges.dedup_by(
+        |(a_state, a_range), (b_state, b_range)| match a_state.cmp(&b_state) {
+            std::cmp::Ordering::Less => {
+                if *b_state == re_entity_db::LoadState::Loaded && b_range.span() < MIN_SPAN {
+                    *b_state = *a_state;
+                    b_range.min = a_range.min;
+                    b_range.max = a_range.max.max(b_range.max);
+                    true
+                } else {
+                    false
+                }
+            }
+            std::cmp::Ordering::Equal => {
+                b_range.min = a_range.min;
+                true
+            }
+            std::cmp::Ordering::Greater => {
+                if *a_state == re_entity_db::LoadState::Loaded && a_range.span() < MIN_SPAN {
+                    b_range.min = a_range.min;
+                    b_range.max = a_range.max.max(b_range.max);
+                    true
+                } else {
+                    false
+                }
+            }
+        },
+    );
+
     for (load_state, x) in drawn_ranges {
         let x = x.intersection(x_range);
 
@@ -524,18 +553,26 @@ pub fn paint_loaded_indicator_bar(
             continue;
         }
 
+        let gap = 5.0;
+        let line = 3.0;
+        // In pixels per second
+        let speed = 20.0;
         match load_state {
             re_entity_db::LoadState::Unloaded => {}
             re_entity_db::LoadState::InTransit => {
                 let dashed_line = egui::Shape::dashed_line_with_offset(
                     &[egui::pos2(x.min, y), egui::pos2(x.max, y)],
                     ui.visuals().widgets.noninteractive.fg_stroke,
-                    &[2.0],
-                    &[4.0],
-                    ui.input(|i| i.time * 2.0 % 1e5) as f32,
+                    &[line],
+                    &[gap],
+                    ui.input(|i| {
+                        (i.time * speed + x.min as f64) % (gap as f64 + line as f64) - line as f64
+                    }) as f32,
                 );
 
                 ui.painter().add(dashed_line);
+                // ui.painter()
+                //     .hline(x, y, egui::Stroke::new(1.0, ui.visuals().warn_fg_color));
             }
             re_entity_db::LoadState::Loaded => {
                 ui.painter()

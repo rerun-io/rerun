@@ -720,6 +720,7 @@ impl TimePanel {
         re_tracing::profile_function!();
 
         let entity_path = &entity_data.entity_path;
+
         let item = TimePanelItem::entity_path(entity_path.clone());
         let is_selected = ctx.selection().contains_item(&item.to_item());
         let is_item_hovered = ctx
