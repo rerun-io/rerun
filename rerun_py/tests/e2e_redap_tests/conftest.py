@@ -11,7 +11,7 @@ import logging
 import pathlib
 import platform
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pytest
@@ -24,6 +24,7 @@ from .telemetry import Telemetry
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
 
+    from pytest_benchmark.fixture import BenchmarkFixture
     from rerun.catalog import DatasetEntry, TableEntry
     from syrupy import SnapshotAssertion
 
@@ -127,9 +128,10 @@ TABLE_FILEPATH = RESOURCES_DIR / "simple_datatypes"
 
 
 @pytest.fixture(scope="session")
-def region(request: pytest.FixtureRequest) -> str:
+def region(request: pytest.FixtureRequest) -> str | None:
     """Get the region for region-specific resources."""
-    return request.config.getoption("--region")
+    region: str | None = request.config.getoption("--region")
+    return region
 
 
 @pytest.fixture(scope="session")
@@ -180,7 +182,8 @@ def readonly_table_uri(resource_prefix: str) -> str:
 @pytest.fixture(scope="session")
 def redap_url(request: pytest.FixtureRequest) -> str | None:
     """Get the redap server URL from command-line options."""
-    return request.config.getoption("--redap-url")
+    url: str | None = request.config.getoption("--redap-url")
+    return url
 
 
 @pytest.fixture(scope="session")
@@ -404,7 +407,11 @@ def telemetry() -> Iterator[Telemetry]:
 
 
 @pytest.hookimpl(trylast=True)
-def pytest_benchmark_update_json(config, benchmarks, output_json) -> None:  # noqa: ARG001
+def pytest_benchmark_update_json(
+    config: pytest.Config,  # noqa: ARG001
+    benchmarks: list[BenchmarkFixture],
+    output_json: dict[str, Any],  # noqa: ARG001
+) -> None:
     """Hook to flush telemetry data at the end of the benchmark session."""
 
     telemetry = Telemetry()

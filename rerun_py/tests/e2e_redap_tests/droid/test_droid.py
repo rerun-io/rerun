@@ -193,7 +193,7 @@ def lookup_embedding_using_index_values_body(dataset: DatasetEntry) -> None:
 
     # Currently `using_index_values` will actually give us a single result, and so we have the option
     # to use that to improve the performance of this query.
-    # TODO(https://linear.app/rerun/issue/DPF-1818/): Decide if this is actually something we want to depend on
+    # TODO(DPF#1818): Decide if this is actually something we want to depend on
 
     result = (
         dataset.dataframe_query_view(index="real_time", contents="/camera/wrist/embedding")
@@ -226,41 +226,6 @@ def sample_index_values_body(dataset: DatasetEntry) -> None:
     sampled_times = [0, 100, 200, 500, 1000, 2000]
     result = (wrist.filter_index_values(sampled_times).fill_latest_at()).df().drop("rerun_segment_id").collect()
     assert len(result) > 0
-
-
-@pytest.mark.benchmark(group="droid")
-def test_sample_index_values_chunk_ids(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
-    """Find the Chunk IDs needed for `sample_index_values`."""
-    tracing.set_attribute("test_dataset", dataset.name)
-    benchmark.pedantic(
-        sample_index_values_chunk_ids_body,
-        args=(dataset,),
-        rounds=1,
-    )
-
-
-def sample_index_values_chunk_ids_body(dataset: DatasetEntry) -> None:
-    """Find the Chunk IDs needed for `sample_index_values`."""
-    wrist = dataset.dataframe_query_view(
-        index="log_tick",
-        contents="/camera/wrist/embedding /thumbnail/camera/wrist",
-    )
-
-    sampled_times = [0, 100, 200, 500, 1000, 2000]
-    results = (wrist.filter_index_values(sampled_times).fill_latest_at()).get_chunk_ids()
-    for batch in results:
-        assert batch.num_rows > 0
-
-
-@pytest.mark.benchmark(group="droid")
-def test_align_fixed_frequency(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
-    """Align two columns to a fixed frequency."""
-    tracing.set_attribute("test_dataset", dataset.name)
-    benchmark.pedantic(
-        align_fixed_frequency_body,
-        args=(dataset,),
-        rounds=1,
-    )
 
 
 def align_fixed_frequency_body(dataset: DatasetEntry) -> None:
