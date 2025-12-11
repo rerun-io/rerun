@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_sdk_types::components::{self, AggregationPolicy, Color, StrokeWidth};
-use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
+use re_sdk_types::components::{AggregationPolicy, Color, StrokeWidth};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_view::{
     RangeResultsExt as _, latest_at_with_blueprint_resolved_data,
     range_with_blueprint_resolved_data,
@@ -17,6 +17,7 @@ use crate::series_query::{
     allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars, collect_series_name,
     collect_series_visibility, determine_num_series,
 };
+use crate::util::supported_datatypes;
 use crate::{LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, util};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
@@ -36,7 +37,7 @@ impl VisualizerSystem for SeriesLinesSystem {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesLines::name().into(),
             required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-                std::iter::once(components::Scalar::arrow_datatype()).collect(),
+                supported_datatypes().into_iter().collect(),
             ),
             queried: archetypes::Scalars::all_components()
                 .iter()
