@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
-import uuid
 
 import pytest
 from rerun.catalog import CatalogClient, DatasetEntry
@@ -95,9 +95,9 @@ def aws_segments_to_register(aws_dataset_manifest: dict[str, Any], droid_dataset
 
 @pytest.fixture(scope="package")
 def dataset(
+    request: pytest.FixtureRequest,
     droid_dataset_name: str,
     droid_preregister_dataset: bool,
-    aws_segments_to_register: list[str],
     catalog_client: CatalogClient,
 ) -> Iterator[DatasetEntry]:
     """Fixture to provide a pre-registered droid dataset."""
@@ -106,6 +106,8 @@ def dataset(
         yield catalog_client.get_dataset(droid_dataset_name)
         return
 
+    # only request the fixture if we really need it
+    aws_segments_to_register: list[str] = request.getfixturevalue("aws_segments_to_register")
     # Create a unique dataset name to avoid collisions
     droid_dataset_name = f"{uuid.uuid4().hex}-{droid_dataset_name}"
     dataset_handle = catalog_client.create_dataset(droid_dataset_name)

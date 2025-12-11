@@ -35,7 +35,7 @@ name = "Rerun.io"
 text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
-tests = ["pytest==8.4.2", "syrupy==5.0.0", "boto3==1.42.5", "pytest_benchmark==5.2.3"]
+tests = ["pytest==8.4.2", "syrupy==5.0.0", "boto3==1.42.5", "pytest_benchmark==5.2.3", "opentelemetry-api==1.39.0", "opentelemetry-sdk==1.39.0", "opentelemetry-exporter-otlp-proto-grpc==1.39.0"]
 notebook = ["rerun-notebook==0.28.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
 all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
