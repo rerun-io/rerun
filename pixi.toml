@@ -374,16 +374,15 @@ js-docs = { cmd = "yarn --cwd rerun_js run docs", depends-on = ["js-build-packag
 
 js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-docs"] }
 
-uv-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uv run python scripts/ci/fix_rerun_pth.py"
-uv-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+# Python infrastructure
+
+py-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uv run python scripts/ci/fix_rerun_pth.py"
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
-# Run the Python tests.
-uv-test = { cmd = "uv run python -m pytest -vv rerun_py/tests", depends-on = ["uv-build"] }
-uv-check = "uv run ruff check"
-uv-lint = "uv run mypy --no-warn-unused-ignore"
+py-test = { cmd = "uv run python -m pytest -vv rerun_py/tests", depends-on = ["uv-build"] }
 
-snapshots = "python scripts/snapshots.py"
+snapshots = "uv run python scripts/snapshots.py"
 
 
 [feature.wheel-build.tasks]
@@ -397,57 +396,57 @@ snapshots = "python scripts/snapshots.py"
 #   configured to not install outside venv (which is a good practice). PIP_REQUIRE_VIRTUALENV=0 disables this check.
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
-py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
+old-py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
-py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
+old-py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends-on = [
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
+old-py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
+old-py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm,server --extras=tests", depends-on = [
   "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "uv pip install -e rerun_notebook", depends-on = ["js-build-base"] }
+old-py-build-notebook = { cmd = "uv pip install -e rerun_notebook", depends-on = ["js-build-base"] }
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
-py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
+old-py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
   "js-build-no-wasm",
 ] }
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+old-py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
 # Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
-py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
+old-py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
 [feature.python-tasks.tasks]
 
 # Dedicated alias for building the python bindings for the `py` environment.
-py-build = "pixi run -e py py-build-common"
+old-py-build = "pixi run -e py py-build-common"
 
 # Dedicated alias for building the python bindings in release mode for the `py` environment.
-py-build-release = "pixi run -e py py-build-common-release"
+old-py-build-release = "pixi run -e py py-build-common-release"
 
 # Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-debug = "pixi run -e py py-build-common --features re_perf_telemetry/tracy"
+old-py-build-perf-debug = "pixi run -e py py-build-common --features re_perf_telemetry/tracy"
 
 # Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf = "pixi run -e py py-build-common-release --features re_perf_telemetry/tracy"
+old-py-build-perf = "pixi run -e py py-build-common-release --features re_perf_telemetry/tracy"
 
-py-check-signatures = "python scripts/ci/python_check_signatures.py"
+py-check-signatures = "uv run python scripts/ci/python_check_signatures.py"
 
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "python"
@@ -462,9 +461,7 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 
 
 # Run the Python tests.
-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = ["py-build-release"] }
-
-snapshots = "python scripts/snapshots.py"
+old-py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends-on = ["py-build-release"] }
 
 [feature.python-docs.tasks]
 # Build the documentation search index.
