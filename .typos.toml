@@ -18,6 +18,7 @@ extend-exclude = [
 
 [default.extend-words]
 FUL = "FUL" # forward-up-left coordinate system
+Isse = "Isse" # It's a name
 lod = "lod" # level-of-detail
 ND = "ND" # np.NDArray
 opf = "opf" # Open Photogrammetry Format (OPF) file
@@ -158,7 +159,7 @@ extend-ignore-re = [
   "_[a-f0-9]{16}",
 
 
-  "np.arange", # numpy spells "arrange" wrong
+  "np.arange", # Stands for "array range" and isn't a misspelling of "arrange".
   "phc_[a-zA-Z0-9]*", # Posthog public key
   "PNG.?", # Workaround for https://github.com/crate-ci/typos/issues/967
 

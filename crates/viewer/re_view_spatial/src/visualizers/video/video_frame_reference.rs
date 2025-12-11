@@ -1,32 +1,25 @@
 use std::sync::Arc;
 
 use re_log_types::EntityPath;
-use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{
-    Archetype as _,
-    archetypes::{AssetVideo, VideoFrameReference},
-    components::{Blob, MediaType, Opacity, VideoTimestamp},
-};
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::video::Video;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, VideoAssetCache, ViewContext,
-    ViewContextCollection, ViewId, ViewQuery, ViewSystemExecutionError, ViewerContext,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
+    ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
-use crate::{
-    PickableTexturedRect,
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{
-        SpatialViewVisualizerData,
-        entity_iterator::{self, process_archetype},
-        filter_visualizable_2d_entities,
-        video::{
-            VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
-            visualize_video_frame_texture,
-        },
-    },
+use crate::PickableTexturedRect;
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::SpatialViewVisualizerData;
+use crate::visualizers::entity_iterator::{self, process_archetype};
+use crate::visualizers::video::{
+    VideoPlaybackIssueSeverity, show_video_playback_issue, video_stream_id,
+    visualize_video_frame_texture,
 };
 
 pub struct VideoFrameReferenceVisualizer {
@@ -52,25 +45,20 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         VisualizerQueryInfo::from_archetype::<VideoFrameReference>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 // TODO(andreas): Should ignore range queries here and only do latest-at.
                 // Not only would this simplify the code here quite a bit, it would also avoid lots of overhead.
@@ -129,10 +117,10 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             },
         )?;
 
-        Ok(vec![PickableTexturedRect::to_draw_data(
+        Ok(output.with_draw_data([PickableTexturedRect::to_draw_data(
             ctx.viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
-        )?])
+        )?]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -151,7 +139,7 @@ impl VideoFrameReferenceVisualizer {
         ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
         video_timestamp: &VideoTimestamp,
-        video_references: Option<Vec<re_types::ArrowString>>,
+        video_references: Option<Vec<re_sdk_types::ArrowString>>,
         opacity: Opacity,
         entity_path: &EntityPath,
         view_id: ViewId,
@@ -171,7 +159,8 @@ impl VideoFrameReferenceVisualizer {
             .single_transform_required_for_entity(
                 ctx.target_entity_path,
                 VideoFrameReference::name(),
-            );
+            )
+            .as_affine3a();
 
         // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)

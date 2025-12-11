@@ -51,6 +51,7 @@ defaults:
 
 permissions:
   contents: "read"
+  packages: "read"
   id-token: "write"
 
 jobs:
@@ -64,6 +65,14 @@ jobs:
       TARGET: ${{ steps.set-config.outputs.target }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
     steps:
+      - name: Login to GHCR (with retries)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 10
+          max_attempts: 12
+          retry_on: timeout
+          warning_on_retry: true
+          command: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Set runner and target based on platform
         id: set-config
 
@@ -73,26 +82,21 @@ jobs:
             linux-arm64)
               runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               ;;
             windows-x64)
-              runner="windows-latest-8-cores"
+              runner="windows-latest-16-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               ;;
             macos-arm64)
-              runner="macos-13-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
+              runner="macos-15-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
-              container="null"
-              ;;
-            macos-x64)
-              runner="macos-13-large" # This is an Intel vm, see https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
-              target="x86_64-apple-darwin"
               container="null"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
@@ -113,8 +117,8 @@ jobs:
     container:
       image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
-        username: ${{ secrets.DOCKER_HUB_USER }}
-        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Show context

@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+positions: [[0.0, 0.0]]
+radii: [-5.0]
+colors: [3161148927]
+class_ids: [0]

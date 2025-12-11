@@ -1,0 +1,7 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+target_frame: []
+show_axes: [false]
+show_bounding_box: [false]

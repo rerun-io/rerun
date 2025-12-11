@@ -1,21 +1,21 @@
-use egui::{Response, Ui};
-use smallvec::SmallVec;
-
+use egui::{Response, Ui, WidgetInfo, WidgetType};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
+use re_ui::drag_and_drop::DropTarget;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{
-    ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
-};
+use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemCollection, ItemContext, SystemCommand, SystemCommandSender as _, ViewId,
-    ViewerContext, VisitorControlFlow, contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, PerVisualizer, SystemCommand, SystemCommandSender as _,
+    ViewId, ViewStates, ViewerContext, VisitorControlFlow, VisualizerExecutionErrorState,
+    contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
+use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::show_add_view_or_container_modal;
+use smallvec::SmallVec;
 
 use crate::data::{
     BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,
@@ -76,6 +76,7 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
+        view_states: &ViewStates,
     ) {
         re_tracing::profile_function!();
 
@@ -115,7 +116,7 @@ impl BlueprintTree {
 
         // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
         // inset. Instead, it calls panel_content itself inside the ScrollArea.
-        self.tree_ui(ctx, viewport_blueprint, ui);
+        self.tree_ui(ctx, viewport_blueprint, ui, view_states);
     }
 
     /// Show the blueprint panel tree view.
@@ -124,6 +125,7 @@ impl BlueprintTree {
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
+        view_states: &ViewStates,
     ) {
         re_tracing::profile_function!();
 
@@ -155,8 +157,13 @@ impl BlueprintTree {
                                 &blueprint_tree_data,
                                 ui,
                                 root_container,
+                                view_states,
                             );
                         }
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_blueprint_tree")
                     });
 
                     let empty_space_response =
@@ -190,6 +197,7 @@ impl BlueprintTree {
         blueprint_tree_data: &BlueprintTreeData,
         ui: &mut egui::Ui,
         container_data: &ContainerData,
+        view_states: &ViewStates,
     ) {
         let item = Item::Container(container_data.id);
 
@@ -241,6 +249,7 @@ impl BlueprintTree {
                 ui,
                 child,
                 container_data.visible,
+                view_states,
             );
         }
 
@@ -262,6 +271,7 @@ impl BlueprintTree {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn contents_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -270,6 +280,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         contents_data: &ContentsData,
         parent_visible: bool,
+        view_states: &ViewStates,
     ) {
         match contents_data {
             ContentsData::Container(container_data) => {
@@ -280,6 +291,7 @@ impl BlueprintTree {
                     ui,
                     container_data,
                     parent_visible,
+                    view_states,
                 );
             }
             ContentsData::View(view_data) => {
@@ -290,11 +302,13 @@ impl BlueprintTree {
                     ui,
                     view_data,
                     parent_visible,
+                    view_states.visualizer_errors(view_data.id),
                 );
             }
         }
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn container_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -303,6 +317,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         container_data: &ContainerData,
         parent_visible: bool,
+        view_states: &ViewStates,
     ) {
         let item = Item::Container(container_data.id);
         let content = Contents::Container(container_data.id);
@@ -351,6 +366,7 @@ impl BlueprintTree {
                             ui,
                             child,
                             container_visible,
+                            view_states,
                         );
                     }
                 },
@@ -378,6 +394,7 @@ impl BlueprintTree {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn view_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -386,6 +403,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         view_data: &ViewData,
         container_visible: bool,
+        errors: Option<&PerVisualizer<VisualizerExecutionErrorState>>,
     ) {
         let mut visible = view_data.visible;
         let view_visible = visible && container_visible;
@@ -398,7 +416,18 @@ impl BlueprintTree {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let item_content = list_item::LabelContent::new(view_data.name.as_ref())
+        let has_error =
+            errors.is_some_and(|errors| errors.values().any(|error| error.is_overall()));
+
+        let item_content = if has_error {
+            list_item::LabelContent::new(
+                egui::RichText::new(view_data.name.as_ref()).color(ui.visuals().error_fg_color),
+            )
+        } else {
+            list_item::LabelContent::new(view_data.name.as_ref())
+        };
+
+        let item_content = item_content
             .label_style(contents_name_style(&view_data.name))
             .with_icon(class.icon())
             .subdued(!view_visible)
@@ -434,6 +463,7 @@ impl BlueprintTree {
                         ui,
                         data_result_data,
                         view_visible,
+                        errors,
                     );
                 }
 
@@ -454,6 +484,7 @@ impl BlueprintTree {
                             ui,
                             projection,
                             view_visible,
+                            errors,
                         );
                     }
                 }
@@ -487,6 +518,7 @@ impl BlueprintTree {
         );
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn data_result_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -495,6 +527,7 @@ impl BlueprintTree {
         ui: &mut egui::Ui,
         data_result_data: &DataResultData,
         view_visible: bool,
+        errors: Option<&PerVisualizer<VisualizerExecutionErrorState>>,
     ) {
         let item = Item::DataResult(
             data_result_data.view_id,
@@ -508,11 +541,20 @@ impl BlueprintTree {
                     DataResultKind::EmptyOriginPlaceholder
                 );
 
+                let has_error = errors.is_some_and(|errors| {
+                    errors.values().any(|err| {
+                        err.error_string_for(&data_result_data.entity_path)
+                            .is_some()
+                    })
+                });
+
                 let item_content = list_item::LabelContent::new(format_matching_text(
                     ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
-                    is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
+                    has_error.then(|| ui.visuals().error_fg_color).or_else(|| {
+                        is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color)
+                    }),
                 ))
                 .with_icon(guess_instance_path_icon(
                     ctx,
@@ -605,6 +647,7 @@ impl BlueprintTree {
                                 ui,
                                 child,
                                 view_visible,
+                                errors,
                             );
                         }
                     },

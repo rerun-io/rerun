@@ -1,0 +1,12 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+container_kind: [4]
+display_name: [<name>]
+contents: []
+col_shares: [0.0]
+row_shares: [0.0]
+active_tab: []
+visible: [true]
+grid_columns: [0]

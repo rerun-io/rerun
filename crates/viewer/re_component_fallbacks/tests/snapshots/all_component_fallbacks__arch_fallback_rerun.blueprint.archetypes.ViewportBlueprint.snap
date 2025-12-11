@@ -1,9 +1,0 @@
----
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
-expression: arch_display
----
-root_container: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-maximized: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
-auto_layout: [true]
-auto_views: [false]
-past_viewer_recommendations: [0]

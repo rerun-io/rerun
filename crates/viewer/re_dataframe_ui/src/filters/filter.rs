@@ -1,6 +1,5 @@
 use arrow::datatypes::{DataType, Field, FieldRef};
 use datafusion::logical_expr::Expr;
-
 use re_log_types::TimestampFormat;
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE, Loggable as _};
 use re_ui::SyntaxHighlighting;
@@ -64,7 +63,7 @@ pub trait Filter {
 /// need them (e.g., to test blueprint inequality before triggering a costly table update).
 /// The last item is related to how the filter UI is implemented using the `SyntaxHighlighting`
 /// machinery.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypedFilter {
     NullableBoolean(NullableBooleanFilter),
     NonNullableBoolean(NonNullableBooleanFilter),
@@ -107,11 +106,11 @@ impl TypedFilter {
             }
 
             data_type
-                if data_type == &re_types::components::Timestamp::arrow_datatype()
+                if data_type == &re_sdk_types::components::Timestamp::arrow_datatype()
                     && column_field
                         .metadata()
                         .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                        == Some(&re_types::components::Timestamp::name().to_string()) =>
+                        == Some(&re_sdk_types::components::Timestamp::name().to_string()) =>
             {
                 Some(TimestampFilter::default().into())
             }

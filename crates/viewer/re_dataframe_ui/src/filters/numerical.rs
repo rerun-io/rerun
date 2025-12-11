@@ -4,10 +4,10 @@ use arrow::array::{Array as _, ArrayRef, BooleanArray};
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, lit, not};
-use strum::VariantArray as _;
-
+use ordered_float::OrderedFloat;
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
 
@@ -68,7 +68,7 @@ impl ComparisonOperator {
 /// Filter for integer column types.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct IntFilter {
     operator: ComparisonOperator,
 
@@ -169,7 +169,7 @@ impl Filter for IntFilter {
 ///
 /// The only purpose of this wrapper is to _not_ have an `Option` around `rhs_value` and thus
 /// simplify the implementation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct IntFilterUdf {
     op: ComparisonOperator,
     rhs_value: i128,
@@ -223,14 +223,14 @@ impl FilterUdf for IntFilterUdf {
 /// Filter for floating point column types.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct FloatFilter {
     operator: ComparisonOperator,
 
     /// The value to compare to.
     ///
     /// `None` means that the user provided no input. In this case, we match everything.
-    rhs_value: Option<f64>,
+    rhs_value: Option<OrderedFloat<f64>>,
 }
 
 impl SyntaxHighlighting for FloatFilter {
@@ -239,7 +239,7 @@ impl SyntaxHighlighting for FloatFilter {
         builder.append_keyword(" ");
 
         if let Some(value) = self.rhs_value {
-            builder.append_primitive(&re_format::format_f64(value));
+            builder.append_primitive(&re_format::format_f64(value.into_inner()));
         } else {
             builder.append_primitive("…");
         }
@@ -250,7 +250,7 @@ impl FloatFilter {
     pub fn new(operator: ComparisonOperator, rhs_value: Option<f64>) -> Self {
         Self {
             operator,
-            rhs_value,
+            rhs_value: rhs_value.map(OrderedFloat),
         }
     }
 
@@ -259,7 +259,7 @@ impl FloatFilter {
     }
 
     pub fn rhs_value(&self) -> Option<f64> {
-        self.rhs_value
+        self.rhs_value.map(|x| x.into_inner())
     }
 }
 
@@ -321,10 +321,10 @@ impl Filter for FloatFilter {
 ///
 /// The only purpose of this wrapper is to _not_ have an `Option` around `rhs_value` and thus
 /// simplify the implementation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct FloatFilterUdf {
     op: ComparisonOperator,
-    rhs_value: f64,
+    rhs_value: OrderedFloat<f64>,
 }
 
 impl FilterUdf for FloatFilterUdf {
@@ -351,7 +351,7 @@ impl FilterUdf for FloatFilterUdf {
                 #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                 let result: BooleanArray = array
                     .iter()
-                    .map(|x| x.map(|x| $slf.op.apply(x, $slf.rhs_value as _)))
+                    .map(|x| x.map(|x| $slf.op.apply(x, $slf.rhs_value.into_inner() as _)))
                     .collect();
 
                 Ok(result)

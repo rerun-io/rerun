@@ -1,17 +1,16 @@
 use std::{borrow::Cow, sync::Arc};
 
-use arrow::{
-    array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
-        BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
-        LargeBinaryArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-        StringArray as ArrowStringArray, StructArray as ArrowStructArray,
-    },
-    buffer::{BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer},
-    datatypes::ArrowNativeType,
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
+    BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
+    LargeBinaryArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+    StringArray as ArrowStringArray, StructArray as ArrowStructArray,
 };
+use arrow::buffer::{
+    BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer,
+};
+use arrow::datatypes::ArrowNativeType;
 use itertools::{Either, Itertools as _, izip};
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_span::Span;
@@ -1059,10 +1058,8 @@ mod tests {
     use std::sync::Arc;
 
     use itertools::{Itertools as _, izip};
-    use re_log_types::{
-        EntityPath, TimeInt, TimePoint,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, TimePoint};
 
     use crate::{Chunk, RowId, Timeline};
 

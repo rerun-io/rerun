@@ -1,40 +1,45 @@
-use std::{borrow::Cow, str::FromStr as _};
+use std::borrow::Cow;
+use std::str::FromStr as _;
 
 use ahash::HashMap;
-use egui::{Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
-
-use re_chunk::{Timeline, TimelineName};
+use egui::Ui;
+use egui::text_edit::TextEditState;
+use egui::text_selection::LabelSelectionState;
+use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{AbsoluteTimeRangeF, DataSourceMessage, StoreId, TableId};
+use re_log_channel::LogReceiverSet;
+use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
-use re_smart_channel::ReceiveSet;
-use re_types::blueprint::components::PanelState;
+use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
+use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintContext,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, AuthContext, BlueprintContext,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DataQueryResult, DisplayMode,
-    DragAndDropManager, FallbackProviderRegistry, GlobalContext, IndicatedEntities, Item,
-    MaybeVisualizableEntities, PerVisualizer, PlayState, SelectionChange, StorageContext,
-    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControl,
-    TimeControlCommand, ViewClassRegistry, ViewId, ViewStates, ViewerContext, blueprint_timeline,
-    open_url::{self, ViewerOpenUrl},
+    DragAndDropManager, FallbackProviderRegistry, GlobalContext, Item, PerVisualizerInViewClass,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
-use crate::{
-    StartupOptions, app_blueprint::AppBlueprint, app_blueprint_ctx::AppBlueprintCtx,
-    navigation::Navigation, open_url_description::ViewerOpenUrlDescription, ui::settings_screen_ui,
-};
+use crate::app_blueprint::AppBlueprint;
+use crate::app_blueprint_ctx::AppBlueprintCtx;
+use crate::navigation::Navigation;
+use crate::open_url_description::ViewerOpenUrlDescription;
+use crate::ui::settings_screen_ui;
+use crate::{StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
 #[cfg(feature = "testing")]
 pub type TestHookFn = Box<dyn FnOnce(&ViewerContext<'_>)>;
 
+// TODO(#11737): Remove the serde derives since almost everything is skipped.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct AppState {
@@ -42,7 +47,9 @@ pub struct AppState {
     pub(crate) app_options: AppOptions,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
+    #[serde(skip)]
     pub time_controls: HashMap<StoreId, TimeControl>,
+    #[serde(skip)]
     pub blueprint_time_control: TimeControl,
 
     /// Maps blueprint id to the current undo state for it.
@@ -54,6 +61,8 @@ pub struct AppState {
     blueprint_time_panel: re_time_panel::TimePanel,
     #[serde(skip)]
     blueprint_tree: re_blueprint_tree::BlueprintTree,
+    #[serde(skip)]
+    pub(crate) recording_panel: re_recording_panel::RecordingPanel,
 
     #[serde(skip)]
     welcome_screen: crate::ui::WelcomeScreen,
@@ -79,6 +88,13 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) navigation: Navigation,
 
+    /// A history of urls the viewer has visited.
+    ///
+    /// This is not updated if this is a web viewer with control over
+    /// web history.
+    #[serde(skip)]
+    pub(crate) history: history::History,
+
     /// Storage for the state of each `View`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
@@ -102,6 +118,10 @@ pub struct AppState {
     /// that last several frames.
     #[serde(skip)]
     pub(crate) focused_item: Option<Item>,
+
+    /// Are we logged in?
+    #[serde(skip)]
+    pub(crate) auth_state: Option<AuthContext>,
 }
 
 impl Default for AppState {
@@ -114,6 +134,7 @@ impl Default for AppState {
             selection_panel: Default::default(),
             time_panel: Default::default(),
             blueprint_time_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            recording_panel: Default::default(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
@@ -121,9 +142,11 @@ impl Default for AppState {
             open_url_modal: Default::default(),
             share_modal: Default::default(),
             navigation: Default::default(),
+            history: Default::default(),
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
+            auth_state: Default::default(),
 
             #[cfg(feature = "testing")]
             test_hook: None,
@@ -180,7 +203,7 @@ impl AppState {
         component_ui_registry: &ComponentUiRegistry,
         component_fallback_registry: &FallbackProviderRegistry,
         view_class_registry: &ViewClassRegistry,
-        rx_log: &ReceiveSet<DataSourceMessage>,
+        rx_log: &LogReceiverSet,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
@@ -192,21 +215,21 @@ impl AppState {
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = egui::Popup::is_any_open(ui.ctx());
 
-        match self.navigation.peek() {
-            DisplayMode::Settings => {
+        match self.navigation.current() {
+            DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
-            DisplayMode::ChunkStoreBrowser => {
+            DisplayMode::ChunkStoreBrowser(prior_mode) => {
                 let should_datastore_ui_remain_active =
                     self.datastore_ui
                         .ui(store_context, ui, self.app_options.timestamp_format);
                 if !should_datastore_ui_remain_active {
-                    self.navigation.pop();
+                    self.navigation.replace((**prior_mode).clone());
                 }
             }
 
@@ -229,6 +252,7 @@ impl AppState {
                     view_states,
                     selection_state,
                     focused_item,
+                    auth_state,
                     ..
                 } = self;
 
@@ -284,8 +308,8 @@ impl AppState {
 
                 let recording = store_context.recording;
 
-                let maybe_visualizable_entities_per_visualizer = view_class_registry
-                    .maybe_visualizable_entities_for_visualizer_systems(recording.store_id());
+                let visualizable_entities_per_visualizer = view_class_registry
+                    .visualizable_entities_for_visualizer_systems(recording.store_id());
                 let indicated_entities_per_visualizer =
                     view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
@@ -297,18 +321,26 @@ impl AppState {
                         .views
                         .values()
                         .map(|view| {
-                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                            let visualizable_entities = view
-                                .class(view_class_registry)
-                                .determine_visualizable_entities(
-                                    &maybe_visualizable_entities_per_visualizer,
-                                    recording,
-                                    &view_class_registry
-                                        .new_visualizer_collection(view.class_identifier()),
-                                    &view.space_origin,
-                                );
+                            // Same logic as in `ViewerContext::collect_visualizable_entities_for_view_class`,
+                            // but we don't have access to `ViewerContext` just yet.
+                            let visualizable_entities = if let Some(view_class) =
+                                view_class_registry.class_entry(view.class_identifier())
+                            {
+                                PerVisualizerInViewClass {
+                                    view_class_identifier: view.class_identifier(),
+                                    per_visualizer: visualizable_entities_per_visualizer
+                                        .iter()
+                                        .filter_map(|(vis, ents)| {
+                                            view_class
+                                                .visualizer_system_ids
+                                                .contains(vis)
+                                                .then_some((*vis, ents.clone()))
+                                        })
+                                        .collect(),
+                                }
+                            } else {
+                                PerVisualizerInViewClass::empty(view.class_identifier())
+                            };
 
                             (
                                 view.id,
@@ -334,7 +366,7 @@ impl AppState {
                 let blueprint_query = app_blueprint_ctx.blueprint_query;
 
                 let egui_ctx = ui.ctx().clone();
-                let display_mode = self.navigation.peek();
+                let display_mode = self.navigation.current();
                 let ctx = ViewerContext {
                     global_context: GlobalContext {
                         is_test: app_env.is_test(),
@@ -348,6 +380,7 @@ impl AppState {
 
                         connection_registry,
                         display_mode,
+                        auth_context: auth_state.as_ref(),
                     },
                     component_ui_registry,
                     component_fallback_registry,
@@ -355,8 +388,7 @@ impl AppState {
                     connected_receivers: rx_log,
                     store_context,
                     storage_context,
-                    maybe_visualizable_entities_per_visualizer:
-                        &maybe_visualizable_entities_per_visualizer,
+                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
                     time_ctrl,
@@ -377,17 +409,7 @@ impl AppState {
                 // Update the viewport. May spawn new views and handle queued requests (like screenshots).
                 viewport_ui.on_frame_start(&ctx);
 
-                let query_results = update_overrides(
-                    store_context,
-                    query_results,
-                    view_class_registry,
-                    &viewport_ui.blueprint,
-                    &blueprint_query,
-                    time_ctrl.timeline(),
-                    &maybe_visualizable_entities_per_visualizer,
-                    &indicated_entities_per_visualizer,
-                    view_states,
-                );
+                let query_results = update_overrides(&ctx, &viewport_ui.blueprint, view_states);
 
                 // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
                 // it's just a bunch of refs so not really that big of a deal in practice.
@@ -404,6 +426,7 @@ impl AppState {
 
                         connection_registry,
                         display_mode,
+                        auth_context: auth_state.as_ref(),
                     },
                     component_ui_registry,
                     component_fallback_registry,
@@ -411,8 +434,7 @@ impl AppState {
                     connected_receivers: rx_log,
                     store_context,
                     storage_context,
-                    maybe_visualizable_entities_per_visualizer:
-                        &maybe_visualizable_entities_per_visualizer,
+                    visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
                     indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
                     query_results: &query_results,
                     time_ctrl,
@@ -489,7 +511,7 @@ impl AppState {
                 // Time panel
                 //
 
-                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
+                if display_mode.has_time_panel() {
                     time_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -505,7 +527,7 @@ impl AppState {
                 // Selection Panel
                 //
 
-                if matches!(display_mode, DisplayMode::LocalRecordings(_)) {
+                if display_mode.has_selection_panel() {
                     selection_panel.show_panel(
                         &ctx,
                         &viewport_ui.blueprint,
@@ -530,7 +552,7 @@ impl AppState {
                         ui.ctx().content_rect().width(),
                     ));
 
-                left_panel.show_animated_inside(
+                let left_panel_response = left_panel.show_animated_inside(
                     ui,
                     app_blueprint.blueprint_panel_state().is_expanded(),
                     |ui: &mut egui::Ui| {
@@ -567,7 +589,7 @@ impl AppState {
                                         .max_height(max_recordings_height)
                                         .default_height(160.0_f32.max(recordings_min_height))
                                         .show_inside(ui, |ui| {
-                                            re_recording_panel::recordings_panel_ui(
+                                            self.recording_panel.show_panel(
                                                 &ctx,
                                                 ui,
                                                 redap_servers,
@@ -575,7 +597,7 @@ impl AppState {
                                             );
                                         });
                                 } else {
-                                    re_recording_panel::recordings_panel_ui(
+                                    self.recording_panel.show_panel(
                                         &ctx,
                                         ui,
                                         redap_servers,
@@ -584,14 +606,24 @@ impl AppState {
                                 }
 
                                 if show_blueprints {
-                                    blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
+                                    blueprint_tree.show(
+                                        &ctx,
+                                        &viewport_ui.blueprint,
+                                        ui,
+                                        view_states,
+                                    );
                                 }
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // handled above
                         }
                     },
                 );
+                if let Some(left_panel_response) = left_panel_response {
+                    left_panel_response.response.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "blueprint_panel")
+                    });
+                }
 
                 //
                 // Viewport
@@ -656,7 +688,7 @@ impl AppState {
                                 ui.loading_screen("Loading data source:", &*source);
                             }
 
-                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
+                            DisplayMode::ChunkStoreBrowser(_) | DisplayMode::Settings(_) => {} // Handled above
                         }
                     });
 
@@ -788,16 +820,9 @@ impl AppState {
 /// Updates the query results for the given viewport UI.
 ///
 /// Returns query results derived from the previous one.
-#[expect(clippy::too_many_arguments)]
 fn update_overrides(
-    store_context: &StoreContext<'_>,
-    mut query_results: HashMap<ViewId, DataQueryResult>,
-    view_class_registry: &ViewClassRegistry,
+    ctx: &ViewerContext<'_>,
     viewport_blueprint: &ViewportBlueprint,
-    blueprint_query: &LatestAtQuery,
-    active_timeline: &Timeline,
-    maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
-    indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     view_states: &mut ViewStates,
 ) -> HashMap<ViewId, DataQueryResult> {
     use rayon::iter::{IntoParallelIterator as _, ParallelIterator as _};
@@ -809,8 +834,10 @@ fn update_overrides(
     }
 
     for view in viewport_blueprint.views.values() {
-        view_states.ensure_state_exists(view.id, view.class(view_class_registry));
+        view_states.ensure_state_exists(view.id, view.class(ctx.view_class_registry));
     }
+
+    let mut query_results = ctx.query_results.clone();
 
     let work_items = viewport_blueprint
         .views
@@ -837,31 +864,21 @@ fn update_overrides(
                  view_state,
                  mut query_result,
              }| {
-                // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                let visualizable_entities = view
-                    .class(view_class_registry)
-                    .determine_visualizable_entities(
-                        maybe_visualizable_entities_per_visualizer,
-                        store_context.recording,
-                        &view_class_registry.new_visualizer_collection(view.class_identifier()),
-                        &view.space_origin,
-                    );
+                let visualizable_entities =
+                    ctx.collect_visualizable_entities_for_view_class(view.class_identifier());
 
                 let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
                     view,
-                    view_class_registry,
-                    maybe_visualizable_entities_per_visualizer,
+                    ctx.view_class_registry,
                     &visualizable_entities,
-                    indicated_entities_per_visualizer,
+                    ctx.indicated_entities_per_visualizer,
                 );
 
                 resolver.update_overrides(
-                    store_context.blueprint,
-                    blueprint_query,
-                    active_timeline,
-                    view_class_registry,
+                    ctx.store_context.blueprint,
+                    ctx.blueprint_query,
+                    ctx.time_ctrl.timeline(),
+                    ctx.view_class_registry,
                     &mut query_result,
                     view_state,
                 );
@@ -897,17 +914,17 @@ pub(crate) fn create_time_control_for<'cfgs>(
             match data_source {
                 // Play files from the start by default - it feels nice and alive.
                 // We assume the `RrdHttpStream` is a done recording.
-                re_smart_channel::SmartChannelSource::File(_)
-                | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
-                | re_smart_channel::SmartChannelSource::RedapGrpcStream { .. }
-                | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
+                re_log_channel::LogSource::File(_)
+                | re_log_channel::LogSource::RrdHttpStream { follow: false, .. }
+                | re_log_channel::LogSource::RedapGrpcStream { .. }
+                | re_log_channel::LogSource::RrdWebEvent => PlayState::Playing,
 
                 // Live data - follow it!
-                re_smart_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
-                | re_smart_channel::SmartChannelSource::Sdk
-                | re_smart_channel::SmartChannelSource::MessageProxy { .. }
-                | re_smart_channel::SmartChannelSource::Stdin
-                | re_smart_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
+                re_log_channel::LogSource::RrdHttpStream { follow: true, .. }
+                | re_log_channel::LogSource::Sdk
+                | re_log_channel::LogSource::MessageProxy { .. }
+                | re_log_channel::LogSource::Stdin
+                | re_log_channel::LogSource::JsChannel { .. } => PlayState::Following,
             }
         } else {
             PlayState::Following // No known source 🤷‍♂️
@@ -916,7 +933,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            entity_db.times_per_timeline(),
+            Some(entity_db.times_per_timeline()),
             play_state,
             Some(blueprint_ctx),
         );

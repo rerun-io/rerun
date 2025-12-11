@@ -1,26 +1,22 @@
-use std::{net::IpAddr, time::Duration};
+use std::net::IpAddr;
+use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use tokio::runtime::Runtime;
-
 use re_data_source::LogDataSource;
-use re_log_types::DataSourceMessage;
-use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
-
-use crate::{CallSource, commands::RrdCommands};
-
+use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-
-#[cfg(feature = "data_loaders")]
-use crate::commands::McapCommands;
-
-#[cfg(feature = "analytics")]
-use crate::commands::AnalyticsCommands;
+use tokio::runtime::Runtime;
 
 #[cfg(feature = "auth")]
 use super::auth::AuthCommands;
+use crate::CallSource;
+#[cfg(feature = "analytics")]
+use crate::commands::AnalyticsCommands;
+#[cfg(feature = "data_loaders")]
+use crate::commands::McapCommands;
+use crate::commands::RrdCommands;
 
 // ---
 
@@ -585,7 +581,7 @@ where
     );
 
     #[cfg(not(target_arch = "wasm32"))]
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
     } else {
         re_crash_handler::install_crash_handlers(build_info.clone());
@@ -602,6 +598,9 @@ where
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
+
+    #[cfg(feature = "analytics")]
+    record_cli_command_analytics(&args);
 
     initialize_thread_pool(args.threads);
 
@@ -655,7 +654,7 @@ where
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "oss_server")]
-            Command::Server(server) => server.run(),
+            Command::Server(server) => tokio_runtime.block_on(server.run_async()),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -868,6 +867,8 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
+    use crate::external::re_ui::{UICommand, UICommandSender as _};
+
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
@@ -882,23 +883,17 @@ fn start_native_viewer(
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
     )?;
-    #[allow(clippy::allow_attributes, unused_mut)]
-    let mut table_receivers = Vec::new();
 
     // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
     #[cfg(feature = "server")]
     if !connect {
-        let (log_server, table_server): (
-            Receiver<DataSourceMessage>,
-            crossbeam::channel::Receiver<re_log_types::TableMsg>,
-        ) = re_grpc_server::spawn_with_recv(
+        let log_receiver = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
         );
 
-        log_receivers.push(log_server);
-        table_receivers.push(table_server);
+        log_receivers.push(log_receiver);
     }
 
     let tokio_runtime_handle = tokio_runtime_handle.clone();
@@ -912,6 +907,25 @@ fn start_native_viewer(
     re_viewer::run_native_app(
         _main_thread_token,
         Box::new(move |cc| {
+            let (tx, rx) = re_viewer::command_channel();
+            {
+                let tx = tx.clone();
+                let egui_ctx = cc.egui_ctx.clone();
+                tokio::spawn(async move {
+                    // We catch ctrl-c commands so we can properly quit.
+                    // Without this, recent state changes might not be persisted.
+                    match tokio::signal::ctrl_c().await {
+                        Ok(()) => {
+                            re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
+                            tx.send_ui(UICommand::Quit);
+                            egui_ctx.request_repaint();
+                        }
+                        Err(err) => {
+                            re_log::error!("Failed to listen for ctrl-c signal: {}", err);
+                        }
+                    }
+                });
+            }
             let mut app = re_viewer::App::with_commands(
                 _main_thread_token,
                 _build_info,
@@ -921,14 +935,11 @@ fn start_native_viewer(
                 Some(connection_registry),
                 re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                 text_log_rx,
-                re_viewer::command_channel(),
+                (tx, rx),
             );
             app.set_profiler(profiler);
             for rx in log_receivers {
                 app.add_log_receiver(rx);
-            }
-            for rx in table_receivers {
-                app.add_table_receiver(rx);
             }
             for url in urls_to_pass_on_to_viewer {
                 app.open_url_or_file(&url);
@@ -1011,14 +1022,15 @@ fn connect_to_existing_server(
     for rx in receivers.log_receivers {
         while rx.is_connected() {
             while let Ok(msg) = rx.recv() {
-                if let Some(log_msg) = msg.into_data() {
-                    match log_msg {
+                if let Some(msg) = msg.into_data() {
+                    match msg {
                         DataSourceMessage::LogMsg(log_msg) => {
                             sink.send(log_msg);
                         }
-                        DataSourceMessage::UiCommand(ui_command) => {
-                            re_log::warn!(
-                                "Received a UI command, can't pass this on to the server: {ui_command:?}"
+                        unsupported => {
+                            re_log::error_once!(
+                                "Can't pass on {} to the server",
+                                unsupported.variant_name()
                             );
                         }
                     }
@@ -1069,7 +1081,7 @@ fn serve_web(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
-            ReceiveSet::new(log_receivers),
+            LogReceiverSet::new(log_receivers),
         );
 
         // Add the proxy URL to the url parameters.
@@ -1127,7 +1139,7 @@ fn serve_grpc(
         server_addr,
         server_options,
         shutdown,
-        ReceiveSet::new(receivers.log_receivers),
+        LogReceiverSet::new(receivers.log_receivers),
     );
 
     // Gracefully shut down the server on SIGINT
@@ -1161,21 +1173,16 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let (log_server, table_server): (
-            Receiver<DataSourceMessage>,
-            crossbeam::channel::Receiver<re_log_types::TableMsg>,
-        ) = re_grpc_server::spawn_with_recv(
+        let log_rx = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
         );
 
-        // We can't store tables yet locally.
-        drop(table_server);
-        log_receivers.push(log_server);
+        log_receivers.push(log_rx);
     }
 
-    let receive_set = ReceiveSet::new(log_receivers);
+    let receive_set = LogReceiverSet::new(log_receivers);
 
     if let Some(rrd_path) = save {
         Ok(stream_to_rrd_on_disk(&receive_set, &rrd_path.into())?)
@@ -1199,9 +1206,7 @@ fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool 
 }
 
 // NOTE: This is only used as part of end-to-end tests.
-fn assert_receive_into_entity_db(
-    rx: &ReceiveSet<DataSourceMessage>,
-) -> anyhow::Result<re_entity_db::EntityDb> {
+fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a EntityDb…");
 
     let mut rec: Option<re_entity_db::EntityDb> = None;
@@ -1223,6 +1228,22 @@ fn assert_receive_into_entity_db(
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
                         match msg {
+                            DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
+                                let mut_db =
+                                    match store_id.kind() {
+                                        re_log_types::StoreKind::Recording => rec
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(store_id.clone())
+                                            }),
+                                        re_log_types::StoreKind::Blueprint => bp
+                                            .get_or_insert_with(|| {
+                                                re_entity_db::EntityDb::new(store_id.clone())
+                                            }),
+                                    };
+
+                                mut_db.add_rrd_manifest_message(*rrd_manifest);
+                            }
+
                             DataSourceMessage::LogMsg(msg) => {
                                 let mut_db =
                                     match msg.store_id().kind() {
@@ -1239,9 +1260,15 @@ fn assert_receive_into_entity_db(
                                 mut_db.add(&msg)?;
                             }
 
+                            DataSourceMessage::TableMsg(_) => {
+                                anyhow::bail!(
+                                    "Received a TableMsg which can't be stored in an EntityDb"
+                                );
+                            }
+
                             DataSourceMessage::UiCommand(ui_command) => {
                                 anyhow::bail!(
-                                    "Received a UI command which can't be stored in a entity_db: {ui_command:?}"
+                                    "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
                                 );
                             }
                         }
@@ -1249,7 +1276,7 @@ fn assert_receive_into_entity_db(
                         num_messages += 1;
                     }
 
-                    re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
                         on_flush_done();
                     }
 
@@ -1333,7 +1360,7 @@ fn parse_size(size: &str) -> anyhow::Result<[f32; 2]> {
 // TODO(cmc): dedicated module for io utils, especially stdio streaming in and out.
 
 fn stream_to_rrd_on_disk(
-    rx: &re_smart_channel::ReceiveSet<DataSourceMessage>,
+    rx: &re_log_channel::LogReceiverSet,
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
@@ -1360,9 +1387,10 @@ fn stream_to_rrd_on_disk(
                     DataSourceMessage::LogMsg(log_msg) => {
                         encoder.append(&log_msg)?;
                     }
-                    DataSourceMessage::UiCommand(ui_command) => {
-                        re_log::warn!(
-                            "Received a UI command which can't be stored in a file: {ui_command:?}"
+                    unsupported => {
+                        re_log::error_once!(
+                            "Received a {} which can't be stored in a file",
+                            unsupported.variant_name()
                         );
                     }
                 }
@@ -1422,7 +1450,7 @@ impl UrlParamProcessingConfig {
 /// Log receivers created from URLs or path parameters that were passed in on the CLI.
 struct ReceiversFromUrlParams {
     /// Log receivers that we want to hook up to a connection or viewer.
-    log_receivers: Vec<Receiver<DataSourceMessage>>,
+    log_receivers: Vec<LogReceiver>,
 
     /// URLs that should be passed on to the viewer if possible.
     ///
@@ -1452,7 +1480,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDatasetPartition { .. } => {
+                    LogDataSource::RedapProxy(..) | LogDataSource::RedapDatasetSegment { .. } => {
                         if config.data_sources_from_redap_datasets {
                             data_sources.push(data_source);
                         } else {
@@ -1480,10 +1508,7 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                let on_msg = None;
-                data_source.stream(connection_registry, on_msg)
-            })
+            .map(|data_source| data_source.stream(connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
@@ -1502,4 +1527,119 @@ impl ReceiversFromUrlParams {
         }
         Ok(())
     }
+}
+
+/// Records analytics for the CLI command invocation.
+#[cfg(feature = "analytics")]
+fn record_cli_command_analytics(args: &Args) {
+    let Some(analytics) = re_analytics::Analytics::global_or_init() else {
+        return;
+    };
+
+    // Destructure to ensure we consider all fields when adding new ones.
+    let Args {
+        command,
+        newest_first,
+        persist_state,
+        profile,
+        save,
+        screenshot_to,
+        serve_web,
+        serve_grpc,
+        connect,
+        expect_data_soon,
+        test_receive,
+        hide_welcome_screen,
+        detach_process,
+
+        // Not logged
+        threads: _,
+        url_or_paths: _,
+        version: _,
+        web_viewer,
+        web_viewer_port: _,
+        window_size: _,
+        renderer: _,
+        video_decoder: _,
+        bind: _,
+        memory_limit: _,
+        server_memory_limit: _,
+        port: _,
+    } = args;
+
+    let (command, subcommand) = match command {
+        #[cfg(feature = "analytics")]
+        Some(Command::Analytics(cmd)) => {
+            let subcommand = match cmd {
+                AnalyticsCommands::Details => "details",
+                AnalyticsCommands::Clear => "clear",
+                AnalyticsCommands::Email { .. } => "email",
+                AnalyticsCommands::Enable => "enable",
+                AnalyticsCommands::Disable => "disable",
+                AnalyticsCommands::Config => "config",
+            };
+            ("analytics", Some(subcommand))
+        }
+
+        #[cfg(feature = "auth")]
+        Some(Command::Auth(cmd)) => {
+            let subcommand = match cmd {
+                AuthCommands::Login(_) => "login",
+                AuthCommands::Token(_) => "token",
+                AuthCommands::GenerateToken(_) => "generate-token",
+            };
+            ("auth", Some(subcommand))
+        }
+
+        Some(Command::Manual) => ("man", None),
+
+        #[cfg(feature = "data_loaders")]
+        Some(Command::Mcap(cmd)) => {
+            let subcommand = match cmd {
+                McapCommands::Convert(_) => "convert",
+            };
+            ("mcap", Some(subcommand))
+        }
+
+        #[cfg(feature = "native_viewer")]
+        Some(Command::Reset) => ("reset", None),
+
+        Some(Command::Rrd(cmd)) => {
+            let subcommand = match cmd {
+                RrdCommands::Compact(_) => "compact",
+                RrdCommands::Compare(_) => "compare",
+                RrdCommands::Filter(_) => "filter",
+                RrdCommands::Merge(_) => "merge",
+                RrdCommands::Migrate(_) => "migrate",
+                RrdCommands::Print(_) => "print",
+                RrdCommands::Route(_) => "route",
+                RrdCommands::Stats(_) => "stats",
+                RrdCommands::Verify(_) => "verify",
+            };
+            ("rrd", Some(subcommand))
+        }
+
+        #[cfg(feature = "oss_server")]
+        Some(Command::Server(_)) => ("server", None),
+
+        None => ("viewer", None),
+    };
+
+    analytics.record(re_analytics::event::CliCommandInvoked {
+        command,
+        subcommand,
+        web_viewer: *web_viewer,
+        serve_web: *serve_web,
+        serve_grpc: *serve_grpc,
+        connect: connect.is_some(),
+        save: save.is_some(),
+        screenshot_to: screenshot_to.is_some(),
+        newest_first: *newest_first,
+        persist_state_disabled: !persist_state,
+        profile: *profile,
+        expect_data_soon: *expect_data_soon,
+        hide_welcome_screen: *hide_welcome_screen,
+        detach_process: *detach_process,
+        test_receive: *test_receive,
+    });
 }

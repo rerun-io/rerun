@@ -2,15 +2,14 @@
 
 use image::GenericImageView as _;
 use itertools::Itertools as _;
-
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::blueprint::components::BackgroundKind;
+use re_sdk_types::datatypes::ColorModel;
+use re_sdk_types::image::ImageChannelType;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{
-    Archetype as _, blueprint::components::BackgroundKind, datatypes::ColorModel,
-    image::ImageChannelType,
-};
 use re_viewer_context::{BlueprintContext as _, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -24,7 +23,7 @@ fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: C
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Image::from_elements(image, size, color_model),
+            &re_sdk_types::archetypes::Image::from_elements(image, size, color_model),
         )
     });
 
@@ -35,12 +34,12 @@ fn run_bgr_test<T: ImageChannelType>(image: &[T], size: [u32; 2], color_model: C
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
             ctx.store_context.blueprint.tree(),
-            re_types::blueprint::archetypes::Background::name(),
+            re_sdk_types::blueprint::archetypes::Background::name(),
         );
         ctx.save_blueprint_archetype(
             property_path.clone(),
-            &re_types::blueprint::archetypes::Background::new(BackgroundKind::SolidColor)
-                .with_color(re_types::components::Color::from_rgb(200, 100, 200)),
+            &re_sdk_types::blueprint::archetypes::Background::new(BackgroundKind::SolidColor)
+                .with_color(re_sdk_types::components::Color::from_rgb(200, 100, 200)),
         );
         blueprint.add_view_at_root(view)
     });

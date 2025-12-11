@@ -242,6 +242,7 @@ Authentication with the redap.
 
 * `login`: Log into Rerun.
 * `token`: Retrieve the stored access token.
+* `generate-token`: Generate a fresh access token.
 
 ## rerun auth login
 
@@ -257,10 +258,6 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 
 **Options**
 
-* `--login-url <LOGIN_URL>`
->
-> [Default: `https://rerun.io/login`]
-
 * `--no-open-browser <NO_OPEN_BROWSER>`
 > Post a link instead of directly opening in the browser.
 >
@@ -270,6 +267,24 @@ To sign up, contact us through the form linked at <https://rerun.io/#open-source
 > Trigger the full login flow even if valid credentials already exist.
 >
 > [Default: `false`]
+
+## rerun auth generate-token
+
+Generate a fresh access token.
+
+You can use this token to authorize requests to the Rerun data platform.
+
+It's closer to an API key than an access token, as it can be revoked before it expires.
+
+**Usage**: `rerun auth generate-token --server <SERVER> --expiration <EXPIRATION>`
+
+**Options**
+
+* `--server <SERVER>`
+> Origin of the server to request the token from.
+
+* `--expiration <EXPIRATION>`
+> Duration of the token, either in: - "human time", e.g. `1 day`, or - ISO 8601 duration format, e.g. `P1D`.
 
 ## rerun mcap
 
@@ -541,11 +556,14 @@ Example: `rerun rrd print /my/recordings/*.rrd`
 * `--full-metadata <FULL_METADATA>`
 > If true, includes `rerun.` prefixes on keys.
 
-* `--transposed <TRANSPOSED>`
-> Transpose record batches before printing them?
-
 * `--entity <ENTITY>`
 > Show only chunks belonging to this entity.
+
+* `--footers <FOOTERS>`
+> If true, displays all the parsed footers at the end.
+
+* `--transposed <TRANSPOSED>`
+> Transpose record batches before printing them?
 
 ## rerun rrd route
 
@@ -579,6 +597,13 @@ Note: Because the payload of the messages is never decoded, no migration or veri
 > If set, specifies the recording id of the output.
 >
 > When this flag is set and multiple input .rdd files are specified, blueprint activation commands will be dropped from the resulting output.
+
+* `--recompute-manifests <RECOMPUTE_MANIFESTS>`
+> If set, this will compute an RRD footer with the appropriate manifest for the routed data.
+>
+> By default, `rerun rrd route` will always drop all existing RRD manifests when routing data, as doing so invalidates their contents. This flag makes it possible to recompute an RRD manifest for the routed data, but beware that it has to decode the data, which means it is A) much slower and B) will migrate the data to the latest Sorbet specification automatically.
+>
+> [Default: `false`]
 
 ## rerun rrd stats
 

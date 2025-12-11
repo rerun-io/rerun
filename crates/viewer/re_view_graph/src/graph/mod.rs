@@ -10,19 +10,16 @@ use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
 mod ids;
 pub(crate) use ids::{EdgeId, NodeId};
-
 use re_chunk::EntityPath;
-use re_types::components::{self, GraphType};
+use re_sdk_types::components::{self, GraphType};
 
-use crate::{
-    layout::EdgeTemplate,
-    ui::DrawableLabel,
-    visualizers::{EdgeData, NodeData, NodeInstance},
-};
+use crate::layout::EdgeTemplate;
+use crate::ui::DrawableLabel;
+use crate::visualizers::{EdgeData, NodeData, NodeInstance};
 
 /// Describes the different kind of nodes that we can have in a graph.
 pub enum Node {
-    /// An explicit node is a node that was provided via [`re_types::archetypes::GraphNodes`].
+    /// An explicit node is a node that was provided via [`re_sdk_types::archetypes::GraphNodes`].
     ///
     /// It therefore has an instance, as well as all properties that can be added via that archetype.
     Explicit {
@@ -30,7 +27,7 @@ pub enum Node {
         label: DrawableLabel,
     },
 
-    /// An implicit node is a node that was provided via [`re_types::archetypes::GraphEdges`], but does not have a corresponding [`re_types::components::GraphNode`] in an [`re_types::archetypes::GraphNodes`] archetype.
+    /// An implicit node is a node that was provided via [`re_sdk_types::archetypes::GraphEdges`], but does not have a corresponding [`re_sdk_types::components::GraphNode`] in an [`re_sdk_types::archetypes::GraphNodes`] archetype.
     ///
     /// Because it was never specified directly, it also does not have many of the properties that an [`Node::Explicit`] has.
     Implicit {

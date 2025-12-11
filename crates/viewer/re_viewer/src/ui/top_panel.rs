@@ -1,13 +1,13 @@
 use egui::NumExt as _;
 use itertools::Itertools as _;
-
 use re_format::format_uint;
+use re_log_channel::{LogReceiverSet, LogSource};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::{StoreContext, StoreHub};
 
-use crate::{App, app_blueprint::AppBlueprint};
+use crate::App;
+use crate::app_blueprint::AppBlueprint;
 
 pub fn top_panel(
     frame: &eframe::Frame,
@@ -92,19 +92,33 @@ fn top_bar_ui(
     ui.add_space(12.0);
     website_link_ui(ui);
 
+    if !app.startup_options().web_history_enabled() {
+        ui.add_space(12.0);
+        app.navigation_buttons(ui);
+    }
+
     if !app.is_screenshotting() {
+        show_warnings(frame, ui, app.app_env()); // Fixed width: put first
+
         let latency_snapshot = store_context
             .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
 
         if app.app_options().show_metrics {
             ui.separator();
-            frame_time_label_ui(ui, app);
-            memory_use_label_ui(ui, gpu_resource_stats);
 
-            if let Some(latency_snapshot) = latency_snapshot {
-                // Always show latency when metrics are enabled:
-                latency_snapshot_button_ui(ui, latency_snapshot);
-            }
+            ui.scope(|ui| {
+                ui.spacing_mut().item_spacing.x = 12.0;
+
+                // Varying widths:
+                memory_use_label_ui(ui, gpu_resource_stats);
+                frame_time_label_ui(ui, app);
+                fps_ui(ui, app);
+
+                if let Some(latency_snapshot) = latency_snapshot {
+                    // Always show latency when metrics are enabled:
+                    latency_snapshot_button_ui(ui, latency_snapshot);
+                }
+            });
         } else {
             // Show latency metrics only if high enough to be "interesting":
             if let Some(latency_snapshot) = latency_snapshot {
@@ -133,8 +147,6 @@ fn top_bar_ui(
         if cfg!(debug_assertions) && !app.app_env().is_test() {
             multi_pass_warning_dot_ui(ui);
         }
-
-        show_warnings(frame, ui, app.app_env());
     }
 
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -165,30 +177,50 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
     // * it will be captured in screenshots in bug reports etc
     // * it let's us customize the message a bit more, with links etc.
 
+    // We want to add a separator if there is any warning. This works.
+    let mut has_shown_warning = false;
+
+    fn show_warning(
+        ui: &mut egui::Ui,
+        has_shown_warning: &mut bool,
+        callback: impl FnOnce(&mut egui::Ui),
+    ) {
+        if !*has_shown_warning {
+            ui.separator();
+            *has_shown_warning = true;
+        }
+
+        callback(ui);
+    }
+
     if cfg!(debug_assertions) {
-        // Warn if in debug build
-        ui.label(
-            egui::RichText::new("⚠ Debug build")
-                .small()
-                .color(ui.visuals().warn_fg_color),
-        )
-        .on_hover_text("Rerun was compiled with debug assertions enabled.");
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            // Warn if in debug build
+            ui.label(
+                egui::RichText::new("⚠ Debug build")
+                    .small()
+                    .color(ui.visuals().warn_fg_color),
+            )
+            .on_hover_text("Rerun was compiled with debug assertions enabled.");
+        });
     }
 
     if !app_env.is_test() {
-        show_software_rasterizer_warning(frame, ui);
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            show_software_rasterizer_warning(frame, ui);
+        });
     }
 
     if crate::docker_detection::is_docker() {
-        ui.hyperlink_to(
-            egui::RichText::new("⚠ Docker")
+        show_warning(ui, &mut has_shown_warning, |ui| {
+            let text = egui::RichText::new("⚠ Docker")
                 .small()
-                .color(ui.visuals().warn_fg_color),
-            "https://github.com/rerun-io/rerun/issues/6835",
-        )
-        .on_hover_ui(|ui| {
-            ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
-            ui.label("Click for more info.");
+                .color(ui.visuals().warn_fg_color);
+            let url = "https://github.com/rerun-io/rerun/issues/6835";
+            ui.hyperlink_to(text,url).on_hover_ui(|ui| {
+                ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
+                ui.label("Click for more info.");
+            });
         });
     }
 }
@@ -271,23 +303,23 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
     );
 }
 
-fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSourceMessage>) {
+fn connection_status_ui(ui: &mut egui::Ui, rx: &LogReceiverSet) {
     let sources = rx
         .sources()
         .into_iter()
         .filter(|source| {
             match source.as_ref() {
-                SmartChannelSource::File(_)
-                | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RedapGrpcStream { .. }
-                | SmartChannelSource::Stdin => {
+                LogSource::File(_)
+                | LogSource::RrdHttpStream { .. }
+                | LogSource::RedapGrpcStream { .. }
+                | LogSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
 
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::MessageProxy { .. }
-                | SmartChannelSource::JsChannel { .. } => true,
+                LogSource::RrdWebEvent
+                | LogSource::Sdk
+                | LogSource::MessageProxy { .. }
+                | LogSource::JsChannel { .. } => true,
             }
         })
         .collect_vec();
@@ -310,21 +342,19 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::DataSou
         }
     }
 
-    fn source_label(ui: &mut egui::Ui, source: &SmartChannelSource) -> egui::Response {
+    fn source_label(ui: &mut egui::Ui, source: &LogSource) -> egui::Response {
         let response = ui.label(source.status_string());
 
         let tooltip = match source {
-            SmartChannelSource::File(_)
-            | SmartChannelSource::Stdin
-            | SmartChannelSource::RrdHttpStream { .. }
-            | SmartChannelSource::RedapGrpcStream { .. }
-            | SmartChannelSource::RrdWebEventListener
-            | SmartChannelSource::JsChannel { .. }
-            | SmartChannelSource::Sdk => None,
+            LogSource::File(_)
+            | LogSource::Stdin
+            | LogSource::RrdHttpStream { .. }
+            | LogSource::RedapGrpcStream { .. }
+            | LogSource::RrdWebEvent
+            | LogSource::JsChannel { .. }
+            | LogSource::Sdk => None,
 
-            SmartChannelSource::MessageProxy { .. } => {
-                Some("Waiting for an SDK to connect".to_owned())
-            }
+            LogSource::MessageProxy { .. } => Some("Waiting for an SDK to connect".to_owned()),
         };
 
         if let Some(tooltip) = tooltip {
@@ -342,6 +372,8 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
+    let display_mode = app.state.navigation.current();
+
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
         let (icon, label) = if app.is_fullscreen_mode() {
@@ -360,46 +392,58 @@ fn panel_buttons_r2l(
     }
 
     // selection panel
-    if !app_blueprint.selection_panel_overridden()
-        && ui
-            .medium_icon_toggle_button(
-                &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                "Selection panel toggle",
-                &mut app_blueprint.selection_panel_state().is_expanded(),
-            )
-            .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
-            .clicked()
-    {
-        app_blueprint.toggle_selection_panel(&app.command_sender);
-    }
+    ui.add_enabled_ui(
+        display_mode.has_selection_panel() && !app_blueprint.selection_panel_overridden(),
+        |ui| {
+            if ui
+                .medium_icon_toggle_button(
+                    &re_ui::icons::RIGHT_PANEL_TOGGLE,
+                    "Selection panel toggle",
+                    &mut app_blueprint.selection_panel_state().is_expanded(),
+                )
+                .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
+                .clicked()
+            {
+                app_blueprint.toggle_selection_panel(&app.command_sender);
+            }
+        },
+    );
 
     // time panel
-    if !app_blueprint.time_panel_overridden()
-        && ui
-            .medium_icon_toggle_button(
-                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                "Time panel toggle",
-                &mut app_blueprint.time_panel_state().is_expanded(),
-            )
-            .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
-            .clicked()
-    {
-        app_blueprint.toggle_time_panel(&app.command_sender);
-    }
+    ui.add_enabled_ui(
+        display_mode.has_time_panel() && !app_blueprint.time_panel_overridden(),
+        |ui| {
+            if ui
+                .medium_icon_toggle_button(
+                    &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+                    "Time panel toggle",
+                    &mut app_blueprint.time_panel_state().is_expanded(),
+                )
+                .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
+                .clicked()
+            {
+                app_blueprint.toggle_time_panel(&app.command_sender);
+            }
+        },
+    );
 
     // blueprint panel
-    if !app_blueprint.blueprint_panel_overridden()
-        && ui
-            .medium_icon_toggle_button(
-                &re_ui::icons::LEFT_PANEL_TOGGLE,
-                "Blueprint panel toggle",
-                &mut app_blueprint.blueprint_panel_state().is_expanded(),
-            )
-            .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
-            .clicked()
-    {
-        app_blueprint.toggle_blueprint_panel(&app.command_sender);
-    }
+    ui.add_enabled_ui(
+        display_mode.has_blueprint_panel() && !app_blueprint.blueprint_panel_overridden(),
+        |ui| {
+            if ui
+                .medium_icon_toggle_button(
+                    &re_ui::icons::LEFT_PANEL_TOGGLE,
+                    "Blueprint panel toggle",
+                    &mut app_blueprint.blueprint_panel_state().is_expanded(),
+                )
+                .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
+                .clicked()
+            {
+                app_blueprint.toggle_blueprint_panel(&app.command_sender);
+            }
+        },
+    );
 
     app.notifications.notification_toggle_button(ui);
 
@@ -410,7 +454,7 @@ fn panel_buttons_r2l(
     app.state.share_modal.button_ui(
         ui,
         store_hub,
-        app.state.navigation.peek(),
+        app.state.navigation.current(),
         rec_cfg,
         selection,
     );
@@ -454,6 +498,40 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
             .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+    }
+}
+
+fn fps_ui(ui: &mut egui::Ui, app: &App) {
+    if let Some(fps) = app.frame_time_history.rate() {
+        let visuals = ui.visuals();
+
+        // We only warn if we _suspect_ that we're in "continuous repaint mode".
+        let low_fps_right_now = fps < 20.0 && ui.ctx().has_requested_repaint();
+
+        let now = ui.ctx().input(|i| i.time);
+        let warn_start_id = ui.id().with("fps_warning");
+        let warn_start_time = ui.data_mut(|d| {
+            if low_fps_right_now {
+                *d.get_persisted_mut_or::<f64>(warn_start_id, now)
+            } else {
+                d.remove::<f64>(warn_start_id);
+                now
+            }
+        });
+
+        // Avoid blinking warning
+        let low_fps_for_some_time = 0.5 < (now - warn_start_time);
+
+        let color = if low_fps_for_some_time {
+            visuals.warn_fg_color
+        } else {
+            visuals.weak_text_color()
+        };
+
+        // we use monospace so the width doesn't fluctuate as the numbers change.
+        let text = format!("{fps:.0} FPS");
+        ui.label(egui::RichText::new(text).monospace().color(color))
+            .on_hover_text("Frames per second. Higher is better.");
     }
 }
 

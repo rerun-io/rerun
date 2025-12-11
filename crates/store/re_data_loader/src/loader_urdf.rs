@@ -1,21 +1,17 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::{Arc, mpsc::Sender},
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::mpsc::Sender;
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
-use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
-
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_types::{
-    AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch,
-    archetypes::{Asset3D, Transform3D},
-    datatypes::Vec3D,
-    external::glam,
-};
+use re_sdk_types::archetypes::{Asset3D, Transform3D};
+use re_sdk_types::datatypes::Vec3D;
+use re_sdk_types::external::glam;
+use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
+use urdf_rs::{Geometry, Joint, Link, Material, Robot, Vec3, Vec4};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -42,6 +38,7 @@ fn send_archetype(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
     entity_path: EntityPath,
+    timepoint: &TimePoint,
     archetype: &impl AsComponents,
 ) -> anyhow::Result<()> {
     send_chunk_builder(
@@ -49,7 +46,7 @@ fn send_archetype(
         store_id,
         ChunkBuilder::new(ChunkId::new(), entity_path).with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            timepoint.clone(),
             archetype,
         ),
     )
@@ -84,8 +81,9 @@ impl DataLoader for UrdfDataLoader {
             robot,
             &filepath,
             &tx,
-            &settings.recommended_store_id(),
+            &settings.opened_store_id_or_recommended(),
             &settings.entity_path_prefix,
+            &settings.timepoint.clone().unwrap_or_default(),
         )
         .with_context(|| "Failed to load URDF file!")?;
 
@@ -112,8 +110,9 @@ impl DataLoader for UrdfDataLoader {
             robot,
             &filepath,
             &tx,
-            &settings.recommended_store_id(),
+            &settings.opened_store_id_or_recommended(),
             &settings.entity_path_prefix,
+            &settings.timepoint.clone().unwrap_or_default(),
         )
         .with_context(|| "Failed to load URDF file!")?;
 
@@ -256,6 +255,11 @@ impl UrdfTree {
     pub fn get_joint_child(&self, joint: &Joint) -> &Link {
         &self.links[&joint.child.link] // Safe because we checked that the joint's child link exists in `new()`
     }
+
+    /// Get a material by name, if it exists.
+    fn get_material(&self, name: &str) -> Option<&Material> {
+        self.materials.get(name)
+    }
 }
 
 fn log_robot(
@@ -264,6 +268,7 @@ fn log_robot(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
     entity_path_prefix: &Option<EntityPath>,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let urdf_dir = filepath.parent().map(|path| path.to_path_buf());
 
@@ -273,7 +278,14 @@ fn log_robot(
         .map(|prefix| prefix / EntityPath::from_single_string(urdf_tree.name.clone()))
         .unwrap_or_else(|| EntityPath::from_single_string(urdf_tree.name.clone()));
 
-    walk_tree(&urdf_tree, tx, store_id, &entity_path, &urdf_tree.root.name)?;
+    walk_tree(
+        &urdf_tree,
+        tx,
+        store_id,
+        &entity_path,
+        &urdf_tree.root.name,
+        timepoint,
+    )?;
 
     Ok(())
 }
@@ -284,6 +296,7 @@ fn walk_tree(
     store_id: &StoreId,
     parent_path: &EntityPath,
     link_name: &str,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let link = urdf_tree
         .links
@@ -292,7 +305,7 @@ fn walk_tree(
     debug_assert_eq!(link_name, link.name);
     let link_path = parent_path / EntityPathPart::new(link_name);
 
-    log_link(urdf_tree, tx, store_id, link, &link_path)?;
+    log_link(urdf_tree, tx, store_id, link, &link_path, timepoint)?;
 
     let Some(joints) = urdf_tree.children.get(link_name) else {
         // if there's no more joints connecting this link to anything else we've reached the end of this branch.
@@ -301,10 +314,17 @@ fn walk_tree(
 
     for joint in joints {
         let joint_path = &link_path / EntityPathPart::new(&joint.name);
-        log_joint(tx, store_id, &joint_path, joint)?;
+        log_joint(tx, store_id, &joint_path, joint, timepoint)?;
 
         // Recurse
-        walk_tree(urdf_tree, tx, store_id, &joint_path, &joint.child.link)?;
+        walk_tree(
+            urdf_tree,
+            tx,
+            store_id,
+            &joint_path,
+            &joint.child.link,
+            timepoint,
+        )?;
     }
 
     Ok(())
@@ -315,6 +335,7 @@ fn log_joint(
     store_id: &StoreId,
     joint_path: &EntityPath,
     joint: &Joint,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let Joint {
         name: _,
@@ -330,19 +351,40 @@ fn log_joint(
         safety_controller,
     } = joint;
 
-    send_transform(tx, store_id, joint_path.clone(), origin)?;
+    send_transform(tx, store_id, joint_path.clone(), origin, timepoint)?;
 
-    log_debug_format(tx, store_id, joint_path.clone(), "joint_type", joint_type)?;
-    log_debug_format(tx, store_id, joint_path.clone(), "axis", axis)?;
-    log_debug_format(tx, store_id, joint_path.clone(), "limit", limit)?;
+    log_debug_format(
+        tx,
+        store_id,
+        joint_path.clone(),
+        "joint_type",
+        joint_type,
+        timepoint,
+    )?;
+    log_debug_format(tx, store_id, joint_path.clone(), "axis", axis, timepoint)?;
+    log_debug_format(tx, store_id, joint_path.clone(), "limit", limit, timepoint)?;
     if let Some(calibration) = calibration {
-        log_debug_format(tx, store_id, joint_path.clone(), "calibration", calibration)?;
+        log_debug_format(
+            tx,
+            store_id,
+            joint_path.clone(),
+            "calibration",
+            calibration,
+            timepoint,
+        )?;
     }
     if let Some(dynamics) = dynamics {
-        log_debug_format(tx, store_id, joint_path.clone(), "dynamics", dynamics)?;
+        log_debug_format(
+            tx,
+            store_id,
+            joint_path.clone(),
+            "dynamics",
+            dynamics,
+            timepoint,
+        )?;
     }
     if let Some(mimic) = mimic {
-        log_debug_format(tx, store_id, joint_path.clone(), "mimic", mimic)?;
+        log_debug_format(tx, store_id, joint_path.clone(), "mimic", mimic, timepoint)?;
     }
     if let Some(safety_controller) = safety_controller {
         log_debug_format(
@@ -351,6 +393,7 @@ fn log_joint(
             joint_path.clone(),
             "safety_controller",
             &safety_controller,
+            timepoint,
         )?;
     }
 
@@ -371,6 +414,7 @@ fn send_transform(
     store_id: &StoreId,
     entity_path: EntityPath,
     origin: &urdf_rs::Pose,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let urdf_rs::Pose { xyz, rpy } = origin;
     let is_identity = xyz.0 == [0.0, 0.0, 0.0] && rpy.0 == [0.0, 0.0, 0.0];
@@ -378,7 +422,13 @@ fn send_transform(
     if is_identity {
         Ok(()) // avoid noise
     } else {
-        send_archetype(tx, store_id, entity_path, &transform_from_pose(origin))
+        send_archetype(
+            tx,
+            store_id,
+            entity_path,
+            timepoint,
+            &transform_from_pose(origin),
+        )
     }
 }
 
@@ -391,13 +441,14 @@ fn log_debug_format(
     entity_path: EntityPath,
     name: &str,
     value: &dyn std::fmt::Debug,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     send_chunk_builder(
         tx,
         store_id,
         ChunkBuilder::new(ChunkId::new(), entity_path).with_serialized_batches(
             RowId::new(),
-            TimePoint::default(),
+            timepoint.clone(),
             vec![SerializedComponentBatch {
                 descriptor: ComponentDescriptor::partial(name),
                 array: Arc::new(arrow::array::StringArray::from(vec![format!("{value:#?}")])),
@@ -412,6 +463,7 @@ fn log_link(
     store_id: &StoreId,
     link: &urdf_rs::Link,
     link_entity: &EntityPath,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     let urdf_rs::Link {
         name: _,
@@ -420,7 +472,14 @@ fn log_link(
         collision,
     } = link;
 
-    log_debug_format(tx, store_id, link_entity.clone(), "inertial", &inertial)?;
+    log_debug_format(
+        tx,
+        store_id,
+        link_entity.clone(),
+        "inertial",
+        &inertial,
+        timepoint,
+    )?;
 
     for (i, visual) in visual.iter().enumerate() {
         let urdf_rs::Visual {
@@ -432,21 +491,19 @@ fn log_link(
         let name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let vis_entity = link_entity / EntityPathPart::new(name);
 
-        // We need to look up the material by name, because the `Visuals::Material`
-        // only has a name, no color or texture.
-        let material = material
-            .as_ref()
-            .and_then(|m| urdf_tree.materials.get(&m.name).cloned());
+        // Prefer inline defined material properties if present, otherwise fall back to global material.
+        let material = material.as_ref().and_then(|mat| {
+            if mat.color.is_some() || mat.texture.is_some() {
+                Some(mat)
+            } else {
+                urdf_tree.get_material(&mat.name)
+            }
+        });
 
-        send_transform(tx, store_id, vis_entity.clone(), origin)?;
+        send_transform(tx, store_id, vis_entity.clone(), origin, timepoint)?;
 
         log_geometry(
-            urdf_tree,
-            tx,
-            store_id,
-            vis_entity,
-            geometry,
-            material.as_ref(),
+            urdf_tree, tx, store_id, vis_entity, geometry, material, timepoint,
         )?;
     }
 
@@ -459,7 +516,7 @@ fn log_link(
         let name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(name);
 
-        send_transform(tx, store_id, collision_entity.clone(), origin)?;
+        send_transform(tx, store_id, collision_entity.clone(), origin, timepoint)?;
 
         log_geometry(
             urdf_tree,
@@ -468,6 +525,7 @@ fn log_link(
             collision_entity.clone(),
             geometry,
             None,
+            timepoint,
         )?;
 
         if false {
@@ -477,14 +535,14 @@ fn log_link(
                 store_id,
                 ChunkBuilder::new(ChunkId::new(), collision_entity).with_component_batch(
                     RowId::new(),
-                    TimePoint::default(),
+                    timepoint.clone(),
                     (
                         ComponentDescriptor {
                             archetype: None,
                             component: "visible".into(),
-                            component_type: Some(re_types::components::Visible::name()),
+                            component_type: Some(re_sdk_types::components::Visible::name()),
                         },
-                        &re_types::components::Visible::from(false),
+                        &re_sdk_types::components::Visible::from(false),
                     ),
                 ),
             )?;
@@ -534,10 +592,11 @@ fn log_geometry(
     entity_path: EntityPath,
     geometry: &Geometry,
     material: Option<&urdf_rs::Material>,
+    timepoint: &TimePoint,
 ) -> anyhow::Result<()> {
     match geometry {
         Geometry::Mesh { filename, scale } => {
-            use re_types::components::MediaType;
+            use re_sdk_types::components::MediaType;
 
             let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
             let mut asset3d =
@@ -555,7 +614,7 @@ fn log_geometry(
                     } = color;
                     asset3d = asset3d.with_albedo_factor(
                         // TODO(emilk): is this linear or sRGB?
-                        re_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
+                        re_sdk_types::datatypes::Rgba32::from_linear_unmultiplied_rgba_f32(
                             *r as f32, *g as f32, *b as f32, *a as f32,
                         ),
                     );
@@ -573,11 +632,12 @@ fn log_geometry(
                     tx,
                     store_id,
                     entity_path.clone(),
+                    timepoint,
                     &Transform3D::update_fields().with_scale([x as f32, y as f32, z as f32]),
                 )?;
             }
 
-            send_archetype(tx, store_id, entity_path, &asset3d)?;
+            send_archetype(tx, store_id, entity_path, timepoint, &asset3d)?;
         }
         Geometry::Box {
             size: Vec3([x, y, z]),
@@ -586,7 +646,10 @@ fn log_geometry(
                 tx,
                 store_id,
                 entity_path,
-                &re_types::archetypes::Boxes3D::from_sizes([Vec3D::new(*x as _, *y as _, *z as _)]),
+                timepoint,
+                &re_sdk_types::archetypes::Boxes3D::from_sizes([Vec3D::new(
+                    *x as _, *y as _, *z as _,
+                )]),
             )?;
         }
         Geometry::Cylinder { radius, length } => {
@@ -595,7 +658,8 @@ fn log_geometry(
                 tx,
                 store_id,
                 entity_path,
-                &re_types::archetypes::Cylinders3D::from_lengths_and_radii(
+                timepoint,
+                &re_sdk_types::archetypes::Cylinders3D::from_lengths_and_radii(
                     [*length as f32],
                     [*radius as f32],
                 ),
@@ -607,7 +671,8 @@ fn log_geometry(
                 tx,
                 store_id,
                 entity_path,
-                &re_types::archetypes::Capsules3D::from_lengths_and_radii(
+                timepoint,
+                &re_sdk_types::archetypes::Capsules3D::from_lengths_and_radii(
                     [*length as f32],
                     [*radius as f32],
                 ),
@@ -618,7 +683,8 @@ fn log_geometry(
                 tx,
                 store_id,
                 entity_path,
-                &re_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
+                timepoint,
+                &re_sdk_types::archetypes::Ellipsoids3D::from_radii([*radius as f32]),
             )?;
         }
     }

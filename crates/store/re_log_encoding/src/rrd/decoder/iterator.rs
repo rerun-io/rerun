@@ -1,3 +1,4 @@
+use crate::RrdManifest;
 use crate::rrd::decoder::state_machine::DecoderState;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
@@ -109,6 +110,18 @@ impl<T, R: std::io::BufRead> DecoderIterator<T, R> {
     }
 }
 
+impl<T: DecoderEntrypoint, R: std::io::BufRead> DecoderIterator<T, R> {
+    /// Returns all the RRD manifests accumulated _so far_.
+    ///
+    /// RRD manifests are parsed from footers, of which there might be more than one e.g. in the
+    /// case of concatenated streams.
+    ///
+    /// This is not cheap: it automatically performs the transport to app level conversion.
+    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+        self.decoder.rrd_manifests()
+    }
+}
+
 impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderIterator<T, R> {
     type Item = Result<T, DecodeError>;
 
@@ -139,7 +152,7 @@ impl<T: DecoderEntrypoint, R: std::io::BufRead> std::iter::Iterator for DecoderI
 
                         // …and the underlying decoder already considers that it's done (i.e. it's
                         // waiting for a whole new stream to begin): time to stop.
-                        Ok(None) if self.decoder.state == DecoderState::StreamHeader => {
+                        Ok(None) if self.decoder.state == DecoderState::WaitingForStreamHeader => {
                             return None;
                         }
 
@@ -190,8 +203,8 @@ mod tests {
                     re_log_types::Timeline::new_sequence("blueprint"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),
-                &re_types::blueprint::archetypes::Background::new(
-                    re_types::blueprint::components::BackgroundKind::SolidColor,
+                &re_sdk_types::blueprint::archetypes::Background::new(
+                    re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
                 )
                 .with_color([255, 0, 0]),
             )

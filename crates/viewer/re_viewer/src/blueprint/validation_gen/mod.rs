@@ -4,54 +4,65 @@
 
 use super::validation::validate_component;
 use re_entity_db::EntityDb;
-pub use re_types::blueprint::components::ActiveTab;
-pub use re_types::blueprint::components::ApplyLatestAt;
-pub use re_types::blueprint::components::AutoLayout;
-pub use re_types::blueprint::components::AutoViews;
-pub use re_types::blueprint::components::BackgroundKind;
-pub use re_types::blueprint::components::ColumnShare;
-pub use re_types::blueprint::components::ComponentColumnSelector;
-pub use re_types::blueprint::components::ContainerKind;
-pub use re_types::blueprint::components::Corner2D;
-pub use re_types::blueprint::components::Enabled;
-pub use re_types::blueprint::components::Eye3DKind;
-pub use re_types::blueprint::components::FilterByRange;
-pub use re_types::blueprint::components::FilterIsNotNull;
-pub use re_types::blueprint::components::ForceDistance;
-pub use re_types::blueprint::components::ForceIterations;
-pub use re_types::blueprint::components::ForceStrength;
-pub use re_types::blueprint::components::Fps;
-pub use re_types::blueprint::components::GridColumns;
-pub use re_types::blueprint::components::GridSpacing;
-pub use re_types::blueprint::components::IncludedContent;
-pub use re_types::blueprint::components::LinkAxis;
-pub use re_types::blueprint::components::LockRangeDuringZoom;
-pub use re_types::blueprint::components::MapProvider;
-pub use re_types::blueprint::components::NearClipPlane;
-pub use re_types::blueprint::components::PanelState;
-pub use re_types::blueprint::components::PlaybackSpeed;
-pub use re_types::blueprint::components::QueryExpression;
-pub use re_types::blueprint::components::RootContainer;
-pub use re_types::blueprint::components::RowShare;
-pub use re_types::blueprint::components::SelectedColumns;
-pub use re_types::blueprint::components::TensorDimensionIndexSlider;
-pub use re_types::blueprint::components::TimeInt;
-pub use re_types::blueprint::components::TimelineName;
-pub use re_types::blueprint::components::ViewClass;
-pub use re_types::blueprint::components::ViewFit;
-pub use re_types::blueprint::components::ViewMaximized;
-pub use re_types::blueprint::components::ViewOrigin;
-pub use re_types::blueprint::components::ViewerRecommendationHash;
-pub use re_types::blueprint::components::VisibleTimeRange;
-pub use re_types::blueprint::components::VisualBounds2D;
-pub use re_types::blueprint::components::VisualizerOverride;
-pub use re_types::blueprint::components::ZoomLevel;
+pub use re_sdk_types::blueprint::components::AbsoluteTimeRange;
+pub use re_sdk_types::blueprint::components::ActiveTab;
+pub use re_sdk_types::blueprint::components::AngularSpeed;
+pub use re_sdk_types::blueprint::components::ApplyLatestAt;
+pub use re_sdk_types::blueprint::components::AutoLayout;
+pub use re_sdk_types::blueprint::components::AutoViews;
+pub use re_sdk_types::blueprint::components::BackgroundKind;
+pub use re_sdk_types::blueprint::components::ColumnShare;
+pub use re_sdk_types::blueprint::components::ComponentColumnSelector;
+pub use re_sdk_types::blueprint::components::ContainerKind;
+pub use re_sdk_types::blueprint::components::Corner2D;
+pub use re_sdk_types::blueprint::components::Enabled;
+pub use re_sdk_types::blueprint::components::Eye3DKind;
+pub use re_sdk_types::blueprint::components::FilterByRange;
+pub use re_sdk_types::blueprint::components::FilterIsNotNull;
+pub use re_sdk_types::blueprint::components::ForceDistance;
+pub use re_sdk_types::blueprint::components::ForceIterations;
+pub use re_sdk_types::blueprint::components::ForceStrength;
+pub use re_sdk_types::blueprint::components::Fps;
+pub use re_sdk_types::blueprint::components::GridColumns;
+pub use re_sdk_types::blueprint::components::GridSpacing;
+pub use re_sdk_types::blueprint::components::IncludedContent;
+pub use re_sdk_types::blueprint::components::LinkAxis;
+pub use re_sdk_types::blueprint::components::LockRangeDuringZoom;
+pub use re_sdk_types::blueprint::components::LoopMode;
+pub use re_sdk_types::blueprint::components::MapProvider;
+pub use re_sdk_types::blueprint::components::NearClipPlane;
+pub use re_sdk_types::blueprint::components::PanelState;
+pub use re_sdk_types::blueprint::components::PlayState;
+pub use re_sdk_types::blueprint::components::PlaybackSpeed;
+pub use re_sdk_types::blueprint::components::QueryExpression;
+pub use re_sdk_types::blueprint::components::RootContainer;
+pub use re_sdk_types::blueprint::components::RowShare;
+pub use re_sdk_types::blueprint::components::SelectedColumns;
+pub use re_sdk_types::blueprint::components::TensorDimensionIndexSlider;
+pub use re_sdk_types::blueprint::components::TextLogColumn;
+pub use re_sdk_types::blueprint::components::TimeInt;
+pub use re_sdk_types::blueprint::components::TimeRange;
+pub use re_sdk_types::blueprint::components::TimelineColumn;
+pub use re_sdk_types::blueprint::components::TimelineName;
+pub use re_sdk_types::blueprint::components::ViewClass;
+pub use re_sdk_types::blueprint::components::ViewFit;
+pub use re_sdk_types::blueprint::components::ViewMaximized;
+pub use re_sdk_types::blueprint::components::ViewOrigin;
+pub use re_sdk_types::blueprint::components::ViewerRecommendationHash;
+pub use re_sdk_types::blueprint::components::VisibleTimeRange;
+pub use re_sdk_types::blueprint::components::VisualBounds2D;
+pub use re_sdk_types::blueprint::components::VisualizerComponentMapping;
+pub use re_sdk_types::blueprint::components::VisualizerInstructionId;
+pub use re_sdk_types::blueprint::components::VisualizerType;
+pub use re_sdk_types::blueprint::components::ZoomLevel;
 
 /// Because blueprints are both read and written the schema must match what
 /// we expect to find or else we will run into all kinds of problems.
 
 pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
-    validate_component::<ActiveTab>(blueprint)
+    validate_component::<AbsoluteTimeRange>(blueprint)
+        && validate_component::<ActiveTab>(blueprint)
+        && validate_component::<AngularSpeed>(blueprint)
         && validate_component::<ApplyLatestAt>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoViews>(blueprint)
@@ -73,16 +84,21 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<LinkAxis>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
+        && validate_component::<LoopMode>(blueprint)
         && validate_component::<MapProvider>(blueprint)
         && validate_component::<NearClipPlane>(blueprint)
         && validate_component::<PanelState>(blueprint)
+        && validate_component::<PlayState>(blueprint)
         && validate_component::<PlaybackSpeed>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
+        && validate_component::<TextLogColumn>(blueprint)
         && validate_component::<TimeInt>(blueprint)
+        && validate_component::<TimeRange>(blueprint)
+        && validate_component::<TimelineColumn>(blueprint)
         && validate_component::<TimelineName>(blueprint)
         && validate_component::<ViewClass>(blueprint)
         && validate_component::<ViewFit>(blueprint)
@@ -91,6 +107,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<VisibleTimeRange>(blueprint)
         && validate_component::<VisualBounds2D>(blueprint)
-        && validate_component::<VisualizerOverride>(blueprint)
+        && validate_component::<VisualizerComponentMapping>(blueprint)
+        && validate_component::<VisualizerInstructionId>(blueprint)
+        && validate_component::<VisualizerType>(blueprint)
         && validate_component::<ZoomLevel>(blueprint)
 }

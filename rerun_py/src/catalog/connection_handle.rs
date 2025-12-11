@@ -1,32 +1,29 @@
 use std::collections::BTreeSet;
 
 use arrow::array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
-use arrow::datatypes::Schema as ArrowSchema;
+use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use arrow::ffi_stream::ArrowArrayStreamReader;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::{PyErr, PyResult, Python};
-use tracing::Instrument as _;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::QueryExpression;
 use re_datafusion::query_from_query_expression;
+use re_log::external::log::warn;
 use re_log_types::EntryId;
-use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{
-    cloud::v1alpha1::ext::{DataSource, RegisterWithDatasetTaskDescriptor},
-    cloud::v1alpha1::{
-        EntryFilter,
-        ext::{DatasetDetails, DatasetEntry, EntryDetails, TableEntry},
-    },
-    cloud::v1alpha1::{QueryDatasetRequest, QueryTasksResponse},
-    common::v1alpha1::{
-        TaskId,
-        ext::{IfDuplicateBehavior, ScanParameters},
-    },
-    invalid_schema, missing_field,
+use re_protos::cloud::v1alpha1::ext::{
+    DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
+    RegisterWithDatasetTaskDescriptor, TableEntry,
 };
+use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
+use re_protos::common::v1alpha1::TaskId;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters};
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::{invalid_schema, missing_field};
 use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
+use tracing::Instrument as _;
 
+use crate::catalog::table_entry::PyTableInsertMode;
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
 
@@ -164,7 +161,7 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_partition_ids(
+    pub fn get_dataset_segment_ids(
         &self,
         py: Python<'_>,
         entry_id: EntryId,
@@ -175,7 +172,7 @@ impl ConnectionHandle {
                 Ok(self
                     .client()
                     .await?
-                    .get_dataset_partition_ids(entry_id)
+                    .get_dataset_segment_ids(entry_id)
                     .await
                     .map_err(to_py_err)?
                     .iter()
@@ -207,6 +204,29 @@ impl ConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn create_table_entry(
+        &self,
+        py: Python<'_>,
+        name: String,
+        schema: SchemaRef,
+        url: &url::Url,
+    ) -> PyResult<TableEntry> {
+        let entry_id = wait_for_future(
+            py,
+            async {
+                self.client()
+                    .await?
+                    .create_table_entry(&name, url, schema)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )?;
+
+        self.read_table(py, entry_id.details.id)
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn read_table(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         wait_for_future(
             py,
@@ -214,6 +234,38 @@ impl ConnectionHandle {
                 self.client()
                     .await?
                     .read_table_entry(entry_id)
+                    .await
+                    .map_err(to_py_err)
+            }
+            .in_current_span(),
+        )
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn write_table(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        stream: ArrowArrayStreamReader,
+        insert_mode: PyTableInsertMode,
+    ) -> PyResult<()> {
+        wait_for_future(
+            py,
+            async {
+                // Since the errors occur during streaming, we cannot let this method
+                // fail without doing a collect operation. Instead, we log a warning to
+                // the user.
+                let stream = futures::stream::iter(stream.filter_map(move |rb| match rb {
+                    Ok(rb) => Some(rb),
+                    Err(err) => {
+                        warn!("write_table input stream contains an error. {err}");
+                        None
+                    }
+                }));
+
+                self.client()
+                    .await?
+                    .write_table(stream, entry_id, insert_mode.into())
                     .await
                     .map_err(to_py_err)
             }
@@ -507,7 +559,7 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
-        partition_ids: &[impl AsRef<str> + Sync],
+        segment_ids: &[impl AsRef<str> + Sync],
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         use tokio_stream::StreamExt as _;
 
@@ -540,27 +592,24 @@ impl ConnectionHandle {
         let query = query_from_query_expression(query_expression);
 
         let request = QueryDatasetRequest {
-            partition_ids: partition_ids
+            segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
             chunk_ids: vec![],
-            entity_paths: entity_paths
-                .into_iter()
-                .map(|p| (*p).clone().into())
-                .collect(),
+            entity_paths: entity_paths.into_iter().map(|p| (*p).clone()).collect(),
             select_all_entity_paths,
             fuzzy_descriptors,
             exclude_static_data: false,
             exclude_temporal_data: false,
-            query: Some(query.into()),
-            scan_parameters: Some(
-                ScanParameters {
-                    columns: vec!["chunk_partition_id".to_owned(), "chunk_id".to_owned()],
-                    ..Default::default()
-                }
-                .into(),
-            ),
+            query: Some(query),
+            scan_parameters: Some(ScanParameters {
+                columns: vec![
+                    QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID.to_owned(),
+                    QueryDatasetResponse::FIELD_CHUNK_ID.to_owned(),
+                ],
+                ..Default::default()
+            }),
         };
 
         wait_for_future(
@@ -571,7 +620,7 @@ impl ConnectionHandle {
                     .await?
                     .inner()
                     .query_dataset(
-                        tonic::Request::new(request)
+                        tonic::Request::new(request.into())
                             .with_entry_id(dataset_id)
                             .map_err(to_py_err)?,
                     )

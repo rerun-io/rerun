@@ -7,14 +7,13 @@ use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{
     ColumnarValue, Expr, ScalarFunctionArgs, TypeSignature, col, lit, not,
 };
-use strum::VariantArray as _;
-
 use re_ui::SyntaxHighlighting;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, action_from_text_edit_response};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, strum::VariantArray)]
 pub enum StringOperator {
     #[default]
     Contains,
@@ -34,7 +33,7 @@ impl std::fmt::Display for StringOperator {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct StringFilter {
     operator: StringOperator,
     query: String,
@@ -160,6 +159,7 @@ impl FilterUdf for StringFilter {
                 arg_fields: vec![Arc::clone(&field)],
                 number_rows: array.len(),
                 return_field: field,
+                config_options: Arc::new(Default::default()),
             })?;
 
         let ColumnarValue::Array(haystack_array) = &lowercase_haystack else {

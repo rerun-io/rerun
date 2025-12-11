@@ -1,0 +1,11 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+state: [3]
+timeline: [log_time]
+playback_speed: [0.0]
+fps: [0.0]
+play_state: [2]
+loop_mode: [1]
+time_selection: [{min: 0, max: 0}]

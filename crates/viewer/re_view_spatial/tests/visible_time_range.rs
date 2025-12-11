@@ -4,9 +4,11 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Points2D;
+use re_sdk_types::datatypes::VisibleTimeRange;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -114,11 +116,11 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
 fn intra_timestamp_test() {
     let range_absolute = |start: i64, end: i64| VisibleTimeRange {
         timeline: "frame".into(),
-        range: re_types::datatypes::TimeRange {
-            start: re_types::datatypes::TimeRangeBoundary::Absolute(
+        range: re_sdk_types::datatypes::TimeRange {
+            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                 TimeInt::from_sequence(start.try_into().unwrap()).into(),
             ),
-            end: re_types::datatypes::TimeRangeBoundary::Absolute(
+            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                 TimeInt::from_sequence(end.try_into().unwrap()).into(),
             ),
         },
@@ -164,9 +166,9 @@ fn intra_timestamp_test() {
         intra_timestamp_data,
         Some(VisibleTimeRange {
             timeline: "frame".into(),
-            range: re_types::datatypes::TimeRange {
-                start: re_types::datatypes::TimeRangeBoundary::Infinite,
-                end: re_types::datatypes::TimeRangeBoundary::Infinite,
+            range: re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
+                end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
             },
         }),
         None,
@@ -190,7 +192,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                     builder.with_archetype(
                         RowId::new(),
                         TimePoint::default(),
-                        &re_types::archetypes::Points2D::new([(x, y)])
+                        &re_sdk_types::archetypes::Points2D::new([(x, y)])
                             .with_colors([0x555555FF])
                             .with_radii([4.0])
                             .with_draw_order(1.0),
@@ -204,7 +206,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                     builder.with_archetype(
                         RowId::new(),
                         time_point,
-                        &re_types::archetypes::Points2D::new([(x, y_red)])
+                        &re_sdk_types::archetypes::Points2D::new([(x, y_red)])
                             .with_colors([0xFF0000FF])
                             .with_radii([4.0])
                             .with_draw_order(3.0),
@@ -216,7 +218,7 @@ fn visible_timerange_data(test_context: &mut TestContext) {
                 builder.with_archetype(
                     RowId::new(),
                     time_point,
-                    &re_types::archetypes::Points2D::new([(x, y_green)])
+                    &re_sdk_types::archetypes::Points2D::new([(x, y_green)])
                         .with_colors([0x00FF00FF])
                         .with_radii([4.0])
                         .with_draw_order(3.0),
@@ -238,11 +240,11 @@ fn visible_timerange_data(test_context: &mut TestContext) {
 fn test_visible_time_range_latest_at() {
     let range_absolute = |timeline: &str, start: i64, end: i64| VisibleTimeRange {
         timeline: timeline.into(),
-        range: re_types::datatypes::TimeRange {
-            start: re_types::datatypes::TimeRangeBoundary::Absolute(
+        range: re_sdk_types::datatypes::TimeRange {
+            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                 TimeInt::from_millis(start.try_into().unwrap()).into(),
             ),
-            end: re_types::datatypes::TimeRangeBoundary::Absolute(
+            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
                 TimeInt::from_millis(end.try_into().unwrap()).into(),
             ),
         },
@@ -260,9 +262,9 @@ fn test_visible_time_range_latest_at() {
         visible_timerange_data,
         Some(VisibleTimeRange {
             timeline: "timestamp".into(),
-            range: re_types::datatypes::TimeRange {
-                start: re_types::datatypes::TimeRangeBoundary::Infinite,
-                end: re_types::datatypes::TimeRangeBoundary::Infinite,
+            range: re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
+                end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
             },
         }),
         None,
@@ -273,11 +275,11 @@ fn test_visible_time_range_latest_at() {
         visible_timerange_data,
         Some(VisibleTimeRange {
             timeline: "timestamp".into(),
-            range: re_types::datatypes::TimeRange {
-                start: re_types::datatypes::TimeRangeBoundary::CursorRelative(
+            range: re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::CursorRelative(
                     TimeInt::from_millis((-1500).try_into().unwrap()).into(),
                 ),
-                end: re_types::datatypes::TimeRangeBoundary::CursorRelative(
+                end: re_sdk_types::datatypes::TimeRangeBoundary::CursorRelative(
                     TimeInt::from_millis(0.try_into().unwrap()).into(),
                 ),
             },
@@ -327,23 +329,25 @@ fn setup_blueprint(
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view_id,
             ctx.store_context.blueprint.tree(),
-            re_types::blueprint::archetypes::VisualBounds2D::name(),
+            re_sdk_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(
             property_path.clone(),
-            &re_types::blueprint::archetypes::VisualBounds2D::new(re_types::datatypes::Range2D {
-                x_range: [0.0, 100.0].into(),
-                y_range: [0.0, 100.0].into(),
-            }),
+            &re_sdk_types::blueprint::archetypes::VisualBounds2D::new(
+                re_sdk_types::datatypes::Range2D {
+                    x_range: [0.0, 100.0].into(),
+                    y_range: [0.0, 100.0].into(),
+                },
+            ),
         );
 
         if let Some(time_range) = time_range {
             let visible_time_range_list =
-                re_types::blueprint::archetypes::VisibleTimeRanges::new([time_range]);
+                re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([time_range]);
             let property_path = re_viewport_blueprint::entity_path_for_view_property(
                 view_id,
                 ctx.store_context.blueprint.tree(),
-                re_types::blueprint::archetypes::VisibleTimeRanges::name(),
+                re_sdk_types::blueprint::archetypes::VisibleTimeRanges::name(),
             );
 
             ctx.save_blueprint_archetype(property_path, &visible_time_range_list);
@@ -351,7 +355,7 @@ fn setup_blueprint(
 
         if let Some(green_time_range) = green_time_range {
             let visible_time_range_list =
-                re_types::blueprint::archetypes::VisibleTimeRanges::new([green_time_range]);
+                re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([green_time_range]);
             ctx.save_blueprint_archetype(
                 re_viewport_blueprint::ViewContents::override_path_for_entity(
                     view_id,

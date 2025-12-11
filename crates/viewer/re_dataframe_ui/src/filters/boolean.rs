@@ -4,17 +4,16 @@ use arrow::datatypes::{DataType, Field};
 use datafusion::common::Column;
 use datafusion::logical_expr::{Expr, col, lit, not};
 use datafusion::prelude::{array_element, array_has, array_sort};
-use strum::VariantArray as _;
-
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{SyntaxHighlighting, UiExt as _};
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUiAction};
 
 /// Filter for non-nullable boolean columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub enum NonNullableBooleanFilter {
     #[default]
     IsTrue,
@@ -87,7 +86,7 @@ impl SyntaxHighlighting for NonNullableBooleanFilter {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, strum::VariantArray)]
 #[expect(clippy::enum_variant_names)]
 pub enum NullableBooleanValue {
     #[default]
@@ -106,7 +105,7 @@ impl NullableBooleanValue {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, strum::VariantArray)]
 pub enum NullableBooleanOperator {
     #[default]
     Is,
@@ -125,7 +124,7 @@ impl std::fmt::Display for NullableBooleanOperator {
 /// Filter for nullable boolean columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct NullableBooleanFilter {
     value: NullableBooleanValue,
     operator: NullableBooleanOperator,
@@ -273,7 +272,7 @@ impl Filter for NullableBooleanFilter {
             .re_radio_value(
                 &mut self.value,
                 NullableBooleanValue::IsNull,
-                primitive_widget_text(ui, "null"),
+                null_widget_text(ui),
             )
             .clicked();
 
@@ -291,6 +290,10 @@ impl SyntaxHighlighting for NullableBooleanFilter {
         builder.append_keyword(" ");
         builder.append_primitive(&self.operand_text());
     }
+}
+
+fn null_widget_text(ui: &egui::Ui) -> egui::WidgetText {
+    SyntaxHighlightedBuilder::null("null").into_widget_text(ui.style())
 }
 
 fn primitive_widget_text(ui: &egui::Ui, s: &str) -> egui::WidgetText {

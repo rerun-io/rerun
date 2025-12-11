@@ -1,5 +1,6 @@
-use re_types::ComponentDescriptor;
-use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier};
+use re_types_core::reflection::ArchetypeFieldReflection;
+use re_types_core::{Archetype, ArchetypeReflectionMarker};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
@@ -16,10 +17,56 @@ pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
 ) {
     let view_property =
         ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
-    view_property_ui_impl(ctx, ui, &view_property);
+    view_property_ui_impl(ctx, ui, &view_property, None);
 }
 
-fn view_property_ui_impl(ctx: &ViewContext<'_>, ui: &mut egui::Ui, property: &ViewProperty) {
+/// See [`view_property_ui`].
+///
+/// This will also redirect the given component to instead use the given view id as the
+/// data source.
+pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    redirect_component: ComponentIdentifier,
+    redirect_with_view_id: re_viewer_context::ViewId,
+) {
+    let view_property =
+        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    view_property_ui_impl(
+        ctx,
+        ui,
+        &view_property,
+        Some(&RedirectComponentView {
+            component: redirect_component,
+            ctx: ViewContext {
+                viewer_ctx: ctx.viewer_ctx,
+                view_id: redirect_with_view_id,
+                view_class_identifier: ctx.view_class_identifier,
+                space_origin: ctx.space_origin,
+                view_state: ctx.view_state,
+                query_result: &re_viewer_context::DataQueryResult::default(),
+            },
+            view_property: ViewProperty::from_archetype::<A>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query(),
+                redirect_with_view_id,
+            ),
+        }),
+    );
+}
+
+struct RedirectComponentView<'a> {
+    component: ComponentIdentifier,
+    ctx: ViewContext<'a>,
+    view_property: ViewProperty,
+}
+
+fn view_property_ui_impl(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    property: &ViewProperty,
+    override_component_view: Option<&RedirectComponentView<'_>>,
+) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
         // The `ArchetypeReflectionMarker` bound should make this impossible.
@@ -49,7 +96,25 @@ fn view_property_ui_impl(ctx: &ViewContext<'_>, ui: &mut egui::Ui, property: &Vi
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
             for field in &archetype.fields {
-                view_property_component_ui(&query_ctx, ui, property, field.display_name, field);
+                let component = field
+                    .component_descriptor(property.archetype_name)
+                    .component;
+
+                let (query_ctx, property) = if let Some(override_component_view) =
+                    &override_component_view
+                    && component == override_component_view.component
+                {
+                    (
+                        &override_component_view
+                            .view_property
+                            .query_context(&override_component_view.ctx),
+                        &override_component_view.view_property,
+                    )
+                } else {
+                    (&query_ctx, property)
+                };
+
+                view_property_component_ui(query_ctx, ui, property, field.display_name, field);
             }
         };
 

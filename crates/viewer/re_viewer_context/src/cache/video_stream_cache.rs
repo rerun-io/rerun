@@ -1,27 +1,25 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use arrow::buffer::Buffer as ArrowBuffer;
 use egui::NumExt as _;
 use parking_lot::RwLock;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPathHash, TimeType};
-use re_types::{archetypes::VideoStream, components};
+use re_sdk_types::archetypes::VideoStream;
+use re_sdk_types::components;
 use re_video::{DecodeSettings, StableIndexDeque};
 
 use crate::{Cache, CacheMemoryReport};
 
 /// A buffer of multiple video sample data from the datastore.
 ///
-/// It's essentially a pointer into a column of [`re_types::components::VideoSample`]s inside a Rerun chunk.
+/// It's essentially a pointer into a column of [`re_sdk_types::components::VideoSample`]s inside a Rerun chunk.
 struct SampleBuffer {
     buffer: ArrowBuffer,
     source_chunk_id: ChunkId,
@@ -239,13 +237,7 @@ fn load_video_data_from_chunks(
         .and_then(|chunk| chunk.component_instance::<components::VideoCodec>(codec_component, 0, 0))
         .ok_or(VideoStreamProcessingError::MissingCodec)?
         .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
-    let codec = match last_codec {
-        components::VideoCodec::H264 => re_video::VideoCodec::H264,
-        components::VideoCodec::H265 => re_video::VideoCodec::H265,
-        // components::VideoCodec::VP8 => re_video::VideoCodec::Vp8,
-        // components::VideoCodec::VP9 => re_video::VideoCodec::Vp9,
-        // components::VideoCodec::AV1 => re_video::VideoCodec::Av1,
-    };
+    let codec = last_codec.into();
 
     // Extract all video samples.
     let mut video_sample_buffers = StableIndexDeque::new();
@@ -747,7 +739,8 @@ mod tests {
     use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
     use re_chunk_store::ChunkStoreDiff;
     use re_log_types::StoreId;
-    use re_types::{archetypes::VideoStream, components::VideoCodec};
+    use re_sdk_types::archetypes::VideoStream;
+    use re_sdk_types::components::VideoCodec;
     use re_video::{VideoDataDescription, VideoEncodingDetails};
 
     use super::*;

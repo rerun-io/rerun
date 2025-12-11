@@ -1,8 +1,7 @@
 use glam::Vec3;
-
 use re_log_types::EntityPath;
 use re_renderer::renderer;
-use re_types::ArchetypeName;
+use re_sdk_types::ArchetypeName;
 use re_viewer_context::{ColormapWithRange, ImageInfo, ImageStatsCache, ViewerContext, gpu_bridge};
 
 use crate::contexts::SpatialSceneEntityContext;
@@ -50,7 +49,8 @@ pub fn textured_rect_from_image(
 
             let world_from_entity = ent_context
                 .transform_info
-                .single_transform_required_for_entity(ent_path, archetype_name);
+                .single_transform_required_for_entity(ent_path, archetype_name)
+                .as_affine3a();
 
             let textured_rect = renderer::TexturedRect {
                 top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),

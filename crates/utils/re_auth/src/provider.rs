@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use base64::{Engine as _, engine::general_purpose};
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
 use crate::{Error, Jwt};
@@ -86,7 +87,12 @@ pub struct RedapClaims {
     /// The audience of the token, i.e. who should consume it.
     ///
     /// Most of the time this will be the storage node.
-    pub aud: String,
+    /// Per RFC 7519, this can be either a single string or an array of strings.
+    #[serde(
+        deserialize_with = "deser_string_or_vec",
+        serialize_with = "ser_string_or_vec"
+    )]
+    pub aud: Vec<String>,
 
     /// Expiry time of the token.
     pub exp: u64,
@@ -259,7 +265,7 @@ impl RedapProvider {
         let claims = Claims::Redap(RedapClaims {
             iss: issuer.into(),
             sub: subject.into(),
-            aud: AUDIENCE.to_owned(),
+            aud: vec![AUDIENCE.to_owned()],
             exp: (now + duration).as_secs(),
             iat: now.as_secs(),
         });
@@ -326,5 +332,118 @@ impl RedapProvider {
         }
 
         Ok(token_data.claims)
+    }
+}
+
+// ---
+
+/// Deserializes either a string of an array of strings into an array of strings.
+fn deser_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        One(String),
+        Many(Vec<String>),
+    }
+
+    use serde::Deserialize as _;
+    match StringOrVec::deserialize(deserializer)? {
+        StringOrVec::One(s) => Ok(vec![s]),
+        StringOrVec::Many(v) => Ok(v),
+    }
+}
+
+/// Serializes an array of strings into either a single string if unary, or into an array of strings otherwise.
+fn ser_string_or_vec<S>(value: &Vec<String>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize as _;
+    if value.len() == 1 {
+        serializer.serialize_str(&value[0])
+    } else {
+        value.serialize(serializer)
+    }
+}
+
+// ---
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audience_deserialize_single_string() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": "redap",
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap"]);
+    }
+
+    #[test]
+    fn test_audience_deserialize_array() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": ["redap", "other-service"],
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, vec!["redap", "other-service"]);
+    }
+
+    #[test]
+    fn test_audience_deserialize_empty_array() {
+        let json = r#"{
+            "iss": "test",
+            "sub": "user123",
+            "aud": [],
+            "exp": 1234567890,
+            "iat": 1234567890
+        }"#;
+
+        let claims: RedapClaims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.aud, Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_audience_serialize_single() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        // When there's exactly one audience, it should serialize as a string
+        assert_eq!(json["aud"], serde_json::json!("redap"));
+    }
+
+    #[test]
+    fn test_audience_serialize_multiple() {
+        let claims = RedapClaims {
+            iss: "test".to_owned(),
+            sub: "user123".to_owned(),
+            aud: vec!["redap".to_owned(), "other".to_owned()],
+            exp: 1234567890,
+            iat: 1234567890,
+        };
+
+        let json = serde_json::to_value(&claims).unwrap();
+        // When there are multiple audiences, it should serialize as an array
+        assert_eq!(json["aud"], serde_json::json!(["redap", "other"]));
     }
 }

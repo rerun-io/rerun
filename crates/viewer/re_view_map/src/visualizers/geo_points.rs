@@ -1,13 +1,16 @@
 use re_log_types::EntityPath;
-use re_renderer::{PickingLayerInstanceId, renderer::PointCloudDrawDataError};
-use re_types::{archetypes::GeoPoints, components::Radius};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::PointCloudDrawDataError;
+use re_sdk_types::archetypes::GeoPoints;
+use re_sdk_types::components::Radius;
 use re_view::{
     AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
     process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -40,12 +43,15 @@ impl VisualizerSystem for GeoPointsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
         let latest_at_query = view_query.latest_at_query();
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results = data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results =
+                data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 
             let mut batch_data = GeoPointBatch::default();
@@ -120,7 +126,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

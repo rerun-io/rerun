@@ -1,8 +1,8 @@
 use itertools::Itertools as _;
-
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
-use re_types::{archetypes::RecordingInfo, components::Timestamp};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::Timestamp;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;

@@ -3,7 +3,7 @@ use re_sdk::TimePoint;
 use re_sdk::external::re_log_types::EntityPathFilter;
 use re_sdk::log::RowId;
 use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
-use re_viewer::external::{re_types, re_view_spatial};
+use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -17,12 +17,12 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
+            &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(-1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)],
                 [(0.2, 0.4, 0.2), (0.2, 0.2, 0.4), (0.4, 0.2, 0.2)],
             )
             .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF])
-            .with_fill_mode(re_types::components::FillMode::Solid),
+            .with_fill_mode(re_sdk_types::components::FillMode::Solid),
         )
     });
     harness
@@ -52,30 +52,33 @@ pub async fn test_blueprint_tree_context_menu() {
 
     harness.snapshot_app("blueprint_tree_context_menu_01");
 
+    // Click on the view panel widget
     harness.right_click_nth_label("Test view", 1);
     harness.snapshot_app("blueprint_tree_context_menu_02");
 
     harness.click_label("Expand all");
     harness.snapshot_app("blueprint_tree_context_menu_03");
 
-    harness.right_click_label("Viewport (Grid container)");
+    harness
+        .blueprint_tree()
+        .right_click_label("Viewport (Grid container)");
     harness.snapshot_app("blueprint_tree_context_menu_04");
 
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_05");
 
-    harness.right_click_nth_label("Test view", 0);
+    harness.blueprint_tree().right_click_label("Test view");
     harness.snapshot_app("blueprint_tree_context_menu_06");
 
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_07");
 
-    harness.right_click_label("group");
+    harness.blueprint_tree().right_click_label("group");
     harness.snapshot_app("blueprint_tree_context_menu_08");
 
     harness.key_press(egui::Key::Escape);
     harness.snapshot_app("blueprint_tree_context_menu_09");
 
-    harness.right_click_nth_label("boxes3d", 1);
+    harness.blueprint_tree().right_click_label("boxes3d");
     harness.snapshot_app("blueprint_tree_context_menu_10");
 }

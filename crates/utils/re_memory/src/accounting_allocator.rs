@@ -1,16 +1,13 @@
 //! Track allocations and memory use.
 
-use std::sync::{
-    LazyLock,
-    atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed},
-};
+use std::sync::LazyLock;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use parking_lot::Mutex;
 
-use crate::{
-    CountAndSize,
-    allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash},
-};
+use crate::CountAndSize;
+use crate::allocation_tracker::{AllocationTracker, CallstackStatistics, PtrHash};
 
 // TODO(emilk): yet another tier would maybe make sense, with a different stochastic rate.
 
@@ -166,8 +163,8 @@ pub fn set_tracking_options(options: TrackingOptions) {
 ///
 /// Requires that you have installed the [`AccountingAllocator`].
 pub fn set_tracking_callstacks(track: bool) {
-    GLOBAL.track_callstacks.store(track, Relaxed);
-    if track {
+    let did_track = GLOBAL.track_callstacks.swap(track, Relaxed);
+    if !did_track && track {
         re_log::info!("Turning on stochastic tracking of all allocations");
     }
 }
@@ -187,8 +184,12 @@ pub fn turn_on_tracking_if_env_var(env_var: &str) {
 
 // ----------------------------------------------------------------------------
 
-const MAX_CALLSTACKS: usize = 128;
+/// Max number of peak callstacks we collect
+const MAX_CALLSTACKS: usize = 32;
 
+/// Detailed statistics about memory usage.
+///
+/// Requires [`set_tracking_callstacks`] having been called.
 #[derive(Debug)]
 pub struct TrackingStatistics {
     /// Allocations smaller than these are left untracked.

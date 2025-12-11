@@ -24,7 +24,6 @@ use arrow::datatypes::{
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
-
 use re_log_types::TimestampFormat;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -170,7 +169,7 @@ fn make_ui<'a>(
         | DataType::Utf8View | DataType::BinaryView
         | DataType::Date32 | DataType::Date64 | DataType::Time32(_) | DataType::Time64(_)
         | DataType::Duration(_) | DataType::Interval(_)
-        | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
+        | DataType::Decimal32(_, _) | DataType::Decimal64(_, _) | DataType::Decimal128(_, _) | DataType::Decimal256(_, _)
         => {
             show_arrow_builtin(array, options)
         }
@@ -240,7 +239,7 @@ impl ShowIndex for ShowBuiltIn<'_> {
         let dt = self.array.data_type();
 
         if self.array.is_null(idx) {
-            f.append_primitive("null");
+            f.append_null("null");
         } else if matches!(
             dt,
             DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
@@ -398,7 +397,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult {
         if self.array.is_null(idx) {
             if !self.null.is_empty() {
-                f.append_primitive(self.null);
+                f.append_null(self.null);
             }
             return Ok(());
         }

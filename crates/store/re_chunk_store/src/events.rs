@@ -1,10 +1,10 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use re_chunk::Chunk;
 use re_log_types::StoreId;
 
 use crate::ChunkStoreGeneration;
-
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
 use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 
@@ -136,6 +136,14 @@ pub struct ChunkStoreDiff {
     // deallocated.
     pub chunk: Arc<Chunk>,
 
+    /// If the an added chunk is a smaller piece of a split chunk,
+    /// then this is the original chunk.
+    ///
+    /// In other words, this is the chunk that someone called [`ChunkStore::insert_chunk`] on,
+    /// but that never made it into the store as is, but got split into multiple pieces,
+    /// out of which [`Self::chunk`] is one.
+    pub split_source: Option<ChunkId>, // TODO(#11971): Better lineage tracking
+
     /// Reports which [`Chunk`]s were merged into a new [`Chunk`] during a compaction.
     ///
     /// This is only specified if an addition to the store triggered a compaction.
@@ -153,9 +161,13 @@ impl PartialEq for ChunkStoreDiff {
         let Self {
             kind,
             chunk,
+            split_source,
             compacted,
         } = self;
-        *kind == rhs.kind && chunk.id() == rhs.chunk.id() && compacted == &rhs.compacted
+        *kind == rhs.kind
+            && chunk.id() == rhs.chunk.id()
+            && split_source == &rhs.split_source
+            && compacted == &rhs.compacted
     }
 }
 
@@ -167,6 +179,7 @@ impl ChunkStoreDiff {
         Self {
             kind: ChunkStoreDiffKind::Addition,
             chunk,
+            split_source: None,
             compacted,
         }
     }
@@ -176,6 +189,7 @@ impl ChunkStoreDiff {
         Self {
             kind: ChunkStoreDiffKind::Deletion,
             chunk,
+            split_source: None,
             compacted: None,
         }
     }
@@ -204,15 +218,12 @@ mod tests {
     use std::collections::BTreeMap;
 
     use re_chunk::{RowId, TimelineName};
-    use re_log_types::{
-        EntityPath, TimeInt, TimePoint, Timeline,
-        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-    };
-    use re_types::ComponentDescriptor;
-
-    use crate::{ChunkStore, GarbageCollectionOptions};
+    use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+    use re_sdk_types::ComponentDescriptor;
 
     use super::*;
+    use crate::{ChunkStore, GarbageCollectionOptions};
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store at the lowest level of detail.

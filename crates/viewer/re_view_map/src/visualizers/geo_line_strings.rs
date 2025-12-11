@@ -1,16 +1,13 @@
 use re_log_types::{EntityPath, Instance};
-use re_renderer::{
-    PickingLayerInstanceId,
-    renderer::{LineDrawDataError, LineStripFlags},
-};
-use re_types::{
-    archetypes::GeoLineStrings,
-    components::{Color, Radius},
-};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
+use re_sdk_types::archetypes::GeoLineStrings;
+use re_sdk_types::components::{Color, Radius};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
 #[derive(Debug, Default)]
@@ -43,10 +40,15 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results =
-                data_result.query_archetype_with_history::<GeoLineStrings>(ctx, view_query);
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results = data_result.query_archetype_with_history::<GeoLineStrings>(
+                ctx,
+                view_query,
+                instruction,
+            );
 
             let mut batch_data = GeoLineStringsBatch::default();
 
@@ -112,7 +114,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 .push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -169,7 +171,10 @@ impl GeoLineStringsVisualizer {
                     .radius(super::radius_to_size(
                         *radius,
                         projector,
-                        strip.first().copied().unwrap_or(walkers::lat_lon(0.0, 0.0)),
+                        strip
+                            .first()
+                            .copied()
+                            .unwrap_or_else(|| walkers::lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
                     .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)

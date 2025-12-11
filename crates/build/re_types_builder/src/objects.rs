@@ -9,11 +9,12 @@ use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
+use crate::data_type::LazyDatatype;
 use crate::{
     ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
     ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE,
     ATTR_RERUN_STATE, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, data_type::LazyDatatype, root_as_schema,
+    FbsSchema, FbsType, Reporter, root_as_schema,
 };
 
 // ---
@@ -799,7 +800,7 @@ impl Object {
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
         self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
-            .unwrap_or_else(|| "re_types".to_owned())
+            .unwrap_or_else(|| "re_sdk_types".to_owned())
     }
 
     /// Returns the module name of an object.
@@ -948,11 +949,10 @@ impl ObjectField {
         field: &FbsField<'_>,
     ) -> Self {
         let fqname = format!("{}#{}", obj.name(), field.name());
-        let (pkg_name, name) = fqname
-            .rsplit_once('#')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
+            || (String::new(), fqname.clone()),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = obj
             .declaration_file()
@@ -1025,11 +1025,10 @@ impl ObjectField {
         val: &FbsEnumVal<'_>,
     ) -> Self {
         let fqname = format!("{}#{}", enm.name(), val.name());
-        let (pkg_name, name) = fqname
-            .rsplit_once('#')
-            .map_or((String::new(), fqname.clone()), |(pkg_name, name)| {
-                (pkg_name.to_owned(), name.to_owned())
-            });
+        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
+            || (String::new(), fqname.clone()),
+            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
+        );
 
         let virtpath = enm
             .declaration_file()

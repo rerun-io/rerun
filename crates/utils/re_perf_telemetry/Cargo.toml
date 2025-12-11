@@ -42,9 +42,11 @@ tracy_enabled = []
 ## E.g. an async function that yields 50 times will be counted as 51 (the first call + 50 yields).
 tracy = ["dep:tracing-tracy"]
 
+## PyO3 integration for cross-boundary tracing
+pyo3 = ["dep:pyo3"]
+
 
 [dependencies]
-re_memory.workspace = true
 
 # External
 ahash.workspace = true
@@ -58,6 +60,7 @@ opentelemetry = { workspace = true, features = ["metrics"] }
 opentelemetry-appender-tracing = { workspace = true, features = [
   "experimental_use_tracing_span_context",
 ] }
+opentelemetry-http.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
 opentelemetry_sdk = { workspace = true, features = [
   "rt-tokio",
@@ -78,6 +81,7 @@ tokio.workspace = true
 
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
 
 [lints]
 workspace = true

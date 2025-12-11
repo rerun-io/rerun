@@ -309,7 +309,7 @@ function delay(ms: number) {
  * ```
  *
  * Data may be provided to the Viewer as:
- * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.26.0/examples/dna.rrd")`
+ * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.27.0/examples/dna.rrd")`
  * - A Rerun gRPC URL, e.g. `viewer.start("rerun+http://127.0.0.1:9876/proxy")`
  * - A stream of log messages, via {@link WebViewer.open_channel}.
  *
@@ -914,6 +914,17 @@ export class WebViewer {
       this.#maximize();
     }
   }
+
+  set_credentials(access_token: string, email: string) {
+    if (!this.#handle) {
+      throw new Error(
+        `attempted to set credentials in a stopped web viewer`,
+      );
+    }
+    this.#handle.set_credentials(access_token, email);
+  }
+
+
 
   #minimize = () => { };
 

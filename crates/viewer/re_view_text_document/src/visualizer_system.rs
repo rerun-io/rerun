@@ -1,12 +1,10 @@
 use re_chunk_store::LatestAtQuery;
-use re_types::{
-    archetypes::TextDocument,
-    components::{self},
-};
+use re_sdk_types::archetypes::TextDocument;
+use re_sdk_types::components;
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -39,12 +37,17 @@ impl VisualizerSystem for TextDocumentSystem {
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        for data_result in view_query.iter_visible_data_results(Self::identifier()) {
-            let results = data_result
-                .latest_at_with_blueprint_resolved_data::<TextDocument>(ctx, &timeline_query);
+        for (data_result, instruction) in
+            view_query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let results = data_result.latest_at_with_blueprint_resolved_data::<TextDocument>(
+                ctx,
+                &timeline_query,
+                instruction,
+            );
 
             let Some(text) = results
                 .get_required_mono::<components::Text>(TextDocument::descriptor_text().component)
@@ -58,7 +61,7 @@ impl VisualizerSystem for TextDocumentSystem {
             });
         }
 
-        Ok(Vec::new())
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

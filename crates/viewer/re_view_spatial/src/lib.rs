@@ -13,10 +13,10 @@ mod picking;
 mod picking_ui;
 mod picking_ui_pixel;
 mod pinhole;
+mod pinhole_wrapper;
 mod proc_mesh;
 mod scene_bounding_boxes;
 mod shared_fallbacks;
-mod space_camera_3d;
 mod spatial_topology;
 mod ui;
 mod ui_2d;
@@ -25,26 +25,17 @@ mod view_2d;
 mod view_3d;
 mod visualizers;
 
+pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
+pub(crate) use pinhole::Pinhole;
+use re_sdk_types::blueprint::archetypes::Background;
+use re_sdk_types::blueprint::components::BackgroundKind;
+use re_sdk_types::components::Color;
+// ---
+use re_viewer_context::ViewContext;
+use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
-
-pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
-pub(crate) use pinhole::Pinhole;
-
-// TODO(#8265): Used in tests, shouldn't be needed if it's part of blueprint.
-#[doc(hidden)]
-pub use eye::{Eye, ViewEye};
-
-// ---
-
-use re_viewer_context::ViewContext;
-
-use re_types::{
-    blueprint::{archetypes::Background, components::BackgroundKind},
-    components::Color,
-};
-use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 mod view_kind {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]

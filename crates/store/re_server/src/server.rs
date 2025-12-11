@@ -1,18 +1,14 @@
 #![expect(clippy::let_underscore_untyped)]
 #![expect(clippy::let_underscore_must_use)]
 
-use std::net::SocketAddr;
-use std::net::ToSocketAddrs as _;
+use std::net::{SocketAddr, ToSocketAddrs as _};
 
 use tokio::net::TcpListener;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
+use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt as _;
-use tonic::service::Routes;
-use tonic::service::RoutesBuilder;
-use tracing::error;
-use tracing::info;
+use tonic::service::{Routes, RoutesBuilder};
+use tracing::{error, info};
 
 // ---
 
@@ -129,7 +125,8 @@ impl Server {
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
                 .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
-                .layer(tonic_web::GrpcWebLayer::new()) // Support `grpc-web` clients
+                // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
+                // to avoid rejecting regular HTTP requests
                 .into_inner();
 
             let mut builder = tonic::transport::Server::builder()
@@ -138,6 +135,7 @@ impl Server {
                 // we don't get surprised when things inevitably change.
                 .tcp_nodelay(true)
                 .accept_http1(true)
+                .http2_adaptive_window(Some(true)) // Optimize for high throughput
                 .layer(middlewares);
 
             let _ = builder
@@ -169,6 +167,7 @@ const DEFAULT_ADDRESS: &str = "127.0.0.1:51234";
 pub struct ServerBuilder {
     addr: Option<SocketAddr>,
     routes_builder: RoutesBuilder,
+    axum_routes: axum::Router,
 }
 
 impl ServerBuilder {
@@ -196,13 +195,32 @@ impl ServerBuilder {
         self
     }
 
+    pub fn with_http_route(mut self, path: &str, handler: axum::routing::MethodRouter) -> Self {
+        self.axum_routes = self.axum_routes.route(path, handler);
+        self
+    }
+
     pub fn build(self) -> Server {
+        let grpc_routes = self.routes_builder.routes();
+        let grpc_routes = grpc_routes.into_axum_router();
+
+        // Apply GrpcWebLayer only to gRPC routes, not HTTP routes
+        let grpc_routes = grpc_routes.layer(tonic_web::GrpcWebLayer::new());
+
+        let routes =
+            grpc_routes
+                .merge(self.axum_routes)
+                .fallback(|_req: axum::extract::Request| async {
+                    use axum::response::IntoResponse as _;
+                    http::StatusCode::NOT_FOUND.into_response()
+                });
+
         Server {
             #[expect(clippy::unwrap_used)]
             addr: self
                 .addr
-                .unwrap_or(DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
-            routes: self.routes_builder.routes(),
+                .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
+            routes: routes.into(),
         }
     }
 }

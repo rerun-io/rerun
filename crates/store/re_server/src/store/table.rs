@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use arrow::datatypes::SchemaRef;
 use arrow::record_batch::RecordBatch;
 use datafusion::catalog::TableProvider;
@@ -7,24 +9,15 @@ use datafusion::error::DataFusionError;
 use datafusion::execution::SessionStateBuilder;
 use datafusion::logical_expr::dml::InsertOp;
 use futures::StreamExt as _;
-#[cfg(feature = "lance")]
-use lance::{
-    Dataset as LanceDataset,
-    datafusion::LanceTableProvider,
-    dataset::{WriteMode, WriteParams},
-};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::{
-    EntryKind,
-    ext::{EntryDetails, ProviderDetails as _, SystemTable, TableEntry},
-};
-use std::sync::Arc;
+use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext::{EntryDetails, ProviderDetails, TableEntry};
 
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
     #[cfg(feature = "lance")]
-    LanceDataset(Arc<LanceDataset>),
+    LanceDataset(Arc<lance::Dataset>),
 }
 
 #[derive(Clone)]
@@ -36,7 +29,7 @@ pub struct Table {
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
 
-    system_table: Option<SystemTable>,
+    provider_details: ProviderDetails,
 }
 
 impl Table {
@@ -45,7 +38,7 @@ impl Table {
         name: String,
         table: TableType,
         created_at: Option<jiff::Timestamp>,
-        system_table: Option<SystemTable>,
+        provider_details: ProviderDetails,
     ) -> Self {
         Self {
             id,
@@ -53,12 +46,21 @@ impl Table {
             table,
             created_at: created_at.unwrap_or_else(jiff::Timestamp::now),
             updated_at: jiff::Timestamp::now(),
-            system_table,
+            provider_details,
         }
     }
 
     pub fn id(&self) -> EntryId {
         self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+        self.updated_at = jiff::Timestamp::now();
     }
 
     pub fn created_at(&self) -> jiff::Timestamp {
@@ -76,11 +78,6 @@ impl Table {
     }
 
     pub fn as_table_entry(&self) -> TableEntry {
-        let provider_details = match &self.system_table {
-            Some(s) => s.try_as_any().expect("system_table should always be valid"),
-            None => Default::default(),
-        };
-
         TableEntry {
             details: EntryDetails {
                 id: self.id,
@@ -90,7 +87,7 @@ impl Table {
                 updated_at: self.updated_at,
             },
 
-            provider_details,
+            provider_details: self.provider_details.clone(),
         }
     }
 
@@ -108,11 +105,13 @@ impl Table {
         match &self.table {
             TableType::DataFusionTable(t) => Arc::clone(t),
             #[cfg(feature = "lance")]
-            TableType::LanceDataset(dataset) => Arc::new(LanceTableProvider::new(
-                Arc::new(dataset.as_ref().clone()),
-                false,
-                false,
-            )),
+            TableType::LanceDataset(dataset) => {
+                Arc::new(lance::datafusion::LanceTableProvider::new(
+                    Arc::new(dataset.as_ref().clone()),
+                    false,
+                    false,
+                ))
+            }
         }
     }
 
@@ -145,6 +144,9 @@ impl Table {
         rb: RecordBatch,
         insert_op: InsertOp,
     ) -> Result<(), DataFusionError> {
+        use lance::dataset::{
+            MergeInsertBuilder, WhenMatched, WhenNotMatched, WriteMode, WriteParams,
+        };
         let schema = rb.schema();
         let mut params = WriteParams::default();
 
@@ -166,13 +168,40 @@ impl Table {
                     .map_err(|err| DataFusionError::External(err.into()))?;
             }
             InsertOp::Replace => {
-                exec_err!("Invalid insert operation. Only append and overwrite are supported.")?;
+                let key_columns: Vec<_> = dataset
+                    .schema()
+                    .fields
+                    .iter()
+                    .filter_map(|field| {
+                        if field
+                            .metadata
+                            .get(re_sorbet::metadata::SORBET_IS_TABLE_INDEX)
+                            .map(|v| v.to_lowercase() == "true")
+                            == Some(true)
+                        {
+                            Some(field.name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                let mut builder = MergeInsertBuilder::try_new(Arc::clone(dataset), key_columns)?;
+
+                let op = builder
+                    .when_not_matched(WhenNotMatched::InsertAll)
+                    .when_matched(WhenMatched::UpdateAll)
+                    .try_build()?;
+
+                let (merge_dataset, _merge_stats) = op.execute_reader(reader).await?;
+
+                *dataset = merge_dataset;
             }
             InsertOp::Overwrite => {
                 params.mode = WriteMode::Overwrite;
 
                 let _ =
-                    LanceDataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
+                    lance::Dataset::write(reader, Arc::new(dataset.as_ref().clone()), Some(params))
                         .await
                         .map_err(|err| DataFusionError::External(err.into()))?;
             }
@@ -199,5 +228,47 @@ impl Table {
             TableType::LanceDataset(_) => self.write_table_lance_dataset(rb, insert_op).await,
             TableType::DataFusionTable(_) => self.write_table_provider(rb, insert_op).await,
         }
+    }
+
+    #[cfg(feature = "lance")]
+    pub async fn create_table_entry(
+        id: EntryId,
+        name: &str,
+        url: &url::Url,
+        schema: SchemaRef,
+    ) -> Result<Self, DataFusionError> {
+        use re_protos::cloud::v1alpha1::ext::LanceTable;
+
+        let rb = vec![Ok(RecordBatch::new_empty(Arc::clone(&schema)))];
+        let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
+
+        let ds = Arc::new(
+            lance::Dataset::write(rb, url.as_str(), None)
+                .await
+                .map_err(|err| DataFusionError::External(err.into()))?,
+        );
+        let created_at = Some(jiff::Timestamp::now());
+        let provider_details = LanceTable {
+            table_url: url.clone(),
+        };
+
+        Ok(Self::new(
+            id,
+            name.to_owned(),
+            TableType::LanceDataset(ds),
+            created_at,
+            ProviderDetails::LanceTable(provider_details),
+        ))
+    }
+
+    #[cfg(not(feature = "lance"))]
+    #[expect(clippy::unused_async)]
+    pub async fn create_table_entry(
+        _id: EntryId,
+        _name: &str,
+        _url: &url::Url,
+        _schema: SchemaRef,
+    ) -> Result<Self, DataFusionError> {
+        exec_err!("Create table not implemented for bare DataFusion table")
     }
 }

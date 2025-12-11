@@ -1,6 +1,5 @@
 use arrow::datatypes::DataType;
 use egui::Id;
-
 use re_ui::UiExt as _;
 use re_ui::list_item::PropertyContent;
 
@@ -154,7 +153,7 @@ fn data_type_field_ui(ui: &mut egui::Ui, field: &arrow::datatypes::Field) {
     }
 }
 
-// TODO(#11071): there is some overlap here with `re_format_arrow` and `codegen`.
+// TODO(#11071): there is some overlap here with `re_arrow_util::format` and `codegen`.
 pub(crate) fn simple_data_type_string(datatype: &DataType) -> Option<&'static str> {
     match datatype {
         DataType::Null => Some("null"),

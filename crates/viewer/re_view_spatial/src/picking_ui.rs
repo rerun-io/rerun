@@ -1,26 +1,21 @@
 use egui::NumExt as _;
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
-use re_ui::{
-    UiExt as _,
-    list_item::{PropertyContent, list_item_scope},
-};
+use re_ui::UiExt as _;
+use re_ui::list_item::{PropertyContent, list_item_scope};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     Item, ItemCollection, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError,
     ViewerContext, VisualizerCollection,
 };
 
-use crate::{
-    PickableRectSourceData, PickableTexturedRect,
-    picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
-    ui::SpatialViewState,
-    view_kind::SpatialViewKind,
-    visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
-};
+use crate::picking::{PickableUiRect, PickingContext, PickingHitType};
+use crate::picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui};
+use crate::ui::SpatialViewState;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData};
+use crate::{PickableRectSourceData, PickableTexturedRect};
 
 #[expect(clippy::too_many_arguments)]
 pub fn picking(
@@ -204,14 +199,14 @@ pub fn picking(
                 ItemContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
-                    tracked_entity: state.state_3d.tracked_entity.clone(),
+                    tracked_entity: state.last_tracked_entity().cloned(),
                     point_in_space_cameras: cameras_visualizer_output
-                        .space_cameras
+                        .pinhole_cameras
                         .iter()
                         .map(|cam| {
                             (
                                 cam.ent_path.clone(),
-                                hovered_point.and_then(|pos| cam.project_onto_2d(pos)),
+                                hovered_point.map(|pos| cam.project_onto_2d(pos)),
                             )
                         })
                         .collect(),

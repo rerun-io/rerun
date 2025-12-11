@@ -1,10 +1,10 @@
-use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
-
-use arrow::array::ListArray as ArrowListArray;
+use arrow::array::{ListArray as ArrowListArray, ListArray};
+use arrow::buffer::OffsetBuffer;
 
 // used in docstrings:
 #[allow(clippy::allow_attributes, unused_imports, clippy::unused_trait_names)]
 use crate::Archetype;
+use crate::{ArchetypeName, ComponentDescriptor, ComponentType, Loggable, SerializationResult};
 
 // ---
 
@@ -145,7 +145,7 @@ impl PartialEq for SerializedComponentBatch {
 impl SerializedComponentBatch {
     #[inline]
     pub fn new(array: arrow::array::ArrayRef, descriptor: ComponentDescriptor) -> Self {
-        Self { array, descriptor }
+        Self { descriptor, array }
     }
 
     #[inline]
@@ -217,7 +217,7 @@ impl SerializedComponentColumn {
             descriptor,
         } = self;
 
-        let list_array = re_arrow_util::repartition_list_array(list_array, lengths)?;
+        let list_array = repartition_list_array(list_array, lengths)?;
 
         Ok(Self {
             list_array,
@@ -236,11 +236,9 @@ impl re_byte_size::SizeBytes for SerializedComponentColumn {
 impl From<SerializedComponentBatch> for SerializedComponentColumn {
     #[inline]
     fn from(batch: SerializedComponentBatch) -> Self {
-        use arrow::{
-            array::{Array as _, ListArray},
-            buffer::OffsetBuffer,
-            datatypes::Field,
-        };
+        use arrow::array::{Array as _, ListArray};
+        use arrow::buffer::OffsetBuffer;
+        use arrow::datatypes::Field;
 
         let list_array = {
             let nullable = true;
@@ -255,6 +253,24 @@ impl From<SerializedComponentBatch> for SerializedComponentColumn {
             descriptor: batch.descriptor,
         }
     }
+}
+
+/// Repartitions a [`ListArray`] according to the specified `lengths`, ignoring previous partitioning.
+///
+/// The specified `lengths` must sum to the total length underlying values (i.e. the child array).
+///
+/// The validity of the values is ignored.
+#[inline]
+pub fn repartition_list_array(
+    list_array: ListArray,
+    lengths: impl IntoIterator<Item = usize>,
+) -> arrow::error::Result<ListArray> {
+    let (field, _offsets, values, _nulls) = list_array.into_parts();
+
+    let offsets = OffsetBuffer::from_lengths(lengths);
+    let nulls = None;
+
+    ListArray::try_new(field, offsets, values, nulls)
 }
 
 impl SerializedComponentBatch {
@@ -281,17 +297,6 @@ impl SerializedComponentBatch {
 // all things related to tags up and running so we can gather learnings.
 // This is only used on the archetype deserialization path, which isn't ever used outside of tests anyway.
 
-// TODO(cmc): we really shouldn't be duplicating these.
-
-/// The key used to identify the [`ArchetypeName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun:archetype";
-
-/// The [`crate::ComponentIdentifier`] in field-level metadata.
-const FIELD_METADATA_KEY_COMPONENT: &str = "rerun:component";
-
-/// The key used to identify the [`ComponentType`] in field-level metadata.
-const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun:component_type";
-
 impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
     #[inline]
     fn from(batch: &SerializedComponentBatch) -> Self {
@@ -304,17 +309,17 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
             [
                 batch.descriptor.archetype.map(|name| {
                     (
-                        FIELD_METADATA_KEY_ARCHETYPE_NAME.to_owned(),
+                        crate::FIELD_METADATA_KEY_ARCHETYPE.to_owned(),
                         name.to_string(),
                     )
                 }),
                 Some((
-                    FIELD_METADATA_KEY_COMPONENT.to_owned(),
+                    crate::FIELD_METADATA_KEY_COMPONENT.to_owned(),
                     batch.descriptor.component.to_string(),
                 )),
                 batch.descriptor.component_type.map(|name| {
                     (
-                        FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
+                        crate::FIELD_METADATA_KEY_COMPONENT_TYPE.to_owned(),
                         name.to_string(),
                     )
                 }),

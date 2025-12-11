@@ -1,34 +1,28 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
 
-use std::{
-    borrow::Borrow as _,
-    io::IsTerminal as _,
-    path::PathBuf,
-    sync::{LazyLock, OnceLock},
-    time::Duration,
-};
+use std::borrow::Borrow as _;
+use std::io::IsTerminal as _;
+use std::path::PathBuf;
+use std::sync::{LazyLock, OnceLock};
+use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::{
-    exceptions::PyRuntimeError,
-    prelude::*,
-    types::{PyBytes, PyDict},
-};
-
+use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError};
+use pyo3::prelude::*;
+use pyo3::types::{PyBytes, PyDict};
+use re_auth::oauth::Credentials;
+use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
 use re_chunk::ChunkBatcherConfig;
 use re_log::ResultExt as _;
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
-use re_log_types::{BlueprintActivationCommand, EntityPathPart};
-use re_log_types::{LogMsg, RecordingId};
-use re_sdk::{
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell,
-    external::re_log_encoding::Encoder,
-    sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError},
-    time::TimePoint,
-};
+use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId};
+use re_sdk::external::re_log_encoding::Encoder;
+use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
+use re_sdk::time::TimePoint;
+use re_sdk::{ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -138,7 +132,7 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 #[pymodule]
 #[pyo3(name = "rerun_bindings")]
 fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    if cfg!(feature = "perf_telemetry") && std::env::var("TELEMETRY_ENABLED").is_ok() {
+    if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         // TODO(tracing/issues#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
     } else {
         // NOTE: We set up the logging this here because some the inner init methods don't respond too kindly to being
@@ -167,6 +161,8 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGrpcSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
+    m.add_class::<PyDeviceCodeFlow>()?;
+    m.add_class::<PyCredentials>()?;
 
     // If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     // can bypass everything else, which keeps us from preparing an SDK session
@@ -174,6 +170,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     if matches!(std::env::var("RERUN_APP_ONLY").as_deref(), Ok("true")) {
         return Ok(());
     }
+
+    m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
+    m.add_function(wrap_pyfunction!(init_login_flow, m)?)?;
 
     // init
     m.add_function(wrap_pyfunction!(new_recording, m)?)?;
@@ -258,6 +257,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // viewer
     crate::viewer::register(py, m)?;
 
+    // server
+    crate::server::register(py, m)?;
+
     Ok(())
 }
 
@@ -312,7 +314,11 @@ impl DurationLike {
 }
 
 /// Defines the different batching thresholds used within the RecordingStream.
-#[pyclass(eq, name = "ChunkBatcherConfig")]
+#[pyclass(
+    eq,
+    name = "ChunkBatcherConfig",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyChunkBatcherConfig(ChunkBatcherConfig);
 
@@ -460,6 +466,10 @@ impl PyChunkBatcherConfig {
     /// Never flushes unless manually told to (or hitting one the builtin invariants).
     fn NEVER() -> Self {
         Self(ChunkBatcherConfig::NEVER)
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("{:#?}", self.0)
     }
 }
 
@@ -614,7 +624,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
@@ -629,6 +639,10 @@ impl PyRecordingStream {
     /// Calling operations such as flush or set_sink will result in an error.
     fn is_forked_child(&self) -> bool {
         self.0.is_forked_child()
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("RecordingStream({:#?})", self.0.store_info())
     }
 }
 
@@ -881,7 +895,13 @@ fn spawn(
     re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
-#[pyclass(frozen, eq, hash, name = "GrpcSink")]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "GrpcSink",
+    module = "rerun_bindings.rerun_bindings"
+)]
 struct PyGrpcSink {
     uri: re_uri::ProxyUri,
 }
@@ -912,9 +932,19 @@ impl PyGrpcSink {
 
         Ok(Self { uri })
     }
+
+    pub fn __repr__(&self) -> String {
+        format!("GrpcSink({:#?})", self.uri)
+    }
 }
 
-#[pyclass(frozen, eq, hash, name = "FileSink")]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "FileSink",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(PartialEq, Hash)]
 struct PyFileSink {
     path: PathBuf,
@@ -927,6 +957,10 @@ impl PyFileSink {
     #[pyo3(text_signature = "(self, path)")]
     fn new(path: PathBuf) -> Self {
         Self { path }
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!("FileSink({:#?})", self.path)
     }
 }
 
@@ -1284,7 +1318,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1348,15 +1382,19 @@ impl PyMemorySinkStorage {
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
+
+    pub fn __repr__(&self) -> String {
+        format!("MemorySinkStorage({:#?})", self.inner.store_id())
+    }
 }
 
-#[pyclass(frozen)] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///
@@ -1650,7 +1688,7 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
     module = "rerun_bindings.rerun_bindings"
 )]
 #[derive(Clone, PartialEq, Eq, Hash)]
-struct PyComponentDescriptor(pub ComponentDescriptor);
+pub struct PyComponentDescriptor(pub ComponentDescriptor);
 
 #[pymethods]
 impl PyComponentDescriptor {
@@ -2141,8 +2179,9 @@ pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
 }
 
 fn default_recording_id(py: Python<'_>, application_id: &str) -> RecordingId {
-    use rand::{Rng as _, SeedableRng as _};
     use std::hash::{Hash as _, Hasher as _};
+
+    use rand::{Rng as _, SeedableRng as _};
 
     // If the user uses `multiprocessing` for parallelism,
     // we still want child processes to log to the same recording.
@@ -2202,4 +2241,116 @@ authkey = multiprocessing.current_process().authkey
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
+}
+
+#[pyclass(name = "DeviceCodeFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+struct PyDeviceCodeFlow {
+    login_flow: DeviceCodeFlow,
+}
+
+#[pymethods] // NOLINT: ignore[py-mthd-str]
+impl PyDeviceCodeFlow {
+    /// Get the URL for the OAuth login flow.
+    fn login_url(&self) -> String {
+        self.login_flow.get_login_url().to_owned()
+    }
+
+    /// Get the user code.
+    fn user_code(&self) -> String {
+        self.login_flow.get_user_code().to_owned()
+    }
+
+    /// Finish the OAuth login flow.
+    ///
+    /// Returns
+    /// -------
+    /// Credentials
+    ///     The credentials of the logged in user.
+    fn finish_login_flow(&mut self, py: Python<'_>) -> PyResult<PyCredentials> {
+        crate::utils::wait_for_future(py, async move {
+            tokio::select! {
+                result = self.login_flow.wait_for_user_confirmation() => {
+                    result
+                        .map(PyCredentials)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+                }
+                _ = tokio::signal::ctrl_c() => {
+                    Err(PyKeyboardInterrupt::new_err(None::<()>))
+                }
+            }
+        })
+    }
+}
+
+#[pyfunction]
+/// Initialize an OAuth login flow.
+///
+/// Returns
+/// -------
+/// DeviceCodeFlow | None
+///     The login flow, or `None` if the user is already logged in.
+fn init_login_flow(py: Python<'_>) -> PyResult<Option<PyDeviceCodeFlow>> {
+    let login_flow = crate::utils::wait_for_future(py, async { DeviceCodeFlow::init(false).await })
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    match login_flow {
+        DeviceCodeFlowState::AlreadyLoggedIn(_) => {
+            // Already logged in, no need to start a login flow.
+            Ok(None)
+        }
+        DeviceCodeFlowState::LoginFlowStarted(login_flow) => {
+            Ok(Some(PyDeviceCodeFlow { login_flow }))
+        }
+    }
+}
+
+#[pyclass(
+    frozen,
+    eq,
+    name = "Credentials",
+    module = "rerun_bindings.rerun_bindings"
+)]
+/// The credentials for the OAuth login flow.
+struct PyCredentials(Credentials);
+
+#[pymethods]
+impl PyCredentials {
+    #[getter]
+    /// The access token.
+    fn access_token(&self) -> String {
+        self.0.access_token().as_str().to_owned()
+    }
+
+    #[getter]
+    /// The user email.
+    fn user_email(&self) -> String {
+        self.0.user().email.clone()
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("<Credentials for '{}'>", self.user_email())
+    }
+}
+
+impl std::cmp::PartialEq for PyCredentials {
+    fn eq(&self, other: &Self) -> bool {
+        self.access_token() == other.access_token()
+    }
+}
+
+#[pyfunction]
+/// Returns the credentials for the current user.
+fn get_credentials(py: Python<'_>) -> PyResult<Option<PyCredentials>> {
+    let Some(credentials) = re_auth::oauth::load_credentials()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+    else {
+        // No credentials found.
+        return Ok(None);
+    };
+
+    let credentials = crate::utils::wait_for_future(py, async {
+        re_auth::oauth::refresh_credentials(credentials).await
+    })
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    Ok(Some(PyCredentials(credentials)))
 }

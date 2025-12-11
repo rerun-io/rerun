@@ -1,17 +1,17 @@
 //! HTTP server for metrics collection and exposition
 
-use parking_lot::Mutex;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::{
-    Router,
-    extract::State,
-    http::{StatusCode, header},
-    response::IntoResponse,
-    routing::get,
-};
-use opentelemetry_sdk::metrics::{ManualReader, data::ResourceMetrics, reader::MetricReader as _};
+use axum::Router;
+use axum::extract::State;
+use axum::http::{StatusCode, header};
+use axum::response::IntoResponse;
+use axum::routing::get;
+use opentelemetry_sdk::metrics::ManualReader;
+use opentelemetry_sdk::metrics::data::ResourceMetrics;
+use opentelemetry_sdk::metrics::reader::MetricReader as _;
+use parking_lot::Mutex;
 use tokio::net::TcpListener;
 use tracing::error;
 

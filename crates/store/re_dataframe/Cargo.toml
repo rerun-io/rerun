@@ -28,7 +28,6 @@ default = []
 re_arrow_util.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
-re_format_arrow.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
@@ -45,7 +44,7 @@ rayon.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-re_types.workspace = true
+re_sdk_types.workspace = true
 # External dependencies:
 insta.workspace = true
 similar-asserts.workspace = true

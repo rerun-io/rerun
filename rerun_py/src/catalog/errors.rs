@@ -22,18 +22,17 @@ use pyo3::PyErr;
 use pyo3::exceptions::{
     PyConnectionError, PyException, PyPermissionError, PyRuntimeError, PyTimeoutError, PyValueError,
 };
-
 use re_redap_client::ApiErrorKind;
 
 pyo3::create_exception!(
-    rerun_bindings,
+    rerun_bindings.rerun_bindings,
     NotFoundError,
     PyException,
     "Raised when the requested resource is not found."
 );
 
 pyo3::create_exception!(
-    rerun_bindings,
+    rerun_bindings.rerun_bindings,
     AlreadyExistsError,
     PyException,
     "Raised when trying to create a resource that already exists."
@@ -148,7 +147,9 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::ApiError(err) => match err.kind {
-                ApiErrorKind::Connection => PyConnectionError::new_err(err.to_string()),
+                ApiErrorKind::Connection | ApiErrorKind::InvalidServer => {
+                    PyConnectionError::new_err(err.to_string())
+                }
                 ApiErrorKind::Unauthenticated | ApiErrorKind::PermissionDenied => {
                     PyPermissionError::new_err(err.to_string())
                 }
@@ -158,7 +159,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
-                ApiErrorKind::Internal => PyRuntimeError::new_err(err.to_string()),
+                ApiErrorKind::Unimplemented | ApiErrorKind::Internal => {
+                    PyRuntimeError::new_err(err.to_string())
+                }
             },
 
             ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),

@@ -2,16 +2,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
 use anyhow::Context as _;
-use arrow::{
-    array::{
-        Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
-        ListArray as ArrowListArray,
-    },
-    buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
+use arrow::array::{
+    Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
+    ListArray as ArrowListArray,
 };
+use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
 use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::{ArrowArrayDowncastRef as _, widen_binary_arrays};
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
@@ -53,7 +50,7 @@ pub enum ChunkError {
     UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
 
     #[error(transparent)]
-    WrongDatatypeError(#[from] re_sorbet::WrongDatatypeError),
+    WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),
 
     #[error(transparent)]
     MismatchedChunkSchemaError(#[from] re_sorbet::MismatchedChunkSchemaError),
@@ -295,6 +292,9 @@ impl Chunk {
     ///
     /// Useful for tests.
     pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(lhs.num_rows() == rhs.num_rows());
+        anyhow::ensure!(lhs.num_columns() == rhs.num_columns());
+
         let Self {
             id: _,
             entity_path,
@@ -326,7 +326,7 @@ impl Chunk {
             );
         }
 
-        // Handle edge case: recording time on partition properties should ignore start time.
+        // Handle edge case: recording time on segment properties should ignore start time.
         if entity_path == &EntityPath::properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
@@ -373,6 +373,27 @@ impl Chunk {
             && row_ids == &other.row_ids
             && *timelines == other.timelines
             && components.0 == other.components.0
+    }
+
+    // TODO: document
+    pub fn with_renamed_component(
+        &self,
+        source: ComponentIdentifier,
+        target: ComponentIdentifier,
+    ) -> Self {
+        let mut new_chunk = self.clone();
+        if let Some(old_entry) = new_chunk.components.remove(&source) {
+            new_chunk.components.insert(SerializedComponentColumn {
+                descriptor: ComponentDescriptor {
+                    component: target,
+                    archetype: old_entry.descriptor.archetype, // TODO: that's inconsistent with target.
+                    component_type: old_entry.descriptor.component_type, // TODO: that's just a lie.
+                },
+                list_array: old_entry.list_array,
+            });
+        }
+
+        new_chunk
     }
 }
 
@@ -1273,7 +1294,7 @@ impl std::fmt::Display for Chunk {
             re_log::error_once!("couldn't display Chunk: {err}");
             std::fmt::Error
         })?;
-        re_format_arrow::format_record_batch_with_width(&batch, f.width(), f.sign_minus()).fmt(f)
+        re_arrow_util::format_record_batch_with_width(&batch, f.width(), f.sign_minus()).fmt(f)
     }
 }
 
@@ -1364,21 +1385,32 @@ impl TimeColumn {
                         return Some((*component, self.time_range));
                     }
 
-                    let mut time_min = TimeInt::MAX;
-                    for (i, time) in times.iter().copied().enumerate() {
-                        if validity.is_valid(i) {
-                            time_min = TimeInt::new_temporal(time);
-                            break;
+                    let time_min = {
+                        let mut valid_times = times
+                            .iter()
+                            .enumerate()
+                            .filter(|(i, _time)| validity.is_valid(*i));
+                        if times.is_sorted() {
+                            valid_times.next()
+                        } else {
+                            valid_times.min_by_key(|(_i, time)| *time)
                         }
-                    }
+                        .map_or(TimeInt::MAX, |(_i, time)| TimeInt::new_temporal(*time))
+                    };
 
-                    let mut time_max = TimeInt::MIN;
-                    for (i, time) in times.iter().copied().enumerate().rev() {
-                        if validity.is_valid(i) {
-                            time_max = TimeInt::new_temporal(time);
-                            break;
+                    let time_max = {
+                        let mut valid_times_inv = times
+                            .iter()
+                            .enumerate()
+                            .rev()
+                            .filter(|(i, _time)| validity.is_valid(*i));
+                        if times.is_sorted() {
+                            valid_times_inv.next()
+                        } else {
+                            valid_times_inv.max_by_key(|(_i, time)| *time)
                         }
-                    }
+                        .map_or(TimeInt::MIN, |(_i, time)| TimeInt::new_temporal(*time))
+                    };
 
                     Some((*component, AbsoluteTimeRange::new(time_min, time_max)))
                 } else {
@@ -1431,7 +1463,7 @@ impl re_byte_size::SizeBytes for TimeColumn {
         } = self;
 
         timeline.heap_size_bytes()
-            + times.heap_size_bytes() // cheap
+            + times.heap_size_bytes()
             + is_sorted.heap_size_bytes()
             + time_range.heap_size_bytes()
     }

@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{AbsoluteTimeRange, Timeline, TimelineName};
+use re_sdk_types::blueprint::archetypes::DataframeQuery;
+use re_sdk_types::blueprint::{components, datatypes};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
-use re_types::blueprint::archetypes::DataframeQuery;
-use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
 use crate::dataframe_ui::HideColumnAction;
@@ -300,9 +300,10 @@ impl Query {
 
 #[cfg(test)]
 mod test {
-    use super::Query;
     use re_test_context::TestContext;
     use re_viewer_context::ViewId;
+
+    use super::Query;
 
     /// Simple test to demo round-trip testing using [`TestContext::run_and_handle_system_commands`].
     #[test]

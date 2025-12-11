@@ -44,7 +44,7 @@ doc = false
 default = ["web_viewer", "base"]
 
 ## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
-base = ["native_viewer", "map_view", "oss_server"]
+base = ["native_viewer", "map_view", "oss_server", "perf_telemetry"]
 
 # !!!IMPORTANT!!!
 #
@@ -91,11 +91,11 @@ native_viewer = ["rerun/native_viewer"]
 oss_server = ["rerun/oss_server"]
 
 ## Add support for Lance tables in the in-memory OSS Rerun Server (`oss_server` feature flag).
-## This is opt-in because of <https://github.com/lancedb/lance/issues/3073>.
+## This is opt-in because of <https://github.com/lance-format/lance/issues/3073>.
 # TODO(lancedb/lance#3073): remove feature flag
 lance = ["re_server/lance"]
 
-## Enables integration with `re_perf_telemetry` (Tracy, Jaeger).
+## Enables integration with `re_perf_telemetry` (OpenTelemetry, Jaeger).
 ##
 ## This only works on native, and only with `TELEMETRY_ENABLED` set.
 perf_telemetry = ["rerun/perf_telemetry"]

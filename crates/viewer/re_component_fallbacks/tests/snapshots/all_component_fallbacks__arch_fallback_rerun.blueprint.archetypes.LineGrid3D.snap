@@ -1,9 +1,0 @@
----
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
-expression: arch_display
----
-visible: [true]
-spacing: [1.0]
-plane: [[0.0, 0.0, 0.0, 0.0]]
-stroke_width: [8.0]
-color: [2428259839]

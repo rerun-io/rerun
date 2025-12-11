@@ -1,22 +1,19 @@
 use std::iter;
 
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Boxes3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
-};
+use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
+use re_sdk_types::archetypes::Boxes3D;
+use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities,
-    utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
-};
+use super::SpatialViewVisualizerData;
+use super::utilities::{ProcMeshBatch, ProcMeshDrawableBuilder};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::proc_mesh;
+use crate::view_kind::SpatialViewKind;
 
 // ---
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
@@ -52,12 +49,14 @@ impl Boxes3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
-                Boxes3D::name(),
                 Boxes3D::descriptor_colors().component,
                 Boxes3D::descriptor_show_labels().component,
                 constant_instance_transform,
                 ProcMeshBatch {
                     half_sizes: batch.half_sizes,
+                    centers: batch.centers,
+                    rotation_axis_angles: batch.rotation_axis_angles.as_slice(),
+                    quaternions: batch.quaternions,
                     meshes: iter::repeat(proc_mesh_key),
                     fill_modes: iter::repeat(batch.fill_mode),
                     line_radii: batch.radii,
@@ -80,6 +79,9 @@ struct Boxes3DComponentData<'a> {
     half_sizes: &'a [HalfSize3D],
 
     // Clamped to edge
+    centers: &'a [components::Translation3D],
+    rotation_axis_angles: ChunkComponentIterItem<components::RotationAxisAngle>,
+    quaternions: &'a [components::RotationQuat],
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
@@ -101,21 +103,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Boxes3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut builder = ProcMeshDrawableBuilder::new(
             &mut self.0,
             ctx.viewer_ctx.render_ctx(),
@@ -128,6 +123,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -149,6 +146,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
                     iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
+                let all_centers =
+                    results.iter_as(timeline, Boxes3D::descriptor_centers().component);
+                let all_rotation_axis_angles = results.iter_as(
+                    timeline,
+                    Boxes3D::descriptor_rotation_axis_angles().component,
+                );
+                let all_quaternions =
+                    results.iter_as(timeline, Boxes3D::descriptor_quaternions().component);
                 let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors().component);
                 let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii().component);
                 let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels().component);
@@ -180,8 +185,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     }
                 }
 
-                let data = re_query::range_zip_1x5(
+                let data = re_query::range_zip_1x8(
                     all_half_sizes_indexed,
+                    all_centers.slice::<[f32; 3]>(),
+                    all_rotation_axis_angles.component_slow::<components::RotationAxisAngle>(),
+                    all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
@@ -189,9 +197,23 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     all_show_labels.slice::<bool>(),
                 )
                 .map(
-                    |(_index, half_sizes, colors, radii, labels, class_ids, show_labels)| {
+                    |(
+                        _index,
+                        half_sizes,
+                        centers,
+                        rotation_axis_angles,
+                        quaternions,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        show_labels,
+                    )| {
                         Boxes3DComponentData {
                             half_sizes: bytemuck::cast_slice(half_sizes),
+                            centers: centers.map_or(&[], bytemuck::cast_slice),
+                            rotation_axis_angles: rotation_axis_angles.unwrap_or_default(),
+                            quaternions: quaternions.map_or(&[], bytemuck::cast_slice),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                             radii: radii.map_or(&[], |radii| bytemuck::cast_slice(radii)),
                             // fill mode is currently a non-repeated component
@@ -212,7 +234,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             },
         )?;
 
-        builder.into_draw_data()
+        Ok(output.with_draw_data(builder.into_draw_data()?))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

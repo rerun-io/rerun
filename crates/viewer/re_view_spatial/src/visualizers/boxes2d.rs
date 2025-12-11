@@ -1,27 +1,21 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Boxes2D,
-    components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels},
-};
+use re_sdk_types::archetypes::Boxes2D;
+use re_sdk_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels};
+use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{UiLabelTarget, entity_iterator::clamped_or},
-};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_2d_entities, process_radius_slice,
-    utilities::{LabeledBatch, process_labels},
-};
+use super::utilities::{LabeledBatch, process_labels};
+use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::UiLabelTarget;
+use crate::visualizers::entity_iterator::clamped_or;
 
 // ---
 
@@ -77,7 +71,8 @@ impl Boxes2DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_transform_required_for_entity(entity_path, Boxes2D::name());
+                .single_transform_required_for_entity(entity_path, Boxes2D::name())
+                .as_affine3a();
 
             let mut line_batch = line_builder
                 .batch("boxes2d")
@@ -180,21 +175,13 @@ impl VisualizerSystem for Boxes2DVisualizer {
         VisualizerQueryInfo::from_archetype::<Boxes2D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_2d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -205,6 +192,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -281,7 +270,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

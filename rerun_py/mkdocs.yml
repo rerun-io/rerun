@@ -15,19 +15,27 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.tracking
+    - search.share
 
 plugins:
-  - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
+  - search: # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
+      # Copy-pasted from https://squidfunk.github.io/mkdocs-material/plugins/search/#config.separator
+      # with the addition of underscore. Splits things for better partial matching.
+      # Further exploration of the parts at the link.
+      separator: '[\s\-,:!=\[\]()"/_]+|(?!\b)(?=[A-Z][a-z])|\.(?!\d)|&[lg]t;'
+  - autorefs
   - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
       custom_templates: docs/templates # Override the function template.
+      enable_inventory: true # Let others cross reference our docs.
       handlers:
         python:
           paths: ["rerun_sdk", "."] # Lookup python modules relative to this path
           import: # Cross-references for python and numpy
             - https://arrow.apache.org/docs/objects.inv
-            - https://docs.python.org/3/objects.inv
+            - https://docs.python.org/3.10/objects.inv
             - https://numpy.org/doc/stable/objects.inv
             - https://ipython.readthedocs.io/en/stable/objects.inv
+            - https://datafusion.apache.org/python/objects.inv
           options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
             docstring_section_style: spacy # list spacy table
             docstring_style: numpy
@@ -37,6 +45,9 @@ plugins:
                 "!^_[^_]", # Hide things starting with a single underscore
                 "!as_component_batches", # Inherited from AsComponents
                 "!num_instances", # Inherited from AsComponents
+                "!__doc__", # griffe merges extension and stubs :(
+                "!__module__", # griffe merges extension and stubs :(
+                "!__weakref__", # griffe merges extension and stubs :(
               ]
             inherited_members: true
             members_order: source # The order of class members
@@ -48,6 +59,7 @@ plugins:
               - rerun_bindings
             annotations_path: brief
             signature_crossrefs: true
+            find_stubs_package: true
             extensions:
               - griffe_warnings_deprecated
 

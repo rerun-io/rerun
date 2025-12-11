@@ -2,14 +2,13 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use egui::NumExt as _;
 use re_entity_db::entity_db::EntityDbClass;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, TimelineName};
-use re_types::{
-    archetypes::RecordingInfo,
-    components::{Name, Timestamp},
-};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::open_url::ViewerOpenUrl;
@@ -631,7 +630,7 @@ pub fn app_id_button_ui(
 pub fn data_source_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    data_source: &re_smart_channel::SmartChannelSource,
+    data_source: &re_log_channel::LogSource,
 ) -> egui::Response {
     let item = Item::DataSource(data_source.clone());
 
@@ -690,15 +689,15 @@ pub fn entity_db_button_ui(
 
     // We try to use a name that has the most chance to be familiar to the user:
     // - The recording name has to be explicitly set by the user, so use it if it exists.
-    // - For remote data, partition id have a lot of visibility too, so good fall-back.
+    // - For remote data, segment id have a lot of visibility too, so good fall-back.
     // - Lacking anything better, the start time is better than a random id and caters to the local
     //   workflow where the same logging process is run repeatedly.
     let recording_name = if let Some(recording_name) =
         entity_db.recording_info_property::<Name>(RecordingInfo::descriptor_name().component)
     {
         Some(recording_name.to_string())
-    } else if let EntityDbClass::DatasetPartition(url) = entity_db.store_class() {
-        Some(url.partition_id.clone())
+    } else if let EntityDbClass::DatasetSegment(url) = entity_db.store_class() {
+        Some(url.segment_id.clone())
     } else {
         entity_db
             .recording_info_property::<Timestamp>(RecordingInfo::descriptor_start_time().component)
@@ -709,7 +708,7 @@ pub fn entity_db_button_ui(
                     .to_string()
             })
     }
-    .unwrap_or("<unknown>".to_owned());
+    .unwrap_or_else(|| "<unknown>".to_owned());
 
     let partial_postfix = if entity_db
         .store_info()
@@ -765,7 +764,7 @@ pub fn entity_db_button_ui(
     }
 
     let response = list_item::list_item_scope(ui, "entity db button", |ui| {
-        list_item
+        let response = list_item
             .show_hierarchical(ui, item_content)
             .on_hover_ui(|ui| {
                 entity_db.data_ui(
@@ -775,8 +774,29 @@ pub fn entity_db_button_ui(
                     &ctx.current_query(),
                     entity_db,
                 );
-            })
-    });
+            });
+
+        if let Some(progress) = entity_db.rrd_manifest_index().progress()
+            && progress < 1.0
+        {
+            // Paint a progress bar:
+            let inner_r = 1.5;
+            let outer_r = 2.5;
+            let wrect = response.rect;
+            let outer_rect = wrect.with_min_y(wrect.bottom() - 2.0 * outer_r);
+            let inner_rect = outer_rect.shrink(outer_r - inner_r);
+            let progress_x = egui::lerp(inner_rect.x_range(), progress);
+            let progress_x = progress_x.at_least(inner_rect.left() + 3.0); // Always show a little bit of the progress bar
+            let filled_rect = inner_rect.with_max_x(progress_x);
+            ui.painter()
+                .rect_filled(outer_rect, outer_r, ui.tokens().panel_bg_color);
+            ui.painter()
+                .rect_filled(filled_rect, inner_r, ui.visuals().selection.bg_fill);
+        }
+
+        response
+    })
+    .inner;
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());
@@ -789,11 +809,11 @@ pub fn entity_db_button_ui(
             ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_entry.display_mode())
                 .and_then(|url| url.sharable_url(None));
         if ui
-            .add_enabled(url.is_ok(), egui::Button::new("Copy link to partition"))
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {
-                format!("Can't copy a link to this partition: {err}")
+                format!("Can't copy a link to this segment: {err}")
             } else {
-                "Can't copy a link to this partition".to_owned()
+                "Can't copy a link to this segment".to_owned()
             })
             .clicked()
             && let Ok(url) = url
@@ -802,7 +822,7 @@ pub fn entity_db_button_ui(
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
-        if ui.button("Copy partition name").clicked() {
+        if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {recording_name:?} to clipboard");
             ui.ctx().copy_text(recording_name);
         }
@@ -866,7 +886,8 @@ pub fn table_id_button_ui(
             .on_hover_ui(|ui| {
                 ui.label(format!("Table: {table_id}"));
             })
-    });
+    })
+    .inner;
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());

@@ -2,10 +2,9 @@ use re_chunk::EntityPath;
 use re_log_types::example_components::MyPoint;
 use re_ui::Help;
 use re_viewer_context::external::re_chunk_store::external::re_chunk;
-
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewState, ViewerContext,
-    VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
 };
 
 #[derive(Default)]
@@ -36,9 +35,8 @@ impl VisualizerSystem for TestSystem {
         _ctx: &re_viewer_context::ViewContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
         _context_systems: &re_viewer_context::ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, re_viewer_context::ViewSystemExecutionError>
-    {
-        Ok(Vec::new())
+    ) -> Result<VisualizerExecutionOutput, re_viewer_context::ViewSystemExecutionError> {
+        Ok(VisualizerExecutionOutput::default())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -53,7 +51,7 @@ impl IdentifiedViewSystem for TestSystem {
 }
 
 impl ViewClass for TestView {
-    fn identifier() -> re_types::ViewClassIdentifier
+    fn identifier() -> re_sdk_types::ViewClassIdentifier
     where
         Self: Sized,
     {
@@ -95,7 +93,7 @@ impl ViewClass for TestView {
         ctx: &ViewerContext<'_>,
         include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
-        suggest_view_for_each_entity::<TestSystem>(ctx, self, include_entity)
+        suggest_view_for_each_entity::<TestSystem>(ctx, include_entity)
     }
 
     fn ui(

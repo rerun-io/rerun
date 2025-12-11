@@ -1,7 +1,0 @@
----
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
-expression: arch_display
----
-values: [{shape: [], names: null, buffer: {U8=[]}}]
-color: [2428259839]
-abscissa: [{shape: [0], names: null, buffer: {I64=[]}}]

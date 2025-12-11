@@ -4,14 +4,13 @@ use datafusion::datasource::MemTable;
 use itertools::Itertools as _;
 use pyo3::exceptions::PyIndexError;
 use pyo3::{Py, PyRef, PyResult, Python, pyclass, pymethods};
-
 use re_log_types::hash::Hash64;
 use re_protos::common::v1alpha1::TaskId;
 
 use super::{PyCatalogClientInternal, PyDataFusionTable, to_py_err};
 
 /// A handle on a remote task.
-#[pyclass(name = "Task")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Task", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyTask {
     pub client: Py<PyCatalogClientInternal>,
 
@@ -48,7 +47,7 @@ impl PyTask {
 
 #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
 /// A collection of [`Task`].
-#[pyclass(name = "Tasks")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Tasks", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyTasks {
     client: Py<PyCatalogClientInternal>,
 
@@ -118,5 +117,9 @@ impl PyTasks {
             client: self.client.clone_ref(py),
             id: self.ids[index].clone(),
         })
+    }
+
+    pub fn __str__(&self) -> String {
+        format!("Tasks(client={}, ids={:#?})", self.client, self.ids)
     }
 }

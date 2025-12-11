@@ -92,12 +92,13 @@ pub use self::file_server_impl::FileServer;
 
 #[cfg(load_shaders_from_disk)]
 mod file_server_impl {
+    use std::path::{Path, PathBuf};
+
     use ahash::{HashMap, HashSet};
     use anyhow::Context as _;
     use crossbeam::channel::Receiver;
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher as _};
     use parking_lot::RwLock;
-    use std::path::{Path, PathBuf};
 
     use crate::{FileResolver, FileSystem};
 
@@ -288,8 +289,9 @@ mod file_server_impl {
 
 #[cfg(not(load_shaders_from_disk))]
 mod file_server_impl {
-    use ahash::HashSet;
     use std::path::PathBuf;
+
+    use ahash::HashSet;
 
     use crate::{FileResolver, FileSystem};
 

@@ -3,23 +3,25 @@
 mod arrays;
 mod batches;
 mod compare;
+mod format;
 mod format_data_type;
+mod test_extensions;
 
-pub mod transform;
+// ----------------------------------------------------------------
+use std::sync::Arc;
+
+use arrow::array::{Array as _, AsArray as _, ListArray};
+use arrow::datatypes::{DataType, Field};
 
 pub use self::arrays::*;
 pub use self::batches::*;
 pub use self::compare::*;
-pub use self::format_data_type::*;
-
-// ----------------------------------------------------------------
-
-use std::sync::Arc;
-
-use arrow::{
-    array::{Array as _, AsArray as _, ListArray},
-    datatypes::{DataType, Field},
+pub use self::format::{
+    RecordBatchFormatOpts, format_record_batch, format_record_batch_opts,
+    format_record_batch_with_width,
 };
+pub use self::format_data_type::*;
+pub use self::test_extensions::*;
 
 /// Convert any `BinaryArray` to `LargeBinaryArray`, because we treat them logivally the same
 pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
@@ -43,8 +45,9 @@ pub fn widen_binary_arrays(list_array: &ListArray) -> ListArray {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use arrow::array::{BinaryBuilder, ListBuilder};
+
+    use super::*;
 
     #[test]
     fn test_widen_list_binary() {
@@ -80,6 +83,69 @@ mod tests {
             assert_eq!(field.data_type(), &DataType::LargeBinary);
         } else {
             panic!("Expected List data type");
+        }
+    }
+}
+
+// ----------------------------------------------------------------
+
+/// Error used when a column is missing from a record batch
+#[derive(Debug, Clone, thiserror::Error)]
+pub struct MissingColumnError {
+    pub name: String,
+}
+
+impl MissingColumnError {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
+    }
+}
+
+impl std::fmt::Display for MissingColumnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { name } = self;
+        write!(f, "Missing column: {name:?}")
+    }
+}
+
+// ----------------------------------------------------------------
+
+/// Error used for arrow datatype mismatch.
+#[derive(Debug, Clone, thiserror::Error)]
+pub struct WrongDatatypeError {
+    pub column_name: Option<String>,
+    pub expected: Box<DataType>,
+    pub actual: Box<DataType>,
+}
+
+impl WrongDatatypeError {
+    pub fn ensure_datatype(field: &Field, expected: &DataType) -> Result<(), Self> {
+        if field.data_type() == expected {
+            Ok(())
+        } else {
+            Err(Self {
+                column_name: Some(field.name().to_owned()),
+                expected: expected.clone().into(),
+                actual: field.data_type().clone().into(),
+            })
+        }
+    }
+}
+
+impl std::fmt::Display for WrongDatatypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            column_name,
+            expected,
+            actual,
+        } = self;
+        if let Some(column_name) = column_name {
+            write!(
+                f,
+                "Expected column {column_name:?} to be {expected}, got {actual}"
+            )
+        } else {
+            write!(f, "Expected {expected}, got {actual}")
         }
     }
 }

@@ -13,7 +13,7 @@ use crate::{SerializationResult, SerializedComponentBatch};
 ///
 /// Have a look at our [Custom Data Loader] example to learn more about handwritten bundles.
 ///
-/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_types/definitions/rerun
+/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/store/re_sdk_types/definitions/rerun?speculative-link
 /// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {
@@ -201,9 +201,8 @@ fn many_componentbatch_wrapped_many() {}
 mod tests {
     use std::sync::Arc;
 
-    use arrow::array::{
-        Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray, types::UInt32Type,
-    };
+    use arrow::array::types::UInt32Type;
+    use arrow::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
     use itertools::Itertools as _;
     use similar_asserts::assert_eq;
 

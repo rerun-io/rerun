@@ -6,7 +6,8 @@
 //! cargo run -p incremental -- --help
 //! ```
 
-use rand::{Rng as _, distr::Uniform};
+use rand::Rng as _;
+use rand::distr::Uniform;
 use rerun::external::re_log;
 
 #[derive(Debug, clap::Parser)]

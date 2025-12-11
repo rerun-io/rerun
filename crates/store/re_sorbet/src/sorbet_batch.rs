@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
-    },
-    datatypes::{Fields as ArrowFields, Schema as ArrowSchema},
-    error::ArrowError,
+use arrow::array::{
+    Array as _, ArrayRef as ArrowArrayRef, RecordBatch as ArrowRecordBatch, RecordBatchOptions,
 };
-
+use arrow::datatypes::{Fields as ArrowFields, Schema as ArrowSchema};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 
@@ -129,7 +126,7 @@ impl SorbetBatch {
 impl std::fmt::Display for SorbetBatch {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        re_format_arrow::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
+        re_arrow_util::format_record_batch_with_width(self, f.width(), f.sign_minus()).fmt(f)
     }
 }
 
@@ -224,9 +221,8 @@ impl SorbetBatch {
 #[cfg(test)]
 mod tests {
 
-    use crate::{RowIdColumnDescriptor, sorbet_batch};
-
     use super::*;
+    use crate::{RowIdColumnDescriptor, sorbet_batch};
 
     /// Test that user-provided metadata is preserved when converting to and from a [`SorbetBatch`].
     ///

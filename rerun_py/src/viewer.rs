@@ -1,12 +1,13 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 use arrow::array::RecordBatch;
-use pyo3::{Bound, PyResult, prelude::*};
-
+use pyo3::prelude::*;
+use pyo3::{Bound, PyResult};
 use re_grpc_client::write_table::viewer_client;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 
-use crate::{catalog::to_py_err, utils::wait_for_future};
+use crate::catalog::to_py_err;
+use crate::utils::wait_for_future;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -16,11 +17,11 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 }
 
 /// A connection to an instance of a Rerun viewer.
-#[pyclass(name = "ViewerClient", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "ViewerClient", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyViewerClient {
     conn: ViewerConnectionHandle,
 }
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyViewerClient {
     /// Create a new viewer client object.
     #[new]

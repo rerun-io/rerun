@@ -3,9 +3,10 @@
 use re_entity_db::InstancePath;
 use re_log_types::TimePoint;
 use re_renderer::Color32;
+use re_sdk_types::components::FillMode;
+use re_sdk_types::{RowId, archetypes};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{RowId, archetypes, components::FillMode};
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::{Item, RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;

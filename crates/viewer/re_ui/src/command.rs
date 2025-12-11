@@ -1,11 +1,22 @@
-use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
+use egui::os::OperatingSystem;
+use egui::{Id, Key, KeyboardShortcut, Modifiers};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;
+use crate::egui_ext::context_ext::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
     fn send_ui(&self, command: UICommand);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SetPlaybackSpeed(pub egui::emath::OrderedFloat<f32>);
+
+impl Default for SetPlaybackSpeed {
+    fn default() -> Self {
+        Self(egui::emath::OrderedFloat(1.0))
+    }
 }
 
 /// All the commands we support.
@@ -26,6 +37,12 @@ pub enum UICommand {
     SaveBlueprint,
     CloseCurrentRecording,
     CloseAllEntries,
+
+    NextRecording,
+    PreviousRecording,
+
+    NavigateBack,
+    NavigateForward,
 
     Undo,
     Redo,
@@ -49,6 +66,7 @@ pub enum UICommand {
     ToggleBlueprintPanel,
     ExpandBlueprintPanel,
     ToggleSelectionPanel,
+    ExpandSelectionPanel,
     ToggleTimePanel,
     ToggleChunkStoreBrowser,
     Settings,
@@ -74,7 +92,14 @@ pub enum UICommand {
     PlaybackFollow,
     PlaybackStepBack,
     PlaybackStepForward,
+    PlaybackBack,
+    PlaybackForward,
+    PlaybackBackFast,
+    PlaybackForwardFast,
+    PlaybackBeginning,
+    PlaybackEnd,
     PlaybackRestart,
+    PlaybackSpeed(SetPlaybackSpeed),
 
     // Dev-tools:
     #[cfg(not(target_arch = "wasm32"))]
@@ -133,7 +158,7 @@ impl UICommand {
             ),
 
             Self::Open => (
-                "Open…",
+                "Open file…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
             ),
             Self::OpenUrl => (
@@ -154,6 +179,15 @@ impl UICommand {
                 "Close all recordings",
                 "Close all open current recording (unsaved data will be lost)",
             ),
+
+            Self::NextRecording => ("Next recording", "Switch to the next open recording"),
+            Self::PreviousRecording => (
+                "Previous recording",
+                "Switch to the previous open recording",
+            ),
+
+            Self::NavigateBack => ("Back in history", "Go back in history"),
+            Self::NavigateForward => ("Forward in history", "Go forward in history"),
 
             Self::Undo => (
                 "Undo",
@@ -207,6 +241,7 @@ impl UICommand {
             Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
             Self::ExpandBlueprintPanel => ("Expand blueprint panel", "Expand the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
+            Self::ExpandSelectionPanel => ("Expand selection panel", "Expand the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
             Self::ToggleChunkStoreBrowser => (
                 "Toggle chunk store browser",
@@ -260,7 +295,30 @@ impl UICommand {
                 "Step forwards",
                 "Move the time marker to the next point in time with any data",
             ),
+            Self::PlaybackBack => (
+                "Move backwards",
+                "Move the time marker backward by 1 second",
+            ),
+            Self::PlaybackForward => (
+                "Move forwards",
+                "Move the time marker forward by 0.1 seconds",
+            ),
+            Self::PlaybackBackFast => (
+                "Move backwards fast",
+                "Move the time marker backwards by 1 second",
+            ),
+            Self::PlaybackForwardFast => (
+                "Move forwards fast",
+                "Move the time marker forwards by 0.1 seconds",
+            ),
+            Self::PlaybackBeginning => ("Go to beginning", "Go to beginning of timeline"),
+            Self::PlaybackEnd => ("Go to end", "Go to end of timeline"),
             Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
+
+            Self::PlaybackSpeed(_) => (
+                "Set playback speed",
+                "This is a chord, so you can press 5+0 to set the speed to 50x",
+            ),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => (
@@ -341,6 +399,10 @@ impl UICommand {
             KeyboardShortcut::new(Modifiers::ALT, key)
         }
 
+        fn shift(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::SHIFT, key)
+        }
+
         fn cmd_shift(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, key)
         }
@@ -365,6 +427,12 @@ impl UICommand {
             Self::Import => smallvec![cmd_shift(Key::O)],
             Self::CloseCurrentRecording => smallvec![],
             Self::CloseAllEntries => smallvec![],
+
+            Self::NextRecording => smallvec![cmd_alt(Key::ArrowDown)],
+            Self::PreviousRecording => smallvec![cmd_alt(Key::ArrowUp)],
+
+            Self::NavigateBack => smallvec![cmd(Key::OpenBracket)],
+            Self::NavigateForward => smallvec![cmd(Key::CloseBracket)],
 
             Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {
@@ -399,6 +467,7 @@ impl UICommand {
             Self::ToggleBlueprintPanel => smallvec![ctrl_shift(Key::B)],
             Self::ExpandBlueprintPanel => smallvec![],
             Self::ToggleSelectionPanel => smallvec![ctrl_shift(Key::S)],
+            Self::ExpandSelectionPanel => smallvec![],
             Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
             Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
             Self::Settings => smallvec![cmd(Key::Comma)],
@@ -430,7 +499,18 @@ impl UICommand {
             Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
             Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
             Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
+            Self::PlaybackBack => smallvec![key(Key::ArrowLeft)],
+            Self::PlaybackForward => smallvec![key(Key::ArrowRight)],
+            Self::PlaybackBackFast => smallvec![shift(Key::ArrowLeft)],
+            Self::PlaybackForwardFast => smallvec![shift(Key::ArrowRight)],
+            Self::PlaybackBeginning => smallvec![key(Key::Home)],
+            Self::PlaybackEnd => smallvec![key(Key::End)],
             Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
+
+            Self::PlaybackSpeed(_) => {
+                // This is a chord, so no single shortcut.
+                smallvec![]
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => smallvec![],
@@ -468,6 +548,9 @@ impl UICommand {
     /// Return the keyboard shortcut for this command, nicely formatted
     // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
+        if matches!(self, Self::PlaybackSpeed(_)) {
+            return Some("01-99".to_owned());
+        }
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
@@ -484,6 +567,96 @@ impl UICommand {
 
     pub fn is_link(self) -> bool {
         matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
+    }
+
+    fn handle_playback_chord(ctx: &egui::Context) -> Option<Self> {
+        const CHORD_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
+        const NUMBER_KEYS: [Key; 10] = [
+            Key::Num0,
+            Key::Num1,
+            Key::Num2,
+            Key::Num3,
+            Key::Num4,
+            Key::Num5,
+            Key::Num6,
+            Key::Num7,
+            Key::Num8,
+            Key::Num9,
+        ];
+
+        fn key_to_digit(key: Key) -> Option<char> {
+            let i = NUMBER_KEYS.iter().position(|&k| k == key)?;
+            char::from_digit(i as u32, 10)
+        }
+
+        #[derive(Default, Clone)]
+        struct PlaybackChordState {
+            last_key_time: Option<web_time::Instant>,
+            accumulated: String,
+        }
+
+        if ctx.text_edit_focused() {
+            return None;
+        }
+
+        let mut chord_state = ctx.data_mut(|data| {
+            data.get_temp_mut_or_default::<PlaybackChordState>(Id::NULL)
+                .clone()
+        });
+
+        let now = web_time::Instant::now();
+
+        let pressed_number = ctx.input(|i| {
+            let mut pressed_number = NUMBER_KEYS.iter().find(|&&k| i.key_pressed(k)).copied();
+            let has_other = i.keys_down.iter().any(|k| !NUMBER_KEYS.contains(k));
+
+            if has_other || i.modifiers.any() {
+                chord_state = PlaybackChordState::default();
+                pressed_number = None;
+            }
+
+            pressed_number
+        });
+
+        // Check if timeout expired - clear old state
+        if let Some(last_time) = chord_state.last_key_time {
+            if now.duration_since(last_time) >= CHORD_TIMEOUT {
+                chord_state = PlaybackChordState::default();
+            }
+        }
+
+        let mut command = None;
+
+        // Handle number key press
+        if let Some(key) = pressed_number {
+            if let Some(digit) = key_to_digit(key) {
+                chord_state.accumulated.push(digit);
+            }
+
+            chord_state.last_key_time = Some(now);
+
+            // Leading zeros should divide the speed by 10 for each zero.
+            // So e.g. 05 = 0.5x speed, 005 = 0.05x speed, etc.
+            let leading_zeros = chord_state
+                .accumulated
+                .chars()
+                .take_while(|&c| c == '0')
+                .count();
+
+            let factor = 10usize.pow(leading_zeros as u32);
+
+            if let Ok(speed) = chord_state.accumulated.parse::<f32>() {
+                if speed > 0.0 {
+                    command = Some(Self::PlaybackSpeed(SetPlaybackSpeed(
+                        egui::emath::OrderedFloat(speed / factor as f32),
+                    )));
+                }
+            }
+        }
+
+        ctx.data_mut(|data| data.insert_temp(Id::NULL, chord_state.clone()));
+
+        command
     }
 
     #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
@@ -513,12 +686,20 @@ impl UICommand {
             -num_shift_alts // most first
         });
 
-        egui_ctx.input_mut(|input| {
+        let command = egui_ctx.input_mut(|input| {
             for (kb_shortcut, command) in commands {
-                if kb_shortcut.modifiers == Modifiers::NONE && anything_has_focus {
-                    // Don't trigger non-modifier shortcuts when something has focus.
-                    continue;
+                if anything_has_focus {
+                    // If a text edit has focus, is should usually get exclusive access to that input.
+                    // For instance: use alt-arrows to move the cursor a whole word (at least on mac).
+                    // The exception are shortcuts with ctrl/cmd in them:
+                    let is_command = kb_shortcut.modifiers.command
+                        || kb_shortcut.modifiers.mac_cmd
+                        || kb_shortcut.modifiers.ctrl;
+                    if !is_command {
+                        continue; // ignore
+                    }
                 }
+
                 if input.consume_shortcut(&kb_shortcut) {
                     // Clear the shortcut key from input to prevent it from propagating to other UI component.
                     input.keys_down.remove(&kb_shortcut.logical_key);
@@ -526,7 +707,13 @@ impl UICommand {
                 }
             }
             None
-        })
+        });
+
+        if command.is_none() {
+            Self::handle_playback_chord(egui_ctx)
+        } else {
+            command
+        }
     }
 
     /// Show this command as a menu-button.

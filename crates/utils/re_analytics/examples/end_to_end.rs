@@ -1,6 +1,4 @@
-use re_analytics::Event;
-use re_analytics::Properties;
-use re_analytics::{Analytics, AnalyticsEvent};
+use re_analytics::{Analytics, AnalyticsEvent, Event, Properties};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();

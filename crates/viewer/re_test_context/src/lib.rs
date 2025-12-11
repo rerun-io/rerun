@@ -8,18 +8,15 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{
-    EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
-    external::re_tuid::Tuid,
-};
-use re_types::{Component as _, ComponentDescriptor, archetypes::RecordingInfo};
+use re_log_types::external::re_tuid::Tuid;
+use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
-
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
@@ -113,9 +110,12 @@ impl Default for TestContext {
 
 impl TestContext {
     pub fn new() -> Self {
+        Self::new_with_store_info(StoreInfo::testing())
+    }
+
+    pub fn new_with_store_info(store_info: StoreInfo) -> Self {
         re_log::setup_logging();
 
-        let store_info = StoreInfo::testing();
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
@@ -130,14 +130,14 @@ impl TestContext {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_name(),
-                    &re_types::components::Name::from("Test recording"),
+                    &re_sdk_types::components::Name::from("Test recording"),
                 )
                 .unwrap();
             recording_store
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::from(
+                    &re_sdk_types::components::Timestamp::from(
                         "2025-06-28T19:26:42Z"
                             .parse::<jiff::Timestamp>()
                             .unwrap()
@@ -154,9 +154,9 @@ impl TestContext {
                     ComponentDescriptor {
                         archetype: None,
                         component: "location".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Swallow Falls"),
+                    &re_sdk_types::components::Text::from("Swallow Falls"),
                 )
                 .unwrap();
             recording_store
@@ -165,9 +165,9 @@ impl TestContext {
                     ComponentDescriptor {
                         archetype: None,
                         component: "weather".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Cloudy with meatballs"),
+                    &re_sdk_types::components::Text::from("Cloudy with meatballs"),
                 )
                 .unwrap();
         }
@@ -210,7 +210,7 @@ impl TestContext {
             re_component_fallbacks::create_component_fallback_registry();
 
         let reflection =
-            re_types::reflection::generate_reflection().expect("Failed to generate reflection");
+            re_sdk_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
         Self {
             app_options: Default::default(),
@@ -225,7 +225,6 @@ impl TestContext {
             component_ui_registry,
             component_fallback_registry,
             reflection,
-            // TODO(jan): We don't use CLI credentials in tests, it would be nice to test at some point.
             connection_registry:
                 re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
 
@@ -487,9 +486,9 @@ impl TestContext {
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(store_context.recording.store_id());
-        let maybe_visualizable_entities_per_visualizer = self
+        let visualizable_entities_per_visualizer = self
             .view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
+            .visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
 
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
@@ -522,6 +521,8 @@ impl TestContext {
                 display_mode: &DisplayMode::LocalRecordings(
                     store_context.recording_store_id().clone(),
                 ),
+
+                auth_context: None,
             },
             component_ui_registry: &self.component_ui_registry,
             component_fallback_registry: &self.component_fallback_registry,
@@ -529,7 +530,7 @@ impl TestContext {
             connected_receivers: &Default::default(),
             store_context: &store_context,
             storage_context: &storage_context,
-            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
+            visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             time_ctrl: &self.time_ctrl.read(),
@@ -747,6 +748,8 @@ impl TestContext {
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::ChangeDisplayMode(_)
+                | SystemCommand::OpenSettings
+                | SystemCommand::OpenChunkStoreBrowser
                 | SystemCommand::ResetDisplayMode
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
@@ -754,6 +757,8 @@ impl TestContext {
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
+                | SystemCommand::SetAuthCredentials { .. }
+                | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::ShowNotification { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
@@ -838,9 +843,10 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use re_entity_db::InstancePath;
     use re_viewer_context::Item;
+
+    use super::*;
 
     /// Test that `TestContext:edit_selection` works as expected, aka. its side effects are visible
     /// from `TestContext::run`.

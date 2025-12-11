@@ -269,6 +269,87 @@ impl ::prost::Name for StoreVersion {
         "/rerun.log_msg.v1alpha1.StoreVersion".into()
     }
 }
+/// This is the payload that is carried in messages of type `::End` in RRD streams.
+///
+/// It keeps track of various useful information about the associated recording.
+///
+/// During normal operations, there can only be a single `::End` message in an RRD stream, and
+/// therefore a single `RrdFooter`.
+/// It is possible to break that invariant by concatenating streams using external tools,
+/// e.g. by doing something like `cat *.rrd > all_my_recordings.rrd`.
+/// Passing that stream back through Rerun tools, e.g. `cat *.rrd | rerun rrd merge > all_my_recordings.rrd`,
+/// would once again guarantee that only one `::End` message is present though.
+/// I.e. that invariant holds as long as one stays within our ecosystem of tools.
+///
+/// This is a transport-level type, the associated application-level type can be found
+/// in `re_log_encoding::RrdFooter`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RrdFooter {
+    /// All the `RrdManifest`s that were found in this RRD stream.
+    ///
+    /// Each `RrdManifest` corresponds to one, and exactly one, recording.
+    ///
+    /// The order is unspecified.
+    #[prost(message, repeated, tag = "1")]
+    pub manifests: ::prost::alloc::vec::Vec<RrdManifest>,
+}
+impl ::prost::Name for RrdFooter {
+    const NAME: &'static str = "RrdFooter";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v1alpha1.RrdFooter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v1alpha1.RrdFooter".into()
+    }
+}
+/// This is the payload found in `RrdFooter`s.
+///
+/// Each `RrdManifest` corresponds to one, and exactly one, RRD stream (i.e. recording).
+/// This restriction exists to make working with multiple RRD streams much simpler: due to the way
+/// the Rerun data model works, filtering rows of data from a manifest can have hard-to-predict
+/// second order effects on the schema of the stream as a whole.
+/// By keeping manifests for different recordings separate, we remove the need to filter per
+/// recording ID, greatly simplifying the process.
+///
+/// This is a transport-level type, the associated application-level type can be found
+/// in `re_log_encoding::RrdManifest`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct RrdManifest {
+    /// The recording ID that was used to identify the original recording.
+    ///
+    /// This is extracted from the `SetStoreInfo` message of the associated RRD stream.
+    #[prost(message, optional, tag = "1")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// The Sorbet schema of the associated RRD stream.
+    ///
+    /// ⚠️ This is the Sorbet schema of the recording being indexed by this manifest, *not* the
+    /// schema of `Self::manifest`.
+    #[prost(message, optional, tag = "2")]
+    pub sorbet_schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// The SHA256 hash of the Sorbet schema of the associated RRD stream.
+    ///
+    /// This is always computed by sorting the fields of the schema by name first.
+    #[prost(bytes = "bytes", optional, tag = "3")]
+    pub sorbet_schema_sha256: ::core::option::Option<::prost::bytes::Bytes>,
+    /// The complete manifest for the associated RRD stream.
+    ///
+    /// Each row in this dataframe describes a unique chunk (ID, offset, size, timeline & component stats, etc).
+    /// This can be used to compute relevancy queries (latest-at, range, dataframe), without needing to load
+    /// any of the actual data in memory.
+    #[prost(message, optional, tag = "4")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for RrdManifest {
+    const NAME: &'static str = "RrdManifest";
+    const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.log_msg.v1alpha1.RrdManifest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.log_msg.v1alpha1.RrdManifest".into()
+    }
+}
 /// The type of compression used on the payload.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]

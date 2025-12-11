@@ -1,20 +1,15 @@
 use std::sync::Arc;
 
 use arrow::array::ArrayRef;
-
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
     AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, TimeInt,
 };
-use re_log_types::{
-    EntityPath, TimeType, Timeline, build_frame_nr,
-    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
-};
-use re_types::{
-    ComponentDescriptor, ComponentSet,
-    testing::{build_some_large_structs, large_struct_descriptor},
-};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
+use re_log_types::{EntityPath, TimeType, Timeline, build_frame_nr};
+use re_sdk_types::testing::{build_some_large_structs, large_struct_descriptor};
+use re_sdk_types::{ComponentDescriptor, ComponentSet};
 
 // ---
 

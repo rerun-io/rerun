@@ -1,12 +1,13 @@
 use itertools::Itertools as _;
+use re_renderer::RenderContext;
+use re_renderer::mesh::GpuMesh;
+use re_sdk_types::components::MediaType;
+use re_sdk_types::datatypes;
+use re_viewer_context::gpu_bridge::texture_creation_desc_from_color_image;
+use re_viewer_context::{ImageInfo, StoredBlobCacheKey};
 
-use re_renderer::{RenderContext, mesh::GpuMesh};
-use re_types::{components::MediaType, datatypes};
-use re_viewer_context::{
-    ImageInfo, StoredBlobCacheKey, gpu_bridge::texture_creation_desc_from_color_image,
-};
-
-use crate::{caches::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
+use crate::caches::AnyMesh;
+use crate::visualizers::entity_iterator::clamped_vec_or;
 
 #[derive(Debug, Clone)]
 pub struct NativeAsset3D<'a> {
@@ -100,8 +101,8 @@ impl LoadedMesh {
 
         Ok(Self {
             name,
-            bbox,
             mesh_instances,
+            bbox,
         })
     }
 
@@ -207,8 +208,8 @@ impl LoadedMesh {
 
         Ok(Self {
             name,
-            bbox,
             mesh_instances,
+            bbox,
         })
     }
 
@@ -241,7 +242,7 @@ fn try_get_or_create_albedo_texture(
         buffer_content_hash: StoredBlobCacheKey::ZERO, // unused
         buffer: albedo_texture_buffer.clone(),         // shallow clone
         format: *albedo_texture_format,
-        kind: re_types::image::ImageKind::Color,
+        kind: re_sdk_types::image::ImageKind::Color,
     };
 
     if re_viewer_context::gpu_bridge::required_shader_decode(

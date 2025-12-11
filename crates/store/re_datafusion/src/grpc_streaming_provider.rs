@@ -1,21 +1,19 @@
-use std::{any::Any, pin::Pin, sync::Arc};
+use std::any::Any;
+use std::pin::Pin;
+use std::sync::Arc;
 
+use arrow::array::RecordBatch;
+use arrow::datatypes::SchemaRef;
 use async_trait::async_trait;
-
-use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use datafusion::catalog::{Session, TableProvider};
 use datafusion::common::not_impl_err;
+use datafusion::error::{DataFusionError, Result as DataFusionResult};
+use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::logical_expr::TableProviderFilterPushDown;
 use datafusion::logical_expr::dml::InsertOp;
-use datafusion::{
-    catalog::{Session, TableProvider},
-    error::{DataFusionError, Result as DataFusionResult},
-    execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext},
-    physical_plan::{
-        ExecutionPlan,
-        streaming::{PartitionStream, StreamingTableExec},
-    },
-    prelude::Expr,
-};
+use datafusion::physical_plan::ExecutionPlan;
+use datafusion::physical_plan::streaming::{PartitionStream, StreamingTableExec};
+use datafusion::prelude::Expr;
 use futures_util::StreamExt as _;
 use tokio_stream::Stream;
 

@@ -14,7 +14,7 @@
 # - python scripts/check_env.py
 # - pixi run check-env
 
-[project]
+[workspace]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
 channels = ["conda-forge"]
@@ -50,24 +50,9 @@ libc = "2.28"
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
 
-# Put pixi builds in its own build dir, otherwise `pixi run cargo build`
-# conflicts with vanilla`cargo build`, and running one invalidates (parts) of the other.
-# See https://github.com/rerun-io/rerun/issues/10934 for more.
-#
-# TODO(prefix-dev/pixi#4431): Environment variable resolving doesn't work with this on Windows,
-# which is why we have to use the `%` syntax for Windows instead of `$`.
-CARGO_TARGET_DIR = "$PIXI_PROJECT_ROOT/target_pixi"
-
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
-
-# See `target.unix.activation.env`.
-CARGO_TARGET_DIR = "%PIXI_PROJECT_ROOT%/target_pixi"
-
-# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
-[target.osx-arm64.activation.env]
-AR = "llvm-ar"
 
 # python-dev
 
@@ -152,10 +137,10 @@ examples-pypi = ["examples-common", "python-pypi"]
 check-env = "python scripts/check_env.py"
 
 # Run the codegen. Optionally pass `--profile` argument if you want.
-codegen = "cargo --quiet run --package re_types_builder -- "
+codegen = "cargo run --package re_types_builder -- "
 
 # Run the codegen for protobuf types.
-codegen-protos = { cmd = "cargo --quiet run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
+codegen-protos = { cmd = "cargo run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
   # "pb-snapshot",  # TODO(cmc): reenable if we ever go back to snapshot-based BW compat for protobuf
 ] }
 codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
@@ -163,19 +148,17 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 # Generate the Rerun CLI manual.
 
 # NOTE: must be --all-features, otherwise we might miss some optional commands.
-man = { cmd = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md", depends-on = [
-  "rerun-build-web", # Must have web-viewer to build `rerun-cli` with --all-features
-] }
+man = "RERUN_DISABLE_WEB_VIEWER_SERVER=1 cargo run --package rerun-cli --all-features -- man > docs/content/reference/cli.md"
 
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
-# Compile and run the rerun viewer, with performance telemetry.
+# Compile and run the rerun viewer, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --"
+rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,rerun/perf_telemetry_tracy --"
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
@@ -188,10 +171,10 @@ rerun-build-release = "cargo build --package rerun-cli --release --no-default-fe
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-release = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --release --"
 
-# Compile and run the rerun viewer in release, with performance telemetry.
+# Compile and run the rerun viewer in release mode, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,perf_telemetry --release --"
+rerun-perf = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer,rerun/perf_telemetry_tracy --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --", depends-on = [
@@ -217,13 +200,13 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
 
 # Compile the web-viewer wasm and the cli.
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -239,13 +222,13 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
 
 rs-check = "python scripts/ci/rust_checks.py"
 
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
-check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features --quiet rrd verify" }
+check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify" }
 
 rs-fmt = "cargo fmt --all"
 
@@ -253,9 +236,15 @@ rs-fmt = "cargo fmt --all"
 format = { depends-on = ["cpp-fmt", "misc-fmt", "pb-fmt", "py-fmt", "rs-fmt", "toml-fmt"] }
 fmt = { depends-on = ["format"] }
 
+# Check links
+link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
+  { arg = "ref" },
+] }
+link-check = 'lychee --verbose --cache --max-cache-age 1d . --base-url . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
-lint-codegen = "cargo --quiet run --package re_types_builder -- --check"
+lint-codegen = "cargo run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-files
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2024 --check"
@@ -307,24 +296,28 @@ misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
 # Until we resolve nbqa config issue keep aligned with nbqa dirs above
-nb-strip = "python scripts/nbstripout.py mypy examples/python scripts/ tests/python/ docs/snippets/ --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+nb-strip = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --verify --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
+
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
-py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
+py-fmt = { cmd = "ruff check --fix --config rerun_py/pyproject.toml {{ files }} && ruff format --config rerun_py/pyproject.toml {{ files }}", args = [
+  { arg = "files", default = "." },
+] }
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
-# I couldn't get the config to work correctly so placing relevant directories in command line
+py-lint-non-sdk = { cmd = "mypy --config-file rerun_py/.non_sdk_mypy.ini --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+# I couldn't get the config to work correctly, so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
-py-lint-nb-rerun = { cmd = "nbqa mypy examples/python scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml  ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
+py-lint-nb-rerun = { cmd = "nbqa mypy examples/notebook scripts/ tests/python/ docs/snippets/ --config rerun_py/pyproject.toml --cache-dir .mypy_cache_rerun_nb ", env = { PYTHONPATH = "$PYTHONPATH:rerun_py/rerun_sdk/" } }
 # Need to run this in env with rerun installed
-py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore"
+py-lint-rerun = "mypy --config-file rerun_py/pyproject.toml --install-types --non-interactive --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
 py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
-dev-tools = "cargo run --quiet --locked -p re_dev_tools --"
-build-examples = "cargo run --quiet --locked -p re_dev_tools -- build-examples"
+dev-tools = "cargo run --locked -p re_dev_tools --"
+build-examples = "cargo run --locked -p re_dev_tools -- build-examples"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
@@ -420,7 +413,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable wheel.
 # The wheel will contain the rerun executable including the web viewer.
-py-build-wheel = { cmd = "cp target_pixi/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
+py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 
@@ -435,11 +428,11 @@ py-build = "pixi run -e py py-build-common"
 # Dedicated alias for building the python bindings in release mode for the `py` environment.
 py-build-release = "pixi run -e py py-build-common-release"
 
-# Dedicated alias for building the python bindings for the `py` environment, with performance telemetry.
-py-build-perf-debug = "pixi run -e py py-build-common --features perf_telemetry"
+# Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
+py-build-perf-debug = "pixi run -e py py-build-common --features re_perf_telemetry/tracy"
 
-# Dedicated alias for building the python bindings in release mode for the `py` environment, with performance telemetry.
-py-build-perf = "pixi run -e py py-build-common-release --features perf_telemetry"
+# Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
+py-build-perf = "pixi run -e py py-build-common-release --features re_perf_telemetry/tracy"
 
 py-check-signatures = "python scripts/ci/python_check_signatures.py"
 
@@ -463,7 +456,7 @@ snapshots = "python scripts/snapshots.py"
 [feature.python-docs.tasks]
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-search-index = "cargo run --locked --quiet -p re_dev_tools -- search-index"
+search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
@@ -482,14 +475,14 @@ rerun-from-path = "rerun"
 # Dedicated alias for building the python bindings for the `examples` environment.
 py-build-examples = "pixi run -e examples py-build-common"
 
-# Dedicated alias for building the python bindings for the `examples` environment, with perf telemetry.
-py-build-perf-debug-examples = "pixi run -e examples py-build-common --features perf_telemetry"
+# Dedicated alias for building the python bindings for the `examples` environment, with performance telemetry including Tracy profiler.
+py-build-perf-debug-examples = "pixi run -e examples py-build-common --features re_perf_telemetry/tracy"
 
 # Dedicated alias for building the python bindings for the `examples` environment, in release.
 py-build-release-examples = "pixi run -e examples py-build-common-release"
 
-# Dedicated alias for building the python bindings for the `examples` environment, in release, with perf telemetry.
-py-build-perf-examples = "pixi run -e examples py-build-common-release --features perf_telemetry"
+# Dedicated alias for building the python bindings for the `examples` environment in release, with performance telemetry including Tracy profiler.
+py-build-perf-examples = "pixi run -e examples py-build-common-release --features re_perf_telemetry/tracy"
 
 # Python example utilities
 py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends-on = [
@@ -502,8 +495,10 @@ py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build"
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
-cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
+# We export a compilation database (compile_commands.json) in the CMake configure step (-DCMAKE_EXPORT_COMPILE_COMMANDS=ON),
+# which is handy for various dev tools like clang-tidy, clangd, vscode etc (https://clang.llvm.org/docs/JSONCompilationDatabase.html).
+cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Release"
+cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=Debug"
 cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends-on = [
   "cpp-prepare",
 ] }
@@ -576,6 +571,7 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
+lychee = "0.20.1.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 nbqa = "*"
@@ -584,11 +580,12 @@ ninja = "1.11.1.*"
 numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=8.4.1"
+pytest = ">=8.4.2"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
+syrupy = "5.0.0.*" # Snapshot testing with pytest
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
@@ -601,9 +598,12 @@ gh = ">=2.79.0,<3"
 cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0" # For `rerun_notebook`
+huggingface_hub = "<1.0" # Needed for `LeRobot` checklist items
+inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
 parso = ">=0.8.4, <0.9"
 Pillow = ">=10.0.0" # For `thumbnails.py`
+polars = "==1.35.2" # For api_sandbox
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 types-decorator = "*" # Type hint stubs
@@ -800,6 +800,7 @@ raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }
 rrt_star = { path = "examples/python/rrt_star", editable = true }
 segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
+server_tables = { path = "examples/python/server_tables", editable = true }
 shared_recording = { path = "examples/python/shared_recording", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }

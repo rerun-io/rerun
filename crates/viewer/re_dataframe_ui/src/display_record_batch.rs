@@ -3,25 +3,21 @@
 
 use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
-        ListArray as ArrowListArray,
-    },
-    buffer::NullBuffer as ArrowNullBuffer,
-    buffer::ScalarBuffer as ArrowScalarBuffer,
-    datatypes::DataType as ArrowDataType,
+use arrow::array::{
+    Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
+    ListArray as ArrowListArray,
 };
-
+use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer};
+use arrow::datatypes::DataType as ArrowDataType;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::components::{Blob, MediaType};
 use re_sorbet::ColumnDescriptorRef;
-use re_types::ComponentDescriptor;
-use re_types::components::{Blob, MediaType};
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, VariantName, ViewerContext};
@@ -140,8 +136,9 @@ impl ComponentData {
 /// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
 /// are hashed.
 fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
-    use ahash::AHasher;
     use std::hash::{Hash as _, Hasher as _};
+
+    use ahash::AHasher;
 
     re_tracing::profile_function!();
 
@@ -181,7 +178,7 @@ pub struct DisplayComponentColumn {
 
 impl DisplayComponentColumn {
     fn blobs(&self, row: usize) -> Option<Vec<Blob>> {
-        if self.component_descr.component_type != Some(re_types::components::Blob::name()) {
+        if self.component_descr.component_type != Some(re_sdk_types::components::Blob::name()) {
             return None;
         }
 
@@ -196,12 +193,20 @@ impl DisplayComponentColumn {
     }
 
     pub fn is_image(&self) -> bool {
-        self.component_descr.component_type == Some(re_types::components::Blob::name())
+        self.component_descr.component_type == Some(re_sdk_types::components::Blob::name())
             && self
                 .blobs(0)
                 .as_ref()
                 .and_then(|blobs| blobs.first())
                 .is_some_and(Self::is_blob_image)
+    }
+
+    pub fn string_value_at(&self, row: usize) -> Option<String> {
+        let data = self.component_data.row_data(row)?;
+
+        let string_component = data.downcast_array_ref::<arrow::array::StringArray>()?;
+
+        Some(string_component.value(0).to_owned())
     }
 
     fn data_ui(

@@ -5,6 +5,7 @@ This is a guide to how to build Rerun.
 ## See also
 * [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [`TESTING.md`](TESTING.md)
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
@@ -119,6 +120,8 @@ pixi run py-lint
 pixi run py-fmt
 ```
 
+See also [`TESTING.md`](TESTING.md) for an overview of our testing infrastructure.
+
 ### Building an installable Python wheel
 The `py-build-wheels-sdk-only` command builds a whl file:
 ```sh
@@ -143,6 +146,9 @@ and build all C++ artifacts with:
 ```sh
 pixi run -e cpp cpp-build-all
 ```
+
+The Pixi build commands export a `compile_commands.json` compilation database to the build directory.
+This can be useful for developer tools, e.g. for [setting up IntelliSense in VSCode](https://code.visualstudio.com/docs/cpp/configure-intellisense#_compilecommandsjson-file).
 
 ## Building the docs
 

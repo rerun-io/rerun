@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::{PyResult, pyclass, pyfunction, pymethods};
-
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
 use re_log_types::StoreId;
 
@@ -11,13 +10,13 @@ use super::PyRecording;
 /// An archive loaded from an RRD.
 ///
 /// RRD archives may include 1 or more recordings or blueprints.
-#[pyclass(frozen, name = "RRDArchive", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(frozen, name = "RRDArchive", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
 pub struct PyRRDArchive {
     pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRRDArchive {
     /// The number of recordings in the archive.
     fn num_recordings(&self) -> usize {

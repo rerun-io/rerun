@@ -2,7 +2,7 @@ use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_view_text_document::TextDocumentView;
-use re_viewer::external::re_types;
+use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
@@ -19,7 +19,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
         builder.with_archetype(
             RowId::new(),
             TimePoint::STATIC,
-            &re_types::archetypes::TextDocument::new("Hello World!"),
+            &re_sdk_types::archetypes::TextDocument::new("Hello World!"),
         )
     });
     harness
@@ -85,15 +85,11 @@ pub async fn test_container_selection_context_menu() {
     let container_id = harness.add_blueprint_container(egui_tiles::ContainerKind::Vertical, None);
 
     harness.setup_viewport_blueprint(move |_viewer_context, blueprint| {
-        blueprint.add_views(
-            [
-                ViewBlueprint::new_with_root_wildcard(TextDocumentView::identifier()),
-                ViewBlueprint::new_with_root_wildcard(TextDocumentView::identifier()),
-            ]
-            .into_iter(),
-            Some(container_id),
-            None,
-        );
+        let mut view_1 = ViewBlueprint::new_with_root_wildcard(TextDocumentView::identifier());
+        view_1.display_name = Some("View 1".into());
+        let mut view_2 = ViewBlueprint::new_with_root_wildcard(TextDocumentView::identifier());
+        view_2.display_name = Some("View 2".into());
+        blueprint.add_views([view_1, view_2].into_iter(), Some(container_id), None);
     });
 
     harness.click_label("Vertical container");
@@ -101,10 +97,35 @@ pub async fn test_container_selection_context_menu() {
 
     // There are multiple nodes with that label, second and third are
     // the ones on the selection panel.
-    harness.right_click_nth_label("/", 1);
+    harness.selection_panel().right_click_label("View 1");
     harness.snapshot_app("container_selection_context_menu_1");
 
     harness.key_press(egui::Key::Escape);
-    harness.right_click_nth_label("/", 2);
+    harness.selection_panel().right_click_label("View 2");
     harness.snapshot_app("container_selection_context_menu_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_collapse_stream_entity() {
+    let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
+
+    harness.streams_tree().right_click_label("txt/");
+    harness.snapshot_app("collapse_stream_entity_1");
+
+    harness.click_label("Collapse all");
+    harness.snapshot_app("collapse_stream_entity_2");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_collapse_stream_root() {
+    let mut harness = make_test_harness();
+    setup_single_view_blueprint(&mut harness);
+    harness.snapshot_app("collapse_stream_root_1");
+
+    harness.streams_tree().right_click_label("/");
+    harness.snapshot_app("collapse_stream_root_2");
+
+    harness.click_label("Collapse all");
+    harness.snapshot_app("collapse_stream_root_3");
 }

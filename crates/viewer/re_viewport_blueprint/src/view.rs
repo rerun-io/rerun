@@ -1,17 +1,12 @@
 use itertools::{FoldWhile, Itertools as _};
-use re_types::ViewClassIdentifier;
-
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::{EntityPathSubs, Timeline};
-use re_types::{
-    blueprint::{
-        archetypes::{self as blueprint_archetypes},
-        components::{self as blueprint_components, ViewOrigin},
-    },
-    components::{Name, Visible},
-};
+use re_sdk_types::ViewClassIdentifier;
+use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
+use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrigin};
+use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
@@ -319,7 +314,7 @@ impl ViewBlueprint {
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
             self.entity_path(),
-            &re_types::archetypes::Clear::recursive(),
+            &re_sdk_types::archetypes::Clear::recursive(),
         );
     }
 
@@ -444,6 +439,7 @@ impl ViewBlueprint {
             viewer_ctx: ctx,
             view_id: self.id,
             view_class_identifier: self.class_identifier,
+            space_origin: &self.space_origin,
             view_state,
             query_result: ctx.lookup_query_result(self.id),
         }
@@ -452,24 +448,22 @@ impl ViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, sync::Arc};
+    use std::collections::HashMap;
+    use std::sync::Arc;
 
     use ahash::HashSet;
     use re_chunk::{ComponentIdentifier, RowId};
-    use re_log_types::{
-        StoreKind, TimePoint,
-        example_components::{MyLabel, MyPoint, MyPoints},
-    };
+    use re_log_types::TimePoint;
+    use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
+    use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
-    use re_types::blueprint::archetypes::EntityBehavior;
     use re_viewer_context::{
-        IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer,
-        ViewClassPlaceholder, VisualizableEntities,
+        IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder,
+        VisualizableEntities, VisualizableReason,
     };
-
-    use crate::view_contents::DataQueryPropertyResolver;
 
     use super::*;
+    use crate::view_contents::DataQueryPropertyResolver;
 
     #[test]
     fn test_component_overrides() {
@@ -500,21 +494,20 @@ mod tests {
             visualizable_entities
                 .0
                 .entry("Points3D".into())
-                .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
+                .or_insert_with(|| {
+                    VisualizableEntities(
+                        entity_paths
+                            .into_iter()
+                            .map(|ent| (ent, VisualizableReason::Always))
+                            .collect(),
+                    )
+                });
         }
 
-        let maybe_visualizable_entities = PerVisualizer::<MaybeVisualizableEntities>(
-            visualizable_entities
-                .0
-                .iter()
-                .map(|(id, entities)| {
-                    (
-                        *id,
-                        MaybeVisualizableEntities(entities.iter().cloned().collect()),
-                    )
-                })
-                .collect(),
-        );
+        let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
+            view_class_identifier: ViewClassPlaceholder::identifier(),
+            per_visualizer: visualizable_entities.0.clone(),
+        };
 
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
@@ -695,7 +688,6 @@ mod tests {
             let resolver = DataQueryPropertyResolver::new(
                 &view,
                 &test_ctx.view_class_registry,
-                &maybe_visualizable_entities,
                 &visualizable_entities,
                 &indicated_entities_per_visualizer,
             );
@@ -705,31 +697,18 @@ mod tests {
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
 
-                let component_overrides = &result.property_overrides.component_overrides;
+                let first_instruction = result.visualizer_instructions.first().unwrap();
+                let component_overrides = &first_instruction.component_overrides;
+
                 let mut expected_overrides = expected_overrides
                     .get(&result.entity_path)
                     .cloned()
                     .unwrap_or_default();
 
-                for (component, override_path) in component_overrides {
-                    assert_eq!(
-                        override_path.store_kind,
-                        StoreKind::Blueprint,
-                        "Scenario {i}"
-                    );
-
+                for component in component_overrides {
                     assert!(
                         expected_overrides.remove(component),
-                        "Scenario {i}: expected override for {component} at {override_path:?} but got none"
-                    );
-
-                    assert_eq!(
-                        override_path,
-                        &OverridePath {
-                            store_kind: StoreKind::Blueprint,
-                            path: override_root.join(&node.data_result.entity_path),
-                        },
-                        "Scenario {i}"
+                        "Scenario {i}: expected override for {component} but got none"
                     );
                 }
                 assert!(expected_overrides.is_empty(), "Scenario {i}");
@@ -755,7 +734,7 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizer<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerInViewClass<VisualizableEntities>,
         resolver: &DataQueryPropertyResolver<'_>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;

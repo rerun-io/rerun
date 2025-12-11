@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .active_visualizers import ActiveVisualizers
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
@@ -21,9 +22,13 @@ from .panel_blueprint import PanelBlueprint
 from .plot_background import PlotBackground
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
+from .spatial_information import SpatialInformation
 from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
+from .text_log_columns import TextLogColumns
+from .text_log_format import TextLogFormat
+from .text_log_rows import TextLogRows
 from .time_axis import TimeAxis
 from .time_panel_blueprint import TimePanelBlueprint
 from .view_blueprint import ViewBlueprint
@@ -31,9 +36,10 @@ from .view_contents import ViewContents
 from .viewport_blueprint import ViewportBlueprint
 from .visible_time_ranges import VisibleTimeRanges
 from .visual_bounds2d import VisualBounds2D
-from .visualizer_overrides import VisualizerOverrides
+from .visualizer_instruction import VisualizerInstruction
 
 __all__ = [
+    "ActiveVisualizers",
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
@@ -53,9 +59,13 @@ __all__ = [
     "PlotBackground",
     "PlotLegend",
     "ScalarAxis",
+    "SpatialInformation",
     "TensorScalarMapping",
     "TensorSliceSelection",
     "TensorViewFit",
+    "TextLogColumns",
+    "TextLogFormat",
+    "TextLogRows",
     "TimeAxis",
     "TimePanelBlueprint",
     "ViewBlueprint",
@@ -63,5 +73,5 @@ __all__ = [
     "ViewportBlueprint",
     "VisibleTimeRanges",
     "VisualBounds2D",
-    "VisualizerOverrides",
+    "VisualizerInstruction",
 ]

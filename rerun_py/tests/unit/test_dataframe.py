@@ -10,8 +10,8 @@ import pytest
 import rerun as rr
 
 if TYPE_CHECKING:
-    from rerun_bindings.rerun_bindings import Schema
-    from rerun_bindings.types import AnyColumn, ViewContentsLike
+    from rerun.catalog import Schema
+    from rerun.dataframe import AnyColumn, ViewContentsLike
 
 APP_ID = "rerun_example_test_recording"
 

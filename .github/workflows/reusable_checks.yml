@@ -97,6 +97,9 @@ jobs:
       - name: Rerun lints
         run: pixi run lint-rerun
 
+      - name: Check dependencies
+        run: pixi run scripts/check_utils_dependencies.py
+
   toml-format-check:
     name: Toml format check
     runs-on: ubuntu-latest
@@ -263,19 +266,21 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
+      - name: Set up pixi for PR Link Checker
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        uses: prefix-dev/setup-pixi@v0.9.1
+        with:
+          pixi-version: v0.55.0
+
       # For PRs: Check only links in added lines
       - name: PR Link Checker (added lines only)
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: |
-          # Install lychee
-          curl -sSL https://github.com/lycheeverse/lychee/releases/download/lychee-v0.20.1/lychee-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          sudo mv lychee /usr/local/bin/
-
           # Fetch the base branch
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
 
           # Run our custom PR link checker
-          python3 scripts/ci/pr_link_checker.py --base-ref origin/${{ github.base_ref }}
+          pixi run link-check-pr origin/${{ github.base_ref }}
 
       # For nightly: Check all links in the entire codebase
       - name: Full Link Checker
@@ -287,5 +292,6 @@ jobs:
           lycheeVersion: "v0.20.1"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
+          # If updating version or args update the pixi.toml to match.
           args: |
             --verbose --cache --max-cache-age 1d . --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"

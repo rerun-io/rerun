@@ -1,7 +1,6 @@
 use std::str::FromStr as _;
 
 use egui::{NumExt as _, Ui};
-
 use re_log_types::{Timestamp, TimestampFormat};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
@@ -176,19 +175,6 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     separator_with_some_space(ui);
     ui.strong("Video");
     video_section_ui(ui, app_options);
-
-    //
-    // Experimental features
-    //
-
-    // Currently, the wasm target does not have any experimental features. If/when that changes,
-    // move the conditional compilation flag to the respective checkbox code.
-    #[cfg(not(target_arch = "wasm32"))]
-    // Currently there are no experimental features
-    if false {
-        separator_with_some_space(ui);
-        ui.strong("Experimental features");
-    }
 }
 
 fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
@@ -257,8 +243,9 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
-    use re_video::{FFmpegVersion, FFmpegVersionParseError};
     use std::task::Poll;
+
+    use re_video::{FFmpegVersion, FFmpegVersionParseError};
 
     let path = app_options
         .video_decoder_override_ffmpeg_path

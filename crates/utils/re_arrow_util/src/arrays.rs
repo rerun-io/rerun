@@ -1,14 +1,13 @@
-use std::{iter::repeat_n, sync::Arc};
+use std::iter::repeat_n;
+use std::sync::Arc;
 
-use arrow::{
-    array::{
-        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-        PrimitiveArray, UInt32Array, new_empty_array,
-    },
-    buffer::{NullBuffer, OffsetBuffer},
-    datatypes::{DataType, Field},
-    error::ArrowError,
+use arrow::array::{
+    Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
+    PrimitiveArray, UInt32Array, new_empty_array,
 };
+use arrow::buffer::{NullBuffer, OffsetBuffer};
+use arrow::datatypes::{DataType, Field};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
 // ---------------------------------------------------------------------------------
@@ -21,6 +20,10 @@ pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Similar to `downcast_array_ref`, but returns an error in case the downcast
     /// returns `None`.
     fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError>;
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError>;
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
@@ -36,6 +39,12 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
                 std::any::type_name::<T>(),
             ))
         })
+    }
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+        Ok(self.try_downcast_array_ref::<T>()?.clone())
     }
 }
 
@@ -53,6 +62,12 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
             ))
         })
     }
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array<T: Array + Clone + 'static>(self) -> Result<T, ArrowError> {
+        Ok(self.try_downcast_array_ref::<T>()?.clone())
+    }
 }
 
 // ---------------------------------------------------------------------------------
@@ -60,24 +75,6 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
 #[inline]
 pub fn into_arrow_ref(array: impl Array + 'static) -> ArrayRef {
     std::sync::Arc::new(array)
-}
-
-/// Repartitions a [`ListArray`] according to the specified `lengths`, ignoring previous partitioning.
-///
-/// The specified `lengths` must sum to the total length underlying values (i.e. the child array).
-///
-/// The validity of the values is ignored.
-#[inline]
-pub fn repartition_list_array(
-    list_array: ListArray,
-    lengths: impl IntoIterator<Item = usize>,
-) -> arrow::error::Result<ListArray> {
-    let (field, _offsets, values, _nulls) = list_array.into_parts();
-
-    let offsets = OffsetBuffer::from_lengths(lengths);
-    let nulls = None;
-
-    ListArray::try_new(field, offsets, values, nulls)
 }
 
 /// Returns true if the given `list_array` is semantically empty.
@@ -441,11 +438,9 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
 #[cfg(test)]
 mod tests {
 
-    use arrow::{
-        array::{Array as _, AsArray as _, Int32Array},
-        buffer::{NullBuffer, ScalarBuffer},
-        datatypes::{DataType, Int32Type},
-    };
+    use arrow::array::{Array as _, AsArray as _, Int32Array};
+    use arrow::buffer::{NullBuffer, ScalarBuffer};
+    use arrow::datatypes::{DataType, Int32Type};
 
     use super::*;
 

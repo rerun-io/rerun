@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
-
-use re_log_types::{EntityPath, hash::Hash64};
-use re_types::{ComponentDescriptor, RowId, datatypes::TensorData};
+use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
+use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{TensorStats, TensorStatsCache, UiLayout, ViewerContext};
 
@@ -31,7 +32,7 @@ fn format_tensor_shape_single_line(tensor: &TensorData) -> String {
         .join(if has_names { " × " } else { "×" })
 }
 
-impl EntityDataUi for re_types::components::TensorData {
+impl EntityDataUi for re_sdk_types::components::TensorData {
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,

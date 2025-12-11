@@ -1,15 +1,18 @@
 use std::sync::Arc;
 
 use re_chunk_store::RowId;
-use re_log_types::{EntityPath, TimePoint};
-use re_test_context::TestContext;
-use re_test_viewport::TestContextExt as _;
-use re_types::{
+use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
+use re_sdk_types::archetypes::{self, Scalars};
+use re_sdk_types::blueprint;
+use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
+use re_sdk_types::components;
+use re_sdk_types::datatypes::{self, TimeRange};
+use re_sdk_types::{
     Archetype as _, DynamicArchetype,
-    archetypes::{self, Scalars},
-    blueprint, components,
     external::arrow::array::{Float32Array, Int64Array},
 };
+use re_test_context::TestContext;
+use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
@@ -18,9 +21,144 @@ use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 pub fn test_blueprint_overrides_and_defaults_with_time_series() {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
-    let timeline = re_log_types::Timeline::log_tick();
+    let timeline = Timeline::log_tick();
 
-    for i in 0..32 {
+    log_data(&mut test_context, timeline);
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
+    let view_id = setup_blueprint(&mut test_context, timeline.name(), None, None);
+    let size = egui::vec2(300.0, 300.0);
+    test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "blueprint_overrides_and_defaults_with_time_series",
+        size,
+        None,
+    );
+
+    for (range, name) in [
+        (TimeRange::EVERYTHING, "everything"),
+        (TimeRange::AT_CURSOR, "at_cursor"),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(-10)),
+                end: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(10)),
+            },
+            "around_cursor",
+        ),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
+                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(20)),
+            },
+            "absolute",
+        ),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
+                end: datatypes::TimeRangeBoundary::Infinite,
+            },
+            "absolute_until_end",
+        ),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::Infinite,
+                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(15)),
+            },
+            "start_until_absolute",
+        ),
+    ] {
+        let view_id = setup_blueprint(&mut test_context, timeline.name(), Some(range), None);
+        test_context.run_view_ui_and_save_snapshot(
+            view_id,
+            &format!("blueprint_overrides_and_defaults_with_time_series_{name}"),
+            size,
+            None,
+        );
+    }
+}
+
+#[test]
+pub fn test_custom_visible_time_range() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    log_data(&mut test_context, timeline);
+
+    test_context.send_time_commands(
+        test_context.active_store_id(),
+        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
+    );
+
+    let size = egui::vec2(300.0, 300.0);
+
+    let data_ranges = [
+        (TimeRange::EVERYTHING, "everything"),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(-10)),
+                end: datatypes::TimeRangeBoundary::CursorRelative(datatypes::TimeInt(10)),
+            },
+            "around_cursor",
+        ),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
+                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(20)),
+            },
+            "absolute",
+        ),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(10)),
+                end: datatypes::TimeRangeBoundary::Infinite,
+            },
+            "absolute_until_end",
+        ),
+        (
+            TimeRange {
+                start: datatypes::TimeRangeBoundary::Infinite,
+                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(15)),
+            },
+            "start_until_absolute",
+        ),
+    ];
+
+    for (view_name, view_range) in [
+        ("data", None),
+        (
+            "timeline",
+            Some(TimeRange {
+                start: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(0)),
+                end: datatypes::TimeRangeBoundary::Absolute(datatypes::TimeInt(MAX_TIME)),
+            }),
+        ),
+    ] {
+        for (data_range, data_name) in &data_ranges {
+            let view_id = setup_blueprint(
+                &mut test_context,
+                timeline.name(),
+                view_range.clone(),
+                Some(data_range.clone()),
+            );
+            test_context.run_view_ui_and_save_snapshot(
+                view_id,
+                &format!("visible_time_range_{data_name}_view_{view_name}"),
+                size,
+                None,
+            );
+        }
+    }
+}
+
+const MAX_TIME: i64 = 31;
+
+fn log_data(test_context: &mut TestContext, timeline: re_log_types::Timeline) {
+    for i in 0..=MAX_TIME {
         let timepoint = TimePoint::from([(timeline, i)]);
         let t = i as f64 / 8.0;
         test_context.log_entity("plots/sin", |builder| {
@@ -30,22 +168,14 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
             builder.with_archetype(RowId::new(), timepoint, &Scalars::single(t.cos()))
         });
     }
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline.name())],
-    );
-
-    let view_id = setup_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "blueprint_overrides_and_defaults_with_time_series",
-        egui::vec2(300.0, 300.0),
-        None,
-    );
 }
 
-fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
+fn setup_blueprint(
+    test_context: &mut TestContext,
+    timeline: &TimelineName,
+    time_axis_view: Option<TimeRange>,
+    visible_time_range: Option<TimeRange>,
+) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
@@ -55,7 +185,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         ctx.save_blueprint_archetype(
             cos_override_path.clone(),
             // Override which visualizer to use for the `cos` plot.
-            &blueprint::archetypes::VisualizerOverrides::new(["SeriesPoints"]),
+            &blueprint::archetypes::ActiveVisualizers::new(["SeriesPoints"]),
         );
         ctx.save_blueprint_archetype(
             cos_override_path,
@@ -70,6 +200,35 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
             view.defaults_path.clone(),
             &archetypes::SeriesLines::default().with_colors([(0, 0, 255)]),
         );
+
+        if let Some(time_axis_view) = time_axis_view {
+            let time_axis = re_viewport_blueprint::ViewProperty::from_archetype::<
+                blueprint::archetypes::TimeAxis,
+            >(ctx.blueprint_db(), ctx.blueprint_query, view.id);
+
+            time_axis.save_blueprint_component(
+                ctx,
+                &blueprint::archetypes::TimeAxis::descriptor_view_range(),
+                &time_axis_view,
+            );
+        }
+
+        if let Some(visible_time_range) = visible_time_range {
+            let property = re_viewport_blueprint::ViewProperty::from_archetype::<VisibleTimeRanges>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                view.id,
+            );
+
+            property.save_blueprint_component(
+                ctx,
+                &VisibleTimeRanges::descriptor_ranges(),
+                &blueprint::components::VisibleTimeRange(datatypes::VisibleTimeRange {
+                    timeline: timeline.as_str().into(),
+                    range: visible_time_range,
+                }),
+            );
+        }
 
         blueprint.add_view_at_root(view)
     })

@@ -197,7 +197,7 @@ jobs:
             - [ ] Should the GH release be published for this alpha? Make a call (give extra love to alphas deployed to Rerun Cloud or when external testing is required).
               - If yes:
                 - [ ] Edit and publish the GitHub release
-                - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclamer:
+                - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclaimer:
                       **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
               - If no:
                 - [ ] Delete the GH release draft
@@ -347,9 +347,8 @@ jobs:
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/docs-latest
 
-  github-release:
-    name: "GitHub Release"
-    if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+  tag-release:
+    name: "Tag Release"
     needs:
       [
         version,
@@ -376,17 +375,27 @@ jobs:
           version="${{ needs.version.outputs.git_tag }}"
           commit="${{ needs.version.outputs.release-commit }}"
 
+          git tag $version $commit
+          git push origin $version
+
+      - name: Create GH release
+        if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          version="${{ needs.version.outputs.git_tag }}"
+          commit="${{ needs.version.outputs.release-commit }}"
+
           if [ ${{ inputs.release-type }} = "final" ]; then
             pre_arg=""
           else
             pre_arg="--prerelease"
           fi
 
-          git tag $version $commit
-          git push origin $version
           gh release create $version --verify-tag --draft --title $version $pre_arg
 
       - name: Create comment
+        if: inputs.release-type == 'rc' || inputs.release-type == 'final'
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |

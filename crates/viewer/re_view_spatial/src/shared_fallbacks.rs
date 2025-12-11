@@ -1,6 +1,9 @@
-use re_types::{archetypes, components, image::ImageKind};
+use re_sdk_types::image::ImageKind;
+use re_sdk_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
-use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
+use re_viewer_context::{
+    IdentifiedViewSystem as _, QueryContext, ViewStateExt as _, VisualizerInstruction,
+};
 
 use crate::{SpatialViewState, visualizers};
 
@@ -63,7 +66,7 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
     // Axis length
     system_registry.register_fallback_provider(
-        archetypes::Transform3D::descriptor_axis_length().component,
+        archetypes::TransformAxes3D::descriptor_axis_length().component,
         |ctx| {
             let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
 
@@ -73,14 +76,20 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 .lookup_result_by_path(ctx.target_entity_path.hash())
                 .cloned()
                 .and_then(|data_result| {
-                    if data_result
-                        .visualizers
-                        .contains(&visualizers::CamerasVisualizer::identifier())
+                    // TODO(andreas): What if there's several camera visualizers?
+                    if let Some(camera_visualizer_instruction) = data_result
+                        .visualizer_instructions
+                        .iter()
+                        .find(|instruction| {
+                            instruction.visualizer_type
+                                == visualizers::CamerasVisualizer::identifier()
+                        })
                     {
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<archetypes::Pinhole>(
                                 ctx.view_ctx,
                                 ctx.query,
+                                camera_visualizer_instruction,
                             );
 
                         Some(
@@ -112,6 +121,47 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             // the heuristic will change it or it will be user edited. In the case of non-defined bounds
             // this value works better with the default camera setup.
             components::AxisLength::from(0.3)
+        },
+    );
+
+    // Show frame
+    system_registry.register_fallback_provider(
+        archetypes::TransformAxes3D::descriptor_show_frame().component,
+        |_ctx| {
+            // We don't show the label with the frame id by default.
+            components::ShowLabels(false.into())
+        },
+    );
+
+    system_registry.register_fallback_provider(
+        blueprint::archetypes::SpatialInformation::descriptor_target_frame().component,
+        |ctx| {
+            let space_origin = ctx.view_ctx.space_origin;
+            let query_result = ctx.viewer_ctx().lookup_query_result(ctx.view_ctx.view_id);
+
+            if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
+            {
+                // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
+                // view properties, therefore the `QueryContext`'s query & path is all about the blueprint store.
+                // However, we're now interested in something that primarily lives on the "regular" store (with optional blueprint overrides). Therefore, we must take care to use the store query.
+                let query = ctx.view_ctx.current_query();
+
+                let results = data_result
+                    .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
+                        ctx.view_ctx,
+                        &query,
+                        &VisualizerInstruction::placeholder(data_result),
+                    );
+
+                if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
+                    archetypes::CoordinateFrame::descriptor_frame().component,
+                ) {
+                    return frame_id;
+                }
+            }
+
+            // Fallback to entity path if no explicit CoordinateFrame
+            components::TransformFrameId::from_entity_path(space_origin)
         },
     );
 }

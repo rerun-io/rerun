@@ -1,21 +1,14 @@
 use egui::{Context, Modifiers, NumExt as _, Rect, Response};
-use re_view::AnnotationSceneContext;
-use walkers::{HttpTiles, Map, MapMemory, Tiles};
-
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
-use re_renderer::{
-    RenderContext, ViewBuilder, ViewPickingConfiguration, view_builder::ViewBuilderError,
-};
-use re_types::{
-    View as _, ViewClassIdentifier,
-    blueprint::{
-        archetypes::{MapBackground, MapZoom},
-        components::{MapProvider, ZoomLevel},
-    },
-};
+use re_renderer::view_builder::ViewBuilderError;
+use re_renderer::{RenderContext, ViewBuilder, ViewPickingConfiguration};
+use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
+use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
+use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
     SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
@@ -23,6 +16,7 @@ use re_viewer_context::{
     ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
+use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use crate::map_overlays;
 use crate::visualizers::{GeoLineStringsVisualizer, GeoPointsVisualizer, update_span};
@@ -88,7 +82,7 @@ impl ViewState for MapViewState {
 #[derive(Default)]
 pub struct MapView;
 
-type ViewType = re_types::blueprint::views::MapView;
+type ViewType = re_sdk_types::blueprint::views::MapView;
 
 impl ViewClass for MapView {
     fn identifier() -> ViewClassIdentifier {
@@ -176,11 +170,11 @@ impl ViewClass for MapView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state);
+            let ctx = self.view_context(ctx, view_id, state, space_origin);
             re_view::view_property_ui::<MapZoom>(&ctx, ui);
             re_view::view_property_ui::<MapBackground>(&ctx, ui);
         });
@@ -218,7 +212,7 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let view_ctx = self.view_context(ctx, query.view_id, state);
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let map_provider = map_background
             .component_or_fallback(&view_ctx, MapBackground::descriptor_provider().component)?;
         if state.selected_provider != map_provider {
@@ -301,7 +295,7 @@ impl ViewClass for MapView {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
-                &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
+                &ZoomLevel(re_sdk_types::datatypes::Float64(map_memory.zoom())),
             );
         }
 
@@ -558,6 +552,15 @@ fn get_tile_manager(
                 style: walkers::sources::MapboxStyle::Satellite,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: true,
+            },
+            options,
+            egui_ctx.clone(),
+        ),
+        MapProvider::MapboxLight => HttpTiles::with_options(
+            walkers::sources::Mapbox {
+                style: walkers::sources::MapboxStyle::Light,
+                access_token: mapbox_access_token.clone(),
+                high_resolution: false,
             },
             options,
             egui_ctx.clone(),

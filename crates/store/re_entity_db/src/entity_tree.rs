@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
-
 use re_chunk::{ComponentIdentifier, RowId, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt};
@@ -168,6 +167,11 @@ impl EntityTree {
         entity_paths_with_deletions: &IntSet<EntityPath>,
         events: &[ChunkStoreEvent],
     ) {
+        // NOTE: no re_tracing here because this is a recursive function
+        if entity_paths_with_deletions.is_empty() {
+            return; // early-out
+        }
+
         // We don't actually use the events for anything, we just want to
         // have a direct dependency on the chunk store which must have
         // produced them by the time this function was called.
@@ -260,10 +264,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{
-        EntityPath, StoreId, TimePoint, Timeline,
-        example_components::{MyPoint, MyPoints},
-    };
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};
 
     use crate::EntityDb;
 

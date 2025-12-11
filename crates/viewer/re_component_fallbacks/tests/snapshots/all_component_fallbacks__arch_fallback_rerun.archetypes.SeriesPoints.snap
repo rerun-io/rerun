@@ -1,9 +1,0 @@
----
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
-expression: arch_display
----
-colors: [2428259839]
-markers: [1]
-names: [<name>]
-visible_series: [false]
-marker_sizes: [3.0]

@@ -1,11 +1,8 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::Context as _;
 use itertools::{Itertools as _, izip};
-
 use re_chunk::Chunk;
 
 // ---
@@ -99,17 +96,15 @@ impl CompareCommand {
         }
 
         fn format_chunk(chunk: &Chunk) -> String {
-            re_format_arrow::format_record_batch_opts(
+            re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
-                &re_format_arrow::RecordBatchFormatOpts {
-                    transposed: false,
+                &re_arrow_util::RecordBatchFormatOpts {
                     width: Some(800),
-                    include_metadata: true,
-                    include_column_metadata: true,
+                    max_cell_content_width: 100,
                     trim_field_names: false,
                     trim_metadata_keys: false,
                     trim_metadata_values: false,
-                    redact_non_deterministic: false,
+                    ..Default::default()
                 },
             )
             .to_string()

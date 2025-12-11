@@ -1,32 +1,30 @@
+use std::collections::BTreeMap;
+
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
-use std::collections::BTreeMap;
+use re_protos::cloud::v1alpha1::ext::DatasetEntry;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{
+    CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
+    RegisterWithDatasetRequest, RegisterWithDatasetResponse,
+};
+use re_protos::common::v1alpha1::{IfDuplicateBehavior, TaskId};
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_types_core::AsComponents;
 use tonic::async_trait;
 use url::Url;
 
-#[cfg(feature = "lance")]
-use re_protos::cloud::v1alpha1::ext::ProviderDetails as _;
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateDatasetEntryRequest, DataSource, DataSourceKind, QueryTasksOnCompletionRequest,
-        RegisterWithDatasetRequest, RegisterWithDatasetResponse,
-        rerun_cloud_service_server::RerunCloudService,
-    },
-    common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    headers::RerunHeadersInjectorExt as _,
-};
-use re_types_core::AsComponents;
-
 use crate::{
-    RecordBatchExt as _, TempPath, TuidPrefix, create_nasty_recording,
-    create_recording_with_properties, create_simple_recording,
+    RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
+    create_recording_with_embeddings, create_recording_with_properties,
+    create_recording_with_scalars, create_recording_with_text, create_simple_recording,
 };
 
 /// Extension trait for the most common test setup tasks.
 #[async_trait]
 pub trait RerunCloudServiceExt: RerunCloudService {
-    async fn create_dataset_entry_with_name(&self, dataset_name: &str);
+    async fn create_dataset_entry_with_name(&self, dataset_name: &str) -> DatasetEntry;
 
     async fn register_with_dataset_name(
         &self,
@@ -34,19 +32,23 @@ pub trait RerunCloudServiceExt: RerunCloudService {
         data_sources: Vec<re_protos::cloud::v1alpha1::DataSource>,
     );
 
-    #[cfg(feature = "lance")]
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path);
 }
 
 #[async_trait]
 impl<T: RerunCloudService> RerunCloudServiceExt for T {
-    async fn create_dataset_entry_with_name(&self, dataset_name: &str) {
+    async fn create_dataset_entry_with_name(&self, dataset_name: &str) -> DatasetEntry {
         self.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
             name: Some(dataset_name.to_owned()),
             id: None,
         }))
         .await
-        .expect("create_dataset_entry should succeed");
+        .expect("create_dataset_entry should succeed")
+        .into_inner()
+        .dataset
+        .expect("some dataset field expected")
+        .try_into()
+        .expect("conversion to ext::DatasetEntry should succeed")
     }
 
     async fn register_with_dataset_name(
@@ -64,17 +66,17 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         register_with_dataset(self, request).await;
     }
 
-    #[cfg(feature = "lance")]
     async fn register_table_with_name(&self, table_name: &str, path: &std::path::Path) {
         let table_url =
             Url::from_directory_path(path).expect("Unable to create URL from directory path");
+        let provider_details = re_protos::cloud::v1alpha1::ext::ProviderDetails::LanceTable(
+            re_protos::cloud::v1alpha1::ext::LanceTable { table_url },
+        );
         let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
             name: table_name.to_owned(),
-            provider_details: re_protos::cloud::v1alpha1::ext::LanceTable { table_url }
-                .try_as_any()
-                .expect("Unable to create LanceTable as provider details"),
+            provider_details,
         };
-        let request = tonic::Request::new(request.into());
+        let request = tonic::Request::new(request.try_into().expect("Failed to convert request"));
 
         self.register_table(request)
             .await
@@ -100,7 +102,7 @@ async fn register_with_dataset(
 
     // extract task ids from the response record batch
     let task_ids = {
-        resp.column_by_name(RegisterWithDatasetResponse::TASK_ID)
+        resp.column_by_name(RegisterWithDatasetResponse::FIELD_TASK_ID)
             .expect("task_id column expected")
             .as_any()
             .downcast_ref::<arrow::array::StringArray>()
@@ -169,6 +171,21 @@ pub enum LayerType {
     Properties {
         properties: BTreeMap<String, Vec<Box<dyn AsComponents>>>,
     },
+
+    /// See [`crate::create_recording_with_scalars`].
+    Scalars { n: usize },
+
+    /// See [`crate::create_recording_with_text`].
+    Text,
+
+    /// See [`crate::create_recording_with_embeddings`].
+    Embeddings {
+        embeddings: u32,
+        embeddings_per_row: u32,
+    },
+
+    /// See [`crate::create_simple_blueprint`]
+    SimpleBlueprint,
 }
 
 impl LayerType {
@@ -188,21 +205,34 @@ impl LayerType {
         }
     }
 
-    fn into_recording(
-        self,
-        tuid_prefix: TuidPrefix,
-        partition_id: &str,
-    ) -> anyhow::Result<TempPath> {
-        match self {
-            Self::Simple { entities } => {
-                create_simple_recording(tuid_prefix, partition_id, entities)
-            }
+    pub fn scalars(n: usize) -> Self {
+        Self::Scalars { n }
+    }
 
-            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, partition_id, entities),
+    pub fn text() -> Self {
+        Self::Text
+    }
+
+    pub fn embeddings(embeddings: u32, embeddings_per_row: u32) -> Self {
+        Self::Embeddings {
+            embeddings,
+            embeddings_per_row,
+        }
+    }
+
+    pub fn simple_blueprint() -> Self {
+        Self::SimpleBlueprint
+    }
+
+    fn into_recording(self, tuid_prefix: TuidPrefix, segment_id: &str) -> anyhow::Result<TempPath> {
+        match self {
+            Self::Simple { entities } => create_simple_recording(tuid_prefix, segment_id, entities),
+
+            Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
             Self::Properties { properties } => create_recording_with_properties(
                 tuid_prefix,
-                partition_id,
+                segment_id,
                 // TODO(ab): avoid this annoying conversion (this requires a change to
                 // `create_recording_with_properties` which needs to be propagated to
                 // `dataplatform`.
@@ -211,30 +241,46 @@ impl LayerType {
                     .map(|(k, v)| (k.clone(), v.iter().map(|v| v.as_ref()).collect()))
                     .collect(),
             ),
+
+            Self::Scalars { n } => create_recording_with_scalars(tuid_prefix, segment_id, n),
+
+            Self::Text => create_recording_with_text(tuid_prefix, segment_id),
+
+            Self::Embeddings {
+                embeddings,
+                embeddings_per_row,
+            } => create_recording_with_embeddings(
+                tuid_prefix,
+                segment_id,
+                embeddings,
+                embeddings_per_row,
+            ),
+
+            Self::SimpleBlueprint => crate::create_simple_blueprint(tuid_prefix, segment_id),
         }
     }
 }
 
 pub struct LayerDefinition {
-    pub partition_id: &'static str,
+    pub segment_id: &'static str,
     pub layer_name: Option<&'static str>,
     pub layer_type: LayerType,
 }
 
 impl LayerDefinition {
     /// A simple layer with the provided entities
-    pub fn simple(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+    pub fn simple(segment_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::simple(entities),
         }
     }
 
     /// A layer with a nasty chunk representation for the provided entities.
-    pub fn nasty(partition_id: &'static str, entities: &'static [&'static str]) -> Self {
+    pub fn nasty(segment_id: &'static str, entities: &'static [&'static str]) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::nasty(entities),
         }
@@ -242,13 +288,49 @@ impl LayerDefinition {
 
     /// A layer with just the provided properties.
     pub fn properties(
-        partition_id: &'static str,
+        segment_id: &'static str,
         properties: impl IntoIterator<Item = (String, Box<dyn AsComponents>)>,
     ) -> Self {
         Self {
-            partition_id,
+            segment_id,
             layer_name: None,
             layer_type: LayerType::properties(properties),
+        }
+    }
+
+    /// A simple layer with a bunch of scalars, for testing B-Tree indexes.
+    pub fn scalars(segment_id: &'static str) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            // TODO(cmc): we can always expose `n` later, if and when it's useful.
+            layer_type: LayerType::scalars(10),
+        }
+    }
+
+    /// A simple layer with a bunch of text, for testing FTS indexes.
+    pub fn text(segment_id: &'static str) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::text(),
+        }
+    }
+
+    /// A simple layer with a bunch of embeddings, for testing Vector indexes.
+    pub fn embeddings(segment_id: &'static str, embeddings: u32, embeddings_per_row: u32) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::embeddings(embeddings, embeddings_per_row),
+        }
+    }
+
+    pub fn simple_blueprint(segment_id: &'static str) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::simple_blueprint(),
         }
     }
 
@@ -296,7 +378,7 @@ impl DataSourcesDefinition {
                             .layer_type
                             .into_recording(
                                 tuid_prefix.saturating_add(tuid_prefix_increment as _),
-                                layer.partition_id,
+                                layer.segment_id,
                             )
                             .unwrap(),
                     )

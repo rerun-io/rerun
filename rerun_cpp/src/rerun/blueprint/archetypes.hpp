@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "blueprint/archetypes/active_visualizers.hpp"
 #include "blueprint/archetypes/background.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/dataframe_query.hpp"
@@ -21,9 +22,13 @@
 #include "blueprint/archetypes/plot_background.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"
+#include "blueprint/archetypes/spatial_information.hpp"
 #include "blueprint/archetypes/tensor_scalar_mapping.hpp"
 #include "blueprint/archetypes/tensor_slice_selection.hpp"
 #include "blueprint/archetypes/tensor_view_fit.hpp"
+#include "blueprint/archetypes/text_log_columns.hpp"
+#include "blueprint/archetypes/text_log_format.hpp"
+#include "blueprint/archetypes/text_log_rows.hpp"
 #include "blueprint/archetypes/time_axis.hpp"
 #include "blueprint/archetypes/time_panel_blueprint.hpp"
 #include "blueprint/archetypes/view_blueprint.hpp"
@@ -31,4 +36,4 @@
 #include "blueprint/archetypes/viewport_blueprint.hpp"
 #include "blueprint/archetypes/visible_time_ranges.hpp"
 #include "blueprint/archetypes/visual_bounds2d.hpp"
-#include "blueprint/archetypes/visualizer_overrides.hpp"
+#include "blueprint/archetypes/visualizer_instruction.hpp"

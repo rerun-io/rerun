@@ -27,7 +27,7 @@ namespace rerun::archetypes {
 
     /// Creates new `Ellipsoids3D` with `centers` and `half_sizes`.
     static Ellipsoids3D from_centers_and_half_sizes(
-        Collection<components::PoseTranslation3D> centers,
+        Collection<components::Translation3D> centers,
         Collection<components::HalfSize3D> half_sizes
     ) {
         return Ellipsoids3D()

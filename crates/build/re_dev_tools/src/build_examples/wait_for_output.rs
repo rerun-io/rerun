@@ -1,10 +1,8 @@
-use std::io::IsTerminal as _;
-use std::io::stdout;
+use std::io::{IsTerminal as _, stdout};
 use std::process::Command;
 use std::time::Duration;
 
-use indicatif::MultiProgress;
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 
 /// Returns an error on non-zero returncode.
 pub fn wait_for_output(

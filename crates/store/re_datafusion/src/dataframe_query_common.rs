@@ -18,19 +18,15 @@ use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
-
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::FetchChunksRequest;
-use re_protos::{
-    cloud::v1alpha1::{
-        GetDatasetSchemaRequest, QueryDatasetRequest, ScanPartitionTableResponse,
-        ext::{Query, QueryLatestAt, QueryRange},
-    },
-    common::v1alpha1::ext::ScanParameters,
-    headers::RerunHeadersInjectorExt as _,
+use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{
+    FetchChunksRequest, GetDatasetSchemaRequest, QueryDatasetResponse, ScanSegmentTableResponse,
 };
+use re_protos::common::v1alpha1::ext::ScanParameters;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
@@ -49,6 +45,11 @@ pub struct DataframeQueryTableProvider {
     sort_index: Option<Index>,
     chunk_info_batches: Arc<Vec<RecordBatch>>,
     client: ConnectionClient,
+
+    /// passing trace headers between phases of execution pipeline helps keep
+    /// the entire operation under a single trace.
+    #[cfg(not(target_arch = "wasm32"))]
+    trace_headers: Option<crate::TraceHeaders>,
 }
 
 impl DataframeQueryTableProvider {
@@ -61,7 +62,8 @@ impl DataframeQueryTableProvider {
         connection: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
-        partition_ids: &[impl AsRef<str> + Sync],
+        segment_ids: &[impl AsRef<str> + Sync],
+        #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
     ) -> Result<Self, DataFusionError> {
         use futures::StreamExt as _;
 
@@ -109,33 +111,27 @@ impl DataframeQueryTableProvider {
         let query = query_from_query_expression(query_expression);
 
         let dataset_query = QueryDatasetRequest {
-            partition_ids: partition_ids
+            segment_ids: segment_ids
                 .iter()
                 .map(|id| id.as_ref().to_owned().into())
                 .collect(),
             chunk_ids: vec![],
-            entity_paths: entity_paths
-                .into_iter()
-                .map(|p| (*p).clone().into())
-                .collect(),
+            entity_paths: entity_paths.into_iter().map(|p| (*p).clone()).collect(),
             select_all_entity_paths,
             fuzzy_descriptors,
             exclude_static_data: false,
             exclude_temporal_data: false,
-            query: Some(query.into()),
-            scan_parameters: Some(
-                ScanParameters {
-                    columns: FetchChunksRequest::required_column_names(),
-                    ..Default::default()
-                }
-                .into(),
-            ),
+            query: Some(query),
+            scan_parameters: Some(ScanParameters {
+                columns: FetchChunksRequest::required_column_names(),
+                ..Default::default()
+            }),
         };
 
         let response_stream = client
             .inner()
             .query_dataset(
-                tonic::Request::new(dataset_query)
+                tonic::Request::new(dataset_query.into())
                     .with_entry_id(dataset_id)
                     .map_err(|err| exec_datafusion_err!("{err}"))?,
             )
@@ -161,7 +157,7 @@ impl DataframeQueryTableProvider {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanPartitionTableResponse::FIELD_PARTITION_ID,
+            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
         ));
 
         Ok(Self {
@@ -170,6 +166,8 @@ impl DataframeQueryTableProvider {
             sort_index: query_expression.filtered_index,
             chunk_info_batches,
             client,
+            #[cfg(not(target_arch = "wasm32"))]
+            trace_headers,
         })
     }
 
@@ -257,7 +255,7 @@ impl TableProvider for DataframeQueryTableProvider {
                     .next();
         }
 
-        crate::PartitionStreamExec::try_new(
+        crate::SegmentStreamExec::try_new(
             &self.schema,
             self.sort_index,
             projection,
@@ -265,6 +263,8 @@ impl TableProvider for DataframeQueryTableProvider {
             Arc::clone(&self.chunk_info_batches),
             query_expression,
             self.client.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            self.trace_headers.clone(),
         )
         .map(Arc::new)
         .map(|exec| {
@@ -308,6 +308,12 @@ fn compute_schema_for_query(
     dataset_schema: &Schema,
     query_expression: &QueryExpression,
 ) -> Result<SchemaRef, DataFusionError> {
+    // Short circuit for empty datasets. Needed because `ChunkColumnDescriptors::try_from_arrow_fields`
+    // needs row ids, which we only have for non-empty datasets.
+    if dataset_schema.fields.is_empty() {
+        return Ok(Arc::new(Schema::empty()));
+    }
+
     // Schema returned from `get_dataset_schema` does not match the required ChunkColumnDescriptors ordering
     // which is row id, then time, then data. We don't need perfect ordering other than that.
     let mut fields = dataset_schema
@@ -392,46 +398,49 @@ pub fn align_record_batch_to_schema(
     )?)
 }
 
-/// We need to create `num_partitions` of partition stream outputs, each of
-/// which will be fed from multiple `rerun_partition_id` sources. The partitioning
-/// output is a hash of the `rerun_partition_id`. We will reuse some of the
+/// We need to create `num_partitions` of DataFusion partition stream outputs, each of
+/// which will be fed from multiple `rerun_segment_id` sources. The partitioning
+/// output is a hash of the `rerun_segment_id`. We will reuse some of the
 /// underlying execution code from `DataFusion`'s `RepartitionExec` to compute
-/// these partition IDs, just to be certain they match partitioning generated
+/// these DataFusion partition IDs, just to be certain they match partitioning generated
 /// from sources other than Rerun gRPC services.
-/// This function will do the relevant grouping of chunk infos by chunk's partition id
-/// and we will eventually fire individual queries for each group. Partitions must be ordered,
-/// see `PartitionStreamExec::try_new` for more details.
+/// This function will do the relevant grouping of chunk infos by chunk's segment id
+/// and we will eventually fire individual queries for each group. Segments must be ordered,
+/// see `SegmentStreamExec::try_new` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
-pub(crate) fn group_chunk_infos_by_partition_id(
+pub(crate) fn group_chunk_infos_by_segment_id(
     chunk_info_batches: &Arc<Vec<RecordBatch>>,
 ) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
     let mut results = BTreeMap::new();
 
     for batch in chunk_info_batches.as_ref() {
-        let partition_ids = batch
-            .column_by_name("chunk_partition_id")
+        let segment_ids = batch
+            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
             .ok_or(exec_datafusion_err!(
-                "Unable to find chunk_partition_id column"
+                "Unable to find {} column",
+                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?
             .as_any()
             .downcast_ref::<StringArray>()
             .ok_or(exec_datafusion_err!(
-                "chunk_partition_id must be string type"
+                "{} must be string type",
+                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?;
 
-        // group rows by partition ID
-        let mut partition_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-        for (row_idx, partition_id) in partition_ids.iter().enumerate() {
-            let pid = partition_id.ok_or(exec_datafusion_err!(
-                "Found null partition_id in chunk_partition_id column at row {row_idx}"
+        // group rows by segment ID
+        let mut segment_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+        for (row_idx, segment_id) in segment_ids.iter().enumerate() {
+            let sid = segment_id.ok_or(exec_datafusion_err!(
+                "Found null segment id in {} column at row {row_idx}",
+                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
             ))?;
-            partition_rows
-                .entry(pid.to_owned())
+            segment_rows
+                .entry(sid.to_owned())
                 .or_default()
                 .push(row_idx);
         }
 
-        for (partition_id, row_indices) in partition_rows {
+        for (segment_id, row_indices) in segment_rows {
             if row_indices.is_empty() {
                 continue;
             }
@@ -440,12 +449,12 @@ pub(crate) fn group_chunk_infos_by_partition_id(
             let indices = arrow::array::UInt32Array::from(
                 row_indices.iter().map(|&i| i as u32).collect::<Vec<_>>(),
             );
-            let partition_batch = arrow::compute::take_record_batch(batch, &indices)?;
+            let segment_batch = arrow::compute::take_record_batch(batch, &indices)?;
 
             results
-                .entry(partition_id)
+                .entry(segment_id)
                 .or_insert_with(Vec::new)
-                .push(partition_batch);
+                .push(segment_batch);
         }
     }
 
@@ -526,19 +535,19 @@ mod tests {
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                Field::new("chunk_partition_id", DataType::Utf8, false),
-                Field::new("chunk_id", DataType::FixedSizeBinary(32), false),
+                QueryDatasetResponse::field_chunk_segment_id(),
+                QueryDatasetResponse::field_chunk_id(),
             ],
             HashMap::default(),
         ));
 
         let capacity = 4;
-        let byte_width = 32;
+        let byte_width = 16;
         let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
-        chunk_id_builder.append_value([0u8; 32]).unwrap();
-        chunk_id_builder.append_value([1u8; 32]).unwrap();
-        chunk_id_builder.append_value([2u8; 32]).unwrap();
-        chunk_id_builder.append_value([3u8; 32]).unwrap();
+        chunk_id_builder.append_value([0u8; 16]).unwrap();
+        chunk_id_builder.append_value([1u8; 16]).unwrap();
+        chunk_id_builder.append_value([2u8; 16]).unwrap();
+        chunk_id_builder.append_value([3u8; 16]).unwrap();
         let chunk_id_array = Arc::new(chunk_id_builder.finish());
 
         let batch1 = RecordBatch::try_new_with_options(
@@ -557,9 +566,9 @@ mod tests {
         .unwrap();
 
         let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(capacity, byte_width);
-        chunk_id_builder.append_value([4u8; 32]).unwrap();
-        chunk_id_builder.append_value([5u8; 32]).unwrap();
-        chunk_id_builder.append_value([6u8; 32]).unwrap();
+        chunk_id_builder.append_value([4u8; 16]).unwrap();
+        chunk_id_builder.append_value([5u8; 16]).unwrap();
+        chunk_id_builder.append_value([6u8; 16]).unwrap();
         let chunk_id_array = Arc::new(chunk_id_builder.finish());
 
         let batch2 = RecordBatch::try_new_with_options(
@@ -574,7 +583,7 @@ mod tests {
 
         let chunk_info_batches = Arc::new(vec![batch1, batch2]);
 
-        let grouped = group_chunk_infos_by_partition_id(&chunk_info_batches).unwrap();
+        let grouped = group_chunk_infos_by_segment_id(&chunk_info_batches).unwrap();
 
         assert_eq!(grouped.len(), 4);
 
@@ -587,8 +596,8 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_a.len(), 2);
-        assert_eq!(chunk_ids_a.value(0), [0u8; 32]);
-        assert_eq!(chunk_ids_a.value(1), [2u8; 32]);
+        assert_eq!(chunk_ids_a.value(0), [0u8; 16]);
+        assert_eq!(chunk_ids_a.value(1), [2u8; 16]);
 
         let group_b = grouped.get("B").unwrap();
         assert_eq!(group_b.len(), 2);
@@ -599,7 +608,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_b1.len(), 1);
-        assert_eq!(chunk_ids_b1.value(0), [1u8; 32]);
+        assert_eq!(chunk_ids_b1.value(0), [1u8; 16]);
         let chunk_ids_b2 = group_b[1]
             .column_by_name("chunk_id")
             .unwrap()
@@ -607,7 +616,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_b2.len(), 1);
-        assert_eq!(chunk_ids_b2.value(0), [4u8; 32]);
+        assert_eq!(chunk_ids_b2.value(0), [4u8; 16]);
 
         let group_c = grouped.get("C").unwrap();
         assert_eq!(group_c.len(), 2);
@@ -618,7 +627,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_c1.len(), 1);
-        assert_eq!(chunk_ids_c1.value(0), [3u8; 32]);
+        assert_eq!(chunk_ids_c1.value(0), [3u8; 16]);
         let chunk_ids_c2 = group_c[1]
             .column_by_name("chunk_id")
             .unwrap()
@@ -626,7 +635,7 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_c2.len(), 1);
-        assert_eq!(chunk_ids_c2.value(0), [5u8; 32]);
+        assert_eq!(chunk_ids_c2.value(0), [5u8; 16]);
 
         let group_d = grouped.get("D").unwrap();
         assert_eq!(group_d.len(), 1);
@@ -637,6 +646,6 @@ mod tests {
             .downcast_ref::<FixedSizeBinaryArray>()
             .unwrap();
         assert_eq!(chunk_ids_d.len(), 1);
-        assert_eq!(chunk_ids_d.value(0), [6u8; 32]);
+        assert_eq!(chunk_ids_d.value(0), [6u8; 16]);
     }
 }

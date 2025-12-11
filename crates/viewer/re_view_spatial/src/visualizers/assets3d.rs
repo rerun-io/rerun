@@ -1,20 +1,19 @@
 use re_chunk_store::RowId;
-use re_log_types::{Instance, TimeInt, hash::Hash64};
+use re_log_types::hash::Hash64;
+use re_log_types::{Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{Archetype as _, ArrowString, archetypes::Asset3D, components::AlbedoFactor};
+use re_sdk_types::ArrowString;
+use re_sdk_types::archetypes::Asset3D;
+use re_sdk_types::components::AlbedoFactor;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
-
-use crate::{
-    caches::{AnyMesh, MeshCache, MeshCacheKey},
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-};
+use super::SpatialViewVisualizerData;
+use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
 
 pub struct Asset3DVisualizer(SpatialViewVisualizerData);
 
@@ -30,7 +29,7 @@ struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: re_types::datatypes::Blob,
+    blob: re_sdk_types::datatypes::Blob,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
 }
@@ -80,10 +79,8 @@ impl Asset3DVisualizer {
 
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): This a rare form of hybrid joining.
-                for &world_from_pose in ent_context
-                    .transform_info
-                    .target_from_instances(Asset3D::name())
-                {
+                for &world_from_pose in ent_context.transform_info.target_from_instances() {
+                    let world_from_pose = world_from_pose.as_affine3a();
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_pose * pose_from_mesh;
@@ -118,21 +115,14 @@ impl VisualizerSystem for Asset3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Asset3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+        let preferred_view_kind = self.0.preferred_view_kind;
         let mut instances = Vec::new();
 
         use super::entity_iterator::{iter_slices, process_archetype};
@@ -140,6 +130,8 @@ impl VisualizerSystem for Asset3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -184,13 +176,13 @@ impl VisualizerSystem for Asset3DVisualizer {
             },
         )?;
 
-        match re_renderer::renderer::MeshDrawData::new(ctx.viewer_ctx.render_ctx(), &instances) {
-            Ok(draw_data) => Ok(vec![draw_data.into()]),
-            Err(err) => {
-                re_log::error_once!("Failed to create mesh draw data from mesh instances: {err}");
-                Ok(Vec::new()) // TODO(andreas): Pass error on?
-            }
-        }
+        Ok(
+            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+                ctx.viewer_ctx.render_ctx(),
+                &instances,
+            )?
+            .into()]),
+        )
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

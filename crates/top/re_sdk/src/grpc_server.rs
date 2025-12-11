@@ -14,7 +14,7 @@ pub struct GrpcServerSink {
     uri: re_uri::ProxyUri,
 
     /// Sender to send messages to the gRPC server.
-    sender: re_smart_channel::Sender<LogMsg>,
+    sender: re_log_channel::LogSender,
 
     /// The gRPC server thread.
     _server_handle: std::thread::JoinHandle<()>,
@@ -38,10 +38,7 @@ impl GrpcServerSink {
             re_uri::Scheme::RerunHttp,
             grpc_server_addr,
         ));
-        let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
-            re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
-            re_smart_channel::SmartChannelSource::Sdk,
-        );
+        let (channel_tx, channel_rx) = re_log_channel::log_channel(re_log_channel::LogSource::Sdk);
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
             .spawn(move || {
@@ -74,7 +71,7 @@ impl GrpcServerSink {
 
 impl crate::sink::LogSink for GrpcServerSink {
     fn send(&self, msg: LogMsg) {
-        if let Err(err) = self.sender.send(msg) {
+        if let Err(err) = self.sender.send(msg.into()) {
             re_log::error_once!("Failed to send log message to gRPC server: {err}");
         }
     }
@@ -84,10 +81,10 @@ impl crate::sink::LogSink for GrpcServerSink {
         self.sender
             .flush_blocking(timeout)
             .map_err(|err| match err {
-                re_smart_channel::FlushError::Closed => {
+                re_log_channel::FlushError::Closed => {
                     SinkFlushError::failed("gRPC server thread shut down")
                 }
-                re_smart_channel::FlushError::Timeout => SinkFlushError::Timeout,
+                re_log_channel::FlushError::Timeout => SinkFlushError::Timeout,
             })
     }
 

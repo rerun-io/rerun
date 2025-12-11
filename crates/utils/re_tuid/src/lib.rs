@@ -67,7 +67,7 @@ pub struct Tuid {
 impl Tuid {
     /// We give an actual name to [`Tuid`], and inject that name into the Arrow datatype extensions,
     /// as a hack so that we can compactly format them when printing Arrow data to the terminal.
-    /// Check out `re_format_arrow` for context.
+    /// Check out `re_arrow_util::format` for context.
     pub const ARROW_EXTENSION_NAME: &'static str = "rerun.datatypes.TUID";
 }
 
@@ -168,6 +168,12 @@ impl Tuid {
     #[inline]
     pub fn from_u128(id: u128) -> Self {
         Self::from_nanos_and_inc((id >> 64) as u64, (id & (!0 >> 64)) as u64)
+    }
+
+    #[cfg(feature = "bytemuck")]
+    #[inline]
+    pub fn slice_from_bytes(bytes: &[u8]) -> Result<&[Self], bytemuck::PodCastError> {
+        bytemuck::try_cast_slice(bytes)
     }
 
     #[inline]

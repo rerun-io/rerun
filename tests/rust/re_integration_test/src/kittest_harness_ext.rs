@@ -1,36 +1,32 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
+use std::sync::Arc;
 
-use egui::Modifiers;
-use egui::PointerButton;
-use egui::accesskit::Role;
-use egui::accesskit::Toggled;
-use egui_kittest::kittest::NodeT as _;
-use egui_kittest::kittest::Queryable as _;
+use egui::accesskit::{Role, Toggled};
+use egui::{Modifiers, PointerButton};
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use parking_lot::Mutex;
+use re_sdk::external::re_log_types::{SetStoreInfo, StoreInfo};
+use re_sdk::external::re_tuid::Tuid;
+use re_sdk::log::Chunk;
 use re_sdk::{
     Component as _, ComponentDescriptor, EntityPath, EntityPathPart, RecordingInfo, StoreId,
     StoreKind,
-    external::{
-        re_log_types::{SetStoreInfo, StoreInfo},
-        re_tuid::Tuid,
-    },
-    log::Chunk,
 };
-use re_viewer::{
-    SystemCommand, SystemCommandSender as _,
-    external::{
-        re_chunk::{ChunkBuilder, LatestAtQuery},
-        re_entity_db::EntityDb,
-        re_types,
-        re_viewer_context::{self, ViewerContext, blueprint_timeline},
-    },
-    viewer_test_utils::AppTestingExt as _,
-};
+use re_viewer::external::re_chunk::{ChunkBuilder, LatestAtQuery};
+use re_viewer::external::re_entity_db::EntityDb;
+use re_viewer::external::re_sdk_types;
+use re_viewer::external::re_viewer_context::{self, ViewerContext, blueprint_timeline};
+use re_viewer::viewer_test_utils::AppTestingExt as _;
+use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::ContainerId;
 use re_viewport_blueprint::ViewportBlueprint;
 
+// use crate::GetSection;
+// use crate::GetSection as _;
+use crate::ViewerSection;
+
 // Kittest harness utilities specific to the Rerun app.
-pub trait HarnessExt {
+pub trait HarnessExt<'h> {
     // Initializes the chuck store with a new, empty recording and blueprint.
     fn init_recording(&mut self);
 
@@ -64,29 +60,20 @@ pub trait HarnessExt {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     );
 
-    // Finds the nth node with a given label
-    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a>;
-
     // Get the position of a node in the UI by its label.
     fn get_panel_position(&mut self, label: &str) -> egui::Rect;
 
-    // Clicks a node in the UI by its label.
-    fn click_label(&mut self, label: &str);
-    fn right_click_label(&mut self, label: &str);
-    fn click_label_contains(&mut self, label: &str);
-    fn click_nth_label(&mut self, label: &str, index: usize);
-    fn right_click_nth_label(&mut self, label: &str, index: usize);
-    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers);
-    fn hover_label_contains(&mut self, label: &str);
-    fn hover_nth_label(&mut self, label: &str, index: usize);
+    // Click at a position in the UI.
+    fn click_at(&mut self, pos: egui::Pos2);
 
-    // Drag-and-drop functions. You can use `hover` between `drag` and `drop`.
-    fn drag_nth_label(&mut self, label: &str, index: usize);
-    fn drop_nth_label(&mut self, label: &str, index: usize);
-
+    // Drag-and-drop functions based on position
     fn drag_at(&mut self, pos: egui::Pos2);
     fn hover_at(&mut self, pos: egui::Pos2);
     fn drop_at(&mut self, pos: egui::Pos2);
+    fn right_click_at(&mut self, pos: egui::Pos2);
+
+    // Gets the cursor icon
+    fn cursor_icon(&mut self) -> egui::CursorIcon;
 
     // Changes the value of a dropdown menu.
     fn change_dropdown_value(&mut self, dropdown_label: &str, value: &str);
@@ -111,9 +98,80 @@ pub trait HarnessExt {
     fn set_time_panel_opened(&mut self, opened: bool) {
         self.set_panel_opened("Time panel toggle", opened);
     }
+
+    // Get a viewer section, eg. blueprint tree or selection panel.
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    // The viewer section whose root node is the root of the app.
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a;
+
+    /// Helper function to save the active recording to file for troubleshooting.
+    ///
+    /// Note: Right now it _only_ saves the recording and blueprints are ignored.
+    fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>);
+
+    /// Helper function to save the active blueprint to file for troubleshooting.
+    fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>);
+
+    // The viewer section whose root node is the blueprint tree.
+    fn blueprint_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_blueprint_tree")
+    }
+
+    // The viewer section whose root node is the streams tree.
+    fn streams_tree<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_streams_tree")
+    }
+
+    // The viewer section whose root node is the selection panel.
+    fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_selection_panel")
+    }
+
+    // Convenience proxy functions to the root section:
+
+    fn click_label(&mut self, label: &str) {
+        self.root_section().click_label(label);
+    }
+
+    fn right_click_label(&mut self, label: &str) {
+        self.root_section().right_click_label(label);
+    }
+
+    fn click_label_contains(&mut self, label: &str) {
+        self.root_section().click_label_contains(label);
+    }
+
+    fn click_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().click_nth_label(label, index);
+    }
+
+    fn right_click_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().right_click_nth_label(label, index);
+    }
+
+    fn hover_label_contains(&mut self, label: &str) {
+        self.root_section().hover_label_contains(label);
+    }
+
+    fn hover_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().hover_nth_label(label, index);
+    }
+
+    fn drag_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().drag_nth_label(label, index);
+    }
+
+    fn drop_nth_label(&mut self, label: &str, index: usize) {
+        self.root_section().drop_nth_label(label, index);
+    }
 }
 
-impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
+impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
     fn clear_current_blueprint(&mut self) {
         self.setup_viewport_blueprint(|_viewer_context, blueprint| {
             for item in blueprint.contents_iter() {
@@ -179,7 +237,7 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         let app = self.state_mut();
         let store_hub = app.testonly_get_store_hub();
 
-        let store_info = StoreInfo::testing();
+        let store_info = StoreInfo::testing_with_recording_id("test_recording"); // Fixed id shouldn't cause any problems with store subscribers here since we tear down the entire application for every test.
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
         let mut recording_store = EntityDb::new(recording_store_id.clone());
@@ -194,14 +252,14 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_name(),
-                    &re_types::components::Name::from("Test recording"),
+                    &re_sdk_types::components::Name::from("Test recording"),
                 )
                 .expect("Failed to set recording name");
             recording_store
                 .set_recording_property(
                     EntityPath::properties(),
                     RecordingInfo::descriptor_start_time(),
-                    &re_types::components::Timestamp::now(),
+                    &re_sdk_types::components::Timestamp::from(0),
                 )
                 .expect("Failed to set recording start time");
         }
@@ -213,9 +271,9 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
                     ComponentDescriptor {
                         archetype: None,
                         component: "location".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Swallow Falls"),
+                    &re_sdk_types::components::Text::from("Swallow Falls"),
                 )
                 .expect("Failed to set recording property");
             recording_store
@@ -224,9 +282,9 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
                     ComponentDescriptor {
                         archetype: None,
                         component: "weather".into(),
-                        component_type: Some(re_types::components::Text::name()),
+                        component_type: Some(re_sdk_types::components::Text::name()),
                     },
-                    &re_types::components::Text::from("Cloudy with meatballs"),
+                    &re_sdk_types::components::Text::from("Cloudy with meatballs"),
                 )
                 .expect("Failed to set recording property");
         }
@@ -247,89 +305,20 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         self.run_ok();
     }
 
-    fn click_label(&mut self, label: &str) {
-        self.get_by_label(label).click();
-        self.run_ok();
-    }
-
-    fn right_click_label(&mut self, label: &str) {
-        self.get_by_label(label).click_secondary();
-        self.run_ok();
-    }
-
-    fn click_label_contains(&mut self, label: &str) {
-        self.get_by_label_contains(label).click();
-        self.run_ok();
-    }
-
-    fn get_nth_label<'a>(&'a mut self, label: &'a str, index: usize) -> egui_kittest::Node<'a> {
-        let mut nodes = self.get_all_by_label(label).collect::<Vec<_>>();
-        assert!(
-            index < nodes.len(),
-            "Failed to find label '{label}' #{index}, there are only {} nodes:\n{nodes:#?}",
-            nodes.len()
-        );
-        nodes.swap_remove(index)
-    }
-
     fn get_panel_position(&mut self, label: &str) -> egui::Rect {
         self.get_by_role_and_label(Role::Pane, label).rect()
     }
 
-    fn click_nth_label(&mut self, label: &str, index: usize) {
-        self.click_nth_label_modifiers(label, index, Modifiers::NONE);
-    }
-
-    fn right_click_nth_label(&mut self, label: &str, index: usize) {
-        self.get_nth_label(label, index).click_secondary();
-        self.run_ok();
-    }
-
-    fn hover_label_contains(&mut self, label: &str) {
-        self.get_by_label_contains(label).hover();
-        self.run_ok();
-    }
-
-    fn hover_nth_label(&mut self, label: &str, index: usize) {
-        self.get_nth_label(label, index).hover();
-        self.run_ok();
-    }
-
-    fn click_nth_label_modifiers(&mut self, label: &str, index: usize, modifiers: Modifiers) {
-        self.get_nth_label(label, index).click_modifiers(modifiers);
-        self.run_ok();
-    }
-
-    fn drag_nth_label(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-
-        let center = node.rect().center();
-        self.event(egui::Event::PointerButton {
-            pos: center,
-            button: PointerButton::Primary,
-            pressed: true,
-            modifiers: Modifiers::NONE,
-        });
-
-        // Step until the time has passed `max_click_duration` so this gets
-        // registered as a drag.
-        let wait_time = self.ctx.options(|o| o.input_options.max_click_duration);
-        let end_time = self.ctx.input(|i| i.time + wait_time);
-        while self.ctx.input(|i| i.time) < end_time {
-            self.step();
+    fn click_at(&mut self, pos: egui::Pos2) {
+        for pressed in [true, false] {
+            self.event(egui::Event::PointerButton {
+                pos,
+                button: PointerButton::Primary,
+                pressed,
+                modifiers: Modifiers::NONE,
+            });
+            self.run();
         }
-    }
-
-    fn drop_nth_label(&mut self, label: &str, index: usize) {
-        let node = self.get_nth_label(label, index);
-        let event = egui::Event::PointerButton {
-            pos: node.rect().center(),
-            button: PointerButton::Primary,
-            pressed: false,
-            modifiers: Modifiers::NONE,
-        };
-        self.event(event);
-        self.remove_cursor();
     }
 
     fn drag_at(&mut self, pos: egui::Pos2) {
@@ -356,6 +345,28 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         });
         self.remove_cursor();
         self.run_ok();
+    }
+
+    fn right_click_at(&mut self, pos: egui::Pos2) {
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Secondary,
+            pressed: true,
+            modifiers: Modifiers::NONE,
+        });
+        self.event(egui::Event::PointerButton {
+            pos,
+            button: PointerButton::Secondary,
+            pressed: false,
+            modifiers: Modifiers::NONE,
+        });
+        self.run();
+    }
+
+    fn cursor_icon(&mut self) -> egui::CursorIcon {
+        self.run_with_viewer_context(|viewer_context| {
+            viewer_context.egui_ctx().output(|o| o.cursor_icon)
+        })
     }
 
     fn debug_viewer_state(&mut self) {
@@ -433,5 +444,61 @@ impl HarnessExt for egui_kittest::Harness<'_, re_viewer::App> {
         }
         self.remove_cursor();
         self.run_ok();
+    }
+
+    fn section<'a>(&'a mut self, section_label: &'a str) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: Some(section_label),
+        }
+    }
+
+    fn root_section<'a>(&'a mut self) -> ViewerSection<'a, 'h>
+    where
+        'h: 'a,
+    {
+        ViewerSection::<'a, 'h> {
+            harness: self,
+            section_label: None,
+        }
+    }
+
+    fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>) {
+        let mut file = std::fs::File::create(&path)
+            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+
+        let store_hub = self.state_mut().testonly_get_store_hub();
+        let recording_entity_db = store_hub.active_recording().expect("No active recording");
+        let messages = recording_entity_db.to_messages(None);
+
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::Encoder::encode_into(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            messages,
+            &mut file,
+        )
+        .expect("Failed to encode recording to file");
+    }
+
+    fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>) {
+        let mut file = std::fs::File::create(&path)
+            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+
+        let store_hub = self.state_mut().testonly_get_store_hub();
+        let blueprint_entity_db = store_hub.active_blueprint().expect("No active blueprint");
+        let messages = blueprint_entity_db.to_messages(None);
+
+        let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
+        re_log_encoding::Encoder::encode_into(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            messages,
+            &mut file,
+        )
+        .expect("Failed to encode blueprint to file");
     }
 }

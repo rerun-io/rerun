@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{Array as _, ArrayRef, FixedSizeListArray, ListArray, RecordBatch, RecordBatchOptions},
-    datatypes::{Field, Schema},
-    error::ArrowError,
+use arrow::array::{
+    Array as _, ArrayRef, FixedSizeListArray, ListArray, RecordBatch, RecordBatchOptions,
 };
+use arrow::datatypes::{Field, Schema};
+use arrow::error::ArrowError;
 use itertools::Itertools as _;
-
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, TimeInt, TimelineName};
@@ -102,7 +101,7 @@ impl ChunkStore {
                     let mut new_field =
                         Field::new(name.clone(), list_array.data_type().clone(), nullable);
 
-                    // TODO(rerun-io/dataplatform#567) it seems we're hitting https://github.com/lancedb/lance/issues/2304. So what happens is that
+                    // TODO(rerun-io/dataplatform#567) it seems we're hitting https://github.com/lance-format/lance/issues/2304. So what happens is that
                     // we store a properties with a FixedSizeList and Lance stores it as nullable = true, regardless of the input
                     // field. If we then try to register another partition with the same property, but with nullable = false, we'll
                     // get a "Cannot change field type for field" error. Hence, we have to make field nullable in case of FixedSizeList

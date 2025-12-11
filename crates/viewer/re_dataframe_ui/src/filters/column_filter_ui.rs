@@ -1,9 +1,9 @@
 use std::mem;
 
 use egui::{Atom, AtomLayout, Atoms, Frame, Margin, Sense};
-
 use re_log_types::TimestampFormat;
-use re_ui::{UiExt as _, syntax_highlighting::SyntaxHighlightedBuilder};
+use re_ui::UiExt as _;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 
 use super::{ColumnFilter, Filter as _, TimestampFormatted};
 use crate::TableBlueprint;

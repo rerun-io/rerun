@@ -1,24 +1,21 @@
+use std::sync::Arc;
+
 use egui::NumExt as _;
 use egui_extras::Column;
-
 use re_format::time::format_relative_timestamp_secs;
-use re_renderer::{
-    external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
-    video::VideoFrameTexture,
-};
-use re_types::components::{MediaType, VideoTimestamp};
-use re_types::{Archetype as _, archetypes};
+use re_renderer::external::re_video::VideoLoadError;
+use re_renderer::resource_managers::SourceImageDataFormat;
+use re_renderer::video::VideoFrameTexture;
+use re_sdk_types::components::{MediaType, VideoTimestamp};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, RowId};
-use re_ui::{
-    UiExt as _,
-    list_item::{self, PropertyContent},
-};
+use re_ui::UiExt as _;
+use re_ui::list_item::{self, PropertyContent};
 use re_video::{FrameInfo, StableIndexDeque, VideoDataDescription};
 use re_viewer_context::{
     SharablePlayableVideoStream, UiLayout, VideoStreamCache, VideoStreamProcessingError,
     ViewerContext, video_stream_time_from_query,
 };
-use std::sync::Arc;
 
 use crate::image::texture_preview_size;
 
@@ -586,7 +583,7 @@ pub enum VideoUi {
     Asset(
         Arc<Result<re_renderer::video::Video, VideoLoadError>>,
         Option<VideoTimestamp>,
-        re_types::datatypes::Blob,
+        re_sdk_types::datatypes::Blob,
     ),
 }
 
@@ -596,7 +593,7 @@ impl VideoUi {
         entity_path: &re_log_types::EntityPath,
         blob_row_id: RowId,
         blob_component_descriptor: &ComponentDescriptor,
-        blob: &re_types::datatypes::Blob,
+        blob: &re_sdk_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         video_timestamp: Option<VideoTimestamp>,
     ) -> Option<Self> {

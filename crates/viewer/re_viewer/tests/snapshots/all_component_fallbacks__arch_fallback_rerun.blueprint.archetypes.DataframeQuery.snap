@@ -1,0 +1,9 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+timeline: [log_time]
+filter_by_range: [{start: -9223372036854775807, end: 9223372036854775807}]
+filter_is_not_null: [{active: false, column: {entity_path: , component: }}]
+apply_latest_at: [false]
+select: [{time_columns: [], component_columns: []}]

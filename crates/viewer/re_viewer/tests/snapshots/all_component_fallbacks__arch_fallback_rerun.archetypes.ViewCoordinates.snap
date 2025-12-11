@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+xyz: [[3, 2, 5]]

@@ -1,0 +1,15 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A reference to a range of time.
+struct AbsoluteTimeRange (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  range: rerun.datatypes.AbsoluteTimeRange (order: 100);
+}
+

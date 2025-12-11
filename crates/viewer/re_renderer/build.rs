@@ -18,11 +18,10 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context as _, bail, ensure};
-use walkdir::{DirEntry, WalkDir};
-
 use re_build_tools::{
     Environment, get_and_track_env_var, rerun_if_changed, write_file_if_necessary,
 };
+use walkdir::{DirEntry, WalkDir};
 
 // ---
 

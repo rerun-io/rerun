@@ -9,16 +9,14 @@
 //! cargo run -p objectron -- --recording chair
 //! ```
 
-use std::{
-    collections::HashMap,
-    io::Read,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::collections::HashMap;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use anyhow::Context as _;
-
-use rerun::{TimeCell, external::re_log};
+use rerun::TimeCell;
+use rerun::external::re_log;
 
 // --- Rerun logging ---
 

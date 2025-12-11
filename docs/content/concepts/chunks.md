@@ -125,7 +125,7 @@ This is what the `send_columns` API is for: it lets you efficiently update the s
 
 > ⚠️ `send_columns` API bypasses the time context and [micro-batcher](../reference/sdk/micro-batching.md) ⚠️
 >
-> In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
+> In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 
 snippet: archetypes/scalars_column_updates
 

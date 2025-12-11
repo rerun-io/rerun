@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::PyDict;
-use pyo3::{Bound, Py, PyAny, PyResult, pyclass, pymethods};
+use pyo3::types::{PyDict, PyModule};
+use pyo3::{Bound, Py, PyAny, PyObject, PyResult, Python, pyclass, pymethods};
 use re_chunk::ComponentIdentifier;
 use re_chunk_store::{
     ChunkStoreHandle, QueryExpression, SparseFillStrategy, StaticColumnSelection,
@@ -13,7 +13,8 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::EntityPathFilter;
 use re_sorbet::TimeColumnSelector;
 
-use super::{PyRecordingView, PySchema};
+use super::PyRecordingView;
+use crate::catalog::PySchemaInternal;
 
 /// A single Rerun recording.
 ///
@@ -25,7 +26,7 @@ use super::{PyRecordingView, PySchema};
 /// You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
 /// what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
 /// to retrieve the data.
-#[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: skip pyclass_eq, non-trivial implementation
+#[pyclass(name = "Recording", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 pub struct PyRecording {
     pub(crate) store: ChunkStoreHandle,
     pub(crate) cache: re_dataframe::QueryCacheHandle,
@@ -126,13 +127,18 @@ impl PyRecording {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRecording {
     /// The schema describing all the columns available in the recording.
-    fn schema(&self) -> PySchema {
-        PySchema {
+    fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
+        let schema_internal = PySchemaInternal {
             schema: self.store.read().schema().into(),
-        }
+        };
+
+        // Import rerun.catalog.Schema and instantiate it with the internal schema
+        let schema_class = PyModule::import(py, "rerun.catalog")?.getattr("Schema")?;
+        let schema = schema_class.call1((schema_internal,))?;
+        Ok(schema.into())
     }
 
     #[allow(
@@ -155,7 +161,7 @@ impl PyRecording {
     /// monotonically increasing when data is sent from a single process.
     ///
     /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per partition.
+    /// specified) and no index columns. It will also contain a single row per segment.
     ///
     /// Parameters
     /// ----------

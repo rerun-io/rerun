@@ -3,48 +3,98 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::Bound;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
-use pyo3::{
-    Py, PyAny, PyRef, PyRefMut, PyResult, Python, exceptions::PyRuntimeError,
-    exceptions::PyValueError, pyclass, pymethods,
+use pyo3::{Bound, Py, PyAny, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle};
+use re_datafusion::{DatasetManifestProvider, SearchResultsTableProvider, SegmentTableProvider};
+use re_log_types::{EntryId, StoreId, StoreKind};
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, DatasetEntry, EntryDetails, IndexProperties,
 };
+use re_protos::cloud::v1alpha1::{
+    CreateIndexRequest, DeleteIndexesRequest, IndexConfig, IndexQueryProperties,
+    InvertedIndexQuery, ListIndexesRequest, SearchDatasetRequest, VectorIndexQuery,
+    index_query_properties,
+};
+use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_redap_client::fetch_chunks_response_to_chunk_and_segment_id;
+use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_datafusion::{DatasetManifestProvider, PartitionTableProvider, SearchResultsTableProvider};
-use re_log_types::{StoreId, StoreKind};
-use re_protos::{
-    cloud::v1alpha1::{
-        CreateIndexRequest, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
-        SearchDatasetRequest, VectorIndexQuery,
-        ext::{DatasetDetails, IndexProperties},
-        index_query_properties,
-    },
-    common::v1alpha1::ext::DatasetHandle,
-    headers::RerunHeadersInjectorExt as _,
+use super::dataframe_query::PyDataframeQueryView;
+use super::task::PyTasks;
+use super::{
+    PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
+    PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
-use re_redap_client::fetch_chunks_response_to_chunk_and_partition_id;
-use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
-
-use crate::dataframe::{AnyComponentColumn, PyIndexColumnSelector, PyRecording, PySchema};
+use crate::catalog::entry::update_entry;
+use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
+use crate::dataframe::{AnyComponentColumn, PyRecording};
 use crate::utils::wait_for_future;
 
-use super::{
-    PyDataFusionTable, PyEntry, PyEntryId, VectorDistanceMetricLike, VectorLike,
-    dataframe_query::PyDataframeQueryView, task::PyTasks, to_py_err,
-};
-
 /// A dataset entry in the catalog.
-#[pyclass(name = "DatasetEntry", extends=PyEntry)] // NOLINT: skip pyclass_eq, non-trivial implementation
-pub struct PyDatasetEntry {
-    pub dataset_details: DatasetDetails,
-    pub dataset_handle: DatasetHandle,
+#[pyclass( // NOLINT: ignore[py-cls-eq] non-trivial implementation
+    name = "DatasetEntryInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyDatasetEntryInternal {
+    client: Py<PyCatalogClientInternal>,
+    entry_details: EntryDetails,
+    dataset_details: DatasetDetails,
+    dataset_handle: DatasetHandle,
+}
+
+impl PyDatasetEntryInternal {
+    pub fn new(client: Py<PyCatalogClientInternal>, dataset_entry: DatasetEntry) -> Self {
+        Self {
+            client,
+            entry_details: dataset_entry.details,
+            dataset_details: dataset_entry.dataset_details,
+            dataset_handle: dataset_entry.handle,
+        }
+    }
+
+    pub fn client(&self) -> &Py<PyCatalogClientInternal> {
+        &self.client
+    }
+
+    pub fn entry_id(&self) -> EntryId {
+        self.entry_details.id
+    }
 }
 
 #[pymethods]
-impl PyDatasetEntry {
+impl PyDatasetEntryInternal {
+    //
+    // Entry methods
+    //
+
+    fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClientInternal> {
+        self.client.clone_ref(py)
+    }
+
+    fn entry_details(&self, py: Python<'_>) -> PyResult<Py<PyEntryDetails>> {
+        Py::new(py, PyEntryDetails(self.entry_details.clone()))
+    }
+
+    /// Delete this entry from the catalog.
+    fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
+        let connection = self.client.borrow_mut(py).connection().clone();
+        connection.delete_entry(py, self.entry_details.id)
+    }
+
+    #[pyo3(signature = (*, name=None))]
+    fn update(&mut self, py: Python<'_>, name: Option<String>) -> PyResult<()> {
+        update_entry(py, name, &mut self.entry_details, &self.client)
+    }
+
+    //
+    // Dataset entry methods
+    //
+
     /// Return the dataset manifest URL.
     //TODO(ab): not sure we want this to be public
     #[getter]
@@ -72,57 +122,38 @@ impl PyDatasetEntry {
             return Ok(None);
         };
 
-        let super_ = self_.as_super();
-        let client = super_.client.clone_ref(py);
-        let connection = super_.client.borrow(py).connection().clone();
+        let client = self_.client.clone_ref(py);
+        let connection = self_.client.borrow(py).connection().clone();
 
         let dataset_entry = connection.read_dataset(py, blueprint_dataset_entry_id)?;
 
-        let entry = PyEntry {
-            client,
-            id: Py::new(
-                py,
-                PyEntryId {
-                    id: blueprint_dataset_entry_id,
-                },
-            )?,
-            details: dataset_entry.details,
-        };
-
-        let dataset = Self {
-            dataset_details: dataset_entry.dataset_details,
-            dataset_handle: dataset_entry.handle,
-        };
-
-        Some(Py::new(py, (dataset, entry))).transpose()
+        Some(Py::new(py, Self::new(client, dataset_entry))).transpose()
     }
 
-    /// The default blueprint partition ID for this dataset, if any.
-    fn default_blueprint_partition_id(self_: PyRef<'_, Self>) -> Option<String> {
+    /// The default blueprint segment ID for this dataset, if any.
+    fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
         self_
             .dataset_details
-            .default_blueprint
+            .default_blueprint_segment
             .as_ref()
             .map(ToString::to_string)
     }
 
-    /// Set the default blueprint partition ID for this dataset.
+    /// Set the default blueprint segment ID for this dataset.
     ///
     /// Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
-    #[pyo3(signature = (partition_id))]
-    fn set_default_blueprint_partition_id(
+    #[pyo3(signature = (segment_id))]
+    fn set_default_blueprint_segment_id(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
-        partition_id: Option<String>,
+        segment_id: Option<String>,
     ) -> PyResult<()> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(py).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(py).connection().clone();
 
         let mut dataset_details = self_.dataset_details.clone();
-        dataset_details.default_blueprint = partition_id.map(Into::into);
+        dataset_details.default_blueprint_segment = segment_id.map(Into::into);
 
-        let result = connection.update_dataset(py, dataset_id, dataset_details)?;
+        let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
 
         self_.dataset_details = result.dataset_details;
 
@@ -130,37 +161,33 @@ impl PyDatasetEntry {
     }
 
     /// Return the schema of the data contained in the dataset.
-    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchema> {
+    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         Self::fetch_schema(&self_)
     }
 
-    /// Returns a list of partitions IDs for the dataset.
-    fn partition_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+    /// Returns a list of segment IDs for the dataset.
+    fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
 
-        connection.get_dataset_partition_ids(self_.py(), dataset_id)
+        connection.get_dataset_segment_ids(self_.py(), self_.entry_details.id)
     }
 
-    /// Return the partition table as a Datafusion table provider.
+    /// Return the segment table as a Datafusion table provider.
     #[instrument(skip_all)]
-    fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
 
         let provider = wait_for_future(self_.py(), async move {
-            PartitionTableProvider::new(connection.client().await?, dataset_id)
+            SegmentTableProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
         })?;
 
-        #[expect(clippy::string_add)]
         Ok(PyDataFusionTable {
-            client: super_.client.clone_ref(self_.py()),
-            name: super_.name() + "_partition_table",
+            client: self_.client.clone_ref(self_.py()),
+            name: format!("{}_segment_table", self_.entry_details.name),
             provider,
         })
     }
@@ -168,9 +195,8 @@ impl PyDatasetEntry {
     /// Return the dataset manifest as a Datafusion table provider.
     #[instrument(skip_all)]
     fn manifest(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
 
         let provider = wait_for_future(self_.py(), async move {
             DatasetManifestProvider::new(connection.client().await?, dataset_id)
@@ -179,58 +205,56 @@ impl PyDatasetEntry {
                 .map_err(to_py_err)
         })?;
 
-        #[expect(clippy::string_add)]
         Ok(PyDataFusionTable {
-            client: super_.client.clone_ref(self_.py()),
-            name: super_.name() + "__manifest",
+            client: self_.client.clone_ref(self_.py()),
+            name: format!("{}_manifest", self_.entry_details.name),
             provider,
         })
     }
 
-    /// Return the URL for the given partition.
+    /// Return the URL for the given segment.
     ///
     /// Parameters
     /// ----------
-    /// partition_id: str
-    ///     The ID of the partition to get the URL for.
+    /// segment_id: str
+    ///     The ID of the segment to get the URL for.
     ///
     /// timeline: str | None
     ///     The name of the timeline to display.
     ///
     /// start: int | datetime | None
-    ///     The start time for the partition.
+    ///     The start time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// end: int | datetime | None
-    ///     The end time for the partition.
+    ///     The end time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// Examples
     /// --------
     /// # With ticks
     /// >>> start_tick, end_time = 0, 10
-    /// >>> dataset.partition_url("some_id", "log_tick", start_tick, end_time)
+    /// >>> dataset.segment_url("some_id", "log_tick", start_tick, end_time)
     ///
     /// # With timestamps
     /// >>> start_time, end_time = datetime.now() - timedelta(seconds=4), datetime.now()
-    /// >>> dataset.partition_url("some_id", "real_time", start_time, end_time)
+    /// >>> dataset.segment_url("some_id", "real_time", start_time, end_time)
     ///
     /// Returns
     /// -------
     /// str
-    ///     The URL for the given partition.
+    ///     The URL for the given segment.
     ///
-    #[pyo3(signature = (partition_id, timeline=None, start=None, end=None))]
-    fn partition_url(
+    #[pyo3(signature = (segment_id, timeline=None, start=None, end=None))]
+    fn segment_url(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
-        partition_id: String,
+        segment_id: String,
         timeline: Option<&str>,
         start: Option<Bound<'_, PyAny>>,
         end: Option<Bound<'_, PyAny>>,
     ) -> PyResult<String> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let connection = self_.client.borrow(self_.py()).connection().clone();
 
         // Timeline with default name and no limits overrides blueprint timeline settings
         // only override if timeline is selected
@@ -259,10 +283,10 @@ impl PyDatasetEntry {
                         .unwrap_or(re_log_types::NonMinI64::MAX),
                 ),
             });
-        Ok(re_uri::DatasetPartitionUri {
+        Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
-            dataset_id: super_.details.id.id,
-            partition_id,
+            dataset_id: self_.entry_details.id.id,
+            segment_id,
 
             time_range,
             //TODO(ab): add support for this
@@ -289,8 +313,8 @@ impl PyDatasetEntry {
     ///
     /// Returns
     /// -------
-    /// partition_id: str
-    ///     The partition ID of the registered RRD.
+    /// segment_id: str
+    ///     The segment ID of the registered RRD.
     #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
     #[pyo3(
         text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
@@ -302,13 +326,11 @@ impl PyDatasetEntry {
         timeout_secs: u64,
     ) -> PyResult<String> {
         let register_timeout = std::time::Duration::from_secs(timeout_secs);
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let mut results = connection.register_with_dataset(
             self_.py(),
-            dataset_id,
+            self_.entry_details.id,
             vec![recording_uri],
             vec![recording_layer],
         )?;
@@ -321,7 +343,7 @@ impl PyDatasetEntry {
 
         connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
 
-        Ok(task_descriptor.partition_id.id)
+        Ok(task_descriptor.segment_id.id)
     }
 
     /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
@@ -351,19 +373,17 @@ impl PyDatasetEntry {
         recordings_prefix: String,
         layer_name: Option<String>,
     ) -> PyResult<PyTasks> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let results = connection.register_with_dataset_prefix(
             self_.py(),
-            dataset_id,
+            self_.entry_details.id,
             recordings_prefix,
             layer_name,
         )?;
 
         Ok(PyTasks::new(
-            super_.client.clone_ref(self_.py()),
+            self_.client.clone_ref(self_.py()),
             results.into_iter().map(|desc| desc.task_id),
         ))
     }
@@ -390,70 +410,63 @@ impl PyDatasetEntry {
         *,
         recording_layers = vec![],
     ))]
-    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers = [])")]
-    // TODO(ab): it might be useful to return partition ids directly since we have them
+    #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
+    // TODO(ab): it might be useful to return segment ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
     ) -> PyResult<PyTasks> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let results = connection.register_with_dataset(
             self_.py(),
-            dataset_id,
+            self_.entry_details.id,
             recording_uris,
             recording_layers,
         )?;
 
         Ok(PyTasks::new(
-            super_.client.clone_ref(self_.py()),
+            self_.client.clone_ref(self_.py()),
             results.into_iter().map(|desc| desc.task_id),
         ))
     }
 
-    /// Download a partition from the dataset.
+    /// Download a segment from the dataset.
     #[instrument(skip(self_), err)]
-    fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
-        let super_ = self_.as_super();
-        let catalog_client = super_.client.borrow(self_.py());
+    fn download_segment(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<PyRecording> {
+        let catalog_client = self_.client.borrow(self_.py());
         let connection = catalog_client.connection();
-
-        let dataset_id = super_.details.id;
-        let dataset_name = super_.details.name.clone();
+        let dataset_id = self_.entry_details.id;
+        let dataset_name = self_.entry_details.name.clone();
 
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let mut client = connection.client().await?;
-            let exclude_static_data = false;
-            let exclude_temporal_data = false;
             let response_stream = client
-                .fetch_partition_chunks(
+                .fetch_segment_chunks_by_query(re_redap_client::SegmentQueryParams {
                     dataset_id,
-                    partition_id.clone().into(),
-                    exclude_static_data,
-                    exclude_temporal_data,
-                    None,
-                )
+                    segment_id: segment_id.clone().into(),
+                    include_static_data: true,
+                    include_temporal_data: true,
+                    query: None,
+                })
                 .await
                 .map_err(to_py_err)?;
 
-            let mut chunks_stream =
-                fetch_chunks_response_to_chunk_and_partition_id(response_stream);
+            let mut chunks_stream = fetch_chunks_response_to_chunk_and_segment_id(response_stream);
 
-            let store_id = StoreId::new(StoreKind::Recording, dataset_name, partition_id.clone());
+            let store_id = StoreId::new(StoreKind::Recording, dataset_name, segment_id.clone());
             let mut store = ChunkStore::new(store_id, Default::default());
 
             while let Some(chunks) = chunks_stream.next().await {
                 for chunk in chunks.map_err(to_py_err)? {
-                    let (chunk, chunk_partition_id) = chunk;
+                    let (chunk, chunk_segment_id) = chunk;
 
-                    if Some(&partition_id) != chunk_partition_id.as_ref() {
+                    if Some(&segment_id) != chunk_segment_id.as_ref() {
                         re_log::warn!(
-                            expected = partition_id,
-                            got = chunk_partition_id,
-                            "unexpected partition ID in chunk stream, this is a bug"
+                            expected = segment_id,
+                            got = chunk_segment_id,
+                            "unexpected segment ID in chunk stream, this is a bug"
                         );
                     }
                     store
@@ -496,7 +509,7 @@ impl PyDatasetEntry {
     /// monotonically increasing when data is sent from a single process.
     ///
     /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per partition.
+    /// specified) and no index columns. It will also contain a single row per segment.
     ///
     /// Parameters
     /// ----------
@@ -547,6 +560,8 @@ impl PyDatasetEntry {
         )
     }
 
+    // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`
+
     /// Create a full-text search index on the given column.
     #[pyo3(signature = (
             *,
@@ -563,9 +578,8 @@ impl PyDatasetEntry {
         store_position: bool,
         base_tokenizer: &str,
     ) -> PyResult<()> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
         let time_selector: TimeColumnSelector = time_index.into();
 
         let schema = Self::fetch_schema(&self_)?;
@@ -602,11 +616,37 @@ impl PyDatasetEntry {
     }
 
     /// Create a vector index on the given column.
+    ///
+    /// This will enable indexing and build the vector index over all existing values
+    /// in the specified component column.
+    ///
+    /// Results can be retrieved using the `search_vector` API, which will include
+    /// the time-point on the indexed timeline.
+    ///
+    /// Only one index can be created per component column -- executing this a second
+    /// time for the same component column will replace the existing index.
+    ///
+    /// Parameters
+    /// ----------
+    /// column : AnyComponentColumn
+    ///     The component column to create the index on.
+    /// time_index : IndexColumnSelector
+    ///     Which timeline this index will map to.
+    /// target_partition_num_rows : int | None
+    ///     The target size (in number of rows) for each partition.
+    ///     The underlying indexer (lance) will pick a default when no value
+    ///     is specified - today this is 8192. It will also cap the
+    ///     maximum number of partitions independently of this setting - currently
+    ///     4096.
+    /// num_sub_vectors : int
+    ///     The number of sub-vectors to use when building the index.
+    /// distance_metric : VectorDistanceMetricLike
+    ///     The distance metric to use for the index. ("L2", "Cosine", "Dot", "Hamming")
     #[pyo3(signature = (
         *,
         column,
         time_index,
-        num_partitions = 5,
+        target_partition_num_rows = None,
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
@@ -615,13 +655,12 @@ impl PyDatasetEntry {
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
-        num_partitions: usize,
-        num_sub_vectors: usize,
+        target_partition_num_rows: Option<u32>,
+        num_sub_vectors: u32,
         distance_metric: VectorDistanceMetricLike,
-    ) -> PyResult<()> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+    ) -> PyResult<PyIndexingResult> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
 
         let time_selector: TimeColumnSelector = time_index.into();
 
@@ -632,9 +671,15 @@ impl PyDatasetEntry {
             distance_metric.try_into()?;
 
         let properties = IndexProperties::VectorIvfPq {
-            num_partitions,
+            target_partition_num_rows,
             num_sub_vectors,
             metric: distance_metric,
+        };
+
+        let config = re_protos::cloud::v1alpha1::ext::IndexConfig {
+            time_index: time_selector.timeline,
+            column: component_descriptor.0.clone().into(),
+            properties: properties.clone(),
         };
 
         let request = CreateIndexRequest {
@@ -646,7 +691,7 @@ impl PyDatasetEntry {
         };
 
         wait_for_future(self_.py(), async {
-            connection
+            let result = connection
                 .client()
                 .await?
                 .inner()
@@ -656,9 +701,100 @@ impl PyDatasetEntry {
                         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
                 )
                 .await
-                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
 
-            Ok(())
+            Ok(PyIndexingResult {
+                index: config.into(),
+                statistics_json: result.statistics_json,
+                debug_info: result.debug_info,
+            })
+        })
+    }
+
+    /// List all user-defined indexes in this dataset.
+    #[instrument(skip_all, err)]
+    fn list_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
+
+        let request = ListIndexesRequest {};
+
+        wait_for_future(self_.py(), async {
+            let result = connection
+                .client()
+                .await?
+                .inner()
+                .list_indexes(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let indexes: Result<Vec<_>, PyErr> = result
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    Ok(PyIndexConfig::from(index))
+                })
+                .collect();
+
+            Ok(itertools::izip!(indexes?, result.statistics_json)
+                .map(|(index, statistics_json)| PyIndexingResult {
+                    index,
+                    statistics_json,
+                    debug_info: None,
+                })
+                .collect())
+        })
+    }
+
+    /// Deletes all user-defined indexes for the specified column.
+    //
+    // TODO(RR-2824): this should also be capable of accepting a `PyIndexConfig` directly.
+    #[instrument(skip_all, err)]
+    fn delete_indexes(
+        self_: PyRef<'_, Self>,
+        column: AnyComponentColumn,
+    ) -> PyResult<Vec<PyIndexConfig>> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
+
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.column_for_selector(column)?;
+
+        let request = DeleteIndexesRequest {
+            column: Some(component_descriptor.0.into()),
+        };
+
+        wait_for_future(self_.py(), async {
+            let result = connection
+                .client()
+                .await?
+                .inner()
+                .delete_indexes(
+                    tonic::Request::new(request)
+                        .with_entry_id(dataset_id)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+                )
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let indexes: Result<Vec<_>, PyErr> = result
+                .indexes
+                .into_iter()
+                .map(|index| {
+                    let index = re_protos::cloud::v1alpha1::ext::IndexConfig::try_from(index)?;
+                    Ok(PyIndexConfig::from(index))
+                })
+                .collect();
+
+            indexes
         })
     }
 
@@ -669,9 +805,8 @@ impl PyDatasetEntry {
         query: String,
         column: AnyComponentColumn,
     ) -> PyResult<PyDataFusionTable> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
 
         let schema = Self::fetch_schema(&self_)?;
         let component_descriptor = schema.column_for_selector(column)?;
@@ -710,10 +845,10 @@ impl PyDatasetEntry {
         })?;
 
         let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_search_fts_{uuid}", super_.name());
+        let name = format!("{}_search_fts_{uuid}", self_.entry_details.name);
 
         Ok(PyDataFusionTable {
-            client: super_.client.clone_ref(self_.py()),
+            client: self_.client.clone_ref(self_.py()),
             name,
             provider,
         })
@@ -727,9 +862,8 @@ impl PyDatasetEntry {
         column: AnyComponentColumn,
         top_k: u32,
     ) -> PyResult<PyDataFusionTable> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = self_.entry_details.id;
 
         let schema = Self::fetch_schema(&self_)?;
         let component_descriptor = schema.column_for_selector(column)?;
@@ -756,10 +890,10 @@ impl PyDatasetEntry {
         })?;
 
         let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_search_vector_{uuid}", super_.name());
+        let name = format!("{}_search_vector_{uuid}", self_.entry_details.name);
 
         Ok(PyDataFusionTable {
-            client: super_.client.clone_ref(self_.py()),
+            client: self_.client.clone_ref(self_.py()),
             name,
             provider,
         })
@@ -784,9 +918,7 @@ impl PyDatasetEntry {
         cleanup_before: Option<Bound<'_, PyAny>>,
         unsafe_allow_recent_cleanup: bool,
     ) -> PyResult<()> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow(self_.py()).connection().clone();
-        let dataset_id = super_.details.id;
+        let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let cleanup_before_nanos = cleanup_before
             .as_ref()
@@ -805,7 +937,7 @@ impl PyDatasetEntry {
 
         connection.do_maintenance(
             py,
-            dataset_id,
+            self_.entry_details.id,
             optimize_indexes,
             retrain_indexes,
             compact_fragments,
@@ -813,24 +945,30 @@ impl PyDatasetEntry {
             unsafe_allow_recent_cleanup,
         )
     }
+
+    pub fn __str__(self_: PyRef<'_, Self>) -> String {
+        format!(
+            "DatasetEntry(name='{}', id='{}')",
+            self_.entry_details.name, self_.entry_details.id,
+        )
+    }
 }
 
-impl PyDatasetEntry {
+impl PyDatasetEntryInternal {
     pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow_mut(self_.py()).connection().clone();
+        let connection = self_.client.borrow_mut(self_.py()).connection().clone();
 
-        let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
+        let schema = connection.get_dataset_schema(self_.py(), self_.entry_details.id)?;
 
         Ok(schema)
     }
 
-    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
+    pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let arrow_schema = Self::fetch_arrow_schema(self_)?;
         let schema = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
             .map_err(to_py_err)?;
 
-        Ok(PySchema { schema })
+        Ok(PySchemaInternal { schema })
     }
 }
 

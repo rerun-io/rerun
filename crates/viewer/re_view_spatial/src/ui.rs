@@ -1,28 +1,25 @@
-use egui::{NumExt as _, WidgetText, emath::OrderedFloat, text::TextWrapping};
+use egui::emath::OrderedFloat;
+use egui::text::TextWrapping;
+use egui::{NumExt as _, WidgetText};
 use macaw::BoundingBox;
-
 use re_format::format_f32;
-use re_types::{
-    blueprint::{archetypes::EyeControls3D, components::VisualBounds2D},
-    components::ViewCoordinates,
-    image::ImageKind,
-};
+use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{
-    Pinhole,
-    pickable_textured_rect::PickableRectSourceData,
-    picking::{PickableUiRect, PickingResult},
-    scene_bounding_boxes::SceneBoundingBoxes,
-    view_kind::SpatialViewKind,
-    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
-};
-
-use super::{eye::Eye, ui_3d::View3DState};
+use super::eye::Eye;
+use super::ui_3d::View3DState;
+use crate::Pinhole;
+use crate::pickable_textured_rect::PickableRectSourceData;
+use crate::picking::{PickableUiRect, PickingResult};
+use crate::scene_bounding_boxes::SceneBoundingBoxes;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -132,13 +129,7 @@ impl SpatialViewState {
     }
 
     // Say the name out loud. It is fun!
-    pub fn view_eye_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &ViewerContext<'_>,
-        scene_view_coordinates: Option<ViewCoordinates>,
-        view_id: ViewId,
-    ) {
+    pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
         let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -153,23 +144,7 @@ impl SpatialViewState {
             .clicked()
         {
             self.bounding_boxes.smoothed = self.bounding_boxes.current;
-            self.state_3d.reset_camera(
-                &self.bounding_boxes,
-                scene_view_coordinates,
-                ctx,
-                &eye_property,
-            );
-        }
-
-        {
-            let mut spin = self.state_3d.spin();
-            if ui
-                .re_checkbox(&mut spin, "Spin")
-                .on_hover_text("Spin camera around the orbit center")
-                .changed()
-            {
-                self.state_3d.set_spin(ui.ctx(), spin);
-            }
+            self.state_3d.reset_eye(ctx, &eye_property);
         }
     }
 
@@ -204,6 +179,12 @@ impl SpatialViewState {
             // NOTE: Depth images do not support opacity
             ImageKind::Depth => 1.0,
         }
+    }
+
+    /// Accesser method for getting the entity, if any, that was tracked last time
+    /// the eye was updated.
+    pub fn last_tracked_entity(&self) -> Option<&re_log_types::EntityPath> {
+        self.state_3d.eye_state.last_tracked_entity.as_ref()
     }
 }
 
@@ -357,8 +338,7 @@ pub fn paint_loading_spinners(
     eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    use glam::Vec3Swizzles as _;
-    use glam::Vec4Swizzles as _;
+    use glam::{Vec3Swizzles as _, Vec4Swizzles as _};
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
@@ -399,25 +379,5 @@ pub fn paint_loading_spinners(
 
             egui::Spinner::new().paint_at(ui, rect);
         }
-    }
-}
-
-pub fn format_vector(v: glam::Vec3) -> String {
-    use glam::Vec3;
-
-    if v == Vec3::X {
-        "+X".to_owned()
-    } else if v == -Vec3::X {
-        "-X".to_owned()
-    } else if v == Vec3::Y {
-        "+Y".to_owned()
-    } else if v == -Vec3::Y {
-        "-Y".to_owned()
-    } else if v == Vec3::Z {
-        "+Z".to_owned()
-    } else if v == -Vec3::Z {
-        "-Z".to_owned()
-    } else {
-        format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
     }
 }

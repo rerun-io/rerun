@@ -2,10 +2,9 @@ use std::borrow::Cow;
 
 use ahash::HashMap;
 use arrow::array::{ArrayRef, NullArray};
-
 use nohash_hasher::IntMap;
 use re_chunk::ComponentIdentifier;
-use re_types::{Component, ComponentType, SerializationError, ViewClassIdentifier};
+use re_sdk_types::{Component, ComponentType, SerializationError, ViewClassIdentifier};
 
 use crate::{QueryContext, ViewerContext};
 
@@ -95,7 +94,7 @@ impl FallbackProviderRegistry {
     }
 
     /// Registers a fallback provider function for a given component type.
-    pub fn register_type_fallback_provider<C: re_types::Component>(
+    pub fn register_type_fallback_provider<C: re_sdk_types::Component>(
         &mut self,
         f: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
     ) {
@@ -127,7 +126,7 @@ impl FallbackProviderRegistry {
     }
 
     /// Registers a fallback provider function for a given component identifier.
-    pub fn register_component_fallback_provider<C: re_types::Component>(
+    pub fn register_component_fallback_provider<C: re_sdk_types::Component>(
         &mut self,
         component: ComponentIdentifier,
         provider: impl Fn(&QueryContext<'_>) -> C + Send + Sync + 'static,
@@ -163,7 +162,7 @@ impl FallbackProviderRegistry {
 
     /// Registers a fallback provider function for a given component identifier
     /// in a specific view.
-    pub fn register_view_fallback_provider<C: re_types::Component>(
+    pub fn register_view_fallback_provider<C: re_sdk_types::Component>(
         &mut self,
         view: ViewClassIdentifier,
         component: ComponentIdentifier,
@@ -176,6 +175,28 @@ impl FallbackProviderRegistry {
                 let value = provider(query_context);
 
                 C::to_arrow([Cow::Owned(value)])
+            }),
+        );
+    }
+
+    /// Registers an array fallback provider function for a given component identifier
+    /// in a specific view.
+    pub fn register_view_array_fallback_provider<
+        C: re_sdk_types::Component,
+        I: IntoIterator<Item = C>,
+    >(
+        &mut self,
+        view: ViewClassIdentifier,
+        component: ComponentIdentifier,
+        provider: impl Fn(&QueryContext<'_>) -> I + Send + Sync + 'static,
+    ) {
+        self.register_dyn_view_fallback_provider(
+            view,
+            component,
+            Box::new(move |query_context| {
+                let values = provider(query_context);
+
+                C::to_arrow(values.into_iter().map(Cow::Owned))
             }),
         );
     }
@@ -278,5 +299,5 @@ fn placeholder_for(viewer_ctx: &ViewerContext<'_>, component: re_chunk::Componen
 
     // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
     // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-    re_types::reflection::generic_placeholder_for_datatype(&datatype)
+    re_sdk_types::reflection::generic_placeholder_for_datatype(&datatype)
 }

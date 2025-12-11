@@ -33,7 +33,7 @@ default = []
 analytics = ["dep:re_analytics"]
 
 ## Enable helpers for testing
-testing = ["dep:egui_kittest"]
+testing = ["dep:egui_kittest", "re_analytics/testing"]
 
 [dependencies]
 re_analytics = { workspace = true, optional = true }
@@ -62,6 +62,7 @@ strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
 url.workspace = true
+web-time.workspace = true
 
 
 egui_kittest = { workspace = true, optional = true }

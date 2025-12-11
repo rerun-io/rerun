@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+blob: [[0]]
+media_type: [application/octet-stream]
+opacity: [1.0]
+draw_order: [-10.0]

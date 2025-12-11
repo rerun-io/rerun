@@ -157,7 +157,7 @@ pub struct StoreId {
     /// The kind of the store.
     #[prost(enumeration = "StoreKind", tag = "1")]
     pub kind: i32,
-    /// The recording id of the store. For remote stores, this is the partition id. For blueprint store, this is an
+    /// The recording id of the store. For remote stores, this is the segment id. For blueprint store, this is an
     /// arbitrary uuid.
     #[prost(string, tag = "2")]
     pub recording_id: ::prost::alloc::string::String,
@@ -328,22 +328,22 @@ impl ::prost::Name for ScanParametersOrderClause {
         "/rerun.common.v1alpha1.ScanParametersOrderClause".into()
     }
 }
-/// Unique identifier for a partition. Can be user defined
+/// Unique identifier for a segment. Can be user defined
 /// which means it can be of any type. For simplicity we start
 /// with a string, but we will probably revisit this.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct PartitionId {
+pub struct SegmentId {
     #[prost(string, optional, tag = "1")]
     pub id: ::core::option::Option<::prost::alloc::string::String>,
 }
-impl ::prost::Name for PartitionId {
-    const NAME: &'static str = "PartitionId";
+impl ::prost::Name for SegmentId {
+    const NAME: &'static str = "SegmentId";
     const PACKAGE: &'static str = "rerun.common.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.PartitionId".into()
+        "rerun.common.v1alpha1.SegmentId".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.PartitionId".into()
+        "/rerun.common.v1alpha1.SegmentId".into()
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

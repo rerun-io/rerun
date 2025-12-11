@@ -5,7 +5,7 @@ use re_viewer_context::MaybeMutRef;
 pub fn edit_bool(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = re_types::datatypes::Bool>>,
+    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = re_sdk_types::datatypes::Bool>>,
 ) -> egui::Response {
     let mut value: MaybeMutRef<'_, bool> = match value {
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),

@@ -1,14 +1,15 @@
 use re_log_types::TimePoint;
+use re_sdk_types::RowId;
+use re_sdk_types::archetypes::Mesh3D;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{RowId, archetypes::Mesh3D};
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
 pub fn test_single_channel_mesh() {
-    let texture_format = re_types::components::ImageFormat::l8([2, 2]);
-    let texture_buffer = re_types::components::ImageBuffer::from(vec![128, 255, 0, 128]);
+    let texture_format = re_sdk_types::components::ImageFormat::l8([2, 2]);
+    let texture_buffer = re_sdk_types::components::ImageBuffer::from(vec![128, 255, 0, 128]);
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
     // Log a simple quad mesh with a texture with one channel.

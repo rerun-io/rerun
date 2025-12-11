@@ -2,13 +2,13 @@
 
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
+use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{
     AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
-    example_components::{MyPoint, MyPoints},
 };
+use re_sdk_types::archetypes::Points2D;
 use re_test_context::TestContext;
 use re_time_panel::TimePanel;
-use re_types::archetypes::Points2D;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 

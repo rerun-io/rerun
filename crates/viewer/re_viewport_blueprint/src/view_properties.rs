@@ -1,20 +1,22 @@
 use arrow::array::ArrayRef;
 use re_chunk::{ComponentIdentifier, ComponentType};
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
+use re_entity_db::EntityDb;
+use re_entity_db::external::re_query::LatestAtResults;
 use re_log_types::EntityPath;
-use re_types::{
+use re_sdk_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
+use re_viewer_context::external::re_entity_db::EntityTree;
 use re_viewer_context::{
-    BlueprintContext as _, ComponentFallbackError, QueryContext, ViewContext, ViewId,
-    ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
+    BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
+    ViewSystemExecutionError, ViewerContext,
 };
 
 #[derive(thiserror::Error, Debug)]
 pub enum ViewPropertyQueryError {
     #[error(transparent)]
-    DeserializationError(#[from] re_types::DeserializationError),
+    DeserializationError(#[from] re_sdk_types::DeserializationError),
 
     #[error(transparent)]
     ComponentFallbackError(#[from] ComponentFallbackError),
@@ -84,14 +86,14 @@ impl ViewProperty {
         Self {
             blueprint_store_path,
             archetype_name,
-            query_results,
             component_descrs,
+            query_results,
             blueprint_query,
         }
     }
 
     /// Get the value of a specific component or its fallback if the component is not present.
-    pub fn component_or_fallback<C: re_types::Component>(
+    pub fn component_or_fallback<C: re_sdk_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
         component: ComponentIdentifier,
@@ -99,11 +101,11 @@ impl ViewProperty {
         self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()
-            .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
+            .ok_or_else(|| ComponentFallbackError::UnexpectedEmptyFallback.into())
     }
 
     /// Get the component array for a given type or its fallback if the component is not present or empty.
-    pub fn component_array_or_fallback<C: re_types::Component>(
+    pub fn component_array_or_fallback<C: re_sdk_types::Component>(
         &self,
         ctx: &ViewContext<'_>,
         component: ComponentIdentifier,
@@ -117,7 +119,7 @@ impl ViewProperty {
 
     /// Get a single component or None, not using any fallbacks.
     #[inline]
-    pub fn component_or_empty<C: re_types::Component>(
+    pub fn component_or_empty<C: re_sdk_types::Component>(
         &self,
         component: ComponentIdentifier,
     ) -> Result<Option<C>, DeserializationError> {
@@ -126,7 +128,7 @@ impl ViewProperty {
     }
 
     /// Get the component array for a given type, not using any fallbacks.
-    pub fn component_array<C: re_types::Component>(
+    pub fn component_array<C: re_sdk_types::Component>(
         &self,
         component: ComponentIdentifier,
     ) -> Result<Option<Vec<C>>, DeserializationError> {
@@ -136,7 +138,7 @@ impl ViewProperty {
     }
 
     /// Get the component array for a given type or an empty array, not using any fallbacks.
-    pub fn component_array_or_empty<C: re_types::Component>(
+    pub fn component_array_or_empty<C: re_sdk_types::Component>(
         &self,
         component: ComponentIdentifier,
     ) -> Result<Vec<C>, DeserializationError> {
@@ -176,7 +178,7 @@ impl ViewProperty {
     /// Save change to a blueprint component.
     pub fn save_blueprint_component(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &impl BlueprintContext,
         component_descr: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {

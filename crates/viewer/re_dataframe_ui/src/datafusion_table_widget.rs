@@ -1,20 +1,17 @@
-use std::iter;
 use std::sync::Arc;
 
 use arrow::datatypes::Field;
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference;
 use egui::containers::menu::MenuConfig;
-use egui::{
-    FontSelection, Frame, Id, Margin, Rangef, RichText, TextWrapMode, TopBottomPanel, Ui,
-    Widget as _, WidgetText,
-};
+use egui::{Frame, Id, Margin, OpenUrl, RichText, TopBottomPanel, Ui, Widget as _};
 use egui_table::{CellInfo, HeaderCellInfo};
-use nohash_hasher::IntMap;
-
-use re_format::format_uint;
+use itertools::Itertools as _;
+use re_format::{format_plural_s, format_uint};
+use re_log::error;
 use re_log_types::{EntryId, TimelineName, Timestamp};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, icons};
 use re_viewer_context::{
@@ -25,10 +22,12 @@ use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
 use crate::header_tooltip::column_header_tooltip_ui;
+use crate::re_table::ReTable;
+use crate::re_table_utils::{ColumnConfig, TableConfig};
 use crate::table_blueprint::{
-    ColumnBlueprint, EntryLinksSpec, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+    ColumnBlueprint, EntryLinksSpec, SegmentLinksSpec, SortBy, SortDirection, TableBlueprint,
 };
-use crate::table_utils::{ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui};
+use crate::table_selection::TableSelectionState;
 use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
@@ -54,50 +53,33 @@ impl Column<'_> {
 /// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their order and their blueprint.
 struct Columns<'a> {
     columns: Vec<Column<'a>>,
-    column_from_index: IntMap<egui::Id, usize>,
 }
 
 impl<'a> Columns<'a> {
     fn from(sorbet_schema: &'a SorbetSchema, column_blueprint_fn: &ColumnBlueprintFn<'_>) -> Self {
-        let (columns, column_from_index) = sorbet_schema
+        let columns = sorbet_schema
             .columns
             .iter()
-            .enumerate()
-            .map(|(index, desc)| {
+            .map(|desc| {
                 let id = egui::Id::new(desc);
                 let desc = desc.into();
                 let blueprint = column_blueprint_fn(&desc);
 
-                let column = Column {
+                Column {
                     id,
                     desc,
                     blueprint,
-                };
-
-                (column, (id, index))
+                }
             })
-            .unzip();
+            .collect();
 
-        Self {
-            columns,
-            column_from_index,
-        }
+        Self { columns }
     }
 }
 
 impl Columns<'_> {
     fn iter(&self) -> impl Iterator<Item = &Column<'_>> + use<'_> {
         self.columns.iter()
-    }
-
-    fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
-        let id = id?;
-        self.column_from_index.get(&id).copied()
-    }
-
-    fn index_and_column_from_id(&self, id: Option<egui::Id>) -> Option<(usize, &Column<'_>)> {
-        let index = id.and_then(|id| self.column_from_index.get(&id).copied())?;
-        self.columns.get(index).map(|column| (index, column))
     }
 }
 
@@ -192,16 +174,16 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn generate_partition_links(
+    pub fn generate_segment_links(
         mut self,
         column_name: impl Into<String>,
-        partition_id_column_name: impl Into<String>,
+        segment_id_column_name: impl Into<String>,
         origin: re_uri::Origin,
         dataset_id: EntryId,
     ) -> Self {
-        self.initial_blueprint.partition_links = Some(PartitionLinksSpec {
+        self.initial_blueprint.segment_links = Some(SegmentLinksSpec {
             column_name: column_name.into(),
-            partition_id_column_name: partition_id_column_name.into(),
+            segment_id_column_name: segment_id_column_name.into(),
             origin,
             dataset_id,
         });
@@ -399,17 +381,16 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let mut sorted_columns = columns.iter().collect::<Vec<_>>();
-        sorted_columns.sort_by_key(|c| c.blueprint.sort_key);
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             static_id,
-            sorted_columns.iter().map(|column| {
+            columns.iter().map(|column| {
                 ColumnConfig::new_with_visible(
                     column.id,
                     column.display_name(),
                     column.blueprint.default_visibility,
                 )
+                .with_sort_key(column.blueprint.sort_key)
             }),
         );
 
@@ -430,16 +411,15 @@ impl<'a> DataFusionTableWidget<'a> {
             &mut new_blueprint,
         );
 
-        apply_table_style_fixes(ui.style_mut());
-
         let table_style = re_ui::TableStyle::Spacious;
 
         let mut row_height = viewer_ctx.tokens().table_row_height(table_style);
 
         // If the first column is a blob, we treat it as a thumbnail and increase the row height.
         // TODO(lucas): This is a band-aid fix and should be replaced with proper table blueprint
-        let first_column = columns
-            .index_from_id(table_config.visible_column_ids().next())
+        let first_column = table_config
+            .visible_column_indexes()
+            .next()
             .and_then(|index| display_record_batches.first()?.columns().get(index));
         if let Some(DisplayColumn::Component(component)) = first_column
             && component.is_image()
@@ -453,6 +433,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .arrow_fields(re_sorbet::BatchType::Dataframe);
 
         let mut table_delegate = DataFusionTableDelegate {
+            session_id,
             ctx: viewer_ctx,
             table_style,
             query_result,
@@ -461,12 +442,11 @@ impl<'a> DataFusionTableWidget<'a> {
             columns: &columns,
             blueprint: table_blueprint,
             new_blueprint: &mut new_blueprint,
-            table_config: &mut table_config,
             filter_state: &mut filter_state,
             row_height,
         };
 
-        let visible_columns = table_delegate.table_config.visible_columns().count();
+        let visible_columns = table_config.visible_columns().count();
         let total_columns = columns.columns.len();
 
         let action = Self::bottom_bar_ui(
@@ -485,53 +465,19 @@ impl<'a> DataFusionTableWidget<'a> {
             }
             None => {}
         }
-
-        // Calculate the maximum width of the row number column. Since we use monospace text,
-        // calculating the width of the highest row number is sufficient.
-        let max_row_number_width = (Self::row_number_text(num_rows)
-            .into_galley(
-                ui,
-                Some(TextWrapMode::Extend),
-                1000.0,
-                FontSelection::Default,
-            )
-            .rect
-            .width()
-            + ui.tokens().table_cell_margin(table_style).sum().x)
-            .ceil();
-
-        egui_table::Table::new()
-            .id_salt(session_id)
-            .num_sticky_cols(1) // Row number column is sticky.
-            .columns(
-                iter::once(
-                    egui_table::Column::new(max_row_number_width)
-                        .resizable(false)
-                        .range(Rangef::new(max_row_number_width, max_row_number_width))
-                        .id(Id::new("row_number")),
-                )
-                .chain(
-                    table_delegate
-                        .table_config
-                        .visible_column_ids()
-                        .map(|id| egui_table::Column::new(200.0).resizable(true).id(id)),
-                )
-                .collect::<Vec<_>>(),
-            )
-            .headers(vec![egui_table::HeaderRow::new(
-                ui.tokens().table_header_height(),
-            )])
-            .num_rows(num_rows)
-            .show(ui, &mut table_delegate);
+        ReTable::new(
+            ui.ctx(),
+            session_id,
+            &mut table_delegate,
+            &table_config,
+            num_rows,
+        )
+        .show(ui);
 
         table_config.store(ui.ctx());
         filter_state.store(ui.ctx(), session_id);
 
         new_blueprint
-    }
-
-    fn row_number_text(rows: u64) -> WidgetText {
-        WidgetText::from(RichText::new(format_uint(rows)).weak().monospace())
     }
 
     fn bottom_bar_ui(
@@ -550,6 +496,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .inner_margin(Margin::symmetric(12, 0));
         TopBottomPanel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
+            .show_separator_line(false)
             .show_inside(ui, |ui| {
                 let height = 24.0;
                 ui.set_height(height);
@@ -652,6 +599,7 @@ enum BottomBarAction {
 }
 
 struct DataFusionTableDelegate<'a> {
+    session_id: Id,
     ctx: &'a ViewerContext<'a>,
     table_style: re_ui::TableStyle,
     query_result: &'a DataFusionQueryResult,
@@ -660,171 +608,207 @@ struct DataFusionTableDelegate<'a> {
     columns: &'a Columns<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
-    table_config: &'a mut TableConfig,
     filter_state: &'a mut FilterState,
     row_height: f32,
+}
+
+impl DataFusionTableDelegate<'_> {
+    /// Find the record batch and local row index for a global row index.
+    pub fn with_row_batch(
+        batches: &[DisplayRecordBatch],
+        mut row_index: usize,
+    ) -> Option<(&DisplayRecordBatch, usize)> {
+        for batch in batches {
+            let row_count = batch.num_rows();
+            if row_index < row_count {
+                return Some((batch, row_index));
+            } else {
+                row_index -= row_count;
+            }
+        }
+        None
+    }
+
+    fn segment_link_for_row(&self, row: u64, spec: &SegmentLinksSpec) -> Option<String> {
+        let (display_record_batch, batch_index) =
+            Self::with_row_batch(self.display_record_batches, row as usize)?;
+        let column_index = self
+            .columns
+            .iter()
+            .position(|col| col.blueprint.display_name.as_ref() == Some(&spec.column_name))?;
+        let column = display_record_batch.columns().get(column_index)?;
+
+        match column {
+            DisplayColumn::RowId { .. } | DisplayColumn::Timeline { .. } => None,
+            DisplayColumn::Component(col) => col.string_value_at(batch_index),
+        }
+    }
+
+    pub fn row_context_menu(&self, ui: &Ui, _row_number: u64) {
+        let has_context_menu = self.blueprint.segment_links.is_some();
+        if !has_context_menu {
+            return;
+        }
+
+        ui.response().container_context_menu(|ui| {
+            let selection = TableSelectionState::load(ui.ctx(), self.session_id);
+
+            // re_table will ensure that the right-clicked row is always selected.
+            let selected_rows = selection.selected_rows;
+
+            if let Some(segment_links_spec) = &self.blueprint.segment_links {
+                let label = format!(
+                    "Open {} segment{}",
+                    selected_rows.len(),
+                    format_plural_s(selected_rows.len())
+                );
+                let response =
+                    ui.add(icons::OPEN_RECORDING.as_button_with_label(ui.tokens(), label));
+
+                let open = |new_tab| {
+                    // Let's open the recordings in order
+                    for row in selected_rows.iter().copied().sorted() {
+                        if let Some(segment_link) =
+                            self.segment_link_for_row(row, segment_links_spec)
+                        {
+                            ui.ctx().open_url(OpenUrl {
+                                url: segment_link,
+                                new_tab,
+                            });
+                        } else {
+                            error!("Could not get segment link for row {}", row);
+                        }
+                    }
+                };
+
+                if response.clicked_with_open_in_background() {
+                    open(true);
+                } else if response.clicked() {
+                    open(false);
+                }
+            }
+        });
+    }
 }
 
 impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         let tokens = ui.tokens();
         let table_style = self.table_style;
+        let col_index = cell.group_index;
+        if let Some(column) = self.columns.columns.get(col_index) {
+            let column_field = &self.query_result.original_schema.fields[col_index];
+            let column_physical_name = column_field.name();
+            let column_display_name = column.display_name();
 
-        if cell.group_index == 0 {
-            header_ui(ui, table_style, false, |ui| ui.weak("#"));
-        } else {
-            ui.set_truncate_style();
-            // Offset by one for the row number column.
-            let column_index = cell.group_index - 1;
+            let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
+                (sort_by.column_physical_name.as_str() == column_physical_name)
+                    .then_some(&sort_by.direction)
+            });
 
-            let id = self.table_config.visible_column_ids().nth(column_index);
+            egui::Sides::new()
+                .shrink_left()
+                .show(
+                    ui,
+                    |ui| {
+                        ui.set_height(ui.tokens().table_content_height(table_style));
+                        let response = ui.label(
+                            egui::RichText::new(column_display_name)
+                                .strong()
+                                .monospace(),
+                        );
 
-            if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
-                let column_field = &self.query_result.original_schema.fields[index];
-                let column_physical_name = column_field.name();
-                let column_display_name = column.display_name();
+                        if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
+                            ui.add_space(-5.0);
+                            ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
+                        }
 
-                let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
-                    (sort_by.column_physical_name.as_str() == column_physical_name)
-                        .then_some(&sort_by.direction)
-                });
-
-                header_ui(ui, table_style, true, |ui| {
-                    egui::Sides::new()
-                        .shrink_left()
-                        .show(
-                            ui,
-                            |ui| {
-                                ui.set_height(ui.tokens().table_content_height(table_style));
-                                let response = ui.label(
-                                    egui::RichText::new(column_display_name)
-                                        .strong()
-                                        .monospace(),
-                                );
-
-                                if let Some(dir_icon) =
-                                    current_sort_direction.map(SortDirection::icon)
-                                {
-                                    ui.add_space(-5.0);
-                                    ui.small_icon(dir_icon, Some(tokens.table_sort_icon_color));
-                                }
-
-                                response
-                            },
-                            |ui| {
-                                ui.set_height(ui.tokens().table_content_height(table_style));
-                                egui::containers::menu::MenuButton::from_button(
-                                    ui.small_icon_button_widget(
-                                        &re_ui::icons::MORE,
-                                        "More options",
-                                    ),
-                                )
-                                .config(MenuConfig::new().style(menu_style()))
-                                .ui(ui, |ui| {
-                                    for sort_direction in SortDirection::iter() {
-                                        let already_sorted =
-                                            Some(&sort_direction) == current_sort_direction;
-
-                                        if ui
-                                            .add_enabled_ui(!already_sorted, |ui| {
-                                                sort_direction.menu_item_ui(ui)
-                                            })
-                                            .inner
-                                            .clicked()
-                                        {
-                                            self.new_blueprint.sort_by = Some(SortBy {
-                                                column_physical_name: column_physical_name
-                                                    .to_owned(),
-                                                direction: sort_direction,
-                                            });
-                                            ui.close();
-                                        }
-                                    }
-
-                                    // TODO(ab): for now, we disable filtering on any column with a
-                                    // variant UI, because chances are the filter will not be
-                                    // relevant to what's displayed (e.g. recording link column).
-                                    // In the future, we'll probably need to be more fine-grained.
-                                    #[expect(clippy::collapsible_if)]
-                                    if column.blueprint.variant_ui.is_none()
-                                        && let Some(column_filter) =
-                                            ColumnFilter::default_for_column(Arc::clone(
-                                                column_field,
-                                            ))
-                                    {
-                                        if ui
-                                            .icon_and_text_menu_item(
-                                                &re_ui::icons::FILTER,
-                                                "Filter",
-                                            )
-                                            .clicked()
-                                        {
-                                            self.filter_state.push_new_filter(column_filter);
-                                        }
-                                    }
-                                });
-                            },
+                        response
+                    },
+                    |ui| {
+                        ui.set_height(ui.tokens().table_content_height(table_style));
+                        egui::containers::menu::MenuButton::from_button(
+                            ui.small_icon_button_widget(&re_ui::icons::MORE, "More options"),
                         )
-                        .0
-                })
-                .inner
+                        .config(MenuConfig::new().style(menu_style()))
+                        .ui(ui, |ui| {
+                            for sort_direction in SortDirection::iter() {
+                                let already_sorted =
+                                    Some(&sort_direction) == current_sort_direction;
+
+                                if ui
+                                    .add_enabled_ui(!already_sorted, |ui| {
+                                        sort_direction.menu_item_ui(ui)
+                                    })
+                                    .inner
+                                    .clicked()
+                                {
+                                    self.new_blueprint.sort_by = Some(SortBy {
+                                        column_physical_name: column_physical_name.to_owned(),
+                                        direction: sort_direction,
+                                    });
+                                    ui.close();
+                                }
+                            }
+
+                            // TODO(ab): for now, we disable filtering on any column with a
+                            // variant UI, because chances are the filter will not be
+                            // relevant to what's displayed (e.g. recording link column).
+                            // In the future, we'll probably need to be more fine-grained.
+                            #[expect(clippy::collapsible_if)]
+                            if column.blueprint.variant_ui.is_none()
+                                && let Some(column_filter) =
+                                    ColumnFilter::default_for_column(Arc::clone(column_field))
+                            {
+                                if ui
+                                    .icon_and_text_menu_item(&re_ui::icons::FILTER, "Filter")
+                                    .clicked()
+                                {
+                                    self.filter_state.push_new_filter(column_filter);
+                                }
+                            }
+                        });
+                    },
+                )
+                .0
                 .on_hover_ui(|ui| {
                     ui.with_optional_extras(|ui, show_extras| {
                         column_header_tooltip_ui(
                             ui,
                             &column.desc,
                             column_field,
-                            &self.migrated_fields[index],
+                            &self.migrated_fields[col_index],
                             show_extras,
                         );
                     });
                 });
-            }
         }
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
-        cell_ui(ui, self.table_style, false, |ui| {
-            // find record batch
-            let mut row_index = cell.row_nr as usize;
+        let col_index = cell.col_nr;
 
-            ui.set_truncate_style();
+        if let Some((display_record_batch, batch_index)) =
+            Self::with_row_batch(self.display_record_batches, cell.row_nr as usize)
+        {
+            let column = &display_record_batch.columns()[col_index];
 
-            if cell.col_nr == 0 {
-                // This is the row number column.
-                ui.label(DataFusionTableWidget::row_number_text(cell.row_nr));
-            } else {
-                let col_index = cell.col_nr - 1; // Offset by one for the row number column.
-                let id = self.table_config.visible_column_ids().nth(col_index);
+            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
+            // avoiding doing so needs significant refactoring work.
+            column.data_ui(
+                self.ctx,
+                ui,
+                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
+                    TimelineName::new("unknown"),
+                ),
+                batch_index,
+                None,
+            );
+        }
+    }
 
-                if let Some(col_idx) = self.columns.index_from_id(id) {
-                    //TODO(ab): make an utility for that
-                    for display_record_batch in self.display_record_batches {
-                        let row_count = display_record_batch.num_rows();
-                        if row_index < row_count {
-                            // this is the one
-                            let column = &display_record_batch.columns()[col_idx];
-
-                            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
-                            // avoiding doing so needs significant refactoring work.
-                            column.data_ui(
-                                self.ctx,
-                                ui,
-                                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                                    TimelineName::new("unknown"),
-                                ),
-                                row_index,
-                                None,
-                            );
-
-                            break;
-                        } else {
-                            row_index -= row_count;
-                        }
-                    }
-                }
-            }
-        });
+    fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
+        self.row_context_menu(ui, row_nr);
     }
 
     fn default_row_height(&self) -> f32 {

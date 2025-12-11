@@ -2,7 +2,7 @@ from __future__ import annotations
 
 # =====================================
 # API RE-EXPORTS
-# Important: always us the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
+# Important: always use the `import _ as _` format to make it explicit to type-checkers that these are public APIs.
 #
 from ..datatypes import (  # Re-export time range types for better discoverability.
     TimeRange as TimeRange,
@@ -35,11 +35,15 @@ from .archetypes import (
     LineGrid3D as LineGrid3D,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
+    SpatialInformation as SpatialInformation,
     TensorScalarMapping as TensorScalarMapping,
     TensorSliceSelection as TensorSliceSelection,
+    TextLogColumns as TextLogColumns,
+    TextLogFormat as TextLogFormat,
+    TextLogRows as TextLogRows,
     VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
-    VisualizerOverrides as VisualizerOverrides,
+    ActiveVisualizers as ActiveVisualizers,
 )
 from .components import (
     BackgroundKind as BackgroundKind,

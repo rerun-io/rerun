@@ -39,10 +39,8 @@ pub struct Reflection {
 pub fn generic_placeholder_for_datatype(
     datatype: &arrow::datatypes::DataType,
 ) -> arrow::array::ArrayRef {
-    use arrow::{
-        array::{self, types},
-        datatypes::{DataType, IntervalUnit},
-    };
+    use arrow::array::{self, types};
+    use arrow::datatypes::{DataType, IntervalUnit};
 
     match datatype {
         DataType::Null => Arc::new(array::NullArray::new(1)),
@@ -224,6 +222,8 @@ pub fn generic_placeholder_for_datatype(
             ))
         }
 
+        DataType::Decimal32(_, _) => Arc::new(array::Decimal32Array::from_iter([0])),
+        DataType::Decimal64(_, _) => Arc::new(array::Decimal64Array::from_iter([0])),
         DataType::Decimal128(_, _) => Arc::new(array::Decimal128Array::from_iter([0])),
 
         DataType::Decimal256(_, _) => Arc::new(array::Decimal256Array::from_iter([
@@ -421,9 +421,8 @@ impl ComponentDescriptorExt for ComponentDescriptor {
 
 #[cfg(test)]
 mod test {
-    use crate::ArchetypeName;
-
     use super::{ComponentDescriptor, ComponentDescriptorExt as _, with_field};
+    use crate::ArchetypeName;
 
     #[test]
     fn component_descriptor_manipulation() {

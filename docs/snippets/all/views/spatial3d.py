@@ -24,6 +24,10 @@ blueprint = rrb.Blueprint(
         background=[100, 149, 237],
         # Configure the eye controls.
         eye_controls=rrb.EyeControls3D(
+            position=(0.0, 0.0, 2.0),
+            look_target=(0.0, 2.0, 0.0),
+            eye_up=(-1.0, 0.0, 0.0),
+            spin_speed=0.2,
             kind=rrb.Eye3DKind.FirstPerson,
             speed=20.0,
         ),
@@ -35,6 +39,11 @@ blueprint = rrb.Blueprint(
             plane=rr.components.Plane3D.XY.with_distance(-5.0),
             stroke_width=2.0,  # Makes the grid lines twice as thick as usual.
             color=[255, 255, 255, 128],  # Colors the grid a half-transparent white.
+        ),
+        spatial_information=rrb.SpatialInformation(
+            target_frame="tf#/",
+            show_axes=True,
+            show_bounding_box=True,
         ),
     ),
     collapse_panels=True,

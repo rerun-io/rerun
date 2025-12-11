@@ -9,12 +9,7 @@ pub use image_to_gpu::{
     image_data_range_heuristic, image_to_gpu, required_shader_decode,
     texture_creation_desc_from_color_image,
 };
-pub use re_renderer_callback::new_renderer_callback;
-
-use crate::TensorStats;
-
 // ----------------------------------------------------------------------------
-
 use re_renderer::{
     RenderContext, ViewBuilder,
     renderer::{ColormappedTexture, RectangleOptions},
@@ -22,13 +17,16 @@ use re_renderer::{
         GpuTexture2D, ImageDataDesc, ImageDataToTextureError, TextureManager2DError,
     },
 };
+pub use re_renderer_callback::new_renderer_callback;
+
+use crate::TensorStats;
 
 // ----------------------------------------------------------------------------
 
 /// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 pub fn tensor_decode_srgb_gamma_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
+    data_type: re_sdk_types::tensor_data::TensorDataType,
     channels: u32,
 ) -> bool {
     if matches!(channels, 1 | 3 | 4) {

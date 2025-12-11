@@ -1,24 +1,20 @@
 use re_log_types::Instance;
-use re_renderer::{PickingLayerInstanceId, renderer::LineStripFlags};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::LineStrips3D,
-    components::{ClassId, Color, Radius, ShowLabels},
-};
+use re_renderer::PickingLayerInstanceId;
+use re_renderer::renderer::LineStripFlags;
+use re_sdk_types::archetypes::LineStrips3D;
+use re_sdk_types::components::{ClassId, Color, Radius, ShowLabels};
+use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::utilities::{LabeledBatch, process_labels_3d},
-};
-
-use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities, process_radius_slice};
+use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::utilities::{LabeledBatch, process_labels_3d};
 
 // ---
 
@@ -74,7 +70,8 @@ impl Lines3DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_transform_required_for_entity(entity_path, LineStrips3D::name());
+                .single_transform_required_for_entity(entity_path, LineStrips3D::name())
+                .as_affine3a();
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())
@@ -174,21 +171,14 @@ impl VisualizerSystem for Lines3DVisualizer {
         VisualizerQueryInfo::from_archetype::<LineStrips3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
@@ -199,6 +189,8 @@ impl VisualizerSystem for Lines3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -268,7 +260,7 @@ impl VisualizerSystem for Lines3DVisualizer {
             },
         )?;
 
-        Ok(vec![(line_builder.into_draw_data()?.into())])
+        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

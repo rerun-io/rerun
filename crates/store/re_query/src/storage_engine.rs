@@ -1,5 +1,4 @@
 use parking_lot::{ArcRwLockReadGuard, RwLockReadGuard};
-
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 
 use crate::{QueryCache, QueryCacheHandle};
@@ -82,14 +81,14 @@ impl StorageEngine {
     pub fn try_read(&self) -> Option<StorageEngineReadGuard<'_>> {
         let cache = self.cache.try_read()?;
         let store = self.store.try_read()?;
-        Some(StorageEngineReadGuard { cache, store })
+        Some(StorageEngineReadGuard { store, cache })
     }
 
     #[inline]
     pub fn try_read_arc(&self) -> Option<StorageEngineArcReadGuard> {
         let cache = self.cache.try_read_arc()?;
         let store = self.store.try_read_arc()?;
-        Some(StorageEngineArcReadGuard { cache, store })
+        Some(StorageEngineArcReadGuard { store, cache })
     }
 
     #[inline]
@@ -104,7 +103,7 @@ impl StorageEngine {
     pub fn try_write(&self) -> Option<StorageEngineWriteGuard<'_>> {
         let cache = self.cache.try_write()?;
         let store = self.store.try_write()?;
-        Some(StorageEngineWriteGuard { cache, store })
+        Some(StorageEngineWriteGuard { store, cache })
     }
 
     #[inline]
@@ -127,7 +126,7 @@ impl StorageEngine {
     pub fn try_write_arc(&self) -> Option<StorageEngineArcWriteGuard> {
         let cache = self.cache.try_write_arc()?;
         let store = self.store.try_write_arc()?;
-        Some(StorageEngineArcWriteGuard { cache, store })
+        Some(StorageEngineArcWriteGuard { store, cache })
     }
 }
 

@@ -97,7 +97,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "notebook_show",
             "legacy_notebook_show",
         ],
-        class_list=["RecordingStream"],
+        class_list=["ChunkBatcherConfig", "DescribedComponentBatch", "RecordingStream", "TimeColumnLike"],
     ),
     Section(
         title="Logging functions",
@@ -177,6 +177,11 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
+        title="ErrorUtils",
+        mod_path="rerun.error_utils",
+        show_tables=False,
+    ),
+    Section(
         title="Images",
         class_list=[
             "archetypes.DepthImage",
@@ -221,6 +226,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Mesh3D",
             "archetypes.Points2D",
             "archetypes.Points3D",
+            "archetypes.TransformAxes3D",
         ],
         gen_page=False,
     ),
@@ -260,6 +266,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "components.Scale3D",
             "datatypes.Quaternion",
             "datatypes.RotationAxisAngle",
+            "archetypes.CoordinateFrame",
         ],
         gen_page=False,
     ),
@@ -271,6 +278,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.McapSchema",
             "archetypes.McapStatistics",
         ],
+        gen_page=False,
     ),
     # Section(
     #     title="Deprecated",
@@ -293,11 +301,14 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Interfaces",
         mod_path="rerun",
         class_list=[
+            "ComponentMixin",
+            "ComponentBatchLike",
             "AsComponents",
             "ComponentBatchLike",
             "ComponentColumn",
         ],
         default_filters=False,
+        show_tables=True,
     ),
     ################################################################################
     # Blueprint APIs
@@ -307,6 +318,7 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.blueprint",
         class_list=[
             "Blueprint",
+            "BlueprintLike",
             "BlueprintPart",
             "Container",
             "ContainerLike",
@@ -337,6 +349,12 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Blueprint",
         sub_title="Components",
         mod_path="rerun.blueprint.components",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Datatypes",
+        mod_path="rerun.blueprint.datatypes",
         show_tables=False,
     ),
     Section(
@@ -399,9 +417,24 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Catalog",
-        show_tables=False,
+        show_tables=True,
         mod_path="rerun.catalog",
         show_submodules=True,
+        class_list=[
+            "AlreadyExistsError",
+            "DataframeQueryView",
+            "DatasetEntry",
+            "CatalogClient",
+            "Entry",
+            "EntryId",
+            "EntryKind",
+            "IndexValuesLike",
+            "NotFoundError",
+            "TableEntry",
+            "Task",
+            "VectorDistanceMetric",
+            "VectorDistanceMetricLike",
+        ],
     ),
     Section(
         title="Utilities",
@@ -490,7 +523,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
-| 0.27              | Nov. 2025 (est.) | 3.10+                        |
+| 0.27              | Nov. 10, 2025    | 3.10+                        |
 | 0.26              | Oct. 13, 2025    | 3.9+                         |
 | 0.25              | Sep. 16, 2025    | 3.9+                         |
 | 0.24              | Jul. 17, 2025    | 3.9+                         |
@@ -564,13 +597,25 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
                         mod_tail = section.mod_path.split(".")[1:]
                         class_name = ".".join([*mod_tail, class_name])
                     cls = rerun_pkg[class_name]
+                    bindings_class = False
+                    if "rerun_bindings" in cls.canonical_path:
+                        bindings_class = True
+                        cls = bindings_pkg[cls.canonical_path[len("rerun_bindings.") :]]
+                        class_name = cls.canonical_path
                     show_class = class_name
                     for maybe_strip in ["archetypes.", "components.", "datatypes."]:
                         if class_name.startswith(maybe_strip):
                             stripped = class_name.replace(maybe_strip, "")
                             if stripped in rerun_pkg.classes:
                                 show_class = stripped
-                    index_file.write(f"[`rerun.{show_class}`][rerun.{class_name}] | {cls.docstring.lines[0]}\n")
+                    if bindings_class:
+                        show_class = class_name  # don't strip anything for bindings
+                    else:
+                        show_class = "rerun." + show_class
+                        class_name = "rerun." + class_name
+                    if cls.docstring is None:
+                        raise ValueError(f"No docstring for class {class_name}")
+                    index_file.write(f"[`{show_class}`][{class_name}] | {cls.docstring.lines[0]}\n")
 
         index_file.write("\n")
 

@@ -1,5 +1,5 @@
 use re_log_types::EntryId;
-use re_protos::common::v1alpha1::ext::PartitionId;
+use re_protos::common::v1alpha1::ext::SegmentId;
 
 use crate::store::ChunkKey;
 
@@ -15,23 +15,42 @@ pub enum Error {
     #[error("Entry name '{0}' already exists")]
     DuplicateEntryNameError(String),
 
+    #[error("Entry id '{0}' already exists")]
+    DuplicateEntryIdError(EntryId),
+
     #[error("Entry name '{0}' not found")]
     EntryNameNotFound(String),
 
     #[error("Entry id '{0}' not found")]
     EntryIdNotFound(EntryId),
 
-    #[error("Partition '{0}' not found in dataset '{1}'")]
-    PartitionIdNotFound(PartitionId, EntryId),
+    #[error("Segment '{0}' not found in dataset '{1}'")]
+    SegmentIdNotFound(SegmentId, EntryId),
 
-    #[error("Layer '{0}' not found in partition '{1}' of dataset '{2}'")]
-    LayerNameNotFound(String, PartitionId, EntryId),
+    #[error("Layer '{0}' not found in segment '{1}' of dataset '{2}'")]
+    LayerNameNotFound(String, SegmentId, EntryId),
 
     #[error("Layer '{0}' already exists")]
     LayerAlreadyExists(String),
 
+    #[error("Index '{0}' not found")]
+    IndexNotFound(String),
+
+    #[error("Index '{0}' already exists")]
+    IndexAlreadyExists(String),
+
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
+
+    #[error(transparent)]
+    ArrowError(#[from] arrow::error::ArrowError),
+
+    #[cfg(feature = "lance")]
+    #[error(transparent)]
+    LanceError(#[from] lance::Error),
+
+    #[error("Indexing error: {0}")]
+    IndexingError(String),
 
     #[error("Error loading RRD: {0}")]
     RrdLoadingError(anyhow::Error),
@@ -64,11 +83,15 @@ impl From<Error> for tonic::Status {
 
             Error::EntryIdNotFound(_)
             | Error::EntryNameNotFound(_)
-            | Error::PartitionIdNotFound(_, _)
+            | Error::SegmentIdNotFound(_, _)
             | Error::LayerNameNotFound(_, _, _)
+            | Error::IndexNotFound(_)
             | Error::ChunkNotFound(_) => Self::not_found(format!("{err:#}")),
 
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
+            Error::ArrowError(err) => Self::internal(format!("Arrow error: {err:#}")),
+            #[cfg(feature = "lance")]
+            Error::LanceError(err) => Self::internal(format!("Lance error: {err:#}")),
             Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
 
             Error::FailedToDecodeChunkKey(_) => Self::invalid_argument(format!("{err:#}")),
@@ -76,9 +99,12 @@ impl From<Error> for tonic::Status {
                 Self::internal(format!("{err:#}"))
             }
 
-            Error::DuplicateEntryNameError(_) | Error::LayerAlreadyExists(_) => {
-                Self::already_exists(format!("{err:#}"))
-            }
+            Error::DuplicateEntryNameError(_)
+            | Error::DuplicateEntryIdError(_)
+            | Error::LayerAlreadyExists(_)
+            | Error::IndexAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
+
+            Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
         }
     }
 }

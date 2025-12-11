@@ -60,14 +60,14 @@ impl SortBy {
     }
 }
 
-/// Information required to generate a partition link column.
+/// Information required to generate a segment link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PartitionLinksSpec {
+pub struct SegmentLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
-    pub partition_id_column_name: String,
+    /// Name of the existing column containing the segment id.
+    pub segment_id_column_name: String,
 
     /// Origin to use for the links.
     pub origin: re_uri::Origin,
@@ -76,13 +76,13 @@ pub struct PartitionLinksSpec {
     pub dataset_id: EntryId,
 }
 
-/// Information required to generate a partition link column.
+/// Information required to generate an entry link column.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EntryLinksSpec {
     /// Name of the column to generate.
     pub column_name: String,
 
-    /// Name of the existing column containing the partition id.
+    /// Name of the existing column containing the entry id.
     pub entry_id_column_name: String,
 
     /// Origin to use for the links.
@@ -90,10 +90,10 @@ pub struct EntryLinksSpec {
 }
 
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
-    pub partition_links: Option<PartitionLinksSpec>,
+    pub segment_links: Option<SegmentLinksSpec>,
     pub entry_links: Option<EntryLinksSpec>,
 
     /// Always-on filter specified by calling code.

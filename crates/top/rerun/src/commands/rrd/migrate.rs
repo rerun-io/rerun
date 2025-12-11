@@ -47,13 +47,13 @@ impl MigrateCommand {
         let failures: Vec<(Utf8PathBuf, anyhow::Error)> = path_to_input_rrds
             .par_iter()
             .filter_map(|original_path| {
-                if let Err(err) = migrate_file_at(original_path) {
-                    progress.inc(1);
+                let result = if let Err(err) = migrate_file_at(original_path) {
                     Some((original_path.clone(), err))
                 } else {
-                    progress.inc(1);
                     None
-                }
+                };
+                progress.inc(1);
+                result
             })
             .collect();
 

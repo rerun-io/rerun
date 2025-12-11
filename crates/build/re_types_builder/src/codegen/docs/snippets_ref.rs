@@ -1,10 +1,8 @@
 //! Generate the snippets reference.
 
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, BTreeSet, HashMap},
-    path::PathBuf,
-};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -473,16 +471,16 @@ fn collect_snippets_recursively<'o>(
         let cpp = path.with_extension("cpp").exists();
 
         let snippet = Snippet {
+            path,
             name,
             name_qualified,
-            path,
-
-            contents,
-            description,
 
             python,
             rust,
+
             cpp,
+            description,
+            contents,
 
             archetypes,
             components,
@@ -563,11 +561,11 @@ fn test_contains_whole_word() {
     assert!(contains_whole_word("underscore_is_breaking", "underscore"));
     assert!(contains_whole_word("underscore_is_breaking", "is_breaking"));
     assert!(contains_whole_word(
-        "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
+        "rrb.ActiveVisualizers(rrb.visualizers.SeriesPoints)",
         "SeriesPoints" // plural!
     ));
     assert!(!contains_whole_word(
-        "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
+        "rrb.ActiveVisualizers(rrb.visualizers.SeriesPoints)",
         "SeriesPoint" // singular!
     ));
     assert!(

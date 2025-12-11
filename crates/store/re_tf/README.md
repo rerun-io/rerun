@@ -10,7 +10,7 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 Rerun's spatial transform processing.
 
 Responsible for collecting Rerun compliant spatial transform data & processing them for higher level transform related queries.
-This crate encapsulates a lot of the rules underpinning transform related datastructures defined in `re_types`.
+This crate encapsulates a lot of the rules underpinning transform related datastructures defined in `re_sdk_types`.
 
 Maintains time dependent topological data structures that allow resolving affine transformations between different transform frames (points of reference).
 

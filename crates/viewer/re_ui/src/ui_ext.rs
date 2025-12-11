@@ -1,17 +1,14 @@
 use std::hash::Hash;
 
+use egui::emath::{GuiRounding as _, Rot2};
 use egui::{
-    CollapsingResponse, Color32, NumExt as _, Rangef, Rect, StrokeKind, Widget as _, WidgetInfo,
-    WidgetText,
-    emath::{GuiRounding as _, Rot2},
-    pos2,
+    CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
+    WidgetInfo, WidgetText, pos2,
 };
 
 use crate::alert::Alert;
-use crate::{
-    ContextExt as _, DesignTokens, Icon, LabelStyle, icons,
-    list_item::{self, LabelContent},
-};
+use crate::list_item::{self, LabelContent};
+use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -210,19 +207,19 @@ pub trait UiExt {
         response
     }
 
-    fn re_checkbox(
+    fn re_checkbox<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
     ) -> egui::Response {
-        self.checkbox_indeterminate(checked, text, false)
+        self.checkbox_indeterminate(checked, text.into_atoms(), false)
     }
 
     #[expect(clippy::disallowed_types)]
-    fn checkbox_indeterminate(
+    fn checkbox_indeterminate<'a>(
         &mut self,
-        checked: &mut bool,
-        text: impl Into<egui::WidgetText>,
+        checked: &'a mut bool,
+        text: impl IntoAtoms<'a>,
         indeterminate: bool,
     ) -> egui::Response {
         self.ui_mut()
@@ -645,7 +642,7 @@ pub trait UiExt {
         &mut self,
         id_salt: impl std::hash::Hash,
         content: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> R {
+    ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
     }
 
@@ -687,7 +684,7 @@ pub trait UiExt {
                 id,
                 default_open,
                 list_item::LabelContent::new(label),
-                |ui| list_item::list_item_scope(ui, id, children_ui),
+                |ui| list_item::list_item_scope(ui, id, children_ui).inner,
             )
             .body_response
             .map(|r| r.inner)
@@ -922,15 +919,13 @@ pub trait UiExt {
     fn paint_time_cursor(
         &self,
         painter: &egui::Painter,
-        response: &egui::Response,
+        response: Option<&egui::Response>,
         x: f32,
         y: Rangef,
     ) {
         let ui = self.ui();
-        let stroke = if response.dragged() {
-            ui.style().visuals.widgets.active.fg_stroke
-        } else if response.hovered() {
-            ui.style().visuals.widgets.hovered.fg_stroke
+        let stroke = if let Some(response) = response {
+            ui.visuals().widgets.style(response).fg_stroke
         } else {
             ui.visuals().widgets.inactive.fg_stroke
         };
@@ -1086,7 +1081,7 @@ pub trait UiExt {
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
-        url: impl ToString,
+        url: impl Into<String>,
         always_new_tab: bool,
     ) -> egui::Response {
         let ui = self.ui_mut();
@@ -1101,10 +1096,10 @@ pub trait UiExt {
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url.into()));
             } else if response.clicked() {
                 ui.ctx().open_url(egui::OpenUrl {
-                    url: url.to_string(),
+                    url: url.into(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
             }
@@ -1203,9 +1198,7 @@ pub trait UiExt {
                             });
 
                             #[cfg(feature = "analytics")]
-                            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                                analytics.record(re_analytics::event::HelpButtonFirstClicked {});
-                            }
+                            re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }
                 })
@@ -1239,8 +1232,9 @@ pub trait UiExt {
 
     /// Show some markdown
     fn markdown_ui(&mut self, markdown: &str) {
-        use parking_lot::Mutex;
         use std::sync::Arc;
+
+        use parking_lot::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {

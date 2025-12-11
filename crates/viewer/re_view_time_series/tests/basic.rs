@@ -1,4 +1,5 @@
-use re_chunk_store::{RowId, external::re_chunk::ChunkBuilder};
+use re_chunk_store::RowId;
+use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
@@ -6,12 +7,12 @@ use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};
 
-fn color_gradient0(step: i64) -> re_types::components::Color {
-    re_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)
+fn color_gradient0(step: i64) -> re_sdk_types::components::Color {
+    re_sdk_types::components::Color::from_rgb((step * 8) as u8, 255 - (step * 8) as u8, 0)
 }
 
-fn color_gradient1(step: i64) -> re_types::components::Color {
-    re_types::components::Color::from_rgb(255 - (step * 8) as u8, 0, (step * 8) as u8)
+fn color_gradient1(step: i64) -> re_sdk_types::components::Color {
+    re_sdk_types::components::Color::from_rgb(255 - (step * 8) as u8, 0, (step * 8) as u8)
 }
 
 #[test]
@@ -39,15 +40,15 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesLines::new(),
+            &re_sdk_types::archetypes::SeriesLines::new(),
         )
     });
     test_context.log_entity("plots/point", |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesPoints::new()
-                .with_markers([re_types::components::MarkerShape::Circle]),
+            &re_sdk_types::archetypes::SeriesPoints::new()
+                .with_markers([re_sdk_types::components::MarkerShape::Circle]),
         )
     });
 
@@ -60,7 +61,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
                     builder.with_archetype(
                         RowId::new(),
                         timepoint,
-                        &re_types::archetypes::Clear::new(true),
+                        &re_sdk_types::archetypes::Clear::new(true),
                     )
                 });
             }
@@ -69,12 +70,12 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
             _ => {
                 let data = if two_series_per_entity {
-                    re_types::archetypes::Scalars::default().with_scalars([
+                    re_sdk_types::archetypes::Scalars::default().with_scalars([
                         (i as f64 / 5.0).sin(),
                         (i as f64 / 5.0 + 1.0).cos(), // Shifted a bit to make the cap more visible
                     ])
                 } else {
-                    re_types::archetypes::Scalars::single((i as f64 / 5.0).sin())
+                    re_sdk_types::archetypes::Scalars::single((i as f64 / 5.0).sin())
                 };
 
                 test_context.log_entity("plots/line", |builder| {
@@ -111,22 +112,25 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
 fn scalars_for_properties_test(
     step: i64,
     multiple_scalars: bool,
-) -> (re_types::archetypes::Scalars, re_types::archetypes::Scalars) {
+) -> (
+    re_sdk_types::archetypes::Scalars,
+    re_sdk_types::archetypes::Scalars,
+) {
     if multiple_scalars {
         (
-            re_types::archetypes::Scalars::new([
+            re_sdk_types::archetypes::Scalars::new([
                 (step as f64 / 5.0).sin() + 1.0,
                 (step as f64 / 5.0).cos() + 1.0,
             ]),
-            re_types::archetypes::Scalars::new([
+            re_sdk_types::archetypes::Scalars::new([
                 (step as f64 / 5.0).cos(),
                 (step as f64 / 5.0).sin(),
             ]),
         )
     } else {
         (
-            re_types::archetypes::Scalars::single((step as f64 / 5.0).sin()),
-            re_types::archetypes::Scalars::single((step as f64 / 5.0).cos()),
+            re_sdk_types::archetypes::Scalars::single((step as f64 / 5.0).sin()),
+            re_sdk_types::archetypes::Scalars::single((step as f64 / 5.0).cos()),
         )
     }
 }
@@ -145,17 +149,17 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     let timeline = Timeline::log_tick();
 
     let properties_static = if multiple_properties {
-        re_types::archetypes::SeriesLines::new()
+        re_sdk_types::archetypes::SeriesLines::new()
             .with_widths([4.0, 8.0])
             .with_colors([
-                re_types::components::Color::from_rgb(255, 0, 255),
-                re_types::components::Color::from_rgb(0, 255, 0),
+                re_sdk_types::components::Color::from_rgb(255, 0, 255),
+                re_sdk_types::components::Color::from_rgb(0, 255, 0),
             ])
             .with_names(["static_0", "static_1"])
     } else {
-        re_types::archetypes::SeriesLines::new()
+        re_sdk_types::archetypes::SeriesLines::new()
             .with_widths([4.0])
-            .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+            .with_colors([re_sdk_types::components::Color::from_rgb(255, 0, 255)])
             .with_names(["static"])
     };
     test_context.log_entity("entity_static_props", |builder| {
@@ -166,13 +170,13 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
         let timepoint = TimePoint::from([(timeline, step)]);
 
         let properties = if multiple_properties {
-            re_types::archetypes::SeriesLines::new()
+            re_sdk_types::archetypes::SeriesLines::new()
                 .with_colors([color_gradient0(step), color_gradient1(step)])
                 .with_widths([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
                 // Only the first set of name will be shown, but should be handled gracefully.
                 .with_names([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")])
         } else {
-            re_types::archetypes::SeriesLines::new()
+            re_sdk_types::archetypes::SeriesLines::new()
                 .with_colors([color_gradient0(step)])
                 .with_widths([(32.0 - step as f32) * 0.5])
                 .with_names([format!("dynamic_{step}")])
@@ -221,7 +225,7 @@ fn test_per_series_visibility() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::SeriesLines::new().with_visible_series(visibility),
+                &re_sdk_types::archetypes::SeriesLines::new().with_visible_series(visibility),
             )
         });
 
@@ -243,17 +247,17 @@ fn test_per_series_visibility() {
     }
 }
 
-const MARKER_LIST: [re_types::components::MarkerShape; 10] = [
-    re_types::components::MarkerShape::Circle,
-    re_types::components::MarkerShape::Diamond,
-    re_types::components::MarkerShape::Square,
-    re_types::components::MarkerShape::Cross,
-    re_types::components::MarkerShape::Plus,
-    re_types::components::MarkerShape::Up,
-    re_types::components::MarkerShape::Down,
-    re_types::components::MarkerShape::Left,
-    re_types::components::MarkerShape::Right,
-    re_types::components::MarkerShape::Asterisk,
+const MARKER_LIST: [re_sdk_types::components::MarkerShape; 10] = [
+    re_sdk_types::components::MarkerShape::Circle,
+    re_sdk_types::components::MarkerShape::Diamond,
+    re_sdk_types::components::MarkerShape::Square,
+    re_sdk_types::components::MarkerShape::Cross,
+    re_sdk_types::components::MarkerShape::Plus,
+    re_sdk_types::components::MarkerShape::Up,
+    re_sdk_types::components::MarkerShape::Down,
+    re_sdk_types::components::MarkerShape::Left,
+    re_sdk_types::components::MarkerShape::Right,
+    re_sdk_types::components::MarkerShape::Asterisk,
 ];
 
 #[test]
@@ -270,22 +274,22 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     let timeline = Timeline::log_tick();
 
     let static_props = if multiple_properties {
-        re_types::archetypes::SeriesPoints::new()
+        re_sdk_types::archetypes::SeriesPoints::new()
             .with_marker_sizes([4.0, 8.0])
             .with_markers([
-                re_types::components::MarkerShape::Cross,
-                re_types::components::MarkerShape::Plus,
+                re_sdk_types::components::MarkerShape::Cross,
+                re_sdk_types::components::MarkerShape::Plus,
             ])
             .with_colors([
-                re_types::components::Color::from_rgb(255, 0, 255),
-                re_types::components::Color::from_rgb(0, 255, 0),
+                re_sdk_types::components::Color::from_rgb(255, 0, 255),
+                re_sdk_types::components::Color::from_rgb(0, 255, 0),
             ])
             .with_names(["static_0", "static_1"])
     } else {
-        re_types::archetypes::SeriesPoints::new()
+        re_sdk_types::archetypes::SeriesPoints::new()
             .with_marker_sizes([4.0])
-            .with_markers([re_types::components::MarkerShape::Cross])
-            .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+            .with_markers([re_sdk_types::components::MarkerShape::Cross])
+            .with_colors([re_sdk_types::components::Color::from_rgb(255, 0, 255)])
             .with_names(["static"])
     };
 
@@ -297,7 +301,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         let timepoint = TimePoint::from([(timeline, step)]);
 
         let properties = if multiple_properties {
-            re_types::archetypes::SeriesPoints::new()
+            re_sdk_types::archetypes::SeriesPoints::new()
                 .with_colors([color_gradient0(step), color_gradient1(step)])
                 .with_marker_sizes([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
                 .with_markers([
@@ -306,7 +310,7 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
                 ])
                 .with_names([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")])
         } else {
-            re_types::archetypes::SeriesPoints::new()
+            re_sdk_types::archetypes::SeriesPoints::new()
                 .with_colors([color_gradient0(step)])
                 .with_marker_sizes([(32.0 - step as f32) * 0.5])
                 .with_markers([MARKER_LIST[step as usize % MARKER_LIST.len()]])
@@ -362,7 +366,7 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::from([(Timeline::log_tick(), value)]),
-            &re_types::archetypes::Scalars::new([value as f64]),
+            &re_sdk_types::archetypes::Scalars::new([value as f64]),
         )
     }
 
@@ -371,17 +375,17 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
             .with_archetype(
                 RowId::new(),
                 TimePoint::from([(Timeline::log_tick(), 0)]),
-                &re_types::archetypes::SeriesLines::new()
+                &re_sdk_types::archetypes::SeriesLines::new()
                     .with_widths([5.0])
-                    .with_colors([re_types::components::Color::from_rgb(0, 255, 255)])
+                    .with_colors([re_sdk_types::components::Color::from_rgb(0, 255, 255)])
                     .with_names(["muh_scalars_from_0"]),
             )
             .with_archetype(
                 RowId::new(),
                 TimePoint::from([(Timeline::log_tick(), 45)]),
-                &re_types::archetypes::SeriesLines::new()
+                &re_sdk_types::archetypes::SeriesLines::new()
                     .with_widths([5.0])
-                    .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+                    .with_colors([re_sdk_types::components::Color::from_rgb(255, 0, 255)])
                     .with_names(["muh_scalars_from_45"]),
             );
         for i in 0..10 {
@@ -398,13 +402,15 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
                 ViewContents::override_path_for_entity(view.id, &EntityPath::from("scalars"));
             ctx.save_blueprint_archetype(
                 override_path.clone(),
-                &re_types::blueprint::archetypes::VisibleTimeRanges::new([
-                    re_types::blueprint::components::VisibleTimeRange(
-                        re_types::datatypes::VisibleTimeRange {
+                &re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([
+                    re_sdk_types::blueprint::components::VisibleTimeRange(
+                        re_sdk_types::datatypes::VisibleTimeRange {
                             timeline: "log_tick".into(),
-                            range: re_types::datatypes::TimeRange {
-                                start: re_types::datatypes::TimeRangeBoundary::Absolute(70.into()),
-                                end: re_types::datatypes::TimeRangeBoundary::Infinite,
+                            range: re_sdk_types::datatypes::TimeRange {
+                                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                                    70.into(),
+                                ),
+                                end: re_sdk_types::datatypes::TimeRangeBoundary::Infinite,
                             },
                         },
                     ),

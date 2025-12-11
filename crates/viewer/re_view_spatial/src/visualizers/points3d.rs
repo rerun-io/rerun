@@ -1,28 +1,20 @@
 use itertools::Itertools as _;
-
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
-use re_types::{
-    Archetype as _, ArrowString,
-    archetypes::Points3D,
-    components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels},
-};
+use re_sdk_types::ArrowString;
+use re_sdk_types::archetypes::Points3D;
+use re_sdk_types::components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels};
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    typed_fallback_for,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    view_kind::SpatialViewKind,
-    visualizers::{load_keypoint_connections, process_radius_slice},
-};
-
-use super::{
-    SpatialViewVisualizerData, filter_visualizable_3d_entities, process_labels_3d,
-    utilities::LabeledBatch,
-};
+use super::utilities::LabeledBatch;
+use super::{SpatialViewVisualizerData, process_labels_3d};
+use crate::contexts::SpatialSceneEntityContext;
+use crate::view_kind::SpatialViewKind;
+use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
 // ---
 
@@ -108,9 +100,9 @@ impl Points3DVisualizer {
             // for performance).
             for world_from_obj in ent_context
                 .transform_info
-                .target_from_instances(Points3D::name())
+                .target_from_instances()
                 .iter()
-                .copied()
+                .map(|transform| transform.as_affine3a())
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
@@ -185,21 +177,14 @@ impl VisualizerSystem for Points3DVisualizer {
         VisualizerQueryInfo::from_archetype::<Points3D>()
     }
 
-    fn filter_visualizable_entities(
-        &self,
-        entities: MaybeVisualizableEntities,
-        context: &dyn VisualizableFilterContext,
-    ) -> VisualizableEntities {
-        re_tracing::profile_function!();
-        filter_visualizable_3d_entities(entities, context)
-    }
-
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
-    ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut output = VisualizerExecutionOutput::default();
+
         let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
         point_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -217,6 +202,8 @@ impl VisualizerSystem for Points3DVisualizer {
             ctx,
             view_query,
             context_systems,
+            &mut output,
+            self.data.preferred_view_kind,
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
@@ -297,10 +284,10 @@ impl VisualizerSystem for Points3DVisualizer {
             },
         )?;
 
-        Ok(vec![
+        Ok(output.with_draw_data([
             point_builder.into_draw_data()?.into(),
             line_builder.into_draw_data()?.into(),
-        ])
+        ]))
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {

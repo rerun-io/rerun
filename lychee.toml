@@ -40,6 +40,7 @@ accept = [
   "100..=103", # Informational codes.
   "200..=299", # Success codes.
   "429", # Too many requests. This is practically never a sign of a broken link.
+  "403", # A lot of endpoints always return 403 for the link checker
 ]
 
 # Exclude these filesystem paths from getting checked.
@@ -60,17 +61,15 @@ exclude_path = [
   "rerun_js/node_modules/",
   "rerun_notebook/node_modules/",
   "rerun_py/site/",
-  "target_pixi_wasm",
-  "target_pixi",
   "target_ra",
   "target_wasm",
   "target",
   "venv",
 
   # Actually ignored files beyond .gitignore
+  "crates/store/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
+  "crates/store/re_uri/src/redap_uri.rs", # Same as above.
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
-  "crates/utils/re_uri/src/lib.rs", # Contains some malformed URLs, but they are not actual links.
-  "crates/utils/re_uri/src/redap_uri.rs", # Same as above.
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls
@@ -141,16 +140,18 @@ exclude = [
   # Not accessible from CI.
   '.github/workflows/.*.yml', # GitHub action workflows cause issues on CI.
   'https://9p.io/sys/doc/lexnames.html', # Works locally but on CI we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
-  'https://claude.site/artifacts/', # Giving a 500, but only from CI
+  'https://claude.site/artifacts/*', # Giving a 500, but only from CI
   'https://fifteen-thirtyeight.rerun.io/script.js', # Gives 403 forbidden on CI.
   'https://lib.rs/*', # Gives 403 forbidden on CI.
-  'https://math.stackexchange.com/', # Gives 403 forbidden on CI.
+  'https://math.stackexchange.com/*', # Gives 403 forbidden on CI.
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
-  'https://stackoverflow.com/', # Stackoverflow links are no longer accessible from CI.
-  'https://vimeo.com/', # Gives 403 forbidden on CI.
+  'https://stackoverflow.com/*', # Stackoverflow links are no longer accessible from CI.
+  'https://vimeo.com/*', # Gives 403 forbidden on CI.
   'https://www.npmjs.com/*', # Gives 403 forbidden on CI.
-  'https://www.reddit.com/', # Gives 403 forbidden on CI.
-  'https://www.tensorflow.org/', # tensorflow.org apparently blocks CI.
+  'https://www.reddit.com/*', # Gives 403 forbidden on CI.
+  'https://www.shadertoy.com/*', # 403 on CI
+  'https://www.tensorflow.org/*', # tensorflow.org apparently blocks CI.
+  'https://www.unicode.org/license.txt', # Gives network error on CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
@@ -172,7 +173,8 @@ exclude = [
   'https://www.doxygen.nl/.*', # Getting 403, but the links work.
 
   # Works but is really slow at times:
-  'https://anaconda.org/conda-forge/arrow-cpp',
+  'https://anaconda.org/conda-forge/libarrow',
+  'https://cvg.cit.tum.de/data/datasets/visual-inertial-dataset',
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://picsum.photos/*',
 

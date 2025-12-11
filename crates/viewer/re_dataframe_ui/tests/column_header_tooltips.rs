@@ -1,20 +1,16 @@
 use std::sync::Arc;
 
-use arrow::{
-    array::{ArrayRef, RecordBatch, RecordBatchOptions},
-    datatypes::{DataType, Field, Fields, Schema},
-};
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
+use arrow::datatypes::{DataType, Field, Fields, Schema};
 use egui::vec2;
 use egui_kittest::Harness;
-
 use re_dataframe_ui::column_header_tooltip_ui;
 use re_log_types::{EntityPath, Timeline};
 use re_sorbet::{
     BatchType, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetBatch,
 };
-use re_types_core::{
-    ArchetypeName, ComponentIdentifier, ComponentType, reflection::generic_placeholder_for_datatype,
-};
+use re_types_core::reflection::generic_placeholder_for_datatype;
+use re_types_core::{ArchetypeName, ComponentIdentifier, ComponentType};
 
 #[test]
 fn test_column_header_tooltips() {
@@ -127,7 +123,10 @@ fn test_fields() -> Vec<(Field, &'static str)> {
             Field::new("user_metadata", DataType::Float32, false).with_metadata(
                 [
                     ("hello".to_owned(), "world".to_owned()),
-                    ("rerun:entity_path".to_owned(), "/entity/path".to_owned()),
+                    (
+                        re_sorbet::metadata::SORBET_ENTITY_PATH.to_owned(),
+                        "/entity/path".to_owned(),
+                    ),
                 ]
                 .into_iter()
                 .collect(),

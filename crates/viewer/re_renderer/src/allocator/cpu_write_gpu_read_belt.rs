@@ -1,9 +1,7 @@
 use std::sync::mpsc;
 
-use crate::{
-    texture_info::Texture2DBufferInfo,
-    wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture},
-};
+use crate::texture_info::Texture2DBufferInfo;
+use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture};
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum CpuWriteGpuReadError {

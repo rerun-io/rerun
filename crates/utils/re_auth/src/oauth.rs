@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-
+use base64::Engine as _;
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
 
 use crate::Jwt;
@@ -7,12 +7,14 @@ use crate::Jwt;
 pub mod api;
 mod storage;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod login_flow;
+
 /// Tokens with fewer than this number of seconds left before expiration
 /// are considered expired. This ensures tokens don't become expired
 /// during network transit.
 const SOFT_EXPIRE_SECS: i64 = 60;
 
-#[cfg(not(target_arch = "wasm32"))]
 pub(crate) static OAUTH_CLIENT_ID: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_CLIENT_ID")
         .ok()
@@ -56,6 +58,9 @@ pub enum CredentialsRefreshError {
 
     #[error("failed to deserialize credentials: {0}")]
     MalformedToken(#[from] MalformedTokenError),
+
+    #[error("no refresh token available")]
+    NoRefreshToken,
 }
 
 /// Refresh credentials if they are expired.
@@ -76,9 +81,12 @@ pub async fn refresh_credentials(
         -credentials.access_token().remaining_duration_secs()
     );
 
-    let response = api::refresh(&credentials.refresh_token).await?;
-    let credentials = Credentials::from_auth_response(response)?;
-    let credentials = credentials
+    let Some(refresh_token) = &credentials.refresh_token else {
+        return Err(CredentialsRefreshError::NoRefreshToken);
+    };
+
+    let response = api::refresh(refresh_token).await?;
+    let credentials = Credentials::from_auth_response(response)?
         .ensure_stored()
         .map_err(|err| CredentialsRefreshError::Store(err.0))?;
     re_log::debug!("credentials refreshed successfully");
@@ -161,6 +169,22 @@ pub struct RerunCloudClaims {
 impl RerunCloudClaims {
     pub const REQUIRED: &'static [&'static str] =
         &["iss", "sub", "org_id", "permissions", "exp", "iat"];
+
+    pub fn try_from_unverified_jwt(jwt: &Jwt) -> Result<Self, MalformedTokenError> {
+        // TODO(aedm): check signature of the JWT token
+        let (_header, rest) = jwt
+            .as_str()
+            .split_once('.')
+            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
+        let (payload, _signature) = rest
+            .split_once('.')
+            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
+        let payload = BASE64_URL_SAFE_NO_PAD
+            .decode(payload)
+            .map_err(MalformedTokenError::Base64)?;
+        let claims = serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
+        Ok(claims)
+    }
 }
 
 #[allow(clippy::allow_attributes, dead_code)] // fields may become used at some point in the near future
@@ -185,11 +209,17 @@ pub enum VerifyError {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Credentials {
     user: User,
-    refresh_token: RefreshToken,
+
+    // Refresh token is optional because it may not be available in some cases,
+    // like the Jupyter notebook Wasm viewer. In that case, the SDK handles
+    // token refreshes.
+    refresh_token: Option<RefreshToken>,
+
     access_token: AccessToken,
+    claims: RerunCloudClaims,
 }
 
-pub(crate) struct InMemoryCredentials(Credentials);
+pub struct InMemoryCredentials(Credentials);
 
 #[derive(Debug, thiserror::Error)]
 #[error("failed to store credentials: {0}")]
@@ -199,6 +229,30 @@ impl InMemoryCredentials {
     /// Ensure credentials are persisted to disk before using them.
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
         storage::store(&self.0)?;
+
+        // Normally if re_analytics discovers this is a brand-new configuration,
+        // we show an analytics diclaimer. But, during SDK usage with the Catalog
+        // it's possible to hit this code-path during a first run in a new
+        // environment. Given the user already has a Rerun identity (or else there
+        // would be no credentials to store!), we assume they are already aware of
+        // rerun analytics and do not need a disclaimer. They can still use the shell
+        // to run `rerun analytics disable` if they wish to opt out.
+        //
+        // By manually forcing the creation of the analytics config we bypass the first_run check.
+        if let Ok(config) = re_analytics::Config::load_or_default() {
+            if config.is_first_run() {
+                config.save().ok();
+            }
+        }
+
+        // Link the analytics ID to the authenticated user
+        re_analytics::record(|| re_analytics::event::SetPersonProperty {
+            email: self.0.user.email.clone(),
+            organization_id: self.0.claims.org_id.clone(),
+        });
+
+        crate::credentials::oauth::auth_update(Some(&self.0.user));
+
         Ok(self.0)
     }
 }
@@ -207,16 +261,48 @@ impl Credentials {
     /// Deserializes credentials from an authentication response.
     ///
     /// Assumes the credentials are valid and not expired.
-    pub(crate) fn from_auth_response(
-        res: api::AuthenticationResponse,
+    ///
+    /// The authentication response must come from a trusted source, such
+    /// as the authentication API.
+    pub fn from_auth_response(
+        res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
-        // SAFETY: The token comes from a trusted source, which is the authentication API.
-        #[expect(unsafe_code)]
-        let access_token = unsafe { AccessToken::unverified(Jwt(res.access_token))? };
+        let jwt = Jwt(res.access_token);
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
+        let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
         Ok(InMemoryCredentials(Self {
             user: res.user,
-            refresh_token: RefreshToken(res.refresh_token),
+            refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
+            claims,
+        }))
+    }
+
+    /// Creates credentials from raw token strings.
+    ///
+    /// Warning: it does not check the signature of the access token.
+    pub fn try_new(
+        access_token: String,
+        refresh_token: Option<String>,
+        email: String,
+    ) -> Result<InMemoryCredentials, MalformedTokenError> {
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&Jwt(access_token.clone()))?;
+
+        let user = User {
+            id: claims.sub.clone(),
+            email,
+        };
+        let access_token = AccessToken {
+            token: access_token,
+            expires_at: claims.exp,
+        };
+        let refresh_token = refresh_token.map(RefreshToken);
+
+        Ok(InMemoryCredentials(Self {
+            user,
+            refresh_token,
+            access_token,
+            claims,
         }))
     }
 
@@ -234,7 +320,6 @@ impl Credentials {
 pub struct User {
     pub id: String,
     pub email: String,
-    pub metadata: HashMap<String, String>,
 }
 
 /// An access token which was valid at some point in the past.
@@ -269,31 +354,12 @@ impl AccessToken {
 
     /// Construct an [`AccessToken`] without verifying it.
     ///
-    /// ## Safety
-    ///
-    /// - The token should come from a trusted source, like the Rerun auth API.
-    // Note: Misusing this will not cause UB, but we're still marking it unsafe
-    // to ensure it is not used lightly.
-    #[expect(unsafe_code)]
-    pub(crate) unsafe fn unverified(jwt: Jwt) -> Result<Self, MalformedTokenError> {
-        use base64::prelude::*;
-
-        let (_header, rest) = jwt
-            .as_str()
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingHeaderPayloadSeparator)?;
-        let (payload, _signature) = rest
-            .split_once('.')
-            .ok_or(MalformedTokenError::MissingPayloadSignatureSeparator)?;
-        let payload = BASE64_URL_SAFE_NO_PAD
-            .decode(payload)
-            .map_err(MalformedTokenError::Base64)?;
-        let payload: RerunCloudClaims =
-            serde_json::from_slice(&payload).map_err(MalformedTokenError::Serde)?;
-
+    /// The token should come from a trusted source, like the Rerun auth API.
+    pub(crate) fn try_from_unverified_jwt(jwt: Jwt) -> Result<Self, MalformedTokenError> {
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
         Ok(Self {
             token: jwt.0,
-            expires_at: payload.exp,
+            expires_at: claims.exp,
         })
     }
 }

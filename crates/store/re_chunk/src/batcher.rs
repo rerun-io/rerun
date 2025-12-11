@@ -1,19 +1,17 @@
-use std::{
-    hash::{Hash as _, Hasher as _},
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::hash::{Hash as _, Hasher as _};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
-
 use re_arrow_util::arrays_to_list_array_opt;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::{ComponentIdentifier, SerializedComponentBatch, SerializedComponentColumn};
 
-use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
+use crate::chunk::ChunkComponents;
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
 
 // ---
 
@@ -1127,7 +1125,6 @@ impl PendingTimeColumn {
 #[cfg(test)]
 mod tests {
     use crossbeam::channel::TryRecvError;
-
     use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
     use re_types_core::{ComponentDescriptor, Loggable as _};
 

@@ -15,6 +15,7 @@
 //! - We ignore the time zone hint and use instead our global [`TimestampFormat`] for display.
 
 use std::fmt::{Display, Formatter};
+use std::hash::Hash;
 use std::str::FromStr as _;
 
 use arrow::array::{ArrayRef, BooleanArray};
@@ -22,17 +23,16 @@ use arrow::datatypes::{DataType, Field, TimeUnit};
 use datafusion::common::{Result as DataFusionResult, exec_err};
 use datafusion::logical_expr::{Expr, TypeSignature, col, not};
 use jiff::{RoundMode, Timestamp, TimestampRound, ToSpan as _};
-use strum::VariantArray as _;
-
 use re_log_types::TimestampFormat;
 use re_types_core::Loggable as _;
 use re_types_core::datatypes::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
+use strum::VariantArray as _;
 
 use super::{Filter, FilterError, FilterUdf, FilterUiAction, TimestampFormatted, parse_timestamp};
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash)]
 enum TimestampFilterKind {
     #[default]
     Today,
@@ -45,7 +45,7 @@ enum TimestampFilterKind {
     Between,
 }
 
-#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, strum::VariantArray)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq, Hash, strum::VariantArray)]
 pub enum TimestampOperator {
     #[default]
     Is,
@@ -64,7 +64,7 @@ impl Display for TimestampOperator {
 /// A filter for [`arrow::datatypes::DataType::Timestamp`] columns.
 ///
 /// This represents both the filter itself, and the state of the corresponding UI.
-#[derive(Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct TimestampFilter {
     /// The kind of temporal filter to use.
     kind: TimestampFilterKind,
@@ -184,12 +184,12 @@ impl SyntaxHighlighting for TimestampFormatted<'_, TimestampFilter> {
             .inner
             .low_bound_timestamp
             .resolved_formatted(self.timestamp_format)
-            .unwrap_or("…".to_owned());
+            .unwrap_or_else(|_| "…".to_owned());
         let high_bound = self
             .inner
             .high_bound_timestamp
             .resolved_formatted(self.timestamp_format)
-            .unwrap_or("…".to_owned());
+            .unwrap_or_else(|_| "…".to_owned());
 
         match self.inner.kind {
             TimestampFilterKind::Today => builder.append_keyword("today"),
@@ -433,6 +433,8 @@ impl std::fmt::Debug for EditableTimestamp {
     }
 }
 
+impl Eq for EditableTimestamp {}
+
 impl PartialEq for EditableTimestamp {
     fn eq(&self, other: &Self) -> bool {
         let Self {
@@ -454,6 +456,16 @@ impl PartialEq for EditableTimestamp {
             // equal, the error _should_ be equal as well, and we don't care much if it isn't.
             Err(_) => other.resolved_timestamp.is_err(),
         }
+    }
+}
+
+impl Hash for EditableTimestamp {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.timestamp_string.hash(state);
+        self.resolved_timestamp
+            .as_ref()
+            .map_err(|err| err.to_string())
+            .hash(state);
     }
 }
 
@@ -584,7 +596,7 @@ fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> 
 /// Helper to resolve a [`TimestampFilter`] and actually perform the filtering.
 ///
 /// IMPORTANT: this ignores the `TimestampOperator`, because it is applied outside of the UDF.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum ResolvedTimestampFilter {
     All,
 
@@ -796,9 +808,9 @@ impl FilterUdf for ResolvedTimestampFilter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use jiff::civil::date;
+
+    use super::*;
 
     #[test]
     fn test_before_filter() {

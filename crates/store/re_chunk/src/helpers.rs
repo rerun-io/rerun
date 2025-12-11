@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use arrow::array::Array as _;
-use arrow::array::ArrayRef as ArrowArrayRef;
-
+use arrow::array::{Array as _, ArrayRef as ArrowArrayRef};
 use re_log_types::{TimeInt, TimelineName};
 use re_types_core::{Component, ComponentIdentifier};
 
@@ -270,6 +268,20 @@ impl UnitChunkShared {
         list_array.is_valid(0).then(|| list_array.value(0))
     }
 
+    /// Like `component_batch_raw`, but also returns `None` if the batch is empty.
+    #[inline]
+    pub fn non_empty_component_batch_raw(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<(Option<RowId>, ArrowArrayRef)> {
+        let batch = self.component_batch_raw(component)?;
+        if batch.is_empty() {
+            None
+        } else {
+            Some((self.row_id(), batch))
+        }
+    }
+
     /// Returns the deserialized data for the specified component.
     ///
     /// Returns an error if the data cannot be deserialized.
@@ -354,7 +366,6 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
-    /// In debug builds, panics if the descriptor doesn't have the same type as the component type.
     #[inline]
     pub fn component_mono<C: Component>(
         &self,

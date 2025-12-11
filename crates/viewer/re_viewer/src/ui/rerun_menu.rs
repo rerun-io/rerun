@@ -5,7 +5,7 @@ use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::{Button, NumExt as _, ScrollArea};
 use re_ui::menu::menu_style;
-use re_ui::{UICommand, UiExt as _};
+use re_ui::{UICommand, UICommandSender as _, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::App;
@@ -45,6 +45,32 @@ impl App {
                         self.rerun_menu_ui(ui, render_state, _store_context);
                     });
             });
+    }
+
+    pub fn navigation_buttons(&mut self, ui: &mut egui::Ui) {
+        let history = &mut self.state.history;
+
+        if ui
+            .add_enabled(
+                history.has_back(),
+                ui.small_icon_button_widget(&re_ui::icons::ARROW_LEFT, "go back"),
+            )
+            .on_hover_ui(|ui| UICommand::NavigateBack.tooltip_ui(ui))
+            .clicked()
+        {
+            self.command_sender.send_ui(UICommand::NavigateBack);
+        }
+
+        if ui
+            .add_enabled(
+                history.has_forward(),
+                ui.small_icon_button_widget(&re_ui::icons::ARROW_RIGHT, "go forward"),
+            )
+            .on_hover_ui(|ui| UICommand::NavigateForward.tooltip_ui(ui))
+            .clicked()
+        {
+            self.command_sender.send_ui(UICommand::NavigateForward);
+        }
     }
 
     fn rerun_menu_ui(

@@ -216,19 +216,21 @@ impl ChunkStore {
     pub fn entity_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        self.static_chunk_ids_per_entity.get(entity_path).map_or(
-            ChunkStoreChunkStats::default(),
-            |static_chunks_per_component| {
-                let chunk_ids: ahash::HashSet<re_chunk::ChunkId> =
-                    static_chunks_per_component.values().copied().collect();
+        self.static_chunk_ids_per_entity
+            .get(entity_path)
+            .map_or_else(
+                ChunkStoreChunkStats::default,
+                |static_chunks_per_component| {
+                    let chunk_ids: ahash::HashSet<re_chunk::ChunkId> =
+                        static_chunks_per_component.values().copied().collect();
 
-                chunk_ids
-                    .into_iter()
-                    .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
-                    .map(ChunkStoreChunkStats::from_chunk)
-                    .sum()
-            },
-        )
+                    chunk_ids
+                        .into_iter()
+                        .filter_map(|chunk_id| self.chunks_per_chunk_id.get(&chunk_id))
+                        .map(ChunkStoreChunkStats::from_chunk)
+                        .sum()
+                },
+            )
     }
 
     /// Stats about all the chunks that has data for an entity on a specific timeline.
@@ -246,8 +248,8 @@ impl ChunkStore {
             .and_then(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline.get(timeline)
             })
-            .map_or(
-                ChunkStoreChunkStats::default(),
+            .map_or_else(
+                ChunkStoreChunkStats::default,
                 |chunk_id_sets| -> ChunkStoreChunkStats {
                     chunk_id_sets
                         .per_start_time

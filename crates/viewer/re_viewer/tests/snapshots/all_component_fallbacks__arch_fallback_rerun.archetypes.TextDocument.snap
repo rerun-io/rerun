@@ -1,0 +1,6 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+text: []
+media_type: [text/plain]

@@ -1,10 +1,14 @@
+use std::error::Error;
+use std::str::FromStr as _;
+use std::time::Duration;
+
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::ConnectionClient;
+use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
-use std::{error::Error, time::Duration};
 
 pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn Error>> {
     let path = {
@@ -28,9 +32,11 @@ pub async fn load_test_data(mut client: ConnectionClient) -> Result<(), Box<dyn 
     assert_eq!(entries_table[0].kind, EntryKind::Table);
 
     let dataset_name = "my_dataset";
+    let dataset_id =
+        re_tuid::Tuid::from_str("187b552b95a5c2f73f37894708825ba5").expect("Failed to parse TUID");
 
     let entry = client
-        .create_dataset_entry(dataset_name.to_owned(), None)
+        .create_dataset_entry(dataset_name.to_owned(), Some(dataset_id.into()))
         .await?;
 
     client

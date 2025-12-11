@@ -18,7 +18,6 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
-mod data_source_message;
 mod entry_id;
 pub mod example_components;
 pub mod hash;
@@ -34,29 +33,23 @@ mod vec_deque_ext;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
-pub use self::{
-    arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    data_source_message::{DataSourceMessage, DataSourceUiCommand},
-    entry_id::{EntryId, EntryIdOrName},
-    index::{
-        AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
-        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TimestampFormatKind, TryFromIntError,
-    },
-    instance::Instance,
-    path::*,
-    vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt},
+pub use re_types_core::TimelineName;
+
+pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
+pub use self::entry_id::{EntryId, EntryIdOrName};
+pub use self::index::{
+    AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, NonMinI64, TimeCell, TimeInt, TimePoint,
+    TimeReal, TimeType, Timeline, Timestamp, TimestampFormat, TimestampFormatKind, TryFromIntError,
 };
+pub use self::instance::Instance;
+pub use self::path::*;
+pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {
-    pub use arrow;
-
-    pub use re_tuid;
-    pub use re_types_core;
+    pub use {arrow, re_tuid, re_types_core};
 }
 
 #[macro_export]
@@ -143,8 +136,8 @@ fn store_kind_str_roundtrip() {
 /// can override the recording id though. In that case, the user is responsible for making the
 /// application id/recording id pair unique or not, based on their needs.
 ///
-/// In the context of remote recordings (aka a dataset's partition), the application id is the
-/// dataset entry id, and the recording id is the partition id. The former is a UUID, and the latter
+/// In the context of remote recordings (aka a dataset's segment), the application id is the
+/// dataset entry id, and the recording id is the segment id. The former is a UUID, and the latter
 /// is, by definition, unique within the dataset entry. As a result, the uniqueness of the `StoreId`
 /// is always guaranteed in this case.
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -339,7 +332,7 @@ impl std::fmt::Display for ApplicationId {
 ///
 /// In the context of a recording from the logging SDK, it is by default a uuid, but it is not
 /// required to be so. It may be a user-chosen name as well. In the context of a remote recording,
-/// this is the partition id.
+/// this is the segment id.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RecordingId(Arc<String>);
@@ -563,8 +556,8 @@ pub struct SetStoreInfo {
 pub struct StoreInfo {
     /// Should be unique for each recording.
     ///
-    /// The store id contains both the application id (or dataset id) and the reocrding id (or
-    /// partition id).
+    /// The store id contains both the application id (or dataset id) and the recording id (or
+    /// segment id).
     pub store_id: StoreId,
 
     /// If this store is the result of a clone, which store was it cloned from?
@@ -617,9 +610,21 @@ impl StoreInfo {
 
     /// Creates a new store info for testing purposes.
     pub fn testing() -> Self {
-        // Don't use a version for testing since it may show up in snapshots that then would change on every version.
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
         Self::new_unversioned(
-            StoreId::new(StoreKind::Recording, "test_app", "test_recording"),
+            StoreId::random(StoreKind::Recording, "test_app"),
+            StoreSource::Other("test".to_owned()),
+        )
+    }
+
+    /// Creates a new store info for testing purposes with a fixed store id.
+    ///
+    /// Most of the time we don't want to fix the store id since it is used as a key in static store subscribers, which might not get teared down after every test.
+    /// Use this only if the recording id may show up somewhere in the test output.
+    pub fn testing_with_recording_id(recording_id: impl Into<RecordingId>) -> Self {
+        // Do not use a version since it breaks snapshot tests on every update otherwise.
+        Self::new_unversioned(
+            StoreId::new(StoreKind::Recording, "test_app", recording_id),
             StoreSource::Other("test".to_owned()),
         )
     }
@@ -868,6 +873,12 @@ pub struct TableMsg {
 
     /// The table stored as an [`ArrowRecordBatch`].
     pub data: ArrowRecordBatch,
+}
+
+impl TableMsg {
+    pub fn insert_arrow_record_batch_metadata(&mut self, key: String, value: String) {
+        self.data.schema_metadata_mut().insert(key, value);
+    }
 }
 
 // ---

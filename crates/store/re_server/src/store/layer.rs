@@ -1,9 +1,8 @@
+use std::collections::HashMap;
+
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use arrow::error::ArrowError;
-use sha2::Digest as _;
-use std::collections::HashMap;
-
 use re_byte_size::SizeBytes as _;
 use re_chunk_store::ChunkStoreHandle;
 
@@ -55,27 +54,7 @@ impl Layer {
     }
 
     pub fn schema_sha256(&self) -> Result<[u8; 32], ArrowError> {
-        let schema = {
-            // Sort and remove top-level metadata before hashing.
-            let mut fields = self.schema().fields().to_vec();
-            fields.sort();
-            Schema::new_with_metadata(fields, Default::default()) // no metadata!
-        };
-
-        let partition_schema_ipc = {
-            let mut schema_ipc = Vec::new();
-            arrow::ipc::writer::StreamWriter::try_new(&mut schema_ipc, &schema)?;
-            schema_ipc
-        };
-
-        let mut hash = [0u8; 32];
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(&partition_schema_ipc);
-        hasher.finalize_into(sha2::digest::generic_array::GenericArray::from_mut_slice(
-            &mut hash,
-        ));
-
-        Ok(hash)
+        re_log_encoding::RrdManifest::compute_sorbet_schema_sha256(&self.schema())
     }
 
     pub fn compute_properties(

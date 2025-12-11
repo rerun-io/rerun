@@ -1,4 +1,5 @@
-use std::{ops::Range, sync::mpsc};
+use std::ops::Range;
+use std::sync::mpsc;
 
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
@@ -79,9 +80,11 @@ impl GpuReadbackBuffer {
                 src_texture
                     .format()
                     .block_copy_size(Some(source.aspect))
-                    .ok_or(GpuReadbackError::UnsupportedTextureFormatForReadback(
-                        source.texture.format(),
-                    ))? as u64,
+                    .ok_or_else(|| {
+                        GpuReadbackError::UnsupportedTextureFormatForReadback(
+                            source.texture.format(),
+                        )
+                    })? as u64,
             );
 
             let buffer_info = Texture2DBufferInfo::new(src_texture.format(), *copy_extents);

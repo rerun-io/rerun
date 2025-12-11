@@ -1,5 +1,0 @@
----
-source: crates/viewer/re_component_fallbacks/tests/all_component_fallbacks.rs
-expression: arch_display
----
-zoom: [0.0]

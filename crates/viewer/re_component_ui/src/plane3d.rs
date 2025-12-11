@@ -1,11 +1,10 @@
-use re_types::{components, external::glam};
+use re_sdk_types::components;
+use re_sdk_types::external::glam;
 use re_ui::UiExt as _;
 use re_viewer_context::MaybeMutRef;
 
-use crate::{
-    datatype_uis::{edit_f32_float_raw, edit_or_view_vec3d_raw},
-    response_utils::response_with_changes_of_inner,
-};
+use crate::datatype_uis::{edit_f32_float_raw, edit_or_view_vec3d_raw};
+use crate::response_utils::response_with_changes_of_inner;
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 enum AxisDirection {

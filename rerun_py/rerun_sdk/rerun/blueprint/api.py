@@ -10,7 +10,6 @@ from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentB
 from .._spawn import _spawn_viewer
 from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..recording_stream import RecordingStream
-from ..time import to_nanos, to_nanos_since_epoch
 from .archetypes import (
     ContainerBlueprint,
     PanelBlueprint,
@@ -22,12 +21,13 @@ from .archetypes import (
 from .components import PanelState, PanelStateLike
 
 if TYPE_CHECKING:
-    from datetime import datetime, timedelta
-
-    import numpy as np
+    from pathlib import Path
 
     from ..memory import MemoryRecording
+    from .components.absolute_time_range import AbsoluteTimeRange
     from .components.container_kind import ContainerKindLike
+    from .components.loop_mode import LoopModeLike
+    from .components.play_state import PlayStateLike
 
 ViewContentsLike = Utf8ArrayLike | ViewContents
 
@@ -445,11 +445,11 @@ class TimePanel(Panel):
         expanded: bool | None = None,
         state: PanelStateLike | None = None,
         timeline: Utf8Like | None = None,
-        sequence_cursor: int | None = None,
-        duration_cursor: int | float | timedelta | np.timedelta64 | None = None,
-        timestamp_cursor: int | float | datetime | np.datetime64 | None = None,
         playback_speed: float | None = None,
         fps: float | None = None,
+        play_state: PlayStateLike | None = None,
+        loop_mode: LoopModeLike | None = None,
+        time_selection: AbsoluteTimeRange | None = None,
     ) -> None:
         """
         Construct a new time panel.
@@ -466,39 +466,33 @@ class TimePanel(Panel):
         timeline:
             What timeline the timepanel should display.
 
-        sequence_cursor:
-            The time cursor for a sequence timeline.
-
-        duration_cursor:
-            The time cursor for a duration timeline.
-
-        timestamp_cursor:
-            The time cursor for a timestamp timeline.
-
         playback_speed:
             A time playback speed multiplier.
 
         fps:
             Frames per second. Only applicable for sequence timelines.
 
+        play_state:
+            If the time is currently paused, playing, or following.
+
+        loop_mode:
+            How the time should loop.
+
+            A loop selection only works if there's also a `time_selection`
+            passed.
+
+        time_selection:
+            Selects a range of time on the time panel.
+
         """
         super().__init__(blueprint_path="time_panel", expanded=expanded, state=state)
+
         self.timeline = timeline
-
-        if sum(x is not None for x in (sequence_cursor, duration_cursor, timestamp_cursor)) > 1:
-            raise ValueError(
-                "At most one of `sequence`, `duration`, and `timestamp` must be set",
-            )
-
-        if sequence_cursor is not None:
-            self.time = sequence_cursor
-        elif duration_cursor is not None:
-            self.time = to_nanos(duration_cursor)
-        elif timestamp_cursor is not None:
-            self.time = to_nanos_since_epoch(timestamp_cursor)
-
         self.playback_speed = playback_speed
         self.fps = fps
+        self.play_state = play_state
+        self.loop_mode = loop_mode
+        self.time_selection = time_selection
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -507,12 +501,16 @@ class TimePanel(Panel):
             timeline=self.timeline,
             playback_speed=self.playback_speed,
             fps=self.fps,
+            loop_mode=self.loop_mode,
+            time_selection=self.time_selection,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-        if hasattr(self, "time"):
-            static_arch = TimePanelBlueprint(time=self.time)
+        if self.play_state is not None:
+            static_arch = TimePanelBlueprint(
+                play_state=self.play_state,
+            )
 
             stream.log(self.blueprint_path(), static_arch, static=True)
 
@@ -711,7 +709,7 @@ class Blueprint:
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
 
-    def save(self, application_id: str, path: str | None = None) -> None:
+    def save(self, application_id: str, path: str | Path | None = None) -> None:
         """
         Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
 
@@ -727,6 +725,8 @@ class Blueprint:
 
         if path is None:
             path = f"{application_id}.rbl"
+        else:
+            path = str(path)
 
         blueprint_stream = RecordingStream._from_native(
             bindings.new_blueprint(

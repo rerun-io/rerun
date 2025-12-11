@@ -35,16 +35,12 @@ pub mod event;
 
 // ----------------------------------------------------------------------------
 
-use std::{
-    borrow::Cow,
-    collections::HashMap,
-    io::Error as IoError,
-    sync::{
-        OnceLock,
-        atomic::{AtomicI64, Ordering},
-    },
-    time::Duration,
-};
+use std::borrow::Cow;
+use std::collections::HashMap;
+use std::io::Error as IoError;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicI64, Ordering};
+use std::time::Duration;
 
 use jiff::Timestamp;
 
@@ -57,10 +53,16 @@ pub enum EventKind {
     /// Used e.g. to send an event every time the app start.
     Append,
 
-    /// Update the permanent state associated with this analytics ID.
+    /// Collect data about the environment upon startup.
     ///
-    /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
-    Update,
+    /// Used to associate the host machine's OS, Rust version, etc. with the analytics ID.
+    Identify,
+
+    /// Set properties of an authenticated user.
+    ///
+    /// Used to set the user's email address after they log in so that we can link
+    /// anonymous analytics IDs to the authenticated users.
+    SetPersonProperties,
 }
 
 // ----------------------------------------------------------------------------
@@ -385,6 +387,24 @@ impl Analytics {
     }
 }
 
+pub fn record<E: Event>(cb: impl FnOnce() -> E) {
+    if let Some(analytics) = Analytics::global_or_init() {
+        analytics.record(cb());
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn record_and_flush_blocking<E: Event>(cb: impl FnOnce() -> E) {
+    if let Some(analytics) = Analytics::global_or_init() {
+        analytics.record(cb());
+        if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
+            && cfg!(debug_assertions)
+        {
+            eprintln!("Failed to flush analytics: {err}");
+        }
+    }
+}
+
 /// An analytics event.
 ///
 /// This trait requires an implementation of [`Properties`].
@@ -445,8 +465,9 @@ impl Properties for re_build_info::BuildInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::Value;
+
+    use super::*;
 
     #[test]
     fn test_analytics_event_serialization() {

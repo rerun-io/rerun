@@ -3,7 +3,7 @@ use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
+use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -17,8 +17,8 @@ pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> Tim
     let timeline = Timeline::new_sequence(blueprint_timeline());
 
     let max_time = blueprint
-        .time_histogram(timeline.name())
-        .and_then(|times| times.max_key())
+        .time_range_for(timeline.name())
+        .map(|range| range.max.as_i64())
         .unwrap_or(0)
         .saturating_add(1);
 
@@ -161,6 +161,22 @@ pub trait BlueprintContext {
         );
     }
 
+    fn save_static_blueprint_array(
+        &self,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+        array: ArrayRef,
+    ) {
+        let blueprint = self.current_blueprint();
+        self.append_array_to_store(
+            blueprint.store_id().clone(),
+            TimePoint::STATIC,
+            entity_path,
+            component_descr,
+            array,
+        );
+    }
+
     /// Append an array to the given store.
     fn append_array_to_store(
         &self,
@@ -209,6 +225,21 @@ pub trait BlueprintContext {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
             self.clear_blueprint_component(entity_path, component_descr);
+        }
+    }
+
+    /// Resets a static blueprint component to the value it had in the default blueprint.
+    fn reset_static_blueprint_component(
+        &self,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+    ) {
+        if let Some(default_value) =
+            self.raw_latest_at_in_default_blueprint(&entity_path, component_descr.component)
+        {
+            self.save_static_blueprint_array(entity_path, component_descr, default_value);
+        } else {
+            self.clear_static_blueprint_component(entity_path, component_descr);
         }
     }
 

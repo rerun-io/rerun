@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from .absolute_time_range import AbsoluteTimeRange, AbsoluteTimeRangeBatch
 from .active_tab import ActiveTab, ActiveTabBatch
+from .angular_speed import AngularSpeed, AngularSpeedBatch
 from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch
 from .auto_layout import AutoLayout, AutoLayoutBatch
 from .auto_views import AutoViews, AutoViewsBatch
@@ -24,16 +26,21 @@ from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .link_axis import LinkAxis, LinkAxisArrayLike, LinkAxisBatch, LinkAxisLike
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
+from .loop_mode import LoopMode, LoopModeArrayLike, LoopModeBatch, LoopModeLike
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
 from .near_clip_plane import NearClipPlane, NearClipPlaneBatch
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
+from .play_state import PlayState, PlayStateArrayLike, PlayStateBatch, PlayStateLike
 from .playback_speed import PlaybackSpeed, PlaybackSpeedBatch
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
+from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
+from .time_range import TimeRange, TimeRangeBatch
+from .timeline_column import TimelineColumn, TimelineColumnBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
@@ -42,12 +49,18 @@ from .view_origin import ViewOrigin, ViewOriginBatch
 from .viewer_recommendation_hash import ViewerRecommendationHash, ViewerRecommendationHashBatch
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch
 from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch
-from .visualizer_override import VisualizerOverride, VisualizerOverrideBatch
+from .visualizer_component_mapping import VisualizerComponentMapping, VisualizerComponentMappingBatch
+from .visualizer_instruction_id import VisualizerInstructionId, VisualizerInstructionIdBatch
+from .visualizer_type import VisualizerType, VisualizerTypeBatch
 from .zoom_level import ZoomLevel, ZoomLevelBatch
 
 __all__ = [
+    "AbsoluteTimeRange",
+    "AbsoluteTimeRangeBatch",
     "ActiveTab",
     "ActiveTabBatch",
+    "AngularSpeed",
+    "AngularSpeedBatch",
     "ApplyLatestAt",
     "ApplyLatestAtBatch",
     "AutoLayout",
@@ -100,6 +113,10 @@ __all__ = [
     "LinkAxisLike",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
+    "LoopMode",
+    "LoopModeArrayLike",
+    "LoopModeBatch",
+    "LoopModeLike",
     "MapProvider",
     "MapProviderArrayLike",
     "MapProviderBatch",
@@ -110,6 +127,10 @@ __all__ = [
     "PanelStateArrayLike",
     "PanelStateBatch",
     "PanelStateLike",
+    "PlayState",
+    "PlayStateArrayLike",
+    "PlayStateBatch",
+    "PlayStateLike",
     "PlaybackSpeed",
     "PlaybackSpeedBatch",
     "QueryExpression",
@@ -122,8 +143,14 @@ __all__ = [
     "SelectedColumnsBatch",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
+    "TextLogColumn",
+    "TextLogColumnBatch",
     "TimeInt",
     "TimeIntBatch",
+    "TimeRange",
+    "TimeRangeBatch",
+    "TimelineColumn",
+    "TimelineColumnBatch",
     "TimelineName",
     "TimelineNameBatch",
     "ViewClass",
@@ -142,8 +169,12 @@ __all__ = [
     "VisibleTimeRangeBatch",
     "VisualBounds2D",
     "VisualBounds2DBatch",
-    "VisualizerOverride",
-    "VisualizerOverrideBatch",
+    "VisualizerComponentMapping",
+    "VisualizerComponentMappingBatch",
+    "VisualizerInstructionId",
+    "VisualizerInstructionIdBatch",
+    "VisualizerType",
+    "VisualizerTypeBatch",
     "ZoomLevel",
     "ZoomLevelBatch",
 ]

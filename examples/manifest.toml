@@ -89,6 +89,7 @@ examples = [
   "segment_anything_model",
   "tapir",
   "ml_depth_pro",
+  "egoexo_forge",
 ]
 
 [categories.3d-reconstruction] # NOLINT
@@ -109,6 +110,7 @@ examples = [
   "hloc_glomap",
   "instant_splat",
   "raw_mesh",
+  "vistadream",
 ]
 
 [categories.integrations]
@@ -182,7 +184,9 @@ examples = [
   "graph_lattice",
   "incremental_logging",
   "lenses",
+  "mcap_protobuf",
   "minimal_serve",
+  "server_tables",
   "shared_recording",
   "spawn_viewer",
   "stdio",
