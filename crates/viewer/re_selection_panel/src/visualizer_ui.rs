@@ -225,11 +225,26 @@ fn visualizer_components(
     //     components.iter().copied(),
     // );
 
-    let all_components_for_entity = ctx
-        .viewer_ctx
-        .recording_engine()
-        .store()
-        .all_components_for_entity_sorted(&data_result.entity_path);
+    let all_components_for_entity = {
+        let all_components = ctx
+            .viewer_ctx
+            .recording_engine()
+            .store()
+            .all_components_for_entity_sorted(&data_result.entity_path)
+            .unwrap_or_default();
+        all_components
+            .into_iter()
+            .filter_map(|component_id| {
+                let component_type = ctx
+                    .viewer_ctx
+                    .recording_engine()
+                    .store()
+                    .get_component_type(&data_result.entity_path, component_id);
+                component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
+            })
+            .collect::<Vec<_>>()
+    };
+    println!("all_components_for_entity: {:?}", all_components_for_entity);
 
     let mut changed_component_mappings = vec![];
 
@@ -443,64 +458,49 @@ fn visualizer_components(
             // println!("component_descr: {:?}", component_descr);
 
             if let Some(target_component_type) = &component_descr.component_type
-                && let Some(all_components_for_entity) = &all_components_for_entity
-            {
-                if let Some(target_component_datatype) = ctx
+                && let Some(target_component_datatype) = ctx
                     .viewer_ctx
                     .recording_engine()
                     .store()
                     .lookup_datatype(target_component_type)
-                {
-                    // println!("component_type: {:?}", target_component_datatype);
+            {
+                // println!("component_type: {:?}", target_component_datatype);
 
-                    ui.push_id("source_component", |ui| {
-                        let component_map = instruction
-                            .component_mappings
-                            .iter()
-                            .find(|mapping| mapping.target == component_descr.component);
+                ui.push_id("source_component", |ui| {
+                    let component_map = instruction
+                        .component_mappings
+                        .iter()
+                        .find(|mapping| mapping.target == component_descr.component);
 
-                        ui.list_item_flat_noninteractive(
-                            list_item::PropertyContent::new("Source component").value_fn(
-                                |ui, _| {
-                                    let source = component_map
-                                        .map_or_else(|| "", |mapping| mapping.source.as_str());
+                    ui.list_item_flat_noninteractive(
+                        list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
+                            let source =
+                                component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
 
-                                    egui::ComboBox::new("source_component", "")
-                                        .selected_text(source)
-                                        .show_ui(ui, |ui| {
-                                            for component in all_components_for_entity {
-                                                let Some(source_component_metadata) = ctx
-                                                    .viewer_ctx
-                                                    .recording_engine()
-                                                    .store()
-                                                    .get_component_type(
-                                                        &data_result.entity_path,
-                                                        *component,
-                                                    )
-                                                else {
-                                                    continue;
-                                                };
-                                                if source_component_metadata.1
-                                                    != target_component_datatype
-                                                {
-                                                    continue;
-                                                };
-
-                                                if ui.button(component.as_str()).clicked() {
-                                                    changed_component_mappings.push(
+                            egui::ComboBox::new("source_component", "")
+                                .selected_text(source)
+                                .show_ui(ui, |ui| {
+                                    let mut all_source_options = vec![""];
+                                    for entity_component in &all_components_for_entity {
+                                        if entity_component.1 == target_component_datatype {
+                                            all_source_options.push(entity_component.0.as_str());
+                                        }
+                                    }
+                                    for source_option in all_source_options {
+                                        println!("option: {:?}", source_option);
+                                        if ui.button(source_option).clicked() {
+                                            changed_component_mappings.push(
                                                 re_viewer_context::VisualizerComponentMapping {
-                                                    source: component.clone(),
+                                                    source: source_option.into(),
                                                     target: component_descr.component,
                                                 },
                                             );
-                                                }
-                                            }
-                                        });
-                                },
-                            ),
-                        );
-                    });
-                }
+                                        }
+                                    }
+                                });
+                        }),
+                    );
+                });
             }
         };
 
