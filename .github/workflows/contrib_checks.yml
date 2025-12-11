@@ -21,9 +21,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Do *not* use sscache since on contributor ci we don't have access to the gcloud stored cache.
-  #RUSTC_WRAPPER: "sccache"
-
   # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
