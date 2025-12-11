@@ -21,20 +21,20 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Single visualizer override the visualizers for an entity.
+/// **Component**: Id of a visualizer instruction.
 ///
 /// For details see [`archetypes::ActiveVisualizers`][crate::blueprint::archetypes::ActiveVisualizers].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 #[repr(transparent)]
 pub struct VisualizerInstructionId(
-    /// Names of a visualizer that should be active.
-    pub crate::datatypes::Utf8,
+    /// Id of a visualizer instruction.
+    pub crate::datatypes::Uuid,
 );
 
 impl ::re_types_core::WrapperComponent for VisualizerInstructionId {
-    type Datatype = crate::datatypes::Utf8;
+    type Datatype = crate::datatypes::Uuid;
 
     #[inline]
     fn name() -> ComponentType {
@@ -49,31 +49,31 @@ impl ::re_types_core::WrapperComponent for VisualizerInstructionId {
 
 ::re_types_core::macros::impl_into_cow!(VisualizerInstructionId);
 
-impl<T: Into<crate::datatypes::Utf8>> From<T> for VisualizerInstructionId {
+impl<T: Into<crate::datatypes::Uuid>> From<T> for VisualizerInstructionId {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Utf8> for VisualizerInstructionId {
+impl std::borrow::Borrow<crate::datatypes::Uuid> for VisualizerInstructionId {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
+    fn borrow(&self) -> &crate::datatypes::Uuid {
         &self.0
     }
 }
 
 impl std::ops::Deref for VisualizerInstructionId {
-    type Target = crate::datatypes::Utf8;
+    type Target = crate::datatypes::Uuid;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
+    fn deref(&self) -> &crate::datatypes::Uuid {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for VisualizerInstructionId {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
         &mut self.0
     }
 }
@@ -86,6 +86,6 @@ impl ::re_byte_size::SizeBytes for VisualizerInstructionId {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
+        <crate::datatypes::Uuid>::is_pod()
     }
 }

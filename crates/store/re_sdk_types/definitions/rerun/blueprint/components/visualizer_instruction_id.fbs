@@ -1,15 +1,15 @@
 namespace rerun.blueprint.components;
 
-/// Single visualizer override the visualizers for an entity.
+/// Id of a visualizer instruction.
 ///
 /// For details see [archetypes.ActiveVisualizers].
 table VisualizerInstructionId (
   "attr.python.aliases": "str | list[str]",
   "attr.python.array_aliases": "str",
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
+  "attr.rust.derive": "PartialEq, Eq, Default",
   "attr.rust.repr": "transparent"
 ) {
-  /// Names of a visualizer that should be active.
-  visualizer: rerun.datatypes.Utf8 (order: 100);
+  /// Id of a visualizer instruction.
+  visualizer: rerun.datatypes.Uuid (order: 100);
 }
