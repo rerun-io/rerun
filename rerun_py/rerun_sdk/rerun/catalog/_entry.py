@@ -126,10 +126,41 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.arrow_schema()
 
-    def blueprint_dataset_id(self) -> EntryId | None:
-        """The ID of the associated blueprint dataset, if any."""
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server.
 
-        return self._internal.blueprint_dataset_id()
+        By default, also set this blueprint as default.
+        """
+
+        blueprint_dataset = self.blueprint_dataset()
+
+        if blueprint_dataset is None:
+            raise LookupError("a blueprint dataset is not configured for this dataset")
+
+        segment_id = blueprint_dataset.register(uri).wait()[0]
+
+        if set_default:
+            self.set_default_blueprint(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """Lists all blueprints currently registered with this dataset."""
+
+        blueprint_dataset = self.blueprint_dataset()
+        if blueprint_dataset is None:
+            return []
+        else:
+            return blueprint_dataset.segment_ids()
+
+    def set_default_blueprint(self, blueprint_name: str | None) -> None:
+        """Set an already-registered blueprint as default for this dataset."""
+
+        return self._internal.set_default_blueprint_segment_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """Return the name currently set blueprint."""
+
+        return self._internal.default_blueprint_segment_id()
 
     def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
@@ -137,29 +168,15 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
 
-    def default_blueprint_segment_id(self) -> str | None:
-        """The default blueprint segment ID for this dataset, if any."""
-
-        return self._internal.default_blueprint_segment_id()
-
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
-        """
-        Set the default blueprint segment ID for this dataset.
-
-        Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
-        """
-
-        return self._internal.set_default_blueprint_segment_id(segment_id)
-
     @deprecated("Use default_blueprint_segment_id() instead")
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""
-        return self.default_blueprint_segment_id()
+        return self.default_blueprint()
 
     @deprecated("Use set_default_blueprint_segment_id() instead")
     def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
         """Set the default blueprint partition ID for this dataset."""
-        return self.set_default_blueprint_segment_id(partition_id)
+        return self.set_default_blueprint(partition_id)
 
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""

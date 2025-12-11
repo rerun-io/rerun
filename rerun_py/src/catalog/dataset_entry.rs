@@ -26,8 +26,8 @@ use tracing::instrument;
 
 use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
-    PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
-    PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
+    PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyIndexConfig, PyIndexingResult,
+    VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
 use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
@@ -108,11 +108,6 @@ impl PyDatasetEntryInternal {
         let arrow_schema = Self::fetch_arrow_schema(&self_)?;
 
         Ok(arrow_schema.into())
-    }
-
-    /// The ID of the associated blueprint dataset, if any.
-    fn blueprint_dataset_id(self_: PyRef<'_, Self>) -> Option<PyEntryId> {
-        self_.dataset_details.blueprint_dataset.map(Into::into)
     }
 
     /// The associated blueprint dataset, if any.

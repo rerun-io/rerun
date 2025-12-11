@@ -161,26 +161,22 @@ class DatasetEntry(Entry):
         By default, also set this blueprint as default.
         """
 
-        blueprint_dataset = self._inner.blueprint_dataset()
-        segment_id = blueprint_dataset.register(uri).wait().segment_ids[0]
-
-        if set_default:
-            self._inner.set_default_blueprint_segment_id(segment_id)
+        self._inner.register_blueprint(uri, set_default=set_default)
 
     def blueprints(self) -> list[str]:
         """Lists all blueprints currently registered with this dataset."""
 
-        return self._inner.blueprint_dataset().segment_ids()
+        return self._inner.blueprints()
 
     def set_default_blueprint(self, blueprint_name: str) -> None:
         """Set an already-registered blueprint as default for this dataset."""
 
-        self._inner.set_default_blueprint_segment_id(blueprint_name)
+        self._inner.set_default_blueprint(blueprint_name=blueprint_name)
 
     def default_blueprint(self) -> str | None:
         """Return the name currently set blueprint."""
 
-        return self._inner.default_blueprint_segment_id()
+        return self._inner.default_blueprint()
 
     def schema(self) -> Schema:
         return self._inner.schema()

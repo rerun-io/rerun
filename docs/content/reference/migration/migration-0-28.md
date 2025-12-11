@@ -105,8 +105,8 @@ The old APIs are deprecated and will be removed in a future release.
 | `DatasetEntry.partition_table()`                    | `DatasetEntry.segment_table()`                    |
 | `DatasetEntry.partition_url()`                      | `DatasetEntry.segment_url()`                      |
 | `DatasetEntry.download_partition()`                 | `DatasetEntry.download_segment()`                 |
-| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint_segment_id()`     |
-| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint_segment_id()` |
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`                |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()`            |
 | `DataframeQueryView.filter_partition_id()`          | `DataframeQueryView.filter_segment_id()`          |
 
 The DataFusion utility functions in `rerun.utilities.datafusion.functions.url_generation` have also been renamed:
@@ -351,6 +351,33 @@ df = table.reader()
 <!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
 
 This method is deprecated and will be removed in a future release.
+
+## Python SDK: blueprint APIs simplified
+
+The blueprint-related methods on `DatasetEntry` have been simplified:
+
+| Old API                                             | New API                                |
+|-----------------------------------------------------|----------------------------------------|
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`     |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
+| `DatasetEntry.blueprint_dataset_id()`               | Removed (use `blueprint_dataset()`)    |
+
+New methods have been added for common blueprint operations:
+
+```python
+# Register a blueprint and set it as default
+dataset.register_blueprint("s3://bucket/blueprint.rbl")
+
+# Register a blueprint without setting it as default
+dataset.register_blueprint("s3://bucket/blueprint.rbl", set_default=False)
+
+# List all registered blueprints
+blueprint_names = dataset.blueprints()
+
+# Get/set the default blueprint
+current = dataset.default_blueprint()
+dataset.set_default_blueprint("my_blueprint")
+```
 
 ## Python SDK: `register()` and `register_batch()` merged into unified `register()` API
 
