@@ -9,8 +9,22 @@ runners:
     spot: price-capacity-optimized
     image: ubuntu24-full-arm64
 
+  arm64-ubuntu-small:
+    cpu: [2, 4]
+    family: ["c7g", "m7g"]
+    volume: 250gb
+    spot: price-capacity-optimized
+    image: ubuntu24-full-arm64
+
   x64-ubuntu-large:
     cpu: [16, 32]
+    family: ["c7", "m7"]
+    volume: 250gb
+    spot: price-capacity-optimized
+    image: ubuntu24-full-x64
+
+  x64-ubuntu-small:
+    cpu: [2, 4]
     family: ["c7", "m7"]
     volume: 250gb
     spot: price-capacity-optimized
