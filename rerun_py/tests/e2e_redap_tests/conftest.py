@@ -19,8 +19,10 @@ from rerun.catalog import CatalogClient
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
+from .telemetry import Telemetry
+
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Iterator
 
     from rerun.catalog import DatasetEntry, TableEntry
     from syrupy import SnapshotAssertion
@@ -390,3 +392,42 @@ def snapshot_redact_id(snapshot: SnapshotAssertion) -> SnapshotAssertion:
 
     """
     return snapshot.use_extension(RedactedIdSnapshotExtension)
+
+
+@pytest.fixture(scope="session")
+def telemetry() -> Iterator[Telemetry]:
+    """Set up OpenTelemetry for the test session."""
+    telemetry_instance = Telemetry()
+
+    yield telemetry_instance
+    telemetry_instance.shutdown()
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_benchmark_update_json(config, benchmarks, output_json) -> None:  # noqa: ARG001
+    """Hook to flush telemetry data at the end of the benchmark session."""
+
+    telemetry = Telemetry()
+    if telemetry.meter is None:
+        return
+
+    duration_gauge = telemetry.meter.create_gauge(
+        "test_duration_mean", unit="s", description="mean duration of test execution in seconds"
+    )
+
+    success_counter = telemetry.meter.create_counter(
+        "test_success", unit="{count}", description="number of successful test rounds"
+    )
+    counter_gauge = telemetry.meter.create_gauge(
+        "test_count", unit="{count}", description="number of successful test rounds"
+    )
+
+    for bench in benchmarks:
+        attributes: dict[str, str] = {
+            "test_name": bench.name,
+            "test_group": bench.group or "default",
+        }
+
+        duration_gauge.set(bench.stats.mean, attributes)
+        counter_gauge.set(bench.stats.rounds, attributes)
+        success_counter.add(bench.stats.rounds, attributes)

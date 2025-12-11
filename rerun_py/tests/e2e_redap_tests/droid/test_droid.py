@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import TYPE_CHECKING
 
 import datafusion as dfn
@@ -8,8 +9,6 @@ import numpy as np
 import pyarrow as pa
 import pytest
 import rerun as rr
-import uuid
-
 from datafusion import col, functions as F
 
 if TYPE_CHECKING:
@@ -18,8 +17,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-pytestmark = [pytest.mark.cloud_only,
-              pytest.mark.slow]
+pytestmark = [pytest.mark.cloud_only, pytest.mark.slow]
+
 
 @pytest.mark.benchmark(group="droid")
 def test_count_gripper_closes(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
@@ -90,7 +89,6 @@ def aggregate_and_self_join_body(dataset: DatasetEntry) -> None:
 
     results = df.collect()
     assert len(results) > 0, "expected at least one record batch"
-
 
 
 @pytest.mark.benchmark(group="droid")
@@ -166,7 +164,6 @@ def perform_vector_search_body(dataset: DatasetEntry) -> None:
     assert len(result) > 0
 
 
-
 @pytest.mark.benchmark(group="droid")
 def test_lookup_embedding_using_index_values(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
     """Look up the embedding for a specific time."""
@@ -217,7 +214,6 @@ def sample_index_values_body(dataset: DatasetEntry) -> None:
     sampled_times = [0, 100, 200, 500, 1000, 2000]
     result = (wrist.filter_index_values(sampled_times).fill_latest_at()).df().drop("rerun_segment_id").collect()
     assert len(result) > 0
-
 
 
 @pytest.mark.benchmark(group="droid")
@@ -324,8 +320,14 @@ def demonstrate_df_latency_body(qv: DataframeQueryView) -> None:
     # this is what is slow
     qv.df()
 
+
 @pytest.mark.benchmark(group="droid")
-def test_droid_register(benchmark: BenchmarkFixture, droid_dataset_name: str, catalog_client: CatalogClient, aws_segments_to_register: list[str]) -> None:
+def test_droid_register(
+    benchmark: BenchmarkFixture,
+    droid_dataset_name: str,
+    catalog_client: CatalogClient,
+    aws_segments_to_register: list[str],
+) -> None:
     """Benchmark dataset registration with manifest-based specification."""
     benchmark.pedantic(
         droid_register,
@@ -333,7 +335,8 @@ def test_droid_register(benchmark: BenchmarkFixture, droid_dataset_name: str, ca
         rounds=1,
     )
 
-def droid_register(droid_dataset_name: str, catalog_client: CatalogClient, aws_segments_to_register: list[str]):
+
+def droid_register(droid_dataset_name: str, catalog_client: CatalogClient, aws_segments_to_register: list[str]) -> None:
     """Benchmark dataset registration with manifest-based specification."""
 
     droid_dataset_name = f"{uuid.uuid4().hex}-{droid_dataset_name}"
@@ -344,4 +347,3 @@ def droid_register(droid_dataset_name: str, catalog_client: CatalogClient, aws_s
         task_ids.wait(timeout_secs=600)
     finally:
         dataset_handle.delete()
-

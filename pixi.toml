@@ -572,7 +572,7 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
 lychee = "0.20.1.*"
-mypy = "1.14.1.*"
+mypy = "1.19.0.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 nbqa = "*"
 nbstripout = "*"
@@ -601,6 +601,7 @@ hatch = "==1.12.0" # For `rerun_notebook`
 huggingface_hub = "<1.0" # Needed for `LeRobot` checklist items
 inline-snapshot = "==0.31.0" # For `api_sandbox`
 jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
+mypy = "==1.19.0"
 parso = ">=0.8.4, <0.9"
 Pillow = ">=10.0.0" # For `thumbnails.py`
 polars = "==1.35.2" # For api_sandbox
