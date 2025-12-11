@@ -80,7 +80,7 @@ runs:
     - name: Setup Rust cache
       uses: Swatinem/rust-cache@v2
       with:
-        prefix-key: "v1-rust"
+        prefix-key: "v0-rust"
         shared-key: "${{ steps.branch.outputs.name }}-${{ github.job }}${{ inputs.cache_key_suffix && format('-{0}', inputs.cache_key_suffix) || '' }}"
         add-job-id-key: "false"
         cache-all-crates: "true"
