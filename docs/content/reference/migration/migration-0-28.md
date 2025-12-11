@@ -76,7 +76,7 @@ Naturally, if any update to a transform always changes the same components, this
 the simplification of not having to clear out all other components that may ever be set, thus reducing memory bloat both
 on send and query!
 
-## URDF loader: updating transforms now requires `parent_frame` and `child_frame` fields to be set
+## URDF loader: sending transform updates now requires `parent_frame` and `child_frame` fields to be set
 
 Previous versions of the built-in [URDF](https://en.wikipedia.org/wiki/URDF) data-loader in Rerun required you to send transform updates with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
 Depending on the complexity of your robot model, this could quickly lead to long entity paths.
