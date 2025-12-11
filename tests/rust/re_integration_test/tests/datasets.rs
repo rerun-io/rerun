@@ -136,5 +136,12 @@ pub async fn start_with_segment_url_with_fragment() {
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
+
+    // Mask timeline data because we have no way to consistently wait for it to arrive
+    harness.mask(egui::Rect::from_x_y_ranges(
+        egui::Rangef::new(190.0, 1024.0),
+        egui::Rangef::new(650.0, 690.0),
+    ));
+
     harness.snapshot("start_with_segment_fragment_url");
 }
