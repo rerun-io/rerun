@@ -428,66 +428,63 @@ pub fn paint_loaded_indicator_bar(
     ranges.sort_by_key(|(_, r)| r.min);
 
     let mut drawn_ranges = Vec::new();
-    let mut delayed_ranges = Vec::<(re_entity_db::LoadState, Rangef)>::new();
+    let mut delayed_ranges = Vec::<(bool, Rangef)>::new();
 
-    let mut add_range =
-        |state: re_entity_db::LoadState,
-         mut range: Rangef,
-         delayed_ranges: &mut Vec<(re_entity_db::LoadState, Rangef)>| {
-            let Some((last_state, last_range)) = drawn_ranges.last_mut() else {
-                drawn_ranges.push((state, range));
-                return;
-            };
-
-            match (*last_state).cmp(&state) {
-                // Equal states for both ranges, combine them.
-                std::cmp::Ordering::Equal => {
-                    last_range.max = last_range.max.max(range.max);
-                }
-                // The last state should be prioritized
-                std::cmp::Ordering::Less => {
-                    if last_range.max <= range.min {
-                        // To not leave any gaps between states, expand the prioritized last state
-                        last_range.max = range.min;
-                        drawn_ranges.push((state, range));
-                    } else if last_range.max < range.max {
-                        // To not have overlapping states, start the current state at the end of the prioritized last state
-                        range.min = last_range.max;
-                        delayed_ranges.push((state, range));
-                    }
-                }
-                // The current state should be prioritized
-                std::cmp::Ordering::Greater => {
-                    if range.min <= last_range.max {
-                        // To not have overlapping states, start the last state at the end of the prioritized current state
-                        if range.max < last_range.max {
-                            delayed_ranges
-                                .push((*last_state, Rangef::new(range.max, last_range.max)));
-                        }
-
-                        if last_range.min == range.min {
-                            // We can replace the last here since we don't want overlapping states
-                            *last_range = range;
-                            *last_state = state;
-                        } else {
-                            last_range.max = range.min;
-
-                            drawn_ranges.push((state, range));
-                        }
-                    } else {
-                        // To not leave any gaps between states, expand the prioritized current state
-                        // to start at the end of the last state
-                        range.min = last_range.max;
-                        drawn_ranges.push((state, range));
-                    }
-                }
-            }
+    let mut add_range = |loaded: bool,
+                         mut range: Rangef,
+                         delayed_ranges: &mut Vec<(bool, Rangef)>| {
+        let Some((last_loaded, last_range)) = drawn_ranges.last_mut() else {
+            drawn_ranges.push((loaded, range));
+            return;
         };
 
-    let cmp = |(_, a): &(re_entity_db::LoadState, Rangef),
-               (_, b): &(re_entity_db::LoadState, Rangef)| {
-        a.min
-            .partial_cmp(&b.min)
+        match (*last_loaded).cmp(&loaded) {
+            // Equal states for both ranges, combine them.
+            std::cmp::Ordering::Equal => {
+                last_range.max = last_range.max.max(range.max);
+            }
+            // The last state should be prioritized
+            std::cmp::Ordering::Less => {
+                if last_range.max <= range.min {
+                    // To not leave any gaps between states, expand the prioritized last state
+                    last_range.max = range.min;
+                    drawn_ranges.push((loaded, range));
+                } else if last_range.max < range.max {
+                    // To not have overlapping states, start the current state at the end of the prioritized last state
+                    range.min = last_range.max;
+                    delayed_ranges.push((loaded, range));
+                }
+            }
+            // The current state should be prioritized
+            std::cmp::Ordering::Greater => {
+                if range.min <= last_range.max {
+                    // To not have overlapping states, start the last state at the end of the prioritized current state
+                    if range.max < last_range.max {
+                        delayed_ranges.push((*last_loaded, Rangef::new(range.max, last_range.max)));
+                    }
+
+                    if last_range.min == range.min {
+                        // We can replace the last here since we don't want overlapping states
+                        *last_range = range;
+                        *last_loaded = loaded;
+                    } else {
+                        last_range.max = range.min;
+
+                        drawn_ranges.push((loaded, range));
+                    }
+                } else {
+                    // To not leave any gaps between states, expand the prioritized current state
+                    // to start at the end of the last state
+                    range.min = last_range.max;
+                    drawn_ranges.push((loaded, range));
+                }
+            }
+        }
+    };
+
+    let rev_cmp = |(_, a): &(bool, Rangef), (_, b): &(bool, Rangef)| {
+        b.min
+            .partial_cmp(&a.min)
             .unwrap_or(std::cmp::Ordering::Equal)
     };
 
@@ -495,6 +492,10 @@ pub fn paint_loaded_indicator_bar(
         if let Some(start) = time_ranges_ui.x_from_time(range.min.into())
             && let Some(end) = time_ranges_ui.x_from_time(range.max.into())
         {
+            let loaded = match state {
+                re_entity_db::LoadState::Unloaded | re_entity_db::LoadState::InTransit => false,
+                re_entity_db::LoadState::Loaded => true,
+            };
             debug_assert!(range.min <= range.max, "Negative time-range");
             debug_assert!(start <= end, "Negative x-range");
             let range = Rangef::new(start.floor() as f32, end.ceil() as f32);
@@ -505,24 +506,62 @@ pub fn paint_loaded_indicator_bar(
                 && let Some((state, range)) = delayed_ranges.pop()
             {
                 add_range(state, range, &mut delayed_ranges);
-                delayed_ranges.sort_by(cmp);
+                delayed_ranges.sort_by(rev_cmp);
             }
-            add_range(state, range, &mut delayed_ranges);
-            delayed_ranges.sort_by(cmp);
+            add_range(loaded, range, &mut delayed_ranges);
+            delayed_ranges.sort_by(rev_cmp);
         }
     }
 
-    while let Some((state, range)) = delayed_ranges.pop() {
-        add_range(state, range, &mut delayed_ranges);
-        delayed_ranges.sort_by(cmp);
+    while let Some((loaded, range)) = delayed_ranges.pop() {
+        add_range(loaded, range, &mut delayed_ranges);
+        delayed_ranges.sort_by(rev_cmp);
     }
 
-    const MIN_SPAN: f32 = 15.0;
-    drawn_ranges.dedup_by(
-        |(a_state, a_range), (b_state, b_range)| match a_state.cmp(&b_state) {
+    let mut should_load = true;
+    let current_time = time_ctrl.time_int();
+
+    let loaded_ranges_on_timeline = db
+        .rrd_manifest_index()
+        .loaded_ranges_on_timeline(time_ctrl.timeline())
+        .filter_map(|range| {
+            if current_time.is_some_and(|time| range.contains(time)) {
+                should_load = false;
+            }
+
+            let start = time_ranges_ui.x_from_time(range.min.into())?;
+            let end = time_ranges_ui.x_from_time(range.max.into())?;
+            debug_assert!(start <= end, "Negative x-range");
+            let x = Rangef::new(start as f32, end as f32).intersection(x_range);
+
+            if x.span() > 0.0 { Some(x) } else { None }
+        })
+        .collect::<Vec<_>>();
+
+    if should_load {
+        let gap = 5.0;
+        let line = 3.0;
+        // In pixels per second
+        let speed = 20.0;
+
+        let dashed_line = egui::Shape::dashed_line_with_offset(
+            &[egui::pos2(x_range.min, y), egui::pos2(x_range.max, y)],
+            ui.visuals().widgets.noninteractive.fg_stroke,
+            &[line],
+            &[gap],
+            ui.input(|i| (i.time * speed) % (gap as f64 + line as f64) - line as f64) as f32,
+        );
+
+        ui.painter().add(dashed_line);
+        return;
+    }
+
+    /*
+    drawn_ranges.dedup_by(|(a_loaded, a_range), (b_loaded, b_range)| {
+        match a_loaded.cmp(&b_loaded) {
             std::cmp::Ordering::Less => {
-                if *b_state == re_entity_db::LoadState::Loaded && b_range.span() < MIN_SPAN {
-                    *b_state = *a_state;
+                if b_range.span() < MIN_SPAN {
+                    *b_loaded = *a_loaded;
                     b_range.min = a_range.min;
                     b_range.max = a_range.max.max(b_range.max);
                     true
@@ -535,7 +574,7 @@ pub fn paint_loaded_indicator_bar(
                 true
             }
             std::cmp::Ordering::Greater => {
-                if *a_state == re_entity_db::LoadState::Loaded && a_range.span() < MIN_SPAN {
+                if a_range.span() < MIN_SPAN {
                     b_range.min = a_range.min;
                     b_range.max = a_range.max.max(b_range.max);
                     true
@@ -543,42 +582,13 @@ pub fn paint_loaded_indicator_bar(
                     false
                 }
             }
-        },
-    );
-
-    for (load_state, x) in drawn_ranges {
-        let x = x.intersection(x_range);
-
-        if x.span() <= 0.0 {
-            continue;
         }
+    });
+    */
 
-        let gap = 5.0;
-        let line = 3.0;
-        // In pixels per second
-        let speed = 20.0;
-        match load_state {
-            re_entity_db::LoadState::Unloaded => {}
-            re_entity_db::LoadState::InTransit => {
-                let dashed_line = egui::Shape::dashed_line_with_offset(
-                    &[egui::pos2(x.min, y), egui::pos2(x.max, y)],
-                    ui.visuals().widgets.noninteractive.fg_stroke,
-                    &[line],
-                    &[gap],
-                    ui.input(|i| {
-                        (i.time * speed + x.min as f64) % (gap as f64 + line as f64) - line as f64
-                    }) as f32,
-                );
-
-                ui.painter().add(dashed_line);
-                // ui.painter()
-                //     .hline(x, y, egui::Stroke::new(1.0, ui.visuals().warn_fg_color));
-            }
-            re_entity_db::LoadState::Loaded => {
-                ui.painter()
-                    .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
-            }
-        }
+    for x in loaded_ranges_on_timeline {
+        ui.painter()
+            .hline(x, y, ui.visuals().widgets.noninteractive.fg_stroke);
     }
 }
 

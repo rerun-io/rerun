@@ -551,7 +551,7 @@ async fn load_chunks(
         for (chunk, _partition_id) in chunks? {
             if !chunk.is_static() {
                 // TODO: Remove sleep
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(std::time::Duration::from_millis(50));
             }
             if tx
                 .send(
