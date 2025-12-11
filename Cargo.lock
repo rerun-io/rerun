@@ -8777,6 +8777,7 @@ dependencies = [
  "egui_dnd",
  "egui_kittest",
  "egui_table",
+ "futures",
  "insta",
  "itertools 0.14.0",
  "jiff",
