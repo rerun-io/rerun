@@ -1511,50 +1511,8 @@ class DataFusionTable:
         """Name of this table."""
 
 class RegistrationHandleInternal:
-    """Internal handle for tracking registration tasks."""
-
-    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]:
-        """
-        Return an iterator that yields (uri, segment_id, error) tuples as tasks complete.
-
-        Uses the server's streaming API.
-
-        Parameters
-        ----------
-        timeout_secs
-            Timeout in seconds. None uses default (8 hours).
-
-        Returns
-        -------
-        Iterator[tuple[str, str | None, str | None]]
-            Iterator yielding (uri, segment_id, error) tuples.
-            segment_id is None if registration failed.
-            error is None if registration succeeded.
-
-        """
-
-    def wait(self, timeout_secs: int | None = None) -> list[str]:
-        """
-        Block until all registrations complete and return segment IDs.
-
-        Parameters
-        ----------
-        timeout_secs
-            Timeout in seconds. None uses default (8 hours).
-
-        Returns
-        -------
-        list[str]
-            Segment IDs in registration order.
-
-        Raises
-        ------
-        ValueError
-            If any registration fails.
-        TimeoutError
-            If the timeout is reached.
-
-        """
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...
+    def wait(self, timeout_secs: int | None = None) -> list[str]: ...
 
 #####################################################################################################################
 ## SEND_TABLE                                                                                                      ##
