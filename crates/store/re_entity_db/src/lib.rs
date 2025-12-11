@@ -14,7 +14,6 @@ mod instance_path;
 mod rrd_manifest_index;
 mod store_bundle;
 mod time_histogram_per_timeline;
-mod times_per_timeline;
 mod versioned_instance_path;
 
 #[doc(no_inline)]
@@ -27,7 +26,6 @@ pub use self::instance_path::{InstancePath, InstancePathHash};
 pub use self::rrd_manifest_index::{LoadState, RrdManifestIndex};
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};
-pub use self::times_per_timeline::{TimeCounts, TimelineStats, TimesPerTimeline};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
 
 pub mod external {

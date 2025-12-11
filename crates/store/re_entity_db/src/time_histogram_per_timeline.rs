@@ -1,17 +1,146 @@
 use std::collections::BTreeMap;
+use std::ops::Bound;
 
 use emath::lerp;
-use itertools::Itertools as _;
-use re_chunk::TimelineName;
+use re_chunk::{TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent};
 use re_log_encoding::RrdManifestTemporalMapEntry;
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 use crate::RrdManifestIndex;
 
 // ---
 
 /// Number of messages per time.
-pub type TimeHistogram = re_int_histogram::Int64Histogram;
+#[derive(Clone)]
+pub struct TimeHistogram {
+    timeline: Timeline,
+    hist: re_int_histogram::Int64Histogram,
+}
+
+impl std::ops::Deref for TimeHistogram {
+    type Target = re_int_histogram::Int64Histogram;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.hist
+    }
+}
+
+impl TimeHistogram {
+    pub fn new(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            hist: Default::default(),
+        }
+    }
+
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    pub fn num_events(&self) -> u64 {
+        self.hist.total_count()
+    }
+
+    pub fn insert(&mut self, time: TimeInt, count: u64) {
+        self.hist.increment(time.as_i64(), count as _);
+    }
+
+    pub fn increment(&mut self, time: i64, n: u32) {
+        self.hist.increment(time, n);
+    }
+
+    pub fn decrement(&mut self, time: i64, n: u32) {
+        self.hist.decrement(time, n);
+    }
+
+    pub fn min_opt(&self) -> Option<TimeInt> {
+        self.min_key().map(TimeInt::new_temporal)
+    }
+
+    pub fn min(&self) -> TimeInt {
+        self.min_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn max_opt(&self) -> Option<TimeInt> {
+        self.max_key().map(TimeInt::new_temporal)
+    }
+
+    pub fn max(&self) -> TimeInt {
+        self.max_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn full_range(&self) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(self.min(), self.max())
+    }
+
+    pub fn step_fwd_time(&self, time: TimeReal) -> TimeInt {
+        self.next_key_after(time.floor().as_i64())
+            .map(TimeInt::new_temporal)
+            .unwrap_or_else(|| self.min())
+    }
+
+    pub fn step_back_time(&self, time: TimeReal) -> TimeInt {
+        self.prev_key_before(time.ceil().as_i64())
+            .map(TimeInt::new_temporal)
+            .unwrap_or_else(|| self.max())
+    }
+
+    pub fn step_fwd_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        if time < loop_range.min || loop_range.max <= time {
+            loop_range.min
+        } else if let Some(next) = self
+            .range(
+                (
+                    Bound::Excluded(time.floor().as_i64()),
+                    Bound::Included(loop_range.max.floor().as_i64()),
+                ),
+                1,
+            )
+            .next()
+            .map(|(r, _)| r.min)
+        {
+            TimeReal::from(next)
+        } else {
+            self.step_fwd_time(time).into()
+        }
+    }
+
+    pub fn step_back_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        re_tracing::profile_function!();
+
+        if time <= loop_range.min || loop_range.max < time {
+            loop_range.max
+        } else {
+            // Collect all keys in the range and take the last one.
+            // Yes, this could be slow :/
+            let mut prev_key = None;
+            for (range, _) in self.range(
+                (
+                    Bound::Included(loop_range.min.ceil().as_i64()),
+                    Bound::Excluded(time.ceil().as_i64()),
+                ),
+                1,
+            ) {
+                prev_key = Some(range.max);
+            }
+            if let Some(prev) = prev_key {
+                TimeReal::from(TimeInt::new_temporal(prev))
+            } else {
+                self.step_back_time(time).into()
+            }
+        }
+    }
+}
 
 /// Number of messages per time per timeline.
 ///
@@ -32,8 +161,12 @@ impl TimeHistogramPerTimeline {
     }
 
     #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
-        self.times.keys()
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = Timeline> {
+        self.times.values().map(|h| h.timeline())
+    }
+
+    pub fn histograms(&self) -> impl ExactSizeIterator<Item = &TimeHistogram> {
+        self.times.values()
     }
 
     #[inline]
@@ -68,7 +201,10 @@ impl TimeHistogramPerTimeline {
 
         for timelines in native_temporal_map.values() {
             for (timeline, comps) in timelines {
-                let histogram = self.times.entry(*timeline.name()).or_default();
+                let histogram = self
+                    .times
+                    .entry(*timeline.name())
+                    .or_insert_with(|| TimeHistogram::new(*timeline));
                 for chunks in comps.values() {
                     for entry in chunks.values() {
                         let RrdManifestTemporalMapEntry {
@@ -85,79 +221,107 @@ impl TimeHistogramPerTimeline {
         Ok(())
     }
 
-    fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
-        re_tracing::profile_function!();
-
-        for &(timeline_name, times) in times_per_timeline {
-            let histogram = self.times.entry(timeline_name).or_default();
-            for &time in times {
-                histogram.increment(time, n);
-            }
-        }
-    }
-
-    fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
-        re_tracing::profile_function!();
-
-        for &(timeline_name, times) in times_per_timeline {
-            if let Some(histo) = self.times.get_mut(&timeline_name) {
-                for &time in times {
-                    histo.decrement(time, n);
-                }
-                if histo.is_empty() {
-                    self.times.remove(&timeline_name);
-                }
-            }
-        }
-    }
-
     pub fn on_events(&mut self, rrd_manifest_index: &RrdManifestIndex, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
         for event in events {
-            let times = event
-                .chunk
-                .timelines()
-                .iter()
-                .map(|(&timeline_name, time_column)| (timeline_name, time_column.times_raw()))
-                .collect_vec();
-
             let original_chunk_id = if let Some(chunk_id) = event.diff.split_source {
                 chunk_id
             } else {
                 event.chunk.id()
             };
 
-            match event.kind {
-                ChunkStoreDiffKind::Addition => {
-                    if let Some(info) = rrd_manifest_index.remote_chunk_info(&original_chunk_id)
-                        && let Some(info) = &info.temporal
-                    {
-                        // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
-                        let histogram = self.times.entry(*info.timeline.name()).or_default();
-                        apply_fake(
-                            Application::Remove,
-                            histogram,
-                            info.time_range,
-                            info.num_rows,
-                        );
+            if event.chunk.is_static() {
+                match event.kind {
+                    ChunkStoreDiffKind::Addition => {
+                        self.has_static = true;
                     }
-
-                    self.add(&times, event.num_components() as _);
-                }
-                ChunkStoreDiffKind::Deletion => {
-                    self.remove(&times, event.num_components() as _);
-
-                    // We GCed the full chunk, so add back the fake:
-
-                    if let Some(info) = rrd_manifest_index.remote_chunk_info(&original_chunk_id)
-                        && let Some(info) = &info.temporal
-                    {
-                        // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
-                        let histogram = self.times.entry(*info.timeline.name()).or_default();
-                        apply_fake(Application::Add, histogram, info.time_range, info.num_rows);
+                    ChunkStoreDiffKind::Deletion => {
+                        // we don't care
                     }
                 }
+            } else {
+                for time_column in event.chunk.timelines().values() {
+                    let times = time_column.times_raw();
+                    let timeline = time_column.timeline();
+                    match event.kind {
+                        ChunkStoreDiffKind::Addition => {
+                            if let Some(info) =
+                                rrd_manifest_index.remote_chunk_info(&original_chunk_id)
+                                && let Some(info) = &info.temporal
+                            {
+                                // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
+                                let histogram = self
+                                    .times
+                                    .entry(*timeline.name())
+                                    .or_insert_with(|| TimeHistogram::new(*timeline));
+                                apply_fake(
+                                    Application::Remove,
+                                    histogram,
+                                    info.time_range,
+                                    info.num_rows,
+                                );
+                            }
+
+                            self.add_temporal(
+                                time_column.timeline(),
+                                times,
+                                event.num_components() as _,
+                            );
+                        }
+                        ChunkStoreDiffKind::Deletion => {
+                            self.remove_temporal(
+                                time_column.timeline(),
+                                times,
+                                event.num_components() as _,
+                            );
+
+                            // We GCed the full chunk, so add back the fake:
+
+                            if let Some(info) =
+                                rrd_manifest_index.remote_chunk_info(&original_chunk_id)
+                                && let Some(info) = &info.temporal
+                            {
+                                // We added fake value for this before. Now that we have the whole chunk we need to subtract those fake values again.
+                                let histogram = self
+                                    .times
+                                    .entry(*timeline.name())
+                                    .or_insert_with(|| TimeHistogram::new(*timeline));
+                                apply_fake(
+                                    Application::Add,
+                                    histogram,
+                                    info.time_range,
+                                    info.num_rows,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
+        re_tracing::profile_function!();
+
+        let histogram = self
+            .times
+            .entry(*timeline.name())
+            .or_insert_with(|| TimeHistogram::new(*timeline));
+        for &time in times {
+            histogram.increment(time, n);
+        }
+    }
+
+    fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
+        re_tracing::profile_function!();
+
+        if let Some(histo) = self.times.get_mut(timeline.name()) {
+            for &time in times {
+                histo.decrement(time, n);
+            }
+            if histo.is_empty() {
+                self.times.remove(timeline.name());
             }
         }
     }
@@ -170,7 +334,7 @@ enum Application {
 }
 
 impl Application {
-    fn apply(self, histogram: &mut re_int_histogram::Int64Histogram, position: i64, inc: u32) {
+    fn apply(self, histogram: &mut TimeHistogram, position: i64, inc: u32) {
         match self {
             Self::Add => {
                 histogram.increment(position, inc);
@@ -184,7 +348,7 @@ impl Application {
 
 fn apply_fake(
     application: Application,
-    histogram: &mut re_int_histogram::Int64Histogram,
+    histogram: &mut TimeHistogram,
     time_range: re_log_types::AbsoluteTimeRange,
     num_rows: u64,
 ) {

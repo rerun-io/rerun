@@ -275,6 +275,7 @@ dependencies = [
  "anyhow",
  "clap",
  "emath",
+ "glam",
  "rerun",
 ]
 

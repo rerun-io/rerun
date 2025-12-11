@@ -12,8 +12,6 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
 use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
 
-use crate::{TimelineStats, TimesPerTimeline};
-
 // The order here is used for priority to show the state in the ui (lower is more prioritized)
 /// Is the following chunk loaded?
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -112,8 +110,6 @@ pub struct RrdManifestIndex {
     entity_has_temporal_data_on_timeline: IntMap<re_chunk::EntityPath, IntSet<TimelineName>>,
     entity_has_static_data: IntSet<re_chunk::EntityPath>,
 
-    pub times_per_timeline: TimesPerTimeline,
-
     native_static_map: re_log_encoding::RrdManifestStaticMap,
     native_temporal_map: re_log_encoding::RrdManifestTemporalMap,
 }
@@ -176,15 +172,6 @@ impl RrdManifestIndex {
                         } = entry;
 
                         timeline_range = timeline_range.union(*chunk_range);
-
-                        // TODO: this is a bad idea
-                        let timeline_stats = self
-                            .times_per_timeline
-                            .0
-                            .entry(*timeline.name())
-                            .or_insert_with(|| TimelineStats::new(*timeline));
-                        timeline_stats.insert(chunk_range.min, num_rows / 2);
-                        timeline_stats.insert(chunk_range.max, num_rows - num_rows / 2);
                     }
                 }
 
