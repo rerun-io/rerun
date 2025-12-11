@@ -7,7 +7,7 @@ use anyhow::{Context as _, bail};
 use itertools::Itertools as _;
 use re_chunk::{ChunkBuilder, ChunkId, EntityPath, RowId, TimePoint};
 use re_log_types::{EntityPathPart, StoreId};
-use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, Transform3D};
+use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transform3D};
 use re_sdk_types::datatypes::Vec3D;
 use re_sdk_types::external::glam;
 use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor, SerializedComponentBatch};
@@ -441,6 +441,15 @@ fn transform_from_pose(
         .with_child_frame(child_frame)
 }
 
+fn instance_poses_from_pose(origin: &urdf_rs::Pose) -> InstancePoses3D {
+    let urdf_rs::Pose { xyz, rpy } = origin;
+    let translation = Vec3D::new(xyz[0] as f32, xyz[1] as f32, xyz[2] as f32);
+    let quaternion = quat_xyzw_from_roll_pitch_yaw(rpy[0] as f32, rpy[1] as f32, rpy[2] as f32);
+    InstancePoses3D::update_fields()
+        .with_translations(vec![translation])
+        .with_quaternions(vec![quaternion])
+}
+
 fn send_transform(
     tx: &Sender<LoadedData>,
     store_id: &StoreId,
@@ -456,6 +465,30 @@ fn send_transform(
         entity_path,
         timepoint,
         &transform_from_pose(origin, parent_frame, child_frame),
+    )
+}
+
+fn send_instance_pose_with_frame(
+    tx: &Sender<LoadedData>,
+    store_id: &StoreId,
+    entity_path: EntityPath,
+    timepoint: &TimePoint,
+    origin: &urdf_rs::Pose,
+    parent_frame: String,
+) -> anyhow::Result<()> {
+    send_archetype(
+        tx,
+        store_id,
+        entity_path.clone(),
+        timepoint,
+        &instance_poses_from_pose(origin),
+    )?;
+    send_archetype(
+        tx,
+        store_id,
+        entity_path,
+        timepoint,
+        &CoordinateFrame::update_fields().with_frame(parent_frame),
     )
 }
 
@@ -528,10 +561,6 @@ fn log_link(
         let visual_name = name.clone().unwrap_or_else(|| format!("visual_{i}"));
         let visual_entity = link_entity / EntityPathPart::new(visual_name.clone());
 
-        // Prefix with the link name, otherwise we might end up with multiple coordinate frames named "visual_0" etc.
-        // Note that this doesn't apply to the entity path part, there it's fine to have e.g. /base/visual_0 and /base/link1/visual_0.
-        let visual_frame_id = format!("{link_name}_{visual_name}");
-
         // Prefer inline defined material properties if present, otherwise fall back to global material.
         let material = material.as_ref().and_then(|mat| {
             if mat.color.is_some() || mat.texture.is_some() {
@@ -541,23 +570,15 @@ fn log_link(
             }
         });
 
-        send_transform(
+        // A visual geometry has no frame ID of its own and has a constant pose,
+        // so we attach it to the link using an instance pose.
+        send_instance_pose_with_frame(
             tx,
             store_id,
             visual_entity.clone(),
+            timepoint,
             origin,
-            timepoint,
             link_name.clone(),
-            visual_frame_id.clone(),
-        )?;
-
-        let coordinate_frame = CoordinateFrame::update_fields().with_frame(visual_frame_id.clone());
-        send_archetype(
-            tx,
-            store_id,
-            visual_entity.clone(),
-            timepoint,
-            &coordinate_frame,
         )?;
 
         log_geometry(
@@ -580,28 +601,15 @@ fn log_link(
         let collision_name = name.clone().unwrap_or_else(|| format!("collision_{i}"));
         let collision_entity = link_entity / EntityPathPart::new(collision_name.clone());
 
-        // Prefix with the link name, otherwise we might end up with multiple coordinate frames named "collision_0" etc.
-        // Note that this doesn't apply to the entity path part, there it's fine to have e.g. /base/collision_0 and /base/link1/collision_0.
-        let collision_frame_id = format!("{link_name}_{collision_name}");
-
-        send_transform(
+        // A collision geometry has no frame ID of its own and has a constant pose,
+        // so we attach it to the link using an instance pose.
+        send_instance_pose_with_frame(
             tx,
             store_id,
             collision_entity.clone(),
+            timepoint,
             origin,
-            timepoint,
             link_name.clone(),
-            collision_frame_id.clone(),
-        )?;
-
-        let coordinate_frame =
-            CoordinateFrame::update_fields().with_frame(collision_frame_id.clone());
-        send_archetype(
-            tx,
-            store_id,
-            collision_entity.clone(),
-            timepoint,
-            &coordinate_frame,
         )?;
 
         log_geometry(
