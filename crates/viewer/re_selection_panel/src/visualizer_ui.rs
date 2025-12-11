@@ -244,7 +244,10 @@ fn visualizer_components(
             })
             .collect::<Vec<_>>()
     };
-    println!("all_components_for_entity: {:?}", all_components_for_entity);
+    println!(
+        "----------- all_components_for_entity: {:?}",
+        all_components_for_entity
+    );
 
     let mut changed_component_mappings = vec![];
 
@@ -454,18 +457,13 @@ fn visualizer_components(
             }
 
             // Source component (if available)
-            // Source component (if available)
-            // println!("component_descr: {:?}", component_descr);
-
             if let Some(target_component_type) = &component_descr.component_type
                 && let Some(target_component_datatype) = ctx
                     .viewer_ctx
-                    .recording_engine()
-                    .store()
-                    .lookup_datatype(target_component_type)
+                    .reflection()
+                    .components
+                    .get(target_component_type)
             {
-                // println!("component_type: {:?}", target_component_datatype);
-
                 ui.push_id("source_component", |ui| {
                     let component_map = instruction
                         .component_mappings
@@ -482,7 +480,8 @@ fn visualizer_components(
                                 .show_ui(ui, |ui| {
                                     let mut all_source_options = vec![""];
                                     for entity_component in &all_components_for_entity {
-                                        if entity_component.1 == target_component_datatype {
+                                        if entity_component.1 == target_component_datatype.datatype
+                                        {
                                             all_source_options.push(entity_component.0.as_str());
                                         }
                                     }
