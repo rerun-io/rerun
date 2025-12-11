@@ -390,7 +390,7 @@ urdf-rs = "0.9.0"
 ureq = "2.12.1"
 url = "2.5"
 uuid = "1.18"
-vec1 = "1.12"
+vec1 = { version = "1.12", features = ["serde", "smallvec-v1"] }
 walkdir = "2.5"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #     Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
