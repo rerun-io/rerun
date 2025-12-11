@@ -272,6 +272,10 @@ impl QueryDatasetResponse {
         )
     }
 
+    pub fn field_chunk_byte_size() -> FieldRef {
+        lazy_field_ref!(Field::new(Self::FIELD_CHUNK_BYTE_SIZE, DataType::UInt64, false))
+    }
+
     pub fn fields() -> Vec<FieldRef> {
         vec![
             Self::field_chunk_id(),
@@ -280,6 +284,7 @@ impl QueryDatasetResponse {
             Self::field_chunk_key(),
             Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
+            Self::field_chunk_byte_size(),
         ]
     }
 
@@ -299,6 +304,7 @@ impl QueryDatasetResponse {
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
+        chunk_byte_sizes: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
         let schema = Arc::new(Self::schema());
 
@@ -311,6 +317,7 @@ impl QueryDatasetResponse {
             Arc::new(BinaryArray::from(chunk_keys)),
             Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
+            Arc::new(UInt64Array::from(chunk_byte_sizes)),
         ];
 
         RecordBatch::try_new_with_options(

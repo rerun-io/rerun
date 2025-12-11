@@ -617,25 +617,19 @@ async fn chunk_stream_io_loop(
 
     // Build batches of requests to optimize network round-trips while maintaining ordering
     let target_size = TARGET_BATCH_SIZE_BYTES as u64;
-    let (request_batches, segment_order) = create_request_batches(chunk_infos, target_size)?;
+    let (request_batches, _segment_order) = create_request_batches(chunk_infos, target_size)?;
 
-    tracing::debug!(
-        "Created {} batched requests from {} segments (target size: {}MB, processing 8 concurrently)",
-        request_batches.len(),
-        segment_order.len(),
-        TARGET_BATCH_SIZE_BYTES / (1024 * 1024)
-    );
-
-    // Process up to 4 requests concurrently while maintaining original batch order.
-    // Each batch is ~128MB, so we can safely process 4 concurrently (512MB peak memory).
-    // buffered(4) maintains order: even if batch 3 completes first, it waits for batches 1&2.
+    // Process requests sequentially for now to avoid concurrency issues
+    // Each batch is ~128MB, so sequential processing maintains memory efficiency
     use futures::StreamExt as _; // for buffered()
 
     let mut batch_stream = futures::stream::iter(request_batches.into_iter().map(|batch| {
         let mut client = client.clone();
         async move {
+            let chunk_infos_for_request: Vec<_> = batch.into_iter().map(Into::into).collect();
+
             let fetch_chunks_request = FetchChunksRequest {
-                chunk_infos: batch.into_iter().map(Into::into).collect(),
+                chunk_infos: chunk_infos_for_request,
             };
 
             let fetch_chunks_response_stream = client
@@ -663,7 +657,7 @@ async fn chunk_stream_io_loop(
             Ok::<Vec<(Chunk, Option<String>)>, DataFusionError>(flat_chunks)
         }
     }))
-    .buffered(8); // Process up to 8 requests concurrently, preserving original batch order
+    .buffered(8); // Process requests concurrently to improve throughput
 
     // Stream each batch's results in original batch order as they complete
     while let Some(batch_result) = batch_stream.next().await {
