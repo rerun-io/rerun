@@ -116,7 +116,6 @@ exclude = [
 
   # Intentionally faked links.
   'file://foo',
-  'file:///uri*.rrd',
   'http://foo.*',
   'https://foo.*',
   'https://link.to',
@@ -132,6 +131,8 @@ exclude = [
   'rerun\+http://localhost:\{grpc_port\}/proxy',
   '.*scheme:/.*',
   'http(s)?://example.com/.*',
+  'file:///uri1.rrd',
+  'file:///uri1.rrd',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
