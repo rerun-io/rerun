@@ -1520,7 +1520,7 @@ impl ReceiversFromUrlParams {
                     .map(re_viewer::App::auth_error_handler)
                     .unwrap_or_else(|| {
                         Box::new(|uri, err| {
-                            re_log::error!("Authentication error for data source {}: {}", uri, err);
+                            re_log::error!("Authentication error for data source {uri}: {err}");
                         })
                     });
                 data_source.stream(auth_error_handler, connection_registry)
