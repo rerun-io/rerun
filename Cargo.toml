@@ -192,7 +192,6 @@ arrow = { version = "56.1", default-features = false, features = [
   "ffi",
   "ipc",
   "json",
-  "pyarrow",
 ] }
 async-stream = "0.3"
 async-trait = "0.1.89"
