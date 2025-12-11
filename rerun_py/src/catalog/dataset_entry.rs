@@ -277,7 +277,30 @@ impl PyDatasetEntryInternal {
             segment_id,
 
             //TODO(ab): add support for this
-            fragment: Default::default(),
+            fragment: re_uri::Fragment {
+                selection: None,
+                when: timeline.and_then(|timeline| {
+                    Some((
+                        TimelineName::new(timeline),
+                        start_i64
+                            .map(|start| start.try_into().expect("start time must be valid"))
+                            .unwrap_or(re_log_types::NonMinI64::MIN),
+                    ))
+                }),
+                time_selection: timeline.and_then(|timeline| {
+                    Some(re_uri::TimeSelection {
+                        timeline: re_chunk::Timeline::new_timestamp(timeline),
+                        range: re_log_types::AbsoluteTimeRange::new(
+                            start_i64
+                                .map(|start| start.try_into().expect("start time must be valid"))
+                                .unwrap_or(re_log_types::NonMinI64::MIN),
+                            end_i64
+                                .map(|end| end.try_into().expect("end time must be valid"))
+                                .unwrap_or(re_log_types::NonMinI64::MAX),
+                        ),
+                    })
+                }),
+            },
         }
         .to_string())
     }
