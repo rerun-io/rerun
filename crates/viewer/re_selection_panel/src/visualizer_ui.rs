@@ -504,7 +504,7 @@ fn source_component_ui(
     component_descr: &ComponentDescriptor,
     instruction: &VisualizerInstruction,
 ) {
-    if !crate::ENABLE_COMPONENT_MAPPINGS_UI {
+    if !ctx.viewer_ctx.app_options().experimental.component_mapping {
         return;
     }
 
