@@ -49,6 +49,9 @@ dev = [
   "google-cloud-storage>=2.9.0",
   # Needed by lerobot dataloader example
   "huggingface-hub<1.0",
+  # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
+  "polars>=1.0",
+  "datafusion>=50.0",
 ]
 examples = [
   # External deps used by examples
@@ -303,9 +306,6 @@ disallow_untyped_calls = false
 
 module = [
   "pyarrow.*",
-  # TODO(nick): remove datafusion/notebook after #10696 lands
-  "datafusion.*",
-  "rerun_notebook.*",
   # https://github.com/jupyter-widgets/ipywidgets/issues/3688
   "ipywidgets.*",
   "anywidget.*",
@@ -316,9 +316,7 @@ module = [
   "torchvision.*",
   "torchaudio.*",
   "cv2.*",
-  "rerun.*",
   "huggingface_hub.*",
-  "polars.*",
 ]
 ignore_missing_imports = true
 
