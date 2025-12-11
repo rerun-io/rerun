@@ -6,7 +6,14 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::AppOptions;
 
-pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+use crate::StartupOptions;
+
+pub fn settings_screen_ui(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    startup_options: &mut StartupOptions,
+    keep_open: &mut bool,
+) {
     egui::Frame {
         inner_margin: egui::Margin::same(5),
         ..Default::default()
@@ -23,7 +30,7 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
                 ui.set_min_width(MIN_WIDTH);
-                settings_screen_ui_impl(ui, app_options, keep_open);
+                settings_screen_ui_impl(ui, app_options, startup_options, keep_open);
             });
 
         if ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
@@ -32,7 +39,12 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
     });
 }
 
-fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+fn settings_screen_ui_impl(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    startup_options: &mut StartupOptions,
+    keep_open: &mut bool,
+) {
     //
     // Title
     //
@@ -70,7 +82,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("General");
 
     ui.horizontal(|ui| {
-        ui.label("Theme:");
+        ui.label("Theme");
         egui::global_theme_preference_buttons(ui);
     });
 
@@ -82,14 +94,54 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
 
-    //
-    // Timezone
-    //
+    ui.add_space(16.0);
+    ui.horizontal(|ui| {
+        ui.strong("Memory budget");
+        memory_budget_section_ui(ui, startup_options);
+    });
 
     separator_with_some_space(ui);
-
     ui.strong("Timestamp format");
+    time_format_section_ui(ui, app_options);
 
+    separator_with_some_space(ui);
+    ui.strong("Map view");
+    map_view_section_ui(ui, app_options);
+
+    separator_with_some_space(ui);
+    ui.strong("Video");
+    video_section_ui(ui, app_options);
+}
+
+fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
+    const BYTES_PER_GIB: i64 = 1024 * 1024 * 1024;
+    const UPPER_LIMIT_BYTES: i64 = 1_000 * BYTES_PER_GIB;
+
+    let mut bytes = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX);
+
+    let speed = (0.05 * bytes as f32).clamp(0.01 * BYTES_PER_GIB as f32, BYTES_PER_GIB as f32);
+
+    ui.add(
+        egui::DragValue::new(&mut bytes)
+            .custom_formatter(|bytes, _| {
+                if bytes < UPPER_LIMIT_BYTES as f64 {
+                    re_format::format_bytes(bytes)
+                } else {
+                    "unlimited".to_owned()
+                }
+            })
+            .range(0..=UPPER_LIMIT_BYTES)
+            .speed(speed),
+    );
+
+    if bytes < UPPER_LIMIT_BYTES {
+        startup_options.memory_limit.max_bytes = Some(bytes);
+    } else {
+        startup_options.memory_limit.max_bytes = None;
+    }
+}
+
+fn time_format_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     fn timestamp_example_ui(
         ui: &mut egui::Ui,
         timestamp: Timestamp,
@@ -143,22 +195,16 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         "Seconds since Unix epoch",
     );
     timestamp_example_ui(ui, timestamp, TimestampFormat::unix_epoch());
+}
 
-    //
-    // Map view
-    //
-
-    separator_with_some_space(ui);
-
-    ui.strong("Map view");
-
+fn map_view_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     ui.horizontal(|ui| {
         // TODO(ab): needed for alignment, we should use egui flex instead
         ui.set_height(19.0);
 
         ui.label("Mapbox access token:").on_hover_ui(|ui| {
             ui.markdown_ui(
-                "This token is used toe enable Mapbox-based map view backgrounds.\n\n\
+                "This token is used to enable Mapbox-based map view backgrounds.\n\n\
                 Note that the token will be saved in clear text in the configuration file. \
                 The token can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment \
                 variable.",
@@ -167,14 +213,6 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
         ui.add(egui::TextEdit::singleline(&mut app_options.mapbox_access_token).password(true));
     });
-
-    //
-    // Video
-    //
-
-    separator_with_some_space(ui);
-    ui.strong("Video");
-    video_section_ui(ui, app_options);
 }
 
 fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {

@@ -2273,9 +2273,11 @@ impl App {
                             );
                         }
 
+                        let mut startup_options = self.startup_options.clone();
+
                         self.state.show(
                             &self.app_env,
-                            &self.startup_options,
+                            &mut startup_options,
                             app_blueprint,
                             ui,
                             render_ctx,
@@ -2295,6 +2297,7 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                         );
+                        self.startup_options = startup_options;
                         render_ctx.before_submit();
                     }
 
