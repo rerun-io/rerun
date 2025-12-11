@@ -225,6 +225,12 @@ fn visualizer_components(
     //     components.iter().copied(),
     // );
 
+    let all_components_for_entity = ctx
+        .viewer_ctx
+        .recording_engine()
+        .store()
+        .all_components_for_entity_sorted(&data_result.entity_path);
+
     let mut changed_component_mappings = vec![];
 
     // TODO(andreas): Should we show required components in a special way?
@@ -444,19 +450,35 @@ fn visualizer_components(
                         // let source_str_ref = component_map.map(|mapping| mapping.source.as_str());
                         // let mut source_str = source_str_ref.unwrap_or_default().to_owned();
 
-                        let mut source = component_map.map_or_else(String::default, |mapping| {
-                            mapping.source.as_str().to_owned()
-                        });
+                        let source =
+                            component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
 
-                        let response = ui.text_edit_singleline(&mut source);
-                        if response.changed() {
-                            changed_component_mappings.push(
-                                re_viewer_context::VisualizerComponentMapping {
-                                    source: source.into(),
-                                    target: component_descr.component,
-                                },
-                            );
+                        if let Some(all_components_for_entity) = &all_components_for_entity {
+                            egui::ComboBox::new("source_component", "")
+                                .selected_text(source)
+                                .show_ui(ui, |ui| {
+                                    for component in all_components_for_entity {
+                                        if ui.button(component.as_str()).clicked() {
+                                            changed_component_mappings.push(
+                                                re_viewer_context::VisualizerComponentMapping {
+                                                    source: component.clone(),
+                                                    target: component_descr.component,
+                                                },
+                                            );
+                                        }
+                                    }
+                                });
                         }
+
+                        // let response = ui.text_edit_singleline(&mut source);
+                        // if response.changed() {
+                        //     changed_component_mappings.push(
+                        //         re_viewer_context::VisualizerComponentMapping {
+                        //             source: source.into(),
+                        //             target: component_descr.component,
+                        //         },
+                        //     );
+                        // }
 
                         // editable_blueprint_component_list_item(
                         //     &query_ctx,
