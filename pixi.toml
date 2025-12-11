@@ -324,7 +324,7 @@ py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
 dev-tools = "cargo run --locked -p re_dev_tools --"
-build-examples = "cargo run --locked -p re_dev_tools -- build-examples"
+build-examples = "uv run cargo run --locked -p re_dev_tools -- build-examples"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.

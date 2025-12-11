@@ -77,6 +77,12 @@ def run_uv_install(dir: str, pkg: str, platform_independent: bool = False) -> No
 
     wheel = Path(dir) / wheels[0]
 
+    # Bootstrap the uv environment if it's missing
+    cmd = ["pixi", "run", "uv", "sync", "--inexact"]
+    print(f"Running: {' '.join(cmd)}")
+    returncode = subprocess.Popen(cmd).wait()
+    assert returncode == 0, f"process exited with error code {returncode}"
+
     # Install the wheel
     cmd = ["uv", "pip", "install", f"{pkg}[tests] @ {path_to_file_url(wheel)}"]
     print(f"Running: {' '.join(cmd)}")

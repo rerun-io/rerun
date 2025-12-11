@@ -187,22 +187,22 @@ jobs:
       - name: Check for release checklist
         if: ${{ inputs.FAST }}
         # Only check that the release checklist executes successfully
-        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run -e wheel-test-min python tests/python/release_checklist/main.py --stdout > /dev/null
+        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run uv python tests/python/release_checklist/main.py --stdout > /dev/null
 
       - name: Build C++ snippets
         if: ${{ !inputs.FAST }}
         # Separated out of compare_snippet_output.py run so we control the pixi environment.
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
-        run: pixi run -e wheel-test-min cpp-build-snippets
+        run: pixi run cpp-build-snippets
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: RUST_LOG=debug pixi run -e wheel-test-min python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
+        run: RUST_LOG=debug pixi run python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
 
       - name: Check the python library signatures
-        run: pixi run -e wheel-test-min python scripts/ci/python_check_signatures.py
+        run: pixi run py-check-signatures
 
       - name: Report disk usage
         if: always() # Run this even if a previous step fails.
