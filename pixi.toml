@@ -347,7 +347,7 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 
 
 # Lint markdown
-mdlint = "vpython scripts/ci/mdlint.py"
+mdlint = "python scripts/ci/mdlint.py"
 
 # Setup JS tools
 js-setup = "npm i -g yarn"
@@ -594,6 +594,7 @@ python = "=3.11" # We use the latest Python version here, so we get the latest m
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
+tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"

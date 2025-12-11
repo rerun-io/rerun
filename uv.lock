@@ -2365,17 +2365,20 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "anywidget" },
     { name = "attrs" },
     { name = "gitpython" },
     { name = "inline-snapshot" },
+    { name = "ipywidgets" },
     { name = "jinja2" },
+    { name = "jupyter-ui-poll" },
     { name = "maturin" },
     { name = "mypy" },
     { name = "nbqa" },
     { name = "pandas-stubs" },
+    { name = "platformdirs" },
     { name = "pygithub" },
     { name = "pytest" },
-    { name = "rerun-notebook" },
     { name = "rich" },
     { name = "ruff" },
     { name = "semver" },
@@ -2391,17 +2394,20 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anywidget", specifier = ">=0.9" },
     { name = "attrs", specifier = ">=23.1.0" },
     { name = "gitpython", specifier = ">=3.1" },
     { name = "inline-snapshot", specifier = ">=0.31" },
+    { name = "ipywidgets", specifier = ">=8.0" },
     { name = "jinja2", specifier = ">=3.1" },
+    { name = "jupyter-ui-poll", specifier = ">=0.2" },
     { name = "maturin", specifier = ">=1.0.0" },
     { name = "mypy", specifier = "==1.14.1" },
     { name = "nbqa", specifier = "==1.9.1" },
     { name = "pandas-stubs", specifier = "==2.3.3.251201" },
+    { name = "platformdirs", specifier = ">=4.0" },
     { name = "pygithub", specifier = ">=2.0" },
     { name = "pytest", specifier = ">=8.0" },
-    { name = "rerun-notebook", editable = "rerun_notebook" },
     { name = "rich", specifier = ">=13.0" },
     { name = "ruff", specifier = "==0.12.10" },
     { name = "semver", specifier = ">=3.0,<3.1" },
