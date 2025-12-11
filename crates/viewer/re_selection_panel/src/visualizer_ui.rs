@@ -446,10 +446,6 @@ fn visualizer_components(
                     .find(|mapping| mapping.target == component_descr.component);
                 ui.list_item_flat_noninteractive(
                     list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
-                        // Text field with the source component name.
-                        // let source_str_ref = component_map.map(|mapping| mapping.source.as_str());
-                        // let mut source_str = source_str_ref.unwrap_or_default().to_owned();
-
                         let source =
                             component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
 
@@ -469,29 +465,6 @@ fn visualizer_components(
                                     }
                                 });
                         }
-
-                        // let response = ui.text_edit_singleline(&mut source);
-                        // if response.changed() {
-                        //     changed_component_mappings.push(
-                        //         re_viewer_context::VisualizerComponentMapping {
-                        //             source: source.into(),
-                        //             target: component_descr.component,
-                        //         },
-                        //     );
-                        // }
-
-                        // editable_blueprint_component_list_item(
-                        //     &query_ctx,
-                        //     ui,
-                        //     "Override",
-                        //     override_path.clone(),
-                        //     component_descr,
-                        //     *row_id,
-                        //     raw_override.as_ref(),
-                        // )
-                        // .on_hover_text(
-                        //     "Override value for this specific entity in the current view",
-                        // );
                     }),
                 );
             });
