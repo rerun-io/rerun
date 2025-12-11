@@ -1,8 +1,9 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
+use parking_lot::Mutex;
 use pyo3::exceptions::{PyStopIteration, PyValueError};
 use pyo3::{Py, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -22,7 +23,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 8 * 60 * 60;
 
 /// Result of a single registration task completion.
 ///
-/// Tuple of (uri, segment_id or None, error or None). This is exposed as a
+/// Tuple of (uri, `segment_id` or None, error or None). This is exposed as a
 /// `SegmentRegistrationResult` dataclass on the Python side.
 type RegistrationResult = (String, Option<String>, Option<String>);
 
@@ -46,10 +47,8 @@ impl PyRegistrationHandleInternal {
     /// Create a new registration handle from task descriptors.
     pub fn new(
         client: Py<PyCatalogClientInternal>,
-        descriptors: impl IntoIterator<Item = RegisterWithDatasetTaskDescriptor>,
+        descriptors: Vec<RegisterWithDatasetTaskDescriptor>,
     ) -> Self {
-        let descriptors: Vec<RegisterWithDatasetTaskDescriptor> = descriptors.into_iter().collect();
-
         let mut task_id_to_indices: HashMap<String, Vec<usize>> = HashMap::new();
         for (idx, desc) in descriptors.iter().enumerate() {
             task_id_to_indices
@@ -78,11 +77,7 @@ impl PyRegistrationHandleInternal {
     /// Returns a streaming iterator that yields (uri, segment_id, error) tuples
     /// as tasks complete.
     #[pyo3(signature = (timeout_secs=None))]
-    fn iter_results(
-        &self,
-        py: Python<'_>,
-        timeout_secs: Option<u64>,
-    ) -> PyResult<PyRegistrationIterator> {
+    fn iter_results(&self, py: Python<'_>, timeout_secs: Option<u64>) -> PyRegistrationIterator {
         let connection = self.client.borrow(py).connection().clone();
         let task_ids = self.task_ids();
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
@@ -101,6 +96,7 @@ impl PyRegistrationHandleInternal {
                 let mut client = match connection.client().await {
                     Ok(c) => c,
                     Err(e) => {
+                        #[expect(clippy::let_underscore_must_use)]
                         let _ = tx.send(Err(e));
                         return;
                     }
@@ -110,6 +106,7 @@ impl PyRegistrationHandleInternal {
                     match client.query_tasks_on_completion(task_ids, timeout).await {
                         Ok(stream) => stream,
                         Err(e) => {
+                            #[expect(clippy::let_underscore_must_use)]
                             let _ = tx.send(Err(to_py_err(e)));
                             return;
                         }
@@ -126,10 +123,13 @@ impl PyRegistrationHandleInternal {
                                 break;
                             }
                         }
+
                         Ok(_) => {
                             // Empty batch, continue
                         }
+
                         Err(e) => {
+                            #[expect(clippy::let_underscore_must_use)]
                             let _ = tx.send(Err(e));
                             break;
                         }
@@ -139,10 +139,10 @@ impl PyRegistrationHandleInternal {
             .in_current_span(),
         );
 
-        Ok(PyRegistrationIterator {
+        PyRegistrationIterator {
             rx: Arc::new(Mutex::new(rx)),
             buffer: Vec::new(),
-        })
+        }
     }
 
     /// Wait for all tasks to complete and return segment_ids in descriptor order.
@@ -332,24 +332,23 @@ impl PyRegistrationIterator {
 
         // Release the GIL while waiting for data
         let batch_result = py.allow_threads(|| {
-            let mut rx_guard = rx.lock().unwrap();
+            let mut rx_guard = rx.lock();
             rx_guard.blocking_recv()
         });
 
         match batch_result {
             Some(Ok(mut results)) => {
-                if results.is_empty() {
-                    // Empty batch, try again (shouldn't happen but be safe)
-                    Err(PyStopIteration::new_err(()))
-                } else {
-                    // Return first result, buffer the rest in reverse order so pop() returns FIFO
+                if let Some(first) = results.pop() {
                     results.reverse();
-                    let first = results.pop().unwrap();
                     slf.buffer = results;
                     Ok(first)
+                } else {
+                    Err(PyStopIteration::new_err(()))
                 }
             }
+
             Some(Err(e)) => Err(e),
+
             None => {
                 // Stream ended
                 Err(PyStopIteration::new_err(()))
