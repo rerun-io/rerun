@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import datafusion
 from rerun import catalog as _catalog
+from rerun.catalog import RegistrationHandle, SegmentRegistrationResult
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -225,7 +226,9 @@ class DatasetEntry(Entry):
     ) -> str:
         return self._inner.segment_url(segment_id, timeline, start, end)
 
-    def register(self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base") -> Tasks:
+    def register(
+        self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base"
+    ) -> RegistrationHandle:
         if isinstance(recording_uri, str):
             recording_uri = [recording_uri]
         else:
@@ -238,11 +241,11 @@ class DatasetEntry(Entry):
             if len(layer_name) != len(recording_uri):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-        return Tasks(self._inner.register_batch(recording_uri, recording_layers=layer_name))
+        return self._inner.register_batch(recording_uri, recording_layers=layer_name)
 
     # TODO(ab): are we merging this into `register` as well?
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks:
-        return Tasks(self._inner.register_prefix(recordings_prefix, layer_name))
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:
+        return self._inner.register_prefix(recordings_prefix, layer_name)
 
     def download_segment(self, segment_id: str) -> Any:
         return self._inner.download_segment(segment_id)
@@ -609,27 +612,11 @@ class TableEntry(Entry):
         return self.reader().to_polars()
 
 
-class Tasks:
-    def __init__(self, inner: _catalog.Tasks) -> None:
-        self._inner: _catalog.Tasks = inner
-
-    def wait(self, timeout_secs: int = 60) -> None:
-        self._inner.wait(timeout_secs)
-
-    def status_table(self) -> datafusion.DataFrame:
-        return self._inner.status_table().df()
-
-    def __len__(self) -> int:
-        return self._inner.__len__()
-
-    def __getitem__(self, index: int) -> Task:
-        return self._inner.__getitem__(index)
-
-
 AlreadyExistsError = _catalog.AlreadyExistsError
 EntryId = _catalog.EntryId
 EntryKind = _catalog.EntryKind
 NotFoundError = _catalog.NotFoundError
+RegistrationHandle = _catalog.RegistrationHandle
+SegmentRegistrationResult = _catalog.SegmentRegistrationResult
 TableInsertMode = _catalog.TableInsertMode
-Task = _catalog.Task
 VectorDistanceMetric = _catalog.VectorDistanceMetric

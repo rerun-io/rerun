@@ -37,8 +37,8 @@ if TYPE_CHECKING:
         IndexConfig,
         IndexingResult,
         IndexValuesLike,
+        RegistrationHandle,
         Schema,
-        Tasks,
         VectorDistanceMetric,
     )
 
@@ -275,12 +275,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
 
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str] | None = None) -> Tasks:
+    def register_batch(
+        self, recording_uris: list[str], *, recording_layers: list[str] | None = None
+    ) -> RegistrationHandle:
         """
-        Register a batch of RRD URIs to the dataset and return a handle to the tasks.
+        Register a batch of RRD URIs to the dataset and return a handle to track progress.
 
         This method initiates the registration of multiple recordings to the dataset, and returns
-        the corresponding task ids in a [`Tasks`] object.
+        a handle that can be used to wait for completion or iterate over results.
 
         Parameters
         ----------
@@ -294,22 +296,27 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
               I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
 
+        Returns
+        -------
+        A handle to track and wait on the registration tasks.
+
         """
+        from ._registration_handle import RegistrationHandle
 
         if recording_layers is None:
             recording_layers = []
 
-        return self._internal.register_batch(recording_uris, recording_layers=recording_layers)
+        return RegistrationHandle(self._internal.register_batch(recording_uris, recording_layers=recording_layers))
 
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks:
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:
         """
-        Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+        Register all RRDs under a given prefix to the dataset and return a handle to track progress.
 
         A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
         All RRDs that are recursively found under the given prefix will be registered to the dataset.
 
         This method initiates the registration of the recordings to the dataset, and returns
-        the corresponding task ids in a [`Tasks`] object.
+        a handle that can be used to wait for completion or iterate over results.
 
         Parameters
         ----------
@@ -320,9 +327,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The layer to which the recordings will be registered to.
             If `None`, this defaults to `"base"`.
 
-        """
+        Returns
+        -------
+        A handle to track and wait on the registration tasks.
 
-        return self._internal.register_prefix(recordings_prefix, layer_name=layer_name)
+        """
+        from ._registration_handle import RegistrationHandle
+
+        return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name=layer_name))
 
     def download_segment(self, segment_id: str) -> Recording:
         """Download a segment from the dataset."""

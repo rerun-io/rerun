@@ -264,10 +264,10 @@ def readonly_test_dataset(catalog_client: CatalogClient, resource_prefix: str) -
 
     # Create the dataset directly (not using entry_factory since it's function-scoped)
     ds = catalog_client.create_dataset(dataset_name)
-    tasks = ds.register_prefix(resource_prefix + "dataset")
+    handle = ds.register_prefix(resource_prefix + "dataset")
 
     try:
-        tasks.wait(timeout_secs=50)
+        handle.wait(timeout_secs=50)
     except Exception as exc:
         # Attempt a cleanup just in case
         ds.delete()
@@ -299,8 +299,8 @@ def prefilled_catalog(entry_factory: EntryFactory, readonly_table_uri: str) -> G
     """Sets up a catalog to server prefilled with a test dataset and tables associated to various (SQL) catalogs and schemas."""
 
     dataset = entry_factory.create_dataset(DATASET_NAME)
-    tasks = dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
-    tasks.wait(timeout_secs=50)
+    handle = dataset.register_prefix(readonly_table_uri.rsplit("/", 1)[0] + "/dataset")
+    handle.wait(timeout_secs=50)
 
     # Register the read-only table with different catalog/schema qualifications
     for table_name in ["simple_datatypes", "second_schema.second_table", "alternate_catalog.third_schema.third_table"]:

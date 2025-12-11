@@ -1548,7 +1548,7 @@ impl RegisterWithDatasetResponse {
 }
 
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RegisterWithDatasetTaskDescriptor {
     pub segment_id: SegmentId,
     pub segment_type: DataSourceKind,

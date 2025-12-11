@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -1284,8 +1284,10 @@ class DatasetEntryInternal:
     # ---
 
     def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str: ...
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str]) -> Tasks: ...
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks: ...
+    def register_batch(
+        self, recording_uris: list[str], *, recording_layers: list[str]
+    ) -> RegistrationHandleInternal: ...
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandleInternal: ...
 
     # ---
 
@@ -1511,38 +1513,51 @@ class DataFusionTable:
     def name(self) -> str:
         """Name of this table."""
 
-class Task:
-    """A handle on a remote task."""
+class RegistrationHandleInternal:
+    """Internal handle for tracking registration tasks."""
 
-    @property
-    def id(self) -> str:
-        """The task id."""
-
-    def wait(self, timeout_secs: int) -> None:
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]:
         """
-        Block until the task is completed or the timeout is reached.
+        Return an iterator that yields (uri, segment_id, error) tuples as tasks complete.
 
-        A `TimeoutError` is raised if the timeout is reached.
+        Uses the server's streaming API.
+
+        Parameters
+        ----------
+        timeout_secs
+            Timeout in seconds. None uses default (8 hours).
+
+        Returns
+        -------
+        Iterator[tuple[str, str | None, str | None]]
+            Iterator yielding (uri, segment_id, error) tuples.
+            segment_id is None if registration failed.
+            error is None if registration succeeded.
+
         """
 
-class Tasks:
-    """A collection of [`Task`]."""
-
-    def wait(self, timeout_secs: int) -> None:
+    def wait(self, timeout_secs: int | None = None) -> list[str]:
         """
-        Block until all tasks are completed or the timeout is reached.
+        Block until all registrations complete and return segment IDs.
 
-        A `TimeoutError` is raised if the timeout is reached.
+        Parameters
+        ----------
+        timeout_secs
+            Timeout in seconds. None uses default (8 hours).
+
+        Returns
+        -------
+        list[str]
+            Segment IDs in registration order.
+
+        Raises
+        ------
+        ValueError
+            If any registration fails.
+        TimeoutError
+            If the timeout is reached.
+
         """
-
-    def status_table(self) -> DataFusionTable:
-        """Return a table with the status of all tasks."""
-
-    def __len__(self) -> int:
-        """Return the number of tasks."""
-
-    def __getitem__(self, index: int) -> Task:
-        """Return the task at the given index."""
 
 #####################################################################################################################
 ## SEND_TABLE                                                                                                      ##

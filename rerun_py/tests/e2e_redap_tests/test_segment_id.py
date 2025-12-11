@@ -12,8 +12,8 @@ def test_segment_ids(entry_factory: EntryFactory, resource_prefix: str, snapshot
     """Test that we can successfully collect information about segments."""
 
     ds = entry_factory.create_dataset("test_dataset")
-    tasks = ds.register_prefix(resource_prefix + "dataset")
-    tasks.wait(timeout_secs=50)
+    handle = ds.register_prefix(resource_prefix + "dataset")
+    handle.wait(timeout_secs=50)
 
     assert (
         ds.segment_table()

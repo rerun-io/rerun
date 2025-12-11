@@ -24,7 +24,7 @@ use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use super::task::PyTasks;
+use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
     PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
     PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
@@ -371,7 +371,7 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         recordings_prefix: String,
         layer_name: Option<String>,
-    ) -> PyResult<PyTasks> {
+    ) -> PyResult<PyRegistrationHandleInternal> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let results = connection.register_with_dataset_prefix(
@@ -381,9 +381,9 @@ impl PyDatasetEntryInternal {
             layer_name,
         )?;
 
-        Ok(PyTasks::new(
+        Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(self_.py()),
-            results.into_iter().map(|desc| desc.task_id),
+            results,
         ))
     }
 
@@ -410,12 +410,11 @@ impl PyDatasetEntryInternal {
         recording_layers = vec![],
     ))]
     #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
-    // TODO(ab): it might be useful to return segment ids directly since we have them
     fn register_batch(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
-    ) -> PyResult<PyTasks> {
+    ) -> PyResult<PyRegistrationHandleInternal> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let results = connection.register_with_dataset(
@@ -425,9 +424,9 @@ impl PyDatasetEntryInternal {
             recording_layers,
         )?;
 
-        Ok(PyTasks::new(
+        Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(self_.py()),
-            results.into_iter().map(|desc| desc.task_id),
+            results,
         ))
     }
 
