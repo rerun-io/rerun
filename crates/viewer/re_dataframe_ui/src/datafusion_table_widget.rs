@@ -256,18 +256,17 @@ impl<'a> DataFusionTableWidget<'a> {
             initial_blueprint,
         );
 
-        let requested_query_result = table_state.requested_query_result.lock();
+        let requested_query_result = table_state.results.as_ref();
 
-        let mut is_table_update_in_progress = false;
-        let query_result = match (
-            requested_query_result.try_as_ref(),
-            &table_state.last_query_results,
-        ) {
-            (Some(Ok(query_result)), _) => query_result,
+        let is_table_update_in_progress;
+        let query_result = match (requested_query_result, &table_state.last_query_results) {
+            (Some(Ok(query_result)), _) => {
+                is_table_update_in_progress = !query_result.finished;
+                query_result
+            }
 
             (Some(Err(err)), _) => {
                 let error = format!("Could not load table: {err}");
-                drop(requested_query_result);
 
                 ui.horizontal(|ui| {
                     ui.error_label(&error);
@@ -283,13 +282,13 @@ impl<'a> DataFusionTableWidget<'a> {
                 return TableStatus::Error(error);
             }
 
-            (None, Some(last_query_result)) => {
+            (None, Some(Ok(last_query_result))) => {
                 // The new dataframe is still processing, but we have the previous one to display for now.
                 is_table_update_in_progress = true;
                 last_query_result
             }
 
-            (None, None) => {
+            (None, None | Some(Err(_))) => {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
@@ -316,7 +315,6 @@ impl<'a> DataFusionTableWidget<'a> {
             &column_blueprint_fn,
         );
 
-        drop(requested_query_result);
         if table_state.blueprint() != &new_blueprint {
             table_state.update_query(runtime, ui, new_blueprint);
         }

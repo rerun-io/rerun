@@ -632,7 +632,11 @@ impl TestContext {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { selection, when } = fragment;
+        let re_uri::Fragment {
+            selection,
+            when,
+            time_selection,
+        } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -653,14 +657,24 @@ impl TestContext {
                 .send_system(SystemCommand::set_selection(item.clone()));
         }
 
+        let mut time_commands = Vec::new();
+        if let Some(time_selection) = time_selection {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(
+                *time_selection.timeline.name(),
+            ));
+            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+        }
+
         if let Some((timeline, timecell)) = when {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+        }
+
+        if !time_commands.is_empty() {
             self.command_sender
                 .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    time_commands: vec![
-                        TimeControlCommand::SetActiveTimeline(timeline),
-                        TimeControlCommand::SetTime(timecell.value.into()),
-                    ],
+                    time_commands,
                 });
         }
     }

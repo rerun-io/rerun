@@ -92,19 +92,14 @@ mod tests {
 /// Error used when a column is missing from a record batch
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct MissingColumnError {
-    pub name: String,
-}
-
-impl MissingColumnError {
-    pub fn new(name: impl Into<String>) -> Self {
-        Self { name: name.into() }
-    }
+    pub missing: String,
+    pub available: Vec<String>,
 }
 
 impl std::fmt::Display for MissingColumnError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { name } = self;
-        write!(f, "Missing column: {name:?}")
+        let Self { missing, available } = self;
+        write!(f, "Missing column: {missing:?}. Available: {available:?}")
     }
 }
 

@@ -76,6 +76,22 @@ Naturally, if any update to a transform always changes the same components, this
 the simplification of not having to clear out all other components that may ever be set, thus reducing memory bloat both
 on send and query!
 
+## URDF loader: sending transform updates now requires `parent_frame` and `child_frame` fields to be set
+
+Previous versions of the built-in [URDF](https://en.wikipedia.org/wiki/URDF) data-loader in Rerun required you to send transform updates with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
+Depending on the complexity of your robot model, this could quickly lead to long entity paths.
+E.g. when you wanted to update a joint deeper in your model hierarchy.
+
+In 0.28, this is now dropped in favor of transforms with _named_ frame IDs (`parent_frame`, `child_frame`).
+This is more in line with the TF2 system in ROS and allows you to send all transform updates on one single entity (e.g. a `transforms` entity).
+
+In particular, this results in two changes compared after you load an `URDF` model into Rerun compared to previous releases:
+
+1. To update a joint with a `Transform3D`, the `parent_frame` and `child_frame` fields need to be set (analogous to how the joint is specified in the `URDF` file).
+2. The transformation must have both rotation and translation (again, analogous to the `URDF`). Updating only the rotation is no longer supported.
+
+For more details about loading & updating `URDF` models, we added a "Loading URDF models" page to our documentation in this release.
+
 ## Python SDK: "partition" renamed to "segment" in catalog APIs
 
 <!-- TODO(ab): as I roll more API updates, I'll keep that section up-to-date -->
