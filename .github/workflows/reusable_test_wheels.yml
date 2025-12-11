@@ -165,7 +165,7 @@ jobs:
 
       - name: Install built wheel
         run: |
-          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir wheel
 
       - name: Print wheel version
         run: |
