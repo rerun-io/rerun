@@ -423,6 +423,10 @@ pub fn paint_loaded_indicator_bar(
     y: f32,
     x_range: Rangef,
 ) {
+    if !db.rrd_manifest_index().has_manifest() {
+        return;
+    }
+
     let mut ranges = db
         .rrd_manifest_index()
         .time_ranges_all_chunks(time_ctrl.timeline());
