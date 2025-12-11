@@ -281,9 +281,20 @@ impl UICommandSender for CommandSender {
     }
 }
 
+/// Command to open the edit redap server modal.
+///
+/// This exists as a separate struct to make it convenient to funnel it through the redap browser
+/// command system.
 pub struct EditRedapServerModalCommand {
+    /// Which server should be edited?
     pub origin: re_uri::Origin,
+
+    /// Provide a custom url to open when the server was successfully edited.
+    ///
+    /// By default, the server dataset table is opened.
     pub open_on_success: Option<String>,
+
+    /// Optional custom title for the modal.
     pub title: Option<String>,
 }
 

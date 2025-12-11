@@ -289,7 +289,7 @@ impl ServerModal {
                                     .ok();
                             }
 
-                            let on_add =
+                            let on_add: Box<dyn FnOnce() + Send> =
                                 if let ServerModalMode::Edit(EditRedapServerModalCommand {
                                     open_on_success: Some(url),
                                     ..
@@ -300,13 +300,7 @@ impl ServerModal {
                                     Box::new(move || {
                                         egui_ctx.open_url(OpenUrl::same_tab(url));
                                     })
-                                        as Box<dyn FnOnce() + Send>
                                 } else {
-                                    // global_ctx.command_sender.send_system(
-                                    //     SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                                    //         origin,
-                                    //     )),
-                                    // );
                                     let command_sender = global_ctx.command_sender.clone();
                                     let origin = origin.clone();
                                     Box::new(move || {
@@ -319,11 +313,11 @@ impl ServerModal {
                                 };
 
                             ctx.command_sender
-                                .send(Command::AddServer(
-                                    origin.clone(),
+                                .send(Command::AddServer {
+                                    origin: origin.clone(),
                                     credentials,
-                                    Some(on_add),
-                                ))
+                                    on_add: Some(on_add),
+                                })
                                 .ok();
                         }
                     } else {

@@ -335,11 +335,11 @@ pub enum Command {
     ///
     /// The closure can be used to run something after adding the server (useful since [`Command`]s
     /// are not ran in order with [`re_viewer_context::SystemCommand`]s).
-    AddServer(
-        re_uri::Origin,
-        Option<re_redap_client::Credentials>,
-        Option<Box<dyn FnOnce() + Send>>,
-    ),
+    AddServer {
+        origin: re_uri::Origin,
+        credentials: Option<re_redap_client::Credentials>,
+        on_add: Option<Box<dyn FnOnce() + Send>>,
+    },
 
     /// Remove a server and its token.
     RemoveServer(re_uri::Origin),
@@ -360,7 +360,11 @@ impl RedapServers {
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         self.command_sender
-            .send(Command::AddServer(origin, None, None))
+            .send(Command::AddServer {
+                origin: origin,
+                credentials: None,
+                on_add: None,
+            })
             .ok();
     }
 
@@ -391,7 +395,11 @@ impl RedapServers {
     ) {
         self.pending_servers.drain(..).for_each(|origin| {
             self.command_sender
-                .send(Command::AddServer(origin, None, None))
+                .send(Command::AddServer {
+                    origin: origin,
+                    credentials: None,
+                    on_add: None,
+                })
                 .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
@@ -421,7 +429,11 @@ impl RedapServers {
                     .open(ServerModalMode::Edit(origin), connection_registry);
             }
 
-            Command::AddServer(origin, credentials, on_add) => {
+            Command::AddServer {
+                origin: origin,
+                credentials: credentials,
+                on_add: on_add,
+            } => {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
                 }
