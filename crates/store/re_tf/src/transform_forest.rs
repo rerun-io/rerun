@@ -427,8 +427,7 @@ fn implicit_transform_parent(
 }
 
 impl TransformForest {
-    /// An arbitrarily ordered iterator of all [`TransformTreeRootInfo::TransformFrameRoot`]
-    /// roots.
+    /// An arbitrarily ordered iterator of all transform frame roots.
     pub fn transform_frame_roots(&self) -> impl Iterator<Item = TransformFrameIdHash> {
         self.roots
             .iter()
