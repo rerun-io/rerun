@@ -615,18 +615,31 @@ async fn chunk_stream_io_loop(
 ) -> Result<(), DataFusionError> {
     let chunk_infos: Vec<_> = chunk_infos.into_iter().collect();
 
+    // Log input segment order for debugging
+    let input_segment_order: Vec<_> = chunk_infos.iter().map(|batch| {
+        if let Some(segment_id_array) = batch.column_by_name("chunk_segment_id") {
+            if let Some(first_segment) = segment_id_array.as_any().downcast_ref::<StringArray>().and_then(|arr| arr.value(0).to_string().chars().take(8).collect::<String>().into()) {
+                Some(first_segment)
+            } else { None }
+        } else { None }
+    }).collect();
+    tracing::debug!("INPUT chunk_infos segment order: {:?}", input_segment_order);
+
     // Build batches of requests to optimize network round-trips while maintaining ordering
     let target_size = TARGET_BATCH_SIZE_BYTES as u64;
-    let (request_batches, _segment_order) = create_request_batches(chunk_infos, target_size)?;
+    let (request_batches, segment_order) = create_request_batches(chunk_infos, target_size)?;
 
-    // Process requests sequentially for now to avoid concurrency issues
-    // Each batch is ~128MB, so sequential processing maintains memory efficiency
-    use futures::StreamExt as _; // for buffered()
+    tracing::debug!("BATCHING: created {} request batches, segment order: {:?}", request_batches.len(), segment_order);
 
-    let mut batch_stream = futures::stream::iter(request_batches.into_iter().map(|batch| {
+    use futures::{StreamExt as _, TryStreamExt as _}; // for buffered() and try_collect()
+    // Process batches in windows to maintain memory efficiency while preserving order
+    const WINDOW_SIZE: usize = 8;
+    
+    let batch_futures: Vec<_> = request_batches.into_iter().enumerate().map(|(batch_idx, batch)| {
         let mut client = client.clone();
         async move {
             let chunk_infos_for_request: Vec<_> = batch.into_iter().map(Into::into).collect();
+            tracing::debug!("REQUEST batch {}: {} chunk_infos", batch_idx, chunk_infos_for_request.len());
 
             let fetch_chunks_request = FetchChunksRequest {
                 chunk_infos: chunk_infos_for_request,
@@ -640,8 +653,7 @@ async fn chunk_stream_io_loop(
                 .map_err(|err| exec_datafusion_err!("{err}"))?
                 .into_inner();
 
-            // Collect all chunks from this single batch request (bounded to ~128MB)
-            // No need to sort chunks - downstream will handle that
+            // Collect all chunks from this single batch request
             let chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
                 fetch_chunks_response_stream,
             );
@@ -650,25 +662,66 @@ async fn chunk_stream_io_loop(
             let batch_chunks: Result<Vec<_>, _> = batch_chunks.into_iter().collect();
             let batch_chunks = batch_chunks.map_err(|err| exec_datafusion_err!("{err}"))?;
 
-            // Flatten the chunks from this batch - no sorting needed
-            let flat_chunks: Vec<(Chunk, Option<String>)> =
+            // Flatten the chunks from this batch
+            let mut flat_chunks: Vec<(Chunk, Option<String>)> =
                 batch_chunks.into_iter().flatten().collect();
+            
+            // Sort chunks by segment ID to preserve segment ordering within this batch
+            // This is crucial because the server may return chunks from different segments in any order
+            flat_chunks.sort_by(|a, b| {
+                let seg_a = a.1.as_ref().map(|s| s.as_str()).unwrap_or("");
+                let seg_b = b.1.as_ref().map(|s| s.as_str()).unwrap_or("");
+                seg_a.cmp(seg_b)
+            });
+            
+            tracing::debug!("RESPONSE batch {}: {} chunks returned (sorted by segment)", batch_idx, flat_chunks.len());
 
-            Ok::<Vec<(Chunk, Option<String>)>, DataFusionError>(flat_chunks)
+            Ok::<(usize, Vec<(Chunk, Option<String>)>), DataFusionError>((batch_idx, flat_chunks))
         }
-    }))
-    .buffered(8); // Process requests concurrently to improve throughput
+    }).collect();
 
-    // Stream each batch's results in original batch order as they complete
-    while let Some(batch_result) = batch_stream.next().await {
-        let batch_chunks = batch_result?;
-
-        // Stream all chunks from this batch in original segment order (no chunk-level sorting needed)
-        for chunk in batch_chunks {
-            if output_channel.send(Ok(vec![chunk])).await.is_err() {
-                return Ok(());
+    // Process batches in windows for memory efficiency while preserving order
+    let mut batch_futures_iter = batch_futures.into_iter();
+    let mut window_idx = 0;
+    
+    while let Some(first_future) = batch_futures_iter.next() {
+        // Collect up to WINDOW_SIZE futures for this window
+        let mut window_futures = vec![first_future];
+        for _ in 1..WINDOW_SIZE {
+            if let Some(future) = batch_futures_iter.next() {
+                window_futures.push(future);
+            } else {
+                break;
             }
         }
+        
+        tracing::debug!("PROCESSING window {}: {} batches", window_idx, window_futures.len());
+        
+        // Process this window of batches concurrently
+        let window_results: Vec<_> = futures::stream::iter(window_futures)
+            .buffered(WINDOW_SIZE)
+            .try_collect()
+            .await?;
+
+        // Sort this window by original batch order (preserves segment order)
+        let mut sorted_window = window_results;
+        sorted_window.sort_by_key(|(batch_idx, _)| *batch_idx);
+        
+        tracing::debug!("WINDOW {}: sorted {} batches, streaming to output", window_idx, sorted_window.len());
+
+        // Stream this sorted window to output in correct order
+        for (batch_idx, chunks) in sorted_window {
+            tracing::debug!("BATCH {}: streaming {} chunks to output", batch_idx, chunks.len());
+            for (chunk_idx, chunk) in chunks.into_iter().enumerate() {
+                let segment_id = chunk.1.as_ref().map(|s| s.chars().take(8).collect::<String>()).unwrap_or_else(|| "none".to_string());
+                tracing::debug!("STREAMING batch {} chunk {}: segment {}", batch_idx, chunk_idx, segment_id);
+                if output_channel.send(Ok(vec![chunk])).await.is_err() {
+                    return Ok(());
+                }
+            }
+        }
+        
+        window_idx += 1;
     }
 
     Ok(())
@@ -876,6 +929,7 @@ mod tests {
     use arrow::datatypes::Field;
 
     use super::*;
+
 
     /// Helper to create a test `RecordBatch` with chunk info for testing
     fn create_test_chunk_info(segment_id: &str, chunk_sizes: &[u64]) -> RecordBatch {
