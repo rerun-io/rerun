@@ -1,17 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use parking_lot::Mutex;
 use pyo3::exceptions::{PyStopIteration, PyValueError};
 use pyo3::{Py, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_protos::cloud::v1alpha1::QueryTasksResponse;
-use re_protos::cloud::v1alpha1::ext::RegisterWithDatasetTaskDescriptor;
-use re_protos::common::v1alpha1::TaskId;
-use re_protos::{invalid_schema, missing_field};
-use re_redap_client::ApiError;
+use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
+use re_protos::{
+    cloud::v1alpha1::QueryTasksResponse,
+    cloud::v1alpha1::ext::{QueryTasksOnCompletionResponse, RegisterWithDatasetTaskDescriptor},
+    common::v1alpha1::TaskId,
+};
 use tokio::sync::mpsc;
 use tracing::Instrument as _;
 
@@ -82,14 +81,10 @@ impl PyRegistrationHandleInternal {
         let task_ids = self.task_ids();
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
 
-        // Create a channel to receive results from the async stream
+        // Spawn a task that queries the completion state and channels it to the iterator object.
         let (tx, rx) = mpsc::unbounded_channel::<PyResult<Vec<RegistrationResult>>>();
-
-        // Clone data needed for the async task
         let descriptors = self.descriptors.clone();
         let task_id_to_indices = self.task_id_to_indices.clone();
-
-        // Spawn a task to process the stream
         let runtime = get_tokio_runtime();
         runtime.spawn(
             async move {
@@ -113,10 +108,12 @@ impl PyRegistrationHandleInternal {
                     };
 
                 while let Some(response) = response_stream.next().await {
-                    let batch_result =
-                        process_task_response(response, &descriptors, &task_id_to_indices);
+                    let result = response
+                        .map_err(to_py_err)
+                        .and_then(|r| r.try_into().map_err(to_py_err))
+                        .and_then(|r| process_task_response(r, &descriptors, &task_id_to_indices));
 
-                    match batch_result {
+                    match result {
                         Ok(results) if !results.is_empty() => {
                             if tx.send(Ok(results)).is_err() {
                                 // Receiver dropped, stop processing
@@ -129,8 +126,7 @@ impl PyRegistrationHandleInternal {
                         }
 
                         Err(e) => {
-                            #[expect(clippy::let_underscore_must_use)]
-                            let _ = tx.send(Err(e));
+                            let _ = tx.send(Err(e)).ok();
                             break;
                         }
                     }
@@ -153,9 +149,10 @@ impl PyRegistrationHandleInternal {
         let task_ids = self.task_ids();
         let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
 
+        // Wait for all the tasks to complete and gather all errors. If any happened, we throw an
+        // exception.
         let descriptors = self.descriptors.clone();
         let task_id_to_indices = self.task_id_to_indices.clone();
-
         wait_for_future(
             py,
             async move {
@@ -167,19 +164,21 @@ impl PyRegistrationHandleInternal {
                     .map_err(to_py_err)?;
 
                 // Track errors by descriptor index
-                let mut errors: HashMap<usize, String> = HashMap::new();
+                let mut errors: HashMap<&RegisterWithDatasetTaskDescriptor, String> =
+                    HashMap::new();
 
                 while let Some(response) = response_stream.next().await {
+                    let response = response.map_err(to_py_err)?.try_into().map_err(to_py_err)?;
+
                     let results =
                         process_task_response(response, &descriptors, &task_id_to_indices)?;
 
-                    // Record any errors
                     for (uri, _segment_id, error) in results {
                         if let Some(err) = error {
-                            // Find the descriptor index for this URI
-                            for (idx, desc) in descriptors.iter().enumerate() {
+                            // Lookup the descriptor index for this URI
+                            for desc in &descriptors {
                                 if desc.storage_url.to_string() == uri {
-                                    errors.insert(idx, err.clone());
+                                    errors.insert(desc, err.clone());
                                 }
                             }
                         }
@@ -190,7 +189,7 @@ impl PyRegistrationHandleInternal {
                 if !errors.is_empty() {
                     let error_msgs: Vec<String> = errors
                         .iter()
-                        .map(|(idx, err)| format!("{}: {}", descriptors[*idx].storage_url, err))
+                        .map(|(desc, err)| format!("{}: {err}", desc.storage_url))
                         .collect();
                     return Err(PyValueError::new_err(format!(
                         "Registration failed for the following URIs:\n{}",
@@ -198,7 +197,6 @@ impl PyRegistrationHandleInternal {
                     )));
                 }
 
-                // Return segment_ids in original order
                 Ok(descriptors
                     .iter()
                     .map(|d| d.segment_id.id.clone())
@@ -211,56 +209,22 @@ impl PyRegistrationHandleInternal {
 
 /// Process a single response from the task completion stream.
 fn process_task_response(
-    response: Result<re_protos::cloud::v1alpha1::QueryTasksOnCompletionResponse, tonic::Status>,
+    response: QueryTasksOnCompletionResponse,
     descriptors: &[RegisterWithDatasetTaskDescriptor],
     task_id_to_indices: &HashMap<String, Vec<usize>>,
 ) -> PyResult<Vec<RegistrationResult>> {
-    let item: RecordBatch = response
-        .map_err(|err| {
-            ApiError::tonic(
-                err,
-                "failed waiting for tasks: error receiving completion notifications",
-            )
-        })
-        .map_err(to_py_err)?
-        .data
-        .ok_or_else(|| {
-            let err = missing_field!(QueryTasksResponse, "data");
-            let err = ApiError::serialization(
-                err,
-                "failed waiting for tasks: received item without data",
-            );
-            to_py_err(err)
-        })?
-        .try_into()
+    let item = response.data;
+
+    let projected = item
+        .project_columns(
+            [
+                QueryTasksResponse::FIELD_TASK_ID,
+                QueryTasksResponse::FIELD_EXEC_STATUS,
+                QueryTasksResponse::FIELD_MSGS,
+            ]
+            .into_iter(),
+        )
         .map_err(to_py_err)?;
-
-    let schema = item.schema();
-    if !schema.contains(&QueryTasksResponse::schema()) {
-        let err = invalid_schema!(QueryTasksResponse);
-        let err = ApiError::serialization(
-            err,
-            "failed waiting for tasks: received item with invalid schema",
-        );
-        return Err(to_py_err(err));
-    }
-
-    let col_indices = [
-        QueryTasksResponse::FIELD_TASK_ID,
-        QueryTasksResponse::FIELD_EXEC_STATUS,
-        QueryTasksResponse::FIELD_MSGS,
-    ]
-    .iter()
-    .map(|name| schema.index_of(name))
-    .collect::<Result<Vec<_>, _>>()
-    .map_err(|err| {
-        to_py_err(ApiError::serialization(
-            err,
-            "failed waiting for tasks: missing column on item",
-        ))
-    })?;
-
-    let projected = item.project(&col_indices).map_err(to_py_err)?;
 
     let (task_ids_col, statuses, msgs) = (
         projected
@@ -287,11 +251,10 @@ fn process_task_response(
         if let Some(indices) = task_id_to_indices.get(task_id) {
             for &idx in indices {
                 let desc = &descriptors[idx];
-                let (segment_id, error) = if status == "success" {
-                    (Some(desc.segment_id.id.clone()), None)
-                } else {
-                    (None, Some(msg.to_owned()))
-                };
+
+                let segment_id = Some(desc.segment_id.id.clone());
+                let error = (status != "success").then(|| msg.to_owned());
+
                 results.push((desc.storage_url.to_string(), segment_id, error));
             }
         }
