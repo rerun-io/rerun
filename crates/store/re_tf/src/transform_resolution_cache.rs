@@ -1114,13 +1114,13 @@ impl TransformResolutionCache {
                 );
                 frame_transforms.invalidate_transform_at(TimeInt::STATIC);
 
-                for (timeline, per_timeline) in &mut self.per_timeline {
+                for (_timeline, per_timeline) in &mut self.per_timeline {
+                    // Don't call `get_or_create_tree_transforms_temporal` here since we may not yet know a temporal entity that this is associated with.
+                    // Also, this may be the first time we associate with a static entity instead.
                     per_timeline
-                        .get_or_create_tree_transforms_temporal(
+                        .get_or_create_tree_transforms_static(
                             entity_path,
                             frame,
-                            *timeline,
-                            static_timeline,
                             &self.frame_id_registry,
                         )
                         .invalidate_transform_at(TimeInt::STATIC);
@@ -1153,12 +1153,13 @@ impl TransformResolutionCache {
                 );
                 frame_transforms.invalidate_pinhole_projection_at(TimeInt::STATIC);
 
-                for (timeline, per_timeline) in &mut self.per_timeline {
+                for (_timeline, per_timeline) in &mut self.per_timeline {
+                    // Don't call `get_or_create_tree_transforms_temporal` here since we may not yet know a temporal entity that this is associated with.
+                    // Also, this may be the first time we associate with a static entity instead.
                     per_timeline
-                        .get_or_create_tree_transforms_temporal(
+                        .get_or_create_tree_transforms_static(
                             entity_path,
                             frame,
-                            *timeline,
                             static_timeline,
                             &self.frame_id_registry,
                         )
