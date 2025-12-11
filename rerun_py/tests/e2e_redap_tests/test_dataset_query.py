@@ -65,8 +65,8 @@ def test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -> None:
     for rb_stream in readonly_test_dataset.reader(index="time_1").execute_stream():
         assert rb_stream.to_pyarrow().num_rows > 0
 
-    for segment_batch in readonly_test_dataset.segment_table().to_arrow_reader():
-        assert segment_batch.num_rows > 0
+    segment_table = readonly_test_dataset.segment_table().to_arrow_table()
+    assert segment_table.num_rows > 0
 
 
 def test_tables_to_arrow_reader(prefilled_catalog: PrefilledCatalog) -> None:

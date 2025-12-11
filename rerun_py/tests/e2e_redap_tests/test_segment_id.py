@@ -17,7 +17,6 @@ def test_segment_ids(entry_factory: EntryFactory, resource_prefix: str, snapshot
 
     table = (
         ds.segment_table()
-        .df()
         .drop("rerun_storage_urls", "rerun_last_updated_at", "rerun_size_bytes")
         .sort("rerun_segment_id")
         .to_arrow_table()

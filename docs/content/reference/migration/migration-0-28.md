@@ -133,6 +133,27 @@ def on_event(event):
 
 This affects `PlayEvent`, `PauseEvent`, `TimeUpdateEvent`, `TimelineChangeEvent`, `SelectionChangeEvent`, and `RecordingOpenEvent`.
 
+## Python SDK: `segment_table()` and `manifest()` now return DataFrame directly
+
+The `DatasetEntry.segment_table()` and `DatasetEntry.manifest()` methods now return `datafusion.DataFrame` directly instead of a `DataFusionTable`. The `.df()` method call is no longer needed:
+
+```python
+# Before (0.27)
+df = dataset.partition_table().df()
+manifest_df = dataset.manifest().df()
+
+# After (0.28)
+df = dataset.segment_table()
+manifest_df = dataset.manifest()
+```
+
+Additionally, `segment_table()` now accepts optional `join_meta` and `join_key` parameters to join with external metadata:
+
+```python
+# Join segment table with a metadata table
+df = dataset.segment_table(join_meta=metadata_table, join_key="rerun_segment_id")
+```
+
 ## Python SDK: catalog entry listing APIs renamed
 
 The `CatalogClient` methods for listing catalog entries have been renamed for clarity:

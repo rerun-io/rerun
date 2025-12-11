@@ -177,18 +177,58 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Returns a list of partition IDs for the dataset."""
         return self.segment_ids()
 
-    def segment_table(self) -> DataFusionTable:
-        """Return the segment table as a Datafusion table provider."""
+    def segment_table(
+        self,
+        join_meta: TableEntry | datafusion.DataFrame | None = None,
+        join_key: str = "rerun_segment_id",
+    ) -> datafusion.DataFrame:
+        """
+        Return the segment table as a DataFusion DataFrame.
 
-        return self._internal.segment_table()
+        The segment table contains metadata about each segment in the dataset,
+        including segment IDs, layer names, storage URLs, and size information.
 
-    @deprecated("Use segment_table() instead")
-    def partition_table(self) -> DataFusionTable:
-        """Return the partition table as a Datafusion table provider."""
-        return self.segment_table()
+        Parameters
+        ----------
+        join_meta
+            Optional metadata table or DataFrame to join with the segment table.
+            If a `TableEntry` is provided, it will be converted to a DataFrame
+            using `reader()`.
+        join_key
+            The column name to use for joining, defaults to "rerun_segment_id".
+            Both the segment table and `join_meta` must contain this column.
 
-    def manifest(self) -> DataFusionTable:
-        """Return the dataset manifest as a Datafusion table provider."""
+        Returns
+        -------
+        datafusion.DataFrame
+            The segment metadata table, optionally joined with `join_meta`.
+
+        """
+        segment_table_df = self._internal.segment_table()
+
+        if join_meta is not None:
+            if isinstance(join_meta, TableEntry):
+                join_meta = join_meta.reader()
+
+            if join_key not in segment_table_df.schema().names:
+                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
+            if join_key not in join_meta.schema().names:
+                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
+
+            meta_join_key = join_key + "_meta"
+            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
+
+            return segment_table_df.join(
+                join_meta,
+                left_on=join_key,
+                right_on=meta_join_key,
+                how="left",
+            ).drop(meta_join_key)
+
+        return segment_table_df
+
+    def manifest(self) -> datafusion.DataFrame:
+        """Return the dataset manifest as a DataFusion DataFrame."""
 
         return self._internal.manifest()
 
@@ -654,20 +694,28 @@ class DatasetView:
         """
         Return the segment table as a DataFusion DataFrame.
 
+        The segment table contains metadata about each segment in the dataset,
+        including segment IDs, layer names, storage URLs, and size information.
+
+        Only segments matching this view's filters are included.
+
         Parameters
         ----------
         join_meta
             Optional metadata table or DataFrame to join with the segment table.
+            If a `TableEntry` is provided, it will be converted to a DataFrame
+            using `reader()`.
         join_key
             The column name to use for joining, defaults to "rerun_segment_id".
+            Both the segment table and `join_meta` must contain this column.
 
         Returns
         -------
-        The segment metadata table.
+        datafusion.DataFrame
+            The segment metadata table, optionally joined with `join_meta`.
 
         """
-
-        segment_table_df = self.dataset.segment_table().df()
+        segment_table_df = self.dataset.segment_table(join_meta, join_key)
 
         filtered_segment_ids = self._internal.filtered_segment_ids
         if filtered_segment_ids is not None:
@@ -676,25 +724,6 @@ class DatasetView:
             segment_table_df = segment_table_df.filter(
                 F.in_list(col("rerun_segment_id"), [literal(seg) for seg in filtered_segment_ids])
             )
-
-        if join_meta is not None:
-            if isinstance(join_meta, TableEntry):
-                join_meta = join_meta.reader()
-
-            if join_key not in segment_table_df.schema().names:
-                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
-            if join_key not in join_meta.schema().names:
-                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
-
-            meta_join_key = join_key + "_meta"
-            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
-
-            return segment_table_df.join(
-                join_meta,
-                left_on=join_key,
-                right_on=meta_join_key,
-                how="left",
-            ).drop(meta_join_key)
 
         return segment_table_df
 

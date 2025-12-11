@@ -191,31 +191,13 @@ class DatasetEntry(Entry):
     def segment_table(
         self, join_meta: TableEntry | datafusion.DataFrame | None = None, join_key: str = "rerun_segment_id"
     ) -> datafusion.DataFrame:
-        partitions = self._inner.segment_table().df()
+        if isinstance(join_meta, TableEntry):
+            join_meta = join_meta._inner
 
-        if join_meta is not None:
-            if isinstance(join_meta, TableEntry):
-                join_meta = join_meta.reader()
-            if join_key not in partitions.schema().names:
-                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
-            if join_key not in join_meta.schema().names:
-                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
-
-            meta_join_key = join_key + "_meta"
-
-            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
-
-            return partitions.join(
-                join_meta,
-                left_on=join_key,
-                right_on=meta_join_key,
-                how="left",
-            ).drop(meta_join_key)
-        else:
-            return partitions
+        return self._inner.segment_table(join_meta, join_key)
 
     def manifest(self) -> datafusion.DataFrame:
-        return self._inner.manifest().df()
+        return self._inner.manifest()
 
     def segment_url(
         self,

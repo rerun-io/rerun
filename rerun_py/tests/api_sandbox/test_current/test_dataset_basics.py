@@ -19,7 +19,7 @@ def test_dataset_basics(complex_dataset_prefix: Path) -> None:
 
         ds.register_prefix(complex_dataset_prefix.as_uri())
 
-        partition_df = ds.segment_table().df()
+        partition_df = ds.segment_table()
 
         assert str(partition_df.schema()) == inline_snapshot("""\
 rerun_segment_id: string not null

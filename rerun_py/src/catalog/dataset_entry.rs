@@ -171,44 +171,60 @@ impl PyDatasetEntryInternal {
         connection.get_dataset_segment_ids(self_.py(), self_.entry_details.id)
     }
 
-    /// Return the segment table as a Datafusion table provider.
+    /// Return the segment table as a DataFusion DataFrame.
     #[instrument(skip_all)]
-    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             SegmentTableProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
+        let table = PyDataFusionTable {
+            client: self_.client.clone_ref(py),
             name: format!("{}_segment_table", self_.entry_details.name),
             provider,
-        })
+        };
+
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
-    /// Return the dataset manifest as a Datafusion table provider.
+    /// Return the dataset manifest as a DataFusion DataFrame.
     #[instrument(skip_all)]
-    fn manifest(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    fn manifest(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             DatasetManifestProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
+        let table = PyDataFusionTable {
+            client: self_.client.clone_ref(py),
             name: format!("{}_manifest", self_.entry_details.name),
             provider,
-        })
+        };
+
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
     /// Return the URL for the given segment.
