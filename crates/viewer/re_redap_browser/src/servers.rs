@@ -363,7 +363,7 @@ impl RedapServers {
     pub fn add_server(&self, origin: re_uri::Origin) {
         self.command_sender
             .send(Command::AddServer {
-                origin: origin,
+                origin,
                 credentials: None,
                 on_add: None,
             })
@@ -398,7 +398,7 @@ impl RedapServers {
         self.pending_servers.drain(..).for_each(|origin| {
             self.command_sender
                 .send(Command::AddServer {
-                    origin: origin,
+                    origin,
                     credentials: None,
                     on_add: None,
                 })
@@ -432,9 +432,9 @@ impl RedapServers {
             }
 
             Command::AddServer {
-                origin: origin,
-                credentials: credentials,
-                on_add: on_add,
+                origin,
+                credentials,
+                on_add,
             } => {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
