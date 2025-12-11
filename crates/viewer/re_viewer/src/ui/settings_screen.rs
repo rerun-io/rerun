@@ -86,6 +86,18 @@ fn settings_screen_ui_impl(
         egui::global_theme_preference_buttons(ui);
     });
 
+    ui.add_space(8.0);
+
+    ui.horizontal(|ui| {
+        ui.label("Memory budget");
+        memory_budget_section_ui(ui, startup_options);
+        ui.help_button(|ui| {
+            ui.label("When this limit is reached we start purging data from RAM");
+        });
+    });
+
+    ui.add_space(8.0);
+
     ui.re_checkbox(
         &mut app_options.include_rerun_examples_button_in_recordings_panel,
         "Show 'Rerun examples' button",
@@ -93,12 +105,6 @@ fn settings_screen_ui_impl(
 
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
-
-    ui.add_space(16.0);
-    ui.horizontal(|ui| {
-        ui.strong("Memory budget");
-        memory_budget_section_ui(ui, startup_options);
-    });
 
     separator_with_some_space(ui);
     ui.strong("Timestamp format");
@@ -183,11 +189,11 @@ fn time_format_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
         TimestampFormat::local_timezone_implicit(),
         "Local (hide time zone)",
     );
+    timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone_implicit());
     ui.horizontal(|ui| {
         ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
         ui.label("Note: timestamps without time zone are ambiguous when copied elsewhere.");
     });
-    timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone_implicit());
 
     ui.re_radio_value(
         &mut app_options.timestamp_format,
