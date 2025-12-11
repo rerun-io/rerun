@@ -1270,24 +1270,7 @@ mod tests {
                 }),
             ),
             (
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time&+1.096s..+2.097s#when=stable_time@+3.990s",
-                ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
-                    origin: "rerun+http://localhost:51234".parse().unwrap(),
-                    dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
-                    fragment: re_uri::Fragment {
-                        when: Some((
-                            "stable_time".into(),
-                            re_log_types::TimeCell::from_str("+3.990s").unwrap(),
-                        )),
-                        time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
-                        ..Default::default()
-                    },
-                }),
-            ),
-            (
-                // Test missing `+`, and percent-endoded `+` (%2B):
-                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time@1.096s..%2B2.097s&when=stable_time@3.990s",
+                "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1#time_selection=stable_time@+1.096s..+2.097s&when=stable_time@+3.990s",
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),

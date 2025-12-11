@@ -76,6 +76,22 @@ Naturally, if any update to a transform always changes the same components, this
 the simplification of not having to clear out all other components that may ever be set, thus reducing memory bloat both
 on send and query!
 
+## URDF loader: sending transform updates now requires `parent_frame` and `child_frame` fields to be set
+
+Previous versions of the built-in [URDF](https://en.wikipedia.org/wiki/URDF) data-loader in Rerun required you to send transform updates with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
+Depending on the complexity of your robot model, this could quickly lead to long entity paths.
+E.g. when you wanted to update a joint deeper in your model hierarchy.
+
+In 0.28, this is now dropped in favor of transforms with _named_ frame IDs (`parent_frame`, `child_frame`).
+This is more in line with the TF2 system in ROS and allows you to send all transform updates on one single entity (e.g. a `transforms` entity).
+
+In particular, this results in two changes compared after you load an `URDF` model into Rerun compared to previous releases:
+
+1. To update a joint with a `Transform3D`, the `parent_frame` and `child_frame` fields need to be set (analogous to how the joint is specified in the `URDF` file).
+2. The transformation must have both rotation and translation (again, analogous to the `URDF`). Updating only the rotation is no longer supported.
+
+For more details about loading & updating `URDF` models, we added a "Loading URDF models" page to our documentation in this release.
+
 ## Python SDK: "partition" renamed to "segment" in catalog APIs
 
 <!-- TODO(ab): as I roll more API updates, I'll keep that section up-to-date -->
@@ -138,13 +154,13 @@ Additionally, the new methods accept an optional `include_hidden` parameter:
 
 The following methods that returned `datafusion.DataFrame` objects have been removed without deprecation:
 
-| Removed method                                   | Replacement                                                             |
-|--------------------------------------------------|-------------------------------------------------------------------------|
-| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries").df()`                        |
-| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries").df()` filtered by entry kind |
-| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries").df()` filtered by entry kind |
+| Removed method                                   | Replacement                                                                  |
+|--------------------------------------------------|------------------------------------------------------------------------------|
+| `CatalogClient.entries()` (returning DataFrame)  | `CatalogClient.get_table(name="__entries").reader()`                         |
+| `CatalogClient.datasets()` (returning DataFrame) | `CatalogClient.get_table(name="__entries").reader()` filtered by entry kind  |
+| `CatalogClient.tables()` (returning DataFrame)   | `CatalogClient.get_table(name="__entries").reader()` filtered by entry kind  |
 
-The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries").df()`.
+The new `entries()`, `datasets()`, and `tables()` methods now return lists of entry objects (`DatasetEntry` and `TableEntry`) instead of DataFrames. If you need DataFrame access to the raw entries table, use `client.get_table(name="__entries").reader()`.
 
 ## Python SDK: entry name listing methods now support `include_hidden`
 
@@ -177,7 +193,7 @@ df = client.get_table(name="my_table")  # returns DataFrame
 
 # After (0.28)
 table_entry = client.get_table(name="my_table")  # returns TableEntry
-df = table_entry.df()  # call df() to get the DataFrame
+df = table_entry.reader()  # call reader() to get the DataFrame
 ```
 
 This change aligns `get_table()` with `get_dataset()`, which returns a `DatasetEntry`. Both methods now consistently return entry objects that provide access to metadata and data.
@@ -230,3 +246,87 @@ The `Schema` class and related column descriptor/selector types have moved from 
 | `from rerun.dataframe import IndexColumnSelector`       | `from rerun.catalog import IndexColumnSelector`        |
 
 The previous import paths are still supported but will be removed in a future release.
+
+## Python SDK: `DatasetEntry.dataframe_query_view()` replaced by `DatasetEntry.reader()`
+
+The `DatasetEntry.dataframe_query_view()` method and the `DataframeQueryView` class have been removed. Their functionality is now available through `DatasetEntry.reader()`, optionally combined with `DatasetEntry.filter_segments()` and `DatasetEntry.filter_contents()` which return a `DatasetView`.
+
+### Migration paths
+
+**Index selection**: Now a parameter to `reader()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.df()
+
+# After (0.28)
+df = dataset.reader(index="timeline")
+```
+
+**Content filtering**: Use `filter_contents()` to create a `DatasetView`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline", contents={"/points": ["Position2D"]})
+df = view.df()
+
+# After (0.28)
+view = dataset.filter_contents(["/points/**"])
+df = view.reader(index="timeline")
+```
+
+**Segment filtering**: Use `filter_segments()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.filter_partition_id(["recording_0"]).df()
+
+# After (0.28)
+view = dataset.filter_segments(["recording_0"])
+df = view.reader(index="timeline")
+```
+
+**Row filtering**: Use DataFusion filtering on the returned DataFrame:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline")
+df = view.filter_is_not_null(...).df()
+
+# After (0.28)
+from datafusion import col
+df = dataset.reader(index="timeline").filter(col("/world/robot:Points3D:positions").is_not_null())
+```
+
+**Latest-at fill**: Now a parameter to `reader()`:
+
+```python
+# Before (0.27)
+view = dataset.dataframe_query_view(index="timeline", fill_latest_at=True)
+df = view.df()
+
+# After (0.28)
+df = dataset.reader(index="timeline", fill_latest_at=True)
+```
+
+## Python SDK: `TableEntry.df()` renamed to `TableEntry.reader()`
+
+The `TableEntry.df()` method has been renamed to `TableEntry.reader()` for consistency with `DatasetView.reader()`. This is a **breaking change**.
+
+```python
+# Before (0.27)
+table = client.get_table(name="my_table")
+df = table.df()
+
+# After (0.28)
+table = client.get_table(name="my_table")
+df = table.reader()
+```
+
+## Python SDK: `DatasetEntry.download_segments()` is deprecated
+
+<!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
+
+This method is deprecated and will be removed in a future release.

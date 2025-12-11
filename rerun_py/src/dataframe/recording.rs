@@ -132,7 +132,8 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self, py: Python<'_>) -> PyResult<PyObject> {
         let schema_internal = PySchemaInternal {
-            schema: self.store.read().schema().into(),
+            columns: self.store.read().schema().into(),
+            metadata: Default::default(),
         };
 
         // Import rerun.catalog.Schema and instantiate it with the internal schema

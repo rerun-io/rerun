@@ -110,7 +110,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
             success=[True, False, True],
         )
 
-        assert (str(meta.df())) == inline_snapshot("""\
+        assert (str(meta.reader())) == inline_snapshot("""\
 ┌─────────────────────┬─────────────────────┐
 │ rerun_segment_id    ┆ success             │
 │ ---                 ┆ ---                 │

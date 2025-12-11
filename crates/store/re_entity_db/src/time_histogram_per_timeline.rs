@@ -316,11 +316,11 @@ impl TimeHistogramPerTimeline {
     fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        if let Some(histo) = self.times.get_mut(timeline.name()) {
+        if let Some(histogram) = self.times.get_mut(timeline.name()) {
             for &time in times {
-                histo.decrement(time, n);
+                histogram.decrement(time, n);
             }
-            if histo.is_empty() {
+            if histogram.is_empty() {
                 self.times.remove(timeline.name());
             }
         }

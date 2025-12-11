@@ -76,7 +76,8 @@ impl PyRecordingView {
                 query_expression.selection = None;
 
                 PySchemaInternal {
-                    schema: engine.schema_for_query(&query_expression).into(),
+                    columns: engine.schema_for_query(&query_expression).into(),
+                    metadata: Default::default(),
                 }
             }
         }
@@ -237,7 +238,7 @@ impl PyRecordingView {
             .unwrap_or_else(|| {
                 Ok(self
                     .schema_internal(py)
-                    .schema
+                    .columns
                     .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())

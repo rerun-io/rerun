@@ -1638,9 +1638,8 @@ fn initialize_time_ranges_ui(
 
     let timeline = time_ctrl.timeline();
     if let Some(times) = entity_db.time_histogram(timeline.name()) {
-        if times.is_empty() {
-            // NOTE: `times` can be empty if a GC wiped everything.
-        } else {
+        // NOTE: `times` can be empty if a GC wiped everything.
+        if !times.is_empty() {
             let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
             time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);

@@ -2,7 +2,6 @@
 // However, `re_data_source` depends on everything that _implements_ a datasource, therefore we would get a circular dependency!
 
 use re_log_encoding::RrdManifest;
-
 use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
 
 /// Message from a data source.

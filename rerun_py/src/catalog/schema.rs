@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 use std::str::FromStr as _;
 
+use arrow::datatypes::Schema;
 use pyo3::exceptions::PyLookupError;
 use pyo3::{PyResult, pyclass, pymethods};
 use re_log_types::EntityPath;
-use re_sorbet::{ComponentColumnSelector, SorbetColumnDescriptors};
+use re_sorbet::{BatchType, ComponentColumnSelector, SorbetColumnDescriptors};
 
 use super::component_columns::PyComponentColumnDescriptor;
 use super::index_columns::PyIndexColumnDescriptor;
@@ -18,7 +20,21 @@ use crate::dataframe::AnyComponentColumn;
 )]
 #[derive(Clone, PartialEq, Eq)]
 pub struct PySchemaInternal {
-    pub schema: SorbetColumnDescriptors,
+    /// The Sorbet column descriptors.
+    pub columns: SorbetColumnDescriptors,
+
+    /// The arrow schema metadata.
+    pub metadata: HashMap<String, String>,
+}
+
+impl PySchemaInternal {
+    /// Convert back the schema to an Arrow schema.
+    pub fn into_arrow_schema(self) -> Schema {
+        Schema::new_with_metadata(
+            self.columns.arrow_fields(BatchType::Dataframe),
+            self.metadata,
+        )
+    }
 }
 
 /// The schema representing a set of available columns.
@@ -29,7 +45,7 @@ pub struct PySchemaInternal {
 impl PySchemaInternal {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
-        self.schema
+        self.columns
             .index_columns()
             .map(|c| c.clone().into())
             .collect()
@@ -37,7 +53,7 @@ impl PySchemaInternal {
 
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
-        self.schema
+        self.columns
             .component_columns()
             .map(|c| c.clone().into())
             .collect()
@@ -69,7 +85,7 @@ impl PySchemaInternal {
             component: component.to_owned(),
         };
 
-        self.schema.component_columns().find_map(|col| {
+        self.columns.component_columns().find_map(|col| {
             if col.matches(&selector) {
                 Some(col.clone().into())
             } else {
@@ -121,7 +137,7 @@ impl PySchemaInternal {
         column_selector: &ComponentColumnSelector,
     ) -> PyResult<PyComponentColumnDescriptor> {
         let desc = self
-            .schema
+            .columns
             .resolve_component_column_selector(column_selector)
             .ok_or_else(|| {
                 PyLookupError::new_err(format!(

@@ -76,8 +76,6 @@ impl Default for ChunkInfo {
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
-/// This is currently used to show a progress bar.
-///
 /// This is constructed from an [`RrdManifest`], which is what
 /// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
@@ -242,31 +240,6 @@ impl RrdManifestIndex {
 
     pub fn native_temporal_map(&self) -> &re_log_encoding::RrdManifestTemporalMap {
         &self.native_temporal_map
-    }
-
-    /// [0, 1], how many chunks have been loaded?
-    ///
-    /// Returns `None` if we have already started garbage-collecting some chunks.
-    pub fn progress(&self) -> Option<f32> {
-        #[expect(clippy::question_mark)]
-        if self.manifest.is_none() {
-            return None;
-        }
-
-        let num_remote_chunks = self.remote_chunks.len();
-
-        if self.has_deleted {
-            None
-        } else if num_remote_chunks == 0 {
-            Some(1.0)
-        } else {
-            let num_loaded = self
-                .remote_chunks
-                .values()
-                .filter(|c| *c.state.lock() == LoadState::Loaded)
-                .count();
-            Some(num_loaded as f32 / num_remote_chunks as f32)
-        }
     }
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {
