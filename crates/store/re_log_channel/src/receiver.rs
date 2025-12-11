@@ -2,13 +2,11 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 
-use crossbeam::channel::SendError;
-
 use crate::{Channel, LoadCommand, LogSource, SmartMessage, TryRecvError};
 
 pub struct LogReceiver {
     rx: crossbeam::channel::Receiver<SmartMessage>,
-    tx: crossbeam::channel::Sender<LoadCommand>,
+    tx: async_channel::Sender<LoadCommand>,
     channel: Arc<Channel>,
     source: Arc<LogSource>,
     connected: AtomicBool,
@@ -17,7 +15,7 @@ pub struct LogReceiver {
 impl LogReceiver {
     pub(crate) fn new(
         rx: crossbeam::channel::Receiver<SmartMessage>,
-        tx: crossbeam::channel::Sender<LoadCommand>,
+        tx: async_channel::Sender<LoadCommand>,
         channel: Arc<Channel>,
         source: Arc<LogSource>,
     ) -> Self {
@@ -117,7 +115,26 @@ impl LogReceiver {
     }
 
     /// Send a command to the other end
-    pub fn send_command(&self, rb: LoadCommand) -> Result<(), SendError<LoadCommand>> {
-        self.tx.send(rb)
+    pub fn send_command(&self, rb: LoadCommand) {
+        let tx = self.tx.clone();
+        spawn_future(async move {
+            tx.send(rb).await.ok();
+        });
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static,
+{
+    wasm_bindgen_futures::spawn_local(future);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static + Send,
+{
+    tokio::spawn(future);
 }

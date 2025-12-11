@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use crossbeam::channel::RecvError;
-
 use crate::{
     Channel, DataSourceMessage, LoadCommand, LogSource, SendError, SmartMessage,
     SmartMessagePayload,
@@ -10,7 +8,7 @@ use crate::{
 #[derive(Clone)]
 pub struct LogSender {
     tx: crossbeam::channel::Sender<SmartMessage>,
-    rx: crossbeam::channel::Receiver<LoadCommand>,
+    rx: async_channel::Receiver<LoadCommand>,
     source: Arc<LogSource>,
     channel: Arc<Channel>,
 }
@@ -18,7 +16,7 @@ pub struct LogSender {
 impl LogSender {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage>,
-        rx: crossbeam::channel::Receiver<LoadCommand>,
+        rx: async_channel::Receiver<LoadCommand>,
         source: Arc<LogSource>,
         channel: Arc<Channel>,
     ) -> Self {
@@ -126,11 +124,7 @@ impl LogSender {
     /// Block until we receive a command from a [`LogSender`].
     ///
     /// Return an error if there is no more [`LogSender`]s.
-    ///
-    /// Note: This is only implemented for non-wasm targets since we cannot make
-    /// blocking calls on web.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn recv_cmd(&self) -> Result<LoadCommand, RecvError> {
-        self.rx.recv()
+    pub async fn recv_cmd(&self) -> Result<LoadCommand, async_channel::RecvError> {
+        self.rx.recv().await
     }
 }

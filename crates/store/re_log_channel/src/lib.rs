@@ -229,7 +229,7 @@ pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
     let source = Arc::new(source);
     let channel = Arc::new(Channel::default());
     let (tx, rx) = crossbeam::channel::unbounded();
-    let (cmd_tx, cmd_rx) = crossbeam::channel::unbounded();
+    let (cmd_tx, cmd_rx) = async_channel::unbounded();
     let sender = LogSender::new(tx, cmd_rx, source.clone(), channel.clone());
     let receiver = LogReceiver::new(rx, cmd_tx, channel, source);
     (sender, receiver)

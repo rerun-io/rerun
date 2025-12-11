@@ -854,12 +854,7 @@ fn prefetch_chunks(
                 Ok(rb) => {
                     if 0 < rb.num_rows() {
                         re_log::debug!("Asking for {} more chunks", rb.num_rows());
-                        if rx
-                            .send_command(re_log_channel::LoadCommand::LoadChunks(rb))
-                            .is_err()
-                        {
-                            re_log::warn!("The receiver is gone.");
-                        }
+                        rx.send_command(re_log_channel::LoadCommand::LoadChunks(rb));
                     }
                 }
                 Err(err) => {

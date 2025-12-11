@@ -481,7 +481,7 @@ async fn stream_segment_from_server(
 
                 re_log::debug!("Waiting for viewer to tell me what to load…");
                 loop {
-                    if let Ok(cmd) = tx.recv_cmd() {
+                    if let Ok(cmd) = tx.recv_cmd().await {
                         match cmd {
                             re_log_channel::LoadCommand::LoadChunks(batch) => {
                                 load_chunks(client, tx, &store_id, batch).await?;
@@ -549,7 +549,7 @@ async fn load_chunks(
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
-            if !chunk.is_static() {
+            if !chunk.is_static() && !cfg!(target_arch = "wasm32") {
                 // TODO: Remove sleep
                 std::thread::sleep(std::time::Duration::from_millis(50));
             }
