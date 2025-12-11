@@ -301,8 +301,9 @@ impl PyRegistrationIterator {
 
         match batch_result {
             Some(Ok(mut results)) => {
+                // Reverse first so pop() yields in FIFO order
+                results.reverse();
                 if let Some(first) = results.pop() {
-                    results.reverse();
                     slf.buffer = results;
                     Ok(first)
                 } else {
