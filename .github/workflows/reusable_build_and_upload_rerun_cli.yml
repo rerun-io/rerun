@@ -85,13 +85,13 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="ubuntu-arm-16-core"
+              runner="runs-on=${{ github.run_id }}/runner=arm64-ubuntu-large/extras=s3-cache"
               target="aarch64-unknown-linux-gnu"
               container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               bin_name="rerun"
               ;;
             linux-x64)
-              runner="ubuntu-latest-16-cores"
+              runner="runs-on=${{ github.run_id }}/runner=x64-ubuntu-large/extras=s3-cache"
               target="x86_64-unknown-linux-gnu"
               container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
               bin_name="rerun"
@@ -129,6 +129,10 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
+      - uses: runs-on/action@v2
+        if: ${{ startsWith(needs.set-config.outputs.RUNNER, 'runs-on') }}
+        with:
+          metrics: cpu,network,memory,disk,io
       - name: Show context
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
@@ -148,10 +152,7 @@ jobs:
       - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
-          cache_key: "build-${{ inputs.PLATFORM }}"
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          cache_key_suffix: "${{ inputs.PLATFORM }}"
           targets: ${{ needs.set-config.outputs.TARGET }}
 
       - uses: prefix-dev/setup-pixi@v0.9.1
