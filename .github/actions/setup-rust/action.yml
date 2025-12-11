@@ -93,3 +93,14 @@ runs:
           target_wasm
           target_pixi
           target_pixi_wasm
+
+    # Git checkout doesn't preserve file mtimes, so source files appear "newer" than cached artifacts.
+    # Touch cached artifacts to prevent spurious rebuilds.
+    - name: Touch cached artifacts
+      shell: bash --noprofile --norc -euo pipefail {0}
+      run: |
+        for dir in target target_wasm target_pixi target_pixi_wasm; do
+          if [ -d "$dir" ]; then
+            find "$dir" -type f -exec touch {} + 2>/dev/null || true
+          fi
+        done
