@@ -27,7 +27,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 8 * 60 * 60;
 type RegistrationResult = (String, Option<String>, Option<String>);
 
 /// Internal handle exposed to Python for tracking registration tasks.
-#[pyclass(
+#[pyclass( // NOLINT: ignore[py-cls-eq]
     name = "RegistrationHandleInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -71,7 +71,7 @@ impl PyRegistrationHandleInternal {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRegistrationHandleInternal {
     /// Returns a streaming iterator that yields (uri, segment_id, error) tuples
     /// as tasks complete.
@@ -90,9 +90,9 @@ impl PyRegistrationHandleInternal {
             async move {
                 let mut client = match connection.client().await {
                     Ok(c) => c,
-                    Err(e) => {
+                    Err(err) => {
                         #[expect(clippy::let_underscore_must_use)]
-                        let _ = tx.send(Err(e));
+                        let _ = tx.send(Err(err));
                         return;
                     }
                 };
@@ -100,9 +100,9 @@ impl PyRegistrationHandleInternal {
                 let mut response_stream =
                     match client.query_tasks_on_completion(task_ids, timeout).await {
                         Ok(stream) => stream,
-                        Err(e) => {
+                        Err(err) => {
                             #[expect(clippy::let_underscore_must_use)]
-                            let _ = tx.send(Err(to_py_err(e)));
+                            let _ = tx.send(Err(to_py_err(err)));
                             return;
                         }
                     };
@@ -125,8 +125,8 @@ impl PyRegistrationHandleInternal {
                             // Empty batch, continue
                         }
 
-                        Err(e) => {
-                            let _ = tx.send(Err(e)).ok();
+                        Err(err) => {
+                            let _ = tx.send(Err(err)).ok();
                             break;
                         }
                     }
@@ -264,7 +264,7 @@ fn process_task_response(
 }
 
 /// Iterator that wraps the gRPC completion stream.
-#[pyclass(
+#[pyclass( // NOLINT: ignore[py-cls-eq]
     name = "RegistrationIterator",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -278,7 +278,7 @@ pub struct PyRegistrationIterator {
     buffer: Vec<RegistrationResult>,
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyRegistrationIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
@@ -311,7 +311,7 @@ impl PyRegistrationIterator {
                 }
             }
 
-            Some(Err(e)) => Err(e),
+            Some(Err(err)) => Err(err),
 
             None => {
                 // Stream ended

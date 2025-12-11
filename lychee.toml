@@ -116,6 +116,7 @@ exclude = [
 
   # Intentionally faked links.
   'file://foo',
+  'file:///uri*.rrd',
   'http://foo.*',
   'https://foo.*',
   'https://link.to',
