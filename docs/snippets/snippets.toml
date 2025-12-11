@@ -170,6 +170,10 @@ backwards_check = [
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
+"howto/load_urdf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
 ]
