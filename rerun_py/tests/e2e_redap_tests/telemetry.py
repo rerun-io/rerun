@@ -2,15 +2,21 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import TYPE_CHECKING
 
-from opentelemetry import trace
+import pytest
+from opentelemetry import context, trace
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.propagate import get_global_textmap
 from opentelemetry.sdk.metrics import Meter, MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +69,7 @@ class Telemetry:
             _ = self.meter_provider.force_flush(timeout_millis=5000)  # Force export before shutdown
             self.meter_provider.shutdown()
         if self.tracer_provider:
+            print(f"FLUSHING trace provider {self.tracer_provider}")
             _ = self.tracer_provider.force_flush(timeout_millis=5000)
             self.tracer_provider.shutdown()
 
@@ -70,3 +77,43 @@ class Telemetry:
         self.meter_provider = None
         self.tracer_provider = None
         self._initialized = False
+
+
+@pytest.fixture(scope="function", name="tracing")
+def tracing_fixture(request: pytest.FixtureRequest) -> Iterator[trace.Span]:
+    """Decorator to add OpenTelemetry tracing to test functions."""
+
+    tracer = trace.get_tracer(__name__)
+    print(f"Got tracer {tracer}")
+
+    span_name: str = request.node.name
+    # strip the test_ prefix from the span name
+    span_name = span_name.removeprefix("test_")
+
+    with tracer.start_as_current_span(span_name) as span:
+        span.set_attribute("test_name", span_name)
+        print(f"Got span {span}")
+
+        # Try rerun context propagation if available
+        token = None
+        trace_ctx = None
+        try:
+            from rerun.catalog import _rerun_trace_context
+
+            trace_ctx = _rerun_trace_context()
+            current_ctx = context.get_current()
+            carrier = {}
+            get_global_textmap().inject(carrier, current_ctx)
+            if carrier:
+                token = trace_ctx.set(carrier)
+        except ImportError:
+            pass
+
+        try:
+            yield span
+        finally:
+            if token and trace_ctx:
+                try:
+                    trace_ctx.reset(token)
+                except (NameError, AttributeError):
+                    pass
