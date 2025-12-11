@@ -147,18 +147,13 @@ pub struct TimeHistogramPerTimeline {
     times: BTreeMap<TimelineName, TimeHistogram>,
 
     /// Extra bookkeeping used to seed any timelines that include static msgs.
-    num_static_messages: u64,
+    has_static: bool,
 }
 
 impl TimeHistogramPerTimeline {
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.times.is_empty() && self.num_static_messages == 0
-    }
-
-    #[inline]
-    pub fn is_static(&self) -> bool {
-        self.num_static_messages > 0
+        self.times.is_empty() && !self.has_static
     }
 
     #[inline]
@@ -185,43 +180,9 @@ impl TimeHistogramPerTimeline {
         self.times.iter()
     }
 
-    #[inline]
-    pub fn num_static_messages(&self) -> u64 {
-        self.num_static_messages
-    }
-
     /// Total number of temporal messages over all timelines.
     pub fn num_temporal_messages(&self) -> u64 {
         self.times.values().map(|hist| hist.total_count()).sum()
-    }
-
-    fn add_static(&mut self, n: u32) {
-        self.num_static_messages = self
-            .num_static_messages
-            .checked_add(n as u64)
-            .unwrap_or_else(|| {
-                re_log::debug!(
-                    current = self.num_static_messages,
-                    added = n,
-                    "bookkeeping overflowed"
-                );
-                u64::MAX
-            });
-    }
-
-    fn remove_static(&mut self, n: u32) {
-        self.num_static_messages = self
-            .num_static_messages
-            .checked_sub(n as u64)
-            .unwrap_or_else(|| {
-                // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
-                re_log::debug!(
-                    current = self.num_static_messages,
-                    removed = n,
-                    "bookkeeping underflowed"
-                );
-                u64::MIN
-            });
     }
 
     fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
@@ -239,11 +200,11 @@ impl TimeHistogramPerTimeline {
     fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        if let Some(histo) = self.times.get_mut(timeline.name()) {
+        if let Some(histogram) = self.times.get_mut(timeline.name()) {
             for &time in times {
-                histo.decrement(time, n);
+                histogram.decrement(time, n);
             }
-            if histo.is_empty() {
+            if histogram.is_empty() {
                 self.times.remove(timeline.name());
             }
         }
@@ -275,10 +236,10 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
             if event.chunk.is_static() {
                 match event.kind {
                     ChunkStoreDiffKind::Addition => {
-                        self.add_static(event.num_components() as _);
+                        self.has_static = true;
                     }
                     ChunkStoreDiffKind::Deletion => {
-                        self.remove_static(event.num_components() as _);
+                        // We never GC static stuff, but even if we did: remember we used to have them plz
                     }
                 }
             } else {
