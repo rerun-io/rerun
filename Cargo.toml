@@ -160,18 +160,18 @@ dav1d = { package = "re_rav1d", version = "0.1.3", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # core egui-crates:
-ecolor = "0.33.2"
-eframe = { version = "0.33.2", default-features = false, features = [
+ecolor = "0.33.3"
+eframe = { version = "0.33.3", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.33.2", features = ["callstack", "color-hex", "rayon"] }
-egui_extras = { version = "0.33.2", features = ["http", "image", "serde", "svg"] }
-egui_kittest = { version = "0.33.2", features = ["wgpu", "snapshot", "eframe"] }
-egui-wgpu = "0.33.2"
-emath = "0.33.2"
+egui = { version = "0.33.3", features = ["callstack", "color-hex", "rayon"] }
+egui_extras = { version = "0.33.3", features = ["http", "image", "serde", "svg"] }
+egui_kittest = { version = "0.33.3", features = ["wgpu", "snapshot", "eframe"] }
+egui-wgpu = "0.33.3"
+emath = "0.33.3"
 
 # other egui crates:
 egui_commonmark = { version = "0.22.0", default-features = false }
