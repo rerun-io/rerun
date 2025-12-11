@@ -12,7 +12,7 @@ dev = [
   #
   # Instead, we combine with `maturin dev` to install into the dev environment.
   #"rerun-sdk",
-  "rerun_notebook",
+  #"rerun_notebook",
   "maturin>=1.0.0",
   "ruff==0.12.10",
   "mypy==1.14.1",

@@ -417,7 +417,7 @@ py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALL
 
 
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "pip install -e rerun_notebook", depends-on = ["js-build-base"] }
+py-build-notebook = { cmd = "uv pip install -e rerun_notebook", depends-on = ["js-build-base"] }
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
 py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
