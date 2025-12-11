@@ -610,6 +610,7 @@ types-decorator = "*" # Type hint stubs
 types-Deprecated = "==1.2.9.2" # Type hint stubs
 types-pytz = "*" # Type hint stubs
 types-requests = ">=2.31,<3" # Type hint stubs
+urllib3 = "<2.6" # Temporary pin to fix CI failure: TypeError: _GzipDecoder.decompress() got an unexpected keyword argument 'max_length'
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*" # for `wasm-opt`
