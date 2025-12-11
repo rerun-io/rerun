@@ -2,6 +2,8 @@
 
 #![allow(clippy::allow_attributes, clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+// hi
+
 use std::rc::Rc;
 use std::str::FromStr as _;
 
