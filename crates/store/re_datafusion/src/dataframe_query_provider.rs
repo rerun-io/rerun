@@ -446,56 +446,148 @@ async fn chunk_stream_io_loop(
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ApiResult<ChunksWithSegment>>,
 ) -> Result<(), DataFusionError> {
-    let chunk_infos: Vec<_> = chunk_infos.into_iter().map(Into::into).collect();
+    // Pipeline configuration
+    const CONCURRENT_REQUESTS: usize = 16;
+    const BUFFER_SIZE_MB: usize = 512;
+    const BUFFER_SIZE_BYTES: usize = BUFFER_SIZE_MB * 1024 * 1024;
 
-    // TODO(zehiko) same as previously with get_chunks, we keep sending 1 request per segment.
-    // As these batches are sorted per segment (see docs above), this ensures that ordering by
-    // segment id is preserved regardless of how server might order responses (in the case of having
-    // batches with different segments in the same request). However, quick testing shows that this
-    // is at least 2x slower than sending all segments in one request. Consider providing ordering
-    // guarantees server side in the future.
+    // Create intermediate channel for ordered buffering
+    let (intermediate_tx, mut intermediate_rx) =
+        tokio::sync::mpsc::channel::<(usize, ApiResult<ChunksWithSegment>, u64)>(1024);
 
-    // Convert to concurrent processing using buffered streams
-    const CONCURRENT_REQUESTS: usize = 16; // Adjust based on your needs
+    // We need to pair original RecordBatch with converted ChunkInfo for byte length extraction
+    use re_protos::common::v1alpha1::DataframePart;
+    let chunk_info_pairs: Vec<_> = chunk_infos
+        .into_iter()
+        .enumerate()
+        .map(|(index, batch)| {
+            let chunk_info: DataframePart = batch.clone().into();
+            (index, batch, chunk_info)
+        })
+        .collect();
 
-    futures_util::stream::iter(chunk_infos)
-        .map(|chunk_info| {
-            let mut client = client.clone();
-            let output_channel = output_channel.clone();
-            async move {
-                let fetch_chunks_request = FetchChunksRequest {
-                    chunk_infos: vec![chunk_info],
-                };
+    // Spawn concurrent fetchers
+    let fetcher_handle = tokio::spawn(async move {
+        futures_util::stream::iter(chunk_info_pairs)
+            .map(|(index, original_batch, chunk_info)| {
+                let mut client = client.clone();
+                let intermediate_tx = intermediate_tx.clone();
+                async move {
+                    let fetch_chunks_request = FetchChunksRequest {
+                        chunk_infos: vec![chunk_info],
+                    };
 
-                let fetch_chunks_response_stream = client
-                    .inner()
-                    .fetch_chunks(fetch_chunks_request)
-                    .instrument(tracing::trace_span!("chunk_stream_io_loop"))
-                    .await
-                    .map_err(|err| exec_datafusion_err!("{err}"))?
-                    .into_inner();
+                    let fetch_chunks_response_stream = client
+                        .inner()
+                        .fetch_chunks(fetch_chunks_request)
+                        .instrument(tracing::trace_span!("chunk_stream_io_loop"))
+                        .await
+                        .map_err(|err| exec_datafusion_err!("{err}"))?
+                        .into_inner();
 
-                // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
-                // and the app layer (Arrow).
-                let mut chunk_stream =
-                    re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-                        fetch_chunks_response_stream,
-                    );
+                    let mut chunk_stream =
+                        re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+                            fetch_chunks_response_stream,
+                        );
 
-                while let Some(chunk_and_segment_id) = chunk_stream.next().await {
-                    if output_channel.send(chunk_and_segment_id).await.is_err() {
-                        break;
+                    while let Some(chunk_and_segment_id) = chunk_stream.next().await {
+                        // Extract byte length from original RecordBatch
+                        let byte_len = extract_chunk_byte_len(&original_batch)?;
+
+                        if intermediate_tx
+                            .send((index, chunk_and_segment_id, byte_len))
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+
+                    Ok::<(), DataFusionError>(())
+                }
+            })
+            .buffered(CONCURRENT_REQUESTS)
+            .try_collect::<Vec<_>>()
+            .await
+    });
+
+    // Spawn ordered buffer manager
+    let buffer_handle = tokio::spawn(async move {
+        let mut buffer = Vec::new();
+        let mut total_bytes = 0u64;
+
+        while let Some((index, chunk_result, byte_len)) = intermediate_rx.recv().await {
+            buffer.push((index, chunk_result, byte_len));
+            total_bytes += byte_len;
+
+            // Check if we should flush (either buffer size reached or no more data expected)
+            if total_bytes >= BUFFER_SIZE_BYTES as u64 || intermediate_rx.is_closed() {
+                // Sort buffer by original index to preserve input ordering
+                buffer.sort_by_key(|(index, _, _)| *index);
+
+                // Flush ordered chunks to output
+                for (_, chunk_result, _) in buffer.drain(..) {
+                    if output_channel.send(chunk_result).await.is_err() {
+                        return Ok(());
                     }
                 }
 
-                Ok::<(), DataFusionError>(())
+                total_bytes = 0;
             }
-        })
-        .buffered(CONCURRENT_REQUESTS)
-        .try_collect::<Vec<_>>()
-        .await?;
+        }
+
+        // Flush any remaining chunks
+        if !buffer.is_empty() {
+            buffer.sort_by_key(|(index, _, _)| *index);
+            for (_, chunk_result, _) in buffer.drain(..) {
+                if output_channel.send(chunk_result).await.is_err() {
+                    break;
+                }
+            }
+        }
+
+        Ok::<(), DataFusionError>(())
+    });
+
+    // Wait for both tasks to complete
+    let (fetcher_result, buffer_result) = tokio::try_join!(fetcher_handle, buffer_handle)
+        .map_err(|err| exec_datafusion_err!("Task join error: {err}"))?;
+
+    fetcher_result?;
+    buffer_result?;
 
     Ok(())
+}
+
+fn extract_chunk_byte_len(chunk_info_batch: &RecordBatch) -> Result<u64, DataFusionError> {
+    use arrow::array::AsArray as _;
+    use re_protos::cloud::v1alpha1::FetchChunksRequest;
+
+    // Find the chunk_byte_len column in the batch
+    let schema = chunk_info_batch.schema();
+    let chunk_byte_len_col_idx = schema
+        .column_with_name(FetchChunksRequest::FIELD_CHUNK_BYTE_LEN)
+        .ok_or_else(|| {
+            exec_datafusion_err!(
+                "Missing {} column in chunk info",
+                FetchChunksRequest::FIELD_CHUNK_BYTE_LEN
+            )
+        })?
+        .0;
+
+    let chunk_byte_len_array = chunk_info_batch.column(chunk_byte_len_col_idx);
+
+    // Assuming it's a UInt64 array with a single value (since we're processing one chunk at a time)
+    let uint64_array = chunk_byte_len_array.as_primitive::<arrow::datatypes::UInt64Type>();
+
+    if uint64_array.len() != 1 {
+        return Err(exec_datafusion_err!(
+            "Expected exactly one chunk_byte_len value, got {}",
+            uint64_array.len()
+        ));
+    }
+
+    Ok(uint64_array.value(0))
 }
 
 impl ExecutionPlan for SegmentStreamExec {
