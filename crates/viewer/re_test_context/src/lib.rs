@@ -721,7 +721,7 @@ impl TestContext {
                             .store_bundle()
                             .get(&store_id)
                             .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
-                            .times_per_timeline();
+                            .timeline_hisograms();
 
                         let blueprint_ctx =
                             Some(&blueprint_ctx).filter(|_| store_id.is_recording());

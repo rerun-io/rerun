@@ -35,6 +35,14 @@ impl TimeHistogram {
         self.timeline
     }
 
+    pub fn num_events(&self) -> u64 {
+        self.hist.total_count()
+    }
+
+    pub fn insert(&mut self, time: TimeInt, count: u64) {
+        self.hist.increment(time.as_i64(), count as _);
+    }
+
     pub fn increment(&mut self, time: i64, n: u32) {
         self.hist.increment(time, n);
     }
@@ -156,6 +164,10 @@ impl TimeHistogramPerTimeline {
     #[inline]
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = Timeline> {
         self.times.values().map(|h| h.timeline())
+    }
+
+    pub fn histograms(&self) -> impl ExactSizeIterator<Item = &TimeHistogram> {
+        self.times.values()
     }
 
     #[inline]

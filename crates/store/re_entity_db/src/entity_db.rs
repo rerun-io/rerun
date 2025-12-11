@@ -22,7 +22,7 @@ use re_query::{
 
 use crate::ingestion_statistics::IngestionStatistics;
 use crate::rrd_manifest_index::RrdManifestIndex;
-use crate::{Error, TimesPerTimeline};
+use crate::{Error, TimeHistogramPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -89,16 +89,6 @@ pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
-    /// The global-scope time tracker.
-    ///
-    /// For each timeline, keeps track of what times exist, recursively across all
-    /// entities/components.
-    ///
-    /// Used for time control.
-    ///
-    /// TODO(#7084): Get rid of [`TimesPerTimeline`] and implement time-stepping with [`crate::TimeHistogram`] instead.
-    times_per_timeline: TimesPerTimeline,
-
     /// A time histogram of all entities, for every timeline.
     time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
 
@@ -150,7 +140,6 @@ impl EntityDb {
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
-            times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
             storage_engine,
@@ -467,8 +456,9 @@ impl EntityDb {
         self.storage_engine().store().timelines()
     }
 
-    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.times_per_timeline
+    /// When do we have data on each timeline?
+    pub fn timeline_hisograms(&self) -> &TimeHistogramPerTimeline {
+        &self.time_histogram_per_timeline
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
@@ -625,7 +615,6 @@ impl EntityDb {
         self.rrd_manifest_index.on_events(store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.times_per_timeline.on_events(store_events);
         self.time_histogram_per_timeline.on_events(store_events);
         self.tree.on_store_additions(store_events);
 

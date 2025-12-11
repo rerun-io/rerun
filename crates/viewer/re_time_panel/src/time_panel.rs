@@ -370,7 +370,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.timeline_hisograms(),
                         ui,
                         time_commands,
                     );
@@ -385,7 +385,7 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let times_per_timeline = entity_db.timeline_hisograms();
 
             if has_more_than_one_time_point {
                 self.time_control_ui
@@ -1295,7 +1295,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.timeline_hisograms(),
                         ui,
                         time_commands,
                     );
@@ -1309,7 +1309,7 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let times_per_timeline = entity_db.timeline_hisograms();
 
             self.time_control_ui
                 .play_pause_ui(time_ctrl, ui, time_commands);

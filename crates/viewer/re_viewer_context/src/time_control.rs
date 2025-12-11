@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 use re_chunk::{EntityPath, TimelineName};
-use re_entity_db::{TimelineStats, TimesPerTimeline};
+use re_entity_db::{TimeHistogram, TimeHistogramPerTimeline};
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, Duration, TimeCell, TimeInt, TimeReal, TimeType,
     Timeline,
@@ -442,7 +442,7 @@ impl TimeControl {
     pub fn update_from_blueprint(
         &mut self,
         blueprint_ctx: &impl BlueprintContext,
-        times_per_timeline: Option<&TimesPerTimeline>,
+        times_per_timeline: Option<&TimeHistogramPerTimeline>,
     ) {
         if let Some(timeline) = blueprint_ctx.timeline() {
             if matches!(self.timeline, ActiveTimeline::Auto(_))
@@ -546,7 +546,7 @@ impl TimeControl {
     /// we've reached the end.
     pub fn update(
         &mut self,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         stable_dt: f32,
         more_data_is_coming: bool,
         should_diff_state: bool,
@@ -680,7 +680,7 @@ impl TimeControl {
         &mut self,
         response: TimeControlResponse,
         should_diff_state: bool,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         old_timeline: Timeline,
         old_playing: bool,
         old_state: Option<TimeState>,
@@ -749,7 +749,7 @@ impl TimeControl {
     pub fn handle_time_commands(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         commands: &[TimeControlCommand],
     ) -> TimeControlResponse {
         let mut response = TimeControlResponse {
@@ -788,7 +788,7 @@ impl TimeControl {
     fn handle_time_command(
         &mut self,
         blueprint_ctx: Option<&impl BlueprintContext>,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         command: &TimeControlCommand,
     ) -> NeedsRepaint {
         match command {
@@ -823,7 +823,7 @@ impl TimeControl {
                 }
 
                 if let Some(stats) = times_per_timeline.get(timeline_name) {
-                    self.timeline = ActiveTimeline::UserEdited(stats.timeline);
+                    self.timeline = ActiveTimeline::UserEdited(stats.timeline());
                 } else {
                     self.timeline = ActiveTimeline::Pending(Timeline::new_sequence(*timeline_name));
                 }
@@ -1056,7 +1056,7 @@ impl TimeControl {
     /// blueprint.
     pub fn set_play_state(
         &mut self,
-        times_per_timeline: Option<&TimesPerTimeline>,
+        times_per_timeline: Option<&TimeHistogramPerTimeline>,
         play_state: PlayState,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
@@ -1110,7 +1110,7 @@ impl TimeControl {
 
     fn step_time_back(
         &mut self,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
         let Some(timeline_stats) = times_per_timeline.get(self.timeline().name()) else {
@@ -1134,7 +1134,7 @@ impl TimeControl {
 
     fn step_time_fwd(
         &mut self,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
         let Some(stats) = times_per_timeline.get(self.timeline().name()) else {
@@ -1156,7 +1156,7 @@ impl TimeControl {
         }
     }
 
-    fn move_by_seconds(&mut self, times_per_timeline: &TimesPerTimeline, seconds: f64) {
+    fn move_by_seconds(&mut self, times_per_timeline: &TimeHistogramPerTimeline, seconds: f64) {
         if let Some(time) = self.time() {
             let mut new_time = match self.time_type() {
                 TimeType::Sequence => time + TimeReal::from(seconds as i64),
@@ -1223,7 +1223,7 @@ impl TimeControl {
 
     fn toggle_play_pause(
         &mut self,
-        times_per_timeline: &TimesPerTimeline,
+        times_per_timeline: &TimeHistogramPerTimeline,
         blueprint_ctx: Option<&impl BlueprintContext>,
     ) {
         if self.playing {
@@ -1288,10 +1288,13 @@ impl TimeControl {
     }
 
     /// Make sure the selected timeline is a valid one
-    fn select_valid_timeline(&mut self, times_per_timeline: &TimesPerTimeline) {
-        fn is_timeline_valid(selected: &Timeline, times_per_timeline: &TimesPerTimeline) -> bool {
+    fn select_valid_timeline(&mut self, times_per_timeline: &TimeHistogramPerTimeline) {
+        fn is_timeline_valid(
+            selected: &Timeline,
+            times_per_timeline: &TimeHistogramPerTimeline,
+        ) -> bool {
             for timeline in times_per_timeline.timelines() {
-                if selected == timeline {
+                if selected == &timeline {
                     return true; // it's valid
                 }
             }
@@ -1308,10 +1311,7 @@ impl TimeControl {
             // If it's pending never automatically refresh it.
             ActiveTimeline::Pending(timeline) => {
                 // If the pending timeline is valid, it shouldn't be pending anymore.
-                if let Some(timeline) = times_per_timeline
-                    .timelines()
-                    .find(|t| t.name() == timeline.name())
-                {
+                if times_per_timeline.has_timeline(timeline.name()) {
                     self.timeline = ActiveTimeline::UserEdited(*timeline);
                 }
 
@@ -1320,8 +1320,7 @@ impl TimeControl {
         };
 
         if reset_timeline || matches!(self.timeline, ActiveTimeline::Auto(_)) {
-            self.timeline =
-                ActiveTimeline::Auto(default_timeline(times_per_timeline.timelines_with_stats()));
+            self.timeline = ActiveTimeline::Auto(default_timeline(times_per_timeline.histograms()));
         }
     }
 
@@ -1462,7 +1461,10 @@ impl TimeControl {
 
     /// The full range of times for the current timeline, skipping times outside of the valid data ranges
     /// at the start and end.
-    fn full_valid_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
+    fn full_valid_range(
+        &self,
+        times_per_timeline: &TimeHistogramPerTimeline,
+    ) -> Option<AbsoluteTimeRange> {
         times_per_timeline.get(self.timeline().name()).map(|stats| {
             let data_range = stats.full_range();
             let max_valid_range_for = self.max_valid_range_for(*self.timeline().name());
@@ -1511,7 +1513,7 @@ impl TimeControl {
 }
 
 /// Pick the timeline that should be the default, by number of elements and prioritizing user-defined ones.
-fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) -> Timeline {
+fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimeHistogram>) -> Timeline {
     re_tracing::profile_function!();
 
     // Helper function that acts as a tie-breaker.
@@ -1525,11 +1527,11 @@ fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) 
     let most_events = timelines.into_iter().max_by(|a, b| {
         a.num_events()
             .cmp(&b.num_events())
-            .then_with(|| timeline_priority(&a.timeline).cmp(&timeline_priority(&b.timeline)))
+            .then_with(|| timeline_priority(&a.timeline()).cmp(&timeline_priority(&b.timeline())))
     });
 
     if let Some(most_events) = most_events {
-        most_events.timeline
+        most_events.timeline()
     } else {
         Timeline::log_time()
     }
@@ -1539,8 +1541,8 @@ fn default_timeline<'a>(timelines: impl IntoIterator<Item = &'a TimelineStats>) 
 mod tests {
     use super::*;
 
-    fn with_events(timeline: Timeline, num: u64) -> TimelineStats {
-        let mut stats = TimelineStats::new(timeline);
+    fn with_events(timeline: Timeline, num: u64) -> TimeHistogram {
+        let mut stats = TimeHistogram::new(timeline);
         stats.insert(TimeInt::ZERO, num);
         stats
     }
@@ -1552,46 +1554,49 @@ mod tests {
         let custom_timeline0 = with_events(Timeline::new("my_timeline0", TimeType::DurationNs), 42);
         let custom_timeline1 = with_events(Timeline::new("my_timeline1", TimeType::DurationNs), 43);
 
-        assert_eq!(default_timeline([]), log_time.timeline);
-        assert_eq!(default_timeline([&log_tick]), log_tick.timeline);
-        assert_eq!(default_timeline([&log_time]), log_time.timeline);
-        assert_eq!(default_timeline([&log_time, &log_tick]), log_time.timeline);
+        assert_eq!(default_timeline([]), log_time.timeline());
+        assert_eq!(default_timeline([&log_tick]), log_tick.timeline());
+        assert_eq!(default_timeline([&log_time]), log_time.timeline());
+        assert_eq!(
+            default_timeline([&log_time, &log_tick]),
+            log_time.timeline()
+        );
         assert_eq!(
             default_timeline([&log_time, &log_tick, &custom_timeline0]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
         assert_eq!(
             default_timeline([&custom_timeline0, &log_time, &log_tick]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
         assert_eq!(
             default_timeline([&log_time, &custom_timeline0, &log_tick]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
         assert_eq!(
             default_timeline([&custom_timeline0, &log_time]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
         assert_eq!(
             default_timeline([&custom_timeline0, &log_tick]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
         assert_eq!(
             default_timeline([&log_time, &custom_timeline0]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
         assert_eq!(
             default_timeline([&log_tick, &custom_timeline0]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
 
         assert_eq!(
             default_timeline([&custom_timeline0, &custom_timeline1]),
-            custom_timeline1.timeline
+            custom_timeline1.timeline()
         );
         assert_eq!(
             default_timeline([&custom_timeline0]),
-            custom_timeline0.timeline
+            custom_timeline0.timeline()
         );
     }
 
