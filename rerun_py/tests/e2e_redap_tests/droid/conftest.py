@@ -19,12 +19,14 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="package")
 def droid_dataset_name(request: pytest.FixtureRequest) -> str:
     """Fixture to provide access to the droid dataset."""
-    return request.config.getoption("--droid-dataset")
+    name: str = request.config.getoption("--droid-dataset")
+    return name
 
 
 @pytest.fixture(scope="package")
 def droid_preregister_dataset(request: pytest.FixtureRequest) -> bool:
-    return request.config.getoption("--droid-preregister-dataset")
+    should_register: bool = request.config.getoption("--droid-preregister-dataset")
+    return should_register
 
 
 @pytest.fixture(scope="package")
@@ -56,7 +58,8 @@ def aws_dataset_manifest(aws_regional_dataset_manifest_path: str) -> dict[str, A
     s3 = boto3.client("s3")
 
     response = s3.get_object(Bucket=bucket, Key=key)
-    return json.loads(response["Body"].read().decode("utf-8"))
+    manifest: dict[str, Any] = json.loads(response["Body"].read().decode("utf-8"))
+    return manifest
 
 
 @pytest.fixture(scope="package")

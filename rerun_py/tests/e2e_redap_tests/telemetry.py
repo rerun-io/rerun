@@ -17,6 +17,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ def tracing_fixture(request: pytest.FixtureRequest) -> Iterator[trace.Span]:
 
             trace_ctx = _rerun_trace_context()
             current_ctx = context.get_current()
-            carrier = {}
+            carrier: dict[Any, Any] = {}
             get_global_textmap().inject(carrier, current_ctx)
             if carrier:
                 token = trace_ctx.set(carrier)
