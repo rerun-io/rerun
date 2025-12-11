@@ -132,7 +132,7 @@ exclude = [
   '.*scheme:/.*',
   'http(s)?://example.com/.*',
   'file:///uri1.rrd',
-  'file:///uri1.rrd',
+  'file:///uri2.rrd',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
