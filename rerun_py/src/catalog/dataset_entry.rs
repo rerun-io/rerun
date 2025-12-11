@@ -282,9 +282,12 @@ impl PyDatasetEntryInternal {
                 when: timeline.and_then(|timeline| {
                     Some((
                         re_chunk::TimelineName::new(timeline),
-                        start_i64
-                            .map(|start| start.try_into().expect("start time must be valid"))
-                            .unwrap_or(re_log_types::NonMinI64::MIN),
+                        re_sdk::TimeCell::new(
+                            re_log_types::TimeType::TimestampNs,
+                            start_i64
+                                .map(|start| start.try_into().expect("start time must be valid"))
+                                .unwrap_or(re_log_types::NonMinI64::MIN),
+                        ),
                     ))
                 }),
                 time_selection: timeline.and_then(|timeline| {
