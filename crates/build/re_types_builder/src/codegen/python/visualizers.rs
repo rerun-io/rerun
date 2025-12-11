@@ -63,6 +63,7 @@ pub fn generate_visualizers_file(reporter: &Reporter, objects: &Objects) -> Stri
         code.push_indented(0, format!("{archetype_name} = \"{visualizer_id}\""), 1);
     }
 
+    // TODO(RR-3173): This should not be experimental anymore.
     // Generate experimental module with visualizer classes
     code.push_unindented("\n\n# Experimental API for configuring visualizers", 1);
     code.push_indented(0, "class experimental:", 1);
