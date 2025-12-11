@@ -11,7 +11,10 @@ import pytest
 import rerun as rr
 from datafusion import col, functions as F
 
+from ..telemetry import tracing_fixture  # noqa: F401 # import tracing pytest fixture
+
 if TYPE_CHECKING:
+    from opentelemetry import trace
     from pytest_benchmark.fixture import BenchmarkFixture
     from rerun.catalog import CatalogClient, DataframeQueryView, DatasetEntry
 
@@ -21,8 +24,9 @@ pytestmark = [pytest.mark.cloud_only, pytest.mark.slow]
 
 
 @pytest.mark.benchmark(group="droid")
-def test_count_gripper_closes(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_count_gripper_closes(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Count the number of gripper segments in the dataset."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         count_gripper_closes,
         args=(dataset,),
@@ -61,8 +65,9 @@ def count_gripper_closes(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_aggregate_and_self_join(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_aggregate_and_self_join(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Ensure our segment hashing works effectively by self joining."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         aggregate_and_self_join_body,
         args=(dataset,),
@@ -92,8 +97,9 @@ def aggregate_and_self_join_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_segment_time_ordering(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_segment_time_ordering(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Benchmark to measure performance of the time ordering since a sort should not be needed during aggregation."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         segment_time_ordering_body,
         args=(dataset,),
@@ -115,8 +121,9 @@ def segment_time_ordering_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_create_vector_index(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_create_vector_index(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Create a vector index for the embeddings columns."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         create_vector_index_body,
         args=(dataset,),
@@ -147,8 +154,9 @@ def create_vector_index_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_perform_vector_search(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_perform_vector_search(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Perform a vector search for a specific embedding."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         perform_vector_search_body,
         args=(dataset,),
@@ -165,8 +173,11 @@ def perform_vector_search_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_lookup_embedding_using_index_values(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_lookup_embedding_using_index_values(
+    benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry
+) -> None:
     """Look up the embedding for a specific time."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         lookup_embedding_using_index_values_body,
         args=(dataset,),
@@ -195,8 +206,9 @@ def lookup_embedding_using_index_values_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_sample_index_values(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_sample_index_values(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Count the number of gripper segments in the dataset."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         sample_index_values_body,
         args=(dataset,),
@@ -217,8 +229,9 @@ def sample_index_values_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_sample_index_values_chunk_ids(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_sample_index_values_chunk_ids(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Find the Chunk IDs needed for `sample_index_values`."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         sample_index_values_chunk_ids_body,
         args=(dataset,),
@@ -240,8 +253,9 @@ def sample_index_values_chunk_ids_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_align_fixed_frequency(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_align_fixed_frequency(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Align two columns to a fixed frequency."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         align_fixed_frequency_body,
         args=(dataset,),
@@ -283,8 +297,9 @@ def align_fixed_frequency_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_demonstrate_schema_latency(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_demonstrate_schema_latency(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Demonstrate schema latency."""
+    tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
         demonstrate_schema_latency_body,
         args=(dataset,),
@@ -299,8 +314,11 @@ def demonstrate_schema_latency_body(dataset: DatasetEntry) -> None:
 
 
 @pytest.mark.benchmark(group="droid")
-def test_demonstrate_df_latency(benchmark: BenchmarkFixture, dataset: DatasetEntry) -> None:
+def test_demonstrate_df_latency(benchmark: BenchmarkFixture, tracing: trace.Span, dataset: DatasetEntry) -> None:
     """Demonstrate df latency."""
+
+    tracing.set_attribute("test_dataset", dataset.name)
+
     # Df calls schema but makes other network calls as well
     # Mostly relevant if we expect to query the cloud for more inner loop work
     qv = dataset.dataframe_query_view(index="real_time", contents="/observation/joint_positions").filter_segment_id(
@@ -324,11 +342,13 @@ def demonstrate_df_latency_body(qv: DataframeQueryView) -> None:
 @pytest.mark.benchmark(group="droid")
 def test_droid_register(
     benchmark: BenchmarkFixture,
+    tracing: trace.Span,
     droid_dataset_name: str,
     catalog_client: CatalogClient,
     aws_segments_to_register: list[str],
 ) -> None:
     """Benchmark dataset registration with manifest-based specification."""
+    tracing.set_attribute("test_dataset", droid_dataset_name)
     benchmark.pedantic(
         droid_register,
         args=(droid_dataset_name, catalog_client, aws_segments_to_register),

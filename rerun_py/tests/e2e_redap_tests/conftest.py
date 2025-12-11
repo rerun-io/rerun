@@ -394,7 +394,7 @@ def snapshot_redact_id(snapshot: SnapshotAssertion) -> SnapshotAssertion:
     return snapshot.use_extension(RedactedIdSnapshotExtension)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def telemetry() -> Iterator[Telemetry]:
     """Set up OpenTelemetry for the test session."""
     telemetry_instance = Telemetry()
