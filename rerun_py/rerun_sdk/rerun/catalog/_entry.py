@@ -341,8 +341,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Parameters
         ----------
         segment_ids
-            A list of segment ID strings or a DataFusion DataFrame with a
-            column named 'rerun_segment_id'.
+            A list of segment ID strings or a DataFusion DataFrame
+            with a column named 'rerun_segment_id'. When passing a DataFrame,
+            if there are additional columns, they will be ignored.
 
         Returns
         -------
@@ -700,6 +701,7 @@ class DatasetView:
 
         return segment_table_df
 
+    @deprecated("This method is deprecated and will be removed in a future release")
     def download_segment(self, segment_id: str) -> Recording:
         """
         Download a specific segment from the dataset.

@@ -281,7 +281,7 @@ df = view.filter_is_not_null(...).df()
 
 # After (0.28)
 from datafusion import col
-df = dataset.reader(index="timeline").filter(col("my_column").is_not_null())
+df = dataset.reader(index="timeline").filter(col("/world/robot:Points3D:positions").is_not_null())
 ```
 
 **Latest-at fill**: Now a parameter to `reader()`:
@@ -308,3 +308,9 @@ df = table.df()
 table = client.get_table(name="my_table")
 df = table.reader()
 ```
+
+## Python SDK: `DatasetEntry.download_segments()` is deprecated
+
+<!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
+
+This method is deprecated and will be removed in a future release.

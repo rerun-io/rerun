@@ -52,15 +52,15 @@ class CatalogClient:
 
     def entry_names(self, *, include_hidden: bool = False) -> list[str]:
         """Returns a list of all entry names in the catalog."""
-        return [e.name for e in self.entries(include_hidden=include_hidden)]
+        return self._inner.entry_names(include_hidden=include_hidden)
 
     def dataset_names(self, *, include_hidden: bool = False) -> list[str]:
         """Returns a list of all dataset names in the catalog."""
-        return [d.name for d in self.datasets(include_hidden=include_hidden)]
+        return self._inner.dataset_names(include_hidden=include_hidden)
 
     def table_names(self, *, include_hidden: bool = False) -> list[str]:
         """Returns a list of all table names in the catalog."""
-        return [t.name for t in self.tables(include_hidden=include_hidden)]
+        return self._inner.table_names(include_hidden=include_hidden)
 
     def get_table(self, *, id: EntryId | str | None = None, name: str | None = None) -> TableEntry:
         """Returns a table entry by its ID or name."""
@@ -509,11 +509,7 @@ class DatasetView:
 
     def filter_segments(self, segment_ids: datafusion.DataFrame | Sequence[str]) -> DatasetView:
         """Returns a new DatasetView filtered to the given segment IDs."""
-        return DatasetView(
-            self._inner.filter_segments(
-                list(segment_ids) if not isinstance(segment_ids, datafusion.DataFrame) else segment_ids
-            )
-        )
+        return DatasetView(self._inner.filter_segments(segment_ids))
 
     def filter_contents(self, exprs: Sequence[str]) -> DatasetView:
         """Returns a new DatasetView filtered to the given entity paths."""
