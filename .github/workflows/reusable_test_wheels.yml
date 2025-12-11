@@ -169,22 +169,20 @@ jobs:
 
       - name: Print wheel version
         run: |
-          pixi list -e wheel-test-min | grep rerun_sdk
-          pixi run -e wheel-test-min python -m rerun --version
-          pixi run -e wheel-test-min which rerun
-          pixi run -e wheel-test-min rerun-from-path  --version
+          pixi run uv pip show rerun-sdk
+          pixi run uv run python -m rerun --version
 
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
         # Workaround for OpenCV TLS issue, see https://github.com/opencv/opencv/issues/14884#issuecomment-815632861
-        run: cd rerun_py/tests && LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1 pixi run -e wheel-test-min pytest -c ../pyproject.toml
+        run: LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1 pixi run py-test-no-build
 
       - name: Run unit tests
         if: ${{ inputs.PLATFORM != 'linux-arm64' }}
-        run: cd rerun_py/tests && pixi run -e wheel-test-min pytest -c ../pyproject.toml
+        run: pixi run py-test-no-build
 
       - name: Run e2e test
-        run: RUST_LOG=debug pixi run -e wheel-test-min python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug pixi run uv run python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Check for release checklist
         if: ${{ inputs.FAST }}

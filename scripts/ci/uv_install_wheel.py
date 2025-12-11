@@ -78,7 +78,7 @@ def run_uv_install(dir: str, pkg: str, platform_independent: bool = False) -> No
     wheel = Path(dir) / wheels[0]
 
     # Install the wheel
-    cmd = ["uv", "pip", "install", f"{pkg} @ {path_to_file_url(wheel)}"]
+    cmd = ["uv", "pip", "install", f"{pkg}[tests] @ {path_to_file_url(wheel)}"]
     print(f"Running: {' '.join(cmd)}")
     returncode = subprocess.Popen(cmd).wait()
     assert returncode == 0, f"process exited with error code {returncode}"

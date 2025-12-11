@@ -49,10 +49,16 @@ libc = "2.28"
 [target.unix.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ""
+# Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
+# This ensures uv targets .venv instead of the pixi environment.
+PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+# Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
+# This ensures uv targets .venv instead of the pixi environment.
+PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi;${PATH}"
 
 # python-dev
 
@@ -380,7 +386,8 @@ py-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
-py-test = { cmd = "uv run python -m pytest -vv rerun_py/tests", depends-on = ["uv-build"] }
+py-test = { cmd = "uv run python -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
+py-test-no-build = { cmd = "uv run python -m pytest -vv rerun_py/tests" }
 
 snapshots = "uv run python scripts/snapshots.py"
 
