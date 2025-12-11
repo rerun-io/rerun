@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 use std::ops::Bound;
 
-use itertools::Itertools as _;
-use re_chunk::{TimeInt, TimelineName};
+use re_chunk::{TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
@@ -170,57 +169,53 @@ impl TimeHistogramPerTimeline {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 
-    pub fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
+    fn add_static(&mut self, n: u32) {
+        self.num_static_messages = self
+            .num_static_messages
+            .checked_add(n as u64)
+            .unwrap_or_else(|| {
+                re_log::debug!(
+                    current = self.num_static_messages,
+                    added = n,
+                    "bookkeeping overflowed"
+                );
+                u64::MAX
+            });
+    }
+
+    fn remove_static(&mut self, n: u32) {
+        self.num_static_messages = self
+            .num_static_messages
+            .checked_sub(n as u64)
+            .unwrap_or_else(|| {
+                // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
+                re_log::debug!(
+                    current = self.num_static_messages,
+                    removed = n,
+                    "bookkeeping underflowed"
+                );
+                u64::MIN
+            });
+    }
+
+    fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        if times_per_timeline.is_empty() {
-            self.num_static_messages = self
-                .num_static_messages
-                .checked_add(n as u64)
-                .unwrap_or_else(|| {
-                    re_log::debug!(
-                        current = self.num_static_messages,
-                        added = n,
-                        "bookkeeping overflowed"
-                    );
-                    u64::MAX
-                });
-        } else {
-            for &(timeline_name, times) in times_per_timeline {
-                let histogram = self.times.entry(timeline_name).or_default();
-                for &time in times {
-                    histogram.increment(time, n);
-                }
-            }
+        let histogram = self.times.entry(*timeline.name()).or_default();
+        for &time in times {
+            histogram.increment(time, n);
         }
     }
 
-    pub fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
+    fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        if times_per_timeline.is_empty() {
-            self.num_static_messages = self
-                .num_static_messages
-                .checked_sub(n as u64)
-                .unwrap_or_else(|| {
-                    // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
-                    re_log::debug!(
-                        current = self.num_static_messages,
-                        removed = n,
-                        "bookkeeping underflowed"
-                    );
-                    u64::MIN
-                });
-        } else {
-            for &(timeline_name, times) in times_per_timeline {
-                if let Some(histo) = self.times.get_mut(&timeline_name) {
-                    for &time in times {
-                        histo.decrement(time, n);
-                    }
-                    if histo.is_empty() {
-                        self.times.remove(&timeline_name);
-                    }
-                }
+        if let Some(histo) = self.times.get_mut(timeline.name()) {
+            for &time in times {
+                histo.decrement(time, n);
+            }
+            if histo.is_empty() {
+                self.times.remove(timeline.name());
             }
         }
     }
@@ -248,18 +243,34 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
         re_tracing::profile_function!();
 
         for event in events {
-            let times = event
-                .chunk
-                .timelines()
-                .iter()
-                .map(|(&timeline_name, time_column)| (timeline_name, time_column.times_raw()))
-                .collect_vec();
-            match event.kind {
-                ChunkStoreDiffKind::Addition => {
-                    self.add(&times, event.num_components() as _);
+            if event.chunk.is_static() {
+                match event.kind {
+                    ChunkStoreDiffKind::Addition => {
+                        self.add_static(event.num_components() as _);
+                    }
+                    ChunkStoreDiffKind::Deletion => {
+                        self.remove_static(event.num_components() as _);
+                    }
                 }
-                ChunkStoreDiffKind::Deletion => {
-                    self.remove(&times, event.num_components() as _);
+            } else {
+                for time_column in event.chunk.timelines().values() {
+                    let times = time_column.times_raw();
+                    match event.kind {
+                        ChunkStoreDiffKind::Addition => {
+                            self.add_temporal(
+                                time_column.timeline(),
+                                times,
+                                event.num_components() as _,
+                            );
+                        }
+                        ChunkStoreDiffKind::Deletion => {
+                            self.remove_temporal(
+                                time_column.timeline(),
+                                times,
+                                event.num_components() as _,
+                            );
+                        }
+                    }
                 }
             }
         }
