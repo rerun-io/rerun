@@ -206,6 +206,7 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
+    pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
 
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
@@ -328,6 +329,7 @@ impl FetchChunksRequest {
     pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
     pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID;
     pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
+    pub const FIELD_CHUNK_BYTE_SIZE: &str = QueryDatasetResponse::FIELD_CHUNK_BYTE_SIZE;
 
     pub fn required_column_names() -> Vec<String> {
         vec![
@@ -336,6 +338,7 @@ impl FetchChunksRequest {
             Self::FIELD_CHUNK_ID.to_owned(),
             Self::FIELD_CHUNK_SEGMENT_ID.to_owned(),
             Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
+            Self::FIELD_CHUNK_BYTE_SIZE.to_owned(),
         ]
     }
 
