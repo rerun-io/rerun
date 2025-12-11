@@ -304,7 +304,7 @@ impl TimeState {
 }
 
 // TODO(andreas): This should be a blueprint property and follow the usual rules of how we determine fallbacks.
-#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq, Debug)]
 enum ActiveTimeline {
     Auto(Timeline),
     UserEdited(Timeline),
@@ -1240,8 +1240,14 @@ impl TimeControl {
             // If it's pending never automatically refresh it.
             ActiveTimeline::Pending(timeline) => {
                 // If the pending timeline is valid, it shouldn't be pending anymore.
-                if timeline_histograms.has_timeline(timeline.name()) {
-                    self.timeline = ActiveTimeline::UserEdited(*timeline);
+                //
+                // Important: We can't use the timeline in `Pending` here as it isn't always the correct
+                // time type.
+                if let Some(timeline) = timeline_histograms
+                    .timelines()
+                    .find(|t| t.name() == timeline.name())
+                {
+                    self.timeline = ActiveTimeline::UserEdited(timeline);
                 }
 
                 false
