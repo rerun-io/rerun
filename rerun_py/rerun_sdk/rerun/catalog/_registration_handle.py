@@ -34,9 +34,7 @@ class SegmentRegistrationResult:
 
 
 class RegistrationHandle:
-    """
-    Handle to track and wait on segment registration tasks.
-    """
+    """Handle to track and wait on segment registration tasks."""
 
     def __init__(self, internal: RegistrationHandleInternal) -> None:
         self._internal = internal

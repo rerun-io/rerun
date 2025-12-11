@@ -248,65 +248,50 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Return the URL for the given partition."""
         return self.segment_url(partition_id, timeline, start, end)
 
-    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str:
-        """
-        Register a RRD URI to the dataset and wait for completion.
-
-        This method registers a single recording to the dataset and blocks until the registration is
-        complete, or after a timeout (in which case, a `TimeoutError` is raised).
-
-        Parameters
-        ----------
-        recording_uri: str
-            The URI of the RRD to register.
-
-        recording_layer: str
-            The layer to which the recording will be registered to.
-
-        timeout_secs: int
-            The timeout after which this method raises a `TimeoutError` if the task is not completed.
-
-        Returns
-        -------
-        segment_id: str
-            The segment ID of the registered RRD.
-
-        """
-
-        return self._internal.register(recording_uri, recording_layer=recording_layer, timeout_secs=timeout_secs)
-
-    def register_batch(
-        self, recording_uris: list[str], *, recording_layers: list[str] | None = None
+    def register(
+        self,
+        recording_uri: str | Sequence[str],
+        *,
+        layer_name: str | Sequence[str] = "base",
     ) -> RegistrationHandle:
         """
-        Register a batch of RRD URIs to the dataset and return a handle to track progress.
+        Register RRD URIs to the dataset and return a handle to track progress.
 
-        This method initiates the registration of multiple recordings to the dataset, and returns
+        This method initiates the registration of recordings to the dataset, and returns
         a handle that can be used to wait for completion or iterate over results.
 
         Parameters
         ----------
-        recording_uris: list[str]
-            The URIs of the RRDs to register.
+        recording_uri
+            The URI(s) of the RRD(s) to register. Can be a single URI string or a sequence of URIs.
 
-        recording_layers: list[str]
-            The layers to which the recordings will be registered to:
-            * When empty, this defaults to `["base"]`.
-            * If longer than `recording_uris`, `recording_layers` will be truncated.
-            * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
-              I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
+        layer_name
+            The layer(s) to which the recordings will be registered to.
+            Can be a single layer name (applied to all recordings) or a sequence of layer names
+            (must match the length of `recording_uri`).
+            Defaults to `"base"`.
 
         Returns
         -------
-        A handle to track and wait on the registration tasks.
+        RegistrationHandle
+            A handle to track and wait on the registration tasks.
 
         """
         from ._registration_handle import RegistrationHandle
 
-        if recording_layers is None:
-            recording_layers = []
+        if isinstance(recording_uri, str):
+            recording_uris = [recording_uri]
+        else:
+            recording_uris = list(recording_uri)
 
-        return RegistrationHandle(self._internal.register_batch(recording_uris, recording_layers=recording_layers))
+        if isinstance(layer_name, str):
+            layer_names = [layer_name] * len(recording_uris)
+        else:
+            layer_names = list(layer_name)
+            if len(layer_names) != len(recording_uris):
+                raise ValueError("`layer_name` must be the same length as `recording_uri`")
+
+        return RegistrationHandle(self._internal.register(recording_uris, recording_layers=layer_names))
 
     def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:
         """

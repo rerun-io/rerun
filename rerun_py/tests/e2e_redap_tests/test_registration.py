@@ -38,7 +38,7 @@ def test_registration_invalidargs(
 
     try:
         with pytest.raises(ValueError, match="no data sources to register"):
-            ds.register_batch([])
+            ds.register([])
         with pytest.raises(ValueError, match="no data sources to register"):
             ds.register_prefix(temp_empty_directory)
         with pytest.raises(ValueError, match="expected prefix / directory but got an object"):
