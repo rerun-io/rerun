@@ -1464,7 +1464,7 @@ impl TimeControl {
     /// at the start and end.
     fn full_valid_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
         times_per_timeline.get(self.timeline().name()).map(|stats| {
-            let data_range = stats.range();
+            let data_range = stats.full_range();
             let max_valid_range_for = self.max_valid_range_for(*self.timeline().name());
             AbsoluteTimeRange::new(
                 data_range.min.max(max_valid_range_for.min),

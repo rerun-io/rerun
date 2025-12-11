@@ -59,7 +59,7 @@ impl TimelineStats {
         self.max_opt().unwrap_or(TimeInt::MIN)
     }
 
-    pub fn range(&self) -> AbsoluteTimeRange {
+    pub fn full_range(&self) -> AbsoluteTimeRange {
         AbsoluteTimeRange::new(self.min(), self.max())
     }
 

@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
+use std::ops::Bound;
 
 use itertools::Itertools as _;
-use re_chunk::TimelineName;
+use re_chunk::{TimeInt, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 // ---
 
@@ -26,6 +28,92 @@ impl TimeHistogram {
 
     pub fn decrement(&mut self, time: i64, n: u32) {
         self.0.decrement(time, n);
+    }
+
+    pub fn min_opt(&self) -> Option<TimeInt> {
+        self.min_key().map(TimeInt::new_temporal)
+    }
+
+    pub fn min(&self) -> TimeInt {
+        self.min_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn max_opt(&self) -> Option<TimeInt> {
+        self.max_key().map(TimeInt::new_temporal)
+    }
+
+    pub fn max(&self) -> TimeInt {
+        self.max_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn full_range(&self) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(self.min(), self.max())
+    }
+
+    pub fn step_fwd_time(&self, time: TimeReal) -> TimeInt {
+        self.next_key_after(time.floor().as_i64())
+            .map(TimeInt::new_temporal)
+            .unwrap_or_else(|| self.min())
+    }
+
+    pub fn step_back_time(&self, time: TimeReal) -> TimeInt {
+        self.prev_key_before(time.ceil().as_i64())
+            .map(TimeInt::new_temporal)
+            .unwrap_or_else(|| self.max())
+    }
+
+    pub fn step_fwd_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        if time < loop_range.min || loop_range.max <= time {
+            loop_range.min
+        } else if let Some(next) = self
+            .range(
+                (
+                    Bound::Excluded(time.floor().as_i64()),
+                    Bound::Included(loop_range.max.floor().as_i64()),
+                ),
+                1,
+            )
+            .next()
+            .map(|(r, _)| r.min)
+        {
+            TimeReal::from(next)
+        } else {
+            self.step_fwd_time(time).into()
+        }
+    }
+
+    pub fn step_back_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        re_tracing::profile_function!();
+
+        if time <= loop_range.min || loop_range.max < time {
+            loop_range.max
+        } else {
+            // Collect all keys in the range and take the last one.
+            // Yes, this could be slow :/
+            let mut prev_key = None;
+            for (range, _) in self.range(
+                (
+                    Bound::Included(loop_range.min.ceil().as_i64()),
+                    Bound::Excluded(time.ceil().as_i64()),
+                ),
+                1,
+            ) {
+                prev_key = Some(range.max);
+            }
+            if let Some(prev) = prev_key {
+                TimeReal::from(TimeInt::new_temporal(prev))
+            } else {
+                self.step_back_time(time).into()
+            }
+        }
     }
 }
 
