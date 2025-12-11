@@ -16,7 +16,7 @@ from ..telemetry import tracing_fixture  # noqa: F401 # import tracing pytest fi
 if TYPE_CHECKING:
     from opentelemetry import trace
     from pytest_benchmark.fixture import BenchmarkFixture
-    from rerun.catalog import CatalogClient, DataframeQueryView, DatasetEntry
+    from rerun.catalog import CatalogClient, DatasetEntry, DatasetView
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,11 @@ def test_count_gripper_closes(benchmark: BenchmarkFixture, tracing: trace.Span, 
 def count_gripper_closes(dataset: DatasetEntry) -> None:
     """Count the number of gripper segments in the dataset."""
 
-    robot = dataset.dataframe_query_view(index="real_time", contents="/action/**")
+    robot = dataset.filter_contents(["/action/**"])
 
     count_filter = dfn.col("gripper_position")[0] > 0.3
     grip_time_table = (
-        robot.fill_latest_at()
-        .df()
+        robot.reader(index="real_time", fill_latest_at=True)
         .select("rerun_segment_id", dfn.col("/action/gripper_position:Scalars:scalars").alias("gripper_position"))
         .aggregate([dfn.col("rerun_segment_id")], [dfn.functions.count(filter=count_filter).alias("grip_time")])
         .sort(dfn.col("grip_time"))
@@ -77,13 +76,11 @@ def test_aggregate_and_self_join(benchmark: BenchmarkFixture, tracing: trace.Spa
 
 def aggregate_and_self_join_body(dataset: DatasetEntry) -> None:
     """Ensure our segment hashing works effectively by self joining."""
-    robot = dataset.dataframe_query_view(index="real_time", contents="/action/**")
+    robot = dataset.filter_contents(["/action/**"])
 
     gripper_filter = dfn.col("gripper_position")[0] > 0.3
-    df = (
-        robot.fill_latest_at()
-        .df()
-        .select("rerun_segment_id", dfn.col("/action/gripper_position:Scalars:scalars").alias("gripper_position"))
+    df = robot.reader(index="real_time", fill_latest_at=True).select(
+        "rerun_segment_id", dfn.col("/action/gripper_position:Scalars:scalars").alias("gripper_position")
     )
 
     df_first_grip = df.aggregate(
@@ -109,9 +106,9 @@ def test_segment_time_ordering(benchmark: BenchmarkFixture, tracing: trace.Span,
 
 def segment_time_ordering_body(dataset: DatasetEntry) -> None:
     """Benchmark to measure performance of the time ordering since a sort should not be needed during aggregation."""
-    robot = dataset.dataframe_query_view(index="real_time", contents="/action/**")
+    robot = dataset.filter_contents(["/action/**"])
 
-    df = robot.df().aggregate(
+    df = robot.reader(index="real_time").aggregate(
         dfn.col("rerun_segment_id"),
         dfn.functions.first_value(dfn.col("real_time"), order_by=[dfn.col("real_time")]),
     )
@@ -133,7 +130,7 @@ def test_create_vector_index(benchmark: BenchmarkFixture, tracing: trace.Span, d
 
 def create_vector_index_body(dataset: DatasetEntry) -> None:
     """Create a vector index for the embeddings columns."""
-    embedding_column = rr.dataframe.ComponentColumnSelector("/camera/wrist/embedding", "embeddings")
+    embedding_column = rr.catalog.ComponentColumnSelector("/camera/wrist/embedding", "embeddings")
 
     try:
         dataset.delete_indexes(column=embedding_column)
@@ -143,7 +140,7 @@ def create_vector_index_body(dataset: DatasetEntry) -> None:
 
     dataset.create_vector_index(
         column=embedding_column,
-        time_index=rr.dataframe.IndexColumnSelector("real_time"),
+        time_index=rr.catalog.IndexColumnSelector("real_time"),
         # targeting ~5 segments.
         # droid:raw has 640213 vectors, dividing it by 2**17
         # gives us that
@@ -167,7 +164,7 @@ def test_perform_vector_search(benchmark: BenchmarkFixture, tracing: trace.Span,
 def perform_vector_search_body(dataset: DatasetEntry) -> None:
     """Perform a vector search for a specific embedding."""
     # This works with droid:raw since the query is hard coded
-    embedding_column = rr.dataframe.ComponentColumnSelector("/camera/wrist/embedding", "embeddings")
+    embedding_column = rr.catalog.ComponentColumnSelector("/camera/wrist/embedding", "embeddings")
     result = dataset.search_vector([0.0] * 768, embedding_column, top_k=10).df().collect()
     assert len(result) > 0
 
@@ -196,10 +193,8 @@ def lookup_embedding_using_index_values_body(dataset: DatasetEntry) -> None:
     # TODO(DPF#1818): Decide if this is actually something we want to depend on
 
     result = (
-        dataset.dataframe_query_view(index="real_time", contents="/camera/wrist/embedding")
-        .using_index_values([selected_time])
-        .fill_latest_at()
-        .df()
+        dataset.filter_contents(["/camera/wrist/embedding"])
+        .reader(index="real_time", using_index_values=[selected_time], fill_latest_at=True)
         .select("/camera/wrist/embedding:embeddings")
     ).collect()
     assert len(result) > 0
@@ -218,13 +213,14 @@ def test_sample_index_values(benchmark: BenchmarkFixture, tracing: trace.Span, d
 
 def sample_index_values_body(dataset: DatasetEntry) -> None:
     """Count the number of gripper segments in the dataset."""
-    wrist = dataset.dataframe_query_view(
-        index="log_tick",
-        contents="/camera/wrist/embedding /thumbnail/camera/wrist",
-    )
+    wrist = dataset.filter_contents(["/camera/wrist/embedding", "/thumbnail/camera/wrist"])
 
     sampled_times = [0, 100, 200, 500, 1000, 2000]
-    result = (wrist.filter_index_values(sampled_times).fill_latest_at()).df().drop("rerun_segment_id").collect()
+    result = (
+        (wrist.reader(index="log_tick", using_index_values=sampled_times, fill_latest_at=True))
+        .drop("rerun_segment_id")
+        .collect()
+    )
     assert len(result) > 0
 
 
@@ -232,9 +228,9 @@ def align_fixed_frequency_body(dataset: DatasetEntry) -> None:
     """Align two columns to a fixed frequency."""
     # Grab the cheaper column to get range of times until we can pushdown
     cheaper_column = (
-        dataset.dataframe_query_view(index="real_time", contents="/observation/joint_positions")
-        .filter_segment_id("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
-        .df()
+        dataset.filter_segments(["ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s"])
+        .filter_contents(["/observation/joint_positions"])
+        .reader(index="real_time")
     )
 
     min_max = cheaper_column.aggregate(
@@ -245,12 +241,11 @@ def align_fixed_frequency_body(dataset: DatasetEntry) -> None:
     max_time = min_max.to_arrow_table()["max"].to_numpy().flatten()
     desired_timestamps = np.arange(min_time[0], max_time[0], np.timedelta64(100, "ms"))  # 10Hz
     fixed_hz = (
-        dataset.dataframe_query_view(index="real_time", contents="/observation/joint_positions /camera/ext1/embedding")
-        .filter_segment_id("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
-        .using_index_values(desired_timestamps)
+        dataset.filter_segments(["ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s"])
+        .filter_contents(["/observation/joint_positions", "/camera/ext1/embedding"])
+        .reader(index="real_time", using_index_values=desired_timestamps)
         # Note if you apply null filter here it is on the source data not the filled data
         # TODO(RR-2769)
-        .df()
     )
 
     # This is the desired product for downstream work
@@ -286,9 +281,9 @@ def test_demonstrate_df_latency(benchmark: BenchmarkFixture, tracing: trace.Span
 
     # Df calls schema but makes other network calls as well
     # Mostly relevant if we expect to query the cloud for more inner loop work
-    qv = dataset.dataframe_query_view(index="real_time", contents="/observation/joint_positions").filter_segment_id(
-        "ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s"
-    )
+    qv = dataset.filter_segments(["ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s"]).filter_contents([
+        "/observation/joint_positions"
+    ])
 
     benchmark.pedantic(
         demonstrate_df_latency_body,
@@ -297,11 +292,11 @@ def test_demonstrate_df_latency(benchmark: BenchmarkFixture, tracing: trace.Span
     )
 
 
-def demonstrate_df_latency_body(qv: DataframeQueryView) -> None:
+def demonstrate_df_latency_body(qv: DatasetView) -> None:
     """Demonstrate df latency."""
     # Intentionally no collect because
     # this is what is slow
-    qv.df()
+    qv.reader(index="real_time")
 
 
 @pytest.mark.benchmark(group="droid")
