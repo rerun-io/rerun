@@ -53,7 +53,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["pip", "install"]
+        args = ["uv", "pip", "install"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
             args.extend(["-e", example])
