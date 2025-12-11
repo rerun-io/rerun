@@ -86,5 +86,10 @@ runs:
         cache-all-crates: "true"
         cache-workspace-crates: "true"
         cache-targets: "true"
-        cache-on-failure: "true"
+        cache-on-failure: "false"
         save-if: ${{ inputs.save_cache }}
+        # Various builds use separate target directories (web, pixi)
+        cache-directories: |
+          target_wasm
+          target_pixi
+          target_pixi_wasm
