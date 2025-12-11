@@ -8,25 +8,39 @@ use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 // ---
 
 /// Number of messages per time.
-#[derive(Default, Clone)]
-pub struct TimeHistogram(re_int_histogram::Int64Histogram);
+#[derive(Clone)]
+pub struct TimeHistogram {
+    timeline: Timeline,
+    hist: re_int_histogram::Int64Histogram,
+}
 
 impl std::ops::Deref for TimeHistogram {
     type Target = re_int_histogram::Int64Histogram;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.hist
     }
 }
 
 impl TimeHistogram {
+    pub fn new(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            hist: Default::default(),
+        }
+    }
+
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
     pub fn increment(&mut self, time: i64, n: u32) {
-        self.0.increment(time, n);
+        self.hist.increment(time, n);
     }
 
     pub fn decrement(&mut self, time: i64, n: u32) {
-        self.0.decrement(time, n);
+        self.hist.decrement(time, n);
     }
 
     pub fn min_opt(&self) -> Option<TimeInt> {
@@ -140,8 +154,8 @@ impl TimeHistogramPerTimeline {
     }
 
     #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
-        self.times.keys()
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = Timeline> {
+        self.times.values().map(|h| h.timeline())
     }
 
     #[inline]
@@ -201,7 +215,10 @@ impl TimeHistogramPerTimeline {
     fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        let histogram = self.times.entry(*timeline.name()).or_default();
+        let histogram = self
+            .times
+            .entry(*timeline.name())
+            .or_insert_with(|| TimeHistogram::new(*timeline));
         for &time in times {
             histogram.increment(time, n);
         }

@@ -177,11 +177,12 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<Absolu
 #[cfg(test)]
 mod tests {
     use re_chunk_store::AbsoluteTimeRange;
+    use re_log_types::Timeline;
 
     use super::*;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<AbsoluteTimeRange> {
-        let mut time_histogram = TimeHistogram::default();
+        let mut time_histogram = TimeHistogram::new(Timeline::log_tick());
         for &time in times {
             time_histogram.increment(time, 1);
         }
