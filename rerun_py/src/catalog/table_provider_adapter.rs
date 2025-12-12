@@ -27,7 +27,7 @@ impl PyTableProviderAdapterInternal {
     }
 }
 
-#[pymethods]
+#[pymethods] // NOLINT: ignore[py-mthd-str]
 impl PyTableProviderAdapterInternal {
     fn __datafusion_table_provider__<'py>(
         &self,

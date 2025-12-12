@@ -410,7 +410,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         view = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
-        good_segments = metadata_table.df().filter(col("success"))
+        good_segments = segment_table.filter(col("success"))
         view = dataset.filter_segments(good_segments)
 
         # Read data from the filtered view
