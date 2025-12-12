@@ -543,7 +543,7 @@ async fn load_chunks(
         return Ok(());
     }
 
-    re_log::debug!("Requesting {} chunks from server…", batch.num_rows());
+    re_log::trace!("Requesting {} chunks from server…", batch.num_rows());
 
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
@@ -575,7 +575,7 @@ async fn load_chunks(
         }
     }
 
-    re_log::debug!("Finished downloading {} chunks.", batch.num_rows());
+    re_log::trace!("Finished downloading {} chunks.", batch.num_rows());
 
     Ok(())
 }
