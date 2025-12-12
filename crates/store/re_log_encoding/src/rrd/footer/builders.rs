@@ -52,6 +52,11 @@ pub struct RrdManifestBuilder {
     // this more generic to accommodate for other contexts (e.g. chunk keys in Redap and OSS).
     column_byte_sizes_excluding_headers: Vec<u64>,
 
+    /// Each row indicates the *uncompressed* size in bytes of the chunk in the backing storage, in number of bytes.
+    ///
+    /// This _excludes_ the outer [`crate::MessageHeader`] frame.
+    column_byte_sizes_uncompressed_excluding_headers: Vec<u64>,
+
     /// Each row is an entity path.
     column_entity_paths: Vec<EntityPath>,
 
@@ -74,6 +79,7 @@ impl RrdManifestBuilder {
         &mut self,
         chunk_batch: &re_sorbet::ChunkBatch,
         byte_span_excluding_header: re_span::Span<u64>,
+        byte_size_uncompressed_excluding_header: u64,
     ) -> CodecResult<()> {
         self.sorbet_schema.add_chunk(chunk_batch);
 
@@ -86,6 +92,8 @@ impl RrdManifestBuilder {
             .push(byte_span_excluding_header.start);
         self.column_byte_sizes_excluding_headers
             .push(byte_span_excluding_header.len);
+        self.column_byte_sizes_uncompressed_excluding_headers
+            .push(byte_size_uncompressed_excluding_header);
         self.column_entity_paths.push(chunk.entity_path().clone());
 
         if chunk.is_static() {
@@ -232,6 +240,7 @@ impl RrdManifestBuilder {
             column_chunk_num_rows: _,  // always set, no need for padding
             column_byte_offsets_excluding_headers: _, // always set, no need for padding
             column_byte_sizes_excluding_headers: _, // always set, no need for padding
+            column_byte_sizes_uncompressed_excluding_headers: _, // always set, no need for padding
             column_entity_paths: _,    // always set, no need for padding
             columns_static,
             columns_temporal,
@@ -272,6 +281,7 @@ impl RrdManifestBuilder {
             [
                 RrdManifest::field_chunk_byte_offset(), //
                 RrdManifest::field_chunk_byte_size(),
+                RrdManifest::field_chunk_byte_size_uncompressed(),
             ],
             self.index_fields(),
         )
@@ -302,6 +312,7 @@ impl RrdManifestBuilder {
             column_chunk_num_rows,
             column_byte_offsets_excluding_headers,
             column_byte_sizes_excluding_headers,
+            column_byte_sizes_uncompressed_excluding_headers,
             column_entity_paths,
             columns_static,
             columns_temporal,
@@ -323,6 +334,9 @@ impl RrdManifestBuilder {
             Arc::new(UInt64Array::from(column_byte_offsets_excluding_headers)) as ArrayRef;
         let column_byte_sizes =
             Arc::new(UInt64Array::from(column_byte_sizes_excluding_headers)) as ArrayRef;
+        let column_byte_sizes_uncompressed = Arc::new(UInt64Array::from(
+            column_byte_sizes_uncompressed_excluding_headers,
+        )) as ArrayRef;
 
         let column_entity_paths = Arc::new(StringArray::from_iter_values(
             column_entity_paths
@@ -356,6 +370,7 @@ impl RrdManifestBuilder {
             column_chunk_num_rows,
             column_byte_offsets,
             column_byte_sizes,
+            column_byte_sizes_uncompressed,
         ]
         .into_iter()
         .chain(columns_static)

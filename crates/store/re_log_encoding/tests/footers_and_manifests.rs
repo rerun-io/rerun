@@ -11,6 +11,7 @@ use re_log_encoding::{
 };
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
+use re_protos::common::v1alpha1::DataframePart;
 use re_protos::external::prost::Message as _;
 
 #[test]
@@ -22,12 +23,19 @@ fn simple_manifest() {
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch).unwrap();
             let chunk_byte_size = chunk_batch.heap_size_bytes().unwrap();
 
+            let ipc = DataframePart::from(&msg.batch);
+            let chunk_byte_size_uncompressed = ipc.encoded_len() as u64;
+
             let chunk_byte_span_excluding_header = re_span::Span {
                 start: byte_offset_excluding_header,
                 len: chunk_byte_size,
             };
             builder
-                .append(&chunk_batch, chunk_byte_span_excluding_header)
+                .append(
+                    &chunk_batch,
+                    chunk_byte_span_excluding_header,
+                    chunk_byte_size_uncompressed,
+                )
                 .unwrap();
 
             byte_offset_excluding_header += chunk_byte_size;

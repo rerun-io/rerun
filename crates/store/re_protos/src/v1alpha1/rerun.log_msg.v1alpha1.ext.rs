@@ -339,6 +339,16 @@ impl From<re_log_types::BlueprintActivationCommand>
     }
 }
 
+impl crate::log_msg::v1alpha1::log_msg::Msg {
+    pub fn byte_size_uncompressed(&self) -> u64 {
+        match self {
+            Self::SetStoreInfo(_) => 0,
+            Self::ArrowMsg(msg) => msg.uncompressed_size,
+            Self::BlueprintActivationCommand(_) => 0,
+        }
+    }
+}
+
 // IMPORTANT: TryFrom<crate::log_msg::v1alpha1::BlueprintActivationCommand> for
 // re_log_types::BlueprintActivationCommand is not tricky because of the `ApplicationId` in
 // `StoreId`, so we don't implement it here.

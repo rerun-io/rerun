@@ -4,6 +4,7 @@ expression: rrd_manifest_batch.format_schema_snapshot()
 ---
 chunk_byte_offset: u64
 chunk_byte_size: u64
+chunk_byte_size_uncompressed: u64
 chunk_entity_path: Utf8
 chunk_id: FixedSizeBinary[16]
 chunk_is_static: bool

@@ -74,6 +74,8 @@ pub struct RrdFooter {
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ chunk_byte_size                               ┆ 962                              ┆ 464                              │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ chunk_byte_size_uncompressed                  ┆ 3981                             ┆ 2509                             │
+/// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ example_MyPoints:colors:has_static_data       ┆ false                            ┆ true                             │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ example_MyPoints:labels:has_static_data       ┆ false                            ┆ true                             │
@@ -102,7 +104,7 @@ pub struct RrdFooter {
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ elapsed_time:example_MyPoints:points:end      ┆ PT40S                            ┆ null                             │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ elapsed_time:example_MyPoints:points:num_rows ┆ 1                                ┆ 0                                │
+/// │ elapsed_time:example_MyPoints:points:num_rows ┆ 3                                ┆ 0                                │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ frame_nr:example_MyPoints:colors:start        ┆ 20                               ┆ null                             │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -114,7 +116,7 @@ pub struct RrdFooter {
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ frame_nr:example_MyPoints:points:end          ┆ 40                               ┆ null                             │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ frame_nr:example_MyPoints:points:num_rows     ┆ 1                                ┆ 0                                │
+/// │ frame_nr:example_MyPoints:points:num_rows     ┆ 3                                ┆ 0                                │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ log_time:example_MyPoints:colors:start        ┆ 1970-01-01T00:00:00.000000020    ┆ null                             │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -126,7 +128,7 @@ pub struct RrdFooter {
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 /// │ log_time:example_MyPoints:points:end          ┆ 1970-01-01T00:00:00.000000040    ┆ null                             │
 /// ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ log_time:example_MyPoints:points:num_rows     ┆ 1                                ┆ 0                                │
+/// │ log_time:example_MyPoints:points:num_rows     ┆ 3                                ┆ 0                                │
 /// └───────────────────────────────────────────────┴──────────────────────────────────┴──────────────────────────────────┘
 /// ```
 ///
@@ -641,6 +643,7 @@ impl RrdManifest {
         _ = self.col_chunk_entity_path()?;
         _ = self.col_chunk_byte_offset()?;
         _ = self.col_chunk_byte_size()?;
+        _ = self.col_chunk_byte_size_uncompressed()?;
         Ok(())
     }
 
@@ -697,6 +700,7 @@ impl RrdManifest {
                         | Self::FIELD_CHUNK_IS_STATIC
                         | Self::FIELD_CHUNK_NUM_ROWS
                         | Self::FIELD_CHUNK_BYTE_SIZE
+                        | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
                         | Self::FIELD_CHUNK_BYTE_OFFSET
                         | Self::FIELD_CHUNK_ENTITY_PATH => {}
 
@@ -1005,6 +1009,7 @@ impl RrdManifest {
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
     pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
+    pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
 
     pub fn field_chunk_id() -> Field {
         use re_log_types::external::re_types_core::Loggable as _;
@@ -1045,6 +1050,10 @@ impl RrdManifest {
 
     pub fn field_chunk_byte_size() -> Field {
         Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE)
+    }
+
+    pub fn field_chunk_byte_size_uncompressed() -> Field {
+        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED)
     }
 
     pub fn field_index_start(timeline: &Timeline, desc: Option<&ComponentDescriptor>) -> Field {
@@ -1318,6 +1327,32 @@ impl RrdManifest {
     ///
     /// This is free.
     pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+    }
+
+    /// Returns the raw Arrow data for the *uncompressed* byte-length column.
+    pub fn col_chunk_byte_size_uncompressed_raw(&self) -> CodecResult<&UInt64Array> {
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+        let name = Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED;
+        self.data
+            .column_by_name(name)
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot read column: '{name}' is missing from batch",),
+                ))
+            })?
+            .downcast_array_ref::<UInt64Array>()
+            .ok_or_else(|| {
+                crate::CodecError::ArrowDeserialization(arrow::error::ArrowError::SchemaError(
+                    format!("cannot downcast column: '{name}' is not a UInt64Array",),
+                ))
+            })
+    }
+
+    /// Returns an iterator over the decoded Arrow data for the *uncompressed* byte-length column.
+    ///
+    /// This is free.
+    pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
         Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
     }
 }
