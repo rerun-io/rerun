@@ -516,6 +516,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
             let component_map_component =
                 blueprint_archetypes::VisualizerInstruction::descriptor_component_map().component;
 
+            // TODO: fix active visualizer list if there's overrides but we don't have the active visualizers yet
+
             if let Some(visualizer_instruction_ids) = blueprint
                 .latest_at(
                     blueprint_query,
