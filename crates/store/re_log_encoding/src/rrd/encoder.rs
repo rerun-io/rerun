@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 
 use re_build_info::CrateVersion;
-use re_chunk::{ChunkError, ChunkResult};
+use re_chunk::{ChunkError, ChunkResult, external::re_byte_size::SizeBytes as _};
 use re_log_types::{LogMsg, StoreId};
 use re_sorbet::SorbetError;
 
@@ -148,6 +148,10 @@ impl FooterState {
                 // application layer where one can accessed the parsed, unmigrated data.
                 let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch)?;
 
+                // Not a totally accurate value (and it's unclear what would an accurate value even
+                // look like), but that's fine: this doesn't need to be perfectly precise.
+                let byte_size_uncompressed = msg.batch.heap_size_bytes();
+
                 // See `self.recording_id_scope` for some explanations.
                 let recording_id = self
                     .recording_id_scope
@@ -162,7 +166,11 @@ impl FooterState {
                 } = self.manifests.entry(recording_id.clone()).or_default();
 
                 recording_ids.push(recording_id);
-                manifest.append(&chunk_batch, byte_span_excluding_header)?;
+                manifest.append(
+                    &chunk_batch,
+                    byte_span_excluding_header,
+                    byte_size_uncompressed,
+                )?;
             }
 
             LogMsg::BlueprintActivationCommand(_) => {}
