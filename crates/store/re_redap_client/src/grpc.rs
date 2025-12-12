@@ -551,7 +551,7 @@ async fn load_chunks(
         for (chunk, _partition_id) in chunks? {
             if !chunk.is_static() && !cfg!(target_arch = "wasm32") {
                 // TODO: Remove sleep
-                std::thread::sleep(std::time::Duration::from_millis(30));
+                // std::thread::sleep(std::time::Duration::from_millis(30));
             }
             if tx
                 .send(
