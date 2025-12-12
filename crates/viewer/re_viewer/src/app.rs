@@ -756,9 +756,9 @@ impl App {
                     if let Some(fragment) = url.fragment_mut() {
                         fragment.when = time_ctrl.and_then(|time_ctrl| {
                             Some((
-                                *time_ctrl.timeline().name(),
+                                *time_ctrl.timeline_name(),
                                 re_log_types::TimeCell {
-                                    typ: time_ctrl.time_type(),
+                                    typ: time_ctrl.time_type()?,
                                     value: time_ctrl.last_paused_time()?.floor().into(),
                                 },
                             ))
@@ -2004,9 +2004,10 @@ impl App {
 
                             if let Some(time_ctrl) = &time_ctrl
                                 && let Some(time_selection) = time_ctrl.time_selection()
+                                && let Some(timeline) = time_ctrl.timeline()
                             {
                                 fragment.time_selection = Some(re_uri::TimeSelection {
-                                    timeline: *time_ctrl.timeline(),
+                                    timeline: *timeline,
                                     range: time_selection.to_int(),
                                 });
                             } else {

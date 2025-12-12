@@ -514,7 +514,7 @@ pub fn timeline_button_to(
     text: impl Into<egui::WidgetText>,
     timeline_name: &TimelineName,
 ) -> egui::Response {
-    let is_selected = ctx.time_ctrl.timeline().name() == timeline_name;
+    let is_selected = ctx.time_ctrl.timeline_name() == timeline_name;
 
     let response = ui
         .selectable_label(is_selected, text)
