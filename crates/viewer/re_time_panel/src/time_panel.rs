@@ -548,7 +548,7 @@ impl TimePanel {
                 &self.time_ranges_ui,
                 ui,
                 &time_area_painter,
-                timeline_rect.top()..=timeline_rect.bottom(),
+                timeline_rect.y_range(),
                 time_type,
                 ctx.app_options().timestamp_format,
             );

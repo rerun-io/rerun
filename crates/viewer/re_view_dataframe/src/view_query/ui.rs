@@ -153,7 +153,7 @@ impl Query {
         }
 
         if should_display_time_range
-            && Some(ctx.time_ctrl.timeline_name()) == timeline.map(|t| t.name())
+            && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
         {
             ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
                 start, end,
