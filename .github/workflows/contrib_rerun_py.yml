@@ -84,4 +84,4 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug pixi run -e wheel-test-min docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          RUST_LOG=debug pixi run uvpy docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build

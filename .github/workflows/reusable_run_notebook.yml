@@ -59,7 +59,7 @@ jobs:
       - name: Get version
         id: get-version
         run: |
-          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
+          pixi run 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         run: |
