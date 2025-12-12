@@ -46,6 +46,8 @@ fn test_column_header_tooltips() {
         .map(|(_, name)| *name)
         .collect::<Vec<_>>();
 
+    let mut all_results = egui_kittest::SnapshotResults::default();
+
     for (desc, field, migrated_field, description) in itertools::izip!(
         sorbet_batch.sorbet_schema().columns.clone(),
         &fields,
@@ -72,8 +74,12 @@ fn test_column_header_tooltips() {
                 "header_tooltip_{description}{}",
                 if show_extras { "_with_extras" } else { "" }
             ));
+
+            all_results.extend(harness.take_snapshot_results());
         }
     }
+
+    all_results.unwrap();
 }
 
 fn test_fields() -> Vec<(Field, &'static str)> {

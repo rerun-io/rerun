@@ -447,6 +447,8 @@ mod tests {
 
     #[test]
     fn test_filter_ui() {
+        let mut all_results = egui_kittest::SnapshotResults::default();
+
         for (filter, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
                 .with_size(egui::Vec2::new(800.0, 80.0))
@@ -467,11 +469,17 @@ mod tests {
             harness.run();
 
             harness.snapshot(format!("filter_ui_{test_name}"));
+
+            all_results.extend(harness.take_snapshot_results());
         }
+
+        all_results.unwrap();
     }
 
     #[test]
     fn test_popup_ui() {
+        let mut all_results = egui_kittest::SnapshotResults::default();
+
         for (mut filter_op, test_name) in test_cases() {
             let mut harness = egui_kittest::Harness::builder()
                 .with_size(egui::Vec2::new(400.0, 400.0))
@@ -502,7 +510,11 @@ mod tests {
             harness.run();
 
             harness.snapshot(format!("popup_ui_{test_name}"));
+
+            all_results.extend(harness.take_snapshot_results());
         }
+
+        all_results.unwrap();
     }
 
     #[test]
