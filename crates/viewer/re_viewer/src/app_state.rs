@@ -214,7 +214,7 @@ impl AppState {
         re_tracing::profile_function!();
 
         if let Some(time_ctrl) = self.time_controls.get(store_context.recording.store_id()) {
-            prefetch_chunks(rx_log, store_context.recording, time_ctrl);
+            prefetch_chunks(startup_options, rx_log, store_context.recording, time_ctrl);
         }
 
         // check state early, before the UI has a chance to close these popups
@@ -856,20 +856,32 @@ impl AppState {
 }
 
 fn prefetch_chunks(
+    startup_options: &StartupOptions,
     rx_log: &LogReceiverSet,
     recording: &EntityDb,
     time_ctrl: &TimeControl,
 ) -> Option<()> {
     re_tracing::profile_function!();
+
+    let memory_limit = startup_options.memory_limit.max_bytes.unwrap_or(i64::MAX);
+    let current = re_memory::MemoryUse::capture().used().unwrap_or(0);
+
+    let budget_bytes = memory_limit.saturating_sub(current);
+
+    if budget_bytes <= 0 {
+        return None;
+    }
+
     let current_time = time_ctrl.time_i64()?;
     let timeline = time_ctrl.timeline();
     let buffer_time = match timeline.typ() {
-        re_log_types::TimeType::Sequence => 30,
-        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 2_000_000_000,
+        re_log_types::TimeType::Sequence => 10,
+        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 1_000_000_000,
     };
     let query_range = AbsoluteTimeRange::new(
         current_time.saturating_sub(buffer_time),
         current_time.saturating_add(buffer_time),
+        // re_chunk::TimeInt::MAX,
     );
     let data_source = recording.data_source.as_ref()?;
     let rrd_manifest = recording.rrd_manifest_index();
@@ -884,7 +896,11 @@ fn prefetch_chunks(
     rx_log.for_each(|rx| {
         if rx.source() == data_source {
             found_source = true;
-            match rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range) {
+
+            let rb =
+                rrd_manifest.prefetch_chunks(time_ctrl.timeline(), query_range, budget_bytes as _);
+
+            match rb {
                 Ok(rb) => {
                     if 0 < rb.num_rows() {
                         re_log::trace!("Asking for {} more chunks", rb.num_rows());
@@ -892,7 +908,7 @@ fn prefetch_chunks(
                     }
                 }
                 Err(err) => {
-                    re_log::debug_once!("time_range_missing_chunks failed: {err}");
+                    re_log::debug_once!("prefetch_chunks failed: {err}");
                 }
             }
         }
