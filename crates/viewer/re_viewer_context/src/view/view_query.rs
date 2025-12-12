@@ -19,7 +19,7 @@ pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 pub type VisualizerInstructionId = String;
 
 /// A single component mapping for a visualizer instruction.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct VisualizerComponentMapping {
     pub source: ComponentIdentifier,
     pub target: ComponentIdentifier,

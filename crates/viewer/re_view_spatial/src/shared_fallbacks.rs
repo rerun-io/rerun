@@ -146,11 +146,12 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                 // However, we're now interested in something that primarily lives on the "regular" store (with optional blueprint overrides). Therefore, we must take care to use the store query.
                 let query = ctx.view_ctx.current_query();
 
+                let visualizer_instruction = VisualizerInstruction::placeholder(data_result); // coordinate frames aren't associated with any particular visualizer
                 let results = data_result
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
                         &query,
-                        &VisualizerInstruction::placeholder(data_result),
+                        &visualizer_instruction,
                     );
 
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
