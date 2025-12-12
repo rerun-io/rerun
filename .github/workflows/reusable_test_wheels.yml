@@ -185,7 +185,7 @@ jobs:
       - name: Check for release checklist
         if: ${{ inputs.FAST }}
         # Only check that the release checklist executes successfully
-        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run uv python tests/python/release_checklist/main.py --stdout > /dev/null
+        run: RUST_LOG=warn RERUN_STRICT=1 PYTHONWARNINGS=error pixi run uvpy tests/python/release_checklist/main.py --stdout > /dev/null
 
       - name: Build C++ snippets
         if: ${{ !inputs.FAST }}
