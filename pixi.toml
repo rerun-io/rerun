@@ -501,6 +501,7 @@ ninja = "1.11.1.*"
 prettier = ">=3.6"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
+rich = "14.2.0"
 semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomli = "=2.3.0"
