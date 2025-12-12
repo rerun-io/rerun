@@ -278,6 +278,7 @@ mod tests {
         time_range: TimeRange,
     }
 
+    #[must_use]
     fn run_snapshot(
         time_type: TimeType,
         timeline_range: RangeInclusive<i64>,
@@ -287,7 +288,7 @@ mod tests {
             current_time,
             mut time_range,
         }: SnapshotOptions,
-    ) {
+    ) -> egui_kittest::SnapshotResults {
         let mut harness = Harness::builder().build_ui(|ui| {
             crate::apply_style_and_install_loaders(ui.ctx());
 
@@ -312,6 +313,7 @@ mod tests {
 
         harness.fit_contents();
         harness.snapshot(format!("relative_time_range_{name}_{time_type}"));
+        harness.take_snapshot_results()
     }
 
     fn test_date_time(add_secs: i64) -> i64 {
@@ -321,6 +323,8 @@ mod tests {
 
     #[test]
     fn test_relative_time_range_ui() {
+        let mut all_results = egui_kittest::SnapshotResults::default();
+
         let timestamp_format = TimestampFormat::utc().with_hide_today_date(true);
         for (time_type, time_range) in [
             (TimeType::Sequence, 0..=100),
@@ -400,8 +404,15 @@ mod tests {
                     },
                 },
             ] {
-                run_snapshot(time_type, time_range.clone(), timestamp_format, o);
+                all_results.extend(run_snapshot(
+                    time_type,
+                    time_range.clone(),
+                    timestamp_format,
+                    o,
+                ));
             }
         }
+
+        all_results.unwrap();
     }
 }
