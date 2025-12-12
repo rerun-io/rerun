@@ -24,7 +24,10 @@ pub use highlights::{
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use spawn_heuristics::{RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::{SystemExecutionOutput, VisualizerExecutionErrorState};
-pub use view_class::{ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState, ViewStateExt};
+pub use view_class::{
+    RecommendedVisualizers, ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewState,
+    ViewStateExt,
+};
 pub use view_class_placeholder::ViewClassPlaceholder;
 pub use view_class_registry::{ViewClassRegistry, ViewClassRegistryError, ViewSystemRegistrator};
 pub use view_context::ViewContext;

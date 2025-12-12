@@ -1,5 +1,6 @@
 use nohash_hasher::IntSet;
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
+use re_log_types::hash::Hash64;
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
 use re_types_core::{Archetype, ComponentIdentifier};
@@ -58,7 +59,6 @@ pub fn range_with_blueprint_resolved_data<'a>(
         // Apply mapping to the results.
         for mapping in &visualizer_instruction.component_mappings {
             if let Some(mut chunks) = results.components.remove(&mapping.source) {
-                // TODO: revisit
                 for chunk in &mut chunks {
                     *chunk = chunk.with_renamed_component(mapping.source, mapping.target);
                 }
@@ -74,6 +74,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
         overrides,
         results,
         defaults: &ctx.query_result.component_defaults,
+        component_mappings_hash: Hash64::hash(&visualizer_instruction.component_mappings),
     }
 }
 
@@ -116,8 +117,8 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let results = {
         // Apply component mappings when querying the recording.
         for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.source) {
-                components.insert(mapping.target);
+            if components.remove(&mapping.target) {
+                components.insert(mapping.source);
             }
         }
         let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
@@ -148,6 +149,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         ctx,
         query: latest_at_query.clone(),
         data_result,
+        component_mappings_hash: Hash64::hash(&visualizer_instruction.component_mappings),
     }
 }
 

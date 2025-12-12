@@ -17,9 +17,9 @@ use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, PerVisualizerInViewClass,
-    QueryContext, RecommendedView, SmallVisualizerSet, ViewClass, ViewClassExt as _,
-    ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    QueryContext, RecommendedView, RecommendedVisualizers, SmallVisualizerSet, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -321,7 +321,7 @@ impl ViewClass for SpatialView3D {
         entity_path: &EntityPath,
         visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
         indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
-    ) -> SmallVisualizerSet {
+    ) -> RecommendedVisualizers {
         let axes_viz = TransformAxes3DVisualizer::identifier();
         let camera_viz = CamerasVisualizer::identifier();
 
@@ -356,7 +356,7 @@ impl ViewClass for SpatialView3D {
             }
         }
 
-        enabled_visualizers
+        RecommendedVisualizers::default_many(enabled_visualizers)
     }
 
     fn spawn_heuristics(
