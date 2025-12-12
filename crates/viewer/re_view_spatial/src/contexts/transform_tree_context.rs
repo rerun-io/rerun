@@ -604,7 +604,7 @@ mod tests {
                     RecommendedView::new_single_entity("some/path"),
                 ));
                 ctx.save_blueprint_archetype(
-                    ViewContents::override_path_for_entity(view_id, &"some/path".into()),
+                    ViewContents::override_base_path_for_entity(view_id, &"some/path".into()),
                     &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id
@@ -622,7 +622,7 @@ mod tests {
                     RecommendedView::new_single_entity("has_frame"),
                 ));
                 ctx.save_blueprint_archetype(
-                    ViewContents::override_path_for_entity(view_id, &"has_frame".into()),
+                    ViewContents::override_base_path_for_entity(view_id, &"has_frame".into()),
                     &CoordinateFrame::new("overridden_frame"),
                 );
                 view_id

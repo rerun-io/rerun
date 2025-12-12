@@ -16,7 +16,35 @@ use crate::{
 // TODO: That can probably go away?
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 
-pub type VisualizerInstructionId = String;
+/// Unique identifier for a visualizer instruction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VisualizerInstructionId(uuid::Uuid);
+
+impl VisualizerInstructionId {
+    /// Creates a new random [`VisualizerInstructionId`].
+    #[expect(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self(uuid::Uuid::new_v4())
+    }
+}
+
+impl From<re_sdk_types::blueprint::components::VisualizerInstructionId>
+    for VisualizerInstructionId
+{
+    #[inline]
+    fn from(v: re_sdk_types::blueprint::components::VisualizerInstructionId) -> Self {
+        Self(v.0.into())
+    }
+}
+
+impl From<VisualizerInstructionId>
+    for re_sdk_types::blueprint::components::VisualizerInstructionId
+{
+    #[inline]
+    fn from(v: VisualizerInstructionId) -> Self {
+        Self(v.0.into())
+    }
+}
 
 /// A single component mapping for a visualizer instruction.
 #[derive(Clone, Debug, Hash)]
@@ -30,7 +58,7 @@ pub type VisualizerComponentMappings = SmallVec<[VisualizerComponentMapping; 2]>
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
-    pub id: VisualizerInstructionId, // TODO(andreas,aedm): rly a string?
+    pub id: VisualizerInstructionId,
 
     pub visualizer_type: ViewSystemIdentifier,
     pub override_path: EntityPath,
@@ -61,11 +89,14 @@ impl VisualizerInstruction {
         }
     }
 
+    /// The override path for this visualizer instruction.
+    ///
+    /// Returns `None` if this isn't yet a persisted visualizer instruction.
     pub fn override_path_for(
         override_base_path: &EntityPath,
         id: &VisualizerInstructionId,
     ) -> EntityPath {
-        override_base_path.join(&EntityPath::from_single_string(id.as_str().to_owned()))
+        override_base_path.join(&EntityPath::from_single_string(id.0.to_string()))
     }
 
     /// The placeholder visualizer instruction implies to queries that they shouldn't query overrides from any specific visualizer id,
@@ -73,7 +104,7 @@ impl VisualizerInstruction {
     /// This is used for special properties like `EntityBehavior`, `CoordinateFrame` and other "overrides" that don't affect any concrete visualizer.
     pub fn placeholder(data_result: &DataResult) -> Self {
         Self {
-            id: "___PLACEHOLDER___".into(),
+            id: VisualizerInstructionId(uuid::Uuid::nil()),
             visualizer_type: "___PLACEHOLDER___".into(),
             component_overrides: IntSet::default(),
             override_path: data_result.override_base_path.clone(),
@@ -172,7 +203,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, EntityBehavior::descriptor_visible().component) {
+        if self.has_base_override(ctx, EntityBehavior::descriptor_visible().component) {
             let parent_visibility = self
                 .entity_path
                 .parent()
@@ -207,7 +238,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, EntityBehavior::descriptor_interactive().component) {
+        if self.has_base_override(ctx, EntityBehavior::descriptor_interactive().component) {
             let parent_interactivity = self
                 .entity_path
                 .parent()
@@ -229,26 +260,14 @@ impl DataResult {
         );
     }
 
-    // TODO: only checks first visualizer instruction. plz move up to instruction.
-    fn has_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
-        self.visualizer_instructions
-            .first()
-            .is_some_and(|instruction| {
-                instruction
-                    .component_overrides
-                    .get(&component)
-                    .is_some_and(|component| {
-                        ctx.store_context
-                            .blueprint
-                            .latest_at(
-                                ctx.blueprint_query,
-                                &instruction.override_path,
-                                [*component],
-                            )
-                            .get(*component)
-                            .is_some()
-                    })
-            })
+    /// Check whether there is an override on the data result itself (as opposed to visualizer specific overrides).
+    /// (this only applies to things like visibility, interactivity, etc.)
+    fn has_base_override(&self, ctx: &ViewerContext<'_>, component: ComponentIdentifier) -> bool {
+        ctx.store_context
+            .blueprint
+            .latest_at(ctx.blueprint_query, &self.override_base_path, [component])
+            .get(component)
+            .is_some()
     }
 
     /// Shorthand for checking for visibility on data overrides.

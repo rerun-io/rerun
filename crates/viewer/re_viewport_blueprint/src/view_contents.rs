@@ -20,6 +20,7 @@ use re_viewer_context::{
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, QueryRange, ViewClassRegistry,
     ViewId, ViewState, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
     VisualizerComponentMapping, VisualizerComponentMappings, VisualizerInstruction,
+    VisualizerInstructionId,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -121,7 +122,7 @@ impl ViewContents {
     }
 
     /// Computes the override path for a given entity in a given view.
-    pub fn override_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
+    pub fn override_base_path_for_entity(id: ViewId, entity_path: &EntityPath) -> EntityPath {
         Self::blueprint_entity_path_for_id(id)
             .join(&EntityPath::from_single_string(Self::OVERRIDES_PREFIX))
             .join(entity_path)
@@ -435,7 +436,7 @@ impl QueryExpressionEvaluator<'_> {
                     tree_prefix_only: !matches_filter,
                     visible: true, // Determined later during `update_overrides_recursive`.
                     interactive: true, // Determined later during `update_overrides_recursive`.
-                    override_base_path: ViewContents::override_path_for_entity(
+                    override_base_path: ViewContents::override_base_path_for_entity(
                         self.view_id,
                         entity_path,
                     ),
@@ -526,8 +527,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 node.data_result.visualizer_instructions = visualizer_instruction_ids
                     .into_iter()
                     .map(|instruction_id| {
-                        let instruction_id = instruction_id.0.into();
-
+                        let instruction_id = instruction_id.into();
                         let visualizer_override_path = VisualizerInstruction::override_path_for(
                             &node.data_result.override_base_path,
                             &instruction_id,
@@ -578,10 +578,10 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     )
                     .0 // TODO
                     .into_iter()
-                    .enumerate()
-                    .map(|(i, (visualizer_type, component_mappings))| {
+                    .map(|(visualizer_type, component_mappings)| {
                         VisualizerInstruction::new(
-                            i.to_string(), // Make up a id that's consistent. TODO: should the id be provided by `choose_default_visualizers`?
+                            // We make up a new UUID every frame here. This is fine as lon as we stop running heuristics the moment we set any value.
+                            VisualizerInstructionId::new(),
                             visualizer_type,
                             &node.data_result.override_base_path,
                             component_mappings,

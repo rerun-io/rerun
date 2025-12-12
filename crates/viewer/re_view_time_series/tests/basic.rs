@@ -399,7 +399,7 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
 
         if partial_range {
             let override_path =
-                ViewContents::override_path_for_entity(view.id, &EntityPath::from("scalars"));
+                ViewContents::override_base_path_for_entity(view.id, &EntityPath::from("scalars")); // TODO: broken.
             ctx.save_blueprint_archetype(
                 override_path.clone(),
                 &re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([

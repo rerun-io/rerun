@@ -173,16 +173,18 @@ fn setup_blueprint(
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
-        // Overrides:
-        let cos_override_path =
-            ViewContents::override_path_for_entity(view.id, &EntityPath::from("plots/cos"));
-        ctx.save_blueprint_archetype(
-            cos_override_path.clone(),
-            // Override which visualizer to use for the `cos` plot.
-            &blueprint::archetypes::ActiveVisualizers::new(["SeriesPoints"]),
+        let points_visualizer = re_viewer_context::VisualizerInstruction::new(
+            re_viewer_context::VisualizerInstructionId::new(),
+            "SeriesPoints".into(),
+            &ViewContents::override_base_path_for_entity(view.id, &EntityPath::from("plots/cos")),
+            re_viewer_context::VisualizerComponentMappings::default(),
         );
+        points_visualizer.write_instruction_to_blueprint(ctx);
+        // TODO: haven't written active visualizers out yet.
+
+        // Overrides:
         ctx.save_blueprint_archetype(
-            cos_override_path,
+            points_visualizer.override_path,
             // Override color and markers for the `cos` plot.
             &archetypes::SeriesPoints::default()
                 .with_colors([(0, 255, 0)])

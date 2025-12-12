@@ -105,7 +105,7 @@ fn setup_blueprint(
 
         if let Some(arrow_overrides) = arrow_overrides {
             let override_path =
-                ViewContents::override_path_for_entity(view.id, &EntityPath::from("arrows"));
+                ViewContents::override_base_path_for_entity(view.id, &EntityPath::from("arrows")); // TODO: broken.
             ctx.save_blueprint_archetype(override_path.clone(), arrow_overrides);
         }
 

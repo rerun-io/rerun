@@ -48,7 +48,7 @@ fn setup_blueprint(
         }
 
         if let Some(color_override) = color_override {
-            let override_path = ViewContents::override_path_for_entity(view.id, entity_path);
+            let override_path = ViewContents::override_base_path_for_entity(view.id, entity_path); // TODO: broken.
             ctx.save_blueprint_archetype(override_path.clone(), color_override);
         }
 

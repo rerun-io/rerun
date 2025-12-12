@@ -3,7 +3,6 @@ use re_chunk::RowId;
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
-use re_sdk_types::external::uuid;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -13,7 +12,7 @@ use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
     ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
-    VisualizerInstruction, VisualizerSystem,
+    VisualizerInstruction, VisualizerInstructionId, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -108,7 +107,7 @@ pub fn visualizer_ui_impl(
                     active_visualizers
                         .iter()
                         .filter(|v| &v.id != visualizer_id)
-                        .map(|v| v.id.as_str()),
+                        .map(|v| re_viewer_context::VisualizerInstructionId::from(v.id)),
                 );
 
                 ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
@@ -215,15 +214,6 @@ fn visualizer_components(
         query_shadowed_defaults,
         instruction,
     );
-
-    // Query component mappings
-    // TODO: maybe merge this into HybridLatestAtResults?
-    // let mut components = query_info.queried_components().collect::<IntSet<_>>();
-    // let mappings = query_overrides(
-    //     ctx.viewer_ctx,
-    //     visualizer_instruction,
-    //     components.iter().copied(),
-    // );
 
     let mut changed_component_mappings = vec![];
 
@@ -670,28 +660,21 @@ fn menu_add_new_visualizer(
             // To add a visualizer we have to do two things:
             // * add an element to the list of active visualizer ids
             // * add a visualizer type information for that new visualizer instruction
-
-            let new_id = uuid::Uuid::new_v4().to_string(); // TODO: figure out a better id scheme.
-
-            // TODO: just writing nonsense into the component map. Figure out how to get proper component mappings.
-            let component_mappings = re_viewer_context::VisualizerComponentMappings::default();
-
             let new_instruction = VisualizerInstruction::new(
-                new_id,
+                VisualizerInstructionId::new(),
                 *visualizer_type,
                 override_base_path,
-                component_mappings,
+                re_viewer_context::VisualizerComponentMappings::default(),
             );
 
             let archetype = ActiveVisualizers::new(
                 active_visualizers
                     .iter()
-                    .map(|v| &v.id)
-                    .chain(std::iter::once(&new_instruction.id))
-                    .map(|v| v.as_str()),
+                    .map(|v| v.id)
+                    .chain(std::iter::once(new_instruction.id))
+                    .map(|v| re_sdk_types::blueprint::components::VisualizerInstructionId::from(v)),
             );
             ctx.save_blueprint_archetype(override_base_path.clone(), &archetype);
-
             new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
 
             ui.close();

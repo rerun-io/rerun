@@ -180,11 +180,11 @@ fn test_transform_many_child_parent_relations_on_single_time_and_entity_with_coo
 
         // Override green and blue frames:
         ctx.save_blueprint_archetype(
-            ViewContents::override_path_for_entity(view_id, &"green".into()),
+            ViewContents::override_base_path_for_entity(view_id, &"green".into()), // TODO: broken.
             &archetypes::CoordinateFrame::new("green_frame"),
         );
         ctx.save_blueprint_archetype(
-            ViewContents::override_path_for_entity(view_id, &"blue".into()),
+            ViewContents::override_base_path_for_entity(view_id, &"blue".into()), // TODO: broken.
             &archetypes::CoordinateFrame::new("blue_frame"),
         );
 

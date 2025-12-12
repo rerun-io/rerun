@@ -357,7 +357,8 @@ fn setup_blueprint(
             let visible_time_range_list =
                 re_sdk_types::blueprint::archetypes::VisibleTimeRanges::new([green_time_range]);
             ctx.save_blueprint_archetype(
-                re_viewport_blueprint::ViewContents::override_path_for_entity(
+                // TODO: broken.
+                re_viewport_blueprint::ViewContents::override_base_path_for_entity(
                     view_id,
                     &"green".into(),
                 ),
