@@ -364,6 +364,17 @@ impl RedapServers {
         self.servers.values()
     }
 
+    pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
+        self.servers
+            .get(origin)
+            .and_then(|server| server.connection_registry.credentials(origin))
+            .is_some()
+    }
+
+    pub fn logout(&mut self) {
+        self.server_modal_ui.logout();
+    }
+
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
@@ -460,6 +471,12 @@ impl RedapServers {
 
     pub fn open_add_server_modal(&self) {
         self.command_sender.send(Command::OpenAddServerModal).ok();
+    }
+
+    pub fn open_edit_server_modal(&self, origin: re_uri::Origin) {
+        self.command_sender
+            .send(Command::OpenEditServerModal(origin))
+            .ok();
     }
 
     pub fn entry_ui(
