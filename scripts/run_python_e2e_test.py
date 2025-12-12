@@ -53,10 +53,10 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["uv", "sync", "--inexact", "--no-install-workspace", "--package"]
+        args = ["uv", "sync", "--inexact", "--no-install-package", "rerun-sdk"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
-            args.extend(["-e", example])
+            args.extend(["--package", example])
         subprocess.run(args, check=True)
         elapsed = time.time() - start_time
         print(f"uv sync in {elapsed:.1f} seconds")

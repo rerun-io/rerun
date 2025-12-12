@@ -10,10 +10,10 @@ use crate::build_examples::wait_for_output::wait_for_output;
 #[argh(subcommand, name = "install")]
 pub struct Install {
     #[argh(option, description = "include only examples in this channel")]
-    channel: Channel,
+    pub(crate) channel: Channel,
 
     #[argh(option, description = "run only these examples")]
-    examples: Vec<String>,
+    pub(crate) examples: Vec<String>,
 }
 
 impl Install {
@@ -33,7 +33,8 @@ impl Install {
         let mut cmd = Command::new("uv");
         cmd.arg("sync")
             .arg("--inexact")
-            .arg("--no-install-workspace");
+            .arg("--no-install-package")
+            .arg("rerun-sdk");
 
         for example in &examples {
             cmd.arg("--package").arg(&example.name);

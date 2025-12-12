@@ -21,7 +21,7 @@ fn main() {
         );
         eprintln!();
         eprintln!(
-            "       Then use `uv sync --inexact --no-install-workspace` to install other dependencies."
+            "       Then use `uv sync --inexact --no-install-package rerun-sdk` to install other dependencies."
         );
         eprintln!();
         eprintln!("       If you really need to build via uv, set RERUN_MATURIN_BUILD=1.");
