@@ -19,7 +19,7 @@ from rerun.catalog import CatalogClient
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
-from .Telemetry import Telemetry
+from .telemetry import Telemetry
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -421,6 +421,9 @@ def pytest_benchmark_update_json(
     )
 
     for bench in benchmarks:
+        if bench.stats is None:
+            continue
+
         attributes: dict[str, str] = {
             "test_name": bench.name,
             "test_group": bench.group or "default",
