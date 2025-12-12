@@ -61,13 +61,22 @@ def test_dataset_view_filter_segments_with_dataframe(
     assert view.segment_table().count() == len(test_segments)
 
 
+def sort_schema(schema: pa.Schema) -> pa.Schema:
+    """Sort schema fields by name for order-independent comparison."""
+    metadata = schema.metadata
+    sorted_fields = sorted(schema, key=lambda field: field.name)
+    return pa.schema(sorted_fields).with_metadata(metadata)
+
+
 def test_dataset_view_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     """Test filtering a dataset by entity paths."""
 
-    assert str(readonly_test_dataset.schema()) == snapshot()
+    schema = sort_schema(pa.schema(readonly_test_dataset.schema()))
+    assert str(schema) == snapshot()
 
     view = readonly_test_dataset.filter_contents(["/obj1/**"])
-    assert str(view.schema()) == snapshot()
+    schema = sort_schema(pa.schema(view.schema()))
+    assert str(schema) == snapshot()
 
 
 def test_dataset_view_reader(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:

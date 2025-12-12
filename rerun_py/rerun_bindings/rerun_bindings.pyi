@@ -187,6 +187,7 @@ class SchemaInternal:
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
     ) -> ComponentColumnDescriptor: ...
+    def __arrow_c_schema__(self) -> Any: ...
 
 class RecordingView:
     """
