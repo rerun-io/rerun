@@ -7,11 +7,10 @@ use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{
     Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, StreamFooter,
-    StreamFooterEntry, ToApplication as _,
+    StreamFooterEntry, ToApplication as _, ToTransport as _,
 };
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
-use re_protos::common::v1alpha1::DataframePart;
 use re_protos::external::prost::Message as _;
 
 #[test]
@@ -21,10 +20,22 @@ fn simple_manifest() {
         let mut byte_offset_excluding_header = 0;
         for msg in generate_recording_chunks(1) {
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch).unwrap();
-            let chunk_byte_size = chunk_batch.heap_size_bytes().unwrap();
 
-            let ipc = DataframePart::from(&msg.batch);
-            let chunk_byte_size_uncompressed = ipc.encoded_len() as u64;
+            let transport_uncompressed = msg
+                .to_transport((
+                    generate_recording_store_id(),
+                    re_log_encoding::Compression::Off,
+                ))
+                .unwrap();
+            let transport_compressed = msg
+                .to_transport((
+                    generate_recording_store_id(),
+                    re_log_encoding::Compression::LZ4,
+                ))
+                .unwrap();
+
+            let chunk_byte_size = transport_compressed.encoded_len() as u64;
+            let chunk_byte_size_uncompressed = transport_uncompressed.encoded_len() as u64;
 
             let chunk_byte_span_excluding_header = re_span::Span {
                 start: byte_offset_excluding_header,
