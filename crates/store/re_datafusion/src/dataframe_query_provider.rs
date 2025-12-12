@@ -511,7 +511,7 @@ fn create_request_batches(
             }
 
             // Split the large segment into multiple requests
-            let split_batches = split_overly_large_segment(&segment_id, &chunk_info, target_size)?;
+            let split_batches = split_large_segments(&segment_id, &chunk_info, target_size)?;
             for split_batch in split_batches {
                 request_batches.push(vec![split_batch]);
             }
@@ -532,7 +532,7 @@ fn create_request_batches(
 
 /// Split an overly large segment into multiple smaller requests. Each request will contain
 /// a subset of the chunks from the original segment, targeting approximately the batch size.
-fn split_overly_large_segment(
+fn split_large_segments(
     segment_id: &str,
     chunk_info: &RecordBatch,
     target_size: u64,
