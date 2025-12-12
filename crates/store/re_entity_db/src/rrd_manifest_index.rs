@@ -390,6 +390,22 @@ impl RrdManifestIndex {
         time_ranges_all_chunks
     }
 
+    pub fn full_range(&self, timeline: &TimelineName) -> AbsoluteTimeRange {
+        // TODO: This could be cached
+        self.remote_chunks
+            .values()
+            .filter_map(|c| {
+                let temporal = c.temporal.as_ref()?;
+                if temporal.timeline.name() == timeline {
+                    Some(temporal.time_range)
+                } else {
+                    None
+                }
+            })
+            .reduce(|a, b| a.union(b))
+            .unwrap_or(AbsoluteTimeRange::EMPTY)
+    }
+
     pub fn loaded_ranges_on_timeline(
         &self,
         timeline: &Timeline,
