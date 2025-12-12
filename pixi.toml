@@ -358,6 +358,7 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 py-build = "env -u CONDA_PREFIX RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uvpy scripts/ci/fix_rerun_pth.py"
 # Build the `rerun-notebook` package.
 py-build-notebook = { cmd = "uv sync --inexact --package rerun-notebook", depends-on = ["js-build-base"] }
+py-build-notebook-fast = { cmd = "uv sync --inexact --package rerun-notebook" }
 # Create a wheel for the `rerun-sdk` package.
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
@@ -498,7 +499,6 @@ nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native v
 nbstripout = "*"
 ninja = "1.11.1.*"
 prettier = ">=3.6"
-pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
@@ -518,19 +518,8 @@ wheel = ">=0.38,<0.39"
 [feature.base.pypi-dependencies]
 cryptography = "==38.0.4" # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
-hatch = "==1.12.0" # For `rerun_notebook`
-huggingface_hub = "<1.0" # Needed for `LeRobot` checklist items
-inline-snapshot = "==0.31.0" # For `api_sandbox`
-jupyter = ">=1.0" # Needed for running the notebook (so we can actually do something after `pixi run py-build-notebook`)
-parso = ">=0.8.4, <0.9"
-Pillow = ">=10.0.0" # For `thumbnails.py`
-polars = "==1.35.2" # For api_sandbox
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
-types-decorator = "*" # Type hint stubs
-types-Deprecated = "==1.2.9.2" # Type hint stubs
-types-pytz = "*" # Type hint stubs
-types-requests = ">=2.31,<3" # Type hint stubs
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
