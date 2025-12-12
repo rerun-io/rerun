@@ -14,7 +14,7 @@ use re_types_core::{
     SerializationError,
     reflection::{
         ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
-        ComponentReflectionMap, Reflection,
+        ComponentReflectionMap, Reflection, generate_component_identifier_reflection,
     },
 };
 
@@ -24,9 +24,11 @@ use re_types_core::{
 
 pub fn generate_reflection() -> Result<Reflection, SerializationError> {
     re_tracing::profile_function!();
+    let archetypes = generate_archetype_reflection();
     Ok(Reflection {
         components: generate_component_reflection()?,
-        archetypes: generate_archetype_reflection(),
+        component_identifiers: generate_component_identifier_reflection(&archetypes),
+        archetypes,
     })
 }
 
