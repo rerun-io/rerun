@@ -527,6 +527,9 @@ pub fn paint_loaded_indicator_bar(
     let mut should_load = true;
     let current_time = time_ctrl.time_int();
 
+    let mut full_range_min = f32::INFINITY;
+    let mut full_range_max = f32::NEG_INFINITY;
+
     let loaded_ranges_on_timeline = db
         .rrd_manifest_index()
         .loaded_ranges_on_timeline(time_ctrl.timeline())
@@ -542,6 +545,10 @@ pub fn paint_loaded_indicator_bar(
 
             if x.span() > 0.0 { Some(x) } else { None }
         })
+        .inspect(|range| {
+            full_range_min = range.min.min(full_range_min);
+            full_range_max = range.max.max(full_range_max);
+        })
         .collect::<Vec<_>>();
 
     if should_load {
@@ -550,16 +557,27 @@ pub fn paint_loaded_indicator_bar(
         // In pixels per second
         let speed = 20.0;
 
-        let dashed_line = egui::Shape::dashed_line_with_offset(
-            &[egui::pos2(x_range.min, y), egui::pos2(x_range.max, y)],
-            ui.visuals().widgets.noninteractive.fg_stroke,
-            &[line],
-            &[gap],
-            ui.input(|i| (i.time * speed) % (gap as f64 + line as f64) - line as f64) as f32,
-        );
+        let range = time_ranges_ui
+            .segments
+            .first()
+            .zip(time_ranges_ui.segments.last())
+            .map(|(first, last)| {
+                x_range.intersection(Rangef::new(*first.x.start() as f32, *last.x.end() as f32))
+            });
 
-        ui.painter().add(dashed_line);
-        return;
+        if let Some(range) = range
+            && range.span() > 0.0
+        {
+            let dashed_line = egui::Shape::dashed_line_with_offset(
+                &[egui::pos2(range.min, y), egui::pos2(range.max, y)],
+                ui.visuals().widgets.noninteractive.fg_stroke,
+                &[line],
+                &[gap],
+                ui.input(|i| (i.time * speed) % (gap as f64 + line as f64) - line as f64) as f32,
+            );
+
+            ui.painter().add(dashed_line);
+        }
     }
 
     for x in loaded_ranges_on_timeline {
