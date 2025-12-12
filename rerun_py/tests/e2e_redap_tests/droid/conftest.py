@@ -116,8 +116,11 @@ def dataset(
     dataset_handle = catalog_client.create_dataset(droid_dataset_name)
     try:
         logger.info(f"Registering {len(aws_segments_to_register)} files for dataset '{droid_dataset_name}'")
-        task_ids = dataset_handle.register_batch(aws_segments_to_register)
-        task_ids.wait(timeout_secs=600)
+        task_ids = dataset_handle.register(aws_segments_to_register)
+        result = task_ids.wait(timeout_secs=600)
+        assert len(result.segment_ids) == len(aws_segments_to_register), (
+            f"Expected {len(aws_segments_to_register)} registered segments, got {len(result.segment_ids)}"
+        )
 
         logger.info(f"Successfully registered dataset '{droid_dataset_name}'")
         yield dataset_handle
