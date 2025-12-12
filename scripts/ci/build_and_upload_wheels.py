@@ -81,6 +81,9 @@ def build_and_upload(
     compatibility = f"--compatibility {compatibility}" if compatibility is not None else ""
 
     # Build into `dist`
+    env = os.environ.copy()
+    env["RERUN_MATURIN_BUILD"] = "1"
+
     run(
         "maturin build "
         f"{compatibility} "
@@ -89,7 +92,7 @@ def build_and_upload(
         f"--target {target} "
         f"{maturin_feature_flags} "
         f"--out {dist}",
-        env={"RERUN_MATURIN_BUILD": "1"},
+        env=env,
     )
 
     pkg = os.listdir(dist)[0]
