@@ -145,6 +145,7 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
                     Some(re_format::parse_bytes(s)? as f64)
                 }
             })
+            .update_while_editing(false)
             .range(0..=UPPER_LIMIT_BYTES)
             .speed(speed),
     );
