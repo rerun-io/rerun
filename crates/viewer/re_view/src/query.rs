@@ -116,8 +116,8 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     let results = {
         // Apply component mappings when querying the recording.
         for mapping in &visualizer_instruction.component_mappings {
-            if components.remove(&mapping.source) {
-                components.insert(mapping.target);
+            if components.remove(&mapping.target) {
+                components.insert(mapping.source);
             }
         }
         let mut results = ctx.viewer_ctx.recording_engine().cache().latest_at(
