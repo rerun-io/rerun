@@ -576,7 +576,7 @@ impl LeRobotDataset for LeRobotDatasetV3 {
 /// Metadata for a `LeRobot` dataset.
 ///
 /// This is a wrapper struct for the metadata files in the `meta` directory of a
-/// `LeRobot` dataset. For more see [`LeRobotDataset`].
+/// `LeRobot` dataset. For more see [`LeRobotDatasetV3`].
 pub struct LeRobotDatasetMetadataV3 {
     pub info: LeRobotDatasetInfoV3,
     pub tasks: LeRobotDatasetV3Tasks,
@@ -601,7 +601,7 @@ impl LeRobotDatasetMetadataV3 {
 
     /// Loads all metadata files from the provided directory.
     ///
-    /// This method reads dataset metadata from JSON and JSONL files stored in the `meta/` directory.
+    /// This method reads dataset metadata from JSON and Parquet files stored in the `meta/` directory.
     /// It retrieves general dataset information, a list of recorded episodes, and defined tasks.
     pub fn load_from_directory(metadir: impl AsRef<Path>) -> Result<Self, LeRobotError> {
         let metadir = metadir.as_ref();
