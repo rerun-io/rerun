@@ -273,7 +273,11 @@ impl QueryDatasetResponse {
     }
 
     pub fn field_chunk_byte_size() -> FieldRef {
-        lazy_field_ref!(Field::new(Self::FIELD_CHUNK_BYTE_SIZE, DataType::UInt64, false))
+        lazy_field_ref!(Field::new(
+            Self::FIELD_CHUNK_BYTE_SIZE,
+            DataType::UInt64,
+            false
+        ))
     }
 
     pub fn fields() -> Vec<FieldRef> {
