@@ -187,7 +187,7 @@ impl AppState {
         // is there an active loop selection?
         time_ctrl
             .time_selection()
-            .map(|q| (*time_ctrl.timeline().name(), q))
+            .map(|q| (*time_ctrl.timeline_name(), q))
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -873,7 +873,7 @@ fn prefetch_chunks(
     }
 
     let current_time = time_ctrl.time_i64()?;
-    let timeline = time_ctrl.timeline();
+    let timeline = time_ctrl.timeline()?;
     let buffer_time = match timeline.typ() {
         re_log_types::TimeType::Sequence => 20,
         re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 2_000_000_000,
@@ -899,9 +899,9 @@ fn prefetch_chunks(
 
             let rb = if false {
                 //TODO: use this code instead
-                rrd_manifest.prefetch_chunks(time_ctrl.timeline(), query_range, budget_bytes as _)
+                rrd_manifest.prefetch_chunks(timeline, query_range, budget_bytes as _)
             } else {
-                rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range)
+                rrd_manifest.time_range_missing_chunks(timeline, query_range)
             };
 
             match rb {
@@ -982,14 +982,16 @@ fn update_overrides(
                     ctx.indicated_entities_per_visualizer,
                 );
 
-                resolver.update_overrides(
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                    ctx.time_ctrl.timeline(),
-                    ctx.view_class_registry,
-                    &mut query_result,
-                    view_state,
-                );
+                if let Some(timeline) = ctx.time_ctrl.timeline() {
+                    resolver.update_overrides(
+                        ctx.store_context.blueprint,
+                        ctx.blueprint_query,
+                        timeline,
+                        ctx.view_class_registry,
+                        &mut query_result,
+                        view_state,
+                    );
+                }
 
                 (view.id, query_result)
             },

@@ -414,8 +414,8 @@ impl TestContext {
     }
 
     /// Timeline the recording config is using by default.
-    pub fn active_timeline(&self) -> re_chunk::Timeline {
-        *self.time_ctrl.read().timeline()
+    pub fn active_timeline(&self) -> Option<re_chunk::Timeline> {
+        self.time_ctrl.read().timeline().copied()
     }
 
     pub fn active_blueprint(&mut self) -> &mut EntityDb {

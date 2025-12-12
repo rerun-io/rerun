@@ -423,17 +423,18 @@ pub fn paint_loaded_indicator_bar(
     y: f32,
     x_range: Rangef,
 ) {
+    let Some(timeline) = time_ctrl.timeline() else {
+        return;
+    };
     if !db.rrd_manifest_index().has_manifest() {
         return;
     }
 
-    let mut ranges = db
-        .rrd_manifest_index()
-        .time_ranges_all_chunks(time_ctrl.timeline());
+    let mut ranges = db.rrd_manifest_index().time_ranges_all_chunks(timeline);
 
     let full_range = db
         .rrd_manifest_index()
-        .full_range(time_ctrl.timeline().name());
+        .full_range(time_ctrl.timeline_name());
 
     ranges.sort_by_key(|(_, r)| r.min);
 
@@ -442,7 +443,7 @@ pub fn paint_loaded_indicator_bar(
 
     let loaded_ranges_on_timeline = db
         .rrd_manifest_index()
-        .loaded_ranges_on_timeline(time_ctrl.timeline())
+        .loaded_ranges_on_timeline(timeline)
         .filter_map(|range| {
             if current_time.is_some_and(|time| range.contains(time)) {
                 should_load = false;
@@ -510,7 +511,7 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        time_ctrl.timeline(),
+        time_ctrl.timeline()?,
         DensityGraphBuilderConfig::default(),
     );
 
@@ -737,7 +738,7 @@ pub fn show_row_ids_tooltip(
     use re_data_ui::DataUi as _;
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline().name(), at_time);
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline_name(), at_time);
 
     let TimePanelItem {
         entity_path,

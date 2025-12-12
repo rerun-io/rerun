@@ -1291,7 +1291,7 @@ class DatasetEntryInternal:
 
     # ---
 
-    def create_fts_index(
+    def create_fts_search_index(
         self,
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
@@ -1299,7 +1299,7 @@ class DatasetEntryInternal:
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None: ...
-    def create_vector_index(
+    def create_vector_search_index(
         self,
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
@@ -1308,8 +1308,8 @@ class DatasetEntryInternal:
         num_sub_vectors: int = 16,
         distance_metric: VectorDistanceMetric | str = ...,
     ) -> IndexingResult: ...
-    def list_indexes(self) -> list[IndexingResult]: ...
-    def delete_indexes(
+    def list_search_indexes(self) -> list[IndexingResult]: ...
+    def delete_search_indexes(
         self,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> list[IndexConfig]: ...
@@ -1317,13 +1317,13 @@ class DatasetEntryInternal:
         self,
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> DataFusionTable: ...
+    ) -> dfn.DataFrame: ...
     def search_vector(
         self,
         query: Any,  # VectorLike
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
-    ) -> DataFusionTable: ...
+    ) -> dfn.DataFrame: ...
 
     # ---
 
@@ -1494,20 +1494,6 @@ class CatalogClientInternal:
     # ---
 
     def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
-
-class DataFusionTable:
-    def __datafusion_table_provider__(self) -> Any:
-        """Returns a DataFusion table provider capsule."""
-
-    def df(self) -> dfn.DataFrame:
-        """Register this view to the global DataFusion context and return a DataFrame."""
-
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        """Convert this table to a [`pyarrow.RecordBatchReader`][]."""
-
-    @property
-    def name(self) -> str:
-        """Name of this table."""
 
 class RegistrationHandleInternal:
     def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...

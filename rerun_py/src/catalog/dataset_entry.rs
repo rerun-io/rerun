@@ -26,8 +26,8 @@ use tracing::instrument;
 
 use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
-    PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyIndexConfig, PyIndexingResult,
-    VectorDistanceMetricLike, VectorLike, to_py_err,
+    PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
+    PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
 use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
@@ -180,11 +180,7 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let table = PyDataFusionTable {
-            client: self_.client.clone_ref(py),
-            name: format!("{}_segment_table", self_.entry_details.name),
-            provider,
-        };
+        let table = PyTableProviderAdapterInternal::new(provider, false);
 
         let client = self_.client.borrow(py);
         let ctx = client.ctx(py)?;
@@ -208,11 +204,7 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let table = PyDataFusionTable {
-            client: self_.client.clone_ref(py),
-            name: format!("{}_manifest", self_.entry_details.name),
-            provider,
-        };
+        let table = PyTableProviderAdapterInternal::new(provider, false);
 
         let client = self_.client.borrow(py);
         let ctx = client.ctx(py)?;
@@ -457,7 +449,7 @@ impl PyDatasetEntryInternal {
             base_tokenizer = "simple",
         ))]
     #[instrument(skip(self_, column, time_index), err)]
-    fn create_fts_index(
+    fn create_fts_search_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
@@ -537,7 +529,7 @@ impl PyDatasetEntryInternal {
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
     #[instrument(skip(self_, column, time_index, distance_metric), err)]
-    fn create_vector_index(
+    fn create_vector_search_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
@@ -600,7 +592,7 @@ impl PyDatasetEntryInternal {
 
     /// List all user-defined indexes in this dataset.
     #[instrument(skip_all, err)]
-    fn list_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
+    fn list_search_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -643,7 +635,7 @@ impl PyDatasetEntryInternal {
     //
     // TODO(RR-2824): this should also be capable of accepting a `PyIndexConfig` directly.
     #[instrument(skip_all, err)]
-    fn delete_indexes(
+    fn delete_search_indexes(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
     ) -> PyResult<Vec<PyIndexConfig>> {
@@ -690,8 +682,9 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         query: String,
         column: AnyComponentColumn,
-    ) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    ) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
         let schema = Self::fetch_schema(&self_)?;
@@ -722,7 +715,7 @@ impl PyDatasetEntryInternal {
             scan_parameters: None,
         };
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
                 .map_err(to_py_err)?
                 .into_provider()
@@ -730,25 +723,26 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_search_fts_{uuid}", self_.entry_details.name);
+        let table = PyTableProviderAdapterInternal::new(provider, false);
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
-            name,
-            provider,
-        })
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
     /// Search the dataset using a vector search query.
     #[instrument(skip(self_, query, column), err)]
-    fn search_vector(
-        self_: PyRef<'_, Self>,
+    fn search_vector<'py>(
+        self_: PyRef<'py, Self>,
         query: VectorLike<'_>,
         column: AnyComponentColumn,
         top_k: u32,
-    ) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
         let schema = Self::fetch_schema(&self_)?;
@@ -767,7 +761,7 @@ impl PyDatasetEntryInternal {
             scan_parameters: None,
         };
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
                 .map_err(to_py_err)?
                 .into_provider()
@@ -775,14 +769,14 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_search_vector_{uuid}", self_.entry_details.name);
+        let table = PyTableProviderAdapterInternal::new(provider, false);
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
-            name,
-            provider,
-        })
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
     /// Perform maintenance tasks on the datasets.

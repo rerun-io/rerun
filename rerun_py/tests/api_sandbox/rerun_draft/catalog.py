@@ -265,7 +265,7 @@ class DatasetEntry(Entry):
         store_position: bool = False,
         base_tokenizer: str = "simple",
     ) -> None:
-        return self._inner.create_fts_index(
+        return self._inner.create_fts_search_index(
             column=column,
             time_index=time_index,
             store_position=store_position,
@@ -281,7 +281,7 @@ class DatasetEntry(Entry):
         num_sub_vectors: int = 16,
         distance_metric: Any = ...,
     ) -> Any:
-        return self._inner.create_vector_index(
+        return self._inner.create_vector_search_index(
             column=column,
             time_index=time_index,
             target_partition_num_rows=target_partition_num_rows,
@@ -290,15 +290,15 @@ class DatasetEntry(Entry):
         )
 
     def list_search_indexes(self) -> list:
-        return self._inner.list_indexes()
+        return self._inner.list_search_indexes()
 
     def delete_search_indexes(self, column: Any) -> list[Any]:
-        return self._inner.delete_indexes(column)
+        return self._inner.delete_search_indexes(column)
 
-    def search_fts(self, query: str, column: Any) -> Any:
+    def search_fts(self, query: str, column: Any) -> datafusion.DataFrame:
         return self._inner.search_fts(query, column)
 
-    def search_vector(self, query: Any, column: Any, top_k: int) -> Any:
+    def search_vector(self, query: Any, column: Any, top_k: int) -> datafusion.DataFrame:
         return self._inner.search_vector(query, column, top_k)
 
     def do_maintenance(

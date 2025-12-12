@@ -270,17 +270,15 @@ fn fragment_ui(
     let current_time_cursor = {
         time_ctrl
             .time_cell()
-            .map(|cell| (*time_ctrl.timeline().name(), cell))
+            .map(|cell| (*time_ctrl.timeline_name(), cell))
     };
 
-    let current_time_selection = {
-        time_ctrl
-            .time_selection()
-            .map(|time_selection| re_uri::TimeSelection {
-                timeline: *time_ctrl.timeline(),
-                range: time_selection.to_int(),
-            })
-    };
+    let current_time_selection = time_ctrl.time_selection().and_then(|time_selection| {
+        Some(re_uri::TimeSelection {
+            timeline: *time_ctrl.timeline()?,
+            range: time_selection.to_int(),
+        })
+    });
 
     let mut any_time = when.is_some();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time cursor").value_fn(|ui, _| {
