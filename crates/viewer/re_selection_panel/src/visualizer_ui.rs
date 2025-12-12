@@ -244,10 +244,6 @@ fn visualizer_components(
             })
             .collect::<Vec<_>>()
     };
-    println!(
-        "----------- all_components_for_entity: {:?}",
-        all_components_for_entity
-    );
 
     let mut changed_component_mappings = vec![];
 
@@ -475,7 +471,7 @@ fn visualizer_components(
                             let source =
                                 component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
 
-                            egui::ComboBox::new("source_component", "")
+                            egui::ComboBox::new("source_component_combo_box", "")
                                 .selected_text(source)
                                 .show_ui(ui, |ui| {
                                     let mut all_source_options = vec![""];
@@ -486,7 +482,6 @@ fn visualizer_components(
                                         }
                                     }
                                     for source_option in all_source_options {
-                                        println!("option: {:?}", source_option);
                                         if ui.button(source_option).clicked() {
                                             changed_component_mappings.push(
                                                 re_viewer_context::VisualizerComponentMapping {

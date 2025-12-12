@@ -1,5 +1,6 @@
 //! Minimal example demonstrating different scalar types that can be visualized in the viewer.
 
+use core::f32;
 use std::f64::consts::PI;
 use std::sync::Arc;
 
@@ -29,13 +30,15 @@ fn sine_1_curve(t: f32) -> f32 {
 }
 
 fn color_curve_1(t: f32) -> u32 {
-    let x = (f32::midpoint(t.sin(), 1.0) * 255.0) as u8;
-    rerun::Rgba32::from_rgb(x, 64, 0).into()
+    let r = (f32::midpoint((t + 0.0).sin(), 1.0) * 255.0) as u8;
+    let g = (f32::midpoint((t + f32::consts::TAU / 3.0).sin(), 1.0) * 255.0) as u8;
+    let b = (f32::midpoint((t + f32::consts::TAU / 3.0 * 2.0).sin(), 1.0) * 255.0) as u8;
+    rerun::Rgba32::from_rgb(r, g, b).into()
 }
 
 fn color_curve_2(t: f32) -> u32 {
-    let x = (f32::midpoint((t * 2.0).sin(), 1.0) * 255.0) as u8;
-    rerun::Rgba32::from_rgb(64, 255 - x, x).into()
+    let x = (f32::midpoint((t * 6.0).sin(), 1.0) * 200.0) as u8;
+    rerun::Rgba32::from_rgb(255, x, 255).into()
 }
 
 fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
@@ -56,7 +59,9 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
         // 2. Log using DynamicArchetype with Float64 (cos curve)
         let cos_value = cos_curve(x_f64);
         let cos_array = Arc::new(arrow::array::Float64Array::from(vec![cos_value]));
-        let cos_scaled_array = Arc::new(arrow::array::Float64Array::from(vec![cos_value * 0.5]));
+        let cos_scaled_array = Arc::new(arrow::array::Float64Array::from(vec![
+            cos_curve(x_f64 + 1.0).abs() * 0.5,
+        ]));
 
         // 3. Log using DynamicArchetype with Float32 (sigmoid curve)
         let sigmoid_1_value = sigmoid_1_curve(x_f32);
@@ -76,15 +81,18 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
             .with_component_from_data("sigmoid", sigmoid_1_array.clone())
             .with_component_from_data("sigmoid_scaled", sigmoid_scaled_array);
 
-        let float64_archetype = DynamicArchetype::new("Float64Scalars")
-            .with_component_from_data("cos", cos_array)
-            .with_component_from_data("cos_scaled", cos_scaled_array)
-            .with_component_from_data("sigmoid", sigmoid_1_array)
+        let float64_archetype = DynamicArchetype::new("MyCustomData")
+            .with_component_from_data("value_1", cos_array)
+            .with_component_from_data("value_2", cos_scaled_array)
+            .with_component_from_data("sigmoid", sigmoid_1_array);
+
+        let custom_archetype = DynamicArchetype::new("OtherStuff")
             .with_component_from_data("sine", sine_1_array)
-            .with_component_from_data("color_1", color_1_array)
-            .with_component_from_data("color_2", color_2_array);
+            .with_component_from_data("rainbow_dash", color_1_array)
+            .with_component_from_data("pinkie_pie", color_2_array);
 
         rec.log("float64", &float64_archetype)?;
+        rec.log("float64", &custom_archetype)?;
 
         rec.log("float32", &float32_archetype)?;
 
