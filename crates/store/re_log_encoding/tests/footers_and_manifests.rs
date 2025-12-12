@@ -164,7 +164,7 @@ fn footer_roundtrip() {
     fn decode_messages(msgs_encoded: &[u8], rrd_manifest: &RrdManifest) -> Vec<ArrowMsg> {
         itertools::izip!(
             rrd_manifest.col_chunk_byte_offset().unwrap(),
-            rrd_manifest.col_chunk_byte_size().unwrap()
+            rrd_manifest.col_chunk_byte_size_compressed().unwrap()
         )
         .map(|(offset, size)| {
             let chunk_start_excluding_header = offset as usize;
