@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use egui::vec2;
-use egui_kittest::Harness;
+use egui_kittest::{Harness, SnapshotResults};
 use re_dataframe_ui::column_header_tooltip_ui;
 use re_log_types::{EntityPath, Timeline};
 use re_sorbet::{
@@ -14,6 +14,7 @@ use re_types_core::{ArchetypeName, ComponentIdentifier, ComponentType};
 
 #[test]
 fn test_column_header_tooltips() {
+    let mut snapshot_results = SnapshotResults::new();
     let fields_and_descriptions = test_fields();
 
     let fields = Fields::from(
@@ -46,8 +47,6 @@ fn test_column_header_tooltips() {
         .map(|(_, name)| *name)
         .collect::<Vec<_>>();
 
-    let mut all_results = egui_kittest::SnapshotResults::default();
-
     for (desc, field, migrated_field, description) in itertools::izip!(
         sorbet_batch.sorbet_schema().columns.clone(),
         &fields,
@@ -75,11 +74,9 @@ fn test_column_header_tooltips() {
                 if show_extras { "_with_extras" } else { "" }
             ));
 
-            all_results.extend(harness.take_snapshot_results());
+            snapshot_results.extend_harness(&mut harness);
         }
     }
-
-    all_results.unwrap();
 }
 
 fn test_fields() -> Vec<(Field, &'static str)> {

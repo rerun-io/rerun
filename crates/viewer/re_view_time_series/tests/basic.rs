@@ -2,6 +2,7 @@ use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -17,12 +18,16 @@ fn color_gradient1(step: i64) -> re_sdk_types::components::Color {
 
 #[test]
 pub fn test_clear_series_points_and_line() {
+    let mut snapshot_results = SnapshotResults::new();
     for two_series_per_entity in [false, true] {
-        test_clear_series_points_and_line_impl(two_series_per_entity);
+        test_clear_series_points_and_line_impl(two_series_per_entity, &mut snapshot_results);
     }
 }
 
-fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
+fn test_clear_series_points_and_line_impl(
+    two_series_per_entity: bool,
+    snapshot_results: &mut SnapshotResults,
+) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let timeline = Timeline::log_tick();
@@ -94,7 +99,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
     );
 
     let view_id = setup_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         &format!(
             "clear_series_points_and_line{}",
@@ -106,7 +111,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         ),
         egui::vec2(300.0, 300.0),
         None,
-    );
+    ));
 }
 
 fn scalars_for_properties_test(
@@ -137,13 +142,18 @@ fn scalars_for_properties_test(
 
 #[test]
 fn test_line_properties() {
+    let mut snapshot_results = SnapshotResults::new();
     for multiple_properties in [false, true] {
         let multiple_scalars = true;
-        test_line_properties_impl(multiple_properties, multiple_scalars);
+        test_line_properties_impl(multiple_properties, multiple_scalars, &mut snapshot_results);
     }
 }
 
-fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
+fn test_line_properties_impl(
+    multiple_properties: bool,
+    multiple_scalars: bool,
+    snapshot_results: &mut SnapshotResults,
+) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let timeline = Timeline::log_tick();
@@ -206,12 +216,18 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    test_context.run_view_ui_and_save_snapshot(view_id, &name, egui::vec2(300.0, 300.0), None);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        &name,
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
 }
 
 /// Test the per series visibility setting
 #[test]
 fn test_per_series_visibility() {
+    let mut snapshot_results = SnapshotResults::new();
     for (name, visibility) in [
         ("per_series_visibility_show_second_only", vec![false, true]),
         ("per_series_visibility_splat_false", vec![false]),
@@ -243,7 +259,12 @@ fn test_per_series_visibility() {
         );
 
         let view_id = setup_blueprint(&mut test_context);
-        test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0), None);
+        snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+            view_id,
+            name,
+            egui::vec2(300.0, 300.0),
+            None,
+        ));
     }
 }
 
@@ -262,13 +283,18 @@ const MARKER_LIST: [re_sdk_types::components::MarkerShape; 10] = [
 
 #[test]
 fn test_point_properties() {
+    let mut snapshot_results = SnapshotResults::new();
     for multiple_properties in [false, true] {
         let multiple_scalars = true;
-        test_point_properties_impl(multiple_properties, multiple_scalars);
+        test_point_properties_impl(multiple_properties, multiple_scalars, &mut snapshot_results);
     }
 }
 
-fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool) {
+fn test_point_properties_impl(
+    multiple_properties: bool,
+    multiple_scalars: bool,
+    snapshot_results: &mut SnapshotResults,
+) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     let timeline = Timeline::log_tick();
@@ -341,7 +367,12 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     if multiple_scalars {
         name += "_two_series_per_entity";
     }
-    test_context.run_view_ui_and_save_snapshot(view_id, &name, egui::vec2(300.0, 300.0), None);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        &name,
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -354,12 +385,13 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
 
 #[test]
 fn test_bootstrapped_secondaries() {
+    let mut snapshot_results = SnapshotResults::new();
     for partial_range in [false, true] {
-        test_bootstrapped_secondaries_impl(partial_range);
+        test_bootstrapped_secondaries_impl(partial_range, &mut snapshot_results);
     }
 }
 
-fn test_bootstrapped_secondaries_impl(partial_range: bool) {
+fn test_bootstrapped_secondaries_impl(partial_range: bool, snapshot_results: &mut SnapshotResults) {
     let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
 
     fn with_scalar(builder: ChunkBuilder, value: i64) -> ChunkBuilder {
@@ -433,5 +465,10 @@ fn test_bootstrapped_secondaries_impl(partial_range: bool) {
     } else {
         "bootstrapped_secondaries_full"
     };
-    test_context.run_view_ui_and_save_snapshot(view_id, name, egui::vec2(300.0, 300.0), None);
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        name,
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
 }

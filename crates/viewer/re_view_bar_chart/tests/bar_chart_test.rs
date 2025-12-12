@@ -24,12 +24,9 @@ fn test_bar_chart() {
     });
 
     let view_id = setup_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "bar_chart_1d",
-        egui::vec2(400.0, 300.0),
-        None,
-    );
+    test_context
+        .run_view_ui_and_save_snapshot(view_id, "bar_chart_1d", egui::vec2(400.0, 300.0), None)
+        .unwrap();
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

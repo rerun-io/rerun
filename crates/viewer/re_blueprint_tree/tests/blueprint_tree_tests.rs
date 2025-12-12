@@ -1,5 +1,6 @@
 #![cfg(feature = "testing")]
 
+use egui_kittest::SnapshotResults;
 use re_blueprint_tree::BlueprintTree;
 use re_chunk_store::RowId;
 use re_chunk_store::external::re_chunk::ChunkBuilder;
@@ -34,8 +35,7 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
 #[test]
 fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
-    let mut all_results = egui_kittest::SnapshotResults::default();
-
+    let mut snapshot_results = SnapshotResults::new();
     for (snapshot_name, should_expand) in [
         ("expand_all_blueprint_panel", true),
         ("collapse_all_blueprint_panel", false),
@@ -97,10 +97,8 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
         harness.run();
         harness.snapshot(snapshot_name);
 
-        all_results.extend(harness.take_snapshot_results());
+        snapshot_results.extend_harness(&mut harness);
     }
-
-    all_results.unwrap();
 }
 
 // ---

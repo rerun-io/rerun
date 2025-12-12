@@ -790,6 +790,7 @@ impl TestContext {
 
     pub fn test_help_view(help: impl Fn(OperatingSystem) -> Help) {
         use egui::os::OperatingSystem;
+        let mut snapshot_results = egui_kittest::SnapshotResults::new();
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
             let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
                 ui.ctx().set_os(os);
@@ -807,6 +808,8 @@ impl TestContext {
             .to_lowercase();
             harness.fit_contents();
             harness.snapshot(&name);
+
+            snapshot_results.extend_harness(&mut harness);
         }
     }
 

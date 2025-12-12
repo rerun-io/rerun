@@ -6,6 +6,7 @@ use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
 use re_sdk_types::components;
 use re_sdk_types::datatypes::{self, TimeRange};
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -26,12 +27,13 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
 
     let view_id = setup_blueprint(&mut test_context, timeline.name(), None, None);
     let size = egui::vec2(300.0, 300.0);
-    test_context.run_view_ui_and_save_snapshot(
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "blueprint_overrides_and_defaults_with_time_series",
         size,
         None,
-    );
+    ));
 
     for (range, name) in [
         (TimeRange::EVERYTHING, "everything"),
@@ -66,12 +68,12 @@ pub fn test_blueprint_overrides_and_defaults_with_time_series() {
         ),
     ] {
         let view_id = setup_blueprint(&mut test_context, timeline.name(), Some(range), None);
-        test_context.run_view_ui_and_save_snapshot(
+        snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
             view_id,
             &format!("blueprint_overrides_and_defaults_with_time_series_{name}"),
             size,
             None,
-        );
+        ));
     }
 }
 
@@ -122,6 +124,7 @@ pub fn test_custom_visible_time_range() {
         ),
     ];
 
+    let mut snapshot_results = SnapshotResults::new();
     for (view_name, view_range) in [
         ("data", None),
         (
@@ -139,12 +142,12 @@ pub fn test_custom_visible_time_range() {
                 view_range.clone(),
                 Some(data_range.clone()),
             );
-            test_context.run_view_ui_and_save_snapshot(
+            snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
                 view_id,
                 &format!("visible_time_range_{data_name}_view_{view_name}"),
                 size,
                 None,
-            );
+            ));
         }
     }
 }
