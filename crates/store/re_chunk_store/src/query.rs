@@ -53,8 +53,9 @@ impl ChunkStore {
         timeline: &TimelineName,
         time: TimeInt,
         ignoring: &HashSet<ChunkId>,
-    ) -> Option<&Arc<Chunk>> {
+    ) -> Option<(&Arc<Chunk>, u64)> {
         self.chunks_per_chunk_id
+            // TODO: we need to accelerate this part
             .values()
             .filter(|chunk| !chunk.is_static() && !ignoring.contains(&chunk.id()))
             .filter_map(|chunk| {
@@ -82,17 +83,60 @@ impl ChunkStore {
                 // -> well, a range query will do that for us
                 // -> at least one with extended bounds
 
-                // TODO: not max_dist, but you get the idea
-                // TODO: also, re-accelerate this
-                let max_dist = times
+                // TODO: we need to accelerate this part
+                //
+                // We want to find the time in this chunk that is the closest to the time cursor.
+                let min_dist = times
                     .times()
                     .map(|t| t.as_i64().abs_diff(time.as_i64()))
                     .min();
 
-                max_dist.map(|max_dist| (chunk, max_dist))
+                min_dist.map(|max_dist| (chunk, max_dist))
             })
             .max_by_key(|(_chunk, dist)| *dist)
-            .map(|(chunk, _)| chunk)
+        // .map(|(chunk, _)| chunk)
+    }
+
+    pub fn find_temporal_chunk_furthest_away_fast(
+        &self,
+        timeline: &TimelineName,
+        time: TimeInt,
+        ignoring: &HashSet<ChunkId>,
+    ) -> Option<(&Arc<Chunk>, u64)> {
+        self.chunks_per_chunk_id
+            // TODO: we need to accelerate this part
+            // TODO: we can do an extended bound range query, right? but it's very annoying because
+            // it needs to extend to the next *loaded* chunk 🫠
+            .values()
+            .filter(|chunk| !chunk.is_static() && !ignoring.contains(&chunk.id()))
+            .filter_map(|chunk| {
+                let times = chunk.timelines().get(timeline)?;
+
+                let min_dist = if times.is_sorted() {
+                    let pivot = times.times_raw().partition_point(|t| *t < time.as_i64());
+                    let min_value1 = times
+                        .times_raw()
+                        .get(pivot.saturating_sub(1))
+                        .map(|t| t.abs_diff(time.as_i64()));
+                    let min_value2 = times
+                        .times_raw()
+                        .get(pivot)
+                        .map(|t| t.abs_diff(time.as_i64()));
+
+                    // TODO: do *not* compare options, if any of then are none we're doomed
+                    // min_value1.min(min_value2).min(min_value3);
+                    [min_value1, min_value2].into_iter().flatten().min()
+                } else {
+                    times
+                        .times()
+                        .map(|t| t.as_i64().abs_diff(time.as_i64()))
+                        .min()
+                };
+
+                min_dist.map(|max_dist| (chunk, max_dist))
+            })
+            .max_by_key(|(_chunk, dist)| *dist)
+        // .map(|(chunk, _)| chunk)
     }
 
     pub fn find_temporal_chunks_furthest_away(
@@ -102,7 +146,15 @@ impl ChunkStore {
     ) -> impl Iterator<Item = &Arc<Chunk>> {
         let mut ignoring = HashSet::new();
         std::iter::from_fn(move || {
-            let chunk = self.find_temporal_chunk_furthest_away(timeline, time, &ignoring)?;
+            // let (chunk, dist) =
+            //     self.find_temporal_chunk_furthest_away(timeline, time, &ignoring)?;
+            // let (chunk_fast, dist_fast) =
+            //     self.find_temporal_chunk_furthest_away_fast(timeline, time, &ignoring)?;
+            // assert_eq!((chunk.id(), dist), (chunk_fast.id(), dist_fast));
+
+            let (chunk, _dist) =
+                self.find_temporal_chunk_furthest_away_fast(timeline, time, &ignoring)?;
+
             if false {
                 eprintln!(
                     "chunk: {} ({} rows) @ {} with {:?}",
@@ -112,7 +164,9 @@ impl ChunkStore {
                     chunk.time_range_per_component(),
                 );
             }
+
             ignoring.insert(chunk.id());
+
             Some(chunk)
         })
     }
