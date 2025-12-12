@@ -2496,6 +2496,7 @@ mod tests {
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
+        let chunk_byte_sizes = vec![1024u64, 2048u64];
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
@@ -2504,6 +2505,7 @@ mod tests {
             chunk_keys,
             chunk_entity_paths,
             chunk_is_static,
+            chunk_byte_sizes,
         )
         .unwrap();
     }
