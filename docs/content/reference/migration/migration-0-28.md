@@ -105,8 +105,8 @@ The old APIs are deprecated and will be removed in a future release.
 | `DatasetEntry.partition_table()`                    | `DatasetEntry.segment_table()`                    |
 | `DatasetEntry.partition_url()`                      | `DatasetEntry.segment_url()`                      |
 | `DatasetEntry.download_partition()`                 | `DatasetEntry.download_segment()`                 |
-| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint_segment_id()`     |
-| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint_segment_id()` |
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`                |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()`            |
 | `DataframeQueryView.filter_partition_id()`          | `DataframeQueryView.filter_segment_id()`          |
 
 The DataFusion utility functions in `rerun.utilities.datafusion.functions.url_generation` have also been renamed:
@@ -132,6 +132,27 @@ def on_event(event):
 ```
 
 This affects `PlayEvent`, `PauseEvent`, `TimeUpdateEvent`, `TimelineChangeEvent`, `SelectionChangeEvent`, and `RecordingOpenEvent`.
+
+## Python SDK: `segment_table()` and `manifest()` now return DataFrame directly
+
+The `DatasetEntry.segment_table()` and `DatasetEntry.manifest()` methods now return `datafusion.DataFrame` directly instead of a `DataFusionTable`. The `.df()` method call is no longer needed:
+
+```python
+# Before (0.27)
+df = dataset.partition_table().df()
+manifest_df = dataset.manifest().df()
+
+# After (0.28)
+df = dataset.segment_table()
+manifest_df = dataset.manifest()
+```
+
+Additionally, `segment_table()` now accepts optional `join_meta` and `join_key` parameters to join with external metadata:
+
+```python
+# Join segment table with a metadata table
+df = dataset.segment_table(join_meta=metadata_table, join_key="rerun_segment_id")
+```
 
 ## Python SDK: catalog entry listing APIs renamed
 
@@ -330,6 +351,33 @@ df = table.reader()
 <!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
 
 This method is deprecated and will be removed in a future release.
+
+## Python SDK: blueprint APIs simplified
+
+The blueprint-related methods on `DatasetEntry` have been simplified:
+
+| Old API                                             | New API                                |
+|-----------------------------------------------------|----------------------------------------|
+| `DatasetEntry.default_blueprint_partition_id()`     | `DatasetEntry.default_blueprint()`     |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
+| `DatasetEntry.blueprint_dataset_id()`               | Removed (use `blueprint_dataset()`)    |
+
+New methods have been added for common blueprint operations:
+
+```python
+# Register a blueprint and set it as default
+dataset.register_blueprint("s3://bucket/blueprint.rbl")
+
+# Register a blueprint without setting it as default
+dataset.register_blueprint("s3://bucket/blueprint.rbl", set_default=False)
+
+# List all registered blueprints
+blueprint_names = dataset.blueprints()
+
+# Get/set the default blueprint
+current = dataset.default_blueprint()
+dataset.set_default_blueprint("my_blueprint")
+```
 
 ## Python SDK: `register()` and `register_batch()` merged into unified `register()` API
 

@@ -15,7 +15,6 @@ use crate::utils::get_tokio_runtime;
     name = "DataFusionTable",
     module = "rerun_bindings.rerun_bindings"
 )]
-
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
     pub name: String,
