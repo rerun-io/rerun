@@ -551,6 +551,7 @@ impl EntityTransformIdMapping {
                 archetypes::CoordinateFrame::descriptor_frame().component;
 
             let query_shadowed_components = false;
+            let visualizer_instruction = VisualizerInstruction::placeholder(origin_data_result); // coordinate frames aren't associated with any particular visualizer
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
@@ -558,7 +559,7 @@ impl EntityTransformIdMapping {
                 origin_data_result,
                 [transform_frame_id_component],
                 query_shadowed_components,
-                &VisualizerInstruction::placeholder(origin_data_result), // Coordinate frame is not visualizer-specific.
+                &visualizer_instruction,
             );
 
             mapping.determine_frame_id_mapping_for(ctx, &results);
