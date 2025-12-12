@@ -34,7 +34,9 @@ dev = [
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",
-  "Pillow>=10.0.0", # has py.typed, no stubs needed
+  # It looks like we end up with slightly different binary encodings of the same image on different OSes starting with Pillow 11
+  # Don't bump this until you want to spend time debugging that.
+  "Pillow>=10.0.0,<11.0.0", # has py.typed, no stubs needed
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
   "semver>=3.0,<3.1",
