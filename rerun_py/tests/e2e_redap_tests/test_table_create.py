@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -52,13 +53,16 @@ def test_create_table_from_dataset(prefilled_catalog: PrefilledCatalog, tmp_path
 
 
 def test_create_table_in_custom_schema(catalog_client: CatalogClient, tmp_path: pathlib.Path) -> None:
-    table_name = "my_catalog.my_schema.created_table"
+    random = uuid.uuid4().hex[:8]
+    table_name = f"my_catalog.my_schema.created_table-{random}"
 
     original_schema = pa.schema([("int64", pa.int64()), ("float32", pa.float32()), ("utf8", pa.utf8())])
 
-    catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
+    table = catalog_client.create_table(table_name, original_schema, tmp_path.absolute().as_uri())
 
-    df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
-
-    returned_schema = df.schema.remove_metadata()
-    assert returned_schema == original_schema
+    try:
+        df = catalog_client.ctx.catalog("my_catalog").schema("my_schema").table("created_table")
+        returned_schema = df.schema.remove_metadata()
+        assert returned_schema == original_schema
+    finally:
+        table.delete()

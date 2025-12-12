@@ -580,18 +580,19 @@ ninja = "1.11.1.*"
 numpy = ">=2" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
 prettier = ">=3.6"
 pyarrow = "18.0.0.*" # Whenever upgrading here, also make sure to upgrade in `rerun_py/pyproject.toml`
-pytest = ">=8.4.2"
-pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
 semver = ">=3.0,<3.1"
-syrupy = "5.0.0.*" # Snapshot testing with pytest
 taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.37.2"
 gh = ">=2.79.0,<3"
+# Testing dependencies
+pytest = ">=8.4.2"
+pytest-benchmark = "5.2.3.*"
+syrupy = "5.0.0.*" # Snapshot testing with pytest
 
 
 [feature.base.pypi-dependencies]
@@ -610,6 +611,7 @@ types-decorator = "*" # Type hint stubs
 types-Deprecated = "==1.2.9.2" # Type hint stubs
 types-pytz = "*" # Type hint stubs
 types-requests = ">=2.31,<3" # Type hint stubs
+urllib3 = "<2.6" # Temporary pin to fix CI failure: TypeError: _GzipDecoder.decompress() got an unexpected keyword argument 'max_length'
 
 [feature.wheel-build.dependencies]
 binaryen = "117.*" # for `wasm-opt`
