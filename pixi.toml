@@ -1,18 +1,24 @@
 # Pixi is a package management tool for developers.
 # Before running a task, pixi ensures that all listed dependencies are installed first.
 #
-# Run the tasks with `pixi run TASK`, e.g. `pixi run codegen`.
-# Extra CLI argument after `pixi run TASK` are passed to the task cmd.
-# Lists tasks with `pixi task list`
-#
-# Type `pixi shell` to enter the pixi environment.
+# Run tasks with `pixi run TASK`, e.g. `pixi run codegen`.
+# Extra CLI arguments after `pixi run TASK` are passed to the task cmd.
+# List tasks with `pixi task list`
 #
 # https://pixi.sh/latest/
-
-# We currently assume pixi version 0.34.0
-# You can check that your environment is correct by running:
-# - python scripts/check_env.py
-# - pixi run check-env
+#
+# Python Development Workflow:
+# ----------------------------
+# Pixi manages build tools (Rust, C++, maturin, etc.) while uv manages Python runtime
+# dependencies in a separate .venv directory. To work with Python:
+#
+#   pixi run py-build                              # Build the rerun-sdk
+#   pixi run uv run examples/python/minimal/...   # Run Python scripts via uv
+#   pixi run uvpy script.py                        # Shorthand for running Python scripts
+#
+# See the [environments] section below for more details.
+#
+# Check your environment is correct by running: pixi run check-env
 
 [workspace]
 name = "rerun"

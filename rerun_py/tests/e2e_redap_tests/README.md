@@ -14,11 +14,11 @@ By default, the fixture creates a local OSS server for each test. However, it ca
 
 ## Running tests
 
-Note: prefix everything by `pixi run -e py` to run in a the pixi environment.
+Note: prefix commands with `pixi run uvpy -m` to run in the pixi/uv environment.
 
 Run against a local OSS server (default):
 ```bash
-pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests
+pixi run uvpy -m pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests
 ```
 
 Run against an external redap server:

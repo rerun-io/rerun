@@ -1,3 +1,14 @@
+# This pyproject.toml defines the uv workspace for Python development.
+#
+# Pixi (pixi.toml) manages build tools, while uv uses this file to manage
+# Python runtime dependencies in a .venv directory. The two work together:
+#
+#   pixi run py-build    # Uses maturin to build rerun-sdk into .venv
+#   pixi run uv run ...  # Runs Python scripts using .venv
+#
+# Workspace members (rerun_py, rerun_notebook, examples) are defined in
+# [tool.uv.workspace] below.
+
 [project]
 name = "rerun-workspace"
 version = "0.28.0-alpha.1+dev"
@@ -6,13 +17,9 @@ requires-python = ">=3.10,<3.13"
 
 [dependency-groups]
 dev = [
-  # Even though it would be convenient to do so, we can't include `rerun-sdk`
-  # in our dev dependencies here. The isolation of the uv build interacts
-  # poorly with maturin build causing significant, spurious rebuilds.
-  #
-  # Instead, we combine with `maturin dev` to install into the dev environment.
-  #"rerun-sdk",
-  #"rerun_notebook",
+  # We can't include `rerun-sdk` in dev dependencies because the isolation of
+  # uv build interacts poorly with maturin, causing spurious rebuilds.
+  # Instead, `pixi run py-build` uses `maturin develop` to install into .venv.
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
   "ruff==0.12.10",
