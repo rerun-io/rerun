@@ -115,7 +115,6 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
             }
 
-
             {
                 ui.grid_left_hand_label("RAM use");
                 ui.label(re_format::format_bytes(self.total_size_bytes() as _))
@@ -124,6 +123,18 @@ impl crate::DataUi for EntityDb {
                          If you hover an entity in the streams view (bottom panel) you can see the \
                          size of individual entities.",
                     );
+                ui.end_row();
+            }
+
+            if let Some(full_uncompressed_size) = self.rrd_manifest_index().full_uncompressed_size() {
+                ui.grid_left_hand_label("Full uncompressed size");
+                ui.label(re_format::format_bytes(full_uncompressed_size as _));
+                ui.end_row();
+            }
+
+            if let Some(full_compressed_size) = self.rrd_manifest_index().full_compressed_size() {
+                ui.grid_left_hand_label("Full compressed size");
+                ui.label(re_format::format_bytes(full_compressed_size as _));
                 ui.end_row();
             }
 
