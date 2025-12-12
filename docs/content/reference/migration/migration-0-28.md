@@ -366,7 +366,7 @@ Streaming results with progress tracking:
 from tqdm import tqdm
 from rerun.catalog import SegmentRegistrationResult
 
-uris = ["file:///uri1.rrd", "file:///uri2.rrd", ...]
+uris = ["file:///uri1.rrd", "file:///uri2.rrd"]
 handle = dataset.register(uris, layer_name="base")
 
 for result in tqdm(handle.iter_results(), total=len(uris), desc="Registering"):
