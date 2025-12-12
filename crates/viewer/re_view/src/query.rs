@@ -59,7 +59,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
         for mapping in &visualizer_instruction.component_mappings {
             if let Some(mut chunks) = results.components.remove(&mapping.source) {
                 // TODO: revisit
-                for chunk in chunks.iter_mut() {
+                for chunk in &mut chunks {
                     *chunk = chunk.with_renamed_component(mapping.source, mapping.target);
                 }
 

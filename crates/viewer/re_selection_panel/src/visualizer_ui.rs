@@ -1,6 +1,6 @@
 use arrow::datatypes::DataType;
 use itertools::Itertools as _;
-use re_chunk::{ComponentIdentifier, ComponentType, RowId};
+use re_chunk::{ComponentIdentifier, RowId};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
@@ -451,7 +451,7 @@ fn visualizer_components(
                 ctx,
                 ui,
                 &entity_components_with_datatype,
-                &component_descr,
+                component_descr,
                 instruction,
                 &mut changed_component_mappings,
             );
@@ -502,7 +502,7 @@ fn visualizer_components(
     if !changed_component_mappings.is_empty() {
         let mut new_instruction = instruction.clone();
         for mapping in changed_component_mappings {
-            // Owerwrite the mapping in the new instruction.
+            // Overwrite the mapping in the new instruction.
             if let Some(orig_mapping) = new_instruction
                 .component_mappings
                 .iter_mut()
