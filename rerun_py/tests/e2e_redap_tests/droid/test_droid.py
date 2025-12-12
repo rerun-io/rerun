@@ -68,13 +68,13 @@ def test_aggregate_and_self_join(benchmark: BenchmarkFixture, tracing: trace.Spa
     """Ensure our segment hashing works effectively by self joining."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        aggregate_and_self_join_body,
+        aggregate_and_self_join,
         args=(dataset,),
         rounds=1,
     )
 
 
-def aggregate_and_self_join_body(dataset: DatasetEntry) -> None:
+def aggregate_and_self_join(dataset: DatasetEntry) -> None:
     """Ensure our segment hashing works effectively by self joining."""
     robot = dataset.filter_contents(["/action/**"])
 
@@ -98,13 +98,13 @@ def test_segment_time_ordering(benchmark: BenchmarkFixture, tracing: trace.Span,
     """Benchmark to measure performance of the time ordering since a sort should not be needed during aggregation."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        segment_time_ordering_body,
+        segment_time_ordering,
         args=(dataset,),
         rounds=1,
     )
 
 
-def segment_time_ordering_body(dataset: DatasetEntry) -> None:
+def segment_time_ordering(dataset: DatasetEntry) -> None:
     """Benchmark to measure performance of the time ordering since a sort should not be needed during aggregation."""
     robot = dataset.filter_contents(["/action/**"])
 
@@ -122,23 +122,23 @@ def test_create_vector_index(benchmark: BenchmarkFixture, tracing: trace.Span, d
     """Create a vector index for the embeddings columns."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        create_vector_index_body,
+        create_vector_index,
         args=(dataset,),
         rounds=1,
     )
 
 
-def create_vector_index_body(dataset: DatasetEntry) -> None:
+def create_vector_index(dataset: DatasetEntry) -> None:
     """Create a vector index for the embeddings columns."""
     embedding_column = rr.catalog.ComponentColumnSelector("/camera/wrist/embedding", "embeddings")
 
     try:
-        dataset.delete_indexes(column=embedding_column)
+        dataset.delete_search_indexes(column=embedding_column)
     except Exception as e:
         # That's OK, the index may legitimately not exist
         logger.info(f"Failed to delete index: {e}")
 
-    dataset.create_vector_index(
+    dataset.create_vector_search_index(
         column=embedding_column,
         time_index=rr.catalog.IndexColumnSelector("real_time"),
         # targeting ~5 segments.
@@ -155,17 +155,17 @@ def test_perform_vector_search(benchmark: BenchmarkFixture, tracing: trace.Span,
     """Perform a vector search for a specific embedding."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        perform_vector_search_body,
+        perform_vector_search,
         args=(dataset,),
         rounds=1,
     )
 
 
-def perform_vector_search_body(dataset: DatasetEntry) -> None:
+def perform_vector_search(dataset: DatasetEntry) -> None:
     """Perform a vector search for a specific embedding."""
     # This works with droid:raw since the query is hard coded
     embedding_column = rr.catalog.ComponentColumnSelector("/camera/wrist/embedding", "embeddings")
-    result = dataset.search_vector([0.0] * 768, embedding_column, top_k=10).df().collect()
+    result = dataset.search_vector([0.0] * 768, embedding_column, top_k=10).collect()
     assert len(result) > 0
 
 
@@ -176,13 +176,13 @@ def test_lookup_embedding_using_index_values(
     """Look up the embedding for a specific time."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        lookup_embedding_using_index_values_body,
+        lookup_embedding_using_index_values,
         args=(dataset,),
         rounds=1,
     )
 
 
-def lookup_embedding_using_index_values_body(dataset: DatasetEntry) -> None:
+def lookup_embedding_using_index_values(dataset: DatasetEntry) -> None:
     """Look up the embedding for a specific time."""
 
     # This works with droid:raw
@@ -205,13 +205,13 @@ def test_sample_index_values(benchmark: BenchmarkFixture, tracing: trace.Span, d
     """Count the number of gripper segments in the dataset."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        sample_index_values_body,
+        sample_index_values,
         args=(dataset,),
         rounds=1,
     )
 
 
-def sample_index_values_body(dataset: DatasetEntry) -> None:
+def sample_index_values(dataset: DatasetEntry) -> None:
     """Count the number of gripper segments in the dataset."""
     wrist = dataset.filter_contents(["/camera/wrist/embedding", "/thumbnail/camera/wrist"])
 
@@ -224,7 +224,7 @@ def sample_index_values_body(dataset: DatasetEntry) -> None:
     assert len(result) > 0
 
 
-def align_fixed_frequency_body(dataset: DatasetEntry) -> None:
+def align_fixed_frequency(dataset: DatasetEntry) -> None:
     """Align two columns to a fixed frequency."""
     # Grab the cheaper column to get range of times until we can pushdown
     cheaper_column = (
@@ -261,13 +261,13 @@ def test_demonstrate_schema_latency(benchmark: BenchmarkFixture, tracing: trace.
     """Demonstrate schema latency."""
     tracing.set_attribute("test_dataset", dataset.name)
     benchmark.pedantic(
-        demonstrate_schema_latency_body,
+        demonstrate_schema_latency,
         args=(dataset,),
         rounds=20,
     )
 
 
-def demonstrate_schema_latency_body(dataset: DatasetEntry) -> None:
+def demonstrate_schema_latency(dataset: DatasetEntry) -> None:
     """Demonstrate schema latency."""
     schema = dataset.schema()
     assert schema is not None
@@ -286,13 +286,13 @@ def test_demonstrate_df_latency(benchmark: BenchmarkFixture, tracing: trace.Span
     ])
 
     benchmark.pedantic(
-        demonstrate_df_latency_body,
+        demonstrate_df_latency,
         args=(qv,),
         rounds=10,
     )
 
 
-def demonstrate_df_latency_body(qv: DatasetView) -> None:
+def demonstrate_df_latency(qv: DatasetView) -> None:
     """Demonstrate df latency."""
     # Intentionally no collect because
     # this is what is slow
