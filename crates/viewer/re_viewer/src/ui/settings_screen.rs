@@ -136,6 +136,15 @@ fn memory_budget_section_ui(ui: &mut Ui, startup_options: &mut StartupOptions) {
                     "unlimited".to_owned()
                 }
             })
+            .custom_parser(|s| {
+                let s = s.trim();
+                if s.chars().all(|c| c.is_numeric()) {
+                    // Assume GB
+                    Some(BYTES_PER_GIB as f64 * f64::from_str(s).ok()?)
+                } else {
+                    Some(re_format::parse_bytes(s)? as f64)
+                }
+            })
             .range(0..=UPPER_LIMIT_BYTES)
             .speed(speed),
     );
