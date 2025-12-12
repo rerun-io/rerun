@@ -151,7 +151,7 @@ impl ChunkStore {
                     .iter()
                     .filter_map(|(_, chunk_id)| self.chunks_per_chunk_id.get(chunk_id)),
             )
-            .filter(|chunk| protected_chunk_ids.contains(&chunk.id()));
+            .filter(|chunk| !protected_chunk_ids.contains(&chunk.id()));
 
         let diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
