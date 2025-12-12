@@ -1,26 +1,21 @@
-use futures::StreamExt;
-use std::any::Any;
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
-use std::str::FromStr as _;
-use std::sync::Arc;
-
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
+use ahash::HashSet;
 use arrow::array::{
-    ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, StringArray,
-    TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, new_null_array,
+    Array, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
+    StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
+    TimestampSecondArray, UInt32Array, new_null_array,
 };
+use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
-use datafusion::catalog::{MemTable, Session, TableProvider};
+use datafusion::catalog::{Session, TableProvider};
 use datafusion::common::{Column, DataFusionError, downcast_value, exec_datafusion_err};
 use datafusion::datasource::TableType;
 use datafusion::logical_expr::{Expr, Operator, TableProviderFilterPushDown};
 use datafusion::physical_plan::ExecutionPlan;
 use datafusion::physical_plan::coalesce_batches::CoalesceBatchesExec;
-use datafusion::prelude::SessionContext;
+use futures::StreamExt;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, QueryExpression};
 use re_log_types::EntryId;
@@ -33,6 +28,11 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle};
 use re_sorbet::{BatchType, ChunkColumnDescriptors, ColumnKind, ComponentColumnSelector};
 use re_uri::Origin;
+use std::any::Any;
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet};
+use std::str::FromStr as _;
+use std::sync::Arc;
 
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
@@ -265,7 +265,7 @@ impl TableProvider for DataframeQueryTableProvider {
         // TODO(tsaucer) the multiple requests can produce identical chunks
         // so we need to limit these down to distinct values
 
-        let chunk_info_batches = Arc::new(compute_unique_chunk_info_ids(chunk_info_batches).await?);
+        let chunk_info_batches = Arc::new(compute_unique_chunk_info_ids(chunk_info_batches)?);
 
         // Find the first column selection that is a component
         if query_expression.filtered_is_not_null.is_none() {
@@ -552,25 +552,50 @@ pub fn query_from_query_expression(query_expression: &QueryExpression) -> Query 
     }
 }
 
-async fn compute_unique_chunk_info_ids(
+fn compute_unique_chunk_info_ids(
     chunk_info_batches: Vec<Vec<RecordBatch>>,
 ) -> Result<Vec<RecordBatch>, DataFusionError> {
-    let chunk_info_batches = chunk_info_batches
-        .into_iter()
-        .filter(|inner| !inner.is_empty())
-        .collect::<Vec<_>>();
-    if chunk_info_batches.is_empty() {
+    let batches: Vec<_> = chunk_info_batches.into_iter().flatten().collect();
+    if batches.is_empty() {
         return Ok(vec![]);
     }
-    let ctx = SessionContext::new();
-    let table = Arc::new(MemTable::try_new(
-        chunk_info_batches[0][0].schema(),
-        chunk_info_batches,
-    )?);
 
-    let df = ctx.read_table(table)?.distinct()?;
+    let schema = batches[0].schema();
+    let combined = concat_batches(&schema, &batches)?;
 
-    df.collect().await
+    // Find the chunk_id column
+    let chunk_id_col = combined
+        .column_by_name("chunk_id")
+        .ok_or(exec_datafusion_err!("chunk_id column not found"))?;
+
+    let chunk_id_array = chunk_id_col
+        .as_any()
+        .downcast_ref::<FixedSizeBinaryArray>()
+        .ok_or(exec_datafusion_err!("chunk_id is not FixedSizeBinary"))?;
+
+    let mut indices_to_keep = Vec::new();
+    let mut seen: HashSet<[u8; 16]> = HashSet::default();
+
+    for row_idx in 0..combined.num_rows() {
+        let chunk_id = chunk_id_array.value(row_idx);
+        let chunk_id_fixed: [u8; 16] = chunk_id
+            .try_into()
+            .expect("chunk_id should be exactly 16 bytes");
+
+        if seen.insert(chunk_id_fixed) {
+            indices_to_keep.push(row_idx as u32);
+        }
+    }
+
+    let indices = UInt32Array::from(indices_to_keep);
+
+    let distinct_columns: Vec<Arc<dyn Array>> = combined
+        .columns()
+        .iter()
+        .map(|col| arrow::compute::take(col.as_ref(), &indices, None).unwrap())
+        .collect();
+
+    Ok(vec![RecordBatch::try_new(schema, distinct_columns)?])
 }
 
 #[cfg(test)]
