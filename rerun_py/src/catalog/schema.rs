@@ -1,84 +1,51 @@
+use std::collections::HashMap;
 use std::str::FromStr as _;
 
-use itertools::Itertools as _;
-use pyo3::exceptions::PyValueError;
-use pyo3::{IntoPyObjectExt as _, Py, PyObject, PyRef, PyRefMut, PyResult, pyclass, pymethods};
+use arrow::datatypes::Schema;
+use pyo3::exceptions::PyLookupError;
+use pyo3::{PyResult, pyclass, pymethods};
 use re_log_types::EntityPath;
-use re_sorbet::{ColumnDescriptor, ComponentColumnSelector, SorbetColumnDescriptors};
+use re_sorbet::{BatchType, ComponentColumnSelector, SorbetColumnDescriptors};
 
-use super::AnyComponentColumn;
 use super::component_columns::PyComponentColumnDescriptor;
 use super::index_columns::PyIndexColumnDescriptor;
 use crate::catalog::to_py_err;
+use crate::dataframe::AnyComponentColumn;
 
-#[pyclass(module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct SchemaIterator {
-    iter: std::vec::IntoIter<PyObject>,
-}
-
-#[pymethods] // NOLINT: ignore[py-mthd-str]
-impl SchemaIterator {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
-        slf.iter.next()
-    }
-}
-
-#[pyclass(frozen, eq, name = "Schema", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    frozen,
+    eq,
+    name = "SchemaInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, PartialEq, Eq)]
-//TODO(#9457): improve this object and use it for `Dataset.schema()`.
-pub struct PySchema {
-    pub schema: SorbetColumnDescriptors,
+pub struct PySchemaInternal {
+    /// The Sorbet column descriptors.
+    pub columns: SorbetColumnDescriptors,
+
+    /// The arrow schema metadata.
+    pub metadata: HashMap<String, String>,
+}
+
+impl PySchemaInternal {
+    /// Convert back the schema to an Arrow schema.
+    pub fn into_arrow_schema(self) -> Schema {
+        Schema::new_with_metadata(
+            self.columns.arrow_fields(BatchType::Dataframe),
+            self.metadata,
+        )
+    }
 }
 
 /// The schema representing a set of available columns.
 ///
 /// Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
 /// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
-#[pymethods]
-impl PySchema {
-    fn __repr__(&self) -> String {
-        self.component_columns()
-            .iter()
-            .map(|col| col.__repr__())
-            .join("\n")
-    }
-
-    /// Iterate over all the column descriptors in the schema, ignoring `RowId`.
-    ///
-    /// Index columns are yielded first, then component columns.
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
-        let py = slf.py();
-        let iter = SchemaIterator {
-            iter: slf
-                .schema
-                .iter()
-                .sorted_by_key(|col| match col {
-                    ColumnDescriptor::RowId(_) => 1,
-                    ColumnDescriptor::Time(_) => 2,
-                    ColumnDescriptor::Component(_) => 3,
-                })
-                .filter_map(|col| match col.clone() {
-                    ColumnDescriptor::RowId(_) => None, // TODO(#9922)
-                    ColumnDescriptor::Time(col) => {
-                        Some(PyIndexColumnDescriptor(col).into_py_any(py))
-                    }
-                    ColumnDescriptor::Component(col) => {
-                        Some(PyComponentColumnDescriptor(col).into_py_any(py))
-                    }
-                })
-                .collect::<PyResult<Vec<_>>>()?
-                .into_iter(),
-        };
-        Py::new(slf.py(), iter)
-    }
-
+#[pymethods] // NOLINT: ignore[py-mthd-str]
+impl PySchemaInternal {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
-        self.schema
+        self.columns
             .index_columns()
             .map(|c| c.clone().into())
             .collect()
@@ -86,7 +53,7 @@ impl PySchema {
 
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
-        self.schema
+        self.columns
             .component_columns()
             .map(|c| c.clone().into())
             .collect()
@@ -118,7 +85,7 @@ impl PySchema {
             component: component.to_owned(),
         };
 
-        self.schema.component_columns().find_map(|col| {
+        self.columns.component_columns().find_map(|col| {
             if col.matches(&selector) {
                 Some(col.clone().into())
             } else {
@@ -164,16 +131,16 @@ impl PySchema {
     }
 }
 
-impl PySchema {
+impl PySchemaInternal {
     pub fn resolve_component_column_selector(
         &self,
         column_selector: &ComponentColumnSelector,
     ) -> PyResult<PyComponentColumnDescriptor> {
         let desc = self
-            .schema
+            .columns
             .resolve_component_column_selector(column_selector)
             .ok_or_else(|| {
-                PyValueError::new_err(format!(
+                PyLookupError::new_err(format!(
                     "Could not find column for selector {column_selector}"
                 ))
             })?;

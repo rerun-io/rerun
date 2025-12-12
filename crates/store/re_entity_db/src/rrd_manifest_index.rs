@@ -16,8 +16,6 @@ pub struct ChunkInfo {
 
 /// A secondary index that keeps track of which chunks have been loaded into memory.
 ///
-/// This is currently used to show a progress bar.
-///
 /// This is constructed from an [`RrdManifest`], which is what
 /// the server sends to the client/viewer.
 /// TODO(RR-2999): use this for larger-than-RAM.
@@ -62,30 +60,6 @@ impl RrdManifestIndex {
             }
         }
         Ok(())
-    }
-
-    /// [0, 1], how many chunks have been loaded?
-    ///
-    /// Returns `None` if we have already started garbage-collecting some chunks.
-    pub fn progress(&self) -> Option<f32> {
-        if !self.has_index {
-            return None;
-        }
-
-        let num_remote_chunks = self.remote_chunks.len();
-
-        if self.has_deleted {
-            None
-        } else if num_remote_chunks == 0 {
-            Some(1.0)
-        } else {
-            let num_loaded = self
-                .remote_chunks
-                .values()
-                .filter(|c| c.fully_loaded)
-                .count();
-            Some(num_loaded as f32 / num_remote_chunks as f32)
-        }
     }
 
     pub fn mark_as_loaded(&mut self, chunk_id: ChunkId) {

@@ -45,8 +45,8 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         let time_drag_value_and_type = timeline.map(|timeline| {
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(timeline.name()) {
-                    TimeDragValue::from_time_histogram(times)
+                if let Some(range) = ctx.recording().time_range_for(timeline.name()) {
+                    TimeDragValue::from_abs_time_range(range)
                 } else {
                     debug_assert!(
                         false,

@@ -1,5 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
+use std::collections::BTreeMap;
+
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
@@ -13,7 +15,7 @@ use re_protos::external::prost::Message as _;
 
 #[test]
 fn simple_manifest() {
-    let rrd_manifest_batch = {
+    let rrd_manifest = {
         let mut builder = RrdManifestBuilder::default();
         let mut byte_offset_excluding_header = 0;
         for msg in generate_recording_chunks(1) {
@@ -30,8 +32,41 @@ fn simple_manifest() {
 
             byte_offset_excluding_header += chunk_byte_size;
         }
-        builder.into_record_batch().unwrap()
+
+        builder.build(StoreId::empty_recording()).unwrap()
     };
+
+    let rrd_manifest_batch = &rrd_manifest.data;
+
+    let static_map = rrd_manifest
+        .get_static_data_as_a_map()
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
+        .collect::<BTreeMap<_, _>>();
+
+    let temporal_map = rrd_manifest
+        .get_temporal_data_as_a_map()
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k,
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
+                    .collect::<BTreeMap<_, _>>(),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    insta::assert_snapshot!(
+        "simple_manifest_batch_native_map_static",
+        format!("{:#?}", static_map),
+    );
+    insta::assert_snapshot!(
+        "simple_manifest_batch_native_map_temporal",
+        format!("{:#?}", temporal_map),
+    );
 
     insta::assert_snapshot!(
         "simple_manifest_batch",
@@ -292,7 +327,6 @@ fn footer_empty() {
                 cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-                is_partial: false,
             },
         }))
     }
@@ -358,7 +392,6 @@ fn generate_recording(
             cloned_from: None,
             store_source: re_log_types::StoreSource::Unknown,
             store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-            is_partial: false,
         },
     }))
     .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))
@@ -495,7 +528,6 @@ fn generate_blueprint(
             cloned_from: None,
             store_source: re_log_types::StoreSource::Unknown,
             store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
-            is_partial: false,
         },
     }))
     .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))

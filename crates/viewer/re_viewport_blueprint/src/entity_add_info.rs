@@ -72,7 +72,7 @@ pub fn create_entity_add_info(
 
     tree.visit_children_recursively(|entity_path| {
         let can_add: CanAddToView =
-            if ctx.iter_visualizable_entities_for_view_class(view.class_identifier()).any(|(_vis, entities)| entities.contains(entity_path)) {
+            if ctx.iter_visualizable_entities_for_view_class(view.class_identifier()).any(|(_vis, entities)| entities.contains_key(entity_path)) {
                 CanAddToView::Compatible {
                     already_added: query_result.result_for_entity(entity_path).is_some(),
                 }

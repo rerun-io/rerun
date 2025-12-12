@@ -3,9 +3,7 @@
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::example_components::{MyPoint, MyPoints};
-use re_log_types::{
-    AbsoluteTimeRange, EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
-};
+use re_log_types::{EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr};
 use re_sdk_types::archetypes::Points2D;
 use re_test_context::TestContext;
 use re_time_panel::TimePanel;
@@ -47,109 +45,6 @@ pub fn time_panel_two_sections() {
         300.0,
         false,
         "time_panel_two_sections",
-    );
-}
-
-#[test]
-pub fn time_panel_two_sections_with_valid_range() {
-    TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::new();
-
-    add_sparse_data(&mut test_context);
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [
-            TimeControlCommand::SetActiveTimeline("frame_nr".into()),
-            TimeControlCommand::AddValidTimeRange {
-                timeline: Some("frame_nr".into()),
-                time_range: AbsoluteTimeRange::new(
-                    TimeInt::new_temporal(14),
-                    TimeInt::new_temporal(102),
-                ),
-            },
-        ],
-    );
-
-    run_time_panel_and_save_snapshot(
-        &test_context,
-        TimePanel::default(),
-        300.0,
-        false,
-        "time_panel_two_sections_with_valid_range",
-    );
-
-    // Zoom out to check on "hidden" data.
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTimeView(TimeView {
-            min: 8.into(),
-            time_spanned: 20.0,
-        })],
-    );
-
-    run_time_panel_and_save_snapshot(
-        &test_context,
-        TimePanel::default(),
-        300.0,
-        false,
-        "time_panel_two_sections_with_valid_range_zoomed_out",
-    );
-}
-
-#[test]
-pub fn time_panel_two_sections_with_two_valid_ranges() {
-    TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::new();
-
-    add_sparse_data(&mut test_context);
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [
-            TimeControlCommand::SetActiveTimeline("frame_nr".into()),
-            // Part of the first section.
-            TimeControlCommand::AddValidTimeRange {
-                timeline: Some("frame_nr".into()),
-                time_range: AbsoluteTimeRange::new(
-                    TimeInt::new_temporal(11),
-                    TimeInt::new_temporal(13),
-                ),
-            },
-            // Part of first + second section.
-            TimeControlCommand::AddValidTimeRange {
-                timeline: Some("frame_nr".into()),
-                time_range: AbsoluteTimeRange::new(
-                    TimeInt::new_temporal(15),
-                    TimeInt::new_temporal(102),
-                ),
-            },
-        ],
-    );
-
-    run_time_panel_and_save_snapshot(
-        &test_context,
-        TimePanel::default(),
-        300.0,
-        false,
-        "time_panel_two_sections_with_two_valid_ranges",
-    );
-
-    // Zoom out to check on "hidden" data.
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetTimeView(TimeView {
-            min: 8.into(),
-            time_spanned: 20.0,
-        })],
-    );
-
-    run_time_panel_and_save_snapshot(
-        &test_context,
-        TimePanel::default(),
-        300.0,
-        false,
-        "time_panel_two_sections_with_two_valid_ranges_zoomed_out",
     );
 }
 

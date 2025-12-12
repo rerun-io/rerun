@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
-    DataframeQueryView as DataframeQueryView,
+    ComponentColumnDescriptor as ComponentColumnDescriptor,
+    ComponentColumnSelector as ComponentColumnSelector,
     DataFusionTable as DataFusionTable,
     EntryId as EntryId,
     EntryKind as EntryKind,
+    IndexColumnDescriptor as IndexColumnDescriptor,
+    IndexColumnSelector as IndexColumnSelector,
     IndexConfig as IndexConfig,
     IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
-    Schema as Schema,
     # TODO(RR-3130): remove deprecated TableInsertMode in 0.29 or later
     TableInsertMode as TableInsertMode,
     Task as Task,
@@ -23,4 +25,5 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient
-from ._entry import DatasetEntry as DatasetEntry, Entry as Entry, TableEntry as TableEntry
+from ._entry import DatasetEntry as DatasetEntry, DatasetView as DatasetView, Entry as Entry, TableEntry as TableEntry
+from ._schema import Schema as Schema

@@ -97,7 +97,7 @@ fn top_bar_ui(
         app.navigation_buttons(ui);
     }
 
-    if !app.is_screenshotting() {
+    if !app.is_screenshotting() && !app.app_env().is_test() {
         show_warnings(frame, ui, app.app_env()); // Fixed width: put first
 
         let latency_snapshot = store_context

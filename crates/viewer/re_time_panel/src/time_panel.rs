@@ -277,11 +277,13 @@ impl TimePanel {
             },
         );
 
-        ctx.command_sender()
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: entity_db.store_id().clone(),
-                time_commands,
-            });
+        if !time_commands.is_empty() {
+            ctx.command_sender()
+                .send_system(SystemCommand::TimeControlCommands {
+                    store_id: entity_db.store_id().clone(),
+                    time_commands,
+                });
+        }
     }
 
     pub fn show_expanded_with_header(
@@ -368,7 +370,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.timeline_histograms(),
                         ui,
                         time_commands,
                     );
@@ -383,7 +385,7 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let timeline_histograms = entity_db.timeline_histograms();
 
             if has_more_than_one_time_point {
                 self.time_control_ui
@@ -392,7 +394,7 @@ impl TimePanel {
 
             self.time_control_ui.timeline_selector_ui(
                 time_ctrl,
-                times_per_timeline,
+                timeline_histograms,
                 ui,
                 time_commands,
             );
@@ -1293,7 +1295,7 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
-                        entity_db.times_per_timeline(),
+                        entity_db.timeline_histograms(),
                         ui,
                         time_commands,
                     );
@@ -1307,13 +1309,13 @@ impl TimePanel {
             });
         } else {
             // One row:
-            let times_per_timeline = entity_db.times_per_timeline();
+            let timeline_histograms = entity_db.timeline_histograms();
 
             self.time_control_ui
                 .play_pause_ui(time_ctrl, ui, time_commands);
             self.time_control_ui.timeline_selector_ui(
                 time_ctrl,
-                times_per_timeline,
+                timeline_histograms,
                 ui,
                 time_commands,
             );
@@ -1622,18 +1624,11 @@ fn initialize_time_ranges_ui(
     let mut time_range = Vec::new();
 
     let timeline = time_ctrl.timeline().name();
-    let valid_time_ranges = time_ctrl.valid_time_ranges_for(*timeline);
     if let Some(times) = entity_db.time_histogram(timeline) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
             let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
-            time_view = time_view.or_else(|| {
-                Some(view_everything(
-                    &x_range,
-                    &timeline_axis,
-                    time_ctrl.max_valid_range_for(*timeline),
-                ))
-            });
+            time_view = time_view.or_else(|| Some(view_everything(&x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
         }
     }
@@ -1645,16 +1640,11 @@ fn initialize_time_ranges_ui(
             time_spanned: 1.0,
         }),
         &time_range,
-        &valid_time_ranges,
     )
 }
 
 /// Find a nice view of everything in the valid marked range.
-fn view_everything(
-    x_range: &Rangef,
-    timeline_axis: &TimelineAxis,
-    max_valid_time_range: AbsoluteTimeRange,
-) -> TimeView {
+fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
     let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = x_range.span();
@@ -1667,9 +1657,8 @@ fn view_everything(
     };
 
     let min_data_time = timeline_axis.ranges.first().min;
-    let min_valid_data_time = min_data_time.max(max_valid_time_range.min);
-    let time_spanned =
-        timeline_axis.sum_time_lengths_within(max_valid_time_range) as f64 * factor as f64;
+    let min_valid_data_time = min_data_time;
+    let time_spanned = timeline_axis.sum_time_lengths() as f64 * factor as f64;
 
     TimeView {
         min: min_valid_data_time.into(),
@@ -1779,20 +1768,12 @@ fn paint_time_ranges_gaps(
 
     let zig_zag_first_and_last_edges = true;
 
-    // We segment along the valid time subranges which may facture linear segments into several parts.
-    let valid_time_ranges = time_ranges_ui
-        .segments
-        .iter()
-        .flat_map(|segment| segment.valid_subranges.iter())
-        .cloned()
-        .collect::<Vec<_>>();
-
     // Margin for the (left or right) end of a gap.
     // Don't use an arbitrarily large value since it can cause platform-specific rendering issues.
     const GAP_END_MARGIN: f32 = 100.0;
 
-    if let Some(segment_subrange) = valid_time_ranges.first() {
-        let gap_edge = *segment_subrange.start() as f32;
+    if let Some(segment) = time_ranges_ui.segments.first() {
+        let gap_edge = *segment.x.start() as f32;
         let gap_edge_left_side = ui.ctx().content_rect().left() - GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
@@ -1809,12 +1790,12 @@ fn paint_time_ranges_gaps(
         }
     }
 
-    for (a, b) in valid_time_ranges.iter().tuple_windows() {
-        paint_time_gap(*a.end() as f32, *b.start() as f32);
+    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
+        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
     }
 
-    if let Some(segment_subrange) = valid_time_ranges.last() {
-        let gap_edge = *segment_subrange.end() as f32;
+    if let Some(segment) = time_ranges_ui.segments.last() {
+        let gap_edge = *segment.x.end() as f32;
         let gap_edge_right_side = ui.ctx().content_rect().right() + GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
@@ -1903,8 +1884,8 @@ fn timeline_properties_context_menu(
 ) {
     let mut url = ViewerOpenUrl::from_context(ctx);
     let has_fragment = url.as_mut().is_ok_and(|url| {
-        url.clear_time_range();
         if let Some(fragment) = url.fragment_mut() {
+            fragment.time_selection = None;
             fragment.when = Some((
                 *time_ctrl.timeline().name(),
                 re_log_types::TimeCell {

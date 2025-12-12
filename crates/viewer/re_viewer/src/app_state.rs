@@ -185,7 +185,7 @@ impl AppState {
 
         // is there an active loop selection?
         time_ctrl
-            .loop_selection()
+            .time_selection()
             .map(|q| (*time_ctrl.timeline().name(), q))
     }
 
@@ -933,7 +933,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            Some(entity_db.times_per_timeline()),
+            Some(entity_db.timeline_histograms()),
             play_state,
             Some(blueprint_ctx),
         );

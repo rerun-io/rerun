@@ -28,7 +28,7 @@ def test_query_lance_table(prefilled_catalog: PrefilledCatalog) -> None:
 
     # Verify we can get and query the table
     entry = client.get_table(name=expected_table_name)
-    entries_df = client.get_table(name="__entries").df()
+    entries_df = client.get_table(name="__entries").reader()
     assert pa.Table.from_batches(entries_df.collect()).num_rows > 0
     assert entry.name == expected_table_name
     assert entry.kind == EntryKind.TABLE

@@ -632,7 +632,11 @@ impl TestContext {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { selection, when } = fragment;
+        let re_uri::Fragment {
+            selection,
+            when,
+            time_selection,
+        } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -653,21 +657,31 @@ impl TestContext {
                 .send_system(SystemCommand::set_selection(item.clone()));
         }
 
+        let mut time_commands = Vec::new();
+        if let Some(time_selection) = time_selection {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(
+                *time_selection.timeline.name(),
+            ));
+            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+        }
+
         if let Some((timeline, timecell)) = when {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+        }
+
+        if !time_commands.is_empty() {
             self.command_sender
                 .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    time_commands: vec![
-                        TimeControlCommand::SetActiveTimeline(timeline),
-                        TimeControlCommand::SetTime(timecell.value.into()),
-                    ],
+                    time_commands,
                 });
         }
     }
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
     pub fn handle_system_commands(&self, egui_ctx: &egui::Context) {
-        while let Some(command) = self.command_receiver.recv_system() {
+        while let Some((_from_where, command)) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
@@ -717,11 +731,11 @@ impl TestContext {
                 } => {
                     self.with_blueprint_ctx(|blueprint_ctx, hub| {
                         let mut time_ctrl = self.time_ctrl.write();
-                        let times_per_timeline = hub
+                        let timeline_histograms = hub
                             .store_bundle()
                             .get(&store_id)
                             .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
-                            .times_per_timeline();
+                            .timeline_histograms();
 
                         let blueprint_ctx =
                             Some(&blueprint_ctx).filter(|_| store_id.is_recording());
@@ -729,7 +743,7 @@ impl TestContext {
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(
                             blueprint_ctx,
-                            times_per_timeline,
+                            timeline_histograms,
                             &time_commands,
                         );
 
