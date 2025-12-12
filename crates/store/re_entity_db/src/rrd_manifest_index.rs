@@ -6,10 +6,11 @@ use arrow::compute::take_record_batch;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::Mutex;
+use re_arrow_util::RecordBatchExt;
 use re_chunk::{ChunkId, Timeline, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_encoding::{CodecResult, RrdManifest, RrdManifestTemporalMapEntry};
-use re_log_types::{AbsoluteTimeRange, StoreKind};
+use re_log_types::{AbsoluteTimeRange, StoreKind, TimeType};
 
 // The order here is used for priority to show the state in the ui (lower is more prioritized)
 /// Is the following chunk loaded?
@@ -346,6 +347,54 @@ impl RrdManifestIndex {
         self.timelines.get(timeline).copied()
     }
 
+    /// Returns the yet-to-be-loaded chunks
+    pub fn time_range_missing_chunks(
+        &self,
+        timeline: &Timeline,
+        query_range: AbsoluteTimeRange,
+    ) -> anyhow::Result<RecordBatch> {
+        re_tracing::profile_function!();
+        // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
+
+        let Some(manifest) = self.manifest.as_ref() else {
+            anyhow::bail!("No manifest");
+        };
+        let record_batch = &manifest.data;
+
+        let mut indices = vec![];
+
+        let chunk_id = manifest.col_chunk_id()?;
+        let chunk_is_static = manifest.col_chunk_is_static()?;
+        let (_, start_column) = TimeType::from_arrow_array(
+            record_batch.try_get_column(RrdManifest::field_index_start(timeline, None).name())?,
+        )?;
+        let (_, end_column) = TimeType::from_arrow_array(
+            record_batch.try_get_column(RrdManifest::field_index_end(timeline, None).name())?,
+        )?;
+
+        for (row_idx, (chunk_id, chunk_is_static, start_time, end_time)) in
+            itertools::izip!(chunk_id, chunk_is_static, start_column, end_column).enumerate()
+        {
+            let chunk_range = AbsoluteTimeRange::new(*start_time, *end_time);
+            let include = chunk_is_static || chunk_range.intersects(query_range);
+            if include {
+                if let Some(chunk_info) = self.remote_chunks.get(&chunk_id) {
+                    if *chunk_info.state.lock() == LoadState::Unloaded {
+                        *chunk_info.state.lock() = LoadState::InTransit;
+                        if let Ok(row_idx) = i32::try_from(row_idx) {
+                            indices.push(row_idx);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(take_record_batch(
+            &manifest.data,
+            &Int32Array::from(indices),
+        )?)
+    }
+
     /// Find the next candidates for prefetching,
     /// searching chunks starting at the given time,
     /// until the given size budget is reached.
@@ -355,6 +404,7 @@ impl RrdManifestIndex {
         time_range: AbsoluteTimeRange,
         mut budget_bytes: usize,
     ) -> anyhow::Result<RecordBatch> {
+        // TODO: fix bug in this code.
         re_tracing::profile_function!();
         // Find the indices of all chunks that overlaps the query, then select those rows of the record batch.
 
