@@ -154,7 +154,7 @@ def run_example(temp_path: Path) -> None:
         status_log_table = create_status_log_table(client, temp_path)
         results_table = create_results_table(client, temp_path)
 
-        segment_table = dataset.segment_table().df().select("rerun_segment_id").distinct()
+        segment_table = dataset.segment_table().select("rerun_segment_id").distinct()
 
         missing_segments = None
         while missing_segments is None or len(missing_segments) != 0:

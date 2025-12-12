@@ -30,7 +30,6 @@ if TYPE_CHECKING:
         CatalogClient,
         ComponentColumnDescriptor,
         ComponentColumnSelector,
-        DataFusionTable,
         EntryId,
         EntryKind,
         IndexColumnSelector,
@@ -411,7 +410,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         view = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
-        good_segments = metadata_table.df().filter(col("success"))
+        good_segments = segment_table.filter(col("success"))
         view = dataset.filter_segments(good_segments)
 
         # Read data from the filtered view
@@ -505,7 +504,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             using_index_values=using_index_values,
         )
 
-    def create_fts_index(
+    def create_fts_search_index(
         self,
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
@@ -515,14 +514,30 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     ) -> None:
         """Create a full-text search index on the given column."""
 
-        return self._internal.create_fts_index(
+        return self._internal.create_fts_search_index(
             column=column,
             time_index=time_index,
             store_position=store_position,
             base_tokenizer=base_tokenizer,
         )
 
-    def create_vector_index(
+    @deprecated("use create_fts_search_index")
+    def create_fts_index(
+        self,
+        *,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
+        time_index: IndexColumnSelector,
+        store_position: bool = False,
+        base_tokenizer: str = "simple",
+    ) -> None:
+        return self.create_fts_search_index(
+            column=column,
+            time_index=time_index,
+            store_position=store_position,
+            base_tokenizer=base_tokenizer,
+        )
+
+    def create_vector_search_index(
         self,
         *,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
@@ -562,7 +577,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         """
 
-        return self._internal.create_vector_index(
+        return self._internal.create_vector_search_index(
             column=column,
             time_index=time_index,
             target_partition_num_rows=target_partition_num_rows,
@@ -570,24 +585,53 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             distance_metric=distance_metric,
         )
 
-    def list_indexes(self) -> list[IndexingResult]:
+    @deprecated("use create_vector_search_index instead")
+    def create_vector_index(
+        self,
+        *,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
+        time_index: IndexColumnSelector,
+        target_partition_num_rows: int | None = None,
+        num_sub_vectors: int = 16,
+        distance_metric: VectorDistanceMetric | str = "Cosine",
+    ) -> IndexingResult:
+        return self.create_vector_search_index(
+            column=column,
+            time_index=time_index,
+            target_partition_num_rows=target_partition_num_rows,
+            num_sub_vectors=num_sub_vectors,
+            distance_metric=distance_metric,
+        )
+
+    def list_search_indexes(self) -> list[IndexingResult]:
         """List all user-defined indexes in this dataset."""
 
-        return self._internal.list_indexes()
+        return self._internal.list_search_indexes()
 
-    def delete_indexes(
+    @deprecated("use list_search_indexes instead")
+    def list_indexes(self) -> list[IndexingResult]:
+        return self.list_search_indexes()
+
+    def delete_search_indexes(
         self,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> list[IndexConfig]:
         """Deletes all user-defined indexes for the specified column."""
 
-        return self._internal.delete_indexes(column)
+        return self._internal.delete_search_indexes(column)
+
+    @deprecated("use delete_search_indexes instead")
+    def delete_indexes(
+        self,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
+    ) -> list[IndexConfig]:
+        return self.delete_search_indexes(column)
 
     def search_fts(
         self,
         query: str,
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> DataFusionTable:
+    ) -> datafusion.DataFrame:
         """Search the dataset using a full-text search query."""
 
         return self._internal.search_fts(query, column)
@@ -597,7 +641,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         query: Any,  # VectorLike
         column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
-    ) -> DataFusionTable:
+    ) -> datafusion.DataFrame:
         """Search the dataset using a vector search query."""
 
         return self._internal.search_vector(query, column, top_k)
