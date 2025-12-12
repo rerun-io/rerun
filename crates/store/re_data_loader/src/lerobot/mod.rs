@@ -5,11 +5,12 @@
 //!
 //! # Important
 //!
-//! This module supports v2 `LeRobot` datasets!
+//! This module supports v2 and v3 `LeRobot` datasets!
 //!
-//! See [`datasetv2::LeRobotDatasetV2`] for more information on the dataset formats.
+//! See [`datasetv2::LeRobotDatasetV2`] and [`datasetv3::LeRobotDatasetV3`] for more information on the dataset formats.
 pub mod common;
 pub mod datasetv2;
+pub mod datasetv3;
 
 use std::{fmt, path::Path};
 

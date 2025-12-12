@@ -8677,6 +8677,7 @@ dependencies = [
  "re_mcap",
  "re_sdk_types",
  "re_tracing",
+ "re_video",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
