@@ -53,13 +53,13 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Installing examples…")
         start_time = time.time()
-        args = ["uv", "pip", "install"]
+        args = ["uv", "sync", "--inexact", "--no-install-workspace", "--package"]
         for example in examples:
             # install in editable mode so `__file__` relative paths work
             args.extend(["-e", example])
         subprocess.run(args, check=True)
         elapsed = time.time() - start_time
-        print(f"pip install in {elapsed:.1f} seconds")
+        print(f"uv sync in {elapsed:.1f} seconds")
         print()
 
     for example in examples:

@@ -30,11 +30,13 @@ impl Install {
         };
         examples.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let mut cmd = Command::new("python3");
-        cmd.arg("-m").arg("pip").arg("install");
+        let mut cmd = Command::new("uv");
+        cmd.arg("sync")
+            .arg("--inexact")
+            .arg("--no-install-workspace");
 
         for example in &examples {
-            cmd.arg("-e").arg(&example.dir);
+            cmd.arg("--package").arg(&example.name);
         }
 
         let progress = MultiProgress::new();
