@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 
 use re_build_info::CrateVersion;
-use re_chunk::{ChunkError, ChunkResult, external::re_byte_size::SizeBytes as _};
+use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::{LogMsg, StoreId};
 use re_sorbet::SorbetError;
 
@@ -125,8 +125,9 @@ struct ManifestState {
 impl FooterState {
     fn append(
         &mut self,
-        byte_span_excluding_header: re_span::Span<u64>,
         msg: &re_log_types::LogMsg,
+        byte_span_excluding_header: re_span::Span<u64>,
+        byte_size_uncompressed: u64,
     ) -> Result<(), EncodeError> {
         match msg {
             LogMsg::SetStoreInfo(msg) => {
@@ -147,10 +148,6 @@ impl FooterState {
                 // the place. We really need a layer that sits between the transport and
                 // application layer where one can accessed the parsed, unmigrated data.
                 let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch)?;
-
-                // Not a totally accurate value (and it's unclear what would an accurate value even
-                // look like), but that's fine: this doesn't need to be perfectly precise.
-                let byte_size_uncompressed = msg.batch.heap_size_bytes();
 
                 // See `self.recording_id_scope` for some explanations.
                 let recording_id = self
@@ -297,7 +294,11 @@ impl<W: std::io::Write> Encoder<W> {
         };
 
         if let Some(footer_state) = self.footer_state.as_mut() {
-            footer_state.append(byte_span_excluding_header, message)?;
+            footer_state.append(
+                message,
+                byte_span_excluding_header,
+                transport.byte_size_uncompressed(),
+            )?;
         }
 
         Ok(n)
