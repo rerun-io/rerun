@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
@@ -127,3 +127,6 @@ class Schema:
             return NotImplemented
         # Impl note: this delegates to the `Eq` trait of `PySchemaInternal`
         return self._internal == other._internal
+
+    def __arrow_c_schema__(self) -> Any:
+        return self._internal.__arrow_c_schema__()
