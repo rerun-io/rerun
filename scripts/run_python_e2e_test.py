@@ -44,9 +44,9 @@ def main() -> None:
 
     examples = [
         # Trivial examples that don't require weird dependencies, or downloading data
-        "examples/python/minimal_options",
-        "examples/python/multithreading",
-        "examples/python/plots",
+        "minimal_options",
+        "multithreading",
+        "plots",
     ]
 
     if not parser.parse_args().no_install:
