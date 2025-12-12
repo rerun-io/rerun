@@ -330,3 +330,48 @@ df = table.reader()
 <!-- TODO(ab): make this part of a larger deprecation notice for the legacy dataframe stuff -->
 
 This method is deprecated and will be removed in a future release.
+
+## Python SDK: `register()` and `register_batch()` merged into unified `register()` API
+
+The `DatasetEntry.register()` and `DatasetEntry.register_batch()` methods have been merged into a single `register()` method that returns a `RegistrationHandle`. The `DatasetEntry.register_prefix()` now also returns a `RegistrationHandle`. The `Tasks` and `Task` classes have been removed. The `recording_layer` parameter has been renamed to `layer_name`.
+
+`RegisterHandle` has  `wait()` method similar to the former `Tasks.wait()` method. It no longer requires at timeout value, and now returns a `RegisteredSegments` object containing the segment IDs of the registered segments.
+
+Single URI registration:
+
+```python
+# Before (0.27)
+segment_id = dataset.register("s3://bucket/recording.rrd")
+
+# After (0.28)
+segment_id = dataset.register("s3://bucket/recording.rrd").wait().segment_ids[0]
+```
+
+Batch registration:
+
+```python
+# Before (0.27)
+dataset.register_batch(["file:///uri1.rrd", "file:///uri2.rrd"], recording_layers=["base", "base"]).wait()
+# Note: no direct way to get segment IDs
+
+# After (0.28)
+handle = dataset.register(["file:///uri1.rrd", "file:///uri2.rrd"], layer_name="base")
+result = handle.wait()
+segment_ids = result.segment_ids
+```
+
+Streaming results with progress tracking:
+
+```python
+from tqdm import tqdm
+from rerun.catalog import SegmentRegistrationResult
+
+uris = ["file:///uri1.rrd", "file:///uri2.rrd"]
+handle = dataset.register(uris, layer_name="base")
+
+for result in tqdm(handle.iter_results(), total=len(uris), desc="Registering"):
+    if result.is_error:
+        print(f"Failed to register {result.uri}: {result.error}")
+    else:
+        print(f"Registered {result.uri} as {result.segment_id}")
+```
