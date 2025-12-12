@@ -106,7 +106,7 @@ jobs:
 
       - name: Build examples
         run: |
-          pixi run build-examples rrd \
+          pixi run build-examples rrd --install \
             --channel "release" \
             crates/viewer/re_web_viewer_server/web_viewer/examples
 
