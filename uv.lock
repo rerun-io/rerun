@@ -4494,7 +4494,9 @@ tests = [
 [package.metadata]
 requires-dist = [
     { name = "attrs", specifier = ">=23.1.0" },
+    { name = "datafusion", marker = "extra == 'all'", specifier = "==50.1.0" },
     { name = "datafusion", marker = "extra == 'datafusion'", specifier = "==50.1.0" },
+    { name = "datafusion", marker = "extra == 'tests'", specifier = "==50.1.0" },
     { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.31.1" },
     { name = "numpy", specifier = ">=2" },
     { name = "opencv-python", marker = "extra == 'tests'", specifier = ">4.6" },
@@ -4502,10 +4504,8 @@ requires-dist = [
     { name = "polars", marker = "extra == 'tests'", specifier = "==1.36.1" },
     { name = "pyarrow", specifier = ">=18.0.0" },
     { name = "pytest", marker = "extra == 'tests'", specifier = "==8.4.2" },
+    { name = "rerun-notebook", marker = "extra == 'all'", editable = "rerun_notebook" },
     { name = "rerun-notebook", marker = "extra == 'notebook'", editable = "rerun_notebook" },
-    { name = "rerun-sdk", extras = ["datafusion"], marker = "extra == 'all'", editable = "rerun_py" },
-    { name = "rerun-sdk", extras = ["datafusion"], marker = "extra == 'tests'", editable = "rerun_py" },
-    { name = "rerun-sdk", extras = ["notebook"], marker = "extra == 'all'", editable = "rerun_py" },
     { name = "semver", marker = "extra == 'tests'", specifier = ">=3.0,<3.1" },
     { name = "syrupy", marker = "extra == 'tests'", specifier = "==5.0.0" },
     { name = "tomli", marker = "extra == 'tests'", specifier = "==2.0.1" },

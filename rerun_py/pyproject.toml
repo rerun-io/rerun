@@ -44,11 +44,13 @@ tests = [
   "syrupy==5.0.0",
   "tomli==2.0.1",
   "torch>=2.5", # Needs numpy 2 support
-  "rerun-sdk[datafusion]",
+  "datafusion==50.1.0",
 ]
 notebook = ["rerun-notebook==0.28.0-alpha.1+dev"]
 datafusion = ["datafusion==50.1.0"]
-all = ["rerun-sdk[notebook]", "rerun-sdk[datafusion]"]
+# Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
+# uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
+all = ["rerun-notebook==0.28.0-alpha.1+dev", "datafusion==50.1.0"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"

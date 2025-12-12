@@ -382,7 +382,7 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 
 # Python infrastructure
 
-py-build = "env -u CONDA_PREFIX PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uv run python scripts/ci/fix_rerun_pth.py"
+py-build = "env -u CONDA_PREFIX RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uv run python scripts/ci/fix_rerun_pth.py"
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
 ] }

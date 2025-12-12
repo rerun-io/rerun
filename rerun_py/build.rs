@@ -4,6 +4,31 @@ fn main() {
 
     re_build_tools::export_build_info_vars_for_crate("rerun_py");
 
+    // Prevent accidental slow builds via `uv pip install`.
+    // rerun-sdk should only be built via `maturin develop` which is much faster.
+    // When building via maturin develop, set RERUN_MATURIN_BUILD=1.
+    if re_build_tools::is_tracked_env_var_set("RERUN_BUILDING_WHEEL")
+        && !re_build_tools::is_tracked_env_var_set("RERUN_MATURIN_BUILD")
+    {
+        eprintln!();
+        eprintln!("ERROR: rerun-sdk should not be built via `uv pip install` or `uv sync`.");
+        eprintln!("       This uses an isolated build environment which is very slow.");
+        eprintln!();
+        eprintln!("       Instead, use `pixi run py-build` or `maturin develop`:");
+        eprintln!();
+        eprintln!(
+            "           RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml"
+        );
+        eprintln!();
+        eprintln!(
+            "       Then use `uv sync --inexact --no-install-workspace` to install other dependencies."
+        );
+        eprintln!();
+        eprintln!("       If you really need to build via uv, set RERUN_MATURIN_BUILD=1.");
+        eprintln!();
+        std::process::exit(1);
+    }
+
     // Fail if bin/rerun is missing and we haven't specified it's ok.
     if re_build_tools::is_tracked_env_var_set("RERUN_BUILDING_WHEEL")
         && !re_build_tools::is_tracked_env_var_set("RERUN_ALLOW_MISSING_BIN")
