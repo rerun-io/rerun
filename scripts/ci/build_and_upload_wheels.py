@@ -89,6 +89,7 @@ def build_and_upload(
         f"--target {target} "
         f"{maturin_feature_flags} "
         f"--out {dist}",
+        env={"RERUN_MATURIN_BUILD": "1"},
     )
 
     pkg = os.listdir(dist)[0]
