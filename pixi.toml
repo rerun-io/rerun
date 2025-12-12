@@ -13,7 +13,7 @@
 # dependencies in a separate .venv directory. To work with Python:
 #
 #   pixi run py-build                              # Build the rerun-sdk
-#   pixi run uv run examples/python/minimal/...   # Run Python scripts via uv
+#   pixi run uv run examples/python/minimal/…   # Run Python scripts via uv
 #   pixi run uvpy script.py                        # Shorthand for running Python scripts
 #
 # See the [environments] section below for more details.
@@ -501,7 +501,7 @@ nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native v
 nbstripout = "*"
 ninja = "1.11.1.*"
 libprotobuf = "6.*" # Provides `protoc` compiler needed by lance and prost-build
-protobuf = "6.*"    # Python bindings for protobuf
+protobuf = "6.*" # Python bindings for protobuf
 prettier = ">=3.6"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
@@ -565,4 +565,3 @@ vs2022_win-64 = "19.37.32822.*"
 
 [feature.cpp.pypi-dependencies]
 ghp-import = "==2.1.0" # for CI documentation handling
-

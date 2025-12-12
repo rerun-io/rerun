@@ -4,7 +4,7 @@
 # Python runtime dependencies in a .venv directory. The two work together:
 #
 #   pixi run py-build    # Uses maturin to build rerun-sdk into .venv
-#   pixi run uv run ...  # Runs Python scripts using .venv
+#   pixi run uv run …  # Runs Python scripts using .venv
 #
 # Workspace members (rerun_py, rerun_notebook, examples) are defined in
 # [tool.uv.workspace] below.
