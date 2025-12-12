@@ -206,7 +206,7 @@ impl QueryDatasetResponse {
     pub const FIELD_CHUNK_KEY: &str = "chunk_key";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_IS_STATIC: &str = "chunk_is_static";
-    pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
+    pub const FIELD_CHUNK_BYTE_LENGTH: &str = "chunk_byte_len";
 
     pub fn field_chunk_id() -> FieldRef {
         lazy_field_ref!(
@@ -272,9 +272,9 @@ impl QueryDatasetResponse {
         )
     }
 
-    pub fn field_chunk_byte_size() -> FieldRef {
+    pub fn field_chunk_byte_len() -> FieldRef {
         lazy_field_ref!(Field::new(
-            Self::FIELD_CHUNK_BYTE_SIZE,
+            Self::FIELD_CHUNK_BYTE_LENGTH,
             DataType::UInt64,
             false
         ))
@@ -288,7 +288,7 @@ impl QueryDatasetResponse {
             Self::field_chunk_key(),
             Self::field_chunk_entity_path(),
             Self::field_chunk_is_static(),
-            Self::field_chunk_byte_size(),
+            Self::field_chunk_byte_len(),
         ]
     }
 
@@ -308,7 +308,7 @@ impl QueryDatasetResponse {
         chunk_keys: Vec<&[u8]>,
         chunk_entity_paths: Vec<String>,
         chunk_is_static: Vec<bool>,
-        chunk_byte_sizes: Vec<u64>,
+        chunk_byte_lengths: Vec<u64>,
     ) -> arrow::error::Result<RecordBatch> {
         let schema = Arc::new(Self::schema());
 
@@ -321,7 +321,7 @@ impl QueryDatasetResponse {
             Arc::new(BinaryArray::from(chunk_keys)),
             Arc::new(StringArray::from(chunk_entity_paths)),
             Arc::new(BooleanArray::from(chunk_is_static)),
-            Arc::new(UInt64Array::from(chunk_byte_sizes)),
+            Arc::new(UInt64Array::from(chunk_byte_lengths)),
         ];
 
         RecordBatch::try_new_with_options(
@@ -340,7 +340,7 @@ impl FetchChunksRequest {
     pub const FIELD_CHUNK_ID: &str = QueryDatasetResponse::FIELD_CHUNK_ID;
     pub const FIELD_CHUNK_SEGMENT_ID: &str = QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID;
     pub const FIELD_CHUNK_LAYER_NAME: &str = QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME;
-    pub const FIELD_CHUNK_BYTE_SIZE: &str = QueryDatasetResponse::FIELD_CHUNK_BYTE_SIZE;
+    pub const FIELD_CHUNK_BYTE_LENGTH: &str = QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH;
 
     pub fn required_column_names() -> Vec<String> {
         vec![
@@ -349,7 +349,7 @@ impl FetchChunksRequest {
             Self::FIELD_CHUNK_ID.to_owned(),
             Self::FIELD_CHUNK_SEGMENT_ID.to_owned(),
             Self::FIELD_CHUNK_LAYER_NAME.to_owned(),
-            Self::FIELD_CHUNK_BYTE_SIZE.to_owned(),
+            Self::FIELD_CHUNK_BYTE_LENGTH.to_owned(),
         ]
     }
 
@@ -2528,7 +2528,7 @@ mod tests {
         let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
         let chunk_entity_paths = vec!["/".to_owned(), "/".to_owned()];
         let chunk_is_static = vec![true, false];
-        let chunk_byte_sizes = vec![1024u64, 2048u64];
+        let chunk_byte_lengths = vec![1024u64, 2048u64];
 
         QueryDatasetResponse::create_dataframe(
             chunk_ids,
@@ -2537,7 +2537,7 @@ mod tests {
             chunk_keys,
             chunk_entity_paths,
             chunk_is_static,
-            chunk_byte_sizes,
+            chunk_byte_lengths,
         )
         .unwrap();
     }

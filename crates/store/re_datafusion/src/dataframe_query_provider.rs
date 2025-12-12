@@ -453,14 +453,14 @@ fn extract_segment_id(chunk_info: &RecordBatch) -> Result<String, DataFusionErro
 }
 
 /// Estimate the total size of all chunks in a `chunk_info` `RecordBatch` by summing
-/// the `chunk_byte_size` values for all rows.
+/// the `chunk_byte_len` values for all rows.
 fn estimate_segment_size(chunk_info: &RecordBatch) -> Result<u64, DataFusionError> {
     let chunk_sizes = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_SIZE)
-        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_size column"))?
+        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_len column"))?
         .as_any()
         .downcast_ref::<UInt64Array>()
-        .ok_or_else(|| exec_datafusion_err!("chunk_byte_size column is not a uint64 array"))?;
+        .ok_or_else(|| exec_datafusion_err!("chunk_byte_len column is not a uint64 array"))?;
 
     let total_size = (0..chunk_sizes.len()).map(|i| chunk_sizes.value(i)).sum();
 
@@ -538,11 +538,11 @@ fn split_large_segments(
     target_size: u64,
 ) -> Result<Vec<RecordBatch>, DataFusionError> {
     let chunk_sizes = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_SIZE)
-        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_size column"))?
+        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_len column"))?
         .as_any()
         .downcast_ref::<UInt64Array>()
-        .ok_or_else(|| exec_datafusion_err!("chunk_byte_size column is not a uint64 array"))?;
+        .ok_or_else(|| exec_datafusion_err!("chunk_byte_len column is not a uint64 array"))?;
 
     let mut result_batches = Vec::new();
     let mut current_indices = Vec::new();
@@ -945,7 +945,7 @@ mod tests {
                     .as_ref()
                     .clone(),
                 Field::new(
-                    re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_SIZE,
+                    re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
                     arrow::datatypes::DataType::UInt64,
                     false,
                 ),
