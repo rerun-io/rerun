@@ -63,19 +63,27 @@ jobs:
         with:
           pixi-version: v0.55.0
 
-      - name: Download Wheel
+      - name: Download Rerun Wheel
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
+      - name: Download Rerun Notebook Wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: rerun_notebook_wheel
+          path: wheel
+
       - name: Install built wheel
         run: |
           pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/uv_install_wheel.py --package rerun-notebook --dir wheel --platform-independent
 
       - name: Print wheel version
         run: |
           pixi run uv pip show rerun-sdk
+          pixi run uv pip show rerun-notebook
           pixi run uvpy -m rerun --version
 
       - name: Get sha
