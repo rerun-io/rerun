@@ -3,9 +3,9 @@ use std::sync::Arc;
 use re_log_types::EntityPath;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
-use re_types::Archetype as _;
-use re_types::archetypes::{AssetVideo, VideoFrameReference};
-use re_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_sdk_types::components::{Blob, MediaType, Opacity, VideoTimestamp};
 use re_viewer_context::{
     IdentifiedViewSystem, VideoAssetCache, ViewContext, ViewContextCollection, ViewId, ViewQuery,
     ViewSystemExecutionError, ViewerContext, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -139,7 +139,7 @@ impl VideoFrameReferenceVisualizer {
         ctx: &re_viewer_context::QueryContext<'_>,
         spatial_ctx: &SpatialSceneEntityContext<'_>,
         video_timestamp: &VideoTimestamp,
-        video_references: Option<Vec<re_types::ArrowString>>,
+        video_references: Option<Vec<re_sdk_types::ArrowString>>,
         opacity: Opacity,
         entity_path: &EntityPath,
         view_id: ViewId,

@@ -17,10 +17,22 @@ pub fn test_annotations() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::AnnotationContext::new([
-                    (0, "black", re_types::datatypes::Rgba32::from_rgb(0, 0, 0)),
-                    (1, "red", re_types::datatypes::Rgba32::from_rgb(255, 0, 0)),
-                    (2, "green", re_types::datatypes::Rgba32::from_rgb(0, 255, 0)),
+                &re_sdk_types::archetypes::AnnotationContext::new([
+                    (
+                        0,
+                        "black",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 0, 0),
+                    ),
+                    (
+                        1,
+                        "red",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(255, 0, 0),
+                    ),
+                    (
+                        2,
+                        "green",
+                        re_sdk_types::datatypes::Rgba32::from_rgb(0, 255, 0),
+                    ),
                 ]),
             )
         });
@@ -30,7 +42,7 @@ pub fn test_annotations() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::Boxes2D::from_mins_and_sizes(
+                &re_sdk_types::archetypes::Boxes2D::from_mins_and_sizes(
                     [(200.0, 50.0), (75.0, 150.0)],
                     [(30.0, 30.0), (20.0, 20.0)],
                 )
@@ -46,7 +58,7 @@ pub fn test_annotations() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::SegmentationImage::try_from(image)
+                &re_sdk_types::archetypes::SegmentationImage::try_from(image)
                     .unwrap()
                     .with_draw_order(0.0),
             )

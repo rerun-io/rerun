@@ -3,8 +3,8 @@
 
 use ndarray::{Array, ShapeBuilder as _};
 use re_log_types::{EntityPath, Timeline};
+use re_sdk_types::{AsComponents, archetypes};
 use re_test_context::TestContext;
-use re_types::{AsComponents, archetypes};
 use re_viewer_context::{ViewClass as _, ViewSpawnHeuristics};
 
 enum ImageSize {
@@ -48,7 +48,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
 
     for (entity_path, entity_kind) in entities {
         let entity_path = EntityPath::from(*entity_path);
-        let row_id = re_types::RowId::new();
+        let row_id = re_sdk_types::RowId::new();
 
         test_context.log_entity(entity_path, |builder| {
             let component = match entity_kind {
@@ -78,7 +78,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
 
                     match image_type {
                         ImageType::Color => &archetypes::Image::from_color_model_and_tensor(
-                            re_types::datatypes::ColorModel::RGB,
+                            re_sdk_types::datatypes::ColorModel::RGB,
                             Array::<u8, _>::zeros((h, w, 3).f()),
                         )
                         .unwrap() as &dyn AsComponents,

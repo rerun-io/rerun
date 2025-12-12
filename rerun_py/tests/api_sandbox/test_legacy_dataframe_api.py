@@ -14,6 +14,7 @@ def test_legacy_api(simple_recording_path: Path) -> None:
     recording = rr.dataframe.load_recording(simple_recording_path)
 
     assert str(recording.schema()) == snapshot("""\
+Index(timeline:timeline)
 Column name: /points:Points2D:colors
 	Entity path: /points
 	Archetype: rerun.archetypes.Points2D
@@ -35,6 +36,7 @@ Column name: property:RecordingInfo:start_time
     view = recording.view(index="timeline", contents="/**")
 
     assert str(view.schema()) == snapshot("""\
+Index(timeline:timeline)
 Column name: /points:Points2D:colors
 	Entity path: /points
 	Archetype: rerun.archetypes.Points2D

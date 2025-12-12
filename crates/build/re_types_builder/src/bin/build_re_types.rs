@@ -12,9 +12,9 @@ use re_build_tools::{
 };
 use re_types_builder::{SourceLocations, compute_re_types_hash};
 
-const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/store/re_types/source_hash.txt";
-const DEFINITIONS_DIR_PATH: &str = "crates/store/re_types/definitions";
-const ENTRYPOINT_PATH: &str = "crates/store/re_types/definitions/entry_point.fbs";
+const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/store/re_sdk_types/source_hash.txt";
+const DEFINITIONS_DIR_PATH: &str = "crates/store/re_sdk_types/definitions";
+const ENTRYPOINT_PATH: &str = "crates/store/re_sdk_types/definitions/entry_point.fbs";
 const SNIPPETS_DIR_PATH: &str = "docs/snippets/all";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";

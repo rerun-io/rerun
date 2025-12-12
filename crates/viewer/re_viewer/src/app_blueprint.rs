@@ -4,9 +4,9 @@ use re_chunk::{Chunk, RowId, TimePoint};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::AsComponents;
-use re_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
-use re_types::blueprint::components::PanelState;
+use re_sdk_types::AsComponents;
+use re_sdk_types::blueprint::archetypes::{PanelBlueprint, TimePanelBlueprint};
+use re_sdk_types::blueprint::components::PanelState;
 use re_viewer_context::{
     CommandSender, SystemCommand, SystemCommandSender as _, TIME_PANEL_PATH,
     blueprint_timepoint_for_writes,

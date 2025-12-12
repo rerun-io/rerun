@@ -53,10 +53,10 @@ pub enum EventKind {
     /// Used e.g. to send an event every time the app start.
     Append,
 
-    /// Update the permanent state associated with this analytics ID.
+    /// Collect data about the environment upon startup.
     ///
-    /// Used e.g. to associate an OS with a particular analytics ID upon its creation.
-    Update,
+    /// Used to associate the host machine's OS, Rust version, etc. with the analytics ID.
+    Identify,
 
     /// Set properties of an authenticated user.
     ///
@@ -383,6 +383,24 @@ impl Analytics {
             }
 
             pipeline.record(event);
+        }
+    }
+}
+
+pub fn record<E: Event>(cb: impl FnOnce() -> E) {
+    if let Some(analytics) = Analytics::global_or_init() {
+        analytics.record(cb());
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn record_and_flush_blocking<E: Event>(cb: impl FnOnce() -> E) {
+    if let Some(analytics) = Analytics::global_or_init() {
+        analytics.record(cb());
+        if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
+            && cfg!(debug_assertions)
+        {
+            eprintln!("Failed to flush analytics: {err}");
         }
     }
 }

@@ -61,17 +61,8 @@ fn run_view_systems(
     }
 }
 
-pub fn execute_systems_for_view<'a>(
-    ctx: &'a ViewerContext<'_>,
-    view: &'a ViewBlueprint,
-    view_state: &dyn ViewState,
-    context_system_once_per_frame_results: &IntMap<
-        ViewSystemIdentifier,
-        ViewContextSystemOncePerFrameResult,
-    >,
-) -> (ViewQuery<'a>, SystemExecutionOutput) {
-    re_tracing::profile_function!(view.class_identifier().as_str());
-
+/// Creates a new [`ViewQuery`] for the given view.
+pub fn new_view_query<'a>(ctx: &'a ViewerContext<'a>, view: &'a ViewBlueprint) -> ViewQuery<'a> {
     let highlights = highlights_for_view(ctx, view.id);
 
     let query_result = ctx.lookup_query_result(view.id);
@@ -92,14 +83,28 @@ pub fn execute_systems_for_view<'a>(
     }
 
     let current_query = ctx.time_ctrl.current_query();
-    let query = re_viewer_context::ViewQuery {
+    re_viewer_context::ViewQuery {
         view_id: view.id,
         space_origin: &view.space_origin,
         per_visualizer_data_results,
         timeline: current_query.timeline(),
         latest_at: current_query.at(),
         highlights,
-    };
+    }
+}
+
+pub fn execute_systems_for_view<'a>(
+    ctx: &'a ViewerContext<'_>,
+    view: &'a ViewBlueprint,
+    view_state: &dyn ViewState,
+    context_system_once_per_frame_results: &IntMap<
+        ViewSystemIdentifier,
+        ViewContextSystemOncePerFrameResult,
+    >,
+) -> (ViewQuery<'a>, SystemExecutionOutput) {
+    re_tracing::profile_function!(view.class_identifier().as_str());
+
+    let query = new_view_query(ctx, view);
 
     let mut context_systems = ctx
         .view_class_registry()

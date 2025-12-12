@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use re_chunk_store::ColumnDescriptor;
 use re_log_types::{AbsoluteTimeRange, Timeline, TimelineName};
+use re_sdk_types::blueprint::archetypes::DataframeQuery;
+use re_sdk_types::blueprint::{components, datatypes};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
-use re_types::blueprint::archetypes::DataframeQuery;
-use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
 use crate::dataframe_ui::HideColumnAction;

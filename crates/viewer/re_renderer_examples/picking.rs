@@ -141,7 +141,7 @@ impl framework::Example for Picking {
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,

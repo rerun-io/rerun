@@ -11,8 +11,10 @@ mod series_query;
 mod util;
 mod view_class;
 
-use re_types::components::{AggregationPolicy, MarkerShape};
+use re_log_types::EntityPath;
+use re_sdk_types::components::{AggregationPolicy, MarkerShape};
 use re_viewer_context::external::re_entity_db::InstancePath;
+use re_viewport_blueprint::ViewPropertyQueryError;
 pub use view_class::TimeSeriesView;
 
 /// Computes a deterministic, globally unique ID for the plot based on the ID of the view
@@ -105,4 +107,19 @@ pub struct PlotSeries {
     /// How many raw data points were aggregated into a single step of the graph?
     /// This is an average.
     pub aggregation_factor: f64,
+}
+
+/// Error that can occur when loading a single series.
+enum LoadSeriesError {
+    ViewPropertyQuery(ViewPropertyQueryError),
+    EntitySpecificVisualizerError {
+        entity_path: EntityPath,
+        error: String,
+    },
+}
+
+impl From<ViewPropertyQueryError> for LoadSeriesError {
+    fn from(err: ViewPropertyQueryError) -> Self {
+        Self::ViewPropertyQuery(err)
+    }
 }

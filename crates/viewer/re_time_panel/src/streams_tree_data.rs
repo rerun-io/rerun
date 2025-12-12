@@ -5,7 +5,7 @@ use re_chunk_store::ChunkStore;
 use re_data_ui::{ArchetypeComponentMap, sorted_component_list_by_archetype_for_ui};
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath};
-use re_types::ComponentDescriptor;
+use re_sdk_types::ComponentDescriptor;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
 use smallvec::SmallVec;
@@ -110,7 +110,9 @@ impl EntityData {
             .path
             .last()
             .map(|entity_part| entity_part.ui_string());
-        let mut label = entity_part_ui_string.clone().unwrap_or("/".to_owned());
+        let mut label = entity_part_ui_string
+            .clone()
+            .unwrap_or_else(|| "/".to_owned());
 
         let must_pop = if let Some(part) = &entity_part_ui_string {
             hierarchy.push(part.clone());
@@ -187,15 +189,13 @@ impl EntityData {
                 .map(Iterator::collect)
                 .unwrap_or_default();
 
+            if !node_info.is_leaf && !entity_tree.path.is_root() {
+                // Indicate that we have children
+                label.push('/');
+            }
             Self {
                 entity_path: entity_tree.path.clone(),
-                label: if node_info.is_leaf || entity_tree.path.is_root() {
-                    label
-                } else {
-                    // Indicate that we have children
-                    label.push('/');
-                    label
-                },
+                label,
                 highlight_sections,
                 default_open: node_info.default_open,
                 children: node_info.children,

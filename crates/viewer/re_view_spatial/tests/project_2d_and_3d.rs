@@ -1,9 +1,9 @@
 //! Test that 2D content can be added to a 3D space and vice versa.
 
 use re_log_types::{EntityPathFilter, TimePoint};
+use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{archetypes, components};
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -39,8 +39,11 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
             }
         }
 
-        archetypes::Image::from_color_model_and_tensor(re_types::datatypes::ColorModel::RGB, data)
-            .expect("failed to create image")
+        archetypes::Image::from_color_model_and_tensor(
+            re_sdk_types::datatypes::ColorModel::RGB,
+            data,
+        )
+        .expect("failed to create image")
     };
 
     let points2d =

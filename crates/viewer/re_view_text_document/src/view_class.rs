@@ -1,5 +1,5 @@
 use egui::{Label, Sense};
-use re_types::{View as _, ViewClassIdentifier};
+use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
@@ -41,7 +41,7 @@ impl ViewState for TextDocumentViewState {
 #[derive(Default)]
 pub struct TextDocumentView;
 
-type ViewType = re_types::blueprint::views::TextDocumentView;
+type ViewType = re_sdk_types::blueprint::views::TextDocumentView;
 
 impl ViewClass for TextDocumentView {
     fn identifier() -> ViewClassIdentifier {
@@ -170,7 +170,7 @@ fn text_document_ui(
     } else if text_document.text_entries.len() == 1 {
         let TextDocumentEntry { body, media_type } = &text_document.text_entries[0];
 
-        if media_type == &re_types::components::MediaType::markdown() {
+        if media_type == &re_sdk_types::components::MediaType::markdown() {
             re_tracing::profile_scope!("egui_commonmark");
 
             // Make sure headers are big:

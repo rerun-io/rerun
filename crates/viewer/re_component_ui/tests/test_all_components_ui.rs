@@ -12,11 +12,11 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
+use re_sdk_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
+use re_sdk_types::datatypes::{ChannelDatatype, PixelFormat};
 use re_test_context::TestContext;
-use re_types::ComponentDescriptor;
-use re_types::blueprint::components::{ComponentColumnSelector, QueryExpression};
-use re_types::components::{self, GraphEdge, GraphNode, ImageFormat, Text};
-use re_types::datatypes::{ChannelDatatype, PixelFormat};
 use re_types_core::reflection::Reflection;
 use re_types_core::{Component, ComponentBatch, ComponentType};
 use re_ui::{UiExt as _, list_item};
@@ -153,26 +153,26 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         // TODO(#6661): these components still have special treatment via `DataUi` and
         // `EntityDatatUi`. The hooks are registered by `re_data_ui::register_component_uis`, which
         // is not available here. So basically no point testing them here.
-        re_types::components::AnnotationContext::name(),
-        re_types::components::Blob::name(),
-        re_types::components::ClassId::name(),
-        re_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
-        re_types::components::KeypointId::name(),
-        re_types::components::TensorData::name(),
+        re_sdk_types::components::AnnotationContext::name(),
+        re_sdk_types::components::Blob::name(),
+        re_sdk_types::components::ClassId::name(),
+        re_sdk_types::components::ImageBuffer::name(), // this one is not technically handled by `DataUi`, but should get a custom ui first (it's using default ui right now).
+        re_sdk_types::components::KeypointId::name(),
+        re_sdk_types::components::TensorData::name(),
         //
         // no need to clutter the tests with these internal blueprint types
-        re_types::blueprint::components::ActiveTab::name(),
-        re_types::blueprint::components::AutoLayout::name(),
-        re_types::blueprint::components::AutoViews::name(),
-        re_types::blueprint::components::ColumnShare::name(),
-        re_types::blueprint::components::IncludedContent::name(),
-        re_types::blueprint::components::PanelState::name(),
-        re_types::blueprint::components::RootContainer::name(),
-        re_types::blueprint::components::RowShare::name(),
-        re_types::blueprint::components::ViewMaximized::name(),
-        re_types::blueprint::components::ViewOrigin::name(),
-        re_types::blueprint::components::ViewerRecommendationHash::name(),
-        re_types::blueprint::components::VisualizerOverride::name(),
+        re_sdk_types::blueprint::components::ActiveTab::name(),
+        re_sdk_types::blueprint::components::AutoLayout::name(),
+        re_sdk_types::blueprint::components::AutoViews::name(),
+        re_sdk_types::blueprint::components::ColumnShare::name(),
+        re_sdk_types::blueprint::components::IncludedContent::name(),
+        re_sdk_types::blueprint::components::PanelState::name(),
+        re_sdk_types::blueprint::components::RootContainer::name(),
+        re_sdk_types::blueprint::components::RowShare::name(),
+        re_sdk_types::blueprint::components::ViewMaximized::name(),
+        re_sdk_types::blueprint::components::ViewOrigin::name(),
+        re_sdk_types::blueprint::components::ViewerRecommendationHash::name(),
+        re_sdk_types::blueprint::components::VisualizerOverride::name(),
     ]
     .into_iter()
     // Exclude components that have custom test cases.
@@ -451,5 +451,5 @@ fn placeholder_for_component(
         None
     };
 
-    datatype.map(|datatype| re_types::reflection::generic_placeholder_for_datatype(&datatype))
+    datatype.map(|datatype| re_sdk_types::reflection::generic_placeholder_for_datatype(&datatype))
 }

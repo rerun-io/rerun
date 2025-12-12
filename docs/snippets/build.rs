@@ -91,7 +91,7 @@ fn main() {
         let args: Vec<String> = std::env::args().skip(1).collect();
 
         if args.is_empty() {
-            eprintln!("Usage: {} <snippet-name>", std::env::args().next().unwrap_or("snippets".to_owned()));
+            eprintln!("Usage: {} <snippet-name>", std::env::args().next().unwrap_or_else(|| "snippets".to_owned()));
             eprintln!("Available snippets:");
             eprintln!();
             eprintln!("${SNIPPETS}");

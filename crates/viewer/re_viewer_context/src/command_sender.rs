@@ -1,3 +1,5 @@
+use std::panic::Location;
+
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
@@ -218,22 +220,26 @@ pub trait SystemCommandSender {
 
 // ----------------------------------------------------------------------------
 
+pub type StaticLocation = &'static Location<'static>;
+
 /// Sender that queues up the execution of commands.
 #[derive(Clone)]
 pub struct CommandSender {
-    system_sender: std::sync::mpsc::Sender<SystemCommand>,
+    system_sender: std::sync::mpsc::Sender<(StaticLocation, SystemCommand)>,
     ui_sender: std::sync::mpsc::Sender<UICommand>,
 }
 
 /// Receiver for the [`CommandSender`]
 pub struct CommandReceiver {
-    system_receiver: std::sync::mpsc::Receiver<SystemCommand>,
+    system_receiver: std::sync::mpsc::Receiver<(StaticLocation, SystemCommand)>,
     ui_receiver: std::sync::mpsc::Receiver<UICommand>,
 }
 
 impl CommandReceiver {
     /// Receive a [`SystemCommand`] to be executed if any is queued.
-    pub fn recv_system(&self) -> Option<SystemCommand> {
+    ///
+    /// Includes where it was sent from.
+    pub fn recv_system(&self) -> Option<(StaticLocation, SystemCommand)> {
         // The only way this can fail (other than being empty)
         // is if the sender has been dropped.
         self.system_receiver.try_recv().ok()
@@ -267,9 +273,10 @@ pub fn command_channel() -> (CommandSender, CommandReceiver) {
 
 impl SystemCommandSender for CommandSender {
     /// Send a command to be executed.
+    #[track_caller]
     fn send_system(&self, command: SystemCommand) {
         // The only way this can fail is if the receiver has been dropped.
-        self.system_sender.send(command).ok();
+        self.system_sender.send((Location::caller(), command)).ok();
     }
 }
 

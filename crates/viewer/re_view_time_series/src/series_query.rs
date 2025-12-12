@@ -3,8 +3,8 @@
 use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
-use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
+use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, Loggable as _, RowId, components};
 use re_view::{ChunksWithComponent, HybridRangeResults, RangeResultsExt as _, clamped_or_nothing};
 use re_viewer_context::{QueryContext, auto_color_egui, typed_fallback_for};
 

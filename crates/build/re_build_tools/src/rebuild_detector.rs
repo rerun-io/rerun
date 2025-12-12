@@ -123,7 +123,7 @@ pub fn rerun_if_changed_glob(path: impl AsRef<Path>, files_to_watch: &mut HashSe
 /// This prevents recursive feedback loops where one generates source files from build.rs, which in
 /// turn triggers `cargo`'s implicit `rerun-if-changed=src/**` clause.
 //
-// TODO(cmc): use the same source tracking system as re_types* instead
+// TODO(cmc): use the same source tracking system as re_sdk_types* instead
 pub fn write_file_if_necessary(
     path: impl AsRef<std::path::Path>,
     content: &[u8],

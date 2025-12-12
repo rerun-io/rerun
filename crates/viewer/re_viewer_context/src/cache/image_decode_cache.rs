@@ -3,9 +3,9 @@ use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_types::ComponentIdentifier;
-use re_types::components::{ImageBuffer, MediaType};
-use re_types::image::{ImageKind, ImageLoadError};
+use re_sdk_types::ComponentIdentifier;
+use re_sdk_types::components::{ImageBuffer, MediaType};
+use re_sdk_types::image::{ImageKind, ImageLoadError};
 
 use crate::cache::filter_blob_removed_events;
 use crate::image_info::StoredBlobCacheKey;
@@ -22,7 +22,7 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches the results of decoding [`re_types::archetypes::EncodedImage`].
+/// Caches the results of decoding [`re_sdk_types::archetypes::EncodedImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
     cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,

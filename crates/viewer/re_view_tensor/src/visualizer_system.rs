@@ -1,7 +1,7 @@
 use re_chunk_store::{LatestAtQuery, RowId};
-use re_types::Archetype as _;
-use re_types::archetypes::Tensor;
-use re_types::components::{TensorData, ValueRange};
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::Tensor;
+use re_sdk_types::components::{TensorData, ValueRange};
 use re_view::{RangeResultsExt as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,

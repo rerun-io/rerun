@@ -17,7 +17,7 @@ def test_table_api(tmp_path_factory: pytest.TempPathFactory) -> None:
 
         tmp_path = tmp_path_factory.mktemp("my_table")
 
-        table = client.create_table_entry(
+        table = client.create_table(
             "my_table",
             pa.schema([
                 ("rerun_segment_id", pa.string()),
@@ -26,21 +26,20 @@ def test_table_api(tmp_path_factory: pytest.TempPathFactory) -> None:
             tmp_path.as_uri(),
         )
 
-        assert isinstance(table.df(), datafusion.DataFrame)
+        assert isinstance(table.reader(), datafusion.DataFrame)
 
-        assert str(table.df().schema()) == inline_snapshot("""\
+        assert str(table.reader().schema()) == inline_snapshot("""\
 rerun_segment_id: string
 operator: string
 -- schema metadata --
 sorbet:version: '0.1.2'\
 """)
 
-        df = table.df()
+        df = table.reader()
 
-        assert str(table.df().collect()) == inline_snapshot("[]")
+        assert str(table.reader().collect()) == inline_snapshot("[]")
 
-        client.append_to_table(
-            "my_table",
+        table.append(
             rerun_segment_id=["segment_001", "segment_002"],
             operator=["alice", "bob"],
         )
@@ -57,8 +56,7 @@ sorbet:version: '0.1.2'\
 └─────────────────────┴─────────────────────┘\
 """)
 
-        client.append_to_table(
-            "my_table",
+        table.append(
             rerun_segment_id=["segment_003"],
             operator=["carol"],
         )

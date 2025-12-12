@@ -9,8 +9,7 @@ use pyo3::{FromPyObject, PyErr, PyResult, pyclass, pymethods};
 use re_protos::cloud::v1alpha1::ext::IndexProperties;
 use re_sorbet::ComponentColumnSelector;
 
-use crate::catalog::to_py_err;
-use crate::dataframe::{PyComponentColumnSelector, PyIndexColumnSelector};
+use crate::catalog::{PyComponentColumnSelector, PyIndexColumnSelector, to_py_err};
 
 // ---
 

@@ -410,14 +410,15 @@ fn find_datatypes(
                     && let Some(component) = chunk.components().0.get(component)
                     && let Some(timeline) = chunk.timelines().get(timeline_name)
                 {
-                    let mut instance_type = component.list_array.value_type();
-                    if index_type == IndexType::VectorIvfPq
+                    let instance_type = if index_type == IndexType::VectorIvfPq
                         && component.list_array.value_type().is_numeric()
                     {
                         // Row is a single vector, not a list of instances.
                         // See also `prepare_record_batch`.
-                        instance_type = component.list_array.data_type().clone();
-                    }
+                        component.list_array.data_type().clone()
+                    } else {
+                        component.list_array.value_type()
+                    };
                     return Some(IndexDataTypes {
                         instances: instance_type,
                         timepoints: timeline.timeline().datatype(),

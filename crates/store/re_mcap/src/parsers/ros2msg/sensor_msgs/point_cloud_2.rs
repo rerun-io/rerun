@@ -10,8 +10,8 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Fields};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
-use re_types::reflection::ComponentDescriptorExt as _;
-use re_types::{
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::{
     Archetype as _, AsComponents as _, Component as _, ComponentDescriptor,
     SerializedComponentColumn, archetypes, components,
 };

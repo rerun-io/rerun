@@ -296,6 +296,7 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::Reserved => {
             // This happens quite often. Don't issue a warning, that would be noise!
 
+            #[expect(clippy::branches_sharing_code)]
             if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
                 // If the transfer characteristic is sRGB, assume BT.709 primaries, would be quite odd otherwise.
                 // TODO(andreas): Other transfer characteristics may also hint at primaries.

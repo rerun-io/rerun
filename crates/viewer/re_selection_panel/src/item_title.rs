@@ -3,8 +3,8 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
-use re_types::archetypes::RecordingInfo;
-use re_types::components::Timestamp;
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::Timestamp;
 use re_ui::syntax_highlighting::{
     InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };

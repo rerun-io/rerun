@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any
 
 import datafusion as dfn
 import numpy as np
@@ -19,6 +19,9 @@ from .types import (
     VectorDistanceMetricLike as VectorDistanceMetricLike,
     ViewContentsLike as ViewContentsLike,
 )
+
+if TYPE_CHECKING:
+    from rerun.catalog import Schema
 
 # NOTE
 #
@@ -177,61 +180,13 @@ class VectorDistanceMetric(Enum):  # type: ignore[misc]
     DOT: VectorDistanceMetric
     HAMMING: VectorDistanceMetric
 
-class Schema:
-    """
-    The schema representing a set of available columns.
-
-    Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
-    [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
-    """
-
-    def __iter__(self) -> Iterator[IndexColumnDescriptor | ComponentColumnDescriptor]:
-        """Iterate over all the column descriptors in the schema."""
-
-    def index_columns(self) -> list[IndexColumnDescriptor]:
-        """Return a list of all the index columns in the schema."""
-
-    def component_columns(self) -> list[ComponentColumnDescriptor]:
-        """Return a list of all the component columns in the schema."""
-
-    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
-        """
-        Look up the column descriptor for a specific entity path and component.
-
-        Parameters
-        ----------
-        entity_path : str
-            The entity path to look up.
-        component : str
-            The component to look up. Example: `Points3D:positions`.
-
-        Returns
-        -------
-        Optional[ComponentColumnDescriptor]
-            The column descriptor, if it exists.
-
-        """
-
+class SchemaInternal:
+    def index_columns(self) -> list[IndexColumnDescriptor]: ...
+    def component_columns(self) -> list[ComponentColumnDescriptor]: ...
+    def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None: ...
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
-    ) -> ComponentColumnDescriptor:
-        """
-        Look up the column descriptor for a specific selector.
-
-        Parameters
-        ----------
-        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
-            The selector to look up.
-
-            String arguments are expected to follow the following format:
-            `"<entity_path>:<component_type>"`
-
-        Returns
-        -------
-        ComponentColumnDescriptor
-            The column descriptor, if it exists. Raise an exception otherwise.
-
-        """
+    ) -> ComponentColumnDescriptor: ...
 
 class RecordingView:
     """
@@ -1298,12 +1253,11 @@ class DatasetEntryInternal:
 
     @property
     def manifest_url(self) -> str: ...
-    def schema(self) -> Schema: ...
+    def schema(self) -> SchemaInternal: ...
     def arrow_schema(self) -> pa.Schema: ...
 
     # ---
 
-    def blueprint_dataset_id(self) -> EntryId | None: ...
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
     def default_blueprint_segment_id(self) -> str | None: ...
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
@@ -1311,8 +1265,8 @@ class DatasetEntryInternal:
     # ---
 
     def segment_ids(self) -> list[str]: ...
-    def segment_table(self) -> DataFusionTable: ...
-    def manifest(self) -> DataFusionTable: ...
+    def segment_table(self) -> dfn.DataFrame: ...
+    def manifest(self) -> dfn.DataFrame: ...
     def segment_url(
         self,
         segment_id: str,
@@ -1323,21 +1277,17 @@ class DatasetEntryInternal:
 
     # ---
 
-    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str: ...
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str]) -> Tasks: ...
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks: ...
+    def filter_segments(self, segment_ids: list[str]) -> DatasetViewInternal: ...
+    def filter_contents(self, exprs: list[str]) -> DatasetViewInternal: ...
+
+    # ---
+
+    def register(self, recording_uris: list[str], *, recording_layers: list[str]) -> RegistrationHandleInternal: ...
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandleInternal: ...
 
     # ---
 
     def download_segment(self, segment_id: str) -> Recording: ...
-    def dataframe_query_view(
-        self,
-        *,
-        index: str | None,
-        contents: Any,
-        include_semantically_empty_columns: bool = False,
-        include_tombstone_columns: bool = False,
-    ) -> DataframeQueryView: ...
 
     # ---
 
@@ -1386,6 +1336,33 @@ class DatasetEntryInternal:
         unsafe_allow_recent_cleanup: bool = False,
     ) -> None: ...
 
+class DatasetViewInternal:
+    """Internal Rust implementation of DatasetView."""
+
+    # Properties
+    @property
+    def dataset(self) -> DatasetEntryInternal: ...
+    @property
+    def filtered_segment_ids(self) -> set[str] | None: ...
+    @property
+    def content_filters(self) -> list[str]: ...
+
+    # Methods
+    def schema(self) -> SchemaInternal: ...
+    def arrow_schema(self) -> pa.Schema: ...
+    def segment_ids(self) -> list[str]: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        fill_latest_at: bool = False,
+        using_index_values: IndexValuesLike | None = None,
+    ) -> dfn.DataFrame: ...
+    def filter_segments(self, segment_ids: list[str]) -> DatasetViewInternal: ...
+    def filter_contents(self, exprs: list[str]) -> DatasetViewInternal: ...
+
 class TableEntryInternal:
     def catalog(self) -> CatalogClientInternal: ...
     def delete(self) -> None: ...
@@ -1395,13 +1372,18 @@ class TableEntryInternal:
     # ---
 
     def __datafusion_table_provider__(self) -> Any: ...
-    def df(self) -> dfn.DataFrame: ...
+    def reader(self) -> dfn.DataFrame: ...
     def to_arrow_reader(self) -> pa.RecordBatchReader: ...
 
     # ---
 
     @property
     def storage_url(self) -> str: ...
+    def write_batches(
+        self,
+        batches: pa.RecordBatchReader,
+        insert_mode: TableInsertMode,
+    ) -> None: ...
 
 class TableInsertMode:
     """The modes of operation when writing tables."""
@@ -1427,173 +1409,6 @@ class _IndexValuesLikeInternal:
     def __init__(self, values: IndexValuesLike) -> None: ...
     def to_index_values(self) -> npt.NDArray[np.int64]: ...
     def len(self) -> int: ...
-
-class DataframeQueryView:
-    """View into a remote dataset acting as DataFusion table provider."""
-
-    def filter_segment_id(self, segment_id: str, *args: Iterable[str]) -> Self:
-        """Filter by one or more segment ids. All segment ids are included if not specified."""
-
-    def filter_range_sequence(self, start: int, end: int) -> Self:
-        """
-        Filter the view to only include data between the given index sequence numbers.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a sequential index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_range_secs(self, start: float, end: float) -> Self:
-        """
-        Filter the view to only include data between the given index values expressed as seconds.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a temporal index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_range_nanos(self, start: int, end: int) -> Self:
-        """
-        Filter the view to only include data between the given index values expressed as nanoseconds.
-
-        This range is inclusive and will contain both the value at the start and the value at the end.
-
-        The view must be of a temporal index type to use this method.
-
-        Parameters
-        ----------
-        start : int
-            The inclusive start of the range.
-        end : int
-            The inclusive end of the range.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data within the specified range.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_index_values(self, values: IndexValuesLike) -> Self:
-        """
-        Filter the view to only include data at the provided index values.
-
-        The index values returned will be the intersection between the provided values and the
-        original index values.
-
-        This requires index values to be a precise match. Index values in Rerun are
-        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
-        in floating point seconds, as the numerical conversion would risk false mismatches.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            The index values to filter by.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data at the specified index values.
-
-            The original view will not be modified.
-
-        """
-
-    def filter_is_not_null(self, column: AnyComponentColumn) -> Self:
-        """
-        Filter the view to only include rows where the given component column is not null.
-
-        This corresponds to rows for index values where this component was provided to Rerun explicitly
-        via `.log()` or `.send_columns()`.
-
-        Parameters
-        ----------
-        column : AnyComponentColumn
-            The component column to filter by.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing only the data where the specified component column is not null.
-
-            The original view will not be modified.
-
-        """
-
-    def using_index_values(self, values: IndexValuesLike) -> Self:
-        """
-        Create a new view that contains the provided index values.
-
-        If they exist in the original data they are selected, otherwise empty rows are added to the view.
-
-        The output view will always have the same number of rows as the provided values, even if
-        those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
-        to populate these rows with the most recent data.
-
-        Parameters
-        ----------
-        values : IndexValuesLike
-            The index values to use.
-
-        Returns
-        -------
-        RecordingView
-            A new view containing the provided index values.
-
-            The original view will not be modified.
-
-        """
-
-    def fill_latest_at(self) -> Self:
-        """
-        Populate any null values in a row with the latest valid data according to the index.
-
-        Returns
-        -------
-        RecordingView
-            A new view with the null values filled in.
-
-            The original view will not be modified.
-
-        """
-
-    def df(self) -> dfn.DataFrame:
-        """Register this view to the global DataFusion context and return a DataFrame."""
-
-    def to_arrow_reader(self) -> pa.RecordBatchReader:
-        """Convert this view to a [`pyarrow.RecordBatchReader`][]."""
 
 class IndexProperties:
     """The properties and configuration of a user-defined index."""
@@ -1657,27 +1472,20 @@ class CatalogClientInternal:
 
     # ---
 
-    def dataset_entries(self) -> list[DatasetEntryInternal]: ...
-    def table_entries(self) -> list[TableEntryInternal]: ...
+    def datasets(self, include_hidden: bool) -> list[DatasetEntryInternal]: ...
+    def tables(self, include_hidden: bool) -> list[TableEntryInternal]: ...
 
     # ---
 
-    def entry_names(self) -> list[str]: ...
-    def dataset_names(self) -> list[str]: ...
-    def table_names(self) -> list[str]: ...
-
-    # ---
-
-    def get_dataset_entry(self, id: EntryId) -> DatasetEntryInternal: ...
-    def get_table_entry(self, id: EntryId) -> TableEntryInternal: ...
+    def get_dataset(self, id: EntryId) -> DatasetEntryInternal: ...
+    def get_table(self, id: EntryId) -> TableEntryInternal: ...
 
     # ---
 
     def create_dataset(self, name: str) -> DatasetEntryInternal: ...
     def register_table(self, name: str, url: str) -> TableEntryInternal: ...
-    def write_table(self, name: str, batches: pa.RecordBatchReader, insert_mode: TableInsertMode) -> None: ...
+    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntryInternal: ...
     def ctx(self) -> dfn.SessionContext: ...
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntryInternal: ...
 
     # ---
 
@@ -1701,38 +1509,9 @@ class DataFusionTable:
     def name(self) -> str:
         """Name of this table."""
 
-class Task:
-    """A handle on a remote task."""
-
-    @property
-    def id(self) -> str:
-        """The task id."""
-
-    def wait(self, timeout_secs: int) -> None:
-        """
-        Block until the task is completed or the timeout is reached.
-
-        A `TimeoutError` is raised if the timeout is reached.
-        """
-
-class Tasks:
-    """A collection of [`Task`]."""
-
-    def wait(self, timeout_secs: int) -> None:
-        """
-        Block until all tasks are completed or the timeout is reached.
-
-        A `TimeoutError` is raised if the timeout is reached.
-        """
-
-    def status_table(self) -> DataFusionTable:
-        """Return a table with the status of all tasks."""
-
-    def __len__(self) -> int:
-        """Return the number of tasks."""
-
-    def __getitem__(self, index: int) -> Task:
-        """Return the task at the given index."""
+class RegistrationHandleInternal:
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...
+    def wait(self, timeout_secs: int | None = None) -> list[str]: ...
 
 #####################################################################################################################
 ## SEND_TABLE                                                                                                      ##
@@ -1806,7 +1585,7 @@ class _ServerInternal:
 ## AUTH                                                                                                            ##
 #####################################################################################################################
 
-class OauthLoginFlow:
+class DeviceCodeFlow:
     """
     OAuth login flow implementation.
 
@@ -1815,6 +1594,9 @@ class OauthLoginFlow:
 
     def login_url(self) -> str:
         """Get the URL for the OAuth login flow."""
+
+    def user_code(self) -> str:
+        """Get the user code."""
 
     def finish_login_flow(self) -> Credentials:
         """
@@ -1827,13 +1609,13 @@ class OauthLoginFlow:
 
         """
 
-def init_login_flow() -> OauthLoginFlow | None:
+def init_login_flow() -> DeviceCodeFlow | None:
     """
     Initialize an OAuth login flow.
 
     Returns
     -------
-    OauthLoginFlow | None
+    DeviceCodeFlow | None
         The login flow, or `None` if the user is already logged in.
 
     """

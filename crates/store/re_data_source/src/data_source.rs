@@ -7,6 +7,7 @@ use re_redap_client::ConnectionRegistryHandle;
 
 pub type AuthErrorHandler =
     Box<dyn Fn(re_uri::DatasetSegmentUri, &re_redap_client::ClientCredentialsError) + Send + Sync>;
+use crate::stream_rrd_from_http::stream_from_http_to_channel;
 
 /// Somewhere we can get Rerun logging data from.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -150,12 +151,9 @@ impl LogDataSource {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(
-                re_log_encoding::rrd::stream_from_http::stream_from_http_to_channel(
-                    url.to_string(),
-                    follow,
-                ),
-            ),
+            Self::RrdHttpUrl { url, follow } => {
+                Ok(stream_from_http_to_channel(url.to_string(), follow))
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(file_source, path) => {

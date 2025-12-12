@@ -9,8 +9,8 @@ use prost_reflect::{
     Value,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_types::ComponentDescriptor;
-use re_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
 
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{Error, LayerIdentifier, MessageLayer};

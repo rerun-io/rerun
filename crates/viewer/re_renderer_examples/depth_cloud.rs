@@ -28,7 +28,7 @@ use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
 use re_renderer::view_builder::{self, Projection, ViewBuilder};
 use re_renderer::{Color32, LineDrawableBuilder, PointCloudBuilder, Rgba, Size};
 use winit::event::ElementState;
-use winit::keyboard::{self};
+use winit::keyboard;
 
 mod framework;
 
@@ -114,7 +114,7 @@ impl RenderDepthClouds {
                     Vec3::ZERO,
                     Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -195,7 +195,7 @@ impl RenderDepthClouds {
                     Vec3::ZERO,
                     Vec3::Y,
                 )
-                .ok_or(anyhow::format_err!("invalid camera"))?,
+                .ok_or_else(|| anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,

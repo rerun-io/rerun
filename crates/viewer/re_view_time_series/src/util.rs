@@ -1,8 +1,8 @@
 use re_log_types::AbsoluteTimeRange;
-use re_types::blueprint::archetypes::TimeAxis;
-use re_types::blueprint::components::LinkAxis;
-use re_types::components::AggregationPolicy;
-use re_types::datatypes::{TimeRange, TimeRangeBoundary};
+use re_sdk_types::blueprint::archetypes::TimeAxis;
+use re_sdk_types::blueprint::components::LinkAxis;
+use re_sdk_types::components::AggregationPolicy;
+use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
@@ -76,8 +76,8 @@ pub fn determine_time_range(
     };
 
     let view_time_range = time_range_property
-        .component_or_empty::<re_types::blueprint::components::TimeRange>(
-            re_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
+        .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
+            re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
         )
         .ok()
         .flatten();
@@ -250,6 +250,7 @@ fn add_series_runs(
     };
 
     for (i, p) in points.into_iter().enumerate() {
+        #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
 

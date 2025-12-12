@@ -219,7 +219,7 @@ impl ServerBuilder {
             #[expect(clippy::unwrap_used)]
             addr: self
                 .addr
-                .unwrap_or(DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
+                .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
             routes: routes.into(),
         }
     }

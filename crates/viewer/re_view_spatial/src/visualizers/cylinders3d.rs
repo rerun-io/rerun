@@ -1,9 +1,9 @@
 use std::iter;
 
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
-use re_types::archetypes::Cylinders3D;
-use re_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
-use re_types::{ArrowString, components};
+use re_sdk_types::archetypes::Cylinders3D;
+use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels};
+use re_sdk_types::{ArrowString, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,

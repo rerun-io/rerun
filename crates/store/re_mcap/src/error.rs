@@ -25,7 +25,7 @@ pub enum Error {
     Arrow(#[from] arrow::error::ArrowError),
 
     #[error(transparent)]
-    Serialization(#[from] re_types::SerializationError),
+    Serialization(#[from] re_sdk_types::SerializationError),
 
     #[error(transparent)]
     Chunk(#[from] re_chunk::ChunkError),

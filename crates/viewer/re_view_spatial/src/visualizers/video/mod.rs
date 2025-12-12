@@ -5,7 +5,7 @@ use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_renderer::renderer;
 use re_renderer::resource_managers::ImageDataDesc;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::{ViewClass as _, ViewContext, ViewId, ViewSystemIdentifier};
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;

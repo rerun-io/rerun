@@ -1,10 +1,10 @@
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
-use re_types::Archetype as _;
-use re_types::archetypes::{
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::{
     CoordinateFrame, InstancePoses3D, Pinhole, Transform3D, TransformAxes3D,
 };
-use re_types::components::{AxisLength, ShowLabels};
+use re_sdk_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
@@ -37,7 +37,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
 
         // Make this visualizer available for any entity with Transform3D components
-        query_info.required = RequiredComponents::Any(
+        query_info.required = RequiredComponents::AnyComponent(
             Transform3D::all_component_identifiers()
                 .chain(CoordinateFrame::all_component_identifiers())
                 .chain(InstancePoses3D::all_component_identifiers())
@@ -184,12 +184,12 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     .instances
                     .get(&Instance::from(instance_index as u64))
                     .copied()
-                    .unwrap_or(
+                    .unwrap_or_else(|| {
                         query
                             .highlights
                             .entity_outline_mask(data_result.entity_path.hash())
-                            .overall,
-                    );
+                            .overall
+                    });
 
                 add_axis_arrows(
                     ctx.tokens(),

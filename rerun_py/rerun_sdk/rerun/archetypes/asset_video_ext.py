@@ -79,6 +79,7 @@ class AssetVideoExt:
         else:
             raise RuntimeError("Asset video has no video buffer")
 
+        media_type = None
         if self.media_type is not None:
             media_type = self.media_type.as_arrow_array()[0].as_py()
 

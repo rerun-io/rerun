@@ -11,8 +11,8 @@ mod viewport_ui;
 pub use viewport_ui::ViewportUi;
 
 pub mod external {
-    pub use {re_types, re_view};
+    pub use {re_sdk_types, re_view};
 }
 
 // TODO(andreas): cfg test this only?
-pub use system_execution::execute_systems_for_view;
+pub use system_execution::{execute_systems_for_view, new_view_query};

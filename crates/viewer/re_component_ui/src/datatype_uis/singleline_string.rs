@@ -1,4 +1,4 @@
-use re_types::datatypes::Utf8;
+use re_sdk_types::datatypes::Utf8;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 

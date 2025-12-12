@@ -1,13 +1,142 @@
 use std::collections::BTreeMap;
+use std::ops::Bound;
 
-use itertools::Itertools as _;
-use re_chunk::TimelineName;
+use re_chunk::{TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal};
 
 // ---
 
 /// Number of messages per time.
-pub type TimeHistogram = re_int_histogram::Int64Histogram;
+#[derive(Clone)]
+pub struct TimeHistogram {
+    timeline: Timeline,
+    hist: re_int_histogram::Int64Histogram,
+}
+
+impl std::ops::Deref for TimeHistogram {
+    type Target = re_int_histogram::Int64Histogram;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.hist
+    }
+}
+
+impl TimeHistogram {
+    pub fn new(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            hist: Default::default(),
+        }
+    }
+
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    pub fn num_events(&self) -> u64 {
+        self.hist.total_count()
+    }
+
+    pub fn insert(&mut self, time: TimeInt, count: u64) {
+        self.hist.increment(time.as_i64(), count as _);
+    }
+
+    pub fn increment(&mut self, time: i64, n: u32) {
+        self.hist.increment(time, n);
+    }
+
+    pub fn decrement(&mut self, time: i64, n: u32) {
+        self.hist.decrement(time, n);
+    }
+
+    pub fn min_opt(&self) -> Option<TimeInt> {
+        self.min_key().map(TimeInt::new_temporal)
+    }
+
+    pub fn min(&self) -> TimeInt {
+        self.min_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn max_opt(&self) -> Option<TimeInt> {
+        self.max_key().map(TimeInt::new_temporal)
+    }
+
+    pub fn max(&self) -> TimeInt {
+        self.max_opt().unwrap_or(TimeInt::MIN)
+    }
+
+    pub fn full_range(&self) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(self.min(), self.max())
+    }
+
+    pub fn step_fwd_time(&self, time: TimeReal) -> TimeInt {
+        self.next_key_after(time.floor().as_i64())
+            .map(TimeInt::new_temporal)
+            .unwrap_or_else(|| self.min())
+    }
+
+    pub fn step_back_time(&self, time: TimeReal) -> TimeInt {
+        self.prev_key_before(time.ceil().as_i64())
+            .map(TimeInt::new_temporal)
+            .unwrap_or_else(|| self.max())
+    }
+
+    pub fn step_fwd_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        if time < loop_range.min || loop_range.max <= time {
+            loop_range.min
+        } else if let Some(next) = self
+            .range(
+                (
+                    Bound::Excluded(time.floor().as_i64()),
+                    Bound::Included(loop_range.max.floor().as_i64()),
+                ),
+                1,
+            )
+            .next()
+            .map(|(r, _)| r.min)
+        {
+            TimeReal::from(next)
+        } else {
+            self.step_fwd_time(time).into()
+        }
+    }
+
+    pub fn step_back_time_looped(
+        &self,
+        time: TimeReal,
+        loop_range: &AbsoluteTimeRangeF,
+    ) -> TimeReal {
+        re_tracing::profile_function!();
+
+        if time <= loop_range.min || loop_range.max < time {
+            loop_range.max
+        } else {
+            // Collect all keys in the range and take the last one.
+            // Yes, this could be slow :/
+            let mut prev_key = None;
+            for (range, _) in self.range(
+                (
+                    Bound::Included(loop_range.min.ceil().as_i64()),
+                    Bound::Excluded(time.ceil().as_i64()),
+                ),
+                1,
+            ) {
+                prev_key = Some(range.max);
+            }
+            if let Some(prev) = prev_key {
+                TimeReal::from(TimeInt::new_temporal(prev))
+            } else {
+                self.step_back_time(time).into()
+            }
+        }
+    }
+}
 
 /// Number of messages per time per timeline.
 ///
@@ -18,23 +147,22 @@ pub struct TimeHistogramPerTimeline {
     times: BTreeMap<TimelineName, TimeHistogram>,
 
     /// Extra bookkeeping used to seed any timelines that include static msgs.
-    num_static_messages: u64,
+    has_static: bool,
 }
 
 impl TimeHistogramPerTimeline {
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.times.is_empty() && self.num_static_messages == 0
+        self.times.is_empty() && !self.has_static
     }
 
     #[inline]
-    pub fn is_static(&self) -> bool {
-        self.num_static_messages > 0
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = Timeline> {
+        self.times.values().map(|h| h.timeline())
     }
 
-    #[inline]
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &TimelineName> {
-        self.times.keys()
+    pub fn histograms(&self) -> impl ExactSizeIterator<Item = &TimeHistogram> {
+        self.times.values()
     }
 
     #[inline]
@@ -52,67 +180,32 @@ impl TimeHistogramPerTimeline {
         self.times.iter()
     }
 
-    #[inline]
-    pub fn num_static_messages(&self) -> u64 {
-        self.num_static_messages
-    }
-
     /// Total number of temporal messages over all timelines.
     pub fn num_temporal_messages(&self) -> u64 {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 
-    pub fn add(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
+    fn add_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        if times_per_timeline.is_empty() {
-            self.num_static_messages = self
-                .num_static_messages
-                .checked_add(n as u64)
-                .unwrap_or_else(|| {
-                    re_log::debug!(
-                        current = self.num_static_messages,
-                        added = n,
-                        "bookkeeping overflowed"
-                    );
-                    u64::MAX
-                });
-        } else {
-            for &(timeline_name, times) in times_per_timeline {
-                let histogram = self.times.entry(timeline_name).or_default();
-                for &time in times {
-                    histogram.increment(time, n);
-                }
-            }
+        let histogram = self
+            .times
+            .entry(*timeline.name())
+            .or_insert_with(|| TimeHistogram::new(*timeline));
+        for &time in times {
+            histogram.increment(time, n);
         }
     }
 
-    pub fn remove(&mut self, times_per_timeline: &[(TimelineName, &[i64])], n: u32) {
+    fn remove_temporal(&mut self, timeline: &Timeline, times: &[i64], n: u32) {
         re_tracing::profile_function!();
 
-        if times_per_timeline.is_empty() {
-            self.num_static_messages = self
-                .num_static_messages
-                .checked_sub(n as u64)
-                .unwrap_or_else(|| {
-                    // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
-                    re_log::debug!(
-                        current = self.num_static_messages,
-                        removed = n,
-                        "bookkeeping underflowed"
-                    );
-                    u64::MIN
-                });
-        } else {
-            for &(timeline_name, times) in times_per_timeline {
-                if let Some(histo) = self.times.get_mut(&timeline_name) {
-                    for &time in times {
-                        histo.decrement(time, n);
-                    }
-                    if histo.is_empty() {
-                        self.times.remove(&timeline_name);
-                    }
-                }
+        if let Some(histogram) = self.times.get_mut(timeline.name()) {
+            for &time in times {
+                histogram.decrement(time, n);
+            }
+            if histogram.is_empty() {
+                self.times.remove(timeline.name());
             }
         }
     }
@@ -140,18 +233,34 @@ impl ChunkStoreSubscriber for TimeHistogramPerTimeline {
         re_tracing::profile_function!();
 
         for event in events {
-            let times = event
-                .chunk
-                .timelines()
-                .iter()
-                .map(|(&timeline_name, time_column)| (timeline_name, time_column.times_raw()))
-                .collect_vec();
-            match event.kind {
-                ChunkStoreDiffKind::Addition => {
-                    self.add(&times, event.num_components() as _);
+            if event.chunk.is_static() {
+                match event.kind {
+                    ChunkStoreDiffKind::Addition => {
+                        self.has_static = true;
+                    }
+                    ChunkStoreDiffKind::Deletion => {
+                        // We never GC static stuff, but even if we did: remember we used to have them plz
+                    }
                 }
-                ChunkStoreDiffKind::Deletion => {
-                    self.remove(&times, event.num_components() as _);
+            } else {
+                for time_column in event.chunk.timelines().values() {
+                    let times = time_column.times_raw();
+                    match event.kind {
+                        ChunkStoreDiffKind::Addition => {
+                            self.add_temporal(
+                                time_column.timeline(),
+                                times,
+                                event.num_components() as _,
+                            );
+                        }
+                        ChunkStoreDiffKind::Deletion => {
+                            self.remove_temporal(
+                                time_column.timeline(),
+                                times,
+                                event.num_components() as _,
+                            );
+                        }
+                    }
                 }
             }
         }

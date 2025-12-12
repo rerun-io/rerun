@@ -107,6 +107,7 @@ pub use self::time_control::{
 };
 pub use self::typed_entity_collections::{
     IndicatedEntities, PerVisualizer, PerVisualizerInViewClass, VisualizableEntities,
+    VisualizableReason,
 };
 pub use self::undo::BlueprintUndoState;
 pub use self::utils::{

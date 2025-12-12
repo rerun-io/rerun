@@ -1,8 +1,8 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
+use re_sdk_types::archetypes;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes;
 use re_view_tensor::TensorView;
 use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -24,7 +24,9 @@ fn test_tensor() {
     });
 
     let view_id = setup_blueprint(&mut test_context);
-    test_context.run_view_ui_and_save_snapshot(view_id, "tensor_1d", egui::vec2(300.0, 50.0), None);
+    test_context
+        .run_view_ui_and_save_snapshot(view_id, "tensor_1d", egui::vec2(300.0, 50.0), None)
+        .unwrap();
 }
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {

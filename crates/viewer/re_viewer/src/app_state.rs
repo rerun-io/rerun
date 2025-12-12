@@ -12,7 +12,7 @@ use re_log_channel::LogReceiverSet;
 use re_log_types::{AbsoluteTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
-use re_types::blueprint::components::{PanelState, PlayState};
+use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::open_url::{self, ViewerOpenUrl};
 use re_viewer_context::{
@@ -186,7 +186,7 @@ impl AppState {
 
         // is there an active loop selection?
         time_ctrl
-            .loop_selection()
+            .time_selection()
             .map(|q| (*time_ctrl.timeline().name(), q))
     }
 
@@ -194,7 +194,7 @@ impl AppState {
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
-        startup_options: &StartupOptions,
+        startup_options: &mut StartupOptions,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -219,7 +219,12 @@ impl AppState {
         match self.navigation.current() {
             DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
-                settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
+                settings_screen_ui(
+                    ui,
+                    &mut self.app_options,
+                    startup_options,
+                    &mut show_settings_ui,
+                );
                 if !show_settings_ui {
                     self.navigation.replace((**prior_mode).clone());
                 }
@@ -962,7 +967,7 @@ pub(crate) fn create_time_control_for<'cfgs>(
         let mut time_ctrl = TimeControl::from_blueprint(blueprint_ctx);
 
         time_ctrl.set_play_state(
-            Some(entity_db.times_per_timeline()),
+            Some(entity_db.timeline_histograms()),
             play_state,
             Some(blueprint_ctx),
         );

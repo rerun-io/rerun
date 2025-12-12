@@ -1,15 +1,15 @@
 use itertools::Either;
 use re_chunk::{Chunk, RowId};
 use re_log_types::{ApplicationId, EntityPath, TimePoint};
-use re_types::ComponentBatch;
-use re_types::archetypes::{AssetVideo, VideoFrameReference};
-use re_types::components::VideoTimestamp;
+use re_sdk_types::ComponentBatch;
+use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_sdk_types::components::VideoTimestamp;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
 // ---
 
-/// Loads data from any supported file or in-memory contents as native [`re_types::Archetype`]s.
+/// Loads data from any supported file or in-memory contents as native [`re_sdk_types::Archetype`]s.
 ///
 /// This is a simple generic [`DataLoader`] for filetypes that match 1-to-1 with our builtin
 /// archetypes.
@@ -175,7 +175,7 @@ fn load_image(
 
     let rows = [
         {
-            let mut arch = re_types::archetypes::EncodedImage::from_file_contents(contents);
+            let mut arch = re_sdk_types::archetypes::EncodedImage::from_file_contents(contents);
 
             if let Ok(format) = image::ImageFormat::from_path(filepath) {
                 arch = arch.with_media_type(format.to_mime_type());
@@ -278,9 +278,9 @@ fn load_mesh(
 
     let rows = [
         {
-            let arch = re_types::archetypes::Asset3D::from_file_contents(
+            let arch = re_sdk_types::archetypes::Asset3D::from_file_contents(
                 contents,
-                re_types::components::MediaType::guess_from_path(filepath),
+                re_sdk_types::components::MediaType::guess_from_path(filepath),
             );
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &arch)
@@ -302,7 +302,7 @@ fn load_point_cloud(
     let rows = [
         {
             // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
-            let points3d = re_types::archetypes::Points3D::from_file_contents(contents)?;
+            let points3d = re_sdk_types::archetypes::Points3D::from_file_contents(contents)?;
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &points3d)
                 .build()?
@@ -323,9 +323,9 @@ fn load_text_document(
 
     let rows = [
         {
-            let arch = re_types::archetypes::TextDocument::from_file_contents(
+            let arch = re_sdk_types::archetypes::TextDocument::from_file_contents(
                 contents,
-                re_types::components::MediaType::guess_from_path(filepath),
+                re_sdk_types::components::MediaType::guess_from_path(filepath),
             )?;
             Chunk::builder(entity_path)
                 .with_archetype(RowId::new(), timepoint, &arch)

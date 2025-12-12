@@ -1,9 +1,9 @@
 //! Ensures that 2D/3D visualizer report errors on incompatible topology.
 
 use re_log_types::TimePoint;
+use re_sdk_types::{ViewClassIdentifier, archetypes};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::{ViewClassIdentifier, archetypes};
 use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 

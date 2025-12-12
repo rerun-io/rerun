@@ -1,4 +1,4 @@
-use re_types::{archetypes, components, datatypes};
+use re_sdk_types::{archetypes, components, datatypes};
 use re_viewer_context::{
     ColormapWithRange, FallbackProviderRegistry, ImageInfo, ImageStatsCache, QueryContext,
     TensorStats, TensorStatsCache, auto_color_for_entity_path,
@@ -20,7 +20,7 @@ pub fn type_fallbacks(registry: &mut FallbackProviderRegistry) {
         // Zero will be seen as invalid resolution by the visualizer, making it opt out of visualization.
         // TODO(andreas): We should display a warning about this somewhere.
         // Since it's not a required component, logging a warning about this might be too noisy.
-        .unwrap_or(components::Resolution::from([0.0, 0.0]))
+        .unwrap_or_else(|| components::Resolution::from([0.0, 0.0]))
     });
 }
 
@@ -286,7 +286,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                         archetypes::DepthImage::descriptor_buffer().component,
                         image_buffer.0,
                         format.0,
-                        re_types::image::ImageKind::Depth,
+                        re_sdk_types::image::ImageKind::Depth,
                     );
                     let cache = ctx.store_ctx().caches;
                     let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
@@ -369,7 +369,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             components::TransformFrameId::from_entity_path(
                 &ctx.target_entity_path
                     .parent()
-                    .unwrap_or(re_log_types::EntityPath::root()),
+                    .unwrap_or_else(re_log_types::EntityPath::root),
             )
         },
     );
@@ -393,7 +393,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
             components::TransformFrameId::from_entity_path(
                 &ctx.target_entity_path
                     .parent()
-                    .unwrap_or(re_log_types::EntityPath::root()),
+                    .unwrap_or_else(re_log_types::EntityPath::root),
             )
         },
     );
@@ -431,8 +431,8 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 // possibly incorrectly.
 fn show_labels_fallback(
     ctx: &QueryContext<'_>,
-    instance_count_component: re_types::ComponentIdentifier,
-    text_component: re_types::ComponentIdentifier,
+    instance_count_component: re_sdk_types::ComponentIdentifier,
+    text_component: re_sdk_types::ComponentIdentifier,
 ) -> components::ShowLabels {
     let results = ctx.recording().latest_at(
         ctx.query,
@@ -452,7 +452,7 @@ fn show_labels_fallback(
 /// Get a valid, finite range for the gpu to use.
 fn tensor_data_range_heuristic(
     tensor_stats: &TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
+    data_type: re_sdk_types::tensor_data::TensorDataType,
 ) -> components::ValueRange {
     let (min, max) = re_viewer_context::gpu_bridge::data_range_heuristic(
         tensor_stats.finite_range,

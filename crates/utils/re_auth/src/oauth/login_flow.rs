@@ -1,7 +1,15 @@
+use std::time::Duration;
+
 use crate::callback_server::{Error, OauthCallbackServer};
 use crate::oauth;
 use crate::oauth::Credentials;
 use crate::oauth::api::{AuthenticateWithCode, Pkce, send_async};
+
+use super::OAUTH_CLIENT_ID;
+use super::api::{
+    AuthenticateWithDeviceCode, AuthenticateWithDeviceCodeResponse, DeviceCodeFlowStatus,
+    GetDeviceAuthUrl, RefreshResponse,
+};
 
 pub enum OauthLoginFlowState {
     AlreadyLoggedIn(Credentials),
@@ -56,8 +64,8 @@ impl OauthLoginFlow {
 
         Ok(OauthLoginFlowState::LoginFlowStarted(Self {
             server,
-            pkce,
             login_hint,
+            pkce,
         }))
     }
 
@@ -86,4 +94,133 @@ impl OauthLoginFlow {
         let credentials = Credentials::from_auth_response(auth.into())?.ensure_stored()?;
         Ok(Some(credentials))
     }
+}
+
+#[expect(clippy::large_enum_variant)]
+pub enum DeviceCodeFlowState {
+    AlreadyLoggedIn(Credentials),
+    LoginFlowStarted(DeviceCodeFlow),
+}
+
+pub struct DeviceCodeFlow {
+    device_code: String,
+    user_code: String,
+    verification_uri: String,
+    interval: Duration,
+}
+
+impl DeviceCodeFlow {
+    pub async fn init(force_login: bool) -> Result<DeviceCodeFlowState, Error> {
+        if !force_login {
+            // NOTE: If the loading fails for whatever reason, we debug log the error
+            // and have the user login again as if nothing happened.
+            match oauth::load_credentials() {
+                Ok(Some(credentials)) => {
+                    match oauth::refresh_credentials(credentials).await {
+                        Ok(credentials) => {
+                            return Ok(DeviceCodeFlowState::AlreadyLoggedIn(credentials));
+                        }
+                        Err(err) => {
+                            // Credentials are bad, login again.
+                            re_log::debug!("refreshing credentials failed: {err}");
+                        }
+                    }
+                }
+
+                Ok(None) => {
+                    // No credentials yet, login as usual.
+                }
+
+                Err(err) => {
+                    re_log::debug!(
+                        "validating credentials failed, logging user in again anyway. reason: {err}"
+                    );
+                }
+            }
+        }
+
+        let res = send_async(GetDeviceAuthUrl {
+            client_id: &OAUTH_CLIENT_ID,
+        })
+        .await
+        .map_err(|err| Error::Generic(err.into()))?;
+
+        let interval = Duration::from_secs(res.interval_seconds as u64);
+
+        Ok(DeviceCodeFlowState::LoginFlowStarted(Self {
+            device_code: res.device_code,
+            user_code: res.user_code,
+            verification_uri: res.verification_uri_complete,
+            interval,
+        }))
+    }
+
+    pub fn get_login_url(&self) -> &str {
+        &self.verification_uri
+    }
+
+    pub fn get_user_code(&self) -> &str {
+        &self.user_code
+    }
+
+    pub async fn wait_for_user_confirmation(&mut self) -> Result<Credentials, Error> {
+        loop {
+            let res = send_async(AuthenticateWithDeviceCode::new(
+                &OAUTH_CLIENT_ID,
+                &self.device_code,
+            ))
+            .await
+            .map_err(|err| Error::Generic(err.into()))?;
+
+            match res {
+                AuthenticateWithDeviceCodeResponse::Success {
+                    user,
+                    organization_id,
+                    access_token,
+                    refresh_token,
+                } => {
+                    return Ok(Credentials::from_auth_response(RefreshResponse {
+                        user,
+                        organization_id,
+                        access_token,
+                        refresh_token,
+                    })?
+                    .ensure_stored()?);
+                }
+                AuthenticateWithDeviceCodeResponse::Error {
+                    error,
+                    error_description,
+                } => match error {
+                    DeviceCodeFlowStatus::AuthorizationPending => { /*fallthrough*/ }
+                    DeviceCodeFlowStatus::SlowDown => {
+                        self.interval += Duration::from_secs(1);
+                        /*fallthrough*/
+                    }
+                    DeviceCodeFlowStatus::AccessDenied
+                    | DeviceCodeFlowStatus::ExpiredToken
+                    | DeviceCodeFlowStatus::InvalidRequest
+                    | DeviceCodeFlowStatus::InvalidClient
+                    | DeviceCodeFlowStatus::InvalidGrant
+                    | DeviceCodeFlowStatus::UnsupportedGrantType => {
+                        return Err(Error::Generic(
+                            DeviceCodeFlowError {
+                                code: error,
+                                reason: error_description,
+                            }
+                            .into(),
+                        ));
+                    }
+                },
+            }
+
+            tokio::time::sleep(self.interval).await;
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("{code:?}: {reason}")]
+pub struct DeviceCodeFlowError {
+    code: DeviceCodeFlowStatus,
+    reason: String,
 }

@@ -6,7 +6,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
 use re_log_types::{Instance, StoreId};
-use re_types::{ComponentDescriptor, ComponentType};
+use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::blueprint_helpers::BlueprintContext as _;
@@ -173,7 +173,7 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_singleline_edit_or_view<C: re_types::Component>(
+    pub fn add_singleline_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
@@ -201,7 +201,7 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_multiline_edit_or_view<C: re_types::Component>(
+    pub fn add_multiline_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
@@ -228,7 +228,7 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_singleline_array_edit_or_view<C: re_types::Component>(
+    pub fn add_singleline_array_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(
             &ViewerContext<'_>,
@@ -257,7 +257,7 @@ impl ComponentUiRegistry {
     ///   (e.g. if you get a `Color` you can't assume whether it's a background color or a point color)
     /// * The returned [`egui::Response`] should be for the widget that has the tooltip, not any pop-up content.
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
-    pub fn add_multiline_array_edit_or_view<C: re_types::Component>(
+    pub fn add_multiline_array_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(
             &ViewerContext<'_>,
@@ -272,7 +272,7 @@ impl ComponentUiRegistry {
         self.add_array_editor_ui(multiline, callback);
     }
 
-    fn add_editor_ui<C: re_types::Component>(
+    fn add_editor_ui<C: re_sdk_types::Component>(
         &mut self,
         multiline: bool,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
@@ -296,7 +296,7 @@ impl ComponentUiRegistry {
                             callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_value));
 
                         if response.changed() {
-                            use re_types::ComponentBatch as _;
+                            use re_sdk_types::ComponentBatch as _;
                             deserialized_value.to_arrow().ok_or_log_error_once()
                         } else {
                             None
@@ -313,7 +313,7 @@ impl ComponentUiRegistry {
         );
     }
 
-    fn add_array_editor_ui<C: re_types::Component>(
+    fn add_array_editor_ui<C: re_sdk_types::Component>(
         &mut self,
         multiline: bool,
         callback: impl Fn(
@@ -341,7 +341,7 @@ impl ComponentUiRegistry {
                             callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_values));
 
                         if response.changed() {
-                            use re_types::ComponentBatch as _;
+                            use re_sdk_types::ComponentBatch as _;
                             deserialized_values.to_arrow().ok_or_log_error_once()
                         } else {
                             None
@@ -878,7 +878,7 @@ impl ComponentUiRegistry {
     }
 }
 
-fn try_deserialize_array<C: re_types::Component>(
+fn try_deserialize_array<C: re_sdk_types::Component>(
     value: &dyn arrow::array::Array,
 ) -> Option<Vec<C>> {
     let component_type = C::name();
@@ -892,7 +892,7 @@ fn try_deserialize_array<C: re_types::Component>(
     }
 }
 
-fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
+fn try_deserialize<C: re_sdk_types::Component>(value: &dyn arrow::array::Array) -> Option<C> {
     let component_type = C::name();
 
     let values = try_deserialize_array::<C>(value)?;
