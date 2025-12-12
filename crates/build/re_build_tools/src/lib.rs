@@ -149,7 +149,13 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         Environment::UsedAsDependency | Environment::CondaBuild => false,
     };
 
-    if export_datetime {
+    if export_datetime && is_tracked_env_var_set("DATETIME") {
+        // set externally:
+        set_env(
+            "RE_BUILD_DATETIME",
+            &std::env::var("DATETIME").unwrap_or_default(),
+        );
+    } else if export_datetime {
         set_env("RE_BUILD_DATETIME", &date_time());
 
         // The only way to make sure the build datetime is up-to-date is to run
@@ -160,7 +166,18 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         set_env("RE_BUILD_DATETIME", "");
     }
 
-    if export_git_info {
+    if export_git_info && is_tracked_env_var_set("GIT_HASH") && is_tracked_env_var_set("GIT_BRANCH")
+    {
+        // set externally:
+        set_env(
+            "RE_BUILD_GIT_HASH",
+            &std::env::var("GIT_HASH").unwrap_or_default(),
+        );
+        set_env(
+            "RE_BUILD_GIT_BRANCH",
+            &std::env::var("GIT_BRANCH").unwrap_or_default(),
+        );
+    } else if export_git_info {
         set_env(
             "RE_BUILD_GIT_HASH",
             &git::git_commit_hash().unwrap_or_default(),
