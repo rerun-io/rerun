@@ -36,6 +36,7 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
+datafusion.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 itertools.workspace = true
