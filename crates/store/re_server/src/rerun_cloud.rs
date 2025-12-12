@@ -9,6 +9,7 @@ use datafusion::logical_expr::dml::InsertOp;
 use datafusion::prelude::SessionContext;
 use nohash_hasher::IntSet;
 use re_arrow_util::RecordBatchExt as _;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{Chunk, ChunkStore, ChunkStoreHandle};
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntityPath, EntryId, StoreId, StoreKind};
@@ -1088,6 +1089,7 @@ impl RerunCloudService for RerunCloudHandler {
                 let mut chunk_keys = Vec::with_capacity(num_chunks);
                 let mut chunk_entity_path = Vec::with_capacity(num_chunks);
                 let mut chunk_is_static = Vec::with_capacity(num_chunks);
+                let mut chunk_byte_lens = Vec::with_capacity(num_chunks);
 
                 let mut timelines = BTreeMap::new();
 
@@ -1143,6 +1145,7 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_ids.push(chunk.id());
                     chunk_entity_path.push(chunk.entity_path().to_string());
                     chunk_is_static.push(chunk.is_static());
+                    chunk_byte_lens.push(chunk.total_size_bytes());
                     chunk_keys.push(
                         ChunkKey {
                             chunk_id: chunk.id(),
@@ -1163,6 +1166,7 @@ impl RerunCloudService for RerunCloudHandler {
                     chunk_key_refs,
                     chunk_entity_path,
                     chunk_is_static,
+                    chunk_byte_lens,
                 )
                 .map_err(|err| {
                     tonic::Status::internal(format!("Failed to create dataframe: {err:#}"))
