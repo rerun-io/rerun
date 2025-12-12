@@ -1075,6 +1075,10 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
+            SystemCommand::EditRedapServerModal(origin) => {
+                self.state.redap_servers.open_edit_server_modal(origin);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
@@ -1261,6 +1265,12 @@ impl App {
                 if let Err(err) = credentials.ensure_stored() {
                     re_log::error!("Failed to store credentials: {err}");
                 }
+            }
+            SystemCommand::Logout => {
+                if let Err(err) = re_auth::oauth::clear_credentials() {
+                    re_log::error!("Failed to logout: {err}");
+                }
+                self.state.redap_servers.logout();
             }
         }
     }

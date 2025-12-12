@@ -126,10 +126,41 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.arrow_schema()
 
-    def blueprint_dataset_id(self) -> EntryId | None:
-        """The ID of the associated blueprint dataset, if any."""
+    def register_blueprint(self, uri: str, set_default: bool = True) -> None:
+        """
+        Register an existing .rbl visible to the server.
 
-        return self._internal.blueprint_dataset_id()
+        By default, also set this blueprint as default.
+        """
+
+        blueprint_dataset = self.blueprint_dataset()
+
+        if blueprint_dataset is None:
+            raise LookupError("a blueprint dataset is not configured for this dataset")
+
+        segment_id = blueprint_dataset.register(uri).wait().segment_ids[0]
+
+        if set_default:
+            self.set_default_blueprint(segment_id)
+
+    def blueprints(self) -> list[str]:
+        """Lists all blueprints currently registered with this dataset."""
+
+        blueprint_dataset = self.blueprint_dataset()
+        if blueprint_dataset is None:
+            return []
+        else:
+            return blueprint_dataset.segment_ids()
+
+    def set_default_blueprint(self, blueprint_name: str | None) -> None:
+        """Set an already-registered blueprint as default for this dataset."""
+
+        return self._internal.set_default_blueprint_segment_id(blueprint_name)
+
+    def default_blueprint(self) -> str | None:
+        """Return the name currently set blueprint."""
+
+        return self._internal.default_blueprint_segment_id()
 
     def blueprint_dataset(self) -> DatasetEntry | None:
         """The associated blueprint dataset, if any."""
@@ -137,29 +168,15 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
 
-    def default_blueprint_segment_id(self) -> str | None:
-        """The default blueprint segment ID for this dataset, if any."""
-
-        return self._internal.default_blueprint_segment_id()
-
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None:
-        """
-        Set the default blueprint segment ID for this dataset.
-
-        Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
-        """
-
-        return self._internal.set_default_blueprint_segment_id(segment_id)
-
     @deprecated("Use default_blueprint_segment_id() instead")
     def default_blueprint_partition_id(self) -> str | None:
         """The default blueprint partition ID for this dataset, if any."""
-        return self.default_blueprint_segment_id()
+        return self.default_blueprint()
 
     @deprecated("Use set_default_blueprint_segment_id() instead")
     def set_default_blueprint_partition_id(self, partition_id: str | None) -> None:
         """Set the default blueprint partition ID for this dataset."""
-        return self.set_default_blueprint_segment_id(partition_id)
+        return self.set_default_blueprint(partition_id)
 
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""
@@ -177,18 +194,58 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Returns a list of partition IDs for the dataset."""
         return self.segment_ids()
 
-    def segment_table(self) -> DataFusionTable:
-        """Return the segment table as a Datafusion table provider."""
+    def segment_table(
+        self,
+        join_meta: TableEntry | datafusion.DataFrame | None = None,
+        join_key: str = "rerun_segment_id",
+    ) -> datafusion.DataFrame:
+        """
+        Return the segment table as a DataFusion DataFrame.
 
-        return self._internal.segment_table()
+        The segment table contains metadata about each segment in the dataset,
+        including segment IDs, layer names, storage URLs, and size information.
 
-    @deprecated("Use segment_table() instead")
-    def partition_table(self) -> DataFusionTable:
-        """Return the partition table as a Datafusion table provider."""
-        return self.segment_table()
+        Parameters
+        ----------
+        join_meta
+            Optional metadata table or DataFrame to join with the segment table.
+            If a `TableEntry` is provided, it will be converted to a DataFrame
+            using `reader()`.
+        join_key
+            The column name to use for joining, defaults to "rerun_segment_id".
+            Both the segment table and `join_meta` must contain this column.
 
-    def manifest(self) -> DataFusionTable:
-        """Return the dataset manifest as a Datafusion table provider."""
+        Returns
+        -------
+        datafusion.DataFrame
+            The segment metadata table, optionally joined with `join_meta`.
+
+        """
+        segment_table_df = self._internal.segment_table()
+
+        if join_meta is not None:
+            if isinstance(join_meta, TableEntry):
+                join_meta = join_meta.reader()
+
+            if join_key not in segment_table_df.schema().names:
+                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
+            if join_key not in join_meta.schema().names:
+                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
+
+            meta_join_key = join_key + "_meta"
+            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
+
+            return segment_table_df.join(
+                join_meta,
+                left_on=join_key,
+                right_on=meta_join_key,
+                how="left",
+            ).drop(meta_join_key)
+
+        return segment_table_df
+
+    def manifest(self) -> datafusion.DataFrame:
+        """Return the dataset manifest as a DataFusion DataFrame."""
 
         return self._internal.manifest()
 
@@ -654,20 +711,28 @@ class DatasetView:
         """
         Return the segment table as a DataFusion DataFrame.
 
+        The segment table contains metadata about each segment in the dataset,
+        including segment IDs, layer names, storage URLs, and size information.
+
+        Only segments matching this view's filters are included.
+
         Parameters
         ----------
         join_meta
             Optional metadata table or DataFrame to join with the segment table.
+            If a `TableEntry` is provided, it will be converted to a DataFrame
+            using `reader()`.
         join_key
             The column name to use for joining, defaults to "rerun_segment_id".
+            Both the segment table and `join_meta` must contain this column.
 
         Returns
         -------
-        The segment metadata table.
+        datafusion.DataFrame
+            The segment metadata table, optionally joined with `join_meta`.
 
         """
-
-        segment_table_df = self.dataset.segment_table().df()
+        segment_table_df = self.dataset.segment_table(join_meta, join_key)
 
         filtered_segment_ids = self._internal.filtered_segment_ids
         if filtered_segment_ids is not None:
@@ -676,25 +741,6 @@ class DatasetView:
             segment_table_df = segment_table_df.filter(
                 F.in_list(col("rerun_segment_id"), [literal(seg) for seg in filtered_segment_ids])
             )
-
-        if join_meta is not None:
-            if isinstance(join_meta, TableEntry):
-                join_meta = join_meta.reader()
-
-            if join_key not in segment_table_df.schema().names:
-                raise ValueError(f"Dataset segment table must contain join_key column '{join_key}'.")
-            if join_key not in join_meta.schema().names:
-                raise ValueError(f"join_meta must contain join_key column '{join_key}'.")
-
-            meta_join_key = join_key + "_meta"
-            join_meta = join_meta.with_column_renamed(join_key, meta_join_key)
-
-            return segment_table_df.join(
-                join_meta,
-                left_on=join_key,
-                right_on=meta_join_key,
-                how="left",
-            ).drop(meta_join_key)
 
         return segment_table_df
 

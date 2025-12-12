@@ -368,9 +368,6 @@ impl Dataset {
                 // TODO(RR-3110): add an alternate RrdManifestBuilder builder with chunk keys instead of byte spans.
                 let dummy_byte_span = re_span::Span::default();
 
-                // Not a totally accurate value (and it's unclear what would an accurate value even
-                // look like), but that's fine: this doesn't need to be perfectly precise.
-
                 // Not a totally accurate value, but we're certainly not going to encode every chunk
                 // into IPC bytes just to figure out their uncompressed size either.
                 //

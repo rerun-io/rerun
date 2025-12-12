@@ -81,7 +81,7 @@ def test_segment_table_to_polars(simple_dataset_prefix: Path) -> None:
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri())
 
-        df = ds.segment_table().df().to_polars()
+        df = ds.segment_table().to_polars()
 
         assert pprint.pformat(df.schema) == inline_snapshot("""\
 Schema([('rerun_segment_id', String),
