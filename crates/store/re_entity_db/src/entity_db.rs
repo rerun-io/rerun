@@ -655,8 +655,6 @@ impl EntityDb {
         fraction_to_purge: f32,
         time_cursor: Option<(Timeline, TimeInt)>,
     ) -> Vec<ChunkStoreEvent> {
-        eprintln!("---");
-
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));

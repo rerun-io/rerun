@@ -1,19 +1,21 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use ahash::{HashSet, HashSetExt};
+use ahash::{HashSet, HashSetExt as _};
 use itertools::{Either, Itertools as _};
 use nohash_hasher::IntSet;
+use saturating_cast::SaturatingCast as _;
+
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline};
 use re_types_core::{ComponentDescriptor, ComponentSet, UnorderedComponentSet};
-use saturating_cast::SaturatingCast as _;
 
 use crate::ChunkStore;
+use crate::store::ChunkIdSetPerTime;
+
 // Used all over in docstrings.
 #[expect(unused_imports)]
 use crate::RowId;
-use crate::store::ChunkIdSetPerTime;
 
 // ---
 
@@ -44,7 +46,9 @@ impl ChunkStore {
 
     // TODO
     // TODO: does this stuff somehow needs to be aware of protect_latest?
-    pub fn find_temporal_chunk_furthest_away2(
+
+    /// Returns the chunk furthest away from the given time cursor, if any.
+    pub fn find_temporal_chunk_furthest_away(
         &self,
         timeline: &TimelineName,
         time: TimeInt,
@@ -76,6 +80,7 @@ impl ChunkStore {
                 // TODO: iterating the chunk themselves can be accelerated using the
                 // max-interval-size trick as usual, right?
                 // -> well, a range query will do that for us
+                // -> at least one with extended bounds
 
                 // TODO: not max_dist, but you get the idea
                 // TODO: also, re-accelerate this
@@ -90,22 +95,23 @@ impl ChunkStore {
             .map(|(chunk, _)| chunk)
     }
 
-    pub fn find_temporal_chunks_furthest_away2(
+    pub fn find_temporal_chunks_furthest_away(
         &self,
         timeline: &TimelineName,
         time: TimeInt,
     ) -> impl Iterator<Item = &Arc<Chunk>> {
         let mut ignoring = HashSet::new();
         std::iter::from_fn(move || {
-            let chunk = self.find_temporal_chunk_furthest_away2(timeline, time, &ignoring)?;
-            eprintln!(
-                "pivot: {} ({} rows) @ {} with {:?}",
-                chunk.id(),
-                chunk.num_rows(),
-                chunk.entity_path(),
-                // chunk.components().keys(),
-                chunk.time_range_per_component(),
-            );
+            let chunk = self.find_temporal_chunk_furthest_away(timeline, time, &ignoring)?;
+            if false {
+                eprintln!(
+                    "chunk: {} ({} rows) @ {} with {:?}",
+                    chunk.id(),
+                    chunk.num_rows(),
+                    chunk.entity_path(),
+                    chunk.time_range_per_component(),
+                );
+            }
             ignoring.insert(chunk.id());
             Some(chunk)
         })

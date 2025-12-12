@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use ahash::{HashMap, HashSet};
-use itertools::{Either, Itertools as _};
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimelineName};
@@ -145,12 +145,13 @@ impl ChunkStore {
         let chunks_in_priority_order = options
             .furthest_from
             .iter()
-            .flat_map(|(timeline, time)| self.find_temporal_chunks_furthest_away2(timeline, *time))
+            .flat_map(|(timeline, time)| self.find_temporal_chunks_furthest_away(timeline, *time))
             .chain(
                 self.chunk_ids_per_min_row_id
                     .iter()
                     .filter_map(|(_, chunk_id)| self.chunks_per_chunk_id.get(chunk_id)),
-            );
+            )
+            .filter(|chunk| protected_chunk_ids.contains(&chunk.id()));
 
         let diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
