@@ -875,8 +875,8 @@ fn prefetch_chunks(
     let current_time = time_ctrl.time_i64()?;
     let timeline = time_ctrl.timeline()?;
     let buffer_time = match timeline.typ() {
-        re_log_types::TimeType::Sequence => 20,
-        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 2_000_000_000,
+        re_log_types::TimeType::Sequence => 30,
+        re_log_types::TimeType::DurationNs | re_log_types::TimeType::TimestampNs => 5_000_000_000,
     };
     let query_range = AbsoluteTimeRange::new(
         current_time.saturating_sub(buffer_time),
