@@ -683,6 +683,19 @@ impl ChunkStore {
             is_semantically_empty: *is_semantically_empty,
         })
     }
+
+    /// Get the [`ComponentType`] and [`ArrowDataType`] for a specific [`EntityPath`] and [`ComponentIdentifier`].
+    pub fn get_component_type(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> Option<(Option<ComponentType>, ArrowDataType)> {
+        let (component_descr, _, datatype) = self
+            .per_column_metadata
+            .get(entity_path)
+            .and_then(|per_identifier| per_identifier.get(&component))?;
+        Some((component_descr.component_type, datatype.clone()))
+    }
 }
 
 // ---

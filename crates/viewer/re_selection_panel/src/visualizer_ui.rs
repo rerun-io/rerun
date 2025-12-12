@@ -1,5 +1,6 @@
+use arrow::datatypes::DataType;
 use itertools::Itertools as _;
-use re_chunk::RowId;
+use re_chunk::{ComponentIdentifier, RowId};
 use re_data_ui::{DataUi as _, sorted_component_list_by_archetype_for_ui};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::blueprint::archetypes::ActiveVisualizers;
@@ -12,8 +13,8 @@ use re_ui::{OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item}
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     BlueprintContext as _, DataResult, PerVisualizer, QueryContext, UiLayout, ViewContext,
-    ViewSystemIdentifier, VisualizerCollection, VisualizerExecutionErrorState,
-    VisualizerInstruction, VisualizerSystem,
+    ViewSystemIdentifier, VisualizerCollection, VisualizerComponentMapping,
+    VisualizerExecutionErrorState, VisualizerInstruction, VisualizerSystem,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -216,15 +217,28 @@ fn visualizer_components(
         instruction,
     );
 
-    // Query component mappings
-    // TODO: maybe merge this into HybridLatestAtResults?
-    // let mut components = query_info.queried_components().collect::<IntSet<_>>();
-    // let mappings = query_overrides(
-    //     ctx.viewer_ctx,
-    //     visualizer_instruction,
-    //     components.iter().copied(),
-    // );
+    // Query all components of the entity so we can show them in the source component mapping UI.
+    let entity_components_with_datatype = {
+        let components = ctx
+            .viewer_ctx
+            .recording_engine()
+            .store()
+            .all_components_for_entity_sorted(&data_result.entity_path)
+            .unwrap_or_default();
+        components
+            .into_iter()
+            .filter_map(|component_id| {
+                let component_type = ctx
+                    .viewer_ctx
+                    .recording_engine()
+                    .store()
+                    .get_component_type(&data_result.entity_path, component_id);
+                component_type.map(|(_, arrow_datatype)| (component_id, arrow_datatype))
+            })
+            .collect::<Vec<_>>()
+    };
 
+    // If a component mapping is changed, we need to update the blueprint.
     let mut changed_component_mappings = vec![];
 
     // TODO(andreas): Should we show required components in a special way?
@@ -433,46 +447,14 @@ fn visualizer_components(
             }
 
             // Source component (if available)
-            ui.push_id("source_component", |ui| {
-                let component_map = instruction
-                    .component_mappings
-                    .iter()
-                    .find(|mapping| mapping.target == component_descr.component);
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
-                        // Text field with the source component name.
-                        // let source_str_ref = component_map.map(|mapping| mapping.source.as_str());
-                        // let mut source_str = source_str_ref.unwrap_or_default().to_owned();
-
-                        let mut source = component_map.map_or_else(String::default, |mapping| {
-                            mapping.source.as_str().to_owned()
-                        });
-
-                        let response = ui.text_edit_singleline(&mut source);
-                        if response.changed() {
-                            changed_component_mappings.push(
-                                re_viewer_context::VisualizerComponentMapping {
-                                    source: source.into(),
-                                    target: component_descr.component,
-                                },
-                            );
-                        }
-
-                        // editable_blueprint_component_list_item(
-                        //     &query_ctx,
-                        //     ui,
-                        //     "Override",
-                        //     override_path.clone(),
-                        //     component_descr,
-                        //     *row_id,
-                        //     raw_override.as_ref(),
-                        // )
-                        // .on_hover_text(
-                        //     "Override value for this specific entity in the current view",
-                        // );
-                    }),
-                );
-            });
+            source_component_ui(
+                ctx,
+                ui,
+                &entity_components_with_datatype,
+                component_descr,
+                instruction,
+                &mut changed_component_mappings,
+            );
         };
 
         let default_open = false;
@@ -520,7 +502,7 @@ fn visualizer_components(
     if !changed_component_mappings.is_empty() {
         let mut new_instruction = instruction.clone();
         for mapping in changed_component_mappings {
-            // Owerwrite the mapping in the new instruction.
+            // Overwrite the mapping in the new instruction.
             if let Some(orig_mapping) = new_instruction
                 .component_mappings
                 .iter_mut()
@@ -533,6 +515,60 @@ fn visualizer_components(
         }
         new_instruction.write_instruction_to_blueprint(ctx.viewer_ctx);
     }
+}
+
+fn source_component_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    entity_components_with_datatype: &[(ComponentIdentifier, DataType)],
+    component_descr: &ComponentDescriptor,
+    instruction: &VisualizerInstruction,
+    changed_component_mappings: &mut Vec<VisualizerComponentMapping>,
+) {
+    let Some(target_component_type) = &component_descr.component_type else {
+        return;
+    };
+    let Some(target_component_datatype) = ctx
+        .viewer_ctx
+        .reflection()
+        .components
+        .get(target_component_type)
+    else {
+        return;
+    };
+    ui.push_id("source_component", |ui| {
+        let component_map = instruction
+            .component_mappings
+            .iter()
+            .find(|mapping| mapping.target == component_descr.component);
+
+        ui.list_item_flat_noninteractive(
+            list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
+                let source = component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
+
+                egui::ComboBox::new("source_component_combo_box", "")
+                    .selected_text(source)
+                    .show_ui(ui, |ui| {
+                        let mut all_source_options = vec![""];
+                        for entity_component in entity_components_with_datatype {
+                            if entity_component.1 == target_component_datatype.datatype {
+                                all_source_options.push(entity_component.0.as_str());
+                            }
+                        }
+                        for source_option in all_source_options {
+                            if ui.button(source_option).clicked() {
+                                changed_component_mappings.push(
+                                    re_viewer_context::VisualizerComponentMapping {
+                                        source: source_option.into(),
+                                        target: component_descr.component,
+                                    },
+                                );
+                            }
+                        }
+                    });
+            }),
+        );
+    });
 }
 
 fn editable_blueprint_component_list_item(
