@@ -144,7 +144,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
     let create_table_request = CreateTableEntryRequest {
         name: table_name.to_owned(),
         schema: schema.clone(),
-        provider_details,
+        provider_details: Some(provider_details),
     }
     .try_into()
     .expect("Unable to create table request");
