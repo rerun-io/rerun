@@ -423,3 +423,28 @@ for result in tqdm(handle.iter_results(), total=len(uris), desc="Registering"):
     else:
         print(f"Registered {result.uri} as {result.segment_id}")
 ```
+
+## Python SDK: search index APIs
+
+So far, our APIs use of the "index" term for two distinct things: the dataset index columns, and the FTS/vector indexes. To reduce this ambiguity, we renamed our vector and FTS APIs to use the "search index" term:
+
+| Old API                              | New API                                     |
+|--------------------------------------|---------------------------------------------|
+| `DatasetEntry.create_fts_index()`    | `DatasetEntry.create_fts_search_index()`    |
+| `DatasetEntry.create_vector_index()` | `DatasetEntry.create_vector_search_index()` |
+| `DatasetEntry.list_indexes()`        | `DatasetEntry.list_search_indexes()`        |
+| `DatasetEntry.delete_indexes()`      | `DatasetEntry.delete_search_indexes()`      |
+
+The old methods are deprecated and will be removed in a future release.
+
+In addition, for consistency with the other API updates, the `DatasetEntry.search_fts()` and `DatasetEntry.search_vector()` methods now return `datafusion.DataFrame` directly instead of `DataFusionTable`. `DataFusionTable` no longer exists. This is a **breaking change**.
+
+```python
+# Before (0.27)
+result = dataset.search_fts("query", column).df()
+result = dataset.search_vector(embedding, column, top_k=10).df()
+
+# After (0.28)
+result = dataset.search_fts("query", column)
+result = dataset.search_vector(embedding, column, top_k=10)
+```
