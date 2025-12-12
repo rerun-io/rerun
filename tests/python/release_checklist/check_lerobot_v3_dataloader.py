@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 from argparse import Namespace
+from pathlib import Path
 
 import rerun as rr
 from huggingface_hub import snapshot_download
@@ -21,10 +21,10 @@ def run(args: Namespace) -> None:
     # That means the `recording_id` needs to be set to "episode_0", otherwise the LeRobot dataloader
     # will create a new recording for episode 0, instead of merging it into the existing recording.
     # If you don't set it, you'll end up with 4 recordings, an empty one and the 3 episodes.
-    rec = rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id="episode_0")
+    rec = rr.script_setup(args, f"{Path(__file__).name}", recording_id="episode_0")
 
     # load dataset from huggingface
-    dataset_path = os.path.dirname(__file__) + "/.datasets/v30_apple_storage"
+    dataset_path = Path(__file__).parent / ".datasets" / "v30_apple_storage"
     snapshot_download(repo_id="rerun/v30_apple_storage", local_dir=dataset_path, repo_type="dataset")
 
     rec.log_file_from_path(dataset_path)
@@ -32,7 +32,7 @@ def run(args: Namespace) -> None:
     # NOTE: This dataloader works by creating a new recording for each episode.
     # So that means we need to log the README to each recording.
     for i in range(3):
-        rec = rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=f"episode_{i}")
+        rec = rr.script_setup(args, f"{Path(__file__).name}", recording_id=f"episode_{i}")
         rec.set_time("frame_index", sequence=0)
         rec.log("/readme", rr.TextDocument(README), static=True)
 
