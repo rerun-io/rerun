@@ -188,15 +188,10 @@ impl ViewClass for TimeSeriesView {
         system_registry.register_fallback_provider(
             TimeAxis::descriptor_view_range().component,
             |ctx| {
-                let times_per_timeline = ctx.viewer_ctx().recording().times_per_timeline();
-                let (timeline_min, timeline_max) = times_per_timeline
-                    .get(ctx.viewer_ctx().time_ctrl.timeline().name())
-                    .and_then(|stats| {
-                        Some((
-                            *stats.per_time.keys().next()?,
-                            *stats.per_time.keys().next_back()?,
-                        ))
-                    })
+                let timeline_histograms = ctx.viewer_ctx().recording().timeline_histograms();
+                let (timeline_min, timeline_max) = timeline_histograms
+                    .get(ctx.viewer_ctx().time_ctrl.timeline_name())
+                    .and_then(|stats| Some((stats.min_opt()?, stats.max_opt()?)))
                     .unzip();
                 ctx.view_state()
                     .as_any()
@@ -324,7 +319,7 @@ impl ViewClass for TimeSeriesView {
         {
             indicated_entities
                 .0
-                .extend(maybe_visualizable.iter().cloned());
+                .extend(maybe_visualizable.keys().cloned());
         }
 
         // Ensure we don't modify this list anymore before we check the `include_entity`.
@@ -386,7 +381,7 @@ impl ViewClass for TimeSeriesView {
             visualizable_entities_per_visualizer
                 .iter()
                 .filter_map(|(visualizer, ents)| {
-                    if ents.contains(entity_path) {
+                    if ents.contains_key(entity_path) {
                         Some(visualizer)
                     } else {
                         None
@@ -446,8 +441,10 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         let current_time = ctx.time_ctrl.time_i64();
-        let time_type = ctx.time_ctrl.time_type();
-        let timeline = *ctx.time_ctrl.timeline();
+        let Some(timeline) = ctx.time_ctrl.timeline() else {
+            return Ok(());
+        };
+        let time_type = timeline.typ();
 
         let timeline_name = timeline.name().to_string();
 
@@ -484,15 +481,9 @@ impl ViewClass for TimeSeriesView {
 
         let recording = ctx.recording();
 
-        let timeline_start = recording
-            .time_histogram(ctx.time_ctrl.timeline().name())
-            .and_then(|times| times.min_key())
-            .unwrap_or_default();
-
-        let timeline_end = recording
-            .time_histogram(ctx.time_ctrl.timeline().name())
-            .and_then(|times| times.max_key())
-            .unwrap_or_default();
+        let timeline_range = recording
+            .time_range_for(timeline.name())
+            .unwrap_or(AbsoluteTimeRange::EVERYTHING);
 
         state.max_time_view_range = AbsoluteTimeRange::new(
             TimeInt::saturated_temporal_i64(min_view_time),
@@ -535,7 +526,9 @@ impl ViewClass for TimeSeriesView {
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
 
         let view_current_time = re_sdk_types::datatypes::TimeInt(
-            current_time.unwrap_or_default().at_least(timeline_start),
+            current_time
+                .unwrap_or_default()
+                .at_least(timeline_range.min.as_i64()),
         );
 
         let query_result;
@@ -574,7 +567,9 @@ impl ViewClass for TimeSeriesView {
             |view_time_range: &re_sdk_types::blueprint::components::TimeRange| {
                 make_range_sane(Range1D::new(
                     (match view_time_range.start {
-                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => timeline_start,
+                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
+                            timeline_range.min.as_i64()
+                        }
                         _ => {
                             view_time_range
                                 .start
@@ -583,7 +578,9 @@ impl ViewClass for TimeSeriesView {
                         }
                     } - time_offset) as f64,
                     (match view_time_range.end {
-                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => timeline_end,
+                        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
+                            timeline_range.max.as_i64()
+                        }
                         _ => view_time_range.end.end_boundary_time(view_current_time).0,
                     } - time_offset) as f64,
                 ))

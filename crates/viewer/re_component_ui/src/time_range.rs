@@ -14,13 +14,15 @@ pub fn time_range_multiline_edit_or_view_ui(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, TimeRange>,
 ) -> egui::Response {
-    let time_type = ctx.time_ctrl.time_type();
+    let Some(time_type) = ctx.time_ctrl.time_type() else {
+        return ui.weak("No active timeline");
+    };
 
-    let time_drag_value = if let Some(times) = ctx
+    let time_drag_value = if let Some(range) = ctx
         .recording()
-        .time_histogram(ctx.time_ctrl.timeline().name())
+        .time_range_for(ctx.time_ctrl.timeline_name())
     {
-        TimeDragValue::from_time_histogram(times)
+        TimeDragValue::from_abs_time_range(range)
     } else {
         TimeDragValue::from_time_range(0..=0)
     };
@@ -103,11 +105,15 @@ pub fn time_range_singleline_view_ui(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, TimeRange>,
 ) -> egui::Response {
-    let time_drag_value = if let Some(times) = ctx
+    let Some(time_type) = ctx.time_ctrl.time_type() else {
+        return ui.weak("No active timeline");
+    };
+
+    let time_drag_value = if let Some(range) = ctx
         .recording()
-        .time_histogram(ctx.time_ctrl.timeline().name())
+        .time_range_for(ctx.time_ctrl.timeline_name())
     {
-        TimeDragValue::from_time_histogram(times)
+        TimeDragValue::from_abs_time_range(range)
     } else {
         TimeDragValue::from_time_range(0..=0)
     };
@@ -118,8 +124,6 @@ pub fn time_range_singleline_view_ui(
             .unwrap_or_default()
             .at_least(*time_drag_value.range.start()),
     ); // accounts for static time (TimeInt::MIN)
-
-    let time_type = ctx.time_ctrl.time_type();
 
     let (text, on_hover) = relative_time_range_label_text(
         current_time,

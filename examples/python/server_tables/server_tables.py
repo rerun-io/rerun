@@ -31,11 +31,11 @@ def create_table(client: CatalogClient, directory: Path, table_name: str, schema
     This is a convenience function for creating the status log and result tables.
     """
     if table_name in client.table_names():
-        return client.get_table(name=table_name).df()
+        return client.get_table(name=table_name).reader()
 
     url = f"file://{directory}/{table_name}"
 
-    return client.create_table(table_name, schema, url).df()
+    return client.create_table(table_name, schema, url).reader()
 
 
 def create_status_log_table(client: CatalogClient, directory: Path) -> DataFrame:
@@ -91,7 +91,7 @@ def process_segments(client: CatalogClient, dataset: DatasetEntry, segment_list:
         update_time=[datetime.now()] * len(segment_list),
     )
 
-    df = dataset.dataframe_query_view(index="time_1", contents="/**").filter_segment_id(*segment_list).df()
+    df = dataset.filter_segments(segment_list).reader(index="time_1")
 
     df = df.aggregate(
         "rerun_segment_id",
@@ -154,7 +154,7 @@ def run_example(temp_path: Path) -> None:
         status_log_table = create_status_log_table(client, temp_path)
         results_table = create_results_table(client, temp_path)
 
-        segment_table = dataset.segment_table().df().select("rerun_segment_id").distinct()
+        segment_table = dataset.segment_table().select("rerun_segment_id").distinct()
 
         missing_segments = None
         while missing_segments is None or len(missing_segments) != 0:

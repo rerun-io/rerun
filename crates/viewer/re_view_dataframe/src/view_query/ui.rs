@@ -45,8 +45,8 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         let time_drag_value_and_type = timeline.map(|timeline| {
             let time_drag_value =
-                if let Some(times) = ctx.recording().time_histogram(timeline.name()) {
-                    TimeDragValue::from_time_histogram(times)
+                if let Some(range) = ctx.recording().time_range_for(timeline.name()) {
+                    TimeDragValue::from_abs_time_range(range)
                 } else {
                     debug_assert!(
                         false,
@@ -152,7 +152,9 @@ impl Query {
             self.save_filter_by_range(ctx, AbsoluteTimeRange::new(start, end));
         }
 
-        if should_display_time_range && Some(ctx.time_ctrl.timeline()) == timeline {
+        if should_display_time_range
+            && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
+        {
             ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
                 start, end,
             ))]);

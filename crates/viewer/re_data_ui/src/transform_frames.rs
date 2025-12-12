@@ -77,7 +77,7 @@ impl TransformFramesUi {
         });
 
         let frame_ids = transform_cache.frame_id_registry();
-        let transforms = transform_cache.transforms_for_timeline(*ctx.time_ctrl.timeline().name());
+        let transforms = transform_cache.transforms_for_timeline(*ctx.time_ctrl.timeline_name());
 
         let mut frames = Vec::new();
 
@@ -121,7 +121,7 @@ impl TransformFramesUi {
 
     pub fn data_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, layout: UiLayout) {
         match layout {
-            UiLayout::Tooltip => self.show_transforms(ctx, layout, ui),
+            UiLayout::Tooltip => {} // Don't show in tooltips.
             UiLayout::List | UiLayout::SelectionPanel => {
                 ui.collapsing("Transform frame parents", |ui| {
                     egui::Frame::new()

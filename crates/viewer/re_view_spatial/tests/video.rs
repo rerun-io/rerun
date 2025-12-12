@@ -151,7 +151,9 @@ fn test_video(video_type: VideoType, codec: VideoCodec) {
 
     let video_asset = AssetVideo::from_file_path(&video_path).unwrap();
     let frame_timestamps_nanos = video_asset.read_frame_timestamps_nanos().unwrap();
-    let timeline = test_context.active_timeline();
+    let timeline = test_context
+        .active_timeline()
+        .expect("should have an active timeline");
 
     match video_type {
         VideoType::AssetVideo => {

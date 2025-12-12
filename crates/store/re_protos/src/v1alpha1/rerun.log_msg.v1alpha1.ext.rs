@@ -288,7 +288,6 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             cloned_from: None,
             store_source,
             store_version,
-            is_partial: false,
         })
     }
 }
@@ -336,6 +335,16 @@ impl From<re_log_types::BlueprintActivationCommand>
             blueprint_id: Some(value.blueprint_id.into()),
             make_active: value.make_active,
             make_default: value.make_default,
+        }
+    }
+}
+
+impl crate::log_msg::v1alpha1::log_msg::Msg {
+    pub fn byte_size_uncompressed(&self) -> u64 {
+        match self {
+            Self::SetStoreInfo(_) => 0,
+            Self::ArrowMsg(msg) => msg.uncompressed_size,
+            Self::BlueprintActivationCommand(_) => 0,
         }
     }
 }

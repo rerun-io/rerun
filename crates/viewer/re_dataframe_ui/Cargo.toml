@@ -48,6 +48,7 @@ parking_lot.workspace = true
 serde.workspace = true
 strum.workspace = true
 thiserror.workspace = true
+futures.workspace = true
 
 
 [dev-dependencies]

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::task::Poll;
 
-use datafusion::prelude::{SessionContext, col, lit};
+use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
@@ -36,7 +36,7 @@ impl Server {
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
     ) -> Self {
-        let tables_session_ctx = Arc::new(SessionContext::new());
+        let tables_session_ctx = Self::session_context();
 
         let entries = Entries::new(
             connection_registry.clone(),
@@ -55,9 +55,20 @@ impl Server {
         }
     }
 
+    fn session_context() -> Arc<SessionContext> {
+        let session_ctx = SessionContext::new_with_config(
+            SessionConfig::new()
+                // In order to quickly show results when filtering a table, we disable batch coalescing.
+                // This may be slightly inefficient, but is worth it if the user sees immediate
+                // results.
+                .with_coalesce_batches(false),
+        );
+        Arc::new(session_ctx)
+    }
+
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx = Arc::new(SessionContext::new());
+        self.tables_session_ctx = Self::session_context();
 
         self.entries = Entries::new(
             self.connection_registry.clone(),
@@ -353,6 +364,17 @@ impl RedapServers {
         self.servers.values()
     }
 
+    pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
+        self.servers
+            .get(origin)
+            .and_then(|server| server.connection_registry.credentials(origin))
+            .is_some()
+    }
+
+    pub fn logout(&mut self) {
+        self.server_modal_ui.logout();
+    }
+
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
@@ -449,6 +471,12 @@ impl RedapServers {
 
     pub fn open_add_server_modal(&self) {
         self.command_sender.send(Command::OpenAddServerModal).ok();
+    }
+
+    pub fn open_edit_server_modal(&self, origin: re_uri::Origin) {
+        self.command_sender
+            .send(Command::OpenEditServerModal(origin))
+            .ok();
     }
 
     pub fn entry_ui(

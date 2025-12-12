@@ -612,8 +612,9 @@ fn available_inactive_visualizers(
 
     ctx.viewer_ctx
         .iter_visualizable_entities_for_view_class(view_class.identifier)
-        .filter(|(vis, ents)| {
-            ents.contains(&data_result.entity_path) && !active_visualizers.contains(vis)
+        .filter(|(vis, visualizable_ents)| {
+            visualizable_ents.contains_key(&data_result.entity_path)
+                && !active_visualizers.contains(vis)
         })
         .map(|(vis, _)| vis)
         .sorted()

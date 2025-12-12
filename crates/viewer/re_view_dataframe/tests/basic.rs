@@ -2,6 +2,7 @@ use re_chunk_store::RowId;
 use re_log_types::{Timeline, TimelineName};
 use re_sdk_types::archetypes::Scalars;
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_ui::UiExt as _;
 use re_view_dataframe::DataframeView;
@@ -33,16 +34,14 @@ pub fn test_null_timeline() {
     });
 
     let view_id = setup_blueprint(&mut test_context, timeline_a.name());
-    test_context.run_view_ui_and_save_snapshot(
-        view_id,
-        "null_timeline",
-        egui::vec2(400.0, 200.0),
-        None,
-    );
+    test_context
+        .run_view_ui_and_save_snapshot(view_id, "null_timeline", egui::vec2(400.0, 200.0), None)
+        .unwrap();
 }
 
 #[test]
 pub fn test_unknown_timeline() {
+    let mut snapshot_results = SnapshotResults::new();
     let mut test_context = get_test_context();
 
     let timeline = Timeline::new_sequence("existing_timeline");
@@ -56,18 +55,19 @@ pub fn test_unknown_timeline() {
 
     let view_id = setup_blueprint(&mut test_context, &TimelineName::from("unknown_timeline"));
 
-    test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
         view_id,
         "unknown_timeline_view_ui",
         egui::vec2(300.0, 150.0),
         None,
-    );
+    ));
 
     run_view_selection_panel_ui_and_save_snapshot(
         &test_context,
         view_id,
         "unknown_timeline_selection_panel_ui",
         egui::vec2(300.0, 450.0),
+        &mut snapshot_results,
     );
 }
 
@@ -99,6 +99,7 @@ fn run_view_selection_panel_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    snapshot_results: &mut SnapshotResults,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui(size)
@@ -133,4 +134,5 @@ fn run_view_selection_panel_ui_and_save_snapshot(
 
     harness.run();
     harness.snapshot(name);
+    snapshot_results.extend_harness(&mut harness);
 }

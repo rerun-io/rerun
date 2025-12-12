@@ -136,7 +136,7 @@ impl Stream for DataframeSegmentStream {
 
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(&this.trace_headers);
-        let _span = tracing::info_span!("poll_next").entered();
+        let _span = tracing::debug_span!("poll_next").entered();
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.

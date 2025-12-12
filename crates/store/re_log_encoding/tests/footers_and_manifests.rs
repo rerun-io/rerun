@@ -1,11 +1,13 @@
 #![expect(clippy::unwrap_used)]
 
+use std::collections::BTreeMap;
+
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchTestExt as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
 use re_log_encoding::{
     Decodable as _, DecoderApp, Encoder, RrdManifest, RrdManifestBuilder, StreamFooter,
-    StreamFooterEntry, ToApplication as _,
+    StreamFooterEntry, ToApplication as _, ToTransport as _,
 };
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{ArrowMsg, LogMsg, StoreId, StoreKind, build_log_time};
@@ -13,25 +15,77 @@ use re_protos::external::prost::Message as _;
 
 #[test]
 fn simple_manifest() {
-    let rrd_manifest_batch = {
+    let rrd_manifest = {
         let mut builder = RrdManifestBuilder::default();
         let mut byte_offset_excluding_header = 0;
         for msg in generate_recording_chunks(1) {
             let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch).unwrap();
-            let chunk_byte_size = chunk_batch.heap_size_bytes().unwrap();
+
+            let transport_uncompressed = msg
+                .to_transport((
+                    generate_recording_store_id(),
+                    re_log_encoding::Compression::Off,
+                ))
+                .unwrap();
+            let transport_compressed = msg
+                .to_transport((
+                    generate_recording_store_id(),
+                    re_log_encoding::Compression::LZ4,
+                ))
+                .unwrap();
+
+            let chunk_byte_size = transport_compressed.encoded_len() as u64;
+            let chunk_byte_size_uncompressed = transport_uncompressed.encoded_len() as u64;
 
             let chunk_byte_span_excluding_header = re_span::Span {
                 start: byte_offset_excluding_header,
                 len: chunk_byte_size,
             };
             builder
-                .append(&chunk_batch, chunk_byte_span_excluding_header)
+                .append(
+                    &chunk_batch,
+                    chunk_byte_span_excluding_header,
+                    chunk_byte_size_uncompressed,
+                )
                 .unwrap();
 
             byte_offset_excluding_header += chunk_byte_size;
         }
-        builder.into_record_batch().unwrap()
+
+        builder.build(StoreId::empty_recording()).unwrap()
     };
+
+    let rrd_manifest_batch = &rrd_manifest.data;
+
+    let static_map = rrd_manifest
+        .get_static_data_as_a_map()
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
+        .collect::<BTreeMap<_, _>>();
+
+    let temporal_map = rrd_manifest
+        .get_temporal_data_as_a_map()
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                k,
+                v.into_iter()
+                    .map(|(k, v)| (k, v.into_iter().collect::<BTreeMap<_, _>>()))
+                    .collect::<BTreeMap<_, _>>(),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    insta::assert_snapshot!(
+        "simple_manifest_batch_native_map_static",
+        format!("{:#?}", static_map),
+    );
+    insta::assert_snapshot!(
+        "simple_manifest_batch_native_map_temporal",
+        format!("{:#?}", temporal_map),
+    );
 
     insta::assert_snapshot!(
         "simple_manifest_batch",
@@ -292,7 +346,6 @@ fn footer_empty() {
                 cloned_from: None,
                 store_source: re_log_types::StoreSource::Unknown,
                 store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-                is_partial: false,
             },
         }))
     }
@@ -358,7 +411,6 @@ fn generate_recording(
             cloned_from: None,
             store_source: re_log_types::StoreSource::Unknown,
             store_version: Some(re_build_info::CrateVersion::new(1, 2, 3)),
-            is_partial: false,
         },
     }))
     .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))
@@ -495,7 +547,6 @@ fn generate_blueprint(
             cloned_from: None,
             store_source: re_log_types::StoreSource::Unknown,
             store_version: Some(re_build_info::CrateVersion::new(4, 5, 6)),
-            is_partial: false,
         },
     }))
     .chain(chunks.map(move |chunk| LogMsg::ArrowMsg(store_id.clone(), chunk)))
