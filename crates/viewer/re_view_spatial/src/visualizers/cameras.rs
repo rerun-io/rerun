@@ -77,10 +77,11 @@ impl CamerasVisualizer {
         let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
         else {
             // This implies that the transform context didn't see the pinhole transform.
-            // Should be impossible!
-            return Err(
-                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!".to_owned(),
-            );
+            // This can happen with various frame id mismatches.
+            return Err(format!(
+                "Expected well-defined pinhole transforming into the transform frame {:?}, but look-up in active transform tree failed.",
+                transforms.format_frame(pinhole_frame_id)
+            ));
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
 
@@ -92,7 +93,7 @@ impl CamerasVisualizer {
         let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
-            return Err("Invalid resolution".to_owned());
+            return Err("Invalid pinhole resolution.".to_owned());
         }
 
         let pinhole = crate::Pinhole {
@@ -112,19 +113,14 @@ impl CamerasVisualizer {
             return Err("Can't visualize pinholes at the view's origin".to_owned());
         }
 
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
-        else {
-            return Err("No valid pinhole present".to_owned());
-        };
+        // If this transform is not representable as an `IsoTransform` we can't display it yet.
+        // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let world_from_camera = pinhole_tree_root_info
             .parent_root_from_pinhole_root
             .as_affine3a();
-
-        // If this transform is not representable as an `IsoTransform` we can't display it yet.
-        // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {
-            return Err("Can only visualize pinhole under isometric transforms".to_owned());
+            return Err("Can only visualize pinhole under isometric transforms.".to_owned());
         };
 
         debug_assert!(world_from_camera_iso.is_finite());
