@@ -13,6 +13,7 @@ dev = [
   # Instead, we combine with `maturin dev` to install into the dev environment.
   #"rerun-sdk",
   #"rerun_notebook",
+  "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
   "ruff==0.12.10",
   "mypy==1.14.1",
@@ -73,11 +74,11 @@ examples = [
   "dicom_mri",
   "dna",
   "drone_lidar",
-  "face_tracking",
-  "gesture_detection",
+  # "face_tracking",      # These conflict with opentelemetry
+  # "gesture_detection",  # These conflict with opentelemetry
   "graph_lattice",
   "graphs",
-  "human_pose_tracking",
+  # "human_pose_tracking", # These conflict with opentelemetry
   "imu_signals",
   "incremental_logging",
   "lidar",
@@ -124,11 +125,11 @@ detect_and_track_objects = { workspace = true }
 dicom_mri = { workspace = true }
 dna = { workspace = true }
 drone_lidar = { workspace = true }
-face_tracking = { workspace = true }
-gesture_detection = { workspace = true }
+# face_tracking = { workspace = true }
+# gesture_detection = { workspace = true }
 graph_lattice = { workspace = true }
 graphs = { workspace = true }
-human_pose_tracking = { workspace = true }
+# human_pose_tracking = { workspace = true }
 imu_signals = { workspace = true }
 incremental_logging = { workspace = true }
 lidar = { workspace = true }
@@ -173,11 +174,11 @@ members = [
   "examples/python/dicom_mri",
   "examples/python/dna",
   "examples/python/drone_lidar",
-  "examples/python/face_tracking",
-  "examples/python/gesture_detection",
+  # "examples/python/face_tracking",
+  # "examples/python/gesture_detection",
   "examples/python/graph_lattice",
   "examples/python/graphs",
-  "examples/python/human_pose_tracking",
+  # "examples/python/human_pose_tracking",
   "examples/python/imu_signals",
   "examples/python/incremental_logging",
   "examples/python/lidar",
