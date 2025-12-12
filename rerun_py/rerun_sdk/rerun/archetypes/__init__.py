@@ -16,6 +16,7 @@ from .coordinate_frame import CoordinateFrame
 from .cylinders3d import Cylinders3D
 from .depth_image import DepthImage
 from .ellipsoids3d import Ellipsoids3D
+from .encoded_depth_image import EncodedDepthImage
 from .encoded_image import EncodedImage
 from .geo_line_strings import GeoLineStrings
 from .geo_points import GeoPoints
@@ -62,6 +63,7 @@ __all__ = [
     "Cylinders3D",
     "DepthImage",
     "Ellipsoids3D",
+    "EncodedDepthImage",
     "EncodedImage",
     "GeoLineStrings",
     "GeoPoints",

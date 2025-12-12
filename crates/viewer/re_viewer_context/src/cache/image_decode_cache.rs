@@ -1,10 +1,16 @@
 use ahash::HashMap;
+use bytemuck::Pod;
+
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
+use re_depth_compression::ros_rvl::{
+    decode_ros_rvl_f32, decode_ros_rvl_u16, parse_ros_rvl_metadata,
+};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_sdk_types::ComponentIdentifier;
-use re_sdk_types::components::{ImageBuffer, MediaType};
+use re_sdk_types::components::{ImageBuffer, ImageFormat as ImageFormatComponent, MediaType};
+use re_sdk_types::datatypes::{Blob, ChannelDatatype, ColorModel};
 use re_sdk_types::image::{ImageKind, ImageLoadError};
 
 use crate::cache::filter_blob_removed_events;
@@ -22,7 +28,7 @@ struct DecodedImageResult {
     last_use_generation: u64,
 }
 
-/// Caches the results of decoding [`re_sdk_types::archetypes::EncodedImage`].
+/// Caches the results of decoding [`re_sdk_types::archetypes::EncodedImage`] and [`re_sdk_types::archetypes::EncodedDepthImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
     cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,
@@ -45,9 +51,6 @@ impl ImageDecodeCache {
     ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
-        // In order to avoid loading the same video multiple times with
-        // known and unknown media type, we have to resolve the media type before
-        // loading & building the cache key.
         let Some(media_type) = media_type
             .cloned()
             .or_else(|| MediaType::guess_from_data(image_bytes))
@@ -57,36 +60,85 @@ impl ImageDecodeCache {
 
         let inner_key = Hash64::hash(&media_type);
 
-        // The descriptor should always be the one in the encoded image archetype, but in the future
-        // we may allow overrides such that it is sourced from somewhere else.
+        self.cache_lookup_or_decode(blob_row_id, blob_component, inner_key, || {
+            decode_color_image(
+                blob_row_id,
+                blob_component,
+                image_bytes,
+                media_type.as_str(),
+            )
+        })
+    }
+
+    pub fn entry_encoded_depth(
+        &mut self,
+        blob_row_id: RowId,
+        blob_component: ComponentIdentifier,
+        image_bytes: &[u8],
+        media_type: Option<&MediaType>,
+        format: &ImageFormatComponent,
+    ) -> Result<ImageInfo, ImageLoadError> {
+        re_tracing::profile_function!();
+
+        let Some(media_type) = media_type
+            .cloned()
+            .or_else(|| MediaType::guess_from_data(image_bytes))
+        else {
+            return Err(ImageLoadError::UnrecognizedMimeType);
+        };
+
+        let inner_key = Hash64::hash(&(media_type.clone(), *format));
+
+        self.cache_lookup_or_decode(blob_row_id, blob_component, inner_key, || {
+            decode_encoded_depth(
+                blob_row_id,
+                blob_component,
+                image_bytes,
+                media_type.as_str(),
+                format,
+            )
+        })
+    }
+
+    fn cache_lookup_or_decode<F>(
+        &mut self,
+        blob_row_id: RowId,
+        blob_component: ComponentIdentifier,
+        cache_key: Hash64,
+        decode: F,
+    ) -> Result<ImageInfo, ImageLoadError>
+    where
+        F: FnOnce() -> Result<ImageInfo, ImageLoadError>,
+    {
         let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component);
 
-        let lookup = self
+        if let Some(existing) = self
             .cache
-            .entry(blob_cache_key)
-            .or_default()
-            .entry(inner_key)
-            .or_insert_with(|| {
-                let result = decode_image(
-                    blob_row_id,
-                    blob_component,
-                    image_bytes,
-                    media_type.as_str(),
-                );
-                let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
-                self.memory_used += memory_used;
-                DecodedImageResult {
-                    result,
-                    memory_used,
-                    last_use_generation: 0,
-                }
-            });
-        lookup.last_use_generation = self.generation;
-        lookup.result.clone()
+            .get_mut(&blob_cache_key)
+            .and_then(|per_blob| per_blob.get_mut(&cache_key))
+        {
+            existing.last_use_generation = self.generation;
+            return existing.result.clone();
+        }
+
+        let result = decode();
+        let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
+        self.memory_used += memory_used;
+
+        self.cache.entry(blob_cache_key).or_default().insert(
+            cache_key,
+            DecodedImageResult {
+                result: result.clone(),
+                memory_used,
+                last_use_generation: self.generation,
+            },
+        );
+
+        result
     }
 }
 
-fn decode_image(
+fn decode_color_image(
     blob_row_id: RowId,
     blob_component: ComponentIdentifier,
     image_bytes: &[u8],
@@ -113,6 +165,135 @@ fn decode_image(
         format.0,
         ImageKind::Color,
     ))
+}
+
+fn decode_encoded_depth(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    media_type: &str,
+    format: &ImageFormatComponent,
+) -> Result<ImageInfo, ImageLoadError> {
+    match media_type {
+        MediaType::PNG => decode_png_depth(blob_row_id, blob_component, image_bytes, format),
+        MediaType::RVL => decode_rvl_depth(blob_row_id, blob_component, image_bytes, format),
+        other => Err(ImageLoadError::UnsupportedMimeType(other.to_owned())),
+    }
+}
+
+fn decode_png_depth(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    format: &ImageFormatComponent,
+) -> Result<ImageInfo, ImageLoadError> {
+    re_tracing::profile_function!();
+
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
+    reader.set_format(image::ImageFormat::Png);
+
+    let dynamic_image = reader.decode()?;
+
+    if dynamic_image.width() != format.width || dynamic_image.height() != format.height {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG resolution mismatch: blob is {}x{}, expected {}x{}",
+            dynamic_image.width(),
+            dynamic_image.height(),
+            format.width,
+            format.height
+        )));
+    }
+
+    let (buffer, decoded_format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
+
+    if decoded_format.color_model != Some(ColorModel::L) {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG must be single-channel (L); got {:?}",
+            decoded_format.color_model
+        )));
+    }
+
+    if decoded_format.datatype() != format.datatype() {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG datatype mismatch: blob is {:?}, expected {:?}",
+            decoded_format.datatype(),
+            format.datatype()
+        )));
+    }
+
+    let expected_num_bytes = format.num_bytes();
+    let ImageBuffer(blob) = buffer;
+    let actual_num_bytes = blob.len();
+    if actual_num_bytes != expected_num_bytes {
+        return Err(ImageLoadError::DecodeError(format!(
+            "Encoded depth PNG payload is {actual_num_bytes} B, but {} requires {expected_num_bytes} B",
+            format.0
+        )));
+    }
+
+    Ok(ImageInfo::from_stored_blob(
+        blob_row_id,
+        blob_component,
+        blob,
+        format.0,
+        ImageKind::Depth,
+    ))
+}
+
+fn decode_rvl_depth(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    format: &ImageFormatComponent,
+) -> Result<ImageInfo, ImageLoadError> {
+    let metadata = parse_ros_rvl_metadata(image_bytes)
+        .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?;
+
+    let expected_pixels = (format.width as usize) * (format.height as usize);
+    if metadata.num_pixels() != expected_pixels {
+        return Err(ImageLoadError::DecodeError(format!(
+            "RVL encoded depth metadata {metadata_width}x{metadata_height} disagrees with ImageFormat {}x{}",
+            format.width,
+            format.height,
+            metadata_width = metadata.width,
+            metadata_height = metadata.height
+        )));
+    }
+
+    let buffer: Vec<u8> = match format.datatype() {
+        ChannelDatatype::U16 => decode_ros_rvl_u16(image_bytes, &metadata)
+            .map(|x: Vec<u16>| vec_into_bytes(&x))
+            .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
+        ChannelDatatype::F32 => decode_ros_rvl_f32(image_bytes, &metadata)
+            .map(|x: Vec<f32>| vec_into_bytes(&x))
+            .map_err(|err| ImageLoadError::DecodeError(err.to_string()))?,
+        other => {
+            return Err(ImageLoadError::DecodeError(format!(
+                "Unsupported RVL channel datatype {other:?}"
+            )));
+        }
+    };
+
+    let expected_num_bytes = format.num_bytes();
+    let actual_num_bytes = buffer.len();
+    if actual_num_bytes != expected_num_bytes {
+        return Err(ImageLoadError::DecodeError(format!(
+            "RVL payload decoded to {actual_num_bytes} B, but {} requires {expected_num_bytes} B",
+            format.0
+        )));
+    }
+
+    Ok(ImageInfo::from_stored_blob(
+        blob_row_id,
+        blob_component,
+        Blob::from(buffer),
+        format.0,
+        ImageKind::Depth,
+    ))
+}
+
+fn vec_into_bytes<T: Pod>(vec: &[T]) -> Vec<u8> {
+    bytemuck::cast_slice(vec).to_vec()
 }
 
 impl Cache for ImageDecodeCache {
@@ -191,5 +372,93 @@ impl Cache for ImageDecodeCache {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use image::{ColorType, ImageEncoder as _, codecs::png::PngEncoder};
+    use re_sdk_types::datatypes::ImageFormat as ImageFormatDatatype;
+
+    #[test]
+    fn entry_encoded_depth_guesses_png_media_type() {
+        let width = 2;
+        let height = 2;
+        let depth_values: [u16; 4] = [0, 1, 2, 3];
+
+        let mut encoded_png = Vec::new();
+        {
+            let encoder = PngEncoder::new(&mut encoded_png);
+            encoder
+                .write_image(
+                    bytemuck::cast_slice(&depth_values),
+                    width,
+                    height,
+                    ColorType::L16.into(),
+                )
+                .expect("encoding png failed");
+        }
+
+        let format = ImageFormatComponent::from(ImageFormatDatatype::depth(
+            [width, height],
+            ChannelDatatype::U16,
+        ));
+
+        let mut cache = ImageDecodeCache::default();
+
+        let image_info = cache
+            .entry_encoded_depth(
+                RowId::ZERO,
+                ComponentIdentifier::from("test"),
+                &encoded_png,
+                None,
+                &format,
+            )
+            .expect("decoding encoded depth image failed");
+
+        assert_eq!(image_info.kind, ImageKind::Depth);
+        assert_eq!(image_info.format, format.0);
+    }
+
+    #[test]
+    fn decoding_png_depth_works() {
+        let width = 2;
+        let height = 2;
+        let depth_values: [u16; 4] = [0, 1, 2, 3];
+
+        let mut encoded_png = Vec::new();
+        {
+            let encoder = PngEncoder::new(&mut encoded_png);
+            encoder
+                .write_image(
+                    bytemuck::cast_slice(&depth_values),
+                    width,
+                    height,
+                    ColorType::L16.into(),
+                )
+                .expect("encoding png failed");
+        }
+
+        let format = ImageFormatComponent::from(ImageFormatDatatype::depth(
+            [width, height],
+            ChannelDatatype::U16,
+        ));
+
+        let image_info = decode_png_depth(
+            RowId::ZERO,
+            ComponentIdentifier::from("test"),
+            &encoded_png,
+            &format,
+        )
+        .expect("decoding png depth failed");
+
+        assert_eq!(image_info.kind, ImageKind::Depth);
+        assert_eq!(image_info.format, format.0);
+        assert_eq!(
+            image_info.buffer.len(),
+            depth_values.len() * std::mem::size_of::<u16>()
+        );
     }
 }

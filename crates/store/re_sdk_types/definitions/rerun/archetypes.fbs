@@ -14,6 +14,7 @@ include "./archetypes/coordinate_frame.fbs";
 include "./archetypes/cylinders3d.fbs";
 include "./archetypes/depth_image.fbs";
 include "./archetypes/ellipsoids3d.fbs";
+include "./archetypes/encoded_depth_image.fbs";
 include "./archetypes/encoded_image.fbs";
 include "./archetypes/geo_line_strings.fbs";
 include "./archetypes/geo_points.fbs";

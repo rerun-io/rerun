@@ -31,3 +31,4 @@ float32
 ## Used by
 
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
