@@ -13,6 +13,7 @@ Some message types that are supported in this demo:
 
 * [`foxglove.PoseInFrame`](https://docs.foxglove.dev/docs/sdk/schemas/pose-in-frame)
 * [`foxglove.CompressedImage`](https://docs.foxglove.dev/docs/sdk/schemas/compressed-image)
+* [`foxglove.RawImage`](https://docs.foxglove.dev/docs/sdk/schemas/raw-image)
 * [`foxglove.CompressedVideo`](https://docs.foxglove.dev/docs/sdk/schemas/compressed-video)
 
 You can run the example with:

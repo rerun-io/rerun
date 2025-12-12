@@ -1,4 +1,8 @@
-use arrow::array::{Float32Array, Float64Array, ListArray, UInt32Array};
+use anyhow::{anyhow, bail};
+use arrow::array::{
+    Array, Float32Array, Float64Array, ListArray, StringArray, StructArray, UInt32Array,
+};
+use arrow::datatypes::Field;
 // `re_arrow_combinators` provides the building blocks from which we compose the conversions.
 use re_arrow_combinators::{
     Transform as _,
@@ -13,10 +17,10 @@ use rerun::external::{re_log, re_sdk_types::reflection::ComponentDescriptorExt};
 use rerun::lenses::{Lens, LensesSink, Op, OpError};
 use rerun::sink::GrpcSink;
 use rerun::{
-    ComponentDescriptor, CoordinateFrame, EncodedImage, InstancePoses3D, Pinhole, Transform3D,
-    TransformAxes3D, VideoStream,
+    ChannelDatatype, ColorModel, ComponentDescriptor, CoordinateFrame, EncodedImage, Image,
+    ImageFormat, InstancePoses3D, Pinhole, PixelFormat, Transform3D, TransformAxes3D, VideoStream,
 };
-use rerun::{dataframe::EntityPathFilter, lenses::OutputMode};
+use rerun::{dataframe::EntityPathFilter, lenses::OutputMode, Loggable};
 
 /// Foxglove timestamp fields are by definition relative to a custom epoch.
 /// In this example, we default to an UNIX epoch timestamp interpretation.
@@ -111,6 +115,141 @@ pub fn width_height_to_resolution(list_array: &ListArray) -> Result<ListArray, O
         MapFixedSizeList::new(PrimitiveCast::<UInt32Array, Float32Array>::new()),
     ));
     Ok(pipeline.transform(list_array)?)
+}
+
+fn decode_raw_image_encoding(encoding: &str, dimensions: [u32; 2]) -> anyhow::Result<ImageFormat> {
+    let normalized = encoding
+        .trim_matches(char::from(0))
+        .trim()
+        .to_ascii_lowercase();
+
+    match normalized.as_str() {
+        "rgb8" => Ok(ImageFormat::rgb8(dimensions)),
+        "rgba8" => Ok(ImageFormat::rgba8(dimensions)),
+        "rgb16" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::RGB,
+            ChannelDatatype::U16,
+        )),
+        "rgba16" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::RGBA,
+            ChannelDatatype::U16,
+        )),
+        "bgr8" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::BGR,
+            ChannelDatatype::U8,
+        )),
+        "bgra8" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::BGRA,
+            ChannelDatatype::U8,
+        )),
+        "bgr16" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::BGR,
+            ChannelDatatype::U16,
+        )),
+        "bgra16" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::BGRA,
+            ChannelDatatype::U16,
+        )),
+        "mono8" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::L,
+            ChannelDatatype::U8,
+        )),
+        "mono16" => Ok(ImageFormat::from_color_model(
+            dimensions,
+            ColorModel::L,
+            ChannelDatatype::U16,
+        )),
+        "yuyv" | "yuv422_yuy2" => Ok(ImageFormat::from_pixel_format(
+            dimensions,
+            PixelFormat::YUY2,
+        )),
+        "nv12" => Ok(ImageFormat::from_pixel_format(
+            dimensions,
+            PixelFormat::NV12,
+        )),
+        // Depth image formats
+        "8uc1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::U8)),
+        "8sc1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::I8)),
+        "16uc1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::U16)),
+        "16sc1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::I16)),
+        "32sc1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::I32)),
+        "32fc1" => Ok(ImageFormat::depth(dimensions, ChannelDatatype::F32)),
+        format => {
+            bail!(
+                "Unsupported raw image encoding '{format}'. Supported encodings include: rgb8, rgba8, rgb16, rgba16, bgr8, bgra8, bgr16, bgra16, mono8, mono16, yuyv, yuv422_yuy2, nv12, 8UC1, 8SC1, 16UC1, 16SC1, 32SC1, 32FC1"
+            )
+        }
+    }
+}
+
+/// Converts foxglove.RawImage messages into Rerun `ImageFormat` values.
+pub fn raw_image_to_image_format(list_array: &ListArray) -> Result<ListArray, OpError> {
+    use std::sync::Arc;
+
+    let (_, offsets, values, nulls) = list_array.clone().into_parts();
+    let struct_array = values
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| OpError::Other(anyhow!("RawImage data is not a struct array").into()))?;
+
+    let width_array = struct_array
+        .column_by_name("width")
+        .and_then(|array| array.as_any().downcast_ref::<UInt32Array>())
+        .ok_or_else(|| {
+            OpError::Other(anyhow!("RawImage message is missing a uint32 'width' field").into())
+        })?;
+    let height_array = struct_array
+        .column_by_name("height")
+        .and_then(|array| array.as_any().downcast_ref::<UInt32Array>())
+        .ok_or_else(|| {
+            OpError::Other(anyhow!("RawImage message is missing a uint32 'height' field").into())
+        })?;
+    let encoding_array = struct_array
+        .column_by_name("encoding")
+        .and_then(|array| array.as_any().downcast_ref::<StringArray>())
+        .ok_or_else(|| {
+            OpError::Other(anyhow!("RawImage message is missing an 'encoding' field").into())
+        })?;
+
+    let mut formats = Vec::with_capacity(struct_array.len());
+    for row_idx in 0..struct_array.len() {
+        if struct_array.is_null(row_idx)
+            || width_array.is_null(row_idx)
+            || height_array.is_null(row_idx)
+            || encoding_array.is_null(row_idx)
+        {
+            formats.push(None);
+            continue;
+        }
+
+        let width = width_array.value(row_idx);
+        let height = height_array.value(row_idx);
+        let encoding = encoding_array.value(row_idx);
+
+        let format = decode_raw_image_encoding(encoding, [width, height])
+            .map_err(|err| OpError::Other(err.into()))?;
+        formats.push(Some(format));
+    }
+
+    let format_array =
+        ImageFormat::to_arrow_opt(formats).map_err(|err| OpError::Other(err.into()))?;
+
+    Ok(ListArray::new(
+        Arc::new(Field::new_list_field(
+            format_array.data_type().clone(),
+            true,
+        )),
+        offsets,
+        format_array,
+        nulls,
+    ))
 }
 
 // TODO(grtlr): This example is still missing `tf`-style transforms.
@@ -230,6 +369,31 @@ fn main() -> anyhow::Result<()> {
                         Op::access_field("data"),
                         Op::func(list_binary_to_list_uint8),
                     ],
+                )
+            })?
+            .build();
+
+    let raw_image_lens =
+        Lens::for_input_column(EntityPathFilter::all(), "foxglove.RawImage:message")
+            .output_columns(|out| {
+                out.time(
+                    TIME_NAME,
+                    args.epoch.time_type(),
+                    [
+                        Op::access_field("timestamp"),
+                        Op::func(list_timespec_to_list_nanos),
+                    ],
+                )
+                .component(
+                    Image::descriptor_buffer(),
+                    [
+                        Op::access_field("data"),
+                        Op::func(list_binary_to_list_uint8),
+                    ],
+                )
+                .component(
+                    Image::descriptor_format(),
+                    [Op::func(raw_image_to_image_format)],
                 )
             })?
             .build();
@@ -419,6 +583,7 @@ fn main() -> anyhow::Result<()> {
     let lenses_sink = LensesSink::new(GrpcSink::default())
         .output_mode(OutputMode::ForwardUnmatched)
         .with_lens(image_lens)
+        .with_lens(raw_image_lens)
         .with_lens(instance_pose_lens)
         .with_lens(instance_poses_lens)
         .with_lens(video_lens)
