@@ -504,7 +504,8 @@ lychee = "0.20.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 nbstripout = "*"
 ninja = "1.11.1.*"
-protobuf = "6.*"
+libprotobuf = "6.*" # Provides `protoc` compiler needed by lance and prost-build
+protobuf = "6.*"    # Python bindings for protobuf
 prettier = ">=3.6"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.12.10.*"
