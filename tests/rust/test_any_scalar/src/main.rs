@@ -65,8 +65,8 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
 
         // 4. Log using DynamicArchetype with Float64 array containing both original and scaled
         let cos_multi_array = Arc::new(arrow::array::Float64Array::from(vec![
-            cos_value,
-            cos_value * 0.5,
+            cos_value + 0.5,
+            cos_value * 0.5 + 0.5,
         ]));
 
         let float64_multi_archetype = DynamicArchetype::new("Float64MultiScalars")
@@ -76,8 +76,8 @@ fn log_scalar_data(rec: &RecordingStream) -> anyhow::Result<()> {
 
         // 5. Log using DynamicArchetype with Float32 array containing both original and scaled
         let sigmoid_multi_array = Arc::new(arrow::array::Float32Array::from(vec![
-            sigmoid_value,
-            sigmoid_value * 0.5,
+            sigmoid_value + 0.5,
+            sigmoid_value * 0.5 + 0.5,
         ]));
 
         let float32_multi_archetype = DynamicArchetype::new("Float32MultiScalars")
