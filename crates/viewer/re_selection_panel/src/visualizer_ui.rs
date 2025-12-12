@@ -563,7 +563,8 @@ fn source_component_ui(
                 egui::ComboBox::new("source_component_combo_box", "")
                     .selected_text(current)
                     .show_ui(ui, |ui| {
-                        for source_option in [""].into_iter().chain(all_source_options.into_iter()) {
+                        for source_option in [""].into_iter().chain(all_source_options.into_iter())
+                        {
                             if ui.button(source_option).clicked() {
                                 changed_component_mappings.push(
                                     re_viewer_context::VisualizerComponentMapping {
