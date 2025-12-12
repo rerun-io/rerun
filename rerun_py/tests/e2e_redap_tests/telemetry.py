@@ -43,7 +43,6 @@ class Telemetry:
             otel_metrics_endpoint: str | None = os.environ.get("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
             otel_traces_endpoint: str | None = os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
             svc_name = os.environ.get("OTEL_SERVICE_NAME", "e2e-redap-tests")
-            print("Setting up telemetry")
             resource: Resource | None = None
             if otel_metrics_endpoint or otel_traces_endpoint:
                 resource = Resource.create({"service.name": svc_name})
@@ -66,11 +65,9 @@ class Telemetry:
     def shutdown(self) -> None:
         """Shutdown the telemetry providers."""
         if self.meter_provider:
-            print(f"FLUSHING meter provider {self.meter_provider}")
             _ = self.meter_provider.force_flush(timeout_millis=5000)  # Force export before shutdown
             self.meter_provider.shutdown()
         if self.tracer_provider:
-            print(f"FLUSHING trace provider {self.tracer_provider}")
             _ = self.tracer_provider.force_flush(timeout_millis=5000)
             self.tracer_provider.shutdown()
 
@@ -94,7 +91,6 @@ def tracing_fixture(request: pytest.FixtureRequest, telemetry: Telemetry) -> Ite
     """Decorator to add OpenTelemetry tracing to test functions."""
 
     tracer = trace.get_tracer(__name__)
-    print(f"Got tracer {tracer}")
 
     span_name: str = request.node.name
     # strip the test_ prefix from the span name
@@ -102,7 +98,6 @@ def tracing_fixture(request: pytest.FixtureRequest, telemetry: Telemetry) -> Ite
 
     with tracer.start_as_current_span(span_name) as span:
         span.set_attribute("test_name", span_name)
-        print(f"Got span {span}")
 
         # Try rerun context propagation if available
         token = None
