@@ -11,6 +11,7 @@ table BarChart (
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "BarChartView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "BarChart",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

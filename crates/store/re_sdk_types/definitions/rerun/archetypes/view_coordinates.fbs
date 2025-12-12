@@ -20,6 +20,7 @@ table ViewCoordinates (
   "attr.docs.category": "Transforms",
   "attr.docs.view_types": "Spatial3DView",
   "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer_none",
   "attr.rust.derive": "PartialEq",
   "attr.rust.repr": "transparent"
 ) {

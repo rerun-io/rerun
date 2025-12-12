@@ -19,6 +19,7 @@ table Scalars (
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "TimeSeriesView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer_none",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

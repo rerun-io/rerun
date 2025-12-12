@@ -16,6 +16,7 @@ table Pinhole (
   "attr.docs.category": "Transforms",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Cameras",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Camera parameters ---

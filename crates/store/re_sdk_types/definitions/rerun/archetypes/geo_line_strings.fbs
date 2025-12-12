@@ -11,6 +11,7 @@ table GeoLineStrings (
   "attr.docs.category": "Geospatial",
   "attr.docs.view_types": "MapView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "GeoLineStrings",
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate"
 ) {

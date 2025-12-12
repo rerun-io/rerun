@@ -10,6 +10,7 @@ table GraphNodes (
   "attr.docs.category": "Graph",
   "attr.docs.view_types": "GraphView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "GraphNodes",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

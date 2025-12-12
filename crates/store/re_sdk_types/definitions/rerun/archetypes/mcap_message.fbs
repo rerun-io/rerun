@@ -19,6 +19,7 @@ table McapMessage (
 
   /// TODO(#11107): Stabilize
   "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer_none",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

@@ -24,6 +24,7 @@ table Transform3D (
   "attr.docs.category": "Transforms",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
 "attr.rerun.state": "stable",
+  "attr.rerun.visualizer_none",
   "attr.rust.derive": "PartialEq"
 ) {
   /// Translation vector.

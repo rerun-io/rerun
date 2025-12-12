@@ -12,6 +12,7 @@ table GraphEdges (
   "attr.docs.category": "Graph",
   "attr.docs.view_types": "GraphView",
   "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "GraphEdges",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

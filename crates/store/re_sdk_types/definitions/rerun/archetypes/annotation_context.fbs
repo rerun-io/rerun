@@ -17,6 +17,7 @@ namespace rerun.archetypes;
 table AnnotationContext (
   "attr.docs.view_types": "Spatial2DView, Spatial3DView",
   "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer_none",
   "attr.rust.derive": "PartialEq"
 ) {
   /// List of class descriptions, mapping class indices to class names, colors etc.
