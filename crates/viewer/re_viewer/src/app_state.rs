@@ -187,7 +187,7 @@ impl AppState {
         // is there an active loop selection?
         time_ctrl
             .time_selection()
-            .map(|q| (*time_ctrl.timeline().name(), q))
+            .map(|q| (*time_ctrl.timeline_name(), q))
     }
 
     #[expect(clippy::too_many_arguments)]
@@ -908,14 +908,16 @@ fn update_overrides(
                     ctx.indicated_entities_per_visualizer,
                 );
 
-                resolver.update_overrides(
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                    ctx.time_ctrl.timeline(),
-                    ctx.view_class_registry,
-                    &mut query_result,
-                    view_state,
-                );
+                if let Some(timeline) = ctx.time_ctrl.timeline() {
+                    resolver.update_overrides(
+                        ctx.store_context.blueprint,
+                        ctx.blueprint_query,
+                        timeline,
+                        ctx.view_class_registry,
+                        &mut query_result,
+                        view_state,
+                    );
+                }
 
                 (view.id, query_result)
             },

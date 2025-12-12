@@ -406,7 +406,7 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        time_ctrl.timeline().name(),
+        time_ctrl.timeline_name(),
         DensityGraphBuilderConfig::default(),
     );
 
@@ -616,7 +616,7 @@ pub fn show_row_ids_tooltip(
     use re_data_ui::DataUi as _;
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline().name(), at_time);
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline_name(), at_time);
 
     let TimePanelItem {
         entity_path,

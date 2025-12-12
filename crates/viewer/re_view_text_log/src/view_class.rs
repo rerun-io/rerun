@@ -308,7 +308,7 @@ fn table_ui(
 
     use egui_extras::Column;
 
-    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline(), ctx.time_ctrl.time_int());
+    let (global_timeline, global_time) = (*ctx.time_ctrl.timeline_name(), ctx.time_ctrl.time_int());
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
@@ -413,7 +413,7 @@ fn table_ui(
                         item_ui::time_button(ctx, ui, &timeline, row_time);
 
                         if let Some(global_time) = global_time
-                            && timeline == *global_timeline.name()
+                            && timeline == global_timeline
                         {
                             #[expect(clippy::comparison_chain)]
                             if global_time < row_time {

@@ -340,7 +340,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             false // Can't select "RowId" as a concept
                         }
                         ColumnDescriptor::Time(descr) => {
-                            &descr.timeline() == self.ctx.time_ctrl.timeline()
+                            descr.timeline().name() == self.ctx.time_ctrl.timeline_name()
                         }
                         ColumnDescriptor::Component(component_column_descriptor) => self
                             .ctx

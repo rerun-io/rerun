@@ -251,9 +251,9 @@ impl ViewerOpenUrl {
             fragment.when = time_ctrl.and_then(|time_ctrl| {
                 let time = time_ctrl.time_int()?;
                 Some((
-                    *time_ctrl.timeline().name(),
+                    *time_ctrl.timeline_name(),
                     re_log_types::TimeCell {
-                        typ: time_ctrl.time_type(),
+                        typ: time_ctrl.time_type()?,
                         value: time.into(),
                     },
                 ))
@@ -262,7 +262,7 @@ impl ViewerOpenUrl {
                 let time_selection = time_ctrl.time_selection()?;
 
                 Some(re_uri::TimeSelection {
-                    timeline: *time_ctrl.timeline(),
+                    timeline: *time_ctrl.timeline()?,
                     range: time_selection.to_int(),
                 })
             });

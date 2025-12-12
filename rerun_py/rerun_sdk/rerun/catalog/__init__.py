@@ -4,7 +4,6 @@ from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
     ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,
-    DataFusionTable as DataFusionTable,
     EntryId as EntryId,
     EntryKind as EntryKind,
     IndexColumnDescriptor as IndexColumnDescriptor,

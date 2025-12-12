@@ -24,13 +24,13 @@ impl TimeControlUi {
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
             let response = egui::ComboBox::from_id_salt("timeline")
-                .selected_text(time_ctrl.timeline().name().as_str())
+                .selected_text(time_ctrl.timeline_name().as_str())
                 .show_ui(ui, |ui| {
                     for histogram in timeline_histograms.histograms() {
                         let timeline = &histogram.timeline();
                         if ui
                             .selectable_label(
-                                timeline == time_ctrl.timeline(),
+                                timeline.name() == time_ctrl.timeline_name(),
                                 (
                                     timeline.name().as_str(),
                                     egui::Atom::grow(),
@@ -92,7 +92,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 .at_pointer_fixed()
                 .show(|ui| {
                     if ui.button("Copy timeline name").clicked() {
-                        let timeline = format!("{}", time_ctrl.timeline().name());
+                        let timeline = format!("{}", time_ctrl.timeline_name());
                         re_log::info!("Copied timeline: {}", timeline);
                         ui.ctx().copy_text(timeline);
                     }
@@ -107,7 +107,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
-        if time_ctrl.time_type() == TimeType::Sequence
+        if time_ctrl.time_type() == Some(TimeType::Sequence)
             && let Some(mut fps) = time_ctrl.fps()
         {
             let old_fps = fps;
