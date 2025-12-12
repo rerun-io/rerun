@@ -97,8 +97,9 @@ async fn time_control_emits_timeline_switch_event() {
         });
     }
 
-    let initial_timeline = harness.run_with_viewer_context(move |ctx| *ctx.time_ctrl.timeline());
-    let alternate_timeline = if initial_timeline == timeline_a {
+    let initial_timeline =
+        harness.run_with_viewer_context(move |ctx| *ctx.time_ctrl.timeline_name());
+    let alternate_timeline = if initial_timeline == timeline_a.name() {
         timeline_b
     } else {
         timeline_a
@@ -113,8 +114,9 @@ async fn time_control_emits_timeline_switch_event() {
             *alternate_timeline.name(),
         )],
     );
-    let timeline_after_switch = harness.run_with_viewer_context(|ctx| *ctx.time_ctrl.timeline());
-    assert_eq!(timeline_after_switch.name(), alternate_timeline.name());
+    let timeline_after_switch =
+        harness.run_with_viewer_context(|ctx| *ctx.time_ctrl.timeline_name());
+    assert_eq!(timeline_after_switch, alternate_timeline.name());
 
     assert!(
         events.received_event(|kind| {
