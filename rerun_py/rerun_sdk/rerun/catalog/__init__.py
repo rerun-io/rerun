@@ -25,8 +25,8 @@ from rerun_bindings.types import (
 from ._catalog_client import CatalogClient as CatalogClient
 from ._entry import DatasetEntry as DatasetEntry, DatasetView as DatasetView, Entry as Entry, TableEntry as TableEntry
 from ._registration_handle import (
-    RegistrationResult as RegisteredSegments,
     RegistrationHandle as RegistrationHandle,
+    RegistrationResult as RegistrationResult,
     SegmentRegistrationResult as SegmentRegistrationResult,
 )
 from ._schema import Schema as Schema
