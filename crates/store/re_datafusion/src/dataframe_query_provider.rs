@@ -15,7 +15,7 @@ use datafusion::error::DataFusionError;
 use datafusion::execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext};
 use datafusion::physical_expr::expressions::Column;
 use datafusion::physical_expr::{
-    EquivalenceProperties, Partitioning, PhysicalExpr, PhysicalSortExpr,
+    EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
@@ -234,7 +234,7 @@ impl SegmentStreamExec {
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
 
-        let _orderings: Vec<PhysicalSortExpr> = if projected_schema
+        let orderings = if projected_schema
             .fields()
             .iter()
             .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
@@ -263,12 +263,16 @@ impl SegmentStreamExec {
                     SortOptions::new(false, true),
                 ));
             }
-            vec![]
+            vec![
+                LexOrdering::new(physical_ordering)
+                    .expect("LexOrdering should return Some since input is not empty"),
+            ]
         } else {
             vec![]
         };
 
-        let eq_properties = EquivalenceProperties::new(Arc::clone(&projected_schema));
+        let eq_properties =
+            EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
 
         let partition_in_output_schema = projection.map(|p| p.contains(&0)).unwrap_or(false);
 
