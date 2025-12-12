@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     import pyarrow as pa
+    from rerun.catalog import RegistrationHandle
     from rerun.dataframe import IndexColumnDescriptor
 
     from rerun_bindings import IndexValuesLike  # noqa: TID251
@@ -161,7 +162,7 @@ class DatasetEntry(Entry):
         """
 
         blueprint_dataset = self._inner.blueprint_dataset()
-        segment_id = blueprint_dataset.register(uri)
+        segment_id = blueprint_dataset.register(uri).wait().segment_ids[0]
 
         if set_default:
             self._inner.set_default_blueprint_segment_id(segment_id)
@@ -225,27 +226,13 @@ class DatasetEntry(Entry):
     ) -> str:
         return self._inner.segment_url(segment_id, timeline, start, end)
 
-    def register(self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base") -> Tasks:
-        if isinstance(recording_uri, str):
-            recording_uri = [recording_uri]
-        else:
-            recording_uri = list(recording_uri)
+    def register(
+        self, recording_uri: str | Sequence[str], *, layer_name: str | Sequence[str] = "base"
+    ) -> RegistrationHandle:
+        return self._inner.register(recording_uri, layer_name=layer_name)
 
-        if isinstance(layer_name, str):
-            layer_name = [layer_name] * len(recording_uri)
-        else:
-            layer_name = list(layer_name)
-            if len(layer_name) != len(recording_uri):
-                raise ValueError("`layer_name` must be the same length as `recording_uri`")
-
-        return Tasks(self._inner.register_batch(recording_uri, recording_layers=layer_name))
-
-    # TODO(ab): are we merging this into `register` as well?
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks:
-        return Tasks(self._inner.register_prefix(recordings_prefix, layer_name))
-
-    def download_segment(self, segment_id: str) -> Any:
-        return self._inner.download_segment(segment_id)
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandle:
+        return self._inner.register_prefix(recordings_prefix, layer_name)
 
     def reader(
         self,
@@ -609,27 +596,9 @@ class TableEntry(Entry):
         return self.reader().to_polars()
 
 
-class Tasks:
-    def __init__(self, inner: _catalog.Tasks) -> None:
-        self._inner: _catalog.Tasks = inner
-
-    def wait(self, timeout_secs: int = 60) -> None:
-        self._inner.wait(timeout_secs)
-
-    def status_table(self) -> datafusion.DataFrame:
-        return self._inner.status_table().df()
-
-    def __len__(self) -> int:
-        return self._inner.__len__()
-
-    def __getitem__(self, index: int) -> Task:
-        return self._inner.__getitem__(index)
-
-
 AlreadyExistsError = _catalog.AlreadyExistsError
 EntryId = _catalog.EntryId
 EntryKind = _catalog.EntryKind
 NotFoundError = _catalog.NotFoundError
 TableInsertMode = _catalog.TableInsertMode
-Task = _catalog.Task
 VectorDistanceMetric = _catalog.VectorDistanceMetric

@@ -2273,9 +2273,11 @@ impl App {
                             );
                         }
 
+                        let mut startup_options = self.startup_options.clone();
+
                         self.state.show(
                             &self.app_env,
-                            &self.startup_options,
+                            &mut startup_options,
                             app_blueprint,
                             ui,
                             render_ctx,
@@ -2295,6 +2297,7 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                         );
+                        self.startup_options = startup_options;
                         render_ctx.before_submit();
                     }
 
@@ -2725,6 +2728,7 @@ impl App {
 
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
+                && 0 < counted_diff
             {
                 re_log::debug!(
                     "Freed up {} ({:.1}%)",

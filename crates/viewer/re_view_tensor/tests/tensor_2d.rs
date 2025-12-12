@@ -3,6 +3,7 @@ use re_log_types::{EntityPath, TimePoint};
 use re_sdk_types::archetypes;
 use re_sdk_types::datatypes::TensorBuffer;
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_tensor::TensorView;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
@@ -20,7 +21,12 @@ fn make_test_tensor_2d(size: usize) -> archetypes::Tensor {
     ))
 }
 
-fn run_test_with_origin(test_context: &mut TestContext, origin: &str, snapshot_name: &str) {
+fn run_test_with_origin(
+    test_context: &mut TestContext,
+    origin: &str,
+    snapshot_name: &str,
+    snapshot_results: &mut SnapshotResults,
+) {
     let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
         blueprint.add_view_at_root(ViewBlueprint::new_with_id(
             TensorView::identifier(),
@@ -37,6 +43,7 @@ fn run_test_with_origin(test_context: &mut TestContext, origin: &str, snapshot_n
         view_id,
         &format!("tensor_2d_{snapshot_name}"),
         egui::vec2(256.0, 256.0),
+        snapshot_results,
     );
 }
 
@@ -51,10 +58,11 @@ fn test_tensor() {
         builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_tensor_2d(8))
     });
 
-    run_test_with_origin(&mut test_context, "tensors/t1", "t1");
-    run_test_with_origin(&mut test_context, "tensors/t2", "t2");
-    run_test_with_origin(&mut test_context, "tensors", "both");
-    run_test_with_origin(&mut test_context, "", "root");
+    let mut snapshot_results = SnapshotResults::new();
+    run_test_with_origin(&mut test_context, "tensors/t1", "t1", &mut snapshot_results);
+    run_test_with_origin(&mut test_context, "tensors/t2", "t2", &mut snapshot_results);
+    run_test_with_origin(&mut test_context, "tensors", "both", &mut snapshot_results);
+    run_test_with_origin(&mut test_context, "", "root", &mut snapshot_results);
 }
 
 fn run_view_ui_and_save_snapshot(
@@ -62,6 +70,7 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    snapshot_results: &mut SnapshotResults,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering_ui(size)
@@ -70,4 +79,5 @@ fn run_view_ui_and_save_snapshot(
         });
     harness.run();
     harness.snapshot(name);
+    snapshot_results.extend_harness(&mut harness);
 }

@@ -12,9 +12,9 @@ mod entry;
 mod errors;
 mod index_columns;
 mod indexes;
+mod registration_handle;
 mod schema;
 mod table_entry;
-mod task;
 mod trace_context;
 
 use errors::{AlreadyExistsError, NotFoundError};
@@ -35,9 +35,9 @@ pub use self::indexes::{
     PyIndexConfig, PyIndexProperties, PyIndexingResult, PyVectorDistanceMetric,
     VectorDistanceMetricLike, VectorLike,
 };
+pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
 pub use self::table_entry::{PyTableEntryInternal, PyTableInsertMode};
-pub use self::task::{PyTask, PyTasks};
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -49,8 +49,8 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyDatasetEntryInternal>()?;
     m.add_class::<PyTableEntryInternal>()?;
     m.add_class::<PyTableInsertMode>()?;
-    m.add_class::<PyTask>()?;
-    m.add_class::<PyTasks>()?;
+    m.add_class::<PyRegistrationHandleInternal>()?;
+    m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyDataFusionTable>()?;
     m.add_class::<PyDatasetViewInternal>()?;
     m.add_class::<PyRerunHtmlTable>()?;

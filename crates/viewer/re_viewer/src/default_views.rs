@@ -33,7 +33,7 @@ fn populate_view_class_registry_with_builtin(
 #[cfg(test)]
 mod tests {
     use egui::Vec2;
-    use egui_kittest::SnapshotOptions;
+    use egui_kittest::{SnapshotOptions, SnapshotResults};
     use re_chunk::EntityPath;
     use re_test_context::TestContext;
     use re_ui::UiExt as _;
@@ -54,6 +54,7 @@ mod tests {
 
         let view_class_registry =
             create_view_class_registry(&mut test_context.component_fallback_registry).unwrap();
+        let mut snapshot_results = SnapshotResults::new();
         for egui_theme in [egui::Theme::Light, egui::Theme::Dark] {
             for entry in view_class_registry.iter_registry() {
                 let class = &entry.class;
@@ -90,6 +91,7 @@ mod tests {
                     "tests/snapshots/all_view_selection_uis/{egui_theme:?}"
                 ));
                 harness.snapshot_options(entry.identifier.to_string(), &snapshot_options);
+                snapshot_results.extend_harness(&mut harness);
 
                 drop(harness);
 

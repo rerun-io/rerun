@@ -3,6 +3,7 @@ use re_log_types::TimePoint;
 use re_sdk_types::blueprint::archetypes::SpatialInformation;
 use re_sdk_types::blueprint::components::Enabled;
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
@@ -141,6 +142,7 @@ pub fn test_transform_tree_origins() {
         });
     }
 
+    let mut snapshot_results = SnapshotResults::new();
     for origin in ["/sun", "/sun/planet", "/sun/planet/moon"] {
         let view_id = setup_blueprint(&mut test_context, origin);
         run_view_ui_and_save_snapshot(
@@ -148,6 +150,7 @@ pub fn test_transform_tree_origins() {
             view_id,
             &format!("transform_tree_origins_{}", origin.replace('/', "_")),
             egui::vec2(400.0, 250.0),
+            &mut snapshot_results,
         );
     }
 }
@@ -194,6 +197,7 @@ fn run_view_ui_and_save_snapshot(
     view_id: ViewId,
     name: &str,
     size: egui::Vec2,
+    snapshot_results: &mut SnapshotResults,
 ) {
     let mut harness = test_context
         .setup_kittest_for_rendering_3d(size)
@@ -206,4 +210,5 @@ fn run_view_ui_and_save_snapshot(
         });
 
     harness.snapshot(name);
+    snapshot_results.extend_harness(&mut harness);
 }

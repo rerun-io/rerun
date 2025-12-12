@@ -265,7 +265,7 @@ impl RelativeTimeRange<'_> {
 mod tests {
     use std::ops::RangeInclusive;
 
-    use egui_kittest::Harness;
+    use egui_kittest::{Harness, SnapshotResults};
     use re_log_types::external::re_types_core::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
     use re_log_types::{TimeType, TimestampFormat};
 
@@ -287,6 +287,7 @@ mod tests {
             current_time,
             mut time_range,
         }: SnapshotOptions,
+        snapshot_results: &mut SnapshotResults,
     ) {
         let mut harness = Harness::builder().build_ui(|ui| {
             crate::apply_style_and_install_loaders(ui.ctx());
@@ -312,6 +313,7 @@ mod tests {
 
         harness.fit_contents();
         harness.snapshot(format!("relative_time_range_{name}_{time_type}"));
+        snapshot_results.extend_harness(&mut harness);
     }
 
     fn test_date_time(add_secs: i64) -> i64 {
@@ -322,6 +324,7 @@ mod tests {
     #[test]
     fn test_relative_time_range_ui() {
         let timestamp_format = TimestampFormat::utc().with_hide_today_date(true);
+        let mut snapshot_results = SnapshotResults::new();
         for (time_type, time_range) in [
             (TimeType::Sequence, 0..=100),
             (
@@ -400,7 +403,13 @@ mod tests {
                     },
                 },
             ] {
-                run_snapshot(time_type, time_range.clone(), timestamp_format, o);
+                run_snapshot(
+                    time_type,
+                    time_range.clone(),
+                    timestamp_format,
+                    o,
+                    &mut snapshot_results,
+                );
             }
         }
     }

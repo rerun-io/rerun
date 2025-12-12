@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -1283,9 +1283,8 @@ class DatasetEntryInternal:
 
     # ---
 
-    def register(self, recording_uri: str, *, recording_layer: str = "base", timeout_secs: int = 60) -> str: ...
-    def register_batch(self, recording_uris: list[str], *, recording_layers: list[str]) -> Tasks: ...
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> Tasks: ...
+    def register(self, recording_uris: list[str], *, recording_layers: list[str]) -> RegistrationHandleInternal: ...
+    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandleInternal: ...
 
     # ---
 
@@ -1511,38 +1510,9 @@ class DataFusionTable:
     def name(self) -> str:
         """Name of this table."""
 
-class Task:
-    """A handle on a remote task."""
-
-    @property
-    def id(self) -> str:
-        """The task id."""
-
-    def wait(self, timeout_secs: int) -> None:
-        """
-        Block until the task is completed or the timeout is reached.
-
-        A `TimeoutError` is raised if the timeout is reached.
-        """
-
-class Tasks:
-    """A collection of [`Task`]."""
-
-    def wait(self, timeout_secs: int) -> None:
-        """
-        Block until all tasks are completed or the timeout is reached.
-
-        A `TimeoutError` is raised if the timeout is reached.
-        """
-
-    def status_table(self) -> DataFusionTable:
-        """Return a table with the status of all tasks."""
-
-    def __len__(self) -> int:
-        """Return the number of tasks."""
-
-    def __getitem__(self, index: int) -> Task:
-        """Return the task at the given index."""
+class RegistrationHandleInternal:
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...
+    def wait(self, timeout_secs: int | None = None) -> list[str]: ...
 
 #####################################################################################################################
 ## SEND_TABLE                                                                                                      ##

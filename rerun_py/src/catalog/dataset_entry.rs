@@ -24,7 +24,7 @@ use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use super::task::PyTasks;
+use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
     PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
     PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
@@ -305,103 +305,10 @@ impl PyDatasetEntryInternal {
         .to_string())
     }
 
-    /// Register a RRD URI to the dataset and wait for completion.
+    /// Register RRD URIs to the dataset and return a handle to track progress.
     ///
-    /// This method registers a single recording to the dataset and blocks until the registration is
-    /// complete, or after a timeout (in which case, a `TimeoutError` is raised).
-    ///
-    /// Parameters
-    /// ----------
-    /// recording_uri: str
-    ///     The URI of the RRD to register.
-    ///
-    /// recording_layer: str
-    ///     The layer to which the recording will be registered to.
-    ///
-    /// timeout_secs: int
-    ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
-    ///
-    /// Returns
-    /// -------
-    /// segment_id: str
-    ///     The segment ID of the registered RRD.
-    #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
-    #[pyo3(
-        text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
-    )]
-    fn register(
-        self_: PyRef<'_, Self>,
-        recording_uri: String,
-        recording_layer: String,
-        timeout_secs: u64,
-    ) -> PyResult<String> {
-        let register_timeout = std::time::Duration::from_secs(timeout_secs);
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-
-        let mut results = connection.register_with_dataset(
-            self_.py(),
-            self_.entry_details.id,
-            vec![recording_uri],
-            vec![recording_layer],
-        )?;
-
-        let Some(task_descriptor) = results.pop() else {
-            return Err(PyRuntimeError::new_err(
-                "Failed to register recording, no task returned.",
-            ));
-        };
-
-        connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
-
-        Ok(task_descriptor.segment_id.id)
-    }
-
-    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
-    ///
-    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
-    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
-    ///
-    /// This method initiates the registration of the recordings to the dataset, and returns
-    /// the corresponding task ids in a [`Tasks`] object.
-    ///
-    /// Parameters
-    /// ----------
-    /// recordings_prefix: str
-    ///     The prefix under which to register all RRDs.
-    ///
-    /// layer_name: Optional[str]
-    ///     The layer to which the recordings will be registered to.
-    ///     If `None`, this defaults to `"base"`.
-    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
-    #[pyo3(signature = (
-        recordings_prefix,
-        layer_name = None,
-    ))]
-    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
-    fn register_prefix(
-        self_: PyRef<'_, Self>,
-        recordings_prefix: String,
-        layer_name: Option<String>,
-    ) -> PyResult<PyTasks> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-
-        let results = connection.register_with_dataset_prefix(
-            self_.py(),
-            self_.entry_details.id,
-            recordings_prefix,
-            layer_name,
-        )?;
-
-        Ok(PyTasks::new(
-            self_.client.clone_ref(self_.py()),
-            results.into_iter().map(|desc| desc.task_id),
-        ))
-    }
-
-    /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
-    ///
-    /// This method initiates the registration of multiple recordings to the dataset, and returns
-    /// the corresponding task ids in a [`Tasks`] object.
+    /// This method initiates the registration of recordings to the dataset, and returns
+    /// a handle that can be used to wait for completion or iterate over results.
     ///
     /// Parameters
     /// ----------
@@ -409,24 +316,15 @@ impl PyDatasetEntryInternal {
     ///     The URIs of the RRDs to register.
     ///
     /// recording_layers: list[str]
-    ///     The layers to which the recordings will be registered to:
-    ///     * When empty, this defaults to `["base"]`.
-    ///     * If longer than `recording_uris`, `recording_layers` will be truncated.
-    ///     * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
-    ///       I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
-    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
-    #[pyo3(signature = (
-        recording_uris,
-        *,
-        recording_layers = vec![],
-    ))]
+    ///     The layers to which the recordings will be registered to.
+    ///     Must be the same length as `recording_uris`.
+    #[pyo3(signature = (recording_uris, *, recording_layers))]
     #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
-    // TODO(ab): it might be useful to return segment ids directly since we have them
-    fn register_batch(
+    fn register(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
-    ) -> PyResult<PyTasks> {
+    ) -> PyResult<PyRegistrationHandleInternal> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let results = connection.register_with_dataset(
@@ -436,9 +334,47 @@ impl PyDatasetEntryInternal {
             recording_layers,
         )?;
 
-        Ok(PyTasks::new(
+        Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(self_.py()),
-            results.into_iter().map(|desc| desc.task_id),
+            results,
+        ))
+    }
+
+    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+    ///
+    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
+    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
+    ///
+    /// This method initiates the registration of the recordings to the dataset, and returns
+    /// a handle that can be used to wait for completion or iterate over results.
+    ///
+    /// Parameters
+    /// ----------
+    /// recordings_prefix: str
+    ///     The prefix under which to register all RRDs.
+    ///
+    /// layer_name: Optional[str]
+    ///     The layer to which the recordings will be registered to.
+    ///     If `None`, this defaults to `"base"`.
+    #[pyo3(signature = (recordings_prefix, layer_name = None))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    fn register_prefix(
+        self_: PyRef<'_, Self>,
+        recordings_prefix: String,
+        layer_name: Option<String>,
+    ) -> PyResult<PyRegistrationHandleInternal> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+
+        let results = connection.register_with_dataset_prefix(
+            self_.py(),
+            self_.entry_details.id,
+            recordings_prefix,
+            layer_name,
+        )?;
+
+        Ok(PyRegistrationHandleInternal::new(
+            self_.client.clone_ref(self_.py()),
+            results,
         ))
     }
 

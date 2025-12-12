@@ -193,7 +193,7 @@ impl AppState {
     pub fn show(
         &mut self,
         app_env: &crate::AppEnvironment,
-        startup_options: &StartupOptions,
+        startup_options: &mut StartupOptions,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
@@ -222,7 +222,12 @@ impl AppState {
         match self.navigation.current() {
             DisplayMode::Settings(prior_mode) => {
                 let mut show_settings_ui = true;
-                settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
+                settings_screen_ui(
+                    ui,
+                    &mut self.app_options,
+                    startup_options,
+                    &mut show_settings_ui,
+                );
                 if !show_settings_ui {
                     self.navigation.replace((**prior_mode).clone());
                 }
