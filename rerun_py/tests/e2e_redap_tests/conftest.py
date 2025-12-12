@@ -19,8 +19,6 @@ from rerun.catalog import CatalogClient
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
-from .telemetry import Telemetry
-
 if TYPE_CHECKING:
     from collections.abc import Generator
 
@@ -404,6 +402,8 @@ def pytest_benchmark_update_json(
     output_json: dict[str, Any],  # noqa: ARG001
 ) -> None:
     """Hook to flush telemetry data at the end of the benchmark session."""
+
+    from .telemetry import Telemetry
 
     telemetry = Telemetry()
     if telemetry.meter is None:
