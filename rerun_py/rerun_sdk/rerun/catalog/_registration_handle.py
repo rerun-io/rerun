@@ -49,7 +49,9 @@ class RegistrationHandle:
         Parameters
         ----------
         timeout_secs
-            Timeout in seconds. None uses default (8 hours).
+            Timeout in seconds. None for blocking. Note that using None doesn't guarantee that a TimeoutError will
+            never be eventually raised for long-running tasks. Setting a timeout and polling is recommended for
+            monitoring very large registration batches.
 
         Yields
         ------
@@ -76,7 +78,9 @@ class RegistrationHandle:
         Parameters
         ----------
         timeout_secs
-            Timeout in seconds. None uses default (8 hours).
+            Timeout in seconds. None for blocking. Note that using None doesn't guarantee that a TimeoutError will
+            never be eventually raised for long-running tasks. Setting a timeout and polling is recommended for
+            monitoring very large registration batches.
 
         Returns
         -------

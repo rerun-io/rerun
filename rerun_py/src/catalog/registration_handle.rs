@@ -17,8 +17,12 @@ use tracing::Instrument as _;
 use super::{PyCatalogClientInternal, to_py_err};
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
-/// Default timeout: 8 hours.
-const DEFAULT_TIMEOUT_SECS: u64 = 8 * 60 * 60;
+/// Default timeout.
+///
+/// This is the timeout used when set to `None` on the Python side. The idea here is to mimic a
+/// blocking for notebook/interactive uses of the SDK, but in practice it's never a thing, as the
+/// server always ends up bailing to avoid blocking resources.
+const DEFAULT_TIMEOUT_SECS: u64 = 60 * 60;
 
 /// Result of a single registration task completion.
 ///
