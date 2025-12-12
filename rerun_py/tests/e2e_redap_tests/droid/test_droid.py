@@ -323,7 +323,9 @@ def droid_register(droid_dataset_name: str, catalog_client: CatalogClient, aws_s
     dataset_handle = catalog_client.create_dataset(droid_dataset_name)
 
     try:
-        task_ids = dataset_handle.register_batch(aws_segments_to_register)
-        task_ids.wait(timeout_secs=600)
+        result = dataset_handle.register(aws_segments_to_register).wait(timeout_secs=600)
+        assert len(result.segment_ids) == len(aws_segments_to_register), (
+            f"Expected {len(aws_segments_to_register)} registered segments, got {len(result.segment_ids)}"
+        )
     finally:
         dataset_handle.delete()
