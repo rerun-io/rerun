@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
-use re_sdk_types::archetypes::{SeriesLines, SeriesPoints};
+use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{Corner2D, Enabled, LinkAxis, LockRangeDuringZoom};
 use re_sdk_types::components::{AggregationPolicy, Color, Range1D, SeriesVisible, Visible};
@@ -322,9 +322,23 @@ impl ViewClass for TimeSeriesView {
             .visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
         {
-            indicated_entities
-                .0
-                .extend(maybe_visualizable.keys().cloned());
+            indicated_entities.0.extend(
+                maybe_visualizable
+                    .iter()
+                    .filter_map(|(ent, reason)| match reason {
+                        re_viewer_context::VisualizableReason::DatatypeMatchAny { components } => {
+                            components
+                                .iter()
+                                .any(|c| {
+                                    *c == Scalars::descriptor_scalars().component
+                                        || !ctx.reflection().component_identifiers.contains_key(c)
+                                })
+                                .then_some(ent)
+                        }
+                        _ => Some(ent),
+                    })
+                    .cloned(),
+            );
         }
 
         // Ensure we don't modify this list anymore before we check the `include_entity`.
