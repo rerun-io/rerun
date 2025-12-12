@@ -422,8 +422,8 @@ SECTION_TABLE: Final[list[Section]] = [
         show_submodules=True,
         class_list=[
             "AlreadyExistsError",
-            "DataframeQueryView",
             "DatasetEntry",
+            "DatasetView",
             "CatalogClient",
             "Entry",
             "EntryId",

@@ -6,7 +6,7 @@ use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
-use re_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
+use re_sdk_types::blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior};
 use smallvec::SmallVec;
 
 use crate::blueprint_helpers::BlueprintContext as _;

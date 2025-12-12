@@ -228,14 +228,15 @@ impl egui_table::TableDelegate for ReTable<'_> {
             self.selection.hovered_row = Some(row_nr);
         }
 
-        let mut fill = None;
-        if self.previous_selection.hovered_row == Some(row_nr) {
-            fill = Some(
+        let mut fill = if self.previous_selection.hovered_row == Some(row_nr) {
+            Some(
                 ui.tokens()
                     .table_interaction_row_selection_fill
                     .gamma_multiply(0.5),
-            );
-        }
+            )
+        } else {
+            None
+        };
 
         ui.style_mut().interaction.selectable_labels = false;
         if self.selection.selected_rows.contains(&row_nr) {

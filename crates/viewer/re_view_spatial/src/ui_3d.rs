@@ -5,10 +5,12 @@ use macaw::BoundingBox;
 use re_log_types::Instance;
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{LineDrawableBuilder, Size};
+use re_sdk_types::blueprint::archetypes::{
+    Background, EyeControls3D, LineGrid3D, SpatialInformation,
+};
+use re_sdk_types::blueprint::components::{Enabled, GridSpacing};
+use re_sdk_types::components::{ViewCoordinates, Visible};
 use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
-use re_types::blueprint::archetypes::{Background, EyeControls3D, LineGrid3D, SpatialInformation};
-use re_types::blueprint::components::{Enabled, GridSpacing};
-use re_types::components::{ViewCoordinates, Visible};
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
@@ -314,7 +316,7 @@ impl SpatialView3D {
                         eye_property.save_blueprint_component(
                             ctx,
                             &EyeControls3D::descriptor_tracking_entity(),
-                            &re_types::components::EntityPath::from(entity_path),
+                            &re_sdk_types::components::EntityPath::from(entity_path),
                         );
                         state.state_3d.eye_state.last_interaction_time = Some(ui.time());
                     }
@@ -360,7 +362,7 @@ impl SpatialView3D {
         }
 
         // TODO(andreas): Make configurable. Could pick up default radius for this view?
-        let box_line_radius = Size(*re_types::components::Radius::default().0);
+        let box_line_radius = Size(*re_sdk_types::components::Radius::default().0);
 
         if show_bounding_box {
             line_builder
@@ -456,15 +458,15 @@ impl SpatialView3D {
             LineGrid3D::descriptor_spacing().component,
         )?;
         let thickness_ui = **grid_config
-            .component_or_fallback::<re_types::components::StrokeWidth>(
+            .component_or_fallback::<re_sdk_types::components::StrokeWidth>(
                 ctx,
                 LineGrid3D::descriptor_stroke_width().component,
             )?;
-        let color = grid_config.component_or_fallback::<re_types::components::Color>(
+        let color = grid_config.component_or_fallback::<re_sdk_types::components::Color>(
             ctx,
             LineGrid3D::descriptor_color().component,
         )?;
-        let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
+        let plane = grid_config.component_or_fallback::<re_sdk_types::components::Plane3D>(
             ctx,
             LineGrid3D::descriptor_plane().component,
         )?;

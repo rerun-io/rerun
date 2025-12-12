@@ -137,10 +137,10 @@ examples-pypi = ["examples-common", "python-pypi"]
 check-env = "python scripts/check_env.py"
 
 # Run the codegen. Optionally pass `--profile` argument if you want.
-codegen = "cargo --quiet run --package re_types_builder -- "
+codegen = "cargo run --package re_types_builder -- "
 
 # Run the codegen for protobuf types.
-codegen-protos = { cmd = "cargo --quiet run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
+codegen-protos = { cmd = "cargo run --package re_protos_builder && cargo fmt -p re_protos", depends-on = [
   # "pb-snapshot",  # TODO(cmc): reenable if we ever go back to snapshot-based BW compat for protobuf
 ] }
 codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
@@ -148,9 +148,7 @@ codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/stor
 # Generate the Rerun CLI manual.
 
 # NOTE: must be --all-features, otherwise we might miss some optional commands.
-man = { cmd = "cargo --quiet run --package rerun-cli --all-features -- man > docs/content/reference/cli.md", depends-on = [
-  "rerun-build-web", # Must have web-viewer to build `rerun-cli` with --all-features
-] }
+man = "RERUN_DISABLE_WEB_VIEWER_SERVER=1 cargo run --package rerun-cli --all-features -- man > docs/content/reference/cli.md"
 
 # Compile and run the rerun viewer.
 #
@@ -202,13 +200,13 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug"
 
 # Compile the web-viewer wasm and the cli.
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -224,13 +222,13 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
 
 rs-check = "python scripts/ci/rust_checks.py"
 
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
-check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features --quiet rrd verify" }
+check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify" }
 
 rs-fmt = "cargo fmt --all"
 
@@ -246,7 +244,7 @@ link-check = 'lychee --verbose --cache --max-cache-age 1d . --base-url . "**/*.m
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
-lint-codegen = "cargo --quiet run --package re_types_builder -- --check"
+lint-codegen = "cargo run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-files
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2024 --check"
@@ -318,8 +316,8 @@ py-lint = { depends-on = ["py-lint-non-sdk", "py-lint-rerun", "py-lint-nb-rerun"
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
-dev-tools = "cargo run --quiet --locked -p re_dev_tools --"
-build-examples = "cargo run --quiet --locked -p re_dev_tools -- build-examples"
+dev-tools = "cargo run --locked -p re_dev_tools --"
+build-examples = "cargo run --locked -p re_dev_tools -- build-examples"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
@@ -458,7 +456,7 @@ snapshots = "python scripts/snapshots.py"
 [feature.python-docs.tasks]
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-search-index = "cargo run --locked --quiet -p re_dev_tools -- search-index"
+search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"

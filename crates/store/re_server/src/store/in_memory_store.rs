@@ -173,6 +173,9 @@ impl InMemoryStore {
         }
 
         self.update_entries_table()?;
+
+        re_log::info!("Finished loading {}", directory.display());
+
         Ok(())
     }
 
@@ -204,20 +207,24 @@ impl InMemoryStore {
         };
 
         // Verify it is a valid lance table
-        let path = directory.to_str().ok_or(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            format!("Expected a valid path, got: {}", directory.display()),
-        ))?;
+        let path = directory.to_str().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Expected a valid path, got: {}", directory.display()),
+            )
+        })?;
 
         let table = TableType::LanceDataset(Arc::new(
             lance::Dataset::open(path)
                 .await
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?,
         ));
-        let table_url = url::Url::from_directory_path(&directory).or(Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "Cannot turn directory into URL",
-        )))?;
+        let table_url = url::Url::from_directory_path(&directory).map_err(|_err| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Cannot turn directory into URL",
+            )
+        })?;
 
         let entry_id = EntryId::new();
         let provider_details = LanceTable { table_url };
@@ -366,7 +373,7 @@ impl InMemoryStore {
         let entries_table_id = *self
             .id_by_name
             .entry(ENTRIES_TABLE_NAME.to_owned())
-            .or_insert(EntryId::new());
+            .or_insert_with(EntryId::new);
         let prior_entries_table = self.tables.remove(&entries_table_id);
 
         let entries_table = Arc::new(self.entries_table()?);

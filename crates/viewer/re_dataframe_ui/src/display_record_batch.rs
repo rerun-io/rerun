@@ -15,9 +15,9 @@ use re_component_ui::REDAP_THUMBNAIL_VARIANT;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_sdk_types::ComponentDescriptor;
+use re_sdk_types::components::{Blob, MediaType};
 use re_sorbet::ColumnDescriptorRef;
-use re_types::ComponentDescriptor;
-use re_types::components::{Blob, MediaType};
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, VariantName, ViewerContext};
@@ -178,7 +178,7 @@ pub struct DisplayComponentColumn {
 
 impl DisplayComponentColumn {
     fn blobs(&self, row: usize) -> Option<Vec<Blob>> {
-        if self.component_descr.component_type != Some(re_types::components::Blob::name()) {
+        if self.component_descr.component_type != Some(re_sdk_types::components::Blob::name()) {
             return None;
         }
 
@@ -193,7 +193,7 @@ impl DisplayComponentColumn {
     }
 
     pub fn is_image(&self) -> bool {
-        self.component_descr.component_type == Some(re_types::components::Blob::name())
+        self.component_descr.component_type == Some(re_sdk_types::components::Blob::name())
             && self
                 .blobs(0)
                 .as_ref()

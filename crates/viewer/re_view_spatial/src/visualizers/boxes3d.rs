@@ -1,9 +1,9 @@
 use std::iter;
 
 use re_chunk_store::external::re_chunk::ChunkComponentIterItem;
-use re_types::archetypes::Boxes3D;
-use re_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
-use re_types::{ArrowString, components};
+use re_sdk_types::archetypes::Boxes3D;
+use re_sdk_types::components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels};
+use re_sdk_types::{ArrowString, components};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,

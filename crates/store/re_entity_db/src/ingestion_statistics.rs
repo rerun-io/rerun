@@ -98,7 +98,7 @@ impl LatencyStats {
         let now = now_nanos as f64 / 1e9;
 
         // We use the chunk id for timing, so we need to get the _original_ id:
-        let original_chunk_id = diff.split_source.unwrap_or(diff.chunk.id());
+        let original_chunk_id = diff.split_source.unwrap_or_else(|| diff.chunk.id());
         let chunk_creation_nanos = original_chunk_id
             .nanos_since_epoch()
             .saturating_cast::<i64>();

@@ -51,7 +51,7 @@ pub use re_log_types::{
     ApplicationId, EntityPath, EntityPathFilter, EntityPathPart, Instance, StoreId, StoreKind,
     entity_path,
 };
-pub use re_types::archetypes::RecordingInfo;
+pub use re_sdk_types::archetypes::RecordingInfo;
 
 #[cfg(not(target_arch = "wasm32"))]
 impl crate::sink::LogSink for re_log_encoding::FileSink {
@@ -105,7 +105,7 @@ pub mod log {
 pub mod time {
     pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
 }
-pub use re_types::{
+pub use re_sdk_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
     Loggable, SerializationError, SerializationResult, SerializedComponentBatch,

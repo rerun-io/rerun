@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimePoint};
-use re_types::archetypes::{McapChannel, McapSchema};
-use re_types::{AsComponents as _, components};
+use re_sdk_types::archetypes::{McapChannel, McapSchema};
+use re_sdk_types::{AsComponents as _, components};
 
 use super::{Layer, LayerIdentifier};
 use crate::Error;
@@ -58,7 +58,7 @@ fn from_channel(channel: &Arc<::mcap::Channel<'_>>) -> McapChannel {
 
     let metadata_pairs: Vec<_> = metadata
         .iter()
-        .map(|(key, val)| re_types::datatypes::Utf8Pair {
+        .map(|(key, val)| re_sdk_types::datatypes::Utf8Pair {
             first: key.clone().into(),
             second: val.clone().into(),
         })

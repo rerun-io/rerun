@@ -1,7 +1,7 @@
 use re_chunk_store::UnitChunkShared;
 use re_log_types::EntityPath;
-use re_types::components::{self, TransformFrameId};
-use re_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
+use re_sdk_types::components::{self, TransformFrameId};
+use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, TransformDatabaseStoreCache, ViewerContext,
@@ -121,7 +121,7 @@ impl TransformFramesUi {
 
     pub fn data_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, layout: UiLayout) {
         match layout {
-            UiLayout::Tooltip => self.show_transforms(ctx, layout, ui),
+            UiLayout::Tooltip => {} // Don't show in tooltips.
             UiLayout::List | UiLayout::SelectionPanel => {
                 ui.collapsing("Transform frame parents", |ui| {
                     egui::Frame::new()

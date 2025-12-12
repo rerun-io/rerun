@@ -1,5 +1,5 @@
-use re_types::image::ImageKind;
-use re_types::{archetypes, blueprint, components};
+use re_sdk_types::image::ImageKind;
+use re_sdk_types::{archetypes, blueprint, components};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{IdentifiedViewSystem as _, QueryContext, ViewStateExt as _};
 
@@ -133,10 +133,15 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
 
             if let Some(data_result) = query_result.tree.lookup_result_by_path(space_origin.hash())
             {
+                // Here be dragons: DO NOT use `ctx.query` directly, since we're providing the fallback for a component which only lives in
+                // view properties, therefore the `QueryContext`'s query & path is all about the blueprint store.
+                // However, we're now interested in something that primarily lives on the "regular" store (with optional blueprint overrides). Therefore, we must take care to use the store query.
+                let query = ctx.view_ctx.current_query();
+
                 let results = data_result
                     .latest_at_with_blueprint_resolved_data::<archetypes::CoordinateFrame>(
                         ctx.view_ctx,
-                        ctx.query,
+                        &query,
                     );
 
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(

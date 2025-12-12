@@ -11,7 +11,7 @@ pub(crate) mod util {
 
     use arrow::array::{FixedSizeListBuilder, ListBuilder, UInt8Builder};
     use arrow::datatypes::{DataType, Field};
-    use re_types::{Loggable as _, components};
+    use re_sdk_types::{Loggable as _, components};
 
     pub(crate) fn fixed_size_list_builder<T: arrow::array::ArrayBuilder + Default>(
         value_length: i32,

@@ -38,11 +38,11 @@ async fn test_column_projections<T>(
             [
                 prop(
                     "text_log",
-                    re_types::archetypes::TextLog::new("i'm partition 1"),
+                    re_sdk_types::archetypes::TextLog::new("i'm partition 1"),
                 ),
                 prop(
                     "points",
-                    re_types::archetypes::Points2D::new([(1., 2.), (3., 4.)]),
+                    re_sdk_types::archetypes::Points2D::new([(1., 2.), (3., 4.)]),
                 ),
             ],
         )],

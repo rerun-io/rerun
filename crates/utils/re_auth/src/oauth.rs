@@ -228,6 +228,7 @@ pub struct Credentials {
     refresh_token: Option<RefreshToken>,
 
     access_token: AccessToken,
+    claims: RerunCloudClaims,
 }
 
 pub struct InMemoryCredentials(Credentials);
@@ -241,12 +242,26 @@ impl InMemoryCredentials {
     pub fn ensure_stored(self) -> Result<Credentials, CredentialsStoreError> {
         storage::store(&self.0)?;
 
-        // Link the analytics ID to the authenticated user
-        if let Some(analytics) = re_analytics::Analytics::global_get() {
-            analytics.record(re_analytics::event::SetPersonProperty {
-                email: self.0.user.email.clone(),
-            });
+        // Normally if re_analytics discovers this is a brand-new configuration,
+        // we show an analytics diclaimer. But, during SDK usage with the Catalog
+        // it's possible to hit this code-path during a first run in a new
+        // environment. Given the user already has a Rerun identity (or else there
+        // would be no credentials to store!), we assume they are already aware of
+        // rerun analytics and do not need a disclaimer. They can still use the shell
+        // to run `rerun analytics disable` if they wish to opt out.
+        //
+        // By manually forcing the creation of the analytics config we bypass the first_run check.
+        if let Ok(config) = re_analytics::Config::load_or_default() {
+            if config.is_first_run() {
+                config.save().ok();
+            }
         }
+
+        // Link the analytics ID to the authenticated user
+        re_analytics::record(|| re_analytics::event::SetPersonProperty {
+            email: self.0.user.email.clone(),
+            organization_id: self.0.claims.org_id.clone(),
+        });
 
         crate::credentials::oauth::auth_update(Some(&self.0.user));
 
@@ -264,11 +279,14 @@ impl Credentials {
     pub fn from_auth_response(
         res: api::RefreshResponse,
     ) -> Result<InMemoryCredentials, MalformedTokenError> {
-        let access_token = AccessToken::try_from_unverified_jwt(Jwt(res.access_token))?;
+        let jwt = Jwt(res.access_token);
+        let claims = RerunCloudClaims::try_from_unverified_jwt(&jwt)?;
+        let access_token = AccessToken::try_from_unverified_jwt(jwt)?;
         Ok(InMemoryCredentials(Self {
             user: res.user,
             refresh_token: Some(RefreshToken(res.refresh_token)),
             access_token,
+            claims,
         }))
     }
 
@@ -283,7 +301,7 @@ impl Credentials {
         let claims = RerunCloudClaims::try_from_unverified_jwt(&Jwt(access_token.clone()))?;
 
         let user = User {
-            id: claims.sub,
+            id: claims.sub.clone(),
             email,
         };
         let access_token = AccessToken {
@@ -294,8 +312,9 @@ impl Credentials {
 
         Ok(InMemoryCredentials(Self {
             user,
-            access_token,
             refresh_token,
+            access_token,
+            claims,
         }))
     }
 

@@ -591,6 +591,7 @@ impl Renderer for MeshRenderer {
 
                     pass.set_bind_group(1, &material.bind_group, &[]);
 
+                    #[expect(clippy::branches_sharing_code)]
                     if phase == DrawPhase::Transparent {
                         // First draw without front faces.
                         pass.set_pipeline(

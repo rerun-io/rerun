@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use re_log_types::TimelineName;
-use re_types::components::MediaType;
+use re_sdk_types::components::MediaType;
 use re_types_core::{ComponentIdentifier, Loggable as _, RowId};
 use re_ui::UiLayout;
 use re_viewer_context::ViewerContext;
@@ -17,7 +17,7 @@ pub fn redap_thumbnail(
 ) -> Result<(), Box<dyn Error>> {
     let row_id = row_id.ok_or("RowId is required for redap_thumbnail")?;
 
-    let blobs = re_types::components::Blob::from_arrow(data)?;
+    let blobs = re_sdk_types::components::Blob::from_arrow(data)?;
     let blob = blobs.first().ok_or("Blob data is empty")?;
 
     let slice = blob.as_ref();

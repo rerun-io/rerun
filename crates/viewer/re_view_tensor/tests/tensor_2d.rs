@@ -1,9 +1,9 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint};
+use re_sdk_types::archetypes;
+use re_sdk_types::datatypes::TensorBuffer;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes;
-use re_types::datatypes::TensorBuffer;
 use re_view_tensor::TensorView;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::ViewBlueprint;
@@ -14,7 +14,7 @@ fn make_test_tensor_2d(size: usize) -> archetypes::Tensor {
     let data = (0..size)
         .flat_map(|i| (0..size).map(move |j| (i ^ j) as u8 * scale))
         .collect::<Vec<_>>();
-    archetypes::Tensor::new(re_types::datatypes::TensorData::new(
+    archetypes::Tensor::new(re_sdk_types::datatypes::TensorData::new(
         vec![size as u64, size as u64],
         TensorBuffer::U8(data.into()),
     ))

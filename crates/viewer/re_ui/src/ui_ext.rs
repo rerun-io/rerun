@@ -1211,9 +1211,7 @@ pub trait UiExt {
                             });
 
                             #[cfg(feature = "analytics")]
-                            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-                                analytics.record(re_analytics::event::HelpButtonFirstClicked {});
-                            }
+                            re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }
                 })

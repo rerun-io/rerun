@@ -60,7 +60,7 @@
 //! Same comment as with error handling: this code becomes irrelevant at runtime, and so testing it
 //! brings very little value.
 //!
-//! Make sure to test the behavior of its output though: `re_types`!
+//! Make sure to test the behavior of its output though: `re_sdk_types`!
 //!
 //!
 //! ### Understanding the subtleties of affixes

@@ -178,8 +178,8 @@ def test_table_overwrite_mode() -> None:
 """)
 
 
-def test_read_table_entry() -> None:
-    """Demonstrate three ways to read table data: get_table, get_table_entry, and via DataFusion context."""
+def test_read_table() -> None:
+    """Demonstrate two ways to read table data: get_table and via DataFusion context."""
     with rr.server.Server() as server:
         client = server.client()
 
@@ -191,8 +191,8 @@ def test_read_table_entry() -> None:
         table.append(product_id=[101, 102, 103], price=[29.99, 49.99, 19.99])
 
         # Method 1: get_table - returns a TableEntry and call reader() to get DataFrame
-        table1 = client.get_table(name="products")
-        df1 = table1.reader()
+        table_entry = client.get_table(name="products")
+        df1 = table_entry.reader()
         assert str(df1.sort("product_id")) == inline_snapshot("""\
 ┌────────────────────┬────────────────────┐
 │ product_id         ┆ price              │
@@ -207,26 +207,10 @@ def test_read_table_entry() -> None:
 └────────────────────┴────────────────────┘\
 """)
 
-        # Method 2: Directly call reader on a table entry stored before
-        df2 = table1.reader()
-        assert str(df2.sort("product_id")) == inline_snapshot("""\
-┌────────────────────┬────────────────────┐
-│ product_id         ┆ price              │
-│ ---                ┆ ---                │
-│ type: nullable i32 ┆ type: nullable f64 │
-╞════════════════════╪════════════════════╡
-│ 101                ┆ 29.99              │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 102                ┆ 49.99              │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 103                ┆ 19.99              │
-└────────────────────┴────────────────────┘\
-""")
-
-        # Method 3: via DataFusion SessionContext - useful for SQL queries
+        # Method 2: via DataFusion SessionContext - useful for SQL queries
         ctx = client.ctx
-        df3 = ctx.table("products")
-        assert str(df3.sort("product_id")) == inline_snapshot("""\
+        df2 = ctx.table("products")
+        assert str(df2.sort("product_id")) == inline_snapshot("""\
 ┌────────────────────┬────────────────────┐
 │ product_id         ┆ price              │
 │ ---                ┆ ---                │

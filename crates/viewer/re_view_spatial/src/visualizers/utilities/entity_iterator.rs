@@ -1,5 +1,5 @@
 use re_log_types::{TimeInt, TimelineName};
-use re_types::Archetype;
+use re_sdk_types::Archetype;
 use re_view::{AnnotationSceneContext, ChunksWithComponent, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
@@ -167,7 +167,7 @@ use re_chunk_store::external::re_chunk;
 /// faster.
 ///
 /// See [`re_chunk::Chunk::iter_component`] for more information.
-pub fn iter_component<'a, C: re_types::Component>(
+pub fn iter_component<'a, C: re_sdk_types::Component>(
     chunks: &'a ChunksWithComponent<'a>,
     timeline: TimelineName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {

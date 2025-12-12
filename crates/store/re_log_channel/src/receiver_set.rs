@@ -232,8 +232,8 @@ fn test_receive_set() {
     );
 
     tx_sdk
-        .send(re_log_types::DataSourceMessage::UiCommand(
-            re_log_types::DataSourceUiCommand::SetUrlFragment {
+        .send(crate::DataSourceMessage::UiCommand(
+            crate::DataSourceUiCommand::SetUrlFragment {
                 store_id: StoreId::empty_recording(),
                 fragment: "#foo".into(),
             },

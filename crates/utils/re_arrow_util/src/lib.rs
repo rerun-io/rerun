@@ -89,16 +89,58 @@ mod tests {
 
 // ----------------------------------------------------------------
 
+/// Error used when a column is missing from a record batch
+#[derive(Debug, Clone, thiserror::Error)]
+pub struct MissingColumnError {
+    pub missing: String,
+    pub available: Vec<String>,
+}
+
+impl std::fmt::Display for MissingColumnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { missing, available } = self;
+        write!(f, "Missing column: {missing:?}. Available: {available:?}")
+    }
+}
+
+// ----------------------------------------------------------------
+
 /// Error used for arrow datatype mismatch.
 #[derive(Debug, Clone, thiserror::Error)]
 pub struct WrongDatatypeError {
-    pub expected: DataType,
-    pub actual: DataType,
+    pub column_name: Option<String>,
+    pub expected: Box<DataType>,
+    pub actual: Box<DataType>,
+}
+
+impl WrongDatatypeError {
+    pub fn ensure_datatype(field: &Field, expected: &DataType) -> Result<(), Self> {
+        if field.data_type() == expected {
+            Ok(())
+        } else {
+            Err(Self {
+                column_name: Some(field.name().to_owned()),
+                expected: expected.clone().into(),
+                actual: field.data_type().clone().into(),
+            })
+        }
+    }
 }
 
 impl std::fmt::Display for WrongDatatypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { expected, actual } = self;
-        write!(f, "Wrong datatype: expected {expected}, got {actual}")
+        let Self {
+            column_name,
+            expected,
+            actual,
+        } = self;
+        if let Some(column_name) = column_name {
+            write!(
+                f,
+                "Expected column {column_name:?} to be {expected}, got {actual}"
+            )
+        } else {
+            write!(f, "Expected {expected}, got {actual}")
+        }
     }
 }

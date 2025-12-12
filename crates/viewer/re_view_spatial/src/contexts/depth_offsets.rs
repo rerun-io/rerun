@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
 use re_log_types::EntityPathHash;
-use re_types::components::DrawOrder;
+use re_sdk_types::components::DrawOrder;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContextSystem, ViewSystemIdentifier,
@@ -77,7 +77,7 @@ fn collect_draw_order_per_visualizer(
     ctx: &re_viewer_context::ViewContext<'_>,
     query: &re_viewer_context::ViewQuery<'_>,
     visualizer_identifier: ViewSystemIdentifier,
-    draw_order_descriptor: &re_types::ComponentDescriptor,
+    draw_order_descriptor: &re_sdk_types::ComponentDescriptor,
     entities_per_draw_order: &mut BTreeMap<
         DrawOrder,
         BTreeSet<(ViewSystemIdentifier, EntityPathHash)>,
@@ -113,7 +113,7 @@ fn collect_draw_order_per_visualizer(
 
 fn determine_default_draworder(
     ctx: &QueryContext<'_>,
-    draw_order_component: re_types::ComponentIdentifier,
+    draw_order_component: re_sdk_types::ComponentIdentifier,
 ) -> DrawOrder {
     re_viewer_context::typed_fallback_for(ctx, draw_order_component)
 }

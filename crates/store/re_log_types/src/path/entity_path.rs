@@ -297,7 +297,7 @@ impl EntityPath {
 
     /// Returns the first common ancestor of a list of entity paths.
     pub fn common_ancestor_of<'a>(mut entities: impl Iterator<Item = &'a Self>) -> Self {
-        let first = entities.next().cloned().unwrap_or(Self::root());
+        let first = entities.next().cloned().unwrap_or_else(Self::root);
         entities.fold(first, |acc, e| acc.common_ancestor(e))
     }
 

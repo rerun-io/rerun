@@ -12,8 +12,8 @@ use re_entity_db::entity_db::EntityDbClass;
 use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
-use re_types::archetypes::RecordingInfo;
-use re_types::components::{Name, Timestamp};
+use re_sdk_types::archetypes::RecordingInfo;
+use re_sdk_types::components::{Name, Timestamp};
 use re_viewer_context::{DisplayMode, Item, ViewerContext};
 
 /// Short-lived structure containing all the data that will be displayed in the recording panel.

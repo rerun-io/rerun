@@ -1,6 +1,6 @@
 use half::f16;
 use ndarray::ArrayViewD;
-use re_types::tensor_data::TensorDataType;
+use re_sdk_types::tensor_data::TensorDataType;
 
 /// Stats about a tensor or image.
 #[derive(Clone, Copy, Debug)]
@@ -28,7 +28,7 @@ impl re_byte_size::SizeBytes for TensorStats {
 }
 
 impl TensorStats {
-    pub fn from_tensor(tensor: &re_types::datatypes::TensorData) -> Self {
+    pub fn from_tensor(tensor: &re_sdk_types::datatypes::TensorData) -> Self {
         re_tracing::profile_function!();
 
         macro_rules! declare_tensor_range_int {

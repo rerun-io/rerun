@@ -2,10 +2,10 @@ use nohash_hasher::IntMap;
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
-use re_types::Archetype as _;
-use re_types::archetypes::DepthImage;
-use re_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
-use re_types::image::ImageKind;
+use re_sdk_types::Archetype as _;
+use re_sdk_types::archetypes::DepthImage;
+use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
+use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
@@ -173,7 +173,7 @@ impl DepthImageVisualizer {
         // is a factor of the diameter of a pixel projected at that distance.
         let fov_y = pinhole
             .image_from_camera
-            .fov_y(pinhole.resolution.unwrap_or([1.0, 1.0].into()));
+            .fov_y(pinhole.resolution.unwrap_or_else(|| [1.0, 1.0].into()));
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 

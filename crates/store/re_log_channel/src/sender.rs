@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use re_log_types::DataSourceMessage;
-
-use crate::{Channel, LogSource, SendError, SmartMessage, SmartMessagePayload};
+use crate::{Channel, DataSourceMessage, LogSource, SendError, SmartMessage, SmartMessagePayload};
 
 #[derive(Clone)]
 pub struct LogSender {

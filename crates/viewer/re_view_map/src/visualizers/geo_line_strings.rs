@@ -1,8 +1,8 @@
 use re_log_types::{EntityPath, Instance};
 use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
-use re_types::archetypes::GeoLineStrings;
-use re_types::components::{Color, Radius};
+use re_sdk_types::archetypes::GeoLineStrings;
+use re_sdk_types::components::{Color, Radius};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
@@ -166,7 +166,10 @@ impl GeoLineStringsVisualizer {
                     .radius(super::radius_to_size(
                         *radius,
                         projector,
-                        strip.first().copied().unwrap_or(walkers::lat_lon(0.0, 0.0)),
+                        strip
+                            .first()
+                            .copied()
+                            .unwrap_or_else(|| walkers::lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
                     .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)

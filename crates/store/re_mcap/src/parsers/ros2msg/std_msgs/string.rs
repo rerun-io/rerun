@@ -1,5 +1,5 @@
 use re_chunk::{Chunk, ChunkId};
-use re_types::archetypes::TextDocument;
+use re_sdk_types::archetypes::TextDocument;
 
 use super::super::definitions::std_msgs;
 use crate::parsers::ros2msg::Ros2MessageParser;

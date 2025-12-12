@@ -1,7 +1,7 @@
 use anyhow::Context as _;
 use re_chunk::{Chunk, ChunkId};
-use re_types::archetypes::{DepthImage, Image};
-use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
+use re_sdk_types::archetypes::{DepthImage, Image};
+use re_sdk_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 
 use super::super::Ros2MessageParser;
 use crate::parsers::cdr;

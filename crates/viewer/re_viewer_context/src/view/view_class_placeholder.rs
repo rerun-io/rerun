@@ -1,5 +1,5 @@
 use re_chunk::EntityPath;
-use re_types::ViewClassIdentifier;
+use re_sdk_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 
 use crate::{

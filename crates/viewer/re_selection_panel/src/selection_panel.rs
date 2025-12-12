@@ -7,7 +7,7 @@ use re_data_ui::item_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_types::{ComponentDescriptor, TransformFrameIdHash};
+use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash};
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
 use re_viewer_context::{
@@ -184,7 +184,7 @@ impl SelectionPanel {
                 let component_descriptor = engine
                     .store()
                     .entity_component_descriptor(entity_path, *component)
-                    .unwrap_or(ComponentDescriptor::partial(*component));
+                    .unwrap_or_else(|| ComponentDescriptor::partial(*component));
 
                 let is_static = engine
                     .store()
@@ -514,8 +514,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 ///
 /// This is not technically a visualizer, but it affects visualization, so we show it alongside.
 fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &DataResult) {
-    use re_types::archetypes;
-    use re_types::components::TransformFrameId;
+    use re_sdk_types::archetypes;
+    use re_sdk_types::components::TransformFrameId;
     use re_view::latest_at_with_blueprint_resolved_data;
 
     let component_descr = archetypes::CoordinateFrame::descriptor_frame();
@@ -1298,10 +1298,10 @@ mod tests {
     use re_chunk::{LatestAtQuery, RowId, TimePoint, Timeline};
     use re_log_types::TimeType;
     use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_sdk_types::archetypes;
     use re_test_context::TestContext;
     use re_test_context::external::egui_kittest::kittest::Queryable as _;
     use re_test_viewport::{TestContextExt as _, TestView};
-    use re_types::archetypes;
     use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
     use re_viewport_blueprint::ViewBlueprint;
 

@@ -8,7 +8,7 @@ use egui::{
 use re_chunk::EntityPath;
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePath;
-use re_types::ArrowString;
+use re_sdk_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
     HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SystemCommand,
@@ -95,9 +95,9 @@ impl DrawableLabel {
             .stroke(Stroke::new(1.0, ui.style().visuals.text_color()));
 
         Self::Text(TextLabel {
+            color,
             frame,
             galley,
-            color,
         })
     }
 }

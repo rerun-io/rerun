@@ -1,12 +1,12 @@
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline, TimelineName};
+use re_sdk_types::archetypes::{self, Scalars};
+use re_sdk_types::blueprint;
+use re_sdk_types::blueprint::archetypes::VisibleTimeRanges;
+use re_sdk_types::components;
+use re_sdk_types::datatypes::{self, TimeRange};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_types::archetypes::{self, Scalars};
-use re_types::blueprint::archetypes::VisibleTimeRanges;
-use re_types::blueprint::{self};
-use re_types::components;
-use re_types::datatypes::{self, TimeRange};
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewContents};

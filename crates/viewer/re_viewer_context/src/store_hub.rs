@@ -13,8 +13,8 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_channel::LogSource;
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TableId};
 use re_query::QueryCachesStats;
-use re_types::archetypes;
-use re_types::components::Timestamp;
+use re_sdk_types::archetypes;
+use re_sdk_types::components::Timestamp;
 
 use crate::{
     BlueprintUndoState, CacheMemoryReport, Caches, RecordingOrTable, StorageContext, StoreContext,

@@ -10,17 +10,20 @@ import dataclasses
 import logging
 import pathlib
 import platform
+import re
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
 from rerun.catalog import CatalogClient
 from rerun.server import Server
+from syrupy.extensions.amber import AmberSnapshotExtension
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
     from rerun.catalog import DatasetEntry, TableEntry
+    from syrupy import SnapshotAssertion
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -203,10 +206,10 @@ class EntryFactory:
         self._created_entries.append(entry)
         return entry
 
-    def create_table_entry(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
-        """Create a table entry with automatic cleanup. Mirrors CatalogClient.create_table_entry()."""
+    def create_table(self, name: str, schema: pa.Schema, url: str) -> TableEntry:
+        """Create a table with automatic cleanup. Mirrors CatalogClient.create_table()."""
         prefixed_name = self.apply_prefix(name)
-        entry = self._client.create_table_entry(prefixed_name, schema, url)
+        entry = self._client.create_table(prefixed_name, schema, url)
         self._created_entries.append(entry)
         return entry
 
@@ -305,3 +308,38 @@ def prefilled_catalog(entry_factory: EntryFactory, readonly_table_uri: str) -> G
 
     resource = PrefilledCatalog(entry_factory, dataset)
     yield resource
+
+
+class RedactedIdSnapshotExtension(AmberSnapshotExtension):
+    """
+    Custom syrupy extension that redacts 16-byte hexadecimal IDs in snapshot output.
+
+    This is useful for snapshot testing data that contains dynamic IDs like entry IDs
+    or UUIDs that would otherwise cause snapshot mismatches on every run.
+    """
+
+    # Pattern to match 16-byte (32 character) hexadecimal strings
+    _ID_PATTERN = re.compile(r"[0-9a-fA-F]{32}")
+
+    def serialize(self, data: object, **kwargs: object) -> str:
+        """Serialize data and redact any 16-byte hex IDs."""
+        serialized = super().serialize(data, **kwargs)
+        return self._ID_PATTERN.sub("***", serialized)
+
+
+@pytest.fixture
+def snapshot_redact_id(snapshot: SnapshotAssertion) -> SnapshotAssertion:
+    """
+    Snapshot fixture that redacts 16-byte hexadecimal IDs.
+
+    Use this instead of `snapshot` when testing data containing dynamic IDs
+    like entry IDs or UUIDs that should not affect snapshot matching.
+
+    Example:
+        def test_something(snapshot_redact_id):
+            data = ["__bp_187E07A0DE3193C61d3d2ebb5a60e22b", "test"]
+            assert data == snapshot_redact_id
+            # Snapshot will contain: ["__bp_***", "test"]
+
+    """
+    return snapshot.use_extension(RedactedIdSnapshotExtension)

@@ -6,10 +6,10 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{Chunk, LatestAtQuery, UnitChunkShared};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, TimeInt};
-use re_types::archetypes::{self, InstancePoses3D};
-use re_types::external::arrow::array::Array as _;
-use re_types::external::arrow::{self};
-use re_types::{ComponentIdentifier, TransformFrameIdHash, components};
+use re_sdk_types::archetypes::{self, InstancePoses3D};
+use re_sdk_types::external::arrow;
+use re_sdk_types::external::arrow::array::Array as _;
+use re_sdk_types::{ComponentIdentifier, TransformFrameIdHash, components};
 
 use crate::transform_resolution_cache::ParentFromChildTransform;
 use crate::{ResolvedPinholeProjection, convert};
@@ -332,7 +332,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         }
     }
 
-    Ok(ParentFromChildTransform { transform, parent })
+    Ok(ParentFromChildTransform { parent, transform })
 }
 
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
@@ -561,7 +561,7 @@ fn get_parent_frame(
         .map_or_else(
             || {
                 TransformFrameIdHash::from_entity_path(
-                    &entity_path.parent().unwrap_or(EntityPath::root()),
+                    &entity_path.parent().unwrap_or_else(EntityPath::root),
                 )
             },
             |frame_id| TransformFrameIdHash::new(&frame_id),
@@ -627,7 +627,7 @@ mod tests {
     use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoints};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::RowId;
+    use re_sdk_types::RowId;
 
     use super::*;
 

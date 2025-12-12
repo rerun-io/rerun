@@ -433,13 +433,15 @@ impl ChunkStore {
                 .entry(chunk.entity_path().clone())
                 .or_default()
                 .entry(descriptor.component)
-                .or_insert((
-                    descriptor.clone(),
-                    ColumnMetadataState {
-                        is_semantically_empty: true,
-                    },
-                    list_array.value_type().clone(),
-                ));
+                .or_insert_with(|| {
+                    (
+                        descriptor.clone(),
+                        ColumnMetadataState {
+                            is_semantically_empty: true,
+                        },
+                        list_array.value_type().clone(),
+                    )
+                });
             {
                 if *datatype != list_array.value_type() {
                     // TODO(grtlr): If we encounter two different data types, we should split the chunk.
@@ -760,7 +762,7 @@ mod tests {
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::{build_frame_nr, build_log_time};
-    use re_types::components::Blob;
+    use re_sdk_types::components::Blob;
     use re_types_core::ComponentDescriptor;
     use similar_asserts::assert_eq;
 

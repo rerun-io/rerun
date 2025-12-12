@@ -254,7 +254,7 @@ fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {
 /// Defaults to `"unknown"` if, for whatever reason, the output from `rustc -vV` did not contain
 /// version information and/or the output format underwent breaking changes.
 fn rust_llvm_versions() -> anyhow::Result<(String, String)> {
-    let cmd = std::env::var("RUSTC").unwrap_or("rustc".into());
+    let cmd = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".into());
     let args = &["-vV"];
 
     // $ rustc -vV

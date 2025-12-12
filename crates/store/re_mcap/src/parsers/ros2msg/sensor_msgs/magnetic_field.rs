@@ -1,6 +1,6 @@
 use re_chunk::{Chunk, ChunkId};
-use re_types::archetypes::Arrows3D;
-use re_types::datatypes::Vec3D;
+use re_sdk_types::archetypes::Arrows3D;
+use re_sdk_types::datatypes::Vec3D;
 
 use super::super::definitions::sensor_msgs;
 use crate::Error;
