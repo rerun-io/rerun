@@ -357,7 +357,9 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 # Build the `rerun-sdk` package.
 py-build = "env -u CONDA_PREFIX RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion && uvpy scripts/ci/fix_rerun_pth.py"
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "uv sync --inexact --package rerun-notebook", depends-on = ["js-build-base"] }
+py-build-notebook = { cmd = "uv sync --inexact --package rerun-notebook", depends-on = [
+  "js-build-base",
+] }
 py-build-notebook-fast = { cmd = "uv sync --inexact --package rerun-notebook" }
 # Create a wheel for the `rerun-sdk` package.
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
@@ -381,9 +383,7 @@ py-build-perf-release = "env RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv 
 
 py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
 py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
-py-bench = { cmd = "uvpy -m pytest --benchmark-only", depends-on = [
-  "py-build-release",
-] }
+py-bench = { cmd = "uvpy -m pytest --benchmark-only", depends-on = ["py-build-release"] }
 
 snapshots = "uvpy scripts/snapshots.py"
 
