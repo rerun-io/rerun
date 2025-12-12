@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk_store::LatestAtQuery;
-use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
+use re_sdk_types::components::{Color, MarkerShape, MarkerSize};
+use re_sdk_types::{Archetype as _, archetypes};
 use re_view::{
     clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
@@ -16,6 +16,7 @@ use crate::series_query::{
     all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
     collect_series_name, collect_series_visibility, determine_num_series,
 };
+use crate::util::supported_datatypes;
 use crate::{
     LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util,
 };
@@ -37,7 +38,7 @@ impl VisualizerSystem for SeriesPointsSystem {
         VisualizerQueryInfo {
             relevant_archetype: archetypes::SeriesPoints::name().into(),
             required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype(
-                std::iter::once(components::Scalar::arrow_datatype()).collect(),
+                supported_datatypes().into_iter().collect(),
             ),
             queried: archetypes::Scalars::all_components()
                 .iter()
