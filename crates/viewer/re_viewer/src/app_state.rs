@@ -853,7 +853,7 @@ fn prefetch_chunks(
             match rrd_manifest.time_range_missing_chunks(time_ctrl.timeline(), query_range) {
                 Ok(rb) => {
                     if 0 < rb.num_rows() {
-                        re_log::debug!("Asking for {} more chunks", rb.num_rows());
+                        re_log::trace!("Asking for {} more chunks", rb.num_rows());
                         rx.send_command(re_log_channel::LoadCommand::LoadChunks(rb));
                     }
                 }
