@@ -138,7 +138,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         if blueprint_dataset is None:
             raise LookupError("a blueprint dataset is not configured for this dataset")
 
-        segment_id = blueprint_dataset.register(uri).wait()[0]
+        segment_id = blueprint_dataset.register(uri).wait().segment_ids[0]
 
         if set_default:
             self.set_default_blueprint(segment_id)
