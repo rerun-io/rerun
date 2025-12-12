@@ -34,6 +34,8 @@ fn basic_blueprint_panel_should_match_snapshot() {
 
 #[test]
 fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
+    let mut all_results = egui_kittest::SnapshotResults::default();
+
     for (snapshot_name, should_expand) in [
         ("expand_all_blueprint_panel", true),
         ("collapse_all_blueprint_panel", false),
@@ -94,7 +96,11 @@ fn collapse_expand_all_blueprint_panel_should_match_snapshot() {
 
         harness.run();
         harness.snapshot(snapshot_name);
+
+        all_results.extend(harness.take_snapshot_results());
     }
+
+    all_results.unwrap();
 }
 
 // ---
