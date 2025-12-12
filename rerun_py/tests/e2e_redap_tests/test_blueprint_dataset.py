@@ -42,7 +42,7 @@ def test_configure_blueprint_dataset(entry_factory: EntryFactory, tmp_path: Path
     bds = ds.blueprint_dataset()
     assert bds is not None
 
-    blueprint_segment_id = bds.register(rbl_path.absolute().as_uri()).wait()[0]
+    blueprint_segment_id = bds.register(rbl_path.absolute().as_uri()).wait().segment_ids[0]
 
     # Set our newly registered blueprint as default for our dataset
     ds.set_default_blueprint_segment_id(blueprint_segment_id)

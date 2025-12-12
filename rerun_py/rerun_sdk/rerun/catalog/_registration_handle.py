@@ -33,6 +33,14 @@ class SegmentRegistrationResult:
         return self.error is not None
 
 
+@dataclass(frozen=True)
+class RegistrationResult:
+    """Result of a completed registration batch."""
+
+    segment_ids: list[str]
+    """The ids of the registered segments."""
+
+
 class RegistrationHandle:
     """Handle to track and wait on segment registration tasks."""
 
@@ -71,7 +79,7 @@ class RegistrationHandle:
                 error=error,
             )
 
-    def wait(self, timeout_secs: int | None = None) -> list[str]:
+    def wait(self, timeout_secs: int | None = None) -> RegistrationResult:
         """
         Block until all registrations complete.
 
@@ -84,8 +92,8 @@ class RegistrationHandle:
 
         Returns
         -------
-        list[str]
-            List of segment IDs in registration order.
+        RegistrationResult
+            The result containing the list of segment IDs in registration order.
 
         Raises
         ------
@@ -95,4 +103,5 @@ class RegistrationHandle:
             If the timeout is reached before all tasks complete.
 
         """
-        return self._internal.wait(timeout_secs)
+        segment_ids = self._internal.wait(timeout_secs)
+        return RegistrationResult(segment_ids=segment_ids)

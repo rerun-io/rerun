@@ -87,10 +87,10 @@ def test_register_single_with_wait(
     ds = entry_factory.create_dataset("test_register_single")
 
     handle = ds.register(uris[0])
-    segment_ids = handle.wait()
+    result = handle.wait()
 
-    assert len(segment_ids) == 1
-    assert segment_ids[0] == recording_id
+    assert len(result.segment_ids) == 1
+    assert result.segment_ids[0] == recording_id
 
 
 @pytest.mark.local_only
@@ -133,10 +133,10 @@ def test_register_batch(
     ds = entry_factory.create_dataset("test_register_batch")
 
     handle = ds.register(uris)
-    segment_ids = handle.wait()
+    result = handle.wait()
 
-    assert len(segment_ids) == 3
-    assert segment_ids == recording_ids
+    assert len(result.segment_ids) == 3
+    assert result.segment_ids == recording_ids
 
 
 @pytest.mark.local_only
@@ -184,10 +184,10 @@ def test_register_with_layer_name(
     ds = entry_factory.create_dataset("test_layer_name")
 
     handle = ds.register(uris[0], layer_name="custom_layer")
-    segment_ids = handle.wait()
+    result = handle.wait()
 
-    assert len(segment_ids) == 1
-    assert segment_ids[0] == recording_id
+    assert len(result.segment_ids) == 1
+    assert result.segment_ids[0] == recording_id
 
 
 @pytest.mark.local_only
@@ -205,10 +205,10 @@ def test_register_batch_with_different_layers(
     ds = entry_factory.create_dataset("test_diff_layers")
 
     handle = ds.register(uris, layer_name=["layer_a", "layer_b"])
-    segment_ids = handle.wait()
+    result = handle.wait()
 
-    assert len(segment_ids) == 2
-    assert segment_ids == recording_ids
+    assert len(result.segment_ids) == 2
+    assert result.segment_ids == recording_ids
 
 
 @pytest.mark.local_only
@@ -228,3 +228,32 @@ def test_register_layer_name_length_mismatch(
 
     with pytest.raises(ValueError, match="must be the same length"):
         ds.register(uris, layer_name=["layer_a", "layer_b"])  # 3 URIs, 2 layers
+
+
+# TODO(RR-3177): we should fix our server implementations such that this test passes
+@pytest.mark.skip
+@pytest.mark.local_only
+def test_register_same_segment_id(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Test that mismatched layer_name list length raises ValueError."""
+    recording_ids = [
+        "55555555-5555-5555-5555-555555555555",
+        "66666666-6666-6666-6666-666666666666",
+        "66666666-6666-6666-6666-666666666666",
+        "77777777-7777-7777-7777-777777777777",
+    ]
+    uris = recording_factory(recording_ids)
+
+    ds = entry_factory.create_dataset("test_mismatch")
+
+    handle = ds.register(uris)
+    result = handle.wait()  # should succeed and return 3 segment ids
+
+    assert len(result.segment_ids) == 3
+    assert set(result.segment_ids) == set(recording_ids)
+
+    # TODO(RR-3177): we need to extend the APIs for this
+    # assert result.failed_uris == [uris[2]]
+    # assert "duplicate segment id" in result.something_something_error_message

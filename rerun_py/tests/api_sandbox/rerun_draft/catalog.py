@@ -162,7 +162,7 @@ class DatasetEntry(Entry):
         """
 
         blueprint_dataset = self._inner.blueprint_dataset()
-        segment_id = blueprint_dataset.register(uri).wait()[0]
+        segment_id = blueprint_dataset.register(uri).wait().segment_ids[0]
 
         if set_default:
             self._inner.set_default_blueprint_segment_id(segment_id)
