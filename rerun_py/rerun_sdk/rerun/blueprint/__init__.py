@@ -43,7 +43,7 @@ from .archetypes import (
     TextLogRows as TextLogRows,
     VisibleTimeRanges as VisibleTimeRanges,
     VisualBounds2D as VisualBounds2D,
-    VisualizerOverrides as VisualizerOverrides,
+    ActiveVisualizers as ActiveVisualizers,
 )
 from .components import (
     BackgroundKind as BackgroundKind,
