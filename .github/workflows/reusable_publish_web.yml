@@ -98,7 +98,7 @@ jobs:
       - name: Print wheel version
         run: |
           pixi run uv pip show rerun-sdk
-          pixi run uv run python -m rerun --version
+          pixi run uvpy -m rerun --version
 
       - name: Build web-viewer (release)
         run: |

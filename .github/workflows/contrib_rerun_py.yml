@@ -66,7 +66,7 @@ jobs:
 
       - name: Build the wheel
         run: |
-          pixi run uv run python scripts/ci/build_and_upload_wheels.py \
+          pixi run uvpy scripts/ci/build_and_upload_wheels.py \
             --mode pr \
             --target x86_64-unknown-linux-gnu \
             --dir unused \
@@ -77,7 +77,7 @@ jobs:
           pixi run python scripts/ci/uv_install_wheel.py --package rerun-sdk --dir dist/x86_64-unknown-linux-gnu
 
       - name: Run e2e test
-        run: RUST_LOG=debug pixi run uv run python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug pixi run uvpy scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run docs/snippets/compare_snippet_output.py
         # --release so we can inherit from some of the artifacts that maturin has just built before

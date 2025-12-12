@@ -170,7 +170,7 @@ jobs:
       - name: Print wheel version
         run: |
           pixi run uv pip show rerun-sdk
-          pixi run uv run python -m rerun --version
+          pixi run uvpy -m rerun --version
 
       - name: Run unit tests (with linux arm64 opencv workaround)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
@@ -182,7 +182,7 @@ jobs:
         run: pixi run py-test-no-build
 
       - name: Run e2e test
-        run: RUST_LOG=debug pixi run uv run python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: RUST_LOG=debug pixi run uvpy scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Check for release checklist
         if: ${{ inputs.FAST }}
