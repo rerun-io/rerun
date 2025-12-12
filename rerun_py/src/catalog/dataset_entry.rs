@@ -24,11 +24,10 @@ use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 use tokio_stream::StreamExt as _;
 use tracing::instrument;
 
-use super::dataframe_query::PyDataframeQueryView;
-use super::task::PyTasks;
+use super::registration_handle::PyRegistrationHandleInternal;
 use super::{
-    PyCatalogClientInternal, PyDataFusionTable, PyEntryDetails, PyEntryId, PyIndexConfig,
-    PyIndexingResult, VectorDistanceMetricLike, VectorLike, to_py_err,
+    PyCatalogClientInternal, PyEntryDetails, PyIndexConfig, PyIndexingResult,
+    PyTableProviderAdapterInternal, VectorDistanceMetricLike, VectorLike, to_py_err,
 };
 use crate::catalog::entry::update_entry;
 use crate::catalog::{PyIndexColumnSelector, PySchemaInternal};
@@ -111,11 +110,6 @@ impl PyDatasetEntryInternal {
         Ok(arrow_schema.into())
     }
 
-    /// The ID of the associated blueprint dataset, if any.
-    fn blueprint_dataset_id(self_: PyRef<'_, Self>) -> Option<PyEntryId> {
-        self_.dataset_details.blueprint_dataset.map(Into::into)
-    }
-
     /// The associated blueprint dataset, if any.
     fn blueprint_dataset(self_: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Option<Py<Self>>> {
         let Some(blueprint_dataset_entry_id) = self_.dataset_details.blueprint_dataset else {
@@ -166,50 +160,58 @@ impl PyDatasetEntryInternal {
     }
 
     /// Returns a list of segment IDs for the dataset.
-    fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
+    pub fn segment_ids(self_: PyRef<'_, Self>) -> PyResult<Vec<String>> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         connection.get_dataset_segment_ids(self_.py(), self_.entry_details.id)
     }
 
-    /// Return the segment table as a Datafusion table provider.
+    /// Return the segment table as a DataFusion DataFrame.
     #[instrument(skip_all)]
-    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    fn segment_table(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             SegmentTableProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
-            name: format!("{}_segment_table", self_.entry_details.name),
-            provider,
-        })
+        let table = PyTableProviderAdapterInternal::new(provider, false);
+
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
-    /// Return the dataset manifest as a Datafusion table provider.
+    /// Return the dataset manifest as a DataFusion DataFrame.
     #[instrument(skip_all)]
-    fn manifest(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    fn manifest(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             DatasetManifestProvider::new(connection.client().await?, dataset_id)
                 .into_provider()
                 .await
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
-            name: format!("{}_manifest", self_.entry_details.name),
-            provider,
-        })
+        let table = PyTableProviderAdapterInternal::new(provider, false);
+
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
     /// Return the URL for the given segment.
@@ -223,11 +225,11 @@ impl PyDatasetEntryInternal {
     ///     The name of the timeline to display.
     ///
     /// start: int | datetime | None
-    ///     The start time for the segment.
+    ///     The start selected time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// end: int | datetime | None
-    ///     The end time for the segment.
+    ///     The end selected time for the segment.
     ///     Integer for ticks, or datetime/nanoseconds for timestamps.
     ///
     /// Examples
@@ -271,127 +273,45 @@ impl PyDatasetEntryInternal {
             .transpose()?;
         let end_i64 = end.as_ref().map(|e| py_object_to_i64(py, e)).transpose()?;
 
-        let time_range: Option<re_uri::TimeSelection> =
-            timeline.map(|name| re_uri::TimeSelection {
-                timeline: re_chunk::Timeline::new_timestamp(name),
-                range: re_log_types::AbsoluteTimeRange::new(
-                    start_i64
-                        .map(|start| start.try_into().expect("start time must be valid"))
-                        .unwrap_or(re_log_types::NonMinI64::MIN),
-                    end_i64
-                        .map(|end| end.try_into().expect("end time must be valid"))
-                        .unwrap_or(re_log_types::NonMinI64::MAX),
-                ),
-            });
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
             segment_id,
 
-            time_range,
             //TODO(ab): add support for this
-            fragment: Default::default(),
+            fragment: re_uri::Fragment {
+                selection: None,
+                when: timeline.map(|timeline| {
+                    (
+                        re_chunk::TimelineName::new(timeline),
+                        re_sdk::TimeCell::new(
+                            re_log_types::TimeType::TimestampNs,
+                            start_i64
+                                .map(|start| start.try_into().expect("start time must be valid"))
+                                .unwrap_or(re_log_types::NonMinI64::MIN),
+                        ),
+                    )
+                }),
+                time_selection: timeline.map(|timeline| re_uri::TimeSelection {
+                    timeline: re_chunk::Timeline::new_timestamp(timeline),
+                    range: re_log_types::AbsoluteTimeRange::new(
+                        start_i64
+                            .map(|start| start.try_into().expect("start time must be valid"))
+                            .unwrap_or(re_log_types::NonMinI64::MIN),
+                        end_i64
+                            .map(|end| end.try_into().expect("end time must be valid"))
+                            .unwrap_or(re_log_types::NonMinI64::MAX),
+                    ),
+                }),
+            },
         }
         .to_string())
     }
 
-    /// Register a RRD URI to the dataset and wait for completion.
+    /// Register RRD URIs to the dataset and return a handle to track progress.
     ///
-    /// This method registers a single recording to the dataset and blocks until the registration is
-    /// complete, or after a timeout (in which case, a `TimeoutError` is raised).
-    ///
-    /// Parameters
-    /// ----------
-    /// recording_uri: str
-    ///     The URI of the RRD to register.
-    ///
-    /// recording_layer: str
-    ///     The layer to which the recording will be registered to.
-    ///
-    /// timeout_secs: int
-    ///     The timeout after which this method raises a `TimeoutError` if the task is not completed.
-    ///
-    /// Returns
-    /// -------
-    /// segment_id: str
-    ///     The segment ID of the registered RRD.
-    #[pyo3(signature = (recording_uri, *, recording_layer = "base".to_owned(), timeout_secs = 60))]
-    #[pyo3(
-        text_signature = "(self, /, recording_uri, *, recording_layer = 'base', timeout_secs = 60)"
-    )]
-    fn register(
-        self_: PyRef<'_, Self>,
-        recording_uri: String,
-        recording_layer: String,
-        timeout_secs: u64,
-    ) -> PyResult<String> {
-        let register_timeout = std::time::Duration::from_secs(timeout_secs);
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-
-        let mut results = connection.register_with_dataset(
-            self_.py(),
-            self_.entry_details.id,
-            vec![recording_uri],
-            vec![recording_layer],
-        )?;
-
-        let Some(task_descriptor) = results.pop() else {
-            return Err(PyRuntimeError::new_err(
-                "Failed to register recording, no task returned.",
-            ));
-        };
-
-        connection.wait_for_tasks(self_.py(), vec![task_descriptor.task_id], register_timeout)?;
-
-        Ok(task_descriptor.segment_id.id)
-    }
-
-    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
-    ///
-    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
-    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
-    ///
-    /// This method initiates the registration of the recordings to the dataset, and returns
-    /// the corresponding task ids in a [`Tasks`] object.
-    ///
-    /// Parameters
-    /// ----------
-    /// recordings_prefix: str
-    ///     The prefix under which to register all RRDs.
-    ///
-    /// layer_name: Optional[str]
-    ///     The layer to which the recordings will be registered to.
-    ///     If `None`, this defaults to `"base"`.
-    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
-    #[pyo3(signature = (
-        recordings_prefix,
-        layer_name = None,
-    ))]
-    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
-    fn register_prefix(
-        self_: PyRef<'_, Self>,
-        recordings_prefix: String,
-        layer_name: Option<String>,
-    ) -> PyResult<PyTasks> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-
-        let results = connection.register_with_dataset_prefix(
-            self_.py(),
-            self_.entry_details.id,
-            recordings_prefix,
-            layer_name,
-        )?;
-
-        Ok(PyTasks::new(
-            self_.client.clone_ref(self_.py()),
-            results.into_iter().map(|desc| desc.task_id),
-        ))
-    }
-
-    /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
-    ///
-    /// This method initiates the registration of multiple recordings to the dataset, and returns
-    /// the corresponding task ids in a [`Tasks`] object.
+    /// This method initiates the registration of recordings to the dataset, and returns
+    /// a handle that can be used to wait for completion or iterate over results.
     ///
     /// Parameters
     /// ----------
@@ -399,24 +319,15 @@ impl PyDatasetEntryInternal {
     ///     The URIs of the RRDs to register.
     ///
     /// recording_layers: list[str]
-    ///     The layers to which the recordings will be registered to:
-    ///     * When empty, this defaults to `["base"]`.
-    ///     * If longer than `recording_uris`, `recording_layers` will be truncated.
-    ///     * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
-    ///       I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
-    #[allow(clippy::allow_attributes, rustdoc::broken_intra_doc_links)]
-    #[pyo3(signature = (
-        recording_uris,
-        *,
-        recording_layers = vec![],
-    ))]
+    ///     The layers to which the recordings will be registered to.
+    ///     Must be the same length as `recording_uris`.
+    #[pyo3(signature = (recording_uris, *, recording_layers))]
     #[pyo3(text_signature = "(self, /, recording_uris, *, recording_layers)")]
-    // TODO(ab): it might be useful to return segment ids directly since we have them
-    fn register_batch(
+    fn register(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
-    ) -> PyResult<PyTasks> {
+    ) -> PyResult<PyRegistrationHandleInternal> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
 
         let results = connection.register_with_dataset(
@@ -426,9 +337,47 @@ impl PyDatasetEntryInternal {
             recording_layers,
         )?;
 
-        Ok(PyTasks::new(
+        Ok(PyRegistrationHandleInternal::new(
             self_.client.clone_ref(self_.py()),
-            results.into_iter().map(|desc| desc.task_id),
+            results,
+        ))
+    }
+
+    /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
+    ///
+    /// A prefix is a directory-like path in an object store (e.g. an S3 bucket or ABS container).
+    /// All RRDs that are recursively found under the given prefix will be registered to the dataset.
+    ///
+    /// This method initiates the registration of the recordings to the dataset, and returns
+    /// a handle that can be used to wait for completion or iterate over results.
+    ///
+    /// Parameters
+    /// ----------
+    /// recordings_prefix: str
+    ///     The prefix under which to register all RRDs.
+    ///
+    /// layer_name: Optional[str]
+    ///     The layer to which the recordings will be registered to.
+    ///     If `None`, this defaults to `"base"`.
+    #[pyo3(signature = (recordings_prefix, layer_name = None))]
+    #[pyo3(text_signature = "(self, /, recordings_prefix, layer_name = None)")]
+    fn register_prefix(
+        self_: PyRef<'_, Self>,
+        recordings_prefix: String,
+        layer_name: Option<String>,
+    ) -> PyResult<PyRegistrationHandleInternal> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+
+        let results = connection.register_with_dataset_prefix(
+            self_.py(),
+            self_.entry_details.id,
+            recordings_prefix,
+            layer_name,
+        )?;
+
+        Ok(PyRegistrationHandleInternal::new(
+            self_.client.clone_ref(self_.py()),
+            results,
         ))
     }
 
@@ -489,77 +438,6 @@ impl PyDatasetEntryInternal {
         })
     }
 
-    #[allow(
-        clippy::allow_attributes,
-        rustdoc::private_doc_tests,
-        rustdoc::invalid_rust_codeblocks
-    )]
-    /// Create a [`DataframeQueryView`][rerun.catalog.DataframeQueryView] of the recording according to a particular index and content specification.
-    ///
-    /// The only type of index currently supported is the name of a timeline, or `None` (see below
-    /// for details).
-    ///
-    /// The view will only contain a single row for each unique value of the index
-    /// that is associated with a component column that was included in the view.
-    /// Component columns that are not included via the view contents will not
-    /// impact the rows that make up the view. If the same entity / component pair
-    /// was logged to a given index multiple times, only the most recent row will be
-    /// included in the view, as determined by the `row_id` column. This will
-    /// generally be the last value logged, as row_ids are guaranteed to be
-    /// monotonically increasing when data is sent from a single process.
-    ///
-    /// If `None` is passed as the index, the view will contain only static columns (among those
-    /// specified) and no index columns. It will also contain a single row per segment.
-    ///
-    /// Parameters
-    /// ----------
-    /// index : str | None
-    ///     The index to use for the view. This is typically a timeline name. Use `None` to query static data only.
-    /// contents : ViewContentsLike
-    ///     The content specification for the view.
-    ///
-    ///     This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
-    ///     specifying multiple content-expressions and a respective list of components to select within
-    ///     that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
-    /// include_semantically_empty_columns : bool, optional
-    ///     Whether to include columns that are semantically empty, by default `False`.
-    ///
-    ///     Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
-    /// include_tombstone_columns : bool, optional
-    ///     Whether to include tombstone columns, by default `False`.
-    ///
-    ///     Tombstone columns are components used to represent clears. However, even without the clear
-    ///     tombstone columns, the view will still apply the clear semantics when resolving row contents.
-    ///
-    /// Returns
-    /// -------
-    /// DataframeQueryView
-    ///     The view of the dataset.
-    #[pyo3(signature = (
-        *,
-        index,
-        contents,
-        include_semantically_empty_columns = false,
-        include_tombstone_columns = false,
-    ))]
-    fn dataframe_query_view(
-        self_: Py<Self>,
-        index: Option<String>,
-        contents: Py<PyAny>,
-        include_semantically_empty_columns: bool,
-        include_tombstone_columns: bool,
-        py: Python<'_>,
-    ) -> PyResult<PyDataframeQueryView> {
-        PyDataframeQueryView::new(
-            self_,
-            index,
-            contents,
-            include_semantically_empty_columns,
-            include_tombstone_columns,
-            py,
-        )
-    }
-
     // TODO(RR-2824): we should have a generic `create_index(PyIndexConfig)`
 
     /// Create a full-text search index on the given column.
@@ -571,7 +449,7 @@ impl PyDatasetEntryInternal {
             base_tokenizer = "simple",
         ))]
     #[instrument(skip(self_, column, time_index), err)]
-    fn create_fts_index(
+    fn create_fts_search_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
@@ -651,7 +529,7 @@ impl PyDatasetEntryInternal {
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
     #[instrument(skip(self_, column, time_index, distance_metric), err)]
-    fn create_vector_index(
+    fn create_vector_search_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
@@ -714,7 +592,7 @@ impl PyDatasetEntryInternal {
 
     /// List all user-defined indexes in this dataset.
     #[instrument(skip_all, err)]
-    fn list_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
+    fn list_search_indexes(self_: PyRef<'_, Self>) -> PyResult<Vec<PyIndexingResult>> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
         let dataset_id = self_.entry_details.id;
 
@@ -757,7 +635,7 @@ impl PyDatasetEntryInternal {
     //
     // TODO(RR-2824): this should also be capable of accepting a `PyIndexConfig` directly.
     #[instrument(skip_all, err)]
-    fn delete_indexes(
+    fn delete_search_indexes(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
     ) -> PyResult<Vec<PyIndexConfig>> {
@@ -804,8 +682,9 @@ impl PyDatasetEntryInternal {
         self_: PyRef<'_, Self>,
         query: String,
         column: AnyComponentColumn,
-    ) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    ) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
         let schema = Self::fetch_schema(&self_)?;
@@ -836,7 +715,7 @@ impl PyDatasetEntryInternal {
             scan_parameters: None,
         };
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
                 .map_err(to_py_err)?
                 .into_provider()
@@ -844,25 +723,26 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_search_fts_{uuid}", self_.entry_details.name);
+        let table = PyTableProviderAdapterInternal::new(provider, false);
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
-            name,
-            provider,
-        })
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
     /// Search the dataset using a vector search query.
     #[instrument(skip(self_, query, column), err)]
-    fn search_vector(
-        self_: PyRef<'_, Self>,
+    fn search_vector<'py>(
+        self_: PyRef<'py, Self>,
         query: VectorLike<'_>,
         column: AnyComponentColumn,
         top_k: u32,
-    ) -> PyResult<PyDataFusionTable> {
-        let connection = self_.client.borrow(self_.py()).connection().clone();
+    ) -> PyResult<Bound<'py, PyAny>> {
+        let py = self_.py();
+        let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
         let schema = Self::fetch_schema(&self_)?;
@@ -881,7 +761,7 @@ impl PyDatasetEntryInternal {
             scan_parameters: None,
         };
 
-        let provider = wait_for_future(self_.py(), async move {
+        let provider = wait_for_future(py, async move {
             SearchResultsTableProvider::new(connection.client().await?, dataset_id, request)
                 .map_err(to_py_err)?
                 .into_provider()
@@ -889,14 +769,14 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let uuid = uuid::Uuid::new_v4().simple();
-        let name = format!("{}_search_vector_{uuid}", self_.entry_details.name);
+        let table = PyTableProviderAdapterInternal::new(provider, false);
 
-        Ok(PyDataFusionTable {
-            client: self_.client.clone_ref(self_.py()),
-            name,
-            provider,
-        })
+        let client = self_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+        drop(client);
+
+        ctx.call_method1("read_table", (table,))
     }
 
     /// Perform maintenance tasks on the datasets.
@@ -946,6 +826,40 @@ impl PyDatasetEntryInternal {
         )
     }
 
+    /// Returns a new `DatasetView` filtered to the given segment IDs.
+    ///
+    /// Parameters
+    /// ----------
+    /// segment_ids : list[str]
+    ///     A list of segment ID strings to filter to.
+    ///
+    /// Returns
+    /// -------
+    /// DatasetViewInternal
+    ///     A new view filtered to the given segments.
+    fn filter_segments(
+        self_: PyRef<'_, Self>,
+        segment_ids: Vec<String>,
+    ) -> super::PyDatasetViewInternal {
+        let filter: std::collections::HashSet<String> = segment_ids.into_iter().collect();
+        super::PyDatasetViewInternal::new(Py::from(self_), Some(filter), None)
+    }
+
+    /// Returns a new `DatasetView` filtered to the given entity paths.
+    ///
+    /// Parameters
+    /// ----------
+    /// exprs : list[str]
+    ///     Entity path expressions like `"/points/**"`, `"-/text/**"`.
+    ///
+    /// Returns
+    /// -------
+    /// DatasetViewInternal
+    ///     A new view filtered to the given entity paths.
+    fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> super::PyDatasetViewInternal {
+        super::PyDatasetViewInternal::new(Py::from(self_), None, Some(exprs))
+    }
+
     pub fn __str__(self_: PyRef<'_, Self>) -> String {
         format!(
             "DatasetEntry(name='{}', id='{}')",
@@ -965,10 +879,13 @@ impl PyDatasetEntryInternal {
 
     pub fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let arrow_schema = Self::fetch_arrow_schema(self_)?;
-        let schema = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
+        let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
             .map_err(to_py_err)?;
 
-        Ok(PySchemaInternal { schema })
+        Ok(PySchemaInternal {
+            columns,
+            metadata: arrow_schema.metadata,
+        })
     }
 }
 

@@ -767,14 +767,16 @@ mod tests {
                     .expect("view class should be registered"),
             );
 
-            resolver.update_overrides(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                ctx.time_ctrl.timeline(),
-                ctx.view_class_registry(),
-                &mut query_result,
-                view_state,
-            );
+            if let Some(timeline) = ctx.time_ctrl.timeline() {
+                resolver.update_overrides(
+                    ctx.blueprint_db(),
+                    ctx.blueprint_query,
+                    timeline,
+                    ctx.view_class_registry(),
+                    &mut query_result,
+                    view_state,
+                );
+            }
 
             result = Some(query_result.clone());
         });

@@ -29,7 +29,7 @@ impl Query {
         if let Some(timeline_name) = timeline_name {
             Ok(timeline_name.into())
         } else {
-            let timeline_name = *ctx.time_ctrl.timeline().name();
+            let timeline_name = *ctx.time_ctrl.timeline_name();
             self.save_timeline_name(ctx, &timeline_name);
 
             Ok(timeline_name)

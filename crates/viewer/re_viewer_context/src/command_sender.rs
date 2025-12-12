@@ -33,6 +33,9 @@ pub enum SystemCommand {
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
 
+    /// Open a modal to edit this redap server.
+    EditRedapServerModal(re_uri::Origin),
+
     ChangeDisplayMode(crate::DisplayMode),
 
     /// Activates the setting display mode.
@@ -151,6 +154,9 @@ pub enum SystemCommand {
         access_token: String,
         email: String,
     },
+
+    /// Logout from rerun cloud
+    Logout,
 }
 
 impl SystemCommand {

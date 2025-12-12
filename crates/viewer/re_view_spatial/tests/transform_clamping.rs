@@ -3,6 +3,7 @@ use re_log_types::{EntityPath, TimePoint};
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
+use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
@@ -329,6 +330,7 @@ fn run_view_ui_and_save_snapshot(
     name: &str,
     size: egui::Vec2,
 ) {
+    let mut snapshot_results = SnapshotResults::new();
     for (target, view_id) in [("boxes", view_id_boxes), ("spheres", view_id_spheres)] {
         let mut harness = test_context
             .setup_kittest_for_rendering_3d(size)
@@ -368,6 +370,7 @@ fn run_view_ui_and_save_snapshot(
             harness.run_steps(10);
 
             harness.snapshot(&name);
+            snapshot_results.extend_harness(&mut harness);
         }
     }
 
@@ -405,6 +408,7 @@ fn run_view_ui_and_save_snapshot(
         harness.run_steps(10);
 
         harness.snapshot(&name);
+        snapshot_results.extend_harness(&mut harness);
     }
 
     // Transform axes with instance poses.
@@ -440,6 +444,7 @@ fn run_view_ui_and_save_snapshot(
         harness.run_steps(10);
 
         harness.snapshot(&name);
+        snapshot_results.extend_harness(&mut harness);
     }
 }
 

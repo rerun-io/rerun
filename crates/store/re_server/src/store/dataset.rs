@@ -367,8 +367,19 @@ impl Dataset {
 
                 // TODO(RR-3110): add an alternate RrdManifestBuilder builder with chunk keys instead of byte spans.
                 let dummy_byte_span = re_span::Span::default();
+
+                // Not a totally accurate value, but we're certainly not going to encode every chunk
+                // into IPC bytes just to figure out their uncompressed size either.
+                //
+                // This is fine for 2 reasons:
+                // 1. The reported size is mostly for human and automated heuristics (e.g. "have I
+                //    enough memory left to download this chunk?"), and so doesn't need to be exact.
+                // 2. Reporting the size in terms of heap values is even better for such heuristics.
+                use re_byte_size::SizeBytes as _;
+                let byte_size_uncompressed = chunk.heap_size_bytes();
+
                 rrd_manifest_builder
-                    .append(&chunk_batch, dummy_byte_span)
+                    .append(&chunk_batch, dummy_byte_span, byte_size_uncompressed)
                     .map_err(|err| Error::RrdLoadingError(err.into()))?;
 
                 chunk_keys.push(

@@ -577,12 +577,6 @@ pub struct StoreInfo {
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
     pub store_version: Option<CrateVersion>,
-
-    /// If true, the Viewer downloaded only a subset of an existing recording.
-    ///
-    /// This happens when opening URLs with a time range.
-    /// If we don't know for sure whether the recording is partial, we set this to `false`.
-    pub is_partial: bool,
 }
 
 impl StoreInfo {
@@ -593,7 +587,6 @@ impl StoreInfo {
             cloned_from: None,
             store_source,
             store_version: Some(CrateVersion::LOCAL),
-            is_partial: false,
         }
     }
 
@@ -604,7 +597,6 @@ impl StoreInfo {
             cloned_from: None,
             store_source,
             store_version: None,
-            is_partial: false,
         }
     }
 
@@ -969,7 +961,6 @@ impl SizeBytes for StoreInfo {
             cloned_from: _,
             store_source,
             store_version,
-            is_partial: _,
         } = self;
 
         store_id.heap_size_bytes()

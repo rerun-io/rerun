@@ -66,10 +66,6 @@ pub trait HarnessExt<'h> {
     // Click at a position in the UI.
     fn click_at(&mut self, pos: egui::Pos2);
 
-    // Drag-and-drop functions based on position
-    fn drag_at(&mut self, pos: egui::Pos2);
-    fn hover_at(&mut self, pos: egui::Pos2);
-    fn drop_at(&mut self, pos: egui::Pos2);
     fn right_click_at(&mut self, pos: egui::Pos2);
 
     // Gets the cursor icon
@@ -319,32 +315,6 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
             });
             self.run();
         }
-    }
-
-    fn drag_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerButton {
-            pos,
-            button: PointerButton::Primary,
-            pressed: true,
-            modifiers: Modifiers::NONE,
-        });
-        self.run_ok();
-    }
-
-    fn hover_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerMoved(pos));
-        self.run_ok();
-    }
-
-    fn drop_at(&mut self, pos: egui::Pos2) {
-        self.event(egui::Event::PointerButton {
-            pos,
-            button: PointerButton::Primary,
-            pressed: false,
-            modifiers: Modifiers::NONE,
-        });
-        self.remove_cursor();
-        self.run_ok();
     }
 
     fn right_click_at(&mut self, pos: egui::Pos2) {

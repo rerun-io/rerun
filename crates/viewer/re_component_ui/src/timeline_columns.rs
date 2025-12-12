@@ -37,8 +37,8 @@ pub fn edit_or_view_columns_multiline(
             // these will be written to the component.
             let extra_columns = ctx
                 .recording()
-                .times_per_timeline()
                 .timelines()
+                .values()
                 .filter(|timeline| {
                     columns
                         .iter()

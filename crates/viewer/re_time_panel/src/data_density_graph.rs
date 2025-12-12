@@ -15,7 +15,6 @@ use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 use super::time_ranges_ui::TimeRangesUi;
 use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use crate::time_panel::TimePanelItem;
-use crate::time_ranges_ui::Segment;
 
 // ----------------------------------------------------------------------------
 
@@ -211,8 +210,6 @@ impl DensityGraph {
         y_range: Rangef,
         painter: &egui::Painter,
         full_color: Color32,
-        segments: &[Segment],
-        outside_segment_color: Color32,
     ) {
         re_tracing::profile_function!();
 
@@ -255,23 +252,10 @@ impl DensityGraph {
         let mut mesh = egui::Mesh::default();
         mesh.vertices.reserve(4 * self.buckets.len());
 
-        let mut valid_data_x_ranges = segments
-            .iter()
-            .flat_map(|s| s.valid_subranges.iter().cloned());
-        let mut next_or_current_segment_range_x = valid_data_x_ranges.next();
-
         for (i, &density) in self.buckets.iter().enumerate() {
             // TODO(emilk): early-out if density is 0 for long stretches
 
             let x = self.x_from_bucket_index(i);
-
-            // Advance segments if we're ahead of the segment we looked at last.
-            while next_or_current_segment_range_x
-                .as_ref()
-                .is_some_and(|s| (*s.end() as f32) < x)
-            {
-                next_or_current_segment_range_x = valid_data_x_ranges.next();
-            }
 
             let normalized_density = data_density_graph_painter.normalize_density(density);
 
@@ -285,16 +269,7 @@ impl DensityGraph {
                     (max_radius * normalized_density).at_least(MIN_RADIUS) - feather_radius;
 
                 // Color different if we're outside of a segment.
-                let base_color = if next_or_current_segment_range_x
-                    .as_ref()
-                    .is_some_and(|s| (*s.start() as f32) <= x)
-                {
-                    full_color
-                } else {
-                    outside_segment_color
-                };
-
-                let inner_color = base_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
+                let inner_color = full_color.gamma_multiply(lerp(0.5..=1.0, normalized_density));
 
                 (inner_radius, inner_color)
             };
@@ -431,7 +406,7 @@ pub fn data_density_graph_ui(
         row_rect,
         db,
         item,
-        time_ctrl.timeline().name(),
+        time_ctrl.timeline_name(),
         DensityGraphBuilderConfig::default(),
     );
 
@@ -442,8 +417,6 @@ pub fn data_density_graph_ui(
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
-        &time_ranges_ui.segments,
-        ui.tokens().density_graph_outside_valid_ranges,
     );
 
     if let Some(pointer) = data.hovered_pos {
@@ -643,7 +616,7 @@ pub fn show_row_ids_tooltip(
     use re_data_ui::DataUi as _;
 
     let ui_layout = UiLayout::Tooltip;
-    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline().name(), at_time);
+    let query = re_chunk_store::LatestAtQuery::new(*time_ctrl.timeline_name(), at_time);
 
     let TimePanelItem {
         entity_path,

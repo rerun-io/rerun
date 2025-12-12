@@ -4,7 +4,7 @@ mod test_view;
 
 use ahash::HashMap;
 use re_test_context::TestContext;
-use re_test_context::external::egui_kittest::SnapshotOptions;
+use re_test_context::external::egui_kittest::{SnapshotOptions, SnapshotResult};
 use re_viewer_context::{Contents, ViewId, ViewerContext, VisitorControlFlow};
 use re_viewport::execute_systems_for_view;
 use re_viewport_blueprint::{DataQueryPropertyResolver, ViewBlueprint, ViewportBlueprint};
@@ -30,7 +30,7 @@ pub trait TestContextExt {
         snapshot_name: &str,
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
-    );
+    ) -> SnapshotResult;
 }
 
 impl TestContextExt for TestContext {
@@ -110,7 +110,7 @@ impl TestContextExt for TestContext {
                             resolver.update_overrides(
                                 ctx.store_context.blueprint,
                                 ctx.blueprint_query,
-                                ctx.time_ctrl.timeline(),
+                                ctx.time_ctrl.timeline().expect("Should have a valid timeline"),
                                 class_registry,
                                 &mut data_query_result,
                                 self.view_states.lock().get_mut_or_create(*view_id, class),
@@ -175,16 +175,16 @@ impl TestContextExt for TestContext {
         snapshot_name: &str,
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
-    ) {
+    ) -> SnapshotResult {
         let mut harness = self.setup_kittest_for_rendering_3d(size).build_ui(|ui| {
             self.run_with_single_view(ui, view_id);
         });
         harness.run();
 
         if let Some(snapshot_options) = snapshot_options {
-            harness.snapshot_options(snapshot_name, &snapshot_options);
+            harness.try_snapshot_options(snapshot_name, &snapshot_options)
         } else {
-            harness.snapshot(snapshot_name);
+            harness.try_snapshot(snapshot_name)
         }
     }
 }

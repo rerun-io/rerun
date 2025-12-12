@@ -152,7 +152,9 @@ impl Query {
             self.save_filter_by_range(ctx, AbsoluteTimeRange::new(start, end));
         }
 
-        if should_display_time_range && Some(ctx.time_ctrl.timeline()) == timeline {
+        if should_display_time_range
+            && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
+        {
             ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
                 start, end,
             ))]);

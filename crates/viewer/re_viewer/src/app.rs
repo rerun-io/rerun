@@ -15,7 +15,7 @@ use re_log_channel::{
 use re_log_types::{ApplicationId, FileSource, LogMsg, RecordingId, StoreId, StoreKind, TableMsg};
 use re_redap_client::ConnectionRegistryHandle;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_sdk_types::blueprint::components::PlayState;
+use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::egui_ext::context_ext::ContextExt as _;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl, combine_with_base_url};
@@ -587,7 +587,7 @@ impl App {
                 // we want to diff state changes.
                 let should_diff_state = true;
                 let response = time_ctrl.update(
-                    recording.times_per_timeline(),
+                    recording.timeline_histograms(),
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -612,7 +612,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint.times_per_timeline(),
+                    bp_ctx.current_blueprint.timeline_histograms(),
                     dt,
                     more_data_is_coming,
                     should_diff_state,
@@ -732,12 +732,6 @@ impl App {
 
         let Ok(url) =
             ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
-                .map(|mut url| {
-                    // We don't want the time range in the history url, as that actually leads
-                    // to a subset of the current data!
-                    url.clear_time_range();
-                    url
-                })
         else {
             return;
         };
@@ -762,18 +756,15 @@ impl App {
                     if let Some(fragment) = url.fragment_mut() {
                         fragment.when = time_ctrl.and_then(|time_ctrl| {
                             Some((
-                                *time_ctrl.timeline().name(),
+                                *time_ctrl.timeline_name(),
                                 re_log_types::TimeCell {
-                                    typ: time_ctrl.time_type(),
+                                    typ: time_ctrl.time_type()?,
                                     value: time_ctrl.last_paused_time()?.floor().into(),
                                 },
                             ))
                         });
                     }
-                    // We don't want the time range in the web url, as that actually leads
-                    // to a subset of the current data! And is not in the fragment so
-                    // would be added to history.
-                    url.clear_time_range();
+
                     url
                 })
                 // History entries expect the url parameter, not the full url, therefore don't pass a base url.
@@ -851,7 +842,7 @@ impl App {
 
                             let response = time_ctrl.handle_time_commands(
                                 Some(&blueprint_ctx),
-                                store_ctx.recording.times_per_timeline(),
+                                store_ctx.recording.timeline_histograms(),
                                 &time_commands,
                             );
 
@@ -875,7 +866,7 @@ impl App {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
                             let response = self.state.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
-                                target_store.times_per_timeline(),
+                                target_store.timeline_histograms(),
                                 &time_commands,
                             );
 
@@ -1084,6 +1075,10 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
+            SystemCommand::EditRedapServerModal(origin) => {
+                self.state.redap_servers.open_edit_server_modal(origin);
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
@@ -1271,6 +1266,12 @@ impl App {
                     re_log::error!("Failed to store credentials: {err}");
                 }
             }
+            SystemCommand::Logout => {
+                if let Err(err) = re_auth::oauth::clear_credentials() {
+                    re_log::error!("Failed to logout: {err}");
+                }
+                self.state.redap_servers.logout();
+            }
         }
     }
 
@@ -1413,7 +1414,11 @@ impl App {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { selection, when } = fragment;
+        let re_uri::Fragment {
+            selection,
+            when,
+            time_selection,
+        } = fragment;
 
         if let Some(selection) = selection {
             let re_log_types::DataPath {
@@ -1434,15 +1439,26 @@ impl App {
                 .send_system(SystemCommand::set_selection(item.clone()));
         }
 
+        let mut time_commands = Vec::new();
+        if let Some(time_selection) = time_selection {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(
+                *time_selection.timeline.name(),
+            ));
+            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
+            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
+        }
+
         if let Some((timeline, timecell)) = when {
+            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
+            time_commands.push(TimeControlCommand::SetPlayState(PlayState::Paused));
+            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+        }
+
+        if !time_commands.is_empty() {
             self.command_sender
                 .send_system(SystemCommand::TimeControlCommands {
                     store_id,
-                    time_commands: vec![
-                        TimeControlCommand::SetActiveTimeline(timeline),
-                        TimeControlCommand::SetPlayState(PlayState::Paused),
-                        TimeControlCommand::SetTime(timecell.value.into()),
-                    ],
+                    time_commands,
                 });
         }
     }
@@ -1977,21 +1993,22 @@ impl App {
                 }
             }
 
-            UICommand::CopyTimeRangeLink => {
+            UICommand::CopyTimeSelectionLink => {
                 match ViewerOpenUrl::from_display_mode(storage_context.hub, display_mode) {
                     Ok(mut url) => {
-                        if let Some(time_range) = url.time_range_mut() {
+                        if let Some(fragment) = url.fragment_mut() {
                             let time_ctrl = storage_context
                                 .hub
                                 .active_store_id()
                                 .and_then(|id| self.state.time_control(id));
 
                             if let Some(time_ctrl) = &time_ctrl
-                                && let Some(loop_selection) = time_ctrl.loop_selection()
+                                && let Some(time_selection) = time_ctrl.time_selection()
+                                && let Some(timeline) = time_ctrl.timeline()
                             {
-                                *time_range = Some(re_uri::TimeSelection {
-                                    timeline: *time_ctrl.timeline(),
-                                    range: loop_selection.to_int(),
+                                fragment.time_selection = Some(re_uri::TimeSelection {
+                                    timeline: *timeline,
+                                    range: time_selection.to_int(),
                                 });
                             } else {
                                 re_log::warn!("No timeline selection to copy");
@@ -2267,9 +2284,11 @@ impl App {
                             );
                         }
 
+                        let mut startup_options = self.startup_options.clone();
+
                         self.state.show(
                             &self.app_env,
-                            &self.startup_options,
+                            &mut startup_options,
                             app_blueprint,
                             ui,
                             render_ctx,
@@ -2289,6 +2308,7 @@ impl App {
                             &self.connection_registry,
                             &self.async_runtime,
                         );
+                        self.startup_options = startup_options;
                         render_ctx.before_submit();
                     }
 
@@ -2579,21 +2599,6 @@ impl App {
         channel_source: &LogSource,
     ) {
         match ui_command {
-            DataSourceUiCommand::AddValidTimeRange {
-                store_id,
-                timeline,
-                time_range,
-            } => {
-                self.command_sender
-                    .send_system(SystemCommand::TimeControlCommands {
-                        store_id,
-                        time_commands: vec![TimeControlCommand::AddValidTimeRange {
-                            timeline,
-                            time_range,
-                        }],
-                    });
-            }
-
             DataSourceUiCommand::SetUrlFragment { store_id, fragment } => {
                 match re_uri::Fragment::from_str(&fragment) {
                     Ok(fragment) => {
@@ -2728,6 +2733,7 @@ impl App {
 
             if let (Some(counted_before), Some(counted_diff)) =
                 (mem_use_before.counted, freed_memory.counted)
+                && 0 < counted_diff
             {
                 re_log::debug!(
                     "Freed up {} ({:.1}%)",
