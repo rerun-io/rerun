@@ -538,13 +538,18 @@ pub fn generate_python_code(
     let mut formatter =
         PythonCodeFormatter::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
 
+    // NOTE: In rerun_py we have a directory where we share generated code with handwritten code.
+    // Make sure to filter out that directory, or else we will end up removing those handwritten
+    // files.
+    let orphan_path_opt_out = output_pkg_path.as_ref().join("blueprint");
+
     generate_code(
         reporter,
         objects,
         type_registry,
         &mut generator,
         &mut formatter,
-        &Default::default(),
+        &std::iter::once(orphan_path_opt_out).collect(),
         check,
     );
 }

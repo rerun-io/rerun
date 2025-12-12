@@ -409,22 +409,6 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
             continue;
         }
 
-        // Read .gitattributes to determine which files are actually generated
-        let gitattributes_path = folder_path.join(".gitattributes");
-        let generated_files_in_dir = if let Ok(content) = std::fs::read_to_string(&gitattributes_path) {
-            // Parse .gitattributes to get list of generated files
-            content
-                .lines()
-                .filter(|line| line.ends_with(" linguist-generated=true"))
-                .filter_map(|line| {
-                    let filename = line.trim().trim_end_matches(" linguist-generated=true");
-                    Some(folder_path.join(filename))
-                })
-                .collect::<BTreeSet<_>>()
-        } else {
-            BTreeSet::new()
-        };
-
         for entry in iter.unwrap().flatten() {
             if entry.file_type().unwrap().is_dir() {
                 continue;
@@ -471,11 +455,9 @@ pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
             // 1. Not in the files map (orphaned), AND
             // 2. Either there's no .gitattributes OR the file is listed as generated in .gitattributes
             if !files.contains_key(&filepath) {
-                if generated_files_in_dir.is_empty() || generated_files_in_dir.contains(&filepath) {
-                    re_log::info!("Removing {filepath:?}");
-                    if let Err(err) = std::fs::remove_file(&filepath) {
-                        panic!("Failed to remove {filepath:?}: {err}");
-                    }
+                re_log::info!("Removing {filepath:?}");
+                if let Err(err) = std::fs::remove_file(&filepath) {
+                    panic!("Failed to remove {filepath:?}: {err}");
                 }
             }
         }
