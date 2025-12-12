@@ -10,11 +10,11 @@ use crate::blueprint::components::*;
 use crate::components::*;
 use re_types_core::components::*;
 use re_types_core::{
-    ArchetypeName, Component, ComponentBatch as _, ComponentType, Loggable as _,
-    SerializationError,
+    ArchetypeName, Component, ComponentBatch as _, ComponentDescriptor, ComponentIdentifier,
+    ComponentType, Loggable as _, SerializationError,
     reflection::{
-        ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
-        ComponentReflectionMap, Reflection,
+        ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap,
+        ComponentIdentifierReflectionMap, ComponentReflection, ComponentReflectionMap, Reflection,
     },
 };
 
@@ -26,6 +26,7 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
     re_tracing::profile_function!();
     Ok(Reflection {
         components: generate_component_reflection()?,
+        component_identifiers: generate_component_identifier_reflection(),
         archetypes: generate_archetype_reflection(),
     })
 }
@@ -1299,6 +1300,2501 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         ),
     ];
     Ok(ComponentReflectionMap::from_iter(array))
+}
+
+/// Generates reflection about all known component identifiers.
+///
+/// Call only once and reuse the results.
+
+fn generate_component_identifier_reflection() -> ComponentIdentifierReflectionMap {
+    re_tracing::profile_function!();
+    let array = [
+        (
+            ComponentIdentifier::new("AnnotationContext:context"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AnnotationContext".into()),
+                component: "AnnotationContext:context".into(),
+                component_type: Some("rerun.components.AnnotationContext".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:vectors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:vectors".into(),
+                component_type: Some("rerun.components.Vector2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:origins"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:origins".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows2D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows2D".into()),
+                component: "Arrows2D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:vectors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:vectors".into(),
+                component_type: Some("rerun.components.Vector3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:origins"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:origins".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Arrows3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Arrows3D".into()),
+                component: "Arrows3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Asset3D:blob"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Asset3D:media_type"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Asset3D:albedo_factor"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Asset3D".into()),
+                component: "Asset3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("AssetVideo:blob"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AssetVideo".into()),
+                component: "AssetVideo:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("AssetVideo:media_type"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AssetVideo".into()),
+                component: "AssetVideo:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("BarChart:values"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:values".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("BarChart:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("BarChart:abscissa"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.BarChart".into()),
+                component: "BarChart:abscissa".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:half_sizes"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:half_sizes".into(),
+                component_type: Some("rerun.components.HalfSize2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:centers"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:centers".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes2D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes2D".into()),
+                component: "Boxes2D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:half_sizes"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:half_sizes".into(),
+                component_type: Some("rerun.components.HalfSize3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:centers"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:centers".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:rotation_axis_angles"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:quaternions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:fill_mode"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:fill_mode".into(),
+                component_type: Some("rerun.components.FillMode".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Boxes3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:lengths"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:lengths".into(),
+                component_type: Some("rerun.components.Length".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:translations"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:translations".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:rotation_axis_angles"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:quaternions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:line_radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:line_radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:fill_mode"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:fill_mode".into(),
+                component_type: Some("rerun.components.FillMode".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Capsules3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Capsules3D".into()),
+                component: "Capsules3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Clear:is_recursive"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Clear".into()),
+                component: "Clear:is_recursive".into(),
+                component_type: Some("rerun.components.ClearIsRecursive".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("CoordinateFrame:frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.CoordinateFrame".into()),
+                component: "CoordinateFrame:frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:lengths"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:lengths".into(),
+                component_type: Some("rerun.components.Length".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:centers"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:centers".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:rotation_axis_angles"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:quaternions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:line_radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:line_radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:fill_mode"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:fill_mode".into(),
+                component_type: Some("rerun.components.FillMode".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Cylinders3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:buffer"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:format"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:meter"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:meter".into(),
+                component_type: Some("rerun.components.DepthMeter".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:colormap"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:depth_range"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:depth_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:point_fill_ratio"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:point_fill_ratio".into(),
+                component_type: Some("rerun.components.FillRatio".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DepthImage:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:half_sizes"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:half_sizes".into(),
+                component_type: Some("rerun.components.HalfSize3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:centers"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:centers".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:rotation_axis_angles"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:quaternions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:line_radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:line_radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:fill_mode"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:fill_mode".into(),
+                component_type: Some("rerun.components.FillMode".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Ellipsoids3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Ellipsoids3D".into()),
+                component: "Ellipsoids3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EncodedImage:blob"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EncodedImage:media_type"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EncodedImage:opacity"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EncodedImage:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoLineStrings:line_strings"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+                component: "GeoLineStrings:line_strings".into(),
+                component_type: Some("rerun.components.GeoLineString".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoLineStrings:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+                component: "GeoLineStrings:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoLineStrings:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoLineStrings".into()),
+                component: "GeoLineStrings:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoPoints:positions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:positions".into(),
+                component_type: Some("rerun.components.LatLon".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoPoints:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoPoints:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GeoPoints:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GeoPoints".into()),
+                component: "GeoPoints:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphEdges:edges"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphEdges".into()),
+                component: "GraphEdges:edges".into(),
+                component_type: Some("rerun.components.GraphEdge".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphEdges:graph_type"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphEdges".into()),
+                component: "GraphEdges:graph_type".into(),
+                component_type: Some("rerun.components.GraphType".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphNodes:node_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphNodes".into()),
+                component: "GraphNodes:node_ids".into(),
+                component_type: Some("rerun.components.GraphNode".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphNodes:positions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphNodes".into()),
+                component: "GraphNodes:positions".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphNodes:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphNodes".into()),
+                component: "GraphNodes:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphNodes:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphNodes".into()),
+                component: "GraphNodes:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphNodes:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphNodes".into()),
+                component: "GraphNodes:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphNodes:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.GraphNodes".into()),
+                component: "GraphNodes:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Image:buffer"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Image:format"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Image:opacity"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Image:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Image".into()),
+                component: "Image:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("InstancePoses3D:translations"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:translations".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("InstancePoses3D:rotation_axis_angles"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("InstancePoses3D:quaternions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("InstancePoses3D:scales"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:scales".into(),
+                component_type: Some("rerun.components.Scale3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("InstancePoses3D:mat3x3"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.InstancePoses3D".into()),
+                component: "InstancePoses3D:mat3x3".into(),
+                component_type: Some("rerun.components.TransformMat3x3".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:strips"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:strips".into(),
+                component_type: Some("rerun.components.LineStrip2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips2D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips2D".into()),
+                component: "LineStrips2D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips3D:strips"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:strips".into(),
+                component_type: Some("rerun.components.LineStrip3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips3D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineStrips3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.LineStrips3D".into()),
+                component: "LineStrips3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapChannel:id"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:id".into(),
+                component_type: Some("rerun.components.ChannelId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapChannel:topic"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:topic".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapChannel:message_encoding"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:message_encoding".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapChannel:metadata"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapChannel".into()),
+                component: "McapChannel:metadata".into(),
+                component_type: Some("rerun.components.KeyValuePairs".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapMessage:data"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapMessage".into()),
+                component: "McapMessage:data".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapSchema:id"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:id".into(),
+                component_type: Some("rerun.components.SchemaId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapSchema:name"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:name".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapSchema:encoding"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:encoding".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapSchema:data"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapSchema".into()),
+                component: "McapSchema:data".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:message_count"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:message_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:schema_count"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:schema_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:channel_count"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:channel_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:attachment_count"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:attachment_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:metadata_count"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:metadata_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:chunk_count"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:chunk_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:message_start_time"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:message_start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:message_end_time"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:message_end_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("McapStatistics:channel_message_counts"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:channel_message_counts".into(),
+                component_type: Some("rerun.components.ChannelMessageCounts".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:vertex_positions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_positions".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:triangle_indices"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:triangle_indices".into(),
+                component_type: Some("rerun.components.TriangleIndices".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:vertex_normals"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_normals".into(),
+                component_type: Some("rerun.components.Vector3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:vertex_colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:vertex_texcoords"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:vertex_texcoords".into(),
+                component_type: Some("rerun.components.Texcoord2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:albedo_factor"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:albedo_texture_buffer"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:albedo_texture_buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:albedo_texture_format"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:albedo_texture_format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Mesh3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Mesh3D".into()),
+                component: "Mesh3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:image_from_camera"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:image_from_camera".into(),
+                component_type: Some("rerun.components.PinholeProjection".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:resolution"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:resolution".into(),
+                component_type: Some("rerun.components.Resolution".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:camera_xyz"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:camera_xyz".into(),
+                component_type: Some("rerun.components.ViewCoordinates".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:child_frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:child_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:parent_frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:parent_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:image_plane_distance"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:image_plane_distance".into(),
+                component_type: Some("rerun.components.ImagePlaneDistance".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Pinhole:line_width"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:line_width".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:positions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:positions".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points2D:keypoint_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points2D".into()),
+                component: "Points2D:keypoint_ids".into(),
+                component_type: Some("rerun.components.KeypointId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:positions"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:positions".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:radii"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:show_labels"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:class_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Points3D:keypoint_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Points3D".into()),
+                component: "Points3D:keypoint_ids".into(),
+                component_type: Some("rerun.components.KeypointId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("RecordingInfo:start_time"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("RecordingInfo:name"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.RecordingInfo".into()),
+                component: "RecordingInfo:name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Scalars:scalars"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Scalars".into()),
+                component: "Scalars:scalars".into(),
+                component_type: Some("rerun.components.Scalar".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SegmentationImage:buffer"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SegmentationImage:format"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SegmentationImage:opacity"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SegmentationImage:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SegmentationImage".into()),
+                component: "SegmentationImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesLines:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesLines:widths"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:widths".into(),
+                component_type: Some("rerun.components.StrokeWidth".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesLines:names"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:names".into(),
+                component_type: Some("rerun.components.Name".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesLines:visible_series"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:visible_series".into(),
+                component_type: Some("rerun.components.SeriesVisible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesLines:aggregation_policy"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:aggregation_policy".into(),
+                component_type: Some("rerun.components.AggregationPolicy".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesPoints:colors"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesPoints:markers"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:markers".into(),
+                component_type: Some("rerun.components.MarkerShape".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesPoints:names"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:names".into(),
+                component_type: Some("rerun.components.Name".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesPoints:visible_series"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:visible_series".into(),
+                component_type: Some("rerun.components.SeriesVisible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SeriesPoints:marker_sizes"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:marker_sizes".into(),
+                component_type: Some("rerun.components.MarkerSize".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Tensor:data"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Tensor".into()),
+                component: "Tensor:data".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Tensor:value_range"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Tensor".into()),
+                component: "Tensor:value_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextDocument:text"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextDocument".into()),
+                component: "TextDocument:text".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextDocument:media_type"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextDocument".into()),
+                component: "TextDocument:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLog:text"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:text".into(),
+                component_type: Some("rerun.components.Text".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLog:level"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:level".into(),
+                component_type: Some("rerun.components.TextLogLevel".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLog:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:translation"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:translation".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:rotation_axis_angle"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:rotation_axis_angle".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:quaternion"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:quaternion".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:scale"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:scale".into(),
+                component_type: Some("rerun.components.Scale3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:mat3x3"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:mat3x3".into(),
+                component_type: Some("rerun.components.TransformMat3x3".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:relation"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:relation".into(),
+                component_type: Some("rerun.components.TransformRelation".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:child_frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:child_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Transform3D:parent_frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Transform3D".into()),
+                component: "Transform3D:parent_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TransformAxes3D:axis_length"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+                component: "TransformAxes3D:axis_length".into(),
+                component_type: Some("rerun.components.AxisLength".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TransformAxes3D:show_frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+                component: "TransformAxes3D:show_frame".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoFrameReference:timestamp"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:timestamp".into(),
+                component_type: Some("rerun.components.VideoTimestamp".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoFrameReference:video_reference"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:video_reference".into(),
+                component_type: Some("rerun.components.EntityPath".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoFrameReference:opacity"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoFrameReference:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoFrameReference".into()),
+                component: "VideoFrameReference:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoStream:codec"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:codec".into(),
+                component_type: Some("rerun.components.VideoCodec".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoStream:sample"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:sample".into(),
+                component_type: Some("rerun.components.VideoSample".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoStream:opacity"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VideoStream:draw_order"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewCoordinates:xyz"),
+            ComponentDescriptor {
+                archetype: Some("rerun.archetypes.ViewCoordinates".into()),
+                component: "ViewCoordinates:xyz".into(),
+                component_type: Some("rerun.components.ViewCoordinates".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ActiveVisualizers:instruction_ids"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ActiveVisualizers".into()),
+                component: "ActiveVisualizers:instruction_ids".into(),
+                component_type: Some("rerun.blueprint.components.VisualizerInstructionId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Background:kind"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.Background".into()),
+                component: "Background:kind".into(),
+                component_type: Some("rerun.blueprint.components.BackgroundKind".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("Background:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.Background".into()),
+                component: "Background:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:container_kind"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:container_kind".into(),
+                component_type: Some("rerun.blueprint.components.ContainerKind".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:display_name"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:display_name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:contents"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:contents".into(),
+                component_type: Some("rerun.blueprint.components.IncludedContent".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:col_shares"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:col_shares".into(),
+                component_type: Some("rerun.blueprint.components.ColumnShare".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:row_shares"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:row_shares".into(),
+                component_type: Some("rerun.blueprint.components.RowShare".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:active_tab"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:active_tab".into(),
+                component_type: Some("rerun.blueprint.components.ActiveTab".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:visible"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ContainerBlueprint:grid_columns"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component: "ContainerBlueprint:grid_columns".into(),
+                component_type: Some("rerun.blueprint.components.GridColumns".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DataframeQuery:timeline"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:timeline".into(),
+                component_type: Some("rerun.blueprint.components.TimelineName".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DataframeQuery:filter_by_range"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:filter_by_range".into(),
+                component_type: Some("rerun.blueprint.components.FilterByRange".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DataframeQuery:filter_is_not_null"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:filter_is_not_null".into(),
+                component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DataframeQuery:apply_latest_at"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:apply_latest_at".into(),
+                component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("DataframeQuery:select"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:select".into(),
+                component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EntityBehavior:interactive"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+                component: "EntityBehavior:interactive".into(),
+                component_type: Some("rerun.components.Interactive".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EntityBehavior:visible"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+                component: "EntityBehavior:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:kind"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:kind".into(),
+                component_type: Some("rerun.blueprint.components.Eye3DKind".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:position"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:position".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:look_target"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:look_target".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:eye_up"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:eye_up".into(),
+                component_type: Some("rerun.components.Vector3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:speed"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:speed".into(),
+                component_type: Some("rerun.components.LinearSpeed".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:tracking_entity"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:tracking_entity".into(),
+                component_type: Some("rerun.components.EntityPath".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("EyeControls3D:spin_speed"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:spin_speed".into(),
+                component_type: Some("rerun.blueprint.components.AngularSpeed".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceCenter:enabled"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+                component: "ForceCenter:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceCenter:strength"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+                component: "ForceCenter:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceCollisionRadius:enabled"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceCollisionRadius:strength"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceCollisionRadius:iterations"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+                component: "ForceCollisionRadius:iterations".into(),
+                component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceLink:enabled"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+                component: "ForceLink:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceLink:distance"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+                component: "ForceLink:distance".into(),
+                component_type: Some("rerun.blueprint.components.ForceDistance".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceLink:iterations"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceLink".into()),
+                component: "ForceLink:iterations".into(),
+                component_type: Some("rerun.blueprint.components.ForceIterations".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceManyBody:enabled"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+                component: "ForceManyBody:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForceManyBody:strength"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForceManyBody".into()),
+                component: "ForceManyBody:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForcePosition:enabled"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+                component: "ForcePosition:enabled".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForcePosition:strength"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+                component: "ForcePosition:strength".into(),
+                component_type: Some("rerun.blueprint.components.ForceStrength".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ForcePosition:position"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+                component: "ForcePosition:position".into(),
+                component_type: Some("rerun.components.Position2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("GraphBackground:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.GraphBackground".into()),
+                component: "GraphBackground:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineGrid3D:visible"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineGrid3D:spacing"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:spacing".into(),
+                component_type: Some("rerun.blueprint.components.GridSpacing".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineGrid3D:plane"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:plane".into(),
+                component_type: Some("rerun.components.Plane3D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineGrid3D:stroke_width"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:stroke_width".into(),
+                component_type: Some("rerun.components.StrokeWidth".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("LineGrid3D:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component: "LineGrid3D:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("MapBackground:provider"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.MapBackground".into()),
+                component: "MapBackground:provider".into(),
+                component_type: Some("rerun.blueprint.components.MapProvider".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("MapZoom:zoom"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.MapZoom".into()),
+                component: "MapZoom:zoom".into(),
+                component_type: Some("rerun.blueprint.components.ZoomLevel".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("NearClipPlane:near_clip_plane"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
+                component: "NearClipPlane:near_clip_plane".into(),
+                component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("PanelBlueprint:state"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+                component: "PanelBlueprint:state".into(),
+                component_type: Some("rerun.blueprint.components.PanelState".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("PlotBackground:color"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+                component: "PlotBackground:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("PlotBackground:show_grid"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+                component: "PlotBackground:show_grid".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("PlotLegend:corner"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+                component: "PlotLegend:corner".into(),
+                component_type: Some("rerun.blueprint.components.Corner2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("PlotLegend:visible"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+                component: "PlotLegend:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ScalarAxis:range"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+                component: "ScalarAxis:range".into(),
+                component_type: Some("rerun.components.Range1D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ScalarAxis:zoom_lock"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ScalarAxis".into()),
+                component: "ScalarAxis:zoom_lock".into(),
+                component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SpatialInformation:target_frame"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:target_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SpatialInformation:show_axes"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:show_axes".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("SpatialInformation:show_bounding_box"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:show_bounding_box".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorScalarMapping:mag_filter"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:mag_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorScalarMapping:colormap"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorScalarMapping:gamma"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:gamma".into(),
+                component_type: Some("rerun.components.GammaCorrection".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorSliceSelection:width"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:width".into(),
+                component_type: Some("rerun.components.TensorWidthDimension".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorSliceSelection:height"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:height".into(),
+                component_type: Some("rerun.components.TensorHeightDimension".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorSliceSelection:indices"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:indices".into(),
+                component_type: Some("rerun.components.TensorDimensionIndexSelection".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorSliceSelection:slider"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+                component: "TensorSliceSelection:slider".into(),
+                component_type: Some(
+                    "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
+                ),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TensorViewFit:scaling"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+                component: "TensorViewFit:scaling".into(),
+                component_type: Some("rerun.blueprint.components.ViewFit".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLogColumns:timeline_columns"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+                component: "TextLogColumns:timeline_columns".into(),
+                component_type: Some("rerun.blueprint.components.TimelineColumn".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLogColumns:text_log_columns"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+                component: "TextLogColumns:text_log_columns".into(),
+                component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLogFormat:monospace_body"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogFormat".into()),
+                component: "TextLogFormat:monospace_body".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TextLogRows:filter_by_log_level"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
+                component: "TextLogRows:filter_by_log_level".into(),
+                component_type: Some("rerun.components.TextLogLevel".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimeAxis:link"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:link".into(),
+                component_type: Some("rerun.blueprint.components.LinkAxis".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimeAxis:view_range"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:view_range".into(),
+                component_type: Some("rerun.blueprint.components.TimeRange".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimeAxis:zoom_lock"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimeAxis".into()),
+                component: "TimeAxis:zoom_lock".into(),
+                component_type: Some("rerun.blueprint.components.LockRangeDuringZoom".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:state"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:state".into(),
+                component_type: Some("rerun.blueprint.components.PanelState".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:timeline"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:timeline".into(),
+                component_type: Some("rerun.blueprint.components.TimelineName".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:playback_speed"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:playback_speed".into(),
+                component_type: Some("rerun.blueprint.components.PlaybackSpeed".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:fps"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:fps".into(),
+                component_type: Some("rerun.blueprint.components.Fps".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:play_state"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:play_state".into(),
+                component_type: Some("rerun.blueprint.components.PlayState".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:loop_mode"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:loop_mode".into(),
+                component_type: Some("rerun.blueprint.components.LoopMode".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("TimePanelBlueprint:time_selection"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:time_selection".into(),
+                component_type: Some("rerun.blueprint.components.AbsoluteTimeRange".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewBlueprint:class_identifier"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:class_identifier".into(),
+                component_type: Some("rerun.blueprint.components.ViewClass".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewBlueprint:display_name"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:display_name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewBlueprint:space_origin"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:space_origin".into(),
+                component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewBlueprint:visible"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewContents:query"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewContents".into()),
+                component: "ViewContents:query".into(),
+                component_type: Some("rerun.blueprint.components.QueryExpression".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewportBlueprint:root_container"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:root_container".into(),
+                component_type: Some("rerun.blueprint.components.RootContainer".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewportBlueprint:maximized"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:maximized".into(),
+                component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewportBlueprint:auto_layout"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:auto_layout".into(),
+                component_type: Some("rerun.blueprint.components.AutoLayout".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewportBlueprint:auto_views"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:auto_views".into(),
+                component_type: Some("rerun.blueprint.components.AutoViews".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("ViewportBlueprint:past_viewer_recommendations"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:past_viewer_recommendations".into(),
+                component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VisibleTimeRanges:ranges"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
+                component: "VisibleTimeRanges:ranges".into(),
+                component_type: Some("rerun.blueprint.components.VisibleTimeRange".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VisualBounds2D:range"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+                component: "VisualBounds2D:range".into(),
+                component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VisualizerInstruction:visualizer_type"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
+                component: "VisualizerInstruction:visualizer_type".into(),
+                component_type: Some("rerun.blueprint.components.VisualizerType".into()),
+            },
+        ),
+        (
+            ComponentIdentifier::new("VisualizerInstruction:component_map"),
+            ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualizerInstruction".into()),
+                component: "VisualizerInstruction:component_map".into(),
+                component_type: Some(
+                    "rerun.blueprint.components.VisualizerComponentMapping".into(),
+                ),
+            },
+        ),
+    ];
+    ComponentIdentifierReflectionMap::from_iter(array)
 }
 
 /// Generates reflection about all known archetypes.
