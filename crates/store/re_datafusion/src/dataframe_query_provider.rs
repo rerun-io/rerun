@@ -46,7 +46,7 @@ const CPU_THREAD_IO_CHANNEL_SIZE: usize = 32;
 
 /// Target batch size in bytes for grouping segments together in requests.
 /// This reduces the number of round-trips while keeping memory usage bounded.
-const TARGET_BATCH_SIZE_BYTES: usize = 32 * 1024 * 1024; // 32 MB
+const TARGET_BATCH_SIZE_BYTES: usize = 16 * 1024 * 1024; // 16 MB
 
 /// Helper to attach parent trace context if available.
 /// Returns a guard that must be kept alive for the duration of the traced scope.
