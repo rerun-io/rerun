@@ -116,7 +116,7 @@ async fn time_control_emits_timeline_switch_event() {
     );
     let timeline_after_switch =
         harness.run_with_viewer_context(|ctx| *ctx.time_ctrl.timeline_name());
-    assert_eq!(timeline_after_switch, alternate_timeline.name());
+    assert_eq!(timeline_after_switch, *alternate_timeline.name());
 
     assert!(
         events.received_event(|kind| {
