@@ -4408,7 +4408,6 @@ dev = [
 examples = [
     { name = "air-traffic-data" },
     { name = "arkit-scenes" },
-    { name = "av" },
     { name = "blueprint" },
     { name = "blueprint-stocks" },
     { name = "camera-video-stream" },
@@ -4449,6 +4448,9 @@ examples = [
     { name = "shared-recording" },
     { name = "stdio" },
     { name = "structure-from-motion" },
+]
+snippets = [
+    { name = "av" },
 ]
 
 [package.metadata]
@@ -4492,7 +4494,6 @@ dev = [
 examples = [
     { name = "air-traffic-data", editable = "examples/python/air_traffic_data" },
     { name = "arkit-scenes", editable = "examples/python/arkit_scenes" },
-    { name = "av" },
     { name = "blueprint", editable = "examples/python/blueprint" },
     { name = "blueprint-stocks", editable = "examples/python/blueprint_stocks" },
     { name = "camera-video-stream", editable = "examples/python/camera_video_stream" },
@@ -4534,6 +4535,7 @@ examples = [
     { name = "stdio", editable = "examples/python/stdio" },
     { name = "structure-from-motion", editable = "examples/python/structure_from_motion" },
 ]
+snippets = [{ name = "av" }]
 
 [[package]]
 name = "rfc3339-validator"

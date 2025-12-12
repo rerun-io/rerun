@@ -89,8 +89,7 @@ jobs:
         # Use bash shell so we get pipefail behavior with tee
         # Running under `pixi` so we get `nasm`
         run: |
-          pixi run -e wheel-test-min \
-            cargo bench \
+          pixi run cargo bench \
             --all-features \
             -p re_entity_db \
             -p re_log_encoding \

@@ -76,9 +76,8 @@ jobs:
 
       - name: Print wheel version
         run: |
-          pixi list -e wheel-test | grep rerun_sdk
-          pixi run -e wheel-test python -m rerun --version
-          pixi run -e wheel-test which rerun
+          pixi run uv pip show rerun-sdk
+          pixi run uvpy -m rerun --version
 
       - name: Get sha
         id: get-sha
@@ -88,18 +87,18 @@ jobs:
 
       - name: Build examples
         run: |
-          pixi run -e wheel-test build-examples rrd --install \
+          pixi run build-examples rrd --install \
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
       - name: Build notebooks
         run: |
-          pixi run -e wheel-test build-examples notebook \
+          pixi run build-examples notebook \
             --channel ${{ inputs.CHANNEL }}
 
       - name: Build & run snippets
         run: |
-          pixi run -e wheel-test build-examples snippets \
+          pixi run build-examples snippets \
             example_data/snippets
 
       - name: Upload assets

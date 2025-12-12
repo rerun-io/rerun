@@ -55,9 +55,11 @@ dev = [
   "datafusion>=50.0",
   "jupyter>=1.0",
 ]
+snippets = [
+  "av",
+]
 examples = [
   # External deps used by examples
-  "av",
   "polars>=0.12.0",
   "opencv-python>=4.6",
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
