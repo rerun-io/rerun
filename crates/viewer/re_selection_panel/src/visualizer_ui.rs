@@ -124,10 +124,10 @@ pub fn visualizer_ui_impl(
             );
         }
 
-        for visualizer_instruction in active_visualizers {
+        for (i, visualizer_instruction) in active_visualizers.into_iter().enumerate() {
             let visualizer_type = visualizer_instruction.visualizer_type;
 
-            ui.push_id(&visualizer_instruction.id, |ui| {
+            ui.push_id(i, |ui| {
                 // List all components that the visualizer may consume.
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     // Report whether this visualizer failed running.
