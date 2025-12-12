@@ -80,8 +80,17 @@ class Telemetry:
         self._initialized = False
 
 
+@pytest.fixture(scope="session", name="telemetry")
+def telemetry_fixture() -> Iterator[Telemetry]:
+    """Set up OpenTelemetry for the test session."""
+    telemetry_instance = Telemetry()
+
+    yield telemetry_instance
+    telemetry_instance.shutdown()
+
+
 @pytest.fixture(scope="function", name="tracing")
-def tracing_fixture(request: pytest.FixtureRequest) -> Iterator[trace.Span]:
+def tracing_fixture(request: pytest.FixtureRequest, telemetry: Telemetry) -> Iterator[trace.Span]:  # noqa: ARG001
     """Decorator to add OpenTelemetry tracing to test functions."""
 
     tracer = trace.get_tracer(__name__)

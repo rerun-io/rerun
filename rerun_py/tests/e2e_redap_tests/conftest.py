@@ -19,10 +19,10 @@ from rerun.catalog import CatalogClient
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
-from .telemetry import Telemetry
+from .Telemetry import Telemetry
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator
+    from collections.abc import Generator
 
     from pytest_benchmark.fixture import BenchmarkFixture
     from rerun.catalog import DatasetEntry, TableEntry
@@ -395,15 +395,6 @@ def snapshot_redact_id(snapshot: SnapshotAssertion) -> SnapshotAssertion:
 
     """
     return snapshot.use_extension(RedactedIdSnapshotExtension)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def telemetry() -> Iterator[Telemetry]:
-    """Set up OpenTelemetry for the test session."""
-    telemetry_instance = Telemetry()
-
-    yield telemetry_instance
-    telemetry_instance.shutdown()
 
 
 @pytest.hookimpl(trylast=True)
