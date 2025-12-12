@@ -270,6 +270,7 @@ filterwarnings = """
 error
 """
 norecursedirs = ".* venv* target* build"
+addopts = "-m 'not (slow or cloud_only)'"
 
 ######################
 # mypy configuration #
