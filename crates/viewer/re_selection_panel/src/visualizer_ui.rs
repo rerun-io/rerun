@@ -528,6 +528,8 @@ fn source_component_ui(
     let Some(target_component_type) = &component_descr.component_type else {
         return;
     };
+
+    // Get the underlying Arrow datatype of the target component.
     let Some(target_component_datatype) = ctx
         .viewer_ctx
         .reflection()
@@ -536,6 +538,17 @@ fn source_component_ui(
     else {
         return;
     };
+
+    // Collect suitable source components with the same datatype as the target component.
+    let all_source_options = entity_components_with_datatype
+        .iter()
+        .filter(|entity_component| entity_component.1 == target_component_datatype.datatype)
+        .map(|entity_component| entity_component.0.as_str())
+        .collect::<Vec<_>>();
+    if all_source_options.is_empty() {
+        return;
+    }
+
     ui.push_id("source_component", |ui| {
         let component_map = instruction
             .component_mappings
@@ -544,18 +557,13 @@ fn source_component_ui(
 
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Source component").value_fn(|ui, _| {
-                let source = component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
+                // Get the current source component from the component mapping.
+                let current = component_map.map_or_else(|| "", |mapping| mapping.source.as_str());
 
                 egui::ComboBox::new("source_component_combo_box", "")
-                    .selected_text(source)
+                    .selected_text(current)
                     .show_ui(ui, |ui| {
-                        let mut all_source_options = vec![""];
-                        for entity_component in entity_components_with_datatype {
-                            if entity_component.1 == target_component_datatype.datatype {
-                                all_source_options.push(entity_component.0.as_str());
-                            }
-                        }
-                        for source_option in all_source_options {
+                        for source_option in [""].into_iter().chain(all_source_options.into_iter()) {
                             if ui.button(source_option).clicked() {
                                 changed_component_mappings.push(
                                     re_viewer_context::VisualizerComponentMapping {
