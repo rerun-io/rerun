@@ -12037,6 +12037,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_any_scalar_gabor"
+version = "0.28.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
 name = "test_data_density_graph"
 version = "0.28.0-alpha.1+dev"
 dependencies = [
