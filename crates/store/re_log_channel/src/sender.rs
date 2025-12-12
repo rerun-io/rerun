@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
-use crate::{Channel, DataSourceMessage, LogSource, SendError, SmartMessage, SmartMessagePayload};
+use crate::{
+    Channel, DataSourceMessage, LoadCommand, LogSource, SendError, SmartMessage,
+    SmartMessagePayload,
+};
 
 #[derive(Clone)]
 pub struct LogSender {
     tx: crossbeam::channel::Sender<SmartMessage>,
+    rx: async_channel::Receiver<LoadCommand>,
     source: Arc<LogSource>,
     channel: Arc<Channel>,
 }
@@ -12,11 +16,13 @@ pub struct LogSender {
 impl LogSender {
     pub(crate) fn new(
         tx: crossbeam::channel::Sender<SmartMessage>,
+        rx: async_channel::Receiver<LoadCommand>,
         source: Arc<LogSource>,
         channel: Arc<Channel>,
     ) -> Self {
         Self {
             tx,
+            rx,
             source,
             channel,
         }
@@ -113,5 +119,12 @@ impl LogSender {
     #[inline]
     pub fn len(&self) -> usize {
         self.tx.len()
+    }
+
+    /// Block until we receive a command from a [`LogSender`].
+    ///
+    /// Return an error if there is no more [`LogSender`]s.
+    pub async fn recv_cmd(&self) -> Result<LoadCommand, async_channel::RecvError> {
+        self.rx.recv().await
     }
 }

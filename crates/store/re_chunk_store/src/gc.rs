@@ -1,9 +1,13 @@
+#![expect(clippy::collapsible_if)] // TODO
+
 use std::collections::BTreeSet;
 use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::collections::hash_map::Entry as HashMapEntry;
+use std::sync::Arc;
 use std::time::Duration;
 
 use ahash::{HashMap, HashSet};
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimelineName};
@@ -53,6 +57,9 @@ pub struct GarbageCollectionOptions {
 
     /// Do not remove any data within these time ranges.
     pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
+
+    /// Remove chunks giving priority to those that are the furthest away from this timestamp.
+    pub furthest_from: Option<(TimelineName, TimeInt)>,
 }
 
 impl GarbageCollectionOptions {
@@ -62,6 +69,7 @@ impl GarbageCollectionOptions {
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
             protected_time_ranges: Default::default(),
+            furthest_from: None,
         }
     }
 
@@ -134,6 +142,17 @@ impl ChunkStore {
 
         let protected_chunk_ids = self.find_all_protected_chunk_ids(options.protect_latest);
 
+        let chunks_in_priority_order = options
+            .furthest_from
+            .iter()
+            .flat_map(|(timeline, time)| self.find_temporal_chunks_furthest_away(timeline, *time))
+            .chain(
+                self.chunk_ids_per_min_row_id
+                    .iter()
+                    .filter_map(|(_, chunk_id)| self.chunks_per_chunk_id.get(chunk_id)),
+            )
+            .filter(|chunk| !protected_chunk_ids.contains(&chunk.id()));
+
         let diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
@@ -153,7 +172,12 @@ impl ChunkStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(options, num_bytes_to_drop, &protected_chunk_ids)
+                self.gc_drop_at_least_num_bytes(
+                    options,
+                    num_bytes_to_drop,
+                    &protected_chunk_ids,
+                    chunks_in_priority_order.cloned().collect_vec().into_iter(), // TODO: lul
+                )
             }
             GarbageCollectionTarget::Everything => {
                 re_log::trace!(
@@ -165,7 +189,12 @@ impl ChunkStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(options, f64::INFINITY, &protected_chunk_ids)
+                self.gc_drop_at_least_num_bytes(
+                    options,
+                    f64::INFINITY,
+                    &protected_chunk_ids,
+                    chunks_in_priority_order.cloned().collect_vec().into_iter(), // TODO: lul
+                )
             }
         };
 
@@ -267,6 +296,7 @@ impl ChunkStore {
         options: &GarbageCollectionOptions,
         mut num_bytes_to_drop: f64,
         protected_chunk_ids: &BTreeSet<ChunkId>,
+        chunks_in_priority_order: impl Iterator<Item = Arc<Chunk>>,
     ) -> Vec<ChunkStoreDiff> {
         re_tracing::profile_function!(re_format::format_bytes(num_bytes_to_drop));
 
@@ -279,48 +309,42 @@ impl ChunkStore {
         {
             re_tracing::profile_scope!("mark");
 
-            for chunk_id in self
-                .chunk_ids_per_min_row_id
-                .values()
-                .filter(|chunk_id| !protected_chunk_ids.contains(chunk_id))
+            for chunk in
+                chunks_in_priority_order.filter(|chunk| !protected_chunk_ids.contains(&chunk.id()))
             {
-                if let Some(chunk) = self.chunks_per_chunk_id.get(chunk_id) {
-                    if options.is_chunk_protected(chunk) {
-                        continue;
-                    }
+                if options.is_chunk_protected(&chunk) {
+                    continue;
+                }
 
-                    // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
-                    // and would count as amortized (i.e. 0 bytes).
-                    num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(chunk) as f64;
+                // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
+                // and would count as amortized (i.e. 0 bytes).
+                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
 
-                    // NOTE: We cannot blindly `retain` across all temporal tables, it's way too costly
-                    // and slow. Rather we need to surgically remove the superfluous chunks.
-                    let entity_path = chunk.entity_path();
-                    let per_timeline = chunk_ids_to_be_removed
-                        .entry(entity_path.clone())
-                        .or_default();
-                    for (&timeline, time_column) in chunk.timelines() {
-                        let per_component = per_timeline.entry(timeline).or_default();
-                        for component in chunk.components_identifiers() {
-                            let per_time = per_component.entry(component).or_default();
+                // NOTE: We cannot blindly `retain` across all temporal tables, it's way too costly
+                // and slow. Rather we need to surgically remove the superfluous chunks.
+                let entity_path = chunk.entity_path();
+                let per_timeline = chunk_ids_to_be_removed
+                    .entry(entity_path.clone())
+                    .or_default();
+                for (&timeline, time_column) in chunk.timelines() {
+                    let per_component = per_timeline.entry(timeline).or_default();
+                    for component in chunk.components_identifiers() {
+                        let per_time = per_component.entry(component).or_default();
 
-                            // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
-                            // have perfectly overlapping chunks.
-                            let time_range = time_column.time_range();
+                        // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
+                        // have perfectly overlapping chunks.
+                        let time_range = time_column.time_range();
+                        per_time
+                            .entry(time_range.min())
+                            .or_default()
+                            .push(chunk.id());
+                        if time_range.min() != time_range.max() {
                             per_time
-                                .entry(time_range.min())
+                                .entry(time_range.max())
                                 .or_default()
                                 .push(chunk.id());
-                            if time_range.min() != time_range.max() {
-                                per_time
-                                    .entry(time_range.max())
-                                    .or_default()
-                                    .push(chunk.id());
-                            }
                         }
                     }
-                } else {
-                    chunk_ids_dangling.insert(*chunk_id);
                 }
 
                 // NOTE: There is no point in spending more than a fourth of the time budget on the
@@ -355,6 +379,8 @@ impl ChunkStore {
 
             let mut diffs = Vec::new();
 
+            // TODO: aren't dangling chunks the expectation right now?
+            //
             // NOTE: Dangling chunks should never happen: it is the job of the GC to ensure that.
             //
             // In release builds, we still want to do the nice thing and clean them up as best as we
@@ -362,11 +388,13 @@ impl ChunkStore {
             //
             // We should really never be in there, so don't bother accounting that in the time
             // budget.
-            debug_assert!(
-                chunk_ids_dangling.is_empty(),
-                "detected dangling chunks -- there's a GC bug"
-            );
-            if !chunk_ids_dangling.is_empty() {
+            // debug_assert!(
+            //     chunk_ids_dangling.is_empty(),
+            //     "detected dangling chunks -- there's a GC bug"
+            // );
+            // dbg!(&chunk_ids_dangling);
+            let s = false;
+            if s && !chunk_ids_dangling.is_empty() {
                 re_tracing::profile_scope!("dangling");
 
                 chunk_ids_per_min_row_id
@@ -558,22 +586,28 @@ impl ChunkStore {
                             if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                                 per_start_time.entry(time)
                             {
-                                for chunk_id in chunk_ids {
-                                    chunk_id_set.get_mut().remove(chunk_id);
-                                }
-                                if chunk_id_set.get().is_empty() {
-                                    chunk_id_set.remove_entry();
+                                // TODO: we've disabled garbage collection entirely.
+                                if false {
+                                    for chunk_id in chunk_ids {
+                                        chunk_id_set.get_mut().remove(chunk_id);
+                                    }
+                                    if chunk_id_set.get().is_empty() {
+                                        chunk_id_set.remove_entry();
+                                    }
                                 }
                             }
 
                             if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                                 per_end_time.entry(time)
                             {
-                                for chunk_id in chunk_ids {
-                                    chunk_id_set.get_mut().remove(chunk_id);
-                                }
-                                if chunk_id_set.get().is_empty() {
-                                    chunk_id_set.remove_entry();
+                                // TODO: we've disabled garbage collection entirely.
+                                if false {
+                                    for chunk_id in chunk_ids {
+                                        chunk_id_set.get_mut().remove(chunk_id);
+                                    }
+                                    if chunk_id_set.get().is_empty() {
+                                        chunk_id_set.remove_entry();
+                                    }
                                 }
                             }
 
@@ -587,8 +621,11 @@ impl ChunkStore {
                         }
                     }
 
-                    if per_start_time.is_empty() && per_end_time.is_empty() {
-                        temporal_chunk_ids_per_time_componentless.remove_entry();
+                    // TODO: we've disabled garbage collection entirely.
+                    if false {
+                        if per_start_time.is_empty() && per_end_time.is_empty() {
+                            temporal_chunk_ids_per_time_componentless.remove_entry();
+                        }
                     }
                 }
 
@@ -628,54 +665,74 @@ impl ChunkStore {
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) =
                             per_start_time.entry(time)
                         {
-                            for chunk_id in chunk_ids
-                                .iter()
-                                .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
-                            {
-                                chunk_id_set.get_mut().remove(chunk_id);
-                            }
-                            if chunk_id_set.get().is_empty() {
-                                chunk_id_set.remove_entry();
+                            // TODO: we've disabled garbage collection entirely.
+                            if false {
+                                for chunk_id in chunk_ids
+                                    .iter()
+                                    .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
+                                {
+                                    chunk_id_set.get_mut().remove(chunk_id);
+                                }
+                                if chunk_id_set.get().is_empty() {
+                                    chunk_id_set.remove_entry();
+                                }
                             }
                         }
 
                         if let BTreeMapEntry::Occupied(mut chunk_id_set) = per_end_time.entry(time)
                         {
-                            for chunk_id in chunk_ids
-                                .iter()
-                                .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
-                            {
-                                chunk_id_set.get_mut().remove(chunk_id);
-                            }
-                            if chunk_id_set.get().is_empty() {
-                                chunk_id_set.remove_entry();
+                            // TODO: we've disabled garbage collection entirely.
+                            if false {
+                                for chunk_id in chunk_ids
+                                    .iter()
+                                    .filter(|chunk_id| chunk_ids_removed.contains(*chunk_id))
+                                {
+                                    chunk_id_set.get_mut().remove(chunk_id);
+                                }
+                                if chunk_id_set.get().is_empty() {
+                                    chunk_id_set.remove_entry();
+                                }
                             }
                         }
                     }
 
-                    if per_start_time.is_empty() && per_end_time.is_empty() {
-                        temporal_chunk_ids_per_time.remove_entry();
+                    // TODO: we've disabled garbage collection entirely.
+                    if false {
+                        if per_start_time.is_empty() && per_end_time.is_empty() {
+                            temporal_chunk_ids_per_time.remove_entry();
+                        }
                     }
                 }
 
-                if temporal_chunk_ids_per_component.get().is_empty() {
-                    temporal_chunk_ids_per_component.remove_entry();
+                // TODO: we've disabled garbage collection entirely.
+                if false {
+                    if temporal_chunk_ids_per_component.get().is_empty() {
+                        temporal_chunk_ids_per_component.remove_entry();
+                    }
                 }
             }
 
-            if temporal_chunk_ids_per_timeline.get().is_empty() {
-                temporal_chunk_ids_per_timeline.remove_entry();
+            // TODO: we've disabled garbage collection entirely.
+            if false {
+                if temporal_chunk_ids_per_timeline.get().is_empty() {
+                    temporal_chunk_ids_per_timeline.remove_entry();
+                }
             }
 
-            if temporal_chunk_ids_per_timeline_componentless
-                .get()
-                .is_empty()
-            {
-                temporal_chunk_ids_per_timeline_componentless.remove_entry();
+            // TODO: we've disabled garbage collection entirely.
+            if false {
+                if temporal_chunk_ids_per_timeline_componentless
+                    .get()
+                    .is_empty()
+                {
+                    temporal_chunk_ids_per_timeline_componentless.remove_entry();
+                }
             }
         }
 
-        {
+        // TODO: we've disabled garbage collection entirely.
+        // TODO: do we need to disable that? not sure yet.
+        if true {
             let min_row_ids_removed = chunk_ids_removed.iter().filter_map(|chunk_id| {
                 let chunk = self.chunks_per_chunk_id.get(chunk_id)?;
                 chunk.row_id_range().map(|(min, _)| min)

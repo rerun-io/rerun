@@ -29,7 +29,12 @@ impl DataUi for ComponentPath {
             }
             .data_ui(ctx, ui, ui_layout, query, db);
         } else if ctx.recording().tree().subtree(entity_path).is_some() {
-            if engine.store().entity_has_component_on_timeline(
+            if db
+                .rrd_manifest_index()
+                .entity_has_temporal_data_on_timeline(entity_path, &query.timeline())
+            {
+                ui.label("Not loaded yet");
+            } else if engine.store().entity_has_component_on_timeline(
                 &query.timeline(),
                 entity_path,
                 *component,

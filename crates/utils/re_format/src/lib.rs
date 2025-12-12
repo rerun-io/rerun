@@ -621,13 +621,13 @@ pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
     if let Some(rest) = bytes.strip_prefix(MINUS) {
         Some(-parse_bytes_base10(rest)?)
     } else if let Some(kb) = bytes.strip_suffix("kB") {
-        Some(kb.parse::<i64>().ok()? * 1_000)
+        Some((kb.parse::<f64>().ok()? * 1e3) as _)
     } else if let Some(mb) = bytes.strip_suffix("MB") {
-        Some(mb.parse::<i64>().ok()? * 1_000_000)
+        Some((mb.parse::<f64>().ok()? * 1e6) as _)
     } else if let Some(gb) = bytes.strip_suffix("GB") {
-        Some(gb.parse::<i64>().ok()? * 1_000_000_000)
+        Some((gb.parse::<f64>().ok()? * 1e9) as _)
     } else if let Some(tb) = bytes.strip_suffix("TB") {
-        Some(tb.parse::<i64>().ok()? * 1_000_000_000_000)
+        Some((tb.parse::<f64>().ok()? * 1e12) as _)
     } else if let Some(b) = bytes.strip_suffix('B') {
         Some(b.parse::<i64>().ok()?)
     } else {
@@ -666,13 +666,13 @@ pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
     if let Some(rest) = bytes.strip_prefix(MINUS) {
         Some(-parse_bytes_base2(rest)?)
     } else if let Some(kb) = bytes.strip_suffix("KiB") {
-        Some(kb.parse::<i64>().ok()? * 1024)
+        Some((kb.parse::<f64>().ok()? * 1024.0) as _)
     } else if let Some(mb) = bytes.strip_suffix("MiB") {
-        Some(mb.parse::<i64>().ok()? * 1024 * 1024)
+        Some((mb.parse::<f64>().ok()? * 1024.0 * 1024.0) as _)
     } else if let Some(gb) = bytes.strip_suffix("GiB") {
-        Some(gb.parse::<i64>().ok()? * 1024 * 1024 * 1024)
+        Some((gb.parse::<f64>().ok()? * 1024.0 * 1024.0 * 1024.0) as _)
     } else if let Some(tb) = bytes.strip_suffix("TiB") {
-        Some(tb.parse::<i64>().ok()? * 1024 * 1024 * 1024 * 1024)
+        Some((tb.parse::<f64>().ok()? * 1024.0 * 1024.0 * 1024.0 * 1024.0) as _)
     } else if let Some(b) = bytes.strip_suffix('B') {
         Some(b.parse::<i64>().ok()?)
     } else {

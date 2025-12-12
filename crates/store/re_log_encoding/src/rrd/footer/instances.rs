@@ -642,7 +642,7 @@ impl RrdManifest {
         _ = self.col_chunk_num_rows()?;
         _ = self.col_chunk_entity_path()?;
         _ = self.col_chunk_byte_offset()?;
-        _ = self.col_chunk_byte_size()?;
+        _ = self.col_chunk_byte_size_compressed()?;
         _ = self.col_chunk_byte_size_uncompressed()?;
         Ok(())
     }
@@ -699,7 +699,7 @@ impl RrdManifest {
                         Self::FIELD_CHUNK_ID
                         | Self::FIELD_CHUNK_IS_STATIC
                         | Self::FIELD_CHUNK_NUM_ROWS
-                        | Self::FIELD_CHUNK_BYTE_SIZE
+                        | Self::FIELD_CHUNK_BYTE_SIZE_COMPRESSED
                         | Self::FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED
                         | Self::FIELD_CHUNK_BYTE_OFFSET
                         | Self::FIELD_CHUNK_ENTITY_PATH => {}
@@ -1008,7 +1008,7 @@ impl RrdManifest {
     pub const FIELD_CHUNK_NUM_ROWS: &str = "chunk_num_rows";
     pub const FIELD_CHUNK_ENTITY_PATH: &str = "chunk_entity_path";
     pub const FIELD_CHUNK_BYTE_OFFSET: &str = "chunk_byte_offset";
-    pub const FIELD_CHUNK_BYTE_SIZE: &str = "chunk_byte_size";
+    pub const FIELD_CHUNK_BYTE_SIZE_COMPRESSED: &str = "chunk_byte_size";
     pub const FIELD_CHUNK_BYTE_SIZE_UNCOMPRESSED: &str = "chunk_byte_size_uncompressed";
 
     pub fn field_chunk_id() -> Field {
@@ -1049,7 +1049,7 @@ impl RrdManifest {
     }
 
     pub fn field_chunk_byte_size() -> Field {
-        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE)
+        Self::any_byte_field(Self::FIELD_CHUNK_BYTE_SIZE_COMPRESSED)
     }
 
     pub fn field_chunk_byte_size_uncompressed() -> Field {
@@ -1305,9 +1305,9 @@ impl RrdManifest {
     }
 
     /// Returns the raw Arrow data for the byte-length column.
-    pub fn col_chunk_byte_size_raw(&self) -> CodecResult<&UInt64Array> {
+    pub fn col_chunk_byte_size_compressed_raw(&self) -> CodecResult<&UInt64Array> {
         use re_arrow_util::ArrowArrayDowncastRef as _;
-        let name = Self::FIELD_CHUNK_BYTE_SIZE;
+        let name = Self::FIELD_CHUNK_BYTE_SIZE_COMPRESSED;
         self.data
             .column_by_name(name)
             .ok_or_else(|| {
@@ -1326,8 +1326,8 @@ impl RrdManifest {
     /// Returns an iterator over the decoded Arrow data for the byte-length column.
     ///
     /// This is free.
-    pub fn col_chunk_byte_size(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+    pub fn col_chunk_byte_size_compressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
+        Ok(self.col_chunk_byte_size_compressed_raw()?.iter().flatten())
     }
 
     /// Returns the raw Arrow data for the *uncompressed* byte-length column.
@@ -1353,6 +1353,9 @@ impl RrdManifest {
     ///
     /// This is free.
     pub fn col_chunk_byte_size_uncompressed(&self) -> CodecResult<impl Iterator<Item = u64>> {
-        Ok(self.col_chunk_byte_size_raw()?.iter().flatten())
+        Ok(self
+            .col_chunk_byte_size_uncompressed_raw()?
+            .iter()
+            .flatten())
     }
 }

@@ -437,12 +437,61 @@ async fn stream_segment_from_server(
             if tx
                 .send(DataSourceMessage::RrdManifest(
                     store_id.clone(),
-                    rrd_manifest.into(),
+                    rrd_manifest.clone().into(),
                 ))
                 .is_err()
             {
                 re_log::debug!("Receiver disconnected");
                 return Ok(()); // cancelled
+            }
+
+            const DOWNLOAD_CHUNKS_ON_DEMAND: bool = true; // TODO
+            if store_id.is_recording() && DOWNLOAD_CHUNKS_ON_DEMAND {
+                if true {
+                    let mut rrd_manifest = rrd_manifest;
+                    // Prioritize the chunks:
+                    rrd_manifest.data = sort_batch(&rrd_manifest.data).map_err(|err| {
+                        ApiError::invalid_arguments(err, "Failed to sort chunk index")
+                    })?;
+
+                    // Pick everything static and a couple more things:
+                    let mut idx = 0;
+                    let mut num_temporal_to_load = 32;
+                    let col_chunk_is_static =
+                        rrd_manifest.col_chunk_is_static().map_err(|err| {
+                            ApiError::internal(err, "RRD Manifest missing chunk_is_static column")
+                        })?;
+                    for chunk_is_static in col_chunk_is_static {
+                        idx += 1;
+                        if !chunk_is_static {
+                            num_temporal_to_load -= 1;
+                            if num_temporal_to_load == 0 {
+                                break;
+                            }
+                        }
+                    }
+
+                    let batch_trimmed = rrd_manifest.data.slice(0, idx);
+                    re_log::debug!(
+                        "Pre-fetching the first {} chunks…",
+                        batch_trimmed.num_rows()
+                    );
+                    load_chunks(client, tx, &store_id, batch_trimmed).await?;
+                }
+
+                re_log::debug!("Waiting for viewer to tell me what to load…");
+                loop {
+                    if let Ok(cmd) = tx.recv_cmd().await {
+                        match cmd {
+                            re_log_channel::LoadCommand::LoadChunks(batch) => {
+                                load_chunks(client, tx, &store_id, batch).await?;
+                            }
+                        }
+                    } else {
+                        re_log::debug!("Receiver disconnected");
+                        return Ok(()); // cancelled
+                    }
+                }
             }
         }
         Err(err) => {
@@ -478,13 +527,32 @@ async fn stream_segment_from_server(
     let batch = sort_batch(&batch)
         .map_err(|err| ApiError::invalid_arguments(err, "Failed to sort chunk index"))?;
 
-    // Fetch the chunks base on the ids:
+    load_chunks(client, tx, &store_id, batch).await?;
+
+    Ok(())
+}
+
+/// Takes a dataframe that looks like an [`re_log_encoding::RrdManifest`] (has a `chunk_key` column).
+async fn load_chunks(
+    client: &mut ConnectionClient,
+    tx: &re_log_channel::LogSender,
+    store_id: &StoreId,
+    batch: RecordBatch,
+) -> Result<(), ApiError> {
+    if batch.num_rows() == 0 {
+        return Ok(());
+    }
+
+    re_log::trace!("Requesting {} chunks from server…", batch.num_rows());
+
     let chunk_stream = client.fetch_segment_chunks_by_id(&batch).await?;
-
     let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream);
-
     while let Some(chunks) = chunk_stream.next().await {
         for (chunk, _partition_id) in chunks? {
+            if !chunk.is_static() && !cfg!(target_arch = "wasm32") {
+                // TODO: Remove sleep
+                // std::thread::sleep(std::time::Duration::from_millis(30));
+            }
             if tx
                 .send(
                     LogMsg::ArrowMsg(
@@ -506,6 +574,8 @@ async fn stream_segment_from_server(
             }
         }
     }
+
+    re_log::trace!("Finished downloading {} chunks.", batch.num_rows());
 
     Ok(())
 }

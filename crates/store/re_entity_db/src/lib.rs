@@ -4,6 +4,9 @@
 #![doc = document_features::document_features!()]
 //!
 
+// TODO: how do we deal with the entity DB GC? this needs to be LRU too or we're gonna have a bad time.
+// -> actually, i didnt even make the store GC a LRU yet.
+
 pub mod entity_db;
 pub mod entity_tree;
 mod ingestion_statistics;
@@ -20,7 +23,7 @@ pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb};
 pub use self::entity_tree::EntityTree;
 pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
 pub use self::instance_path::{InstancePath, InstancePathHash};
-pub use self::rrd_manifest_index::RrdManifestIndex;
+pub use self::rrd_manifest_index::{LoadState, RrdManifestIndex};
 pub use self::store_bundle::{StoreBundle, StoreLoadError};
 pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
