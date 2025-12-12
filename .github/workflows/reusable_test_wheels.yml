@@ -197,7 +197,7 @@ jobs:
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: RUST_LOG=debug pixi run python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
+        run: RUST_LOG=debug pixi run uvpy docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
 
       - name: Check the python library signatures
         run: pixi run py-check-signatures
