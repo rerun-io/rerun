@@ -12,7 +12,7 @@ mod stream_rrd_from_http;
 #[cfg(not(target_arch = "wasm32"))]
 mod load_stdin;
 
-pub use self::data_source::{LogDataSource, LogDataSourceAnalytics};
+pub use self::data_source::{AuthErrorHandler, LogDataSource, LogDataSourceAnalytics};
 
 // ----------------------------------------------------------------------------
 
