@@ -100,7 +100,7 @@ impl LeRobotDatasetLoader {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or(filepath.display().to_string().into());
+            .unwrap_or_else(|| filepath.display().to_string().into());
 
         let loader_name = Self.name();
 

@@ -16,14 +16,13 @@ use arrow::buffer::ScalarBuffer;
 use arrow::compute::concat_batches;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
-use re_types::archetypes::VideoStream;
 use re_video::{StableIndexDeque, VideoDataDescription};
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId, TimeColumn, TimePoint, Timeline};
 use re_log_types::ApplicationId;
-use re_types::archetypes::TextDocument;
+use re_sdk_types::archetypes::{TextDocument, VideoStream};
 
 use crate::{DataLoaderError, LoadedData};
 
@@ -476,7 +475,7 @@ impl LeRobotDatasetV3 {
 
         let end_gop = video
             .gop_index_containing_presentation_timestamp(end_video_time)
-            .unwrap_or(video.gops.num_elements() - 1);
+            .unwrap_or_else(|| video.gops.num_elements() - 1);
 
         // Determine the sample range to extract from the video
         let start_sample = video.gops[start_gop].sample_range.start;
@@ -537,7 +536,7 @@ impl LeRobotDatasetV3 {
             ScalarBuffer::from(uniform_times),
         );
 
-        let codec = re_types::components::VideoCodec::try_from(video.codec).map_err(|err| {
+        let codec = re_sdk_types::components::VideoCodec::try_from(video.codec).map_err(|err| {
             anyhow!(
                 "Unsupported video codec {:?} for feature: '{observation}': {err}",
                 video.codec
