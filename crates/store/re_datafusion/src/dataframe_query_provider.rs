@@ -707,7 +707,7 @@ async fn chunk_stream_io_loop(
                     Ok::<Vec<ApiResult<ChunksWithSegment>>, DataFusionError>(batch_chunks)
                 }
             }))
-            .buffered(target_concurrency)
+            .buffer_unordered(target_concurrency)
             .try_collect()
             .await?;
 
