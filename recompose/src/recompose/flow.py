@@ -182,11 +182,14 @@ def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
         # Execute the task's original function (not the wrapper)
         # This avoids double-recording in flow context
         start_time = time.perf_counter()
+        result: Result[Any]
         try:
-            result = node.task_info.original_fn(**resolved_kwargs)
+            task_return = node.task_info.original_fn(**resolved_kwargs)
             # Ensure result is a Result type
-            if not isinstance(result, Result):
-                result = Ok(result)
+            if isinstance(task_return, Result):
+                result = task_return
+            else:
+                result = Ok(task_return)
         except Exception as e:
             tb = traceback.format_exc()
             result = Err(f"{type(e).__name__}: {e}", traceback=tb)
@@ -291,7 +294,7 @@ def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
             if isinstance(e, (TypeError, DirectTaskCallInFlowError)):
                 raise  # Re-raise flow construction errors
             tb = traceback.format_exc()
-            err_result: Result[T] = Err(f"{type(e).__name__}: {e}", traceback=tb)
+            err_result: Result[T] = cast(Result[T], Err(f"{type(e).__name__}: {e}", traceback=tb))
             err_result._flow_context = flow_ctx  # type: ignore[attr-defined]
             return err_result
 

@@ -153,7 +153,7 @@ def _build_command(task_info: TaskInfo) -> click.Command:
                         kwargs[param_name] = annotation(value)
 
         # Execute the task
-        result: Result = task_info.fn(**kwargs)
+        result: Result[Any] = task_info.fn(**kwargs)
 
         # End timing
         elapsed = time.perf_counter() - start_time
@@ -276,7 +276,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                         kwargs[param_name] = annotation(value)
 
         # Execute the flow
-        result: Result = flow_info.fn(**kwargs)
+        result: Result[Any] = flow_info.fn(**kwargs)
 
         # Get flow context from result (attached by the flow decorator)
         flow_ctx = getattr(result, "_flow_context", None)

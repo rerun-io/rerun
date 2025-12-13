@@ -58,6 +58,6 @@ def Ok(value: T) -> Result[T]:
     return Result(value=value, status="success")
 
 
-def Err(error: str, *, traceback: str | None = None) -> Result:
+def Err(error: str, *, traceback: str | None = None) -> Result[None]:
     """Create a failed result with an error message."""
     return Result(status="failure", error=error, traceback=traceback)
