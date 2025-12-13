@@ -358,7 +358,7 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 #   package.
 
 # Build the `rerun-sdk` package.
-py-build = "env -u CONDA_PREFIX RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
+py-build = "env -u CONDA_PREFIX RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
 # Build the `rerun-notebook` package.
 py-build-notebook = { cmd = "uv sync --inexact --package rerun-notebook", depends-on = [
   "js-build-base",
@@ -370,19 +370,19 @@ py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/
 ] }
 
 # Build the `rerun-sdk` package in release mode.
-py-build-release = "env RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
+py-build-release = "env -u CONDA_PREFIX  RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion"
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-web-viewer = { cmd = "env RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer = { cmd = "env -u CONDA_PREFIX  RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
   "rerun-build-native-and-web",
 ] }
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature in release mode.
-py-build-web-viewer-release = { cmd = "env RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer-release = { cmd = "env -u CONDA_PREFIX RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
   "rerun-build-native-and-web-release",
 ] }
 # Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-debug = "env RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion"
+py-build-perf-debug = "env -u CONDA_PREFIX RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion"
 # Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-release = "env RERUN_MATURIN_BUILD=1 RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion"
+py-build-perf-release = "env -u CONDA_PREFIX RERUN_ALLOW_MISSING_BIN=1 uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion"
 
 py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
 py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
