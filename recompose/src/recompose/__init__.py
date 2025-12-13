@@ -23,7 +23,7 @@ from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
-from .task import TaskInfo, get_registry, get_task, task
+from .task import TaskInfo, get_registry, get_task, task, taskclass
 
 __all__ = [
     # Result types
@@ -32,6 +32,7 @@ __all__ = [
     "Err",
     # Task decorator
     "task",
+    "taskclass",
     "TaskInfo",
     "get_registry",
     "get_task",
