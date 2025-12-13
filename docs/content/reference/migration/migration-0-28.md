@@ -94,7 +94,9 @@ For more details about loading & updating `URDF` models, we added a "Loading URD
 
 ## Python SDK: catalog API overhaul
 
-This release includes a major overhaul of the `rerun.catalog` module. We used deprecations where possible to ease migration, but some changes required breaking the API when deprecation would have been too complex. All deprecated APIs will be removed in a future release.
+This release includes a major overhaul of the `rerun.catalog` module that aims to clarify and consolidate the APIs, and make them more future-proof. This was achieved by improving naming, more consistently using DataFusion's dataframes, removing/merging redundant APIs, and exposing fewer implementation details.
+
+We used deprecations to ease migration where possible, but several changes required breaking the API when deprecation would have been too complex. All deprecated APIs will be removed in a future release.
 
 ### "Partition" renamed to "Segment"
 
@@ -155,18 +157,21 @@ df = dataset.partition_table().df()
 df = dataset.segment_table()
 ```
 
+<!-- TODO(claude) this belongs to datasets,not tables -->
 `segment_table()` now accepts optional `join_meta` and `join_key` parameters for joining with external metadata.
 
 **Deprecations:** Write operations moved from `CatalogClient` to `TableEntry`:
 
-| Old API | New API |
-|---------|---------|
+| Old API                                | New API                                                               |
+|----------------------------------------|-----------------------------------------------------------------------|
 | `client.write_table(name, data, mode)` | `table.append(data)` / `table.overwrite(data)` / `table.upsert(data)` |
-| `client.append_to_table(name, data)` | `table.append(data)` |
-| `client.update_table(name, data)` | `table.upsert(data)` |
+| `client.append_to_table(name, data)`   | `table.append(data)`                                                  |
+| `client.update_table(name, data)`      | `table.upsert(data)`                                                  |
 
 The new methods also support keyword arguments: `table.append(col1=[1, 2, 3], col2=["a", "b", "c"])`.
 
+
+<!-- TODO(claude): this needs to better explain that the functionality of `DataframeQUeryView` is now either in Datasetview, or left for datafusion-side filtering -->
 ### Dataset querying
 
 **Breaking change:** `DataframeQueryView` has been removed. Use `DatasetView` with `reader()` instead:
@@ -188,6 +193,42 @@ Key migration patterns:
 - Latest-at fill: `dataset.reader(index="timeline", fill_latest_at=True)`
 - Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the result
 
+### Blueprints
+
+The updated APIs now abstracted from the underlying storage mechanism (blueprint datasets).
+
+**Deprecations:**
+
+| Old API | New API |
+|---------|---------|
+| `DatasetEntry.default_blueprint_partition_id()` | `DatasetEntry.default_blueprint()` |
+| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
+
+**New methods:**
+- `dataset.register_blueprint(url, set_default=True)` - register and optionally set as default
+- `dataset.blueprints()` - list all registered blueprints
+
+### Registration and tasks
+
+The dataset segment registration APIs have been consolidated, and return a `RegistrationHandle` specific to the registration process. The more generic `Tasks` object previously used has been removed.
+
+**Breaking change:** `register()` and `register_batch()` have been merged into a unified `register()` API that returns a `RegistrationHandle`:
+
+```python
+# Single registration
+segment_id = dataset.register("s3://bucket/recording.rrd").wait().segment_ids[0]
+
+# Batch registration
+handle = dataset.register(["file:///uri1.rrd", "file:///uri2.rrd"], layer_name="base")
+segment_ids = handle.wait().segment_ids
+
+# Progress tracking
+for result in handle.iter_results():
+    print(f"Registered {result.uri} as {result.segment_id}")
+```
+
+The `recording_layer` parameter has been renamed to `layer_name`.
+
 ### Search indexes
 
 **Deprecations:** Methods renamed to clarify "search index" vs "dataset index":
@@ -208,38 +249,6 @@ result = dataset.search_fts("query", column).df()
 # After (0.28)
 result = dataset.search_fts("query", column)
 ```
-
-### Blueprints
-
-**Deprecations:**
-
-| Old API | New API |
-|---------|---------|
-| `DatasetEntry.default_blueprint_partition_id()` | `DatasetEntry.default_blueprint()` |
-| `DatasetEntry.set_default_blueprint_partition_id()` | `DatasetEntry.set_default_blueprint()` |
-
-**New methods:**
-- `dataset.register_blueprint(url, set_default=True)` - register and optionally set as default
-- `dataset.blueprints()` - list all registered blueprints
-
-### Registration
-
-**Breaking change:** `register()` and `register_batch()` have been merged into a unified `register()` API that returns a `RegistrationHandle`:
-
-```python
-# Single registration
-segment_id = dataset.register("s3://bucket/recording.rrd").wait().segment_ids[0]
-
-# Batch registration
-handle = dataset.register(["file:///uri1.rrd", "file:///uri2.rrd"], layer_name="base")
-segment_ids = handle.wait().segment_ids
-
-# Progress tracking
-for result in handle.iter_results():
-    print(f"Registered {result.uri} as {result.segment_id}")
-```
-
-The `recording_layer` parameter has been renamed to `layer_name`.
 
 ### Schema types moved
 
