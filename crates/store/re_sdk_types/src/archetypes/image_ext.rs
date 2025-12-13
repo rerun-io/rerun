@@ -1,4 +1,4 @@
-use super::{EncodedImage, Image};
+use super::Image;
 use crate::components::ImageBuffer;
 use crate::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData};
 use crate::image::{
@@ -126,29 +126,6 @@ impl Image {
     /// Assumes RGBA, 8-bit per channel, with separate alpha.
     pub fn from_rgba32(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
         Self::from_color_model_and_bytes(bytes, resolution, ColorModel::RGBA, ChannelDatatype::U8)
-    }
-
-    /// Creates a new [`Image`] from a file.
-    ///
-    /// The image format will be inferred from the path (extension), or the contents if that fails.
-    #[deprecated = "Use EncodedImage::from_file instead"]
-    #[cfg(not(target_arch = "wasm32"))]
-    #[inline]
-    pub fn from_file_path(filepath: impl AsRef<std::path::Path>) -> std::io::Result<EncodedImage> {
-        EncodedImage::from_file(filepath)
-    }
-
-    /// Creates a new [`Image`] from the contents of a file.
-    ///
-    /// If unspecified, the image format will be inferred from the contents.
-    #[deprecated = "Use EncodedImage::from_file_contents instead"]
-    #[cfg(feature = "image")]
-    #[inline]
-    pub fn from_file_contents(
-        contents: Vec<u8>,
-        _format: Option<image::ImageFormat>,
-    ) -> EncodedImage {
-        EncodedImage::from_file_contents(contents)
     }
 }
 
