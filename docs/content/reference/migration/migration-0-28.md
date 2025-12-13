@@ -147,19 +147,6 @@ df = client.get_table(name="my_table").reader()
 
 `TableEntry.df()` has been renamed to `TableEntry.reader()`.
 
-`segment_table()` and `manifest()` now return `datafusion.DataFrame` directly (no `.df()` call needed):
-
-```python
-# Before (0.27)
-df = dataset.partition_table().df()
-
-# After (0.28)
-df = dataset.segment_table()
-```
-
-<!-- TODO(claude) this belongs to datasets,not tables -->
-`segment_table()` now accepts optional `join_meta` and `join_key` parameters for joining with external metadata.
-
 **Deprecations:** Write operations moved from `CatalogClient` to `TableEntry`:
 
 | Old API                                | New API                                                               |
@@ -171,10 +158,11 @@ df = dataset.segment_table()
 The new methods also support keyword arguments: `table.append(col1=[1, 2, 3], col2=["a", "b", "c"])`.
 
 
-<!-- TODO(claude): this needs to better explain that the functionality of `DataframeQUeryView` is now either in Datasetview, or left for datafusion-side filtering -->
 ### Dataset querying
 
-**Breaking change:** `DataframeQueryView` has been removed. Use `DatasetView` with `reader()` instead:
+**Breaking change:** `DataframeQueryView` has been removed. Its functionality has been split between `DatasetView` (for segment and content filtering) and standard DataFusion DataFrame operations (for row-level filtering).
+
+Use `filter_segments()` and `filter_contents()` to create a `DatasetView`, then call `reader()` to get a `datafusion.DataFrame`. Any row-level filtering (like `filter_is_not_null()`) should now be done on the resulting DataFrame using DataFusion's filtering APIs.
 
 ```python
 # Before (0.27)
@@ -186,12 +174,14 @@ view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
 df = view.reader(index="timeline")
 ```
 
+`segment_table()` and `manifest()` now return `datafusion.DataFrame` directly (no `.df()` call needed). `segment_table()` also accepts optional `join_meta` and `join_key` parameters for joining with external metadata.
+
 Key migration patterns:
 - Index selection: `dataset.reader(index="timeline")`
 - Content filtering: `dataset.filter_contents(["/points/**"]).reader(...)`
 - Segment filtering: `dataset.filter_segments(["recording_0"]).reader(...)`
 - Latest-at fill: `dataset.reader(index="timeline", fill_latest_at=True)`
-- Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the result
+- Row filtering: Use DataFusion's `df.filter(col(...).is_not_null())` on the returned DataFrame
 
 ### Blueprints
 
