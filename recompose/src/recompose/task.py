@@ -21,7 +21,8 @@ class TaskInfo:
 
     name: str
     module: str
-    fn: Callable
+    fn: Callable  # The wrapped function (with context/exception handling)
+    original_fn: Callable  # The original unwrapped function
     signature: inspect.Signature
     doc: str | None
 
@@ -64,15 +65,6 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     - Has exceptions caught and converted to Err results
     - Can still be called as a normal Python function
     """
-    info = TaskInfo(
-        name=fn.__name__,
-        module=fn.__module__,
-        fn=fn,
-        signature=inspect.signature(fn),
-        doc=fn.__doc__,
-    )
-    _task_registry[info.full_name] = info
-
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
         # Check if we're already in a context
@@ -89,6 +81,17 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
         else:
             # Already in a context, just execute
             return _execute_task(fn, args, kwargs)
+
+    # Create task info with the wrapper
+    info = TaskInfo(
+        name=fn.__name__,
+        module=fn.__module__,
+        fn=wrapper,  # Store the wrapper
+        original_fn=fn,  # Keep reference to original
+        signature=inspect.signature(fn),
+        doc=fn.__doc__,
+    )
+    _task_registry[info.full_name] = info
 
     # Attach task info to wrapper for introspection
     wrapper._task_info = info  # type: ignore[attr-defined]
