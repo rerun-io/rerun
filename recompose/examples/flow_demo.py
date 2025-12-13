@@ -14,8 +14,12 @@ Run with:
 """
 
 import time
+from typing import TYPE_CHECKING
 
 import recompose
+
+if TYPE_CHECKING:
+    from recompose import TaskNode
 
 # ============================================================================
 # TASKS
@@ -160,7 +164,7 @@ def quality_gate(*, lint_ok: None, types_ok: None) -> recompose.Result[None]:
 
 
 @recompose.flow
-def quality_check():
+def quality_check() -> "TaskNode[None]":
     """
     Quick quality check - lint and type check in parallel.
 
@@ -174,7 +178,7 @@ def quality_check():
 
 
 @recompose.flow
-def build_and_test():
+def build_and_test() -> "TaskNode[str]":
     """
     Full build and test pipeline.
 
@@ -195,7 +199,7 @@ def build_and_test():
 
 
 @recompose.flow
-def strict_check():
+def strict_check() -> "TaskNode[None]":
     """
     Strict check that will fail.
 
@@ -209,7 +213,7 @@ def strict_check():
 
 
 @recompose.flow
-def build_pipeline(*, repo: str = "main"):
+def build_pipeline(*, repo: str = "main") -> "TaskNode[str]":
     """
     Full build pipeline with explicit dependencies.
 

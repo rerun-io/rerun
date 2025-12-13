@@ -7,13 +7,31 @@ import inspect
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar
 
 from .context import Context, get_context, set_context
 from .result import Err, Result
 
+if TYPE_CHECKING:
+    from .flowgraph import TaskNode
+
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+class TaskWrapper(Protocol[T]):
+    """
+    Protocol describing a task-decorated function.
+
+    Task wrappers are callable (returning Result[T]) and have a .flow() method
+    for use in declarative flows (returning TaskNode[T]).
+    """
+
+    _task_info: TaskInfo
+
+    def __call__(self, **kwargs: Any) -> Result[T]: ...
+
+    def flow(self, **kwargs: Any) -> TaskNode[T]: ...
 
 
 @dataclass
@@ -69,7 +87,7 @@ def _is_method_signature(fn: Callable[..., Any]) -> bool:
     return len(params) > 0 and params[0] == "self"
 
 
-def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
+def task(fn: Callable[P, Result[T]]) -> TaskWrapper[T]:
     """
     Decorator to mark a function as a recompose task.
 
@@ -100,7 +118,7 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
         # Mark as pending method task - will be registered by @taskclass
         fn._is_pending_method_task = True  # type: ignore[attr-defined]
         fn._method_doc = fn.__doc__  # type: ignore[attr-defined]
-        return fn  # Return unwrapped - @taskclass will handle wrapping
+        return fn  # type: ignore[return-value]  # @taskclass will handle wrapping
 
     # Regular function task - register immediately
     @functools.wraps(fn)
@@ -178,7 +196,11 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
 
     wrapper.flow = flow_variant  # type: ignore[attr-defined]
 
-    return wrapper
+    # Cast to TaskWrapper to satisfy type checker
+    # (we've added .flow and ._task_info attributes dynamically)
+    from typing import cast
+
+    return cast(TaskWrapper[T], wrapper)
 
 
 def taskclass(cls: type[T]) -> type[T]:
