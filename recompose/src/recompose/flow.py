@@ -11,10 +11,25 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, ParamSpec, TypeVar
 
 from .context import Context, get_context, set_context
+from .flowgraph import FlowPlan, TaskNode
 from .result import Err, Ok, Result
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+# Context variable for declarative flow plan building
+_current_plan: ContextVar[FlowPlan | None] = ContextVar("recompose_current_plan", default=None)
+
+
+def get_current_plan() -> FlowPlan | None:
+    """Get the current flow plan being built, or None if not in a declarative flow."""
+    return _current_plan.get()
+
+
+def set_current_plan(plan: FlowPlan | None) -> None:
+    """Set the current flow plan (used by @flow decorator)."""
+    _current_plan.set(plan)
 
 
 class TaskFailed(Exception):
@@ -118,29 +133,107 @@ def get_flow(name: str) -> FlowInfo | None:
     return None
 
 
+def _resolve_kwargs(kwargs: dict[str, Any], results: dict[str, Result[Any]]) -> dict[str, Any]:
+    """Replace TaskNode values in kwargs with their actual results."""
+    resolved = {}
+    for k, v in kwargs.items():
+        if isinstance(v, TaskNode):
+            # Get the result for this node and unwrap it
+            node_result = results.get(v.node_id)
+            if node_result is None:
+                raise RuntimeError(f"Dependency {v.name} ({v.node_id}) has not been executed yet")
+            if node_result.failed:
+                raise RuntimeError(f"Dependency {v.name} failed: {node_result.error}")
+            resolved[k] = node_result.value
+        else:
+            resolved[k] = v
+    return resolved
+
+
+def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
+    """Execute a declarative flow plan in topological order."""
+    import time
+
+    results: dict[str, Result[Any]] = {}
+
+    for node in plan.get_execution_order():
+        # Resolve any TaskNode dependencies in kwargs
+        try:
+            resolved_kwargs = _resolve_kwargs(node.kwargs, results)
+        except RuntimeError as e:
+            return Err(str(e))
+
+        # Execute the task's original function (not the wrapper)
+        # This avoids double-recording in flow context
+        start_time = time.perf_counter()
+        try:
+            result = node.task_info.original_fn(**resolved_kwargs)
+            # Ensure result is a Result type
+            if not isinstance(result, Result):
+                result = Ok(result)
+        except Exception as e:
+            tb = traceback.format_exc()
+            result = Err(f"{type(e).__name__}: {e}", traceback=tb)
+
+        duration = time.perf_counter() - start_time
+
+        # Record in flow context
+        flow_ctx.record_task(node.task_info.name, result, duration)
+
+        # Store result by node_id
+        results[node.node_id] = result
+
+        # Fail-fast if task failed
+        if result.failed:
+            return result
+
+    # Return the terminal node's result
+    if plan.terminal and plan.terminal.node_id in results:
+        return results[plan.terminal.node_id]
+    elif plan.nodes:
+        # No explicit terminal - return last node's result
+        return results[plan.nodes[-1].node_id]
+    else:
+        return Ok(None)
+
+
 def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     """
     Decorator to mark a function as a recompose flow.
 
-    A flow is a composition of tasks that run sequentially.
-    The flow tracks all task executions and their results.
+    A flow is a composition of tasks. Flows support two modes:
 
-    Example:
+    1. Declarative mode (recommended): Use task.flow() to build a graph, then execute.
+       The flow function should return a TaskNode.
+
+        @recompose.flow
+        def build_pipeline():
+            compiled = compile.flow(source=Path("src/"))
+            tested = test.flow(binary=compiled)
+            return tested  # Returns TaskNode
+
+    2. Imperative mode (legacy): Call tasks directly. The flow tracks executions
+       and auto-fails on task failure. The flow function should return a Result.
+
         @recompose.flow
         def build_and_test() -> recompose.Result[str]:
-            build_result = build_project()
-            if build_result.failed:
-                return build_result
-
+            build_result = build_project()  # Executes immediately
             test_result = run_tests()
             return test_result
+
+    The flow wrapper also provides:
+    - flow.plan(**kwargs): Build the plan without executing (declarative only)
     """
 
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
-        # Create flow context
+        # Create flow context for tracking executions
         flow_ctx = FlowContext(flow_name=fn.__name__)
         set_flow_context(flow_ctx)
+
+        # Create a plan context for declarative mode
+        plan = FlowPlan()
+        set_current_plan(plan)
 
         # Also create a task context for output capture
         task_ctx = Context(task_name=f"flow:{fn.__name__}")
@@ -150,19 +243,32 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
             set_context(task_ctx)
 
         try:
-            result = fn(*args, **kwargs)
+            # Run the flow function body
+            # - In declarative mode, this builds the plan via .flow() calls
+            # - In imperative mode, this executes tasks directly
+            flow_return = fn(*args, **kwargs)
 
-            # Ensure the result is a Result type
-            if not isinstance(result, Result):
-                result = Ok(result)
+            # Check what mode we're in based on return type
+            if isinstance(flow_return, TaskNode):
+                # Declarative mode: flow returned a TaskNode
+                # Set the terminal node and execute the plan
+                plan.terminal = flow_return
+                set_current_plan(None)  # Clear before execution to avoid nesting issues
 
-            # Attach flow context to the result for inspection
-            result._flow_context = flow_ctx  # type: ignore[attr-defined]
+                result = _execute_plan(plan, flow_ctx)
+                result._flow_context = flow_ctx
+                result._flow_plan = plan
+                return result
+            else:
+                # Imperative mode: flow returned a Result (or other value)
+                if not isinstance(flow_return, Result):
+                    flow_return = Ok(flow_return)
 
-            return result
+                flow_return._flow_context = flow_ctx  # type: ignore[attr-defined]
+                return flow_return
 
         except TaskFailed as e:
-            # Task failed inside the flow - return its result
+            # Task failed inside the flow (imperative mode) - return its result
             e.result._flow_context = flow_ctx  # type: ignore[attr-defined]
             return e.result
 
@@ -174,8 +280,40 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
 
         finally:
             set_flow_context(None)
+            set_current_plan(None)
             if existing_task_ctx is None:
                 set_context(None)
+
+    def plan_only(*args: P.args, **kwargs: P.kwargs) -> FlowPlan:
+        """
+        Build the flow plan without executing it.
+
+        This runs the flow function body to build the task graph,
+        but does not execute any tasks. Useful for dry-run and visualization.
+
+        Returns:
+            FlowPlan with all TaskNodes and their dependencies.
+
+        Raises:
+            RuntimeError: If the flow is in imperative mode (doesn't use .flow() calls).
+        """
+        # Create a plan context
+        plan = FlowPlan()
+        set_current_plan(plan)
+
+        try:
+            flow_return = fn(*args, **kwargs)
+
+            if isinstance(flow_return, TaskNode):
+                plan.terminal = flow_return
+                return plan
+            else:
+                raise RuntimeError(
+                    f"Flow '{fn.__name__}' is in imperative mode (returned {type(flow_return).__name__}). "
+                    "Only declarative flows (using .flow() calls) support .plan()."
+                )
+        finally:
+            set_current_plan(None)
 
     # Create flow info
     info = FlowInfo(
@@ -188,7 +326,8 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     )
     _flow_registry[info.full_name] = info
 
-    # Attach flow info to wrapper
+    # Attach flow info and plan method to wrapper
     wrapper._flow_info = info  # type: ignore[attr-defined]
+    wrapper.plan = plan_only  # type: ignore[attr-defined]
 
     return wrapper

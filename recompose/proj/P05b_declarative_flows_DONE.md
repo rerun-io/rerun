@@ -280,14 +280,14 @@ def new_flow():
 
 ## Completion Criteria
 
-- [ ] `Input[T]` type alias works
-- [ ] `TaskNode[T]` class implemented
-- [ ] `FlowPlan` with topological sort
-- [ ] `.flow()` method on tasks
-- [ ] `@flow` decorator does plan-then-execute
-- [ ] `flow.plan()` returns graph without executing
-- [ ] Dependencies tracked through TaskNode kwargs
-- [ ] Execution follows topological order
-- [ ] Results passed between dependent tasks
-- [ ] Tests for planning/graph features
-- [ ] Example demonstrates the new API
+- [x] `Input[T]` type alias - documented as conceptual (runtime rather than compile-time)
+- [x] `TaskNode[T]` class implemented
+- [x] `FlowPlan` with topological sort
+- [x] `.flow()` method on tasks
+- [x] `@flow` decorator does plan-then-execute
+- [x] `flow.plan()` returns graph without executing
+- [x] Dependencies tracked through TaskNode kwargs
+- [x] Execution follows topological order
+- [x] Results passed between dependent tasks
+- [x] Tests for planning/graph features (17 new tests)
+- [x] Example demonstrates the new API (declarative_pipeline, show_plan_demo)
