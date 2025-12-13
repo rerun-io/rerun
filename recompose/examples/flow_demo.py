@@ -77,32 +77,23 @@ def build_and_test(*, skip_tests: bool = False) -> recompose.Result[str]:
     3. Runs type checker
     4. Runs tests (optional)
     5. Builds artifact
+
+    If any task fails, the flow automatically stops and returns that failure.
     """
     # Check prerequisites first
-    prereq = check_prerequisites()
-    if prereq.failed:
-        return prereq
+    check_prerequisites()
 
     # Run quality checks
-    lint = run_linter()
-    if lint.failed:
-        return lint
-
-    types = run_type_checker()
-    if types.failed:
-        return types
+    run_linter()
+    run_type_checker()
 
     # Run tests unless skipped
     if not skip_tests:
         tests = run_tests()
-        if tests.failed:
-            return tests
         recompose.out(f"  {tests.value} tests passed!")
 
     # Build the artifact
     build = build_artifact()
-    if build.failed:
-        return build
 
     return recompose.Ok(f"Pipeline complete! Artifact: {build.value}")
 
@@ -110,15 +101,30 @@ def build_and_test(*, skip_tests: bool = False) -> recompose.Result[str]:
 @recompose.flow
 def quick_check() -> recompose.Result[None]:
     """Quick check - just lint and type check."""
-    lint = run_linter()
-    if lint.failed:
-        return lint
-
-    types = run_type_checker()
-    if types.failed:
-        return types
-
+    run_linter()
+    run_type_checker()
     recompose.out("Quick check passed!")
+    return recompose.Ok(None)
+
+
+@recompose.task
+def failing_lint() -> recompose.Result[None]:
+    """A linter that always fails (for demo)."""
+    recompose.out("Running strict linter...")
+    recompose.out("  ERROR: Found 3 lint errors")
+    return recompose.Err("Lint check failed: 3 errors")
+
+
+@recompose.flow
+def strict_check() -> recompose.Result[None]:
+    """
+    Strict check that will fail.
+
+    Demonstrates automatic flow failure when a task fails.
+    """
+    recompose.out("Running strict checks...")
+    failing_lint()  # This will fail and stop the flow
+    run_type_checker()  # This won't run
     return recompose.Ok(None)
 
 

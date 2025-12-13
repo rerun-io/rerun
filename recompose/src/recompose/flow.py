@@ -17,6 +17,19 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
+class TaskFailed(Exception):
+    """
+    Raised when a task fails inside a flow.
+
+    This is used internally to short-circuit flow execution.
+    The flow decorator catches this and returns the failed Result.
+    """
+
+    def __init__(self, result: Result[Any]):
+        self.result = result
+        super().__init__(result.error or "Task failed")
+
+
 @dataclass
 class TaskExecution:
     """Record of a task execution within a flow."""
@@ -147,6 +160,11 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
             result._flow_context = flow_ctx  # type: ignore[attr-defined]
 
             return result
+
+        except TaskFailed as e:
+            # Task failed inside the flow - return its result
+            e.result._flow_context = flow_ctx  # type: ignore[attr-defined]
+            return e.result
 
         except Exception as e:
             tb = traceback.format_exc()
