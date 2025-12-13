@@ -39,10 +39,6 @@ from ._baseclasses import (
     ComponentMixin as ComponentMixin,
     DescribedComponentBatch as DescribedComponentBatch,
 )
-from ._image_encoded import (
-    ImageEncoded as ImageEncoded,
-    ImageFormat as ImageFormat,
-)
 from ._log import (
     AsComponents as AsComponents,
     escape_entity_path_part as escape_entity_path_part,
