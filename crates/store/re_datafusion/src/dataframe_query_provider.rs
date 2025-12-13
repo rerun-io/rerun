@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
+use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray, UInt64Array};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use datafusion::common::hash_utils::HashValue as _;
@@ -19,7 +19,7 @@ use datafusion::physical_expr::{
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use futures_util::{Stream, StreamExt as _};
+use futures_util::Stream;
 use re_dataframe::external::re_chunk::Chunk;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{
@@ -43,6 +43,10 @@ use crate::dataframe_query_common::{
 /// can place on the CPU worker thread or the CPU worker thread can place on
 /// the IO stream.
 const CPU_THREAD_IO_CHANNEL_SIZE: usize = 32;
+
+/// Target batch size in bytes for grouping segments together in requests.
+/// This reduces the number of round-trips while keeping memory usage bounded.
+const TARGET_BATCH_SIZE_BYTES: usize = 16 * 1024 * 1024; // 16 MB
 
 /// Helper to attach parent trace context if available.
 /// Returns a guard that must be kept alive for the duration of the traced scope.
@@ -132,7 +136,7 @@ impl Stream for DataframeSegmentStream {
 
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(&this.trace_headers);
-        let _span = tracing::debug_span!("poll_next").entered();
+        let _span = tracing::info_span!("poll_next").entered();
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.
@@ -167,10 +171,30 @@ impl Stream for DataframeSegmentStream {
             let chunk_infos = this.chunk_infos.clone();
             let current_span = tracing::Span::current();
 
+            let target_size = std::env::var("RERUN_DF_CHUNK_STREAM_BATCH_SIZE_MB")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .map(|mb| mb * 1024 * 1024)
+                .unwrap_or(TARGET_BATCH_SIZE_BYTES);
+
+            let target_concurrency = std::env::var("RERUN_DF_CHUNK_STREAM_CONCURRENCY")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(4);
+
             this.io_join_handle = Some(
                 io_handle.spawn(
-                    async move { chunk_stream_io_loop(client, chunk_infos, chunk_tx).await }
-                        .instrument(current_span.clone()),
+                    async move {
+                        chunk_stream_io_loop(
+                            client,
+                            chunk_infos,
+                            chunk_tx,
+                            target_size,
+                            target_concurrency,
+                        )
+                        .await
+                    }
+                    .instrument(current_span.clone()),
                 ),
             );
         }
@@ -435,51 +459,271 @@ async fn chunk_store_cpu_worker_thread(
     Ok(())
 }
 
+/// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
+/// chunks for a single segment, so we can just take the first row's `segment_id`.
+fn extract_segment_id(chunk_info: &RecordBatch) -> Result<String, DataFusionError> {
+    let segment_ids = chunk_info
+        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
+        .ok_or_else(|| exec_datafusion_err!("Missing segment_id column"))?
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .ok_or_else(|| exec_datafusion_err!("segment_id column is not a string array"))?;
+
+    Ok(segment_ids.value(0).to_owned())
+}
+
+/// Estimate the total size of all chunks in a `chunk_info` `RecordBatch` by summing
+/// the `chunk_byte_len` values for all rows.
+fn estimate_segment_size(chunk_info: &RecordBatch) -> Result<u64, DataFusionError> {
+    let chunk_sizes = chunk_info
+        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_len column"))?
+        .as_any()
+        .downcast_ref::<UInt64Array>()
+        .ok_or_else(|| exec_datafusion_err!("chunk_byte_len column is not a uint64 array"))?;
+
+    let total_size = (0..chunk_sizes.len()).map(|i| chunk_sizes.value(i)).sum();
+
+    Ok(total_size)
+}
+
+type BatchingResult = (Vec<Vec<RecordBatch>>, Vec<String>);
+
+/// Groups `chunk_infos` into batches targeting the specified size, with special handling
+/// for segments larger than the target size (which get split).
+///
+/// Returns (batches, `segment_order`) where:
+/// - batches: Vec of batches, each containing `chunk_infos` for one request
+/// - `segment_order`: Original order of segments for preserving segment order
+fn create_request_batches(
+    chunk_infos: Vec<RecordBatch>,
+    target_size: u64,
+) -> Result<BatchingResult, DataFusionError> {
+    let mut request_batches = Vec::new();
+    let mut current_batch = Vec::new();
+    let mut current_batch_size = 0u64;
+    let mut segment_order = Vec::new();
+
+    for chunk_info in chunk_infos {
+        let segment_id = extract_segment_id(&chunk_info)?;
+        let segment_size = estimate_segment_size(&chunk_info)?;
+
+        // Track original segment order
+        if !segment_order.contains(&segment_id) {
+            segment_order.push(segment_id.clone());
+        }
+
+        // Check if this segment would make the current batch too large
+        if !current_batch.is_empty() && current_batch_size + segment_size > target_size {
+            // Send current batch and start a new one
+            request_batches.push(current_batch);
+            current_batch = Vec::new();
+            current_batch_size = 0;
+        }
+
+        // Special handling for segments larger than target size
+        if segment_size > target_size {
+            // If current batch is not empty, send it first
+            if !current_batch.is_empty() {
+                request_batches.push(current_batch);
+                current_batch = Vec::new();
+                current_batch_size = 0;
+            }
+
+            // Split the large segment into multiple requests
+            let split_batches = split_large_segments(&segment_id, &chunk_info, target_size)?;
+            for split_batch in split_batches {
+                request_batches.push(vec![split_batch]);
+            }
+        } else {
+            // Add segment to current batch
+            current_batch.push(chunk_info);
+            current_batch_size += segment_size;
+        }
+    }
+
+    // Don't forget the last batch
+    if !current_batch.is_empty() {
+        request_batches.push(current_batch);
+    }
+
+    Ok((request_batches, segment_order))
+}
+
+/// Split an overly large segment into multiple smaller requests. Each request will contain
+/// a subset of the chunks from the original segment, targeting approximately the batch size.
+fn split_large_segments(
+    segment_id: &str,
+    chunk_info: &RecordBatch,
+    target_size: u64,
+) -> Result<Vec<RecordBatch>, DataFusionError> {
+    let chunk_sizes = chunk_info
+        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+        .ok_or_else(|| exec_datafusion_err!("Missing chunk_byte_len column"))?
+        .as_any()
+        .downcast_ref::<UInt64Array>()
+        .ok_or_else(|| exec_datafusion_err!("chunk_byte_len column is not a uint64 array"))?;
+
+    let mut result_batches = Vec::new();
+    let mut current_indices = Vec::new();
+    let mut current_size = 0u64;
+
+    for row_idx in 0..chunk_info.num_rows() {
+        let chunk_size = chunk_sizes.value(row_idx);
+
+        // Always include at least one chunk per batch (even if it exceeds target)
+        if current_indices.is_empty() || current_size + chunk_size <= target_size {
+            current_indices.push(row_idx);
+            current_size += chunk_size;
+        } else {
+            // Create batch from current indices
+            let indices_array = arrow::array::UInt32Array::from(
+                current_indices
+                    .iter()
+                    .map(|&i| i as u32)
+                    .collect::<Vec<_>>(),
+            );
+            let batch = arrow::compute::take_record_batch(chunk_info, &indices_array)?;
+            result_batches.push(batch);
+
+            // Start new batch with current chunk
+            current_indices = vec![row_idx];
+            current_size = chunk_size;
+        }
+    }
+
+    // Don't forget the last batch
+    if !current_indices.is_empty() {
+        let indices_array = arrow::array::UInt32Array::from(
+            current_indices
+                .iter()
+                .map(|&i| i as u32)
+                .collect::<Vec<_>>(),
+        );
+        let batch = arrow::compute::take_record_batch(chunk_info, &indices_array)?;
+        result_batches.push(batch);
+    }
+
+    tracing::debug!(
+        "Split large segment '{}' ({} bytes) into {} requests",
+        segment_id,
+        estimate_segment_size(chunk_info)?,
+        result_batches.len()
+    );
+
+    Ok(result_batches)
+}
+
+/// Helper function to sort chunks by segment order.
+/// This function handles the fact server can return multiple segments
+/// in a single `ChunksWithSegment` response, so we need to group them by segment
+/// and then sort according to the original segment order.
+fn sort_chunks_by_segment_order(chunks: &mut Vec<ChunksWithSegment>, segment_order: &[String]) {
+    use std::collections::HashMap;
+
+    // Collect all individual chunks grouped by segment ID
+    let mut segment_groups: HashMap<String, Vec<(Chunk, Option<String>)>> = HashMap::new();
+
+    // Extract all chunks and group by segment
+    for chunks_with_segment in std::mem::take(chunks) {
+        for (chunk, segment_id_opt) in chunks_with_segment {
+            let segment_id = segment_id_opt
+                .clone()
+                .unwrap_or_else(|| "unknown".to_owned());
+            segment_groups
+                .entry(segment_id)
+                .or_default()
+                .push((chunk, segment_id_opt));
+        }
+    }
+
+    // Now rebuild chunks in the correct segment order
+    for segment_id in segment_order {
+        if let Some(segment_chunks) = segment_groups.remove(segment_id) {
+            chunks.push(segment_chunks);
+        }
+    }
+}
+
 /// This is the function that will run on the IO (main) tokio runtime that will listen
 /// to the gRPC channel for chunks coming in from the data platform. This loop is started
 /// up by the execute fn of the physical plan, so we will start one per output DataFusion partition,
 /// which is different from the Rerun `segment_id`. The sorting by time index will happen within
 /// the cpu worker thread.
+///
+/// This optimized version batches multiple segments together into ~128MB requests to reduce
+/// round-trips while preserving ordering through client-side buffering and reordering.
+///
 /// `chunk_infos` is a list of batches with chunk information where each batch has info for
 /// a *single segment*. We also expect these to be previously sorted by segment id, otherwise
 /// our suggestion to the query planner that inputs are sorted by segment id will be incorrect.
 /// See `group_chunk_infos_by_segment_id` and `execute` for more details.
 #[tracing::instrument(level = "trace", skip_all)]
 async fn chunk_stream_io_loop(
-    mut client: ConnectionClient,
+    client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ApiResult<ChunksWithSegment>>,
+    target_batch_size: usize,
+    target_concurrency: usize,
 ) -> Result<(), DataFusionError> {
-    let chunk_infos: Vec<_> = chunk_infos.into_iter().map(Into::into).collect();
+    // Build batches of requests to optimize network round-trips while maintaining ordering
+    let target_size = target_batch_size as u64;
+    let (request_batches, global_segment_order) = create_request_batches(chunk_infos, target_size)?;
 
-    // TODO(zehiko) same as previously with get_chunks, we keep sending 1 request per segment.
-    // As these batches are sorted per segment (see docs above), this ensures that ordering by
-    // segment id is preserved regardless of how server might order responses (in the case of having
-    // batches with different segments in the same request). However, quick testing shows that this
-    // is at least 2x slower than sending all segments in one request. Consider providing ordering
-    // guarantees server side in the future.
-    for chunk_info in chunk_infos {
-        let fetch_chunks_request = FetchChunksRequest {
-            chunk_infos: vec![chunk_info],
-        };
+    use futures::{StreamExt as _, TryStreamExt as _};
 
-        let fetch_chunks_response_stream = client
-            .inner()
-            .fetch_chunks(fetch_chunks_request)
-            .instrument(tracing::trace_span!("chunk_stream_io_loop"))
-            .await
-            .map_err(|err| exec_datafusion_err!("{err}"))?
-            .into_inner();
+    // Process batches in chunks for memory efficiency while preserving perfect ordering
+    for batch_group in request_batches.chunks(target_concurrency) {
+        // Execute all batch requests in this group concurrently
+        let group_results: Vec<Vec<ApiResult<ChunksWithSegment>>> =
+            futures::stream::iter(batch_group.iter().cloned().map(|batch| {
+                let mut client = client.clone();
 
-        // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
-        // and the app layer (Arrow).
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
-            fetch_chunks_response_stream,
-        );
+                async move {
+                    let chunk_infos_for_request: Vec<re_protos::common::v1alpha1::DataframePart> =
+                        batch.into_iter().map(Into::into).collect();
 
-        while let Some(chunk_and_segment_id) = chunk_stream.next().await {
-            if output_channel.send(chunk_and_segment_id).await.is_err() {
-                break;
+                    let fetch_chunks_request = FetchChunksRequest {
+                        chunk_infos: chunk_infos_for_request,
+                    };
+
+                    let fetch_chunks_response_stream = client
+                        .inner()
+                        .fetch_chunks(fetch_chunks_request)
+                        .instrument(tracing::trace_span!("batched_fetch_chunks"))
+                        .await
+                        .map_err(|err| exec_datafusion_err!("{err}"))?
+                        .into_inner();
+
+                    // Collect all chunks from this single batch request
+                    let chunk_stream =
+                        re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+                            fetch_chunks_response_stream,
+                        );
+
+                    let batch_chunks: Vec<ApiResult<ChunksWithSegment>> =
+                        chunk_stream.collect().await;
+
+                    Ok::<Vec<ApiResult<ChunksWithSegment>>, DataFusionError>(batch_chunks)
+                }
+            }))
+            .buffer_unordered(target_concurrency)
+            .try_collect()
+            .await?;
+
+        let mut all_chunks: Vec<ChunksWithSegment> = group_results
+            .into_iter()
+            .flatten()
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| exec_datafusion_err!("Error fetching chunks: {err}"))?;
+
+        // Sort chunks from this group using the global segment order
+        sort_chunks_by_segment_order(&mut all_chunks, &global_segment_order);
+
+        // Send all chunks from this group in correct order before processing next group
+        for chunks_with_segment in all_chunks {
+            if output_channel.send(Ok(chunks_with_segment)).await.is_err() {
+                return Ok(());
             }
         }
     }
@@ -678,5 +922,300 @@ impl CpuRuntime {
     /// Return a handle suitable for spawning CPU bound tasks
     pub fn handle(&self) -> &Handle {
         &self.handle
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use arrow::array::{FixedSizeBinaryBuilder, UInt64Array};
+    use arrow::datatypes::Field;
+
+    use super::*;
+
+    /// Extract segment ID from a chunk result (test helper)
+    fn extract_segment_id_from_chunk(chunk: &ChunksWithSegment) -> Option<String> {
+        chunk.first()?.1.clone()
+    }
+
+    /// Helper to create a test `RecordBatch` with chunk info for testing
+    fn create_test_chunk_info(segment_id: &str, chunk_sizes: &[u64]) -> RecordBatch {
+        let num_chunks = chunk_sizes.len();
+
+        // Create segment ID column (all rows have same segment)
+        let segment_ids = StringArray::from(vec![segment_id; num_chunks]);
+
+        // Create chunk sizes column
+        let sizes = UInt64Array::from(chunk_sizes.to_vec());
+
+        // Create dummy chunk IDs
+        let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(num_chunks, 16);
+        for i in 0..num_chunks {
+            let mut id_bytes = [0u8; 16];
+            id_bytes[0..4].copy_from_slice(&(i as u32).to_le_bytes());
+            chunk_id_builder.append_value(id_bytes).unwrap();
+        }
+        let chunk_ids = chunk_id_builder.finish();
+
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
+                    .as_ref()
+                    .clone(),
+                Field::new(
+                    re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
+                    arrow::datatypes::DataType::UInt64,
+                    false,
+                ),
+                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_id()
+                    .as_ref()
+                    .clone(),
+            ],
+            HashMap::default(),
+        ));
+
+        RecordBatch::try_new_with_options(
+            schema,
+            vec![Arc::new(segment_ids), Arc::new(sizes), Arc::new(chunk_ids)],
+            &RecordBatchOptions::new().with_row_count(Some(num_chunks)),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_create_request_batches_single_small_segment() {
+        let chunk_info = create_test_chunk_info("seg1", &[100, 200, 300]); // 600 bytes total
+        let target_size = 1000; // 1KB target
+
+        let (batches, segment_order) =
+            create_request_batches(vec![chunk_info], target_size).unwrap();
+
+        assert_eq!(batches.len(), 1, "Should create 1 batch");
+        assert_eq!(batches[0].len(), 1, "Batch should contain 1 segment");
+        assert_eq!(segment_order, vec!["seg1"], "Should preserve segment order");
+    }
+
+    #[test]
+    fn test_create_request_batches_single_large_segment() {
+        let chunk_info = create_test_chunk_info("seg1", &[300, 400, 500, 600]); // 1800 bytes total
+        let target_size = 1000; // 1KB target
+
+        let (batches, segment_order) =
+            create_request_batches(vec![chunk_info], target_size).unwrap();
+
+        // Should split the large segment
+        assert!(
+            batches.len() > 1,
+            "Should split large segment into multiple batches"
+        );
+        assert_eq!(segment_order, vec!["seg1"], "Should preserve segment order");
+    }
+
+    #[test]
+    fn test_create_request_batches_multiple_small_segments() {
+        let chunk_infos = vec![
+            create_test_chunk_info("seg1", &[100, 150]), // 250 bytes
+            create_test_chunk_info("seg2", &[200, 250]), // 450 bytes
+            create_test_chunk_info("seg3", &[300]),      // 300 bytes
+            create_test_chunk_info("seg4", &[100]),      // 100 bytes
+        ];
+        let target_size = 800; // Should fit seg1+seg2 in first batch, seg3+seg4 in second
+
+        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
+
+        assert_eq!(batches.len(), 2, "Should create 2 batches");
+        assert_eq!(
+            batches[0].len(),
+            2,
+            "First batch should have 2 segments (seg1+seg2=700 bytes)"
+        );
+        assert_eq!(
+            batches[1].len(),
+            2,
+            "Second batch should have 2 segments (seg3+seg4=400 bytes)"
+        );
+        assert_eq!(
+            segment_order,
+            vec!["seg1", "seg2", "seg3", "seg4"],
+            "Should preserve segment order"
+        );
+    }
+
+    #[test]
+    fn test_create_request_batches_mixed_small_and_large() {
+        let chunk_infos = vec![
+            create_test_chunk_info("seg1", &[100, 200]), // 300 bytes - small
+            create_test_chunk_info("seg2", &[800, 900, 700]), // 2400 bytes - large, needs splitting
+            create_test_chunk_info("seg3", &[150]),      // 150 bytes - small
+        ];
+        let target_size = 1000;
+
+        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
+
+        // Should have: [seg1], [seg2_part1], [seg2_part2], [seg3]
+        assert!(
+            batches.len() >= 3,
+            "Should create multiple batches due to large segment"
+        );
+        assert_eq!(
+            segment_order,
+            vec!["seg1", "seg2", "seg3"],
+            "Should preserve segment order"
+        );
+    }
+
+    #[test]
+    fn test_segment_order_within_batches_is_preserved() {
+        let chunk_infos = vec![
+            create_test_chunk_info("segA", &[100]), // First in input
+            create_test_chunk_info("segB", &[200]), // Second in input
+            create_test_chunk_info("segC", &[300]), // Third in input
+        ];
+        let target_size = 1000; // All segments fit in one batch
+
+        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
+
+        assert_eq!(batches.len(), 1, "Should create 1 batch with all segments");
+        assert_eq!(batches[0].len(), 3, "Batch should contain all 3 segments");
+        assert_eq!(
+            segment_order,
+            vec!["segA", "segB", "segC"],
+            "Should preserve input order"
+        );
+
+        // Verify that segments within the batch maintain input order
+        // Extract segment IDs from the first batch
+        let batch_segment_ids: Result<Vec<_>, _> =
+            batches[0].iter().map(extract_segment_id).collect();
+        let batch_segment_ids = batch_segment_ids.unwrap();
+
+        assert_eq!(
+            batch_segment_ids,
+            vec!["segA", "segB", "segC"],
+            "Segments within batch should maintain original input order"
+        );
+    }
+
+    #[test]
+    fn test_sort_chunks_by_segment_order_simple_case() {
+        use re_dataframe::external::re_chunk::Chunk;
+        use re_log_types::EntityPath;
+
+        // Simple case: one segment per response
+        let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
+
+        let mut chunks: Vec<ChunksWithSegment> = vec![
+            vec![(empty_chunk.clone(), Some("segC".to_owned()))],
+            vec![(empty_chunk.clone(), Some("segA".to_owned()))],
+            vec![(empty_chunk.clone(), Some("segB".to_owned()))],
+        ];
+
+        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
+
+        sort_chunks_by_segment_order(&mut chunks, &segment_order);
+
+        // Verify chunks are sorted according to segment order
+        let sorted_segments: Vec<String> = chunks
+            .iter()
+            .map(|chunk| extract_segment_id_from_chunk(chunk).unwrap_or_default())
+            .collect();
+
+        assert_eq!(sorted_segments, vec!["segA", "segB", "segC"]);
+    }
+
+    #[test]
+    fn test_sort_chunks_by_segment_order_multi_segment_response() {
+        use re_dataframe::external::re_chunk::Chunk;
+        use re_log_types::EntityPath;
+
+        // This is the key test: server returns multiple segments in a single ChunksWithSegment response
+        let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
+
+        let mut chunks: Vec<ChunksWithSegment> = vec![
+            // Single response containing segments in wrong order: segC, segA, segB
+            vec![
+                (empty_chunk.clone(), Some("segC".to_owned())),
+                (empty_chunk.clone(), Some("segC".to_owned())), // Multiple chunks for segC
+                (empty_chunk.clone(), Some("segA".to_owned())),
+                (empty_chunk.clone(), Some("segB".to_owned())),
+                (empty_chunk.clone(), Some("segB".to_owned())), // Multiple chunks for segB
+                (empty_chunk.clone(), Some("segA".to_owned())), // More chunks for segA
+            ],
+        ];
+
+        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
+
+        sort_chunks_by_segment_order(&mut chunks, &segment_order);
+
+        // After sorting, we should have segments in correct order: segA, segB, segC
+        // And the function should have split the multi-segment response into separate responses
+        assert_eq!(
+            chunks.len(),
+            3,
+            "Should have 3 separate segment responses after splitting"
+        );
+
+        let sorted_segments: Vec<String> = chunks
+            .iter()
+            .map(|chunk| extract_segment_id_from_chunk(chunk).unwrap_or_default())
+            .collect();
+
+        assert_eq!(sorted_segments, vec!["segA", "segB", "segC"]);
+
+        // Verify each segment has the correct number of chunks
+        let seg_a_chunks = chunks[0].len();
+        let seg_b_chunks = chunks[1].len();
+        let seg_c_chunks = chunks[2].len();
+
+        assert_eq!(seg_a_chunks, 2, "SegA should have 2 chunks");
+        assert_eq!(seg_b_chunks, 2, "SegB should have 2 chunks");
+        assert_eq!(seg_c_chunks, 2, "SegC should have 2 chunks");
+    }
+
+    #[test]
+    fn test_sort_chunks_by_segment_order_mixed_responses() {
+        use re_dataframe::external::re_chunk::Chunk;
+        use re_log_types::EntityPath;
+
+        // Mixed case: some single-segment responses, some multi-segment responses
+        let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
+
+        let mut chunks: Vec<ChunksWithSegment> = vec![
+            // Single segment response
+            vec![(empty_chunk.clone(), Some("segC".to_owned()))],
+            // Multi-segment response
+            vec![
+                (empty_chunk.clone(), Some("segB".to_owned())),
+                (empty_chunk.clone(), Some("segA".to_owned())),
+            ],
+            // Another single segment response
+            vec![(empty_chunk.clone(), Some("segB".to_owned()))],
+        ];
+
+        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
+
+        sort_chunks_by_segment_order(&mut chunks, &segment_order);
+
+        // Should be sorted: segA, segB (grouped together), segC
+        assert_eq!(
+            chunks.len(),
+            3,
+            "Should have 3 separate segment responses after grouping"
+        );
+
+        let sorted_segments: Vec<String> = chunks
+            .iter()
+            .map(|chunk| extract_segment_id_from_chunk(chunk).unwrap_or_default())
+            .collect();
+
+        assert_eq!(sorted_segments, vec!["segA", "segB", "segC"]);
+
+        // Verify segB has 2 chunks (they should be grouped together)
+        let seg_b_chunks = chunks[1].len();
+        assert_eq!(
+            seg_b_chunks, 2,
+            "segB should have 2 chunks grouped together"
+        );
     }
 }
