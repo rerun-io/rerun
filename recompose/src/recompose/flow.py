@@ -9,7 +9,7 @@ import traceback
 from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, ParamSpec, TypeVar
+from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
 from .context import Context, get_context, set_context
 from .flowgraph import FlowPlan, TaskNode
@@ -17,6 +17,21 @@ from .result import Err, Ok, Result
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+class FlowWrapper(Protocol[T]):
+    """
+    Protocol describing a flow-decorated function.
+
+    Flow wrappers are callable (returning Result[T]) and have a .plan() method
+    for inspecting the task graph without execution.
+    """
+
+    _flow_info: FlowInfo
+
+    def __call__(self, **kwargs: Any) -> Result[T]: ...
+
+    def plan(self, **kwargs: Any) -> FlowPlan: ...
 
 
 # Context variable for declarative flow plan building
@@ -208,7 +223,7 @@ class DirectTaskCallInFlowError(Exception):
         )
 
 
-def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
+def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
     """
     Decorator to mark a function as a recompose flow.
 
@@ -235,7 +250,7 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     """
 
     @functools.wraps(fn)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
+    def wrapper(**kwargs: Any) -> Result[T]:
         # Create flow context for tracking executions
         flow_ctx = FlowContext(flow_name=fn.__name__)
         set_flow_context(flow_ctx)
@@ -253,7 +268,7 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
 
         try:
             # Run the flow function body to build the task graph
-            flow_return = fn(*args, **kwargs)
+            flow_return = fn(**kwargs)
 
             # Flow must return a TaskNode
             if not isinstance(flow_return, TaskNode):
@@ -286,7 +301,7 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
             if existing_task_ctx is None:
                 set_context(None)
 
-    def plan_only(*args: P.args, **kwargs: P.kwargs) -> FlowPlan:
+    def plan_only(**kwargs: Any) -> FlowPlan:
         """
         Build the flow plan without executing it.
 
@@ -300,7 +315,7 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
         set_current_plan(plan)
 
         try:
-            flow_return = fn(*args, **kwargs)
+            flow_return = fn(**kwargs)
 
             if not isinstance(flow_return, TaskNode):
                 raise TypeError(
@@ -329,4 +344,5 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     wrapper._flow_info = info  # type: ignore[attr-defined]
     wrapper.plan = plan_only  # type: ignore[attr-defined]
 
-    return wrapper
+    # Cast to FlowWrapper to satisfy type checker
+    return cast(FlowWrapper[T], wrapper)

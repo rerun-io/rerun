@@ -25,6 +25,7 @@ from .flow import (
     DirectTaskCallInFlowError,
     FlowContext,
     FlowInfo,
+    FlowWrapper,
     flow,
     get_current_plan,
     get_flow,
@@ -34,7 +35,7 @@ from .flow import (
 from .flowgraph import FlowPlan, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
-from .task import TaskInfo, get_registry, get_task, task, taskclass
+from .task import TaskInfo, TaskWrapper, get_registry, get_task, task, taskclass
 
 __all__ = [
     # Result types
@@ -45,6 +46,7 @@ __all__ = [
     "task",
     "taskclass",
     "TaskInfo",
+    "TaskWrapper",
     "get_registry",
     "get_task",
     # Context helpers
@@ -60,6 +62,7 @@ __all__ = [
     # Flow
     "flow",
     "FlowInfo",
+    "FlowWrapper",
     "FlowContext",
     "FlowPlan",
     "TaskNode",
