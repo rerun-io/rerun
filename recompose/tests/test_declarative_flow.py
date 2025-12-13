@@ -376,19 +376,20 @@ def test_declarative_flow_attaches_plan():
     assert isinstance(plan, FlowPlan)
 
 
-def test_imperative_flow_plan_raises():
-    """Test that imperative flows can't use .plan()."""
+def test_direct_task_call_in_flow_raises():
+    """Test that calling a task directly inside a flow raises an error."""
 
     @task
-    def imperative_task() -> Result[str]:
+    def direct_call_task() -> Result[str]:
         return Ok("done")
 
     @flow
-    def imperative_flow() -> Result[str]:
-        return imperative_task()  # Direct call, not .flow()
+    def bad_flow():
+        direct_call_task()  # Direct call, should raise
+        return direct_call_task.flow()
 
-    with pytest.raises(RuntimeError, match="imperative mode"):
-        imperative_flow.plan()
+    with pytest.raises(recompose.DirectTaskCallInFlowError):
+        bad_flow()
 
 
 def test_task_node_repr():

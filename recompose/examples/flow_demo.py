@@ -2,23 +2,25 @@
 """
 Example demonstrating recompose flows.
 
-Flows compose multiple tasks into a pipeline. Each task execution is tracked.
-
-Recompose supports two flow styles:
-1. Imperative (legacy): Call tasks directly, they execute immediately
-2. Declarative: Use task.flow() to build a graph, then execute
+Flows compose multiple tasks into a dependency graph using task.flow() calls.
+The flow builds the graph first, then executes tasks in topological order.
 
 Run with:
     cd recompose
     uv run python examples/flow_demo.py --help
-    uv run python examples/flow_demo.py build_and_test
-    uv run python examples/flow_demo.py build_and_test --skip_tests
-    uv run python examples/flow_demo.py declarative_pipeline
+    uv run python examples/flow_demo.py build_pipeline
+    uv run python examples/flow_demo.py build_pipeline --repo=feature-branch
+    uv run python examples/flow_demo.py quality_check
 """
 
 import time
 
 import recompose
+
+
+# ============================================================================
+# TASKS
+# ============================================================================
 
 
 @recompose.task
@@ -43,7 +45,7 @@ def check_prerequisites() -> recompose.Result[None]:
 
 
 @recompose.task
-def run_linter() -> recompose.Result[None]:
+def run_linter(*, prereq: None = None) -> recompose.Result[None]:
     """Run the linter (simulated)."""
     recompose.out("Running linter...")
     time.sleep(0.08)
@@ -52,7 +54,7 @@ def run_linter() -> recompose.Result[None]:
 
 
 @recompose.task
-def run_type_checker() -> recompose.Result[None]:
+def run_type_checker(*, prereq: None = None) -> recompose.Result[None]:
     """Run the type checker (simulated)."""
     recompose.out("Running type checker...")
     time.sleep(0.12)
@@ -61,7 +63,7 @@ def run_type_checker() -> recompose.Result[None]:
 
 
 @recompose.task
-def run_tests() -> recompose.Result[int]:
+def run_tests(*, lint_ok: None, types_ok: None) -> recompose.Result[int]:
     """Run tests (simulated)."""
     recompose.out("Running tests...")
     time.sleep(0.25)
@@ -70,53 +72,13 @@ def run_tests() -> recompose.Result[int]:
 
 
 @recompose.task
-def build_artifact(*, output: str = "build/app") -> recompose.Result[str]:
+def build_artifact(*, test_count: int, output: str = "build/app") -> recompose.Result[str]:
     """Build the artifact (simulated)."""
     recompose.out(f"Building artifact to {output}...")
+    recompose.out(f"  Verified with {test_count} tests")
     time.sleep(0.15)
     recompose.out("  Build complete")
     return recompose.Ok(output)
-
-
-@recompose.flow
-def build_and_test(*, skip_tests: bool = False) -> recompose.Result[str]:
-    """
-    Full build and test pipeline.
-
-    This flow:
-    1. Checks prerequisites
-    2. Runs linter
-    3. Runs type checker
-    4. Runs tests (optional)
-    5. Builds artifact
-
-    If any task fails, the flow automatically stops and returns that failure.
-    """
-    # Check prerequisites first
-    check_prerequisites()
-
-    # Run quality checks
-    run_linter()
-    run_type_checker()
-
-    # Run tests unless skipped
-    if not skip_tests:
-        tests = run_tests()
-        recompose.out(f"  {tests.value} tests passed!")
-
-    # Build the artifact
-    build = build_artifact()
-
-    return recompose.Ok(f"Pipeline complete! Artifact: {build.value}")
-
-
-@recompose.flow
-def quick_check() -> recompose.Result[None]:
-    """Quick check - just lint and type check."""
-    run_linter()
-    run_type_checker()
-    recompose.out("Quick check passed!")
-    return recompose.Ok(None)
 
 
 @recompose.task
@@ -127,37 +89,12 @@ def failing_lint() -> recompose.Result[None]:
     return recompose.Err("Lint check failed: 3 errors")
 
 
-@recompose.flow
-def strict_check() -> recompose.Result[None]:
-    """
-    Strict check that will fail.
-
-    Demonstrates automatic flow failure when a task fails.
-    """
-    recompose.out("Running strict checks...")
-    failing_lint()  # This will fail and stop the flow
-    run_type_checker()  # This won't run
-    return recompose.Ok(None)
-
-
-# You can also have standalone tasks alongside flows
 @recompose.task
 def clean() -> recompose.Result[None]:
     """Clean build artifacts (simulated)."""
     recompose.out("Cleaning build artifacts...")
     recompose.out("  Done")
     return recompose.Ok(None)
-
-
-# ============================================================================
-# DECLARATIVE FLOWS (P05b) - New API
-# ============================================================================
-#
-# Declarative flows use task.flow() to build a task graph before execution.
-# This enables:
-# - Dry-run / plan inspection
-# - Clear dependency tracking
-# - Future: parallel execution, subprocess isolation, GHA generation
 
 
 @recompose.task
@@ -202,10 +139,69 @@ def package_artifact(*, binary: str, test_count: int) -> recompose.Result[str]:
     return recompose.Ok("/tmp/dist/app.tar.gz")
 
 
+# ============================================================================
+# FLOWS
+# ============================================================================
+#
+# Flows use task.flow() to build a task graph before execution.
+# This enables:
+# - Dry-run / plan inspection via flow.plan()
+# - Clear dependency tracking
+# - Future: parallel execution, subprocess isolation, GHA generation
+
+
 @recompose.flow
-def declarative_pipeline(*, repo: str = "main"):
+def quality_check():
     """
-    Declarative build pipeline using task.flow().
+    Quick quality check - lint and type check in parallel.
+
+    Try: uv run python examples/flow_demo.py quality_check
+    """
+    prereq = check_prerequisites.flow()
+    lint = run_linter.flow(prereq=prereq)
+    types = run_type_checker.flow(prereq=prereq)
+    return types  # Both lint and types will run
+
+
+@recompose.flow
+def build_and_test():
+    """
+    Full build and test pipeline.
+
+    This flow:
+    1. Checks prerequisites
+    2. Runs linter and type checker (can run in parallel)
+    3. Runs tests (depends on lint and types)
+    4. Builds artifact (depends on tests)
+
+    Try: uv run python examples/flow_demo.py build_and_test
+    """
+    prereq = check_prerequisites.flow()
+    lint = run_linter.flow(prereq=prereq)
+    types = run_type_checker.flow(prereq=prereq)
+    tests = run_tests.flow(lint_ok=lint, types_ok=types)
+    artifact = build_artifact.flow(test_count=tests)
+    return artifact
+
+
+@recompose.flow
+def strict_check():
+    """
+    Strict check that will fail.
+
+    Demonstrates automatic flow failure when a task fails.
+
+    Try: uv run python examples/flow_demo.py strict_check
+    """
+    lint = failing_lint.flow()  # This will fail
+    types = run_type_checker.flow(prereq=lint)  # Won't run
+    return types
+
+
+@recompose.flow
+def build_pipeline(*, repo: str = "main"):
+    """
+    Full build pipeline with explicit dependencies.
 
     This flow builds a task graph and then executes it:
     1. fetch_source
@@ -214,11 +210,11 @@ def declarative_pipeline(*, repo: str = "main"):
     4. run_integration_tests (depends on compile, can run parallel to unit tests)
     5. package_artifact (depends on compile and unit_tests)
 
-    Try: uv run python examples/flow_demo.py declarative_pipeline
+    Try: uv run python examples/flow_demo.py build_pipeline
+         uv run python examples/flow_demo.py build_pipeline --repo=feature-branch
     """
-    # Build the task graph using .flow()
     source = fetch_source.flow(repo=repo)
-    binary = compile_source.flow(source_dir=source)  # Depends on source
+    binary = compile_source.flow(source_dir=source)
 
     # These could run in parallel (both depend only on binary)
     unit_tests = run_unit_tests.flow(binary=binary)
@@ -227,42 +223,45 @@ def declarative_pipeline(*, repo: str = "main"):
     # Package depends on binary and unit test count
     package = package_artifact.flow(binary=binary, test_count=unit_tests)
 
-    return package  # Terminal node
+    return package
 
 
-@recompose.flow
-def show_plan_demo():
-    """
-    Demonstrate the plan() feature for dry-run inspection.
-
-    This flow shows how to inspect the execution plan before running.
-    """
-    # Get the plan without executing
-    plan = declarative_pipeline.plan(repo="feature-branch")
-
-    recompose.out("=== Flow Plan ===")
-    recompose.out(f"Total tasks: {len(plan.nodes)}")
-    recompose.out(f"Terminal task: {plan.terminal.name if plan.terminal else 'None'}")
-    recompose.out("")
-
-    recompose.out("Execution order:")
-    for i, node in enumerate(plan.get_execution_order(), 1):
-        deps = [d.name for d in node.dependencies]
-        dep_str = f" <- {deps}" if deps else ""
-        recompose.out(f"  {i}. {node.name}{dep_str}")
-
-    recompose.out("")
-    recompose.out("Parallelizable groups:")
-    for level, group in enumerate(plan.get_parallelizable_groups()):
-        names = [n.name for n in group]
-        recompose.out(f"  Level {level}: {', '.join(names)}")
-
-    recompose.out("")
-    recompose.out("Graph visualization:")
-    recompose.out(plan.visualize())
-
-    return recompose.Ok(None)
-
+# ============================================================================
+# PLAN INSPECTION (run directly, not as a flow)
+# ============================================================================
 
 if __name__ == "__main__":
-    recompose.main()
+    import sys
+
+    # Special command to show a flow plan without executing
+    if len(sys.argv) > 1 and sys.argv[1] == "show-plan":
+        flow_name = sys.argv[2] if len(sys.argv) > 2 else "build_pipeline"
+        print(f"\n=== Plan for {flow_name} ===\n")
+
+        if flow_name == "build_pipeline":
+            plan = build_pipeline.plan(repo="feature-branch")
+        elif flow_name == "build_and_test":
+            plan = build_and_test.plan()
+        elif flow_name == "quality_check":
+            plan = quality_check.plan()
+        else:
+            print(f"Unknown flow: {flow_name}")
+            sys.exit(1)
+
+        print(f"Total tasks: {len(plan.nodes)}")
+        print(f"Terminal task: {plan.terminal.name if plan.terminal else 'None'}")
+        print()
+
+        print("Execution order:")
+        for i, node in enumerate(plan.get_execution_order(), 1):
+            deps = [d.name for d in node.dependencies]
+            dep_str = f" <- {deps}" if deps else ""
+            print(f"  {i}. {node.name}{dep_str}")
+
+        print()
+        print("Parallelizable groups:")
+        for level, group in enumerate(plan.get_parallelizable_groups()):
+            names = [n.name for n in group]
+            print(f"  Level {level}: {', '.join(names)}")
+    else:
+        recompose.main()

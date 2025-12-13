@@ -6,9 +6,10 @@ import functools
 import inspect
 import time
 import traceback
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 from .context import Context, get_context, set_context
 from .flowgraph import FlowPlan, TaskNode
@@ -197,32 +198,40 @@ def _execute_plan(plan: FlowPlan, flow_ctx: FlowContext) -> Result[Any]:
         return Ok(None)
 
 
+class DirectTaskCallInFlowError(Exception):
+    """Raised when a task is called directly (not via .flow()) inside a flow."""
+
+    def __init__(self, task_name: str):
+        super().__init__(
+            f"Task '{task_name}' was called directly inside a flow. "
+            f"Use '{task_name}.flow(...)' instead to build the task graph."
+        )
+
+
 def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     """
     Decorator to mark a function as a recompose flow.
 
-    A flow is a composition of tasks. Flows support two modes:
+    A flow composes tasks into a dependency graph using task.flow() calls.
+    The flow function must return a TaskNode (the terminal node of the graph).
 
-    1. Declarative mode (recommended): Use task.flow() to build a graph, then execute.
-       The flow function should return a TaskNode.
-
+    Example:
         @recompose.flow
-        def build_pipeline():
-            compiled = compile.flow(source=Path("src/"))
-            tested = test.flow(binary=compiled)
-            return tested  # Returns TaskNode
+        def build_pipeline(*, repo: str):
+            source = fetch_source.flow(repo=repo)
+            binary = compile.flow(source=source)
+            tested = test.flow(binary=binary)
+            return tested  # Returns TaskNode - the terminal node
 
-    2. Imperative mode (legacy): Call tasks directly. The flow tracks executions
-       and auto-fails on task failure. The flow function should return a Result.
+        # Execute the flow
+        result = build_pipeline(repo="main")
 
-        @recompose.flow
-        def build_and_test() -> recompose.Result[str]:
-            build_result = build_project()  # Executes immediately
-            test_result = run_tests()
-            return test_result
+        # Or inspect the plan first
+        plan = build_pipeline.plan(repo="main")
 
-    The flow wrapper also provides:
-    - flow.plan(**kwargs): Build the plan without executing (declarative only)
+    The flow wrapper provides:
+    - Direct call: Builds the graph and executes it
+    - flow.plan(**kwargs): Build the plan without executing (for dry-run)
     """
 
     @functools.wraps(fn)
@@ -231,11 +240,11 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
         flow_ctx = FlowContext(flow_name=fn.__name__)
         set_flow_context(flow_ctx)
 
-        # Create a plan context for declarative mode
+        # Create a plan context - .flow() calls will register nodes here
         plan = FlowPlan()
         set_current_plan(plan)
 
-        # Also create a task context for output capture
+        # Create a task context for output capture during execution
         task_ctx = Context(task_name=f"flow:{fn.__name__}")
         existing_task_ctx = get_context()
 
@@ -243,38 +252,31 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
             set_context(task_ctx)
 
         try:
-            # Run the flow function body
-            # - In declarative mode, this builds the plan via .flow() calls
-            # - In imperative mode, this executes tasks directly
+            # Run the flow function body to build the task graph
             flow_return = fn(*args, **kwargs)
 
-            # Check what mode we're in based on return type
-            if isinstance(flow_return, TaskNode):
-                # Declarative mode: flow returned a TaskNode
-                # Set the terminal node and execute the plan
-                plan.terminal = flow_return
-                set_current_plan(None)  # Clear before execution to avoid nesting issues
+            # Flow must return a TaskNode
+            if not isinstance(flow_return, TaskNode):
+                raise TypeError(
+                    f"Flow '{fn.__name__}' must return a TaskNode, "
+                    f"got {type(flow_return).__name__}. "
+                    "Use task.flow() calls and return the terminal TaskNode."
+                )
 
-                result = _execute_plan(plan, flow_ctx)
-                result._flow_context = flow_ctx
-                result._flow_plan = plan
-                return result
-            else:
-                # Imperative mode: flow returned a Result (or other value)
-                if not isinstance(flow_return, Result):
-                    flow_return = Ok(flow_return)
+            # Set the terminal node and execute the plan
+            plan.terminal = flow_return
+            set_current_plan(None)  # Clear before execution
 
-                flow_return._flow_context = flow_ctx  # type: ignore[attr-defined]
-                return flow_return
-
-        except TaskFailed as e:
-            # Task failed inside the flow (imperative mode) - return its result
-            e.result._flow_context = flow_ctx  # type: ignore[attr-defined]
-            return e.result
+            result = _execute_plan(plan, flow_ctx)
+            result._flow_context = flow_ctx  # type: ignore[attr-defined]
+            result._flow_plan = plan  # type: ignore[attr-defined]
+            return result
 
         except Exception as e:
+            if isinstance(e, (TypeError, DirectTaskCallInFlowError)):
+                raise  # Re-raise flow construction errors
             tb = traceback.format_exc()
-            err_result = Err(f"{type(e).__name__}: {e}", traceback=tb)
+            err_result: Result[T] = Err(f"{type(e).__name__}: {e}", traceback=tb)
             err_result._flow_context = flow_ctx  # type: ignore[attr-defined]
             return err_result
 
@@ -293,25 +295,22 @@ def flow(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
 
         Returns:
             FlowPlan with all TaskNodes and their dependencies.
-
-        Raises:
-            RuntimeError: If the flow is in imperative mode (doesn't use .flow() calls).
         """
-        # Create a plan context
         plan = FlowPlan()
         set_current_plan(plan)
 
         try:
             flow_return = fn(*args, **kwargs)
 
-            if isinstance(flow_return, TaskNode):
-                plan.terminal = flow_return
-                return plan
-            else:
-                raise RuntimeError(
-                    f"Flow '{fn.__name__}' is in imperative mode (returned {type(flow_return).__name__}). "
-                    "Only declarative flows (using .flow() calls) support .plan()."
+            if not isinstance(flow_return, TaskNode):
+                raise TypeError(
+                    f"Flow '{fn.__name__}' must return a TaskNode, "
+                    f"got {type(flow_return).__name__}. "
+                    "Use task.flow() calls and return the terminal TaskNode."
                 )
+
+            plan.terminal = flow_return
+            return plan
         finally:
             set_current_plan(None)
 

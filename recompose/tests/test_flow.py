@@ -1,15 +1,19 @@
 """Tests for flow composition."""
 
 import recompose
-from recompose import Err, Ok, Result, flow, get_flow_context, get_flow_registry, task
+from recompose import Err, Ok, Result, flow, get_flow_registry, task
 
 
 def test_flow_registers():
     """Test that @flow registers the flow."""
 
     @flow
-    def my_test_flow() -> Result[str]:
-        return Ok("done")
+    def my_test_flow():
+        @task
+        def inner_task() -> Result[str]:
+            return Ok("done")
+
+        return inner_task.flow()
 
     registry = get_flow_registry()
     assert any("my_test_flow" in key for key in registry)
@@ -18,9 +22,13 @@ def test_flow_registers():
 def test_flow_returns_result():
     """Test that flows return Result."""
 
-    @flow
-    def simple_flow() -> Result[int]:
+    @task
+    def simple_task() -> Result[int]:
         return Ok(42)
+
+    @flow
+    def simple_flow():
+        return simple_task.flow()
 
     result = simple_flow()
     assert result.ok
@@ -28,16 +36,15 @@ def test_flow_returns_result():
 
 
 def test_flow_can_call_tasks():
-    """Test that flows can call tasks."""
+    """Test that flows can call tasks via .flow()."""
 
     @task
     def add_one(*, x: int) -> Result[int]:
         return Ok(x + 1)
 
     @flow
-    def incrementing_flow(*, start: int) -> Result[int]:
-        r = add_one(x=start)
-        return r
+    def incrementing_flow(*, start: int):
+        return add_one.flow(x=start)
 
     result = incrementing_flow(start=10)
     assert result.ok
@@ -55,25 +62,22 @@ def test_flow_tracks_task_executions():
     def tracked_task_b() -> Result[str]:
         return Ok("b")
 
-    flow_ctx_captured = None
-
     @flow
-    def tracking_flow() -> Result[str]:
-        nonlocal flow_ctx_captured
-        tracked_task_a()
-        tracked_task_b()
-        flow_ctx_captured = get_flow_context()
-        return Ok("done")
+    def tracking_flow():
+        a = tracked_task_a.flow()
+        b = tracked_task_b.flow()
+        return b
 
     result = tracking_flow()
     assert result.ok
 
     # Check that executions were tracked
-    assert flow_ctx_captured is not None
-    assert len(flow_ctx_captured.executions) == 2
-    assert flow_ctx_captured.executions[0].task_name == "tracked_task_a"
-    assert flow_ctx_captured.executions[1].task_name == "tracked_task_b"
-    assert flow_ctx_captured.all_succeeded
+    flow_ctx = getattr(result, "_flow_context", None)
+    assert flow_ctx is not None
+    assert len(flow_ctx.executions) == 2
+    assert flow_ctx.executions[0].task_name == "tracked_task_a"
+    assert flow_ctx.executions[1].task_name == "tracked_task_b"
+    assert flow_ctx.all_succeeded
 
 
 def test_flow_passes_results_between_tasks():
@@ -88,11 +92,9 @@ def test_flow_passes_results_between_tasks():
         return Ok(x + y)
 
     @flow
-    def math_flow(*, a: int, b: int) -> Result[int]:
-        mul_result = multiply(x=a, y=b)
-        if mul_result.failed:
-            return mul_result
-        add_result = add(x=mul_result.value, y=10)
+    def math_flow(*, a: int, b: int):
+        mul_result = multiply.flow(x=a, y=b)
+        add_result = add.flow(x=mul_result, y=10)
         return add_result
 
     result = math_flow(a=3, b=4)
@@ -108,16 +110,14 @@ def test_flow_handles_task_failure():
         return Err("Task failed")
 
     @task
-    def succeeding_task() -> Result[str]:
+    def succeeding_task(*, dep: str) -> Result[str]:
         return Ok("success")
 
     @flow
-    def flow_with_failure() -> Result[str]:
-        r = failing_task()
-        if r.failed:
-            return r
-        # This should not execute
-        return succeeding_task()
+    def flow_with_failure():
+        r = failing_task.flow()
+        # This won't run because failing_task fails
+        return succeeding_task.flow(dep=r)
 
     result = flow_with_failure()
     assert result.failed
@@ -127,22 +127,30 @@ def test_flow_handles_task_failure():
 def test_flow_catches_exceptions():
     """Test that flows catch exceptions and convert to Err."""
 
+    @task
+    def throwing_task() -> Result[str]:
+        raise ValueError("Task exception")
+
     @flow
-    def throwing_flow() -> Result[str]:
-        raise ValueError("Flow exception")
+    def throwing_flow():
+        return throwing_task.flow()
 
     result = throwing_flow()
     assert result.failed
     assert "ValueError" in result.error
-    assert "Flow exception" in result.error
+    assert "Task exception" in result.error
 
 
 def test_flow_with_arguments():
     """Test flows with keyword arguments."""
 
-    @flow
-    def parameterized_flow(*, name: str, count: int = 1) -> Result[str]:
+    @task
+    def format_task(*, name: str, count: int) -> Result[str]:
         return Ok(f"{name} x {count}")
+
+    @flow
+    def parameterized_flow(*, name: str, count: int = 1):
+        return format_task.flow(name=name, count=count)
 
     result = parameterized_flow(name="test")
     assert result.ok
@@ -156,10 +164,14 @@ def test_flow_with_arguments():
 def test_flow_preserves_docstring():
     """Test that flow docstrings are preserved."""
 
-    @flow
-    def documented_flow() -> Result[None]:
-        """This is a documented flow."""
+    @task
+    def doc_task() -> Result[None]:
         return Ok(None)
+
+    @flow
+    def documented_flow():
+        """This is a documented flow."""
+        return doc_task.flow()
 
     assert documented_flow.__doc__ == "This is a documented flow."
 
@@ -173,21 +185,18 @@ def test_flow_timing():
         time.sleep(0.01)
         return Ok(None)
 
-    flow_ctx_captured = None
-
     @flow
-    def timed_flow() -> Result[None]:
-        nonlocal flow_ctx_captured
-        slow_task()
-        flow_ctx_captured = get_flow_context()
-        return Ok(None)
+    def timed_flow():
+        return slow_task.flow()
 
-    timed_flow()
+    result = timed_flow()
+    assert result.ok
 
-    assert flow_ctx_captured is not None
-    assert len(flow_ctx_captured.executions) == 1
-    assert flow_ctx_captured.executions[0].duration >= 0.01
-    assert flow_ctx_captured.total_duration >= 0.01
+    flow_ctx = getattr(result, "_flow_context", None)
+    assert flow_ctx is not None
+    assert len(flow_ctx.executions) == 1
+    assert flow_ctx.executions[0].duration >= 0.01
+    assert flow_ctx.total_duration >= 0.01
 
 
 def test_flow_auto_fails_on_task_failure():
@@ -200,21 +209,21 @@ def test_flow_auto_fails_on_task_failure():
         return Ok("a done")
 
     @task
-    def task_b_fails() -> Result[str]:
+    def task_b_fails(*, dep: str) -> Result[str]:
         executed_tasks.append("b")
         return Err("B failed!")
 
     @task
-    def task_c() -> Result[str]:
+    def task_c(*, dep: str) -> Result[str]:
         executed_tasks.append("c")
         return Ok("c done")
 
     @flow
-    def auto_fail_flow() -> Result[str]:
-        task_a()
-        task_b_fails()  # This fails - should stop here
-        task_c()  # This should NOT run
-        return Ok("completed")
+    def auto_fail_flow():
+        a = task_a.flow()
+        b = task_b_fails.flow(dep=a)  # This fails - should stop here
+        c = task_c.flow(dep=b)  # This won't run
+        return c
 
     executed_tasks.clear()
     result = auto_fail_flow()
@@ -236,26 +245,32 @@ def test_flow_auto_fails_on_task_failure():
     assert flow_ctx.executions[1].result.failed
 
 
-def test_flow_can_still_check_results_explicitly():
-    """Test that flows can catch TaskFailed when explicit handling is needed."""
-    from recompose import TaskFailed
-
-    @task
-    def maybe_fails(*, should_fail: bool) -> Result[str]:
-        if should_fail:
-            return Err("Failed as requested")
-        return Ok("success")
+def test_flow_must_return_task_node():
+    """Test that flows must return a TaskNode."""
 
     @flow
-    def explicit_check_flow() -> Result[str]:
-        # Can catch TaskFailed for explicit error handling
-        try:
-            maybe_fails(should_fail=True)
-            return Ok("task succeeded")
-        except TaskFailed as e:
-            # Handle the failure explicitly
-            return Ok(f"handled: {e.result.error}")
+    def bad_flow():
+        return Ok("not a TaskNode")
 
-    result = explicit_check_flow()
-    assert result.ok
-    assert result.value == "handled: Failed as requested"
+    import pytest
+
+    with pytest.raises(TypeError, match="must return a TaskNode"):
+        bad_flow()
+
+
+def test_direct_task_call_in_flow_raises():
+    """Test that calling a task directly inside a flow raises."""
+
+    @task
+    def my_task() -> Result[str]:
+        return Ok("done")
+
+    @flow
+    def bad_direct_flow():
+        my_task()  # This should raise
+        return my_task.flow()
+
+    import pytest
+
+    with pytest.raises(recompose.DirectTaskCallInFlowError):
+        bad_direct_flow()

@@ -91,7 +91,7 @@ def _build_command(task_info: TaskInfo) -> click.Command:
                     click.Option(
                         [f"--{param_name}/--no-{param_name}"],
                         default=True,
-                        help=f"(default: True)",
+                        help="(default: True)",
                     )
                 )
             elif has_default and default_value is False:
@@ -99,7 +99,7 @@ def _build_command(task_info: TaskInfo) -> click.Command:
                     click.Option(
                         [f"--{param_name}/--no-{param_name}"],
                         default=False,
-                        help=f"(default: False)",
+                        help="(default: False)",
                     )
                 )
             else:
@@ -217,7 +217,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                     click.Option(
                         [f"--{param_name}/--no-{param_name}"],
                         default=True,
-                        help=f"(default: True)",
+                        help="(default: True)",
                     )
                 )
             elif has_default and default_value is False:
@@ -225,7 +225,7 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
                     click.Option(
                         [f"--{param_name}/--no-{param_name}"],
                         default=False,
-                        help=f"(default: False)",
+                        help="(default: False)",
                     )
                 )
             else:
