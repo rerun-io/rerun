@@ -5,8 +5,9 @@ from __future__ import annotations
 import functools
 import inspect
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 from .context import Context, get_context, set_context
 from .result import Err, Result
@@ -104,17 +105,15 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     # Regular function task - register immediately
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
-        import time
+        from .flow import DirectTaskCallInFlowError, get_current_plan
 
-        from .flow import get_flow_context
+        # Check if we're inside a flow that's building a plan
+        # If so, the user should use .flow() instead of direct call
+        if get_current_plan() is not None:
+            raise DirectTaskCallInFlowError(info.name)
 
         # Check if we're already in a context
         existing_ctx = get_context()
-
-        # Check if we're in a flow context
-        flow_ctx = get_flow_context()
-
-        start_time = time.perf_counter()
 
         if existing_ctx is None:
             # Create a new context for this task
@@ -127,17 +126,6 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
         else:
             # Already in a context, just execute
             result = _execute_task(fn, args, kwargs)
-
-        # Record in flow context if we're in a flow
-        if flow_ctx is not None:
-            duration = time.perf_counter() - start_time
-            flow_ctx.record_task(info.name, result, duration)
-
-            # If task failed inside a flow, raise to short-circuit
-            if result.failed:
-                from .flow import TaskFailed
-
-                raise TaskFailed(result)
 
         return result
 
@@ -254,12 +242,16 @@ def taskclass(cls: type[T]) -> type[T]:
         task_name = f"{class_name}.{attr_name}"
 
         # Create wrapper that constructs instance and calls method
-        def make_wrapper(cls: type, method_name: str, init_param_names: list[str], full_task_name: str) -> Callable[..., Any]:
+        def make_wrapper(
+            cls: type, method_name: str, init_param_names: list[str], full_task_name: str
+        ) -> Callable[..., Any]:
             """Create a wrapper for a specific method."""
             def wrapper(**kwargs: Any) -> Result[Any]:
-                import time
+                from .flow import DirectTaskCallInFlowError, get_current_plan
 
-                from .flow import get_flow_context
+                # Check if we're inside a flow that's building a plan
+                if get_current_plan() is not None:
+                    raise DirectTaskCallInFlowError(full_task_name)
 
                 # Split kwargs into init args and method args
                 init_kwargs = {k: v for k, v in kwargs.items() if k in init_param_names}
@@ -274,11 +266,6 @@ def taskclass(cls: type[T]) -> type[T]:
                 # Check if we're already in a context
                 existing_ctx = get_context()
 
-                # Check if we're in a flow context
-                flow_ctx = get_flow_context()
-
-                start_time = time.perf_counter()
-
                 if existing_ctx is None:
                     ctx = Context(task_name=f"{cls.__name__.lower()}.{method_name}")
                     set_context(ctx)
@@ -288,17 +275,6 @@ def taskclass(cls: type[T]) -> type[T]:
                         set_context(None)
                 else:
                     result = _execute_task(bound_method, (), method_kwargs)
-
-                # Record in flow context if we're in a flow
-                if flow_ctx is not None:
-                    duration = time.perf_counter() - start_time
-                    flow_ctx.record_task(full_task_name, result, duration)
-
-                    # If task failed inside a flow, raise to short-circuit
-                    if result.failed:
-                        from .flow import TaskFailed
-
-                        raise TaskFailed(result)
 
                 return result
 
