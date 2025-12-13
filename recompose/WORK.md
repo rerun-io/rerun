@@ -1,9 +1,11 @@
 # NOW
 
-Ready to start **P05c_flows_parallel** - Parallel execution of independent tasks.
+Ready to start **P05d_flows_subprocess** - Subprocess isolation for flow tasks.
 
-Key insight from P05b: We now have `FlowPlan.get_parallelizable_groups()` which identifies tasks
-that can run in parallel. The next step is to implement actual parallel execution using asyncio.
+This is needed for GHA generation: each task in a flow should be able to run as a separate
+subprocess invocation via the CLI. Results need to be serialized and passed between tasks.
+
+**Deferred:** P05c_flows_parallel - Not needed yet. Linear execution matches GHA step model.
 
 # COMPLETED
 
@@ -17,9 +19,10 @@ that can run in parallel. The next step is to implement actual parallel executio
 
 # UPCOMING
 
-1. **P05c_flows_parallel** - Parallel execution of independent tasks
-2. **P05d_flows_subprocess** - Subprocess isolation for flow tasks
-3. **P06_gha_generation** - GitHub Actions workflow generation from flows
+1. **P06_gha_generation** - GitHub Actions workflow generation from flows
+
+**Deferred:**
+- P05c_flows_parallel - Linear execution sufficient for now
 
 # ARCHITECTURE DECISIONS
 
