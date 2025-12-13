@@ -136,7 +136,7 @@ impl Stream for DataframeSegmentStream {
 
         #[cfg(not(target_arch = "wasm32"))]
         let _trace_guard = attach_trace_context(&this.trace_headers);
-        let _span = tracing::debug_span!("poll_next").entered();
+        let _span = tracing::info_span!("poll_next").entered();
 
         // If we have any errors on the worker thread, we want to ensure we pass them up
         // through the stream.
@@ -171,10 +171,30 @@ impl Stream for DataframeSegmentStream {
             let chunk_infos = this.chunk_infos.clone();
             let current_span = tracing::Span::current();
 
+            let target_size = std::env::var("RERUN_DF_CHUNK_STREAM_BATCH_SIZE_MB")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .map(|mb| mb * 1024 * 1024)
+                .unwrap_or(TARGET_BATCH_SIZE_BYTES);
+
+            let target_concurrency = std::env::var("RERUN_DF_CHUNK_STREAM_CONCURRENCY")
+                .ok()
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(4);
+
             this.io_join_handle = Some(
                 io_handle.spawn(
-                    async move { chunk_stream_io_loop(client, chunk_infos, chunk_tx).await }
-                        .instrument(current_span.clone()),
+                    async move {
+                        chunk_stream_io_loop(
+                            client,
+                            chunk_infos,
+                            chunk_tx,
+                            target_size,
+                            target_concurrency,
+                        )
+                        .await
+                    }
+                    .instrument(current_span.clone()),
                 ),
             );
         }
@@ -643,18 +663,17 @@ async fn chunk_stream_io_loop(
     client: ConnectionClient,
     chunk_infos: Vec<RecordBatch>,
     output_channel: Sender<ApiResult<ChunksWithSegment>>,
+    target_batch_size: usize,
+    target_concurrency: usize,
 ) -> Result<(), DataFusionError> {
     // Build batches of requests to optimize network round-trips while maintaining ordering
-    let target_size = TARGET_BATCH_SIZE_BYTES as u64;
+    let target_size = target_batch_size as u64;
     let (request_batches, global_segment_order) = create_request_batches(chunk_infos, target_size)?;
 
     use futures::{StreamExt as _, TryStreamExt as _};
 
-    // Process request batches in groups of 16 concurrent requests
-    const CONCURRENT_BATCH_SIZE: usize = 16;
-
     // Process batches in chunks for memory efficiency while preserving perfect ordering
-    for batch_group in request_batches.chunks(CONCURRENT_BATCH_SIZE) {
+    for batch_group in request_batches.chunks(target_concurrency) {
         // Execute all batch requests in this group concurrently
         let group_results: Vec<Vec<ApiResult<ChunksWithSegment>>> =
             futures::stream::iter(batch_group.iter().cloned().map(|batch| {
@@ -688,7 +707,7 @@ async fn chunk_stream_io_loop(
                     Ok::<Vec<ApiResult<ChunksWithSegment>>, DataFusionError>(batch_chunks)
                 }
             }))
-            .buffered(CONCURRENT_BATCH_SIZE) // Process up to 16 concurrently, maintains order
+            .buffered(target_concurrency)
             .try_collect()
             .await?;
 
