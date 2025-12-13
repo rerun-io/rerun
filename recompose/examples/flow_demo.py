@@ -11,6 +11,10 @@ Run with:
     uv run python examples/flow_demo.py build_pipeline
     uv run python examples/flow_demo.py build_pipeline --repo=feature-branch
     uv run python examples/flow_demo.py quality_check
+
+Inspect flows without executing:
+    uv run python examples/flow_demo.py inspect build_pipeline
+    uv run python examples/flow_demo.py inspect quality_check
 """
 
 import time
@@ -234,42 +238,5 @@ def build_pipeline(*, repo: str = "main") -> None:
     )
 
 
-# ============================================================================
-# PLAN INSPECTION (run directly, not as a flow)
-# ============================================================================
-
 if __name__ == "__main__":
-    import sys
-
-    # Special command to show a flow plan without executing
-    if len(sys.argv) > 1 and sys.argv[1] == "show-plan":
-        flow_name = sys.argv[2] if len(sys.argv) > 2 else "build_pipeline"
-        print(f"\n=== Plan for {flow_name} ===\n")
-
-        if flow_name == "build_pipeline":
-            plan = build_pipeline.plan(repo="feature-branch")
-        elif flow_name == "build_and_test":
-            plan = build_and_test.plan()
-        elif flow_name == "quality_check":
-            plan = quality_check.plan()
-        else:
-            print(f"Unknown flow: {flow_name}")
-            sys.exit(1)
-
-        print(f"Total tasks: {len(plan.nodes)}")
-        print(f"Terminal task: {plan.terminal.name if plan.terminal else 'None'}")
-        print()
-
-        print("Execution order:")
-        for i, node in enumerate(plan.get_execution_order(), 1):
-            deps = [d.name for d in node.dependencies]
-            dep_str = f" <- {deps}" if deps else ""
-            print(f"  {i}. {node.name}{dep_str}")
-
-        print()
-        print("Parallelizable groups:")
-        for level, group in enumerate(plan.get_parallelizable_groups()):
-            names = [n.name for n in group]
-            print(f"  Level {level}: {', '.join(names)}")
-    else:
-        recompose.main()
+    recompose.main()

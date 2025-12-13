@@ -323,6 +323,99 @@ def _build_flow_command(flow_info: FlowInfo) -> click.Command:
     return cmd
 
 
+def _inspect_task(task_info: TaskInfo) -> None:
+    """Display information about a task."""
+    console.print(f"\n[bold cyan]Task:[/bold cyan] [bold]{task_info.name}[/bold]")
+    console.print(f"[dim]Module:[/dim] {task_info.module}")
+
+    if task_info.doc:
+        console.print("\n[dim]Description:[/dim]")
+        console.print(f"  {task_info.doc}")
+
+    console.print("\n[dim]Signature:[/dim]")
+    params = []
+    for param_name, param in task_info.signature.parameters.items():
+        if param_name == "self":
+            continue
+        annotation = param.annotation
+        type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
+        if param.default is not inspect.Parameter.empty:
+            params.append(f"  --{param_name}: {type_str} = {param.default!r}")
+        else:
+            params.append(f"  --{param_name}: {type_str} [required]")
+
+    if params:
+        for p in params:
+            console.print(p)
+    else:
+        console.print("  (no parameters)")
+
+    console.print()
+
+
+def _inspect_flow(flow_info: FlowInfo, kwargs: dict[str, Any]) -> None:
+    """Display information about a flow, including its task graph."""
+    console.print(f"\n[bold magenta]Flow:[/bold magenta] [bold]{flow_info.name}[/bold]")
+    console.print(f"[dim]Module:[/dim] {flow_info.module}")
+
+    if flow_info.doc:
+        console.print("\n[dim]Description:[/dim]")
+        # Print first line of docstring
+        first_line = flow_info.doc.strip().split("\n")[0]
+        console.print(f"  {first_line}")
+
+    console.print("\n[dim]Parameters:[/dim]")
+    params = []
+    for param_name, param in flow_info.signature.parameters.items():
+        annotation = param.annotation
+        type_str = annotation.__name__ if hasattr(annotation, "__name__") else str(annotation)
+        if param.default is not inspect.Parameter.empty:
+            params.append(f"  --{param_name}: {type_str} = {param.default!r}")
+        else:
+            params.append(f"  --{param_name}: {type_str} [required]")
+
+    if params:
+        for p in params:
+            console.print(p)
+    else:
+        console.print("  (no parameters)")
+
+    # Build the flow plan to inspect
+    try:
+        plan = flow_info.fn.plan(**kwargs)  # type: ignore[attr-defined]
+
+        console.print(f"\n[dim]Task Graph ({len(plan.nodes)} tasks):[/dim]")
+
+        # Show execution order
+        console.print("\n  [bold]Execution order:[/bold]")
+        for i, node in enumerate(plan.get_execution_order(), 1):
+            deps = [d.name for d in node.dependencies]
+            if deps:
+                console.print(f"    {i}. {node.name} [dim]← {deps}[/dim]")
+            else:
+                console.print(f"    {i}. {node.name}")
+
+        # Show parallelizable groups
+        groups = plan.get_parallelizable_groups()
+        if len(groups) > 1:
+            console.print("\n  [bold]Parallelizable groups:[/bold]")
+            for level, group in enumerate(groups):
+                names = [n.name for n in group]
+                if len(names) > 1:
+                    console.print(f"    Level {level}: [green]{', '.join(names)}[/green] (can run in parallel)")
+                else:
+                    console.print(f"    Level {level}: {names[0]}")
+
+        if plan.terminal:
+            console.print(f"\n  [bold]Terminal task:[/bold] {plan.terminal.name}")
+
+    except Exception as e:
+        console.print(f"\n[yellow]Could not build flow plan: {e}[/yellow]")
+        console.print("[dim]Some flow parameters may be required to inspect the graph.[/dim]")
+
+    console.print()
+
+
 def main(name: str | None = None) -> None:
     """
     Build and run the CLI from registered tasks.
@@ -352,6 +445,60 @@ def main(name: str | None = None) -> None:
     for _flow_key, flow_info in flow_registry.items():
         cmd = _build_flow_command(flow_info)
         cli.add_command(cmd)
+
+    # Add inspect command
+    @cli.command("inspect")
+    @click.argument("target")
+    @click.option("--param", "-p", multiple=True, help="Parameters for flow inspection (key=value)")
+    def inspect_command(target: str, param: tuple[str, ...]) -> None:
+        """Inspect a task or flow without executing it.
+
+        Shows task/flow signature, documentation, and for flows, the task dependency graph.
+
+        Examples:
+
+            ./app.py inspect my_task
+
+            ./app.py inspect my_flow
+
+            ./app.py inspect my_flow -p repo=main -p branch=dev
+        """
+        # Parse params into kwargs
+        kwargs: dict[str, Any] = {}
+        for p in param:
+            if "=" in p:
+                key, value = p.split("=", 1)
+                kwargs[key] = value
+            else:
+                console.print(f"[red]Invalid parameter format: {p}[/red]")
+                console.print("[dim]Use key=value format[/dim]")
+                return
+
+        # Try to find as a task first
+        from .task import get_task
+
+        task_info = get_task(target)
+        if task_info is not None:
+            _inspect_task(task_info)
+            return
+
+        # Try to find as a flow
+        from .flow import get_flow
+
+        flow_info = get_flow(target)
+        if flow_info is not None:
+            _inspect_flow(flow_info, kwargs)
+            return
+
+        # Not found
+        console.print(f"[red]Unknown task or flow: {target}[/red]")
+        console.print("\n[dim]Available tasks:[/dim]")
+        for t_info in registry.values():
+            console.print(f"  {t_info.name}")
+        console.print("\n[dim]Available flows:[/dim]")
+        for f_info in flow_registry.values():
+            console.print(f"  {f_info.name}")
+        console.print()
 
     # Run the CLI
     cli()
