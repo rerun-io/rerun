@@ -234,7 +234,9 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
                 video_descr.samples.num_elements(),
                 |mut row| {
                     let sample_idx = row.index() + video_descr.samples.min_index();
-                    let sample = &video_descr.samples[sample_idx];
+                    let Some(sample) = video_descr.samples[sample_idx].sample() else {
+                        return;
+                    };
                     let re_video::SampleMetadata {
                         is_sync,
                         frame_nr,
@@ -525,7 +527,10 @@ fn frame_info_ui(
                 .samples
                 .get(gop.sample_range.end.saturating_sub(1));
 
-            if let (Some(first_sample), Some(last_sample)) = (first_sample, last_sample) {
+            if let Some((first_sample, last_sample)) = first_sample
+                .and_then(|s| s.sample())
+                .zip(last_sample.and_then(|s| s.sample()))
+            {
                 ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(
                     format!("{} - {}", re_format::format_int(first_sample.decode_timestamp.0), re_format::format_int(last_sample.decode_timestamp.0))
                 ))

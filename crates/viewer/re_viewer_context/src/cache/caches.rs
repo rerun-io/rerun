@@ -6,6 +6,8 @@ use re_chunk_store::ChunkStoreEvent;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 
+use crate::ViewerContext;
+
 /// Does memoization of different objects for the immediate mode UI.
 pub struct Caches {
     caches: Mutex<HashMap<TypeId, Box<dyn Cache>>>,
@@ -129,6 +131,14 @@ pub trait Cache: std::any::Any + Send + Sync {
     /// Since caches are created per store, each cache consistently receives events only for the same store.
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], entity_db: &EntityDb) {
         _ = events;
+        _ = entity_db;
+    }
+
+    /// React to recieving an rrd manifest, if needed.
+    ///
+    /// Useful for creating data that may be based on the information we get in the rrd manifest.
+    fn on_rrd_manifest(&mut self, ctx: &ViewerContext<'_>, entity_db: &EntityDb) {
+        _ = ctx;
         _ = entity_db;
     }
 
