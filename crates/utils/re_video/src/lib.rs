@@ -17,8 +17,8 @@ pub use decode::{
 };
 pub use demux::{
     ChromaSubsamplingModes, GopIndex, GroupOfPictures, SampleIndex, SampleMetadata,
-    SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
-    VideoLoadError,
+    SampleMetadataState, SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod,
+    VideoEncodingDetails, VideoLoadError,
 };
 pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
 // AnnexB conversions are useful for testing.
