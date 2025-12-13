@@ -20,6 +20,9 @@ dev = [
   # We can't include `rerun-sdk` in dev dependencies because the isolation of
   # uv build interacts poorly with maturin, causing spurious rebuilds.
   # Instead, `pixi run py-build` uses `maturin develop` to install into .venv.
+  # This fixup package installs a .pth file that allows `maturin develop` to work
+  # without needing the fix_rerun_pth.py post-processing script.
+  "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
   "maturin>=1.0.0",
   "ruff==0.12.10",
@@ -136,6 +139,7 @@ package = false
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
 rerun-notebook = { workspace = true }
+rerun-dev-fixup = { workspace = true }
 # Example packages
 air_traffic_data = { workspace = true }
 arkit_scenes = { workspace = true }
@@ -183,6 +187,7 @@ structure_from_motion = { workspace = true }
 [tool.uv.workspace]
 members = [
   "rerun_py",
+  "rerun_py/rerun_dev_fixup",
   "rerun_notebook",
   # Examples
   "examples/python/air_traffic_data",

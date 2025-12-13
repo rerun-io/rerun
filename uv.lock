@@ -45,6 +45,7 @@ members = [
     "openstreetmap-data",
     "plots",
     "raw-mesh",
+    "rerun-dev-fixup",
     "rerun-notebook",
     "rerun-sdk",
     "rerun-workspace",
@@ -4515,6 +4516,11 @@ wheels = [
 ]
 
 [[package]]
+name = "rerun-dev-fixup"
+version = "0.1.0"
+source = { editable = "rerun_py/rerun_dev_fixup" }
+
+[[package]]
 name = "rerun-notebook"
 version = "0.28.0a1+dev"
 source = { editable = "rerun_notebook" }
@@ -4631,6 +4637,7 @@ dev = [
     { name = "pygithub" },
     { name = "pytest" },
     { name = "requests" },
+    { name = "rerun-dev-fixup" },
     { name = "rich" },
     { name = "ruff" },
     { name = "semver" },
@@ -4731,6 +4738,7 @@ dev = [
     { name = "pygithub", specifier = ">=2.0" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "requests", specifier = ">=2.28" },
+    { name = "rerun-dev-fixup", editable = "rerun_py/rerun_dev_fixup" },
     { name = "rich", specifier = ">=13.0" },
     { name = "ruff", specifier = "==0.12.10" },
     { name = "semver", specifier = ">=3.0,<3.1" },
