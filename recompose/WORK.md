@@ -1,15 +1,14 @@
 # NOW
 
-Working on: **P05b_declarative_flows** - Declarative flow execution with `.flow()` API.
+Ready to start **P05c_flows_parallel** - Parallel execution of independent tasks.
 
-See: `proj/P05b_declarative_flows_IN_PROGRESS.md`
-
-Key insight: Separate direct execution from flow graph building:
-- `task(arg=val)` → executes immediately, returns `Result[T]`
-- `task.flow(arg=val)` → builds graph, returns `TaskNode[T]`
+Key insight from P05b: We now have `FlowPlan.get_parallelizable_groups()` which identifies tasks
+that can run in parallel. The next step is to implement actual parallel execution using asyncio.
 
 # COMPLETED
 
+- **P05b_declarative_flows** - Declarative flow execution with `.flow()` API. Tasks build a graph
+  before execution. Includes `flow.plan()` for dry-run inspection. See `proj/P05b_declarative_flows_DONE.md`
 - **P05a_flows** - Sequential flows with `@flow` decorator. Tasks tracked, results passed. See `proj/P05a_flows_DONE.md`
 - **P04_member_tasks** - Class-based tasks via `@taskclass`. CLI exposes as `classname.methodname`. See `proj/P04_member_tasks_DONE.md`
 - **P03_subprocess** - Subprocess helpers: `recompose.run()`, `RunResult`, streaming/capture modes. See `proj/P03_subprocess_DONE.md`

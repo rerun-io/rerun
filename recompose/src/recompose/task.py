@@ -77,10 +77,22 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     - Gets automatic context management
     - Has exceptions caught and converted to Err results
     - Can still be called as a normal Python function
+    - Has a .flow() method for declarative flow building
 
     For methods (functions with 'self' as first parameter):
     - The method is marked but NOT registered immediately
     - Use @taskclass on the class to complete registration
+
+    Usage:
+        @task
+        def compile(*, source: Path) -> Result[Path]:
+            ...
+
+        # Direct execution:
+        result = compile(source=Path("src/"))  # Returns Result[Path]
+
+        # Inside a declarative flow:
+        node = compile.flow(source=Path("src/"))  # Returns TaskNode[Path]
     """
     # Check if this looks like a method
     if _is_method_signature(fn):
@@ -142,6 +154,41 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
 
     # Attach task info to wrapper for introspection
     wrapper._task_info = info  # type: ignore[attr-defined]
+
+    # Add .flow() method for declarative flow building
+    def flow_variant(**kwargs: Any) -> Any:
+        """
+        Create a TaskNode for this task (for use in declarative flows).
+
+        This method can only be called inside a @flow-decorated function.
+        It returns a TaskNode that represents a deferred execution of this task.
+
+        Args:
+            **kwargs: The arguments to pass to the task when executed.
+                      May include TaskNode values from other .flow() calls.
+
+        Returns:
+            TaskNode[T] representing this task in the flow graph.
+
+        Raises:
+            RuntimeError: If called outside a @flow context.
+        """
+        from .flow import get_current_plan
+        from .flowgraph import TaskNode
+
+        plan = get_current_plan()
+        if plan is None:
+            raise RuntimeError(
+                f"{info.name}.flow() can only be called inside a @flow-decorated function. "
+                f"Use {info.name}() for direct execution."
+            )
+
+        # Create the TaskNode
+        node: TaskNode[T] = TaskNode(task_info=info, kwargs=kwargs)
+        plan.add_node(node)
+        return node
+
+    wrapper.flow = flow_variant  # type: ignore[attr-defined]
 
     return wrapper
 

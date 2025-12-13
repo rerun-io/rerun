@@ -21,7 +21,8 @@ Basic usage:
 
 from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
-from .flow import FlowContext, FlowInfo, TaskFailed, flow, get_flow, get_flow_context, get_flow_registry
+from .flow import FlowContext, FlowInfo, TaskFailed, flow, get_current_plan, get_flow, get_flow_context, get_flow_registry
+from .flowgraph import FlowPlan, TaskNode
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, get_registry, get_task, task, taskclass
@@ -51,10 +52,13 @@ __all__ = [
     "flow",
     "FlowInfo",
     "FlowContext",
+    "FlowPlan",
+    "TaskNode",
     "TaskFailed",
     "get_flow",
     "get_flow_registry",
     "get_flow_context",
+    "get_current_plan",
     # CLI
     "main",
 ]
