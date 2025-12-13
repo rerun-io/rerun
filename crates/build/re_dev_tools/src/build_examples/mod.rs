@@ -22,6 +22,7 @@ mod wait_for_output;
 use argh::FromArgs;
 use example::Channel;
 pub use example::{Example, ExamplesManifest, Language};
+use install::Install;
 use wait_for_output::wait_for_output;
 
 /// Build examples and their manifest.

@@ -181,8 +181,8 @@ python -m ocr --help
 
 Depending on your system, pip may grab suboptimal packages, causing slow runtimes.
 Installing with [Pixi](https://pixi.sh/) has been observed to run significantly faster in this case and it will automatically install `poppler` which is required to run the example on PDF files.
-To do so, simply run this command after checking out the repository and installing Pixi:
+To do so, simply run these commands after checking out the repository and installing Pixi:
 
 ```bash
-pixi run -e examples-ocr ocr
+pixi run py-build && pixi run uv run examples/python/ocr/ocr.py
 ```
