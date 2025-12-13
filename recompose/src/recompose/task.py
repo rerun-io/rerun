@@ -121,6 +121,12 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
             duration = time.perf_counter() - start_time
             flow_ctx.record_task(info.name, result, duration)
 
+            # If task failed inside a flow, raise to short-circuit
+            if result.failed:
+                from .flow import TaskFailed
+
+                raise TaskFailed(result)
+
         return result
 
     # Create task info with the wrapper
@@ -240,6 +246,12 @@ def taskclass(cls: type[T]) -> type[T]:
                 if flow_ctx is not None:
                     duration = time.perf_counter() - start_time
                     flow_ctx.record_task(full_task_name, result, duration)
+
+                    # If task failed inside a flow, raise to short-circuit
+                    if result.failed:
+                        from .flow import TaskFailed
+
+                        raise TaskFailed(result)
 
                 return result
 

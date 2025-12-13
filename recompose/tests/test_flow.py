@@ -188,3 +188,74 @@ def test_flow_timing():
     assert len(flow_ctx_captured.executions) == 1
     assert flow_ctx_captured.executions[0].duration >= 0.01
     assert flow_ctx_captured.total_duration >= 0.01
+
+
+def test_flow_auto_fails_on_task_failure():
+    """Test that flows automatically stop when a task fails."""
+    executed_tasks = []
+
+    @task
+    def task_a() -> Result[str]:
+        executed_tasks.append("a")
+        return Ok("a done")
+
+    @task
+    def task_b_fails() -> Result[str]:
+        executed_tasks.append("b")
+        return Err("B failed!")
+
+    @task
+    def task_c() -> Result[str]:
+        executed_tasks.append("c")
+        return Ok("c done")
+
+    @flow
+    def auto_fail_flow() -> Result[str]:
+        task_a()
+        task_b_fails()  # This fails - should stop here
+        task_c()  # This should NOT run
+        return Ok("completed")
+
+    executed_tasks.clear()
+    result = auto_fail_flow()
+
+    # Flow should have failed
+    assert result.failed
+    assert result.error == "B failed!"
+
+    # Only tasks a and b should have run
+    assert executed_tasks == ["a", "b"]
+
+    # FlowContext should show the executions
+    flow_ctx = getattr(result, "_flow_context", None)
+    assert flow_ctx is not None
+    assert len(flow_ctx.executions) == 2
+    assert flow_ctx.executions[0].task_name == "task_a"
+    assert flow_ctx.executions[0].result.ok
+    assert flow_ctx.executions[1].task_name == "task_b_fails"
+    assert flow_ctx.executions[1].result.failed
+
+
+def test_flow_can_still_check_results_explicitly():
+    """Test that flows can catch TaskFailed when explicit handling is needed."""
+    from recompose import TaskFailed
+
+    @task
+    def maybe_fails(*, should_fail: bool) -> Result[str]:
+        if should_fail:
+            return Err("Failed as requested")
+        return Ok("success")
+
+    @flow
+    def explicit_check_flow() -> Result[str]:
+        # Can catch TaskFailed for explicit error handling
+        try:
+            maybe_fails(should_fail=True)
+            return Ok("task succeeded")
+        except TaskFailed as e:
+            # Handle the failure explicitly
+            return Ok(f"handled: {e.result.error}")
+
+    result = explicit_check_flow()
+    assert result.ok
+    assert result.value == "handled: Failed as requested"
