@@ -17,7 +17,6 @@ import time
 
 import recompose
 
-
 # ============================================================================
 # TASKS
 # ============================================================================
@@ -132,9 +131,12 @@ def run_integration_tests(*, binary: str) -> recompose.Result[int]:
 
 
 @recompose.task
-def package_artifact(*, binary: str, test_count: int) -> recompose.Result[str]:
+def package_artifact(
+    *, binary: str, unit_tests: int, integration_tests: int
+) -> recompose.Result[str]:
     """Package the binary into a distributable artifact."""
-    recompose.out(f"Packaging {binary} (verified with {test_count} tests)...")
+    total_tests = unit_tests + integration_tests
+    recompose.out(f"Packaging {binary} (verified with {total_tests} tests)...")
     time.sleep(0.05)
     return recompose.Ok("/tmp/dist/app.tar.gz")
 
@@ -150,6 +152,13 @@ def package_artifact(*, binary: str, test_count: int) -> recompose.Result[str]:
 # - Future: parallel execution, subprocess isolation, GHA generation
 
 
+@recompose.task
+def quality_gate(*, lint_ok: None, types_ok: None) -> recompose.Result[None]:
+    """Gate that waits for lint and type check to complete."""
+    recompose.out("Quality checks passed!")
+    return recompose.Ok(None)
+
+
 @recompose.flow
 def quality_check():
     """
@@ -160,7 +169,8 @@ def quality_check():
     prereq = check_prerequisites.flow()
     lint = run_linter.flow(prereq=prereq)
     types = run_type_checker.flow(prereq=prereq)
-    return types  # Both lint and types will run
+    # Both lint and types must complete before quality_gate
+    return quality_gate.flow(lint_ok=lint, types_ok=types)
 
 
 @recompose.flow
@@ -208,7 +218,7 @@ def build_pipeline(*, repo: str = "main"):
     2. compile_source (depends on fetch_source)
     3. run_unit_tests (depends on compile)
     4. run_integration_tests (depends on compile, can run parallel to unit tests)
-    5. package_artifact (depends on compile and unit_tests)
+    5. package_artifact (depends on all tests passing)
 
     Try: uv run python examples/flow_demo.py build_pipeline
          uv run python examples/flow_demo.py build_pipeline --repo=feature-branch
@@ -216,12 +226,14 @@ def build_pipeline(*, repo: str = "main"):
     source = fetch_source.flow(repo=repo)
     binary = compile_source.flow(source_dir=source)
 
-    # These could run in parallel (both depend only on binary)
+    # These run in parallel (both depend only on binary)
     unit_tests = run_unit_tests.flow(binary=binary)
     integration_tests = run_integration_tests.flow(binary=binary)
 
-    # Package depends on binary and unit test count
-    package = package_artifact.flow(binary=binary, test_count=unit_tests)
+    # Package depends on all tests completing
+    package = package_artifact.flow(
+        binary=binary, unit_tests=unit_tests, integration_tests=integration_tests
+    )
 
     return package
 
