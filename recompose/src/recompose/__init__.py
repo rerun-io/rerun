@@ -22,6 +22,7 @@ Basic usage:
 from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
 from .result import Err, Ok, Result
+from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, get_registry, get_task, task
 
 __all__ = [
@@ -40,6 +41,10 @@ __all__ = [
     "get_context",
     "set_debug",
     "is_debug",
+    # Subprocess helpers
+    "run",
+    "RunResult",
+    "SubprocessError",
     # CLI
     "main",
 ]

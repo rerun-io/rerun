@@ -1,19 +1,19 @@
 # NOW
 
-Working on: **P03_subprocess** - Subprocess helpers for running external commands.
+Working on: **P04_member_tasks** - Class-based tasks with member methods.
 
-See: `proj/P03_subprocess_TODO.md` (to be created)
+See: `proj/P04_member_tasks_TODO.md` (to be created)
 
 # COMPLETED
 
+- **P03_subprocess** - Subprocess helpers: `recompose.run()`, `RunResult`, streaming/capture modes. See `proj/P03_subprocess_DONE.md`
 - **P02_cli** - CLI generation with Click. `recompose.main()` exposes tasks as subcommands. See `proj/P02_cli_DONE.md`
 - **P01_foundation** - Core package with `@task`, `Result`, `Ok`/`Err`, `out`/`dbg`. See `proj/P01_foundation_DONE.md`
 
 # UPCOMING
 
-1. **P04_member_tasks** - Class-based tasks with member methods
-2. **P05_flows** - Task composition and dependency graphs
-3. **P06_gha_generation** - GitHub Actions workflow generation from flows
+1. **P05_flows** - Task composition and dependency graphs
+2. **P06_gha_generation** - GitHub Actions workflow generation from flows
 
 # ARCHITECTURE DECISIONS
 
