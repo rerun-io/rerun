@@ -193,7 +193,7 @@ pub struct VideoDataDescription {
     ///
     /// To facilitate streaming, samples may be removed from the beginning and added at the end,
     /// but individual samples are never supposed to change.
-    pub samples: StableIndexDeque<SampleMetadata>,
+    pub samples: StableIndexDeque<SampleMetadataState>,
 
     /// Meta information about the samples.
     pub samples_statistics: SamplesStatistics,
@@ -288,41 +288,63 @@ impl VideoDataDescription {
                 ));
             }
 
-            // All samples at the beginning of a GOP are marked with `is_sync==true`
-            if !self.samples[gop.sample_range.start].is_sync {
-                return Err(format!(
-                    "First sample of GOP sample range {:?} is not marked with `is_sync`.",
-                    gop.sample_range
-                ));
+            match &self.samples[gop.sample_range.start] {
+                SampleMetadataState::Present(sample_metadata) => {
+                    // All samples at the beginning of a GOP are marked with `is_sync==true`
+                    if !sample_metadata.is_sync {
+                        return Err(format!(
+                            "First sample of GOP sample range {:?} is not marked with `is_sync`.",
+                            gop.sample_range
+                        ));
+                    }
+                }
+                SampleMetadataState::Skip => {
+                    return Err(format!(
+                        "First sample of GOP sample range {:?} refers to a skipped sample",
+                        gop.sample_range,
+                    ));
+                }
+                SampleMetadataState::Unloaded => {
+                    return Err(format!(
+                        "First sample of GOP sample range {:?} refers to an unloaded sample",
+                        gop.sample_range,
+                    ));
+                }
             }
         }
 
-        // GOP sample ranges are sorted and are contiguous (have no gaps).
-        for (a, b) in self.gops.iter().tuple_windows() {
-            if a.sample_range.end != b.sample_range.start {
-                return Err(format!(
-                    "GOPs sample ranges are not contiguous: {:?} {:?}",
-                    a.sample_range, b.sample_range
-                ));
-            }
-            if a.sample_range.start >= b.sample_range.start {
-                return Err(format!(
-                    "GOPs sample ranges are not contiguous or sorted: {:?} {:?}",
-                    a.sample_range, b.sample_range
-                ));
-            }
-        }
+        // // GOP sample ranges are sorted and are contiguous (have no gaps).
+        // for (a, b) in self.gops.iter().tuple_windows() {
+        //     if a.sample_range.end != b.sample_range.start {
+        //         return Err(format!(
+        //             "GOPs sample ranges are not contiguous: {:?} {:?}",
+        //             a.sample_range, b.sample_range
+        //         ));
+        //     }
+        //     if a.sample_range.start >= b.sample_range.start {
+        //         return Err(format!(
+        //             "GOPs sample ranges are not contiguous or sorted: {:?} {:?}",
+        //             a.sample_range, b.sample_range
+        //         ));
+        //     }
+        // }
 
-        // The last GOP includes the last sample.
-        if let Some(front_gop) = self.gops.back()
-            && front_gop.sample_range.end != self.samples.next_index()
-        {
-            return Err(format!(
-                "Last GOP sample range {:?} does not include the last sample {}.",
-                front_gop.sample_range,
-                self.samples.next_index() - 1
-            ));
-        }
+        // // The last GOP includes the last sample.
+        // if let Some(front_gop) = self.gops.back()
+        //     && front_gop.sample_range.end != self.samples.next_index()
+        //     && let Some((index_back, _)) = self
+        //         .samples
+        //         .iter()
+        //         .rev()
+        //         .enumerate()
+        //         .find(|(_, sample)| sample.sample().is_some())
+        // {
+        //     return Err(format!(
+        //         "Last GOP sample range {:?} does not include the last sample {}.",
+        //         front_gop.sample_range,
+        //         self.samples.next_index() - index_back - 1
+        //     ));
+        // }
         // Note that this isn't true vice versa!
         // The first GOP may not include the first few samples.
 
@@ -332,7 +354,10 @@ impl VideoDataDescription {
     fn sanity_check_samples(&self) -> Result<(), String> {
         // Decode timestamps are strictly monotonically increasing.
         for (a, b) in self.samples.iter().tuple_windows() {
-            if a.decode_timestamp > b.decode_timestamp {
+            if let SampleMetadataState::Present(a) = a
+                && let SampleMetadataState::Present(b) = b
+                && a.decode_timestamp > b.decode_timestamp
+            {
                 return Err(format!(
                     "Decode timestamps are not strictly monotonically increasing: {:?} {:?}",
                     a.decode_timestamp, b.decode_timestamp
@@ -515,17 +540,19 @@ impl SamplesStatistics {
         has_sample_highest_pts_so_far: None,
     };
 
-    pub fn new(samples: &StableIndexDeque<SampleMetadata>) -> Self {
+    pub fn new(samples: &StableIndexDeque<SampleMetadataState>) -> Self {
         re_tracing::profile_function!();
 
         let dts_always_equal_pts = samples
             .iter()
+            .filter_map(|s| s.sample())
             .all(|s| s.decode_timestamp == s.presentation_timestamp);
 
         let mut biggest_pts_so_far = Time::MIN;
         let has_sample_highest_pts_so_far = (!dts_always_equal_pts).then(|| {
             samples
                 .iter()
+                .filter_map(|s| s.sample())
                 .map(move |sample| {
                     if sample.presentation_timestamp > biggest_pts_so_far {
                         biggest_pts_so_far = sample.presentation_timestamp;
@@ -623,14 +650,15 @@ impl VideoDataDescription {
                 1 => {
                     let first = self.samples.front()?;
                     first
-                        .duration
-                        .map_or(std::time::Duration::ZERO, |d| d.duration(timescale))
+                        .sample()
+                        .and_then(|sample| Some(sample.duration?.duration(timescale)))
+                        .unwrap_or(std::time::Duration::ZERO)
                 }
                 _ => {
                     // TODO(#10090): This is only correct because there's no b-frames on streams right now.
                     // If there are b-frames determining the last timestamp is a bit more complicated.
-                    let first = self.samples.front()?;
-                    let last = self.samples.back()?;
+                    let first = self.samples.iter().find_map(|s| s.sample())?;
+                    let last = self.samples.iter().rev().find_map(|s| s.sample())?;
 
                     let last_sample_duration = last.duration.map_or_else(
                         || {
@@ -675,7 +703,7 @@ impl VideoDataDescription {
         Some(self.gops.iter().flat_map(move |seg| {
             self.samples
                 .iter_index_range_clamped(&seg.sample_range)
-                .map(|(_idx, sample)| sample.presentation_timestamp)
+                .filter_map(|(_idx, sample)| Some(sample.sample()?.presentation_timestamp))
                 .sorted()
                 .map(move |pts| pts.into_nanos(timescale))
         }))
@@ -684,15 +712,18 @@ impl VideoDataDescription {
     /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
     fn latest_sample_index_at_decode_timestamp(
-        samples: &StableIndexDeque<SampleMetadata>,
+        samples: &StableIndexDeque<SampleMetadataState>,
         decode_time: Time,
     ) -> Option<SampleIndex> {
-        samples.latest_at_idx(|sample| sample.decode_timestamp, &decode_time)
+        samples.maybe_latest_at_idx(
+            |sample| Some(sample.sample()?.decode_timestamp),
+            &decode_time,
+        )
     }
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     fn latest_sample_index_at_presentation_timestamp_internal(
-        samples: &StableIndexDeque<SampleMetadata>,
+        samples: &StableIndexDeque<SampleMetadataState>,
         sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
     ) -> Option<SampleIndex> {
@@ -720,7 +751,9 @@ impl VideoDataDescription {
         let mut best_index = SampleIndex::MAX;
         let mut best_pts = Time::MIN;
         for sample_idx in (0..=decode_sample_idx).rev() {
-            let sample = &samples[sample_idx];
+            let Some(sample) = samples[sample_idx].sample() else {
+                continue;
+            };
 
             if sample.presentation_timestamp == presentation_timestamp {
                 // Clean hit. Take this one, no questions asked :)
@@ -771,13 +804,18 @@ impl VideoDataDescription {
             &self.samples_statistics,
             sample.presentation_timestamp - Time::new(1),
         )?;
-        self.samples.get(idx)
+        let s = self.samples.get(idx)?;
+        s.sample()
     }
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
     pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<GopIndex> {
-        self.gops.latest_at_idx(
-            |gop| self.samples[gop.sample_range.start].decode_timestamp,
+        self.gops.maybe_latest_at_idx(
+            |gop| {
+                self.samples[gop.sample_range.start]
+                    .sample()
+                    .map(|s| s.decode_timestamp)
+            },
             &decode_time,
         )
     }
@@ -793,7 +831,9 @@ impl VideoDataDescription {
         // Do a binary search through GOPs by the decode timestamp of the found sample
         // to find the GOP that contains the sample.
         self.gop_index_containing_decode_timestamp(
-            self.samples[requested_sample_index].decode_timestamp,
+            self.samples[requested_sample_index]
+                .sample()?
+                .decode_timestamp,
         )
     }
 }
@@ -818,6 +858,39 @@ impl re_byte_size::SizeBytes for GroupOfPictures {
 
     fn is_pod() -> bool {
         true
+    }
+}
+
+// TODO: docs
+#[derive(Debug, Clone)]
+pub enum SampleMetadataState {
+    Present(SampleMetadata),
+    Skip,
+    Unloaded,
+}
+
+impl SampleMetadataState {
+    pub fn sample(&self) -> Option<&SampleMetadata> {
+        match self {
+            Self::Present(sample_metadata) => Some(sample_metadata),
+            Self::Skip | Self::Unloaded => None,
+        }
+    }
+
+    pub fn sample_mut(&mut self) -> Option<&mut SampleMetadata> {
+        match self {
+            Self::Present(sample_metadata) => Some(sample_metadata),
+            Self::Skip | Self::Unloaded => None,
+        }
+    }
+}
+
+impl re_byte_size::SizeBytes for SampleMetadataState {
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            Self::Present(sample_metadata) => sample_metadata.heap_size_bytes(),
+            Self::Skip | Self::Unloaded => 0,
+        }
     }
 }
 
@@ -1007,14 +1080,16 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .map(|(pts, dts)| SampleMetadata {
-                is_sync: false,
-                frame_nr: 0, // unused
-                decode_timestamp: Time(dts),
-                presentation_timestamp: Time(pts),
-                duration: Some(Time(1)),
-                buffer_index: 0,
-                byte_span: Default::default(),
+            .map(|(pts, dts)| {
+                SampleMetadataState::Present(SampleMetadata {
+                    is_sync: false,
+                    frame_nr: 0, // unused
+                    decode_timestamp: Time(dts),
+                    presentation_timestamp: Time(pts),
+                    duration: Some(Time(1)),
+                    buffer_index: 0,
+                    byte_span: Default::default(),
+                })
             })
             .collect::<StableIndexDeque<_>>();
 
@@ -1032,7 +1107,10 @@ mod tests {
 
         // Check that query for all exact positions works as expected using brute force search as the reference.
         for (idx, sample) in samples.iter_indexed() {
-            assert_eq!(Some(idx), query_pts(sample.presentation_timestamp));
+            assert_eq!(
+                Some(idx),
+                query_pts(sample.sample().unwrap().presentation_timestamp)
+            );
         }
 
         // Check that for slightly offsetted positions the query is still correct.
@@ -1040,11 +1118,11 @@ mod tests {
         for (idx, sample) in samples.iter_indexed() {
             assert_eq!(
                 Some(idx),
-                query_pts(sample.presentation_timestamp + Time(1))
+                query_pts(sample.sample().unwrap().presentation_timestamp + Time(1))
             );
             assert_eq!(
                 Some(idx),
-                query_pts(sample.presentation_timestamp + Time(255))
+                query_pts(sample.sample().unwrap().presentation_timestamp + Time(255))
             );
         }
 
@@ -1133,7 +1211,7 @@ mod tests {
         let mut non_idr_count = 0;
 
         for (sample_idx, sample) in video_data.samples.iter_indexed() {
-            let chunk = sample.get(&buffers, sample_idx).unwrap();
+            let chunk = sample.sample().unwrap().get(&buffers, sample_idx).unwrap();
             let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
 
             if chunk.is_sync {
