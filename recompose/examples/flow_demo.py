@@ -14,12 +14,8 @@ Run with:
 """
 
 import time
-from typing import TYPE_CHECKING
 
 import recompose
-
-if TYPE_CHECKING:
-    from recompose import TaskNode
 
 # ============================================================================
 # TASKS
@@ -164,7 +160,7 @@ def quality_gate(*, lint_ok: None, types_ok: None) -> recompose.Result[None]:
 
 
 @recompose.flow
-def quality_check() -> "TaskNode[None]":
+def quality_check() -> None:
     """
     Quick quality check - lint and type check in parallel.
 
@@ -174,11 +170,11 @@ def quality_check() -> "TaskNode[None]":
     lint = run_linter.flow(prereq=prereq)
     types = run_type_checker.flow(prereq=prereq)
     # Both lint and types must complete before quality_gate
-    return quality_gate.flow(lint_ok=lint, types_ok=types)
+    quality_gate.flow(lint_ok=lint, types_ok=types)
 
 
 @recompose.flow
-def build_and_test() -> "TaskNode[str]":
+def build_and_test() -> None:
     """
     Full build and test pipeline.
 
@@ -194,12 +190,11 @@ def build_and_test() -> "TaskNode[str]":
     lint = run_linter.flow(prereq=prereq)
     types = run_type_checker.flow(prereq=prereq)
     tests = run_tests.flow(lint_ok=lint, types_ok=types)
-    artifact = build_artifact.flow(test_count=tests)
-    return artifact
+    build_artifact.flow(test_count=tests)
 
 
 @recompose.flow
-def strict_check() -> "TaskNode[None]":
+def strict_check() -> None:
     """
     Strict check that will fail.
 
@@ -208,12 +203,11 @@ def strict_check() -> "TaskNode[None]":
     Try: uv run python examples/flow_demo.py strict_check
     """
     lint = failing_lint.flow()  # This will fail
-    types = run_type_checker.flow(prereq=lint)  # Won't run
-    return types
+    run_type_checker.flow(prereq=lint)  # Won't run
 
 
 @recompose.flow
-def build_pipeline(*, repo: str = "main") -> "TaskNode[str]":
+def build_pipeline(*, repo: str = "main") -> None:
     """
     Full build pipeline with explicit dependencies.
 
@@ -235,11 +229,9 @@ def build_pipeline(*, repo: str = "main") -> "TaskNode[str]":
     integration_tests = run_integration_tests.flow(binary=binary)
 
     # Package depends on all tests completing
-    package = package_artifact.flow(
+    package_artifact.flow(
         binary=binary, unit_tests=unit_tests, integration_tests=integration_tests
     )
-
-    return package
 
 
 # ============================================================================

@@ -3,7 +3,7 @@
 import pytest
 
 import recompose
-from recompose import Err, FlowPlan, Ok, Result, TaskNode, flow, task
+from recompose import Err, FlowPlan, Ok, Result, flow, task
 
 
 def test_task_has_flow_method():
@@ -40,14 +40,13 @@ def test_declarative_flow_basic():
         return Ok("b_result")
 
     @flow
-    def simple_declarative():
-        a = step_a.flow()
-        b = step_b.flow()
-        return b  # Return terminal node
+    def simple_declarative() -> None:
+        step_a.flow()
+        step_b.flow()
 
     result = simple_declarative()
     assert result.ok
-    assert result.value == "b_result"
+    assert result.value is None  # Flows return None
 
 
 def test_declarative_flow_with_dependencies():
@@ -62,14 +61,12 @@ def test_declarative_flow_with_dependencies():
         return Ok(f"got {input_val}")
 
     @flow
-    def dependent_flow():
+    def dependent_flow() -> None:
         produced = produce.flow(value=5)
-        consumed = consume.flow(input_val=produced)  # Depends on produced
-        return consumed
+        consume.flow(input_val=produced)  # Depends on produced
 
     result = dependent_flow()
     assert result.ok
-    assert result.value == "got 10"
 
 
 def test_declarative_flow_execution_order():
@@ -92,17 +89,15 @@ def test_declarative_flow_execution_order():
         return Ok(from_second + 1)
 
     @flow
-    def ordered_flow():
+    def ordered_flow() -> None:
         first = task_first.flow()
         second = task_second.flow(from_first=first)
-        third = task_third.flow(from_second=second)
-        return third
+        task_third.flow(from_second=second)
 
     execution_order.clear()
     result = ordered_flow()
 
     assert result.ok
-    assert result.value == 3
     assert execution_order == ["first", "second", "third"]
 
 
@@ -131,18 +126,16 @@ def test_declarative_flow_parallel_structure():
         return Ok(a + b)
 
     @flow
-    def diamond_flow():
+    def diamond_flow() -> None:
         src = source_task.flow()
         a = branch_a.flow(val=src)
         b = branch_b.flow(val=src)
-        merged = merge_task.flow(a=a, b=b)
-        return merged
+        merge_task.flow(a=a, b=b)
 
     execution_order.clear()
     result = diamond_flow()
 
     assert result.ok
-    assert result.value == 23  # (10+1) + (10+2) = 23
     assert execution_order[0] == "source"
     assert "merge" in execution_order[-1]
 
@@ -167,11 +160,10 @@ def test_declarative_flow_fail_fast():
         return Ok("should not see this")
 
     @flow
-    def fail_fast_flow():
-        ok = ok_task.flow()
-        bad = failing_task.flow()
-        after = never_run.flow()
-        return after
+    def fail_fast_flow() -> None:
+        ok_task.flow()
+        failing_task.flow()
+        never_run.flow()
 
     execution_order.clear()
     result = fail_fast_flow()
@@ -193,10 +185,9 @@ def test_flow_plan_method():
         return Ok(f"b from {from_a}")
 
     @flow
-    def plannable_flow():
+    def plannable_flow() -> None:
         a = plan_task_a.flow()
-        b = plan_task_b.flow(from_a=a)
-        return b
+        plan_task_b.flow(from_a=a)
 
     # Get the plan without executing
     plan = plannable_flow.plan()
@@ -219,10 +210,9 @@ def test_flow_plan_shows_dependencies():
         return Ok(val + 1)
 
     @flow
-    def dep_flow():
+    def dep_flow() -> None:
         root = dep_root.flow()
-        child = dep_child.flow(val=root)
-        return child
+        dep_child.flow(val=root)
 
     plan = dep_flow.plan()
 
@@ -248,11 +238,10 @@ def test_flow_plan_execution_order():
         return Ok(b + 1)
 
     @flow
-    def ordered_plan_flow():
+    def ordered_plan_flow() -> None:
         a = order_a.flow()
         b = order_b.flow(a=a)
-        c = order_c.flow(b=b)
-        return c
+        order_c.flow(b=b)
 
     plan = ordered_plan_flow.plan()
     order = plan.get_execution_order()
@@ -279,11 +268,10 @@ def test_flow_plan_parallelizable_groups():
         return Ok(val + 2)
 
     @flow
-    def parallel_flow():
+    def parallel_flow() -> None:
         root = parallel_root.flow()
-        a = parallel_a.flow(val=root)
-        b = parallel_b.flow(val=root)
-        return a  # Doesn't matter which we return
+        parallel_a.flow(val=root)
+        parallel_b.flow(val=root)
 
     plan = parallel_flow.plan()
     groups = plan.get_parallelizable_groups()
@@ -303,8 +291,8 @@ def test_flow_plan_visualize():
         return Ok("done")
 
     @flow
-    def viz_flow():
-        return viz_task.flow()
+    def viz_flow() -> None:
+        viz_task.flow()
 
     plan = viz_flow.plan()
     viz = plan.visualize()
@@ -321,13 +309,11 @@ def test_declarative_flow_with_arguments():
         return Ok(value * 2)
 
     @flow
-    def arg_flow(*, initial: int):
-        doubled = double.flow(value=initial)
-        return doubled
+    def arg_flow(*, initial: int) -> None:
+        double.flow(value=initial)
 
     result = arg_flow(initial=21)
     assert result.ok
-    assert result.value == 42
 
 
 def test_declarative_flow_tracks_executions():
@@ -342,10 +328,9 @@ def test_declarative_flow_tracks_executions():
         return Ok("b")
 
     @flow
-    def tracking_flow():
-        a = tracked_a.flow()
-        b = tracked_b.flow()
-        return b
+    def tracking_flow() -> None:
+        tracked_a.flow()
+        tracked_b.flow()
 
     result = tracking_flow()
     assert result.ok
@@ -364,8 +349,8 @@ def test_declarative_flow_attaches_plan():
         return Ok("done")
 
     @flow
-    def attached_flow():
-        return attached_task.flow()
+    def attached_flow() -> None:
+        attached_task.flow()
 
     result = attached_flow()
     assert result.ok
@@ -384,9 +369,9 @@ def test_direct_task_call_in_flow_raises():
         return Ok("done")
 
     @flow
-    def bad_flow():
+    def bad_flow() -> None:
         direct_call_task()  # Direct call, should raise
-        return direct_call_task.flow()
+        direct_call_task.flow()
 
     with pytest.raises(recompose.DirectTaskCallInFlowError):
         bad_flow()
@@ -400,8 +385,8 @@ def test_task_node_repr():
         return Ok("done")
 
     @flow
-    def repr_flow():
-        return repr_task.flow()
+    def repr_flow() -> None:
+        repr_task.flow()
 
     plan = repr_flow.plan()
     node = plan.nodes[0]

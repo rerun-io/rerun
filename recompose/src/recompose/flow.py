@@ -19,17 +19,17 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-class FlowWrapper(Protocol[T]):
+class FlowWrapper(Protocol):
     """
     Protocol describing a flow-decorated function.
 
-    Flow wrappers are callable (returning Result[T]) and have a .plan() method
+    Flow wrappers are callable (returning Result[None]) and have a .plan() method
     for inspecting the task graph without execution.
     """
 
     _flow_info: FlowInfo
 
-    def __call__(self, **kwargs: Any) -> Result[T]: ...
+    def __call__(self, **kwargs: Any) -> Result[None]: ...
 
     def plan(self, **kwargs: Any) -> FlowPlan: ...
 
@@ -226,20 +226,19 @@ class DirectTaskCallInFlowError(Exception):
         )
 
 
-def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
+def flow(fn: Callable[..., None]) -> FlowWrapper:
     """
     Decorator to mark a function as a recompose flow.
 
     A flow composes tasks into a dependency graph using task.flow() calls.
-    The flow function must return a TaskNode (the terminal node of the graph).
+    The last task.flow() call becomes the terminal node of the graph.
 
     Example:
         @recompose.flow
-        def build_pipeline(*, repo: str):
+        def build_pipeline(*, repo: str) -> None:
             source = fetch_source.flow(repo=repo)
             binary = compile.flow(source=source)
-            tested = test.flow(binary=binary)
-            return tested  # Returns TaskNode - the terminal node
+            test.flow(binary=binary)  # Last call is the terminal
 
         # Execute the flow
         result = build_pipeline(repo="main")
@@ -253,7 +252,7 @@ def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
     """
 
     @functools.wraps(fn)
-    def wrapper(**kwargs: Any) -> Result[T]:
+    def wrapper(**kwargs: Any) -> Result[None]:
         # Create flow context for tracking executions
         flow_ctx = FlowContext(flow_name=fn.__name__)
         set_flow_context(flow_ctx)
@@ -271,30 +270,31 @@ def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
 
         try:
             # Run the flow function body to build the task graph
-            flow_return = fn(**kwargs)
+            fn(**kwargs)
 
-            # Flow must return a TaskNode
-            if not isinstance(flow_return, TaskNode):
-                raise TypeError(
-                    f"Flow '{fn.__name__}' must return a TaskNode, "
-                    f"got {type(flow_return).__name__}. "
-                    "Use task.flow() calls and return the terminal TaskNode."
-                )
-
-            # Set the terminal node and execute the plan
-            plan.terminal = flow_return
+            # Use the last added node as the terminal
+            if not plan.nodes:
+                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task.flow() calls to add tasks.")
+            plan.terminal = plan.nodes[-1]
             set_current_plan(None)  # Clear before execution
 
-            result = _execute_plan(plan, flow_ctx)
+            exec_result = _execute_plan(plan, flow_ctx)
+
+            # If a task failed, propagate that failure
+            if exec_result.failed:
+                result: Result[None] = Err(exec_result.error or "Task failed", traceback=exec_result.traceback)
+            else:
+                result = Ok(None)
+
             result._flow_context = flow_ctx  # type: ignore[attr-defined]
             result._flow_plan = plan  # type: ignore[attr-defined]
             return result
 
         except Exception as e:
-            if isinstance(e, (TypeError, DirectTaskCallInFlowError)):
+            if isinstance(e, (DirectTaskCallInFlowError, ValueError)):
                 raise  # Re-raise flow construction errors
             tb = traceback.format_exc()
-            err_result: Result[T] = cast(Result[T], Err(f"{type(e).__name__}: {e}", traceback=tb))
+            err_result: Result[None] = Err(f"{type(e).__name__}: {e}", traceback=tb)
             err_result._flow_context = flow_ctx  # type: ignore[attr-defined]
             return err_result
 
@@ -318,16 +318,11 @@ def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
         set_current_plan(plan)
 
         try:
-            flow_return = fn(**kwargs)
+            fn(**kwargs)
 
-            if not isinstance(flow_return, TaskNode):
-                raise TypeError(
-                    f"Flow '{fn.__name__}' must return a TaskNode, "
-                    f"got {type(flow_return).__name__}. "
-                    "Use task.flow() calls and return the terminal TaskNode."
-                )
-
-            plan.terminal = flow_return
+            if not plan.nodes:
+                raise ValueError(f"Flow '{fn.__name__}' has no tasks. Use task.flow() calls to add tasks.")
+            plan.terminal = plan.nodes[-1]
             return plan
         finally:
             set_current_plan(None)
@@ -348,4 +343,4 @@ def flow(fn: Callable[..., TaskNode[T]]) -> FlowWrapper[T]:
     wrapper.plan = plan_only  # type: ignore[attr-defined]
 
     # Cast to FlowWrapper to satisfy type checker
-    return cast(FlowWrapper[T], wrapper)
+    return cast(FlowWrapper, wrapper)

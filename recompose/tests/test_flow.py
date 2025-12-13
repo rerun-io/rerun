@@ -7,32 +7,32 @@ from recompose import Err, Ok, Result, flow, get_flow_registry, task
 def test_flow_registers():
     """Test that @flow registers the flow."""
 
-    @flow
-    def my_test_flow():
-        @task
-        def inner_task() -> Result[str]:
-            return Ok("done")
+    @task
+    def inner_task() -> Result[str]:
+        return Ok("done")
 
-        return inner_task.flow()
+    @flow
+    def my_test_flow() -> None:
+        inner_task.flow()
 
     registry = get_flow_registry()
     assert any("my_test_flow" in key for key in registry)
 
 
 def test_flow_returns_result():
-    """Test that flows return Result."""
+    """Test that flows return Result[None]."""
 
     @task
     def simple_task() -> Result[int]:
         return Ok(42)
 
     @flow
-    def simple_flow():
-        return simple_task.flow()
+    def simple_flow() -> None:
+        simple_task.flow()
 
     result = simple_flow()
     assert result.ok
-    assert result.value == 42
+    assert result.value is None  # Flows always return None
 
 
 def test_flow_can_call_tasks():
@@ -43,12 +43,11 @@ def test_flow_can_call_tasks():
         return Ok(x + 1)
 
     @flow
-    def incrementing_flow(*, start: int):
-        return add_one.flow(x=start)
+    def incrementing_flow(*, start: int) -> None:
+        add_one.flow(x=start)
 
     result = incrementing_flow(start=10)
     assert result.ok
-    assert result.value == 11
 
 
 def test_flow_tracks_task_executions():
@@ -63,10 +62,9 @@ def test_flow_tracks_task_executions():
         return Ok("b")
 
     @flow
-    def tracking_flow():
+    def tracking_flow() -> None:
         a = tracked_task_a.flow()
-        b = tracked_task_b.flow()
-        return b
+        tracked_task_b.flow()
 
     result = tracking_flow()
     assert result.ok
@@ -92,14 +90,12 @@ def test_flow_passes_results_between_tasks():
         return Ok(x + y)
 
     @flow
-    def math_flow(*, a: int, b: int):
+    def math_flow(*, a: int, b: int) -> None:
         mul_result = multiply.flow(x=a, y=b)
-        add_result = add.flow(x=mul_result, y=10)
-        return add_result
+        add.flow(x=mul_result, y=10)
 
     result = math_flow(a=3, b=4)
     assert result.ok
-    assert result.value == 22  # (3 * 4) + 10 = 22
 
 
 def test_flow_handles_task_failure():
@@ -114,10 +110,10 @@ def test_flow_handles_task_failure():
         return Ok("success")
 
     @flow
-    def flow_with_failure():
+    def flow_with_failure() -> None:
         r = failing_task.flow()
         # This won't run because failing_task fails
-        return succeeding_task.flow(dep=r)
+        succeeding_task.flow(dep=r)
 
     result = flow_with_failure()
     assert result.failed
@@ -132,8 +128,8 @@ def test_flow_catches_exceptions():
         raise ValueError("Task exception")
 
     @flow
-    def throwing_flow():
-        return throwing_task.flow()
+    def throwing_flow() -> None:
+        throwing_task.flow()
 
     result = throwing_flow()
     assert result.failed
@@ -149,16 +145,14 @@ def test_flow_with_arguments():
         return Ok(f"{name} x {count}")
 
     @flow
-    def parameterized_flow(*, name: str, count: int = 1):
-        return format_task.flow(name=name, count=count)
+    def parameterized_flow(*, name: str, count: int = 1) -> None:
+        format_task.flow(name=name, count=count)
 
     result = parameterized_flow(name="test")
     assert result.ok
-    assert result.value == "test x 1"
 
     result2 = parameterized_flow(name="hello", count=5)
     assert result2.ok
-    assert result2.value == "hello x 5"
 
 
 def test_flow_preserves_docstring():
@@ -169,9 +163,9 @@ def test_flow_preserves_docstring():
         return Ok(None)
 
     @flow
-    def documented_flow():
+    def documented_flow() -> None:
         """This is a documented flow."""
-        return doc_task.flow()
+        doc_task.flow()
 
     assert documented_flow.__doc__ == "This is a documented flow."
 
@@ -186,8 +180,8 @@ def test_flow_timing():
         return Ok(None)
 
     @flow
-    def timed_flow():
-        return slow_task.flow()
+    def timed_flow() -> None:
+        slow_task.flow()
 
     result = timed_flow()
     assert result.ok
@@ -219,11 +213,10 @@ def test_flow_auto_fails_on_task_failure():
         return Ok("c done")
 
     @flow
-    def auto_fail_flow():
+    def auto_fail_flow() -> None:
         a = task_a.flow()
         b = task_b_fails.flow(dep=a)  # This fails - should stop here
-        c = task_c.flow(dep=b)  # This won't run
-        return c
+        task_c.flow(dep=b)  # This won't run
 
     executed_tasks.clear()
     result = auto_fail_flow()
@@ -245,17 +238,17 @@ def test_flow_auto_fails_on_task_failure():
     assert flow_ctx.executions[1].result.failed
 
 
-def test_flow_must_return_task_node():
-    """Test that flows must return a TaskNode."""
+def test_flow_requires_tasks():
+    """Test that flows must have at least one task."""
 
     @flow
-    def bad_flow():
-        return Ok("not a TaskNode")
+    def empty_flow() -> None:
+        pass  # No tasks
 
     import pytest
 
-    with pytest.raises(TypeError, match="must return a TaskNode"):
-        bad_flow()
+    with pytest.raises(ValueError, match="has no tasks"):
+        empty_flow()
 
 
 def test_direct_task_call_in_flow_raises():
@@ -266,9 +259,9 @@ def test_direct_task_call_in_flow_raises():
         return Ok("done")
 
     @flow
-    def bad_direct_flow():
+    def bad_direct_flow() -> None:
         my_task()  # This should raise
-        return my_task.flow()
+        my_task.flow()
 
     import pytest
 
