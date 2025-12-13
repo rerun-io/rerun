@@ -112,7 +112,7 @@ impl<T> StableIndexDeque<T> {
     /// Beware of using `.iter().enumerate()` as it will not respect the index offset.
     /// Use [`Self::iter_indexed`] instead.
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &T> {
         self.vec.iter()
     }
 
@@ -314,6 +314,33 @@ impl<T> StableIndexDeque<T> {
         if idx == self.min_index() {
             // If idx is the smallest possible value, then all elements are greater than the needle
             if &key(&self[idx]) > needle {
+                return None;
+            }
+        }
+
+        Some(idx.saturating_sub(1))
+    }
+
+    /// Returns the index of the latest element in a deque that is less than or equal to the given sorted key.
+    ///
+    /// Returns the index of:
+    /// - The index of `needle` in `v`, if it exists
+    /// - The index of the first element in `v` that is lesser than `needle`, if it exists
+    /// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
+    pub fn maybe_latest_at_idx<K: Ord>(
+        &self,
+        key: impl Fn(&T) -> Option<K>,
+        needle: &K,
+    ) -> Option<usize> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let idx = self.partition_point(|x| key(x).is_some_and(|v| v <= *needle));
+
+        if idx == self.min_index() {
+            // If idx is the smallest possible value, then all elements are greater than the needle
+            if key(&self[idx]).is_some_and(|v| v > *needle) {
                 return None;
             }
         }

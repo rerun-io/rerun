@@ -213,7 +213,10 @@ impl VideoPlayer {
         let requested_sample_idx = video_description
             .latest_sample_index_at_presentation_timestamp(requested_pts)
             .ok_or(InsufficientSampleDataError::NoSamplesPriorToRequestedTimestamp)?;
-        let requested_sample = video_description.samples.get(requested_sample_idx); // This is only `None` if we no longer have the sample around.
+        let requested_sample = video_description
+            .samples
+            .get(requested_sample_idx)
+            .and_then(|s| s.sample()); // This is only `None` if we no longer have the sample around, or the sample hasn't loaded yet.
         let requested_sample_pts =
             requested_sample.map_or(requested_pts, |s| s.presentation_timestamp);
 
@@ -264,6 +267,7 @@ impl VideoPlayer {
                     last_decoded_pts,
                 )
             } else {
+                dbg!("first");
                 DecoderDelayState::Behind
             };
         }
@@ -330,11 +334,16 @@ impl VideoPlayer {
         // We must enqueue samples in decode order, but show them in composition order.
         // In the presence of b-frames this order may be different!
 
+        let Some(sample) = video_description.samples[requested_sample_idx].sample() else {
+            // TODO: Better error.
+            return Err(VideoPlayerError::InsufficientSampleData(
+                InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp,
+            ));
+        };
+
         // Find the GOP that contains the sample.
         let requested_gop_idx = video_description
-            .gop_index_containing_decode_timestamp(
-                video_description.samples[requested_sample_idx].decode_timestamp,
-            )
+            .gop_index_containing_decode_timestamp(sample.decode_timestamp)
             .ok_or(InsufficientSampleDataError::NoKeyFramesPriorToRequestedTimestamp)?;
 
         let requested = SampleAndGopIndex {
@@ -470,12 +479,18 @@ impl VideoPlayer {
         }
         // Backwards seeking within the current GOP
         else if requested.sample_idx != last_requested.sample_idx {
-            let requested_sample = video_description.samples.get(last_requested.sample_idx); // If it is not available, it got GC'ed by now.
+            let requested_sample = video_description
+                .samples
+                .get(last_requested.sample_idx)
+                .and_then(|s| s.sample()); // If it is not available, it got GC'ed by now. Or hasn't been loaded yet.
             let current_pts = requested_sample
                 .map(|s| s.presentation_timestamp)
                 .unwrap_or(Time::MIN);
 
-            let requested_sample = video_description.samples.get(requested.sample_idx);
+            let requested_sample = video_description
+                .samples
+                .get(requested.sample_idx)
+                .and_then(|s| s.sample());
             let requested_pts = requested_sample
                 .map(|s| s.presentation_timestamp)
                 .unwrap_or(Time::MIN);
@@ -538,6 +553,8 @@ impl VideoPlayer {
             .iter_index_range_clamped(sample_range)
         {
             let chunk = sample
+                .sample()
+                .ok_or(VideoPlayerError::BadData)?
                 .get(video_buffers, sample_idx)
                 .ok_or(VideoPlayerError::BadData)?;
             self.sample_decoder.decode(chunk)?;
@@ -576,6 +593,7 @@ impl VideoPlayer {
         let Some(requested_sample) = requested_sample else {
             // Desired sample doesn't exist. This should only happen if the video is being GC'ed from the back.
             // We're technically not catching up, but we may as well behave as if we are.
+            dbg!("second");
             return DecoderDelayState::Behind;
         };
 
@@ -597,6 +615,10 @@ impl VideoPlayer {
             for (_, sample) in video_description.samples.iter_index_range_clamped(
                 &(sample_idx_end.saturating_sub(allowed_delay + 1)..sample_idx_end),
             ) {
+                let Some(sample) = sample.sample() else {
+                    continue;
+                };
+
                 if sample.presentation_timestamp <= last_decoded_frame_pts {
                     return DecoderDelayState::UpToDateToleratedEdgeOfLiveStream;
                 }
@@ -613,6 +635,7 @@ impl VideoPlayer {
                     last_decoded_frame_pts,
                     self.config.tolerated_output_delay_in_num_frames,
                 ) {
+                    dbg!("signifcantly behind");
                     DecoderDelayState::Behind
                 } else {
                     DecoderDelayState::UpToDateWithinTolerance
@@ -681,6 +704,7 @@ fn is_significantly_behind(
         let Some(current_sample) = sample else {
             // Sample doesn't exist anymore. This should only happen if the video is being GC'ed from the back.
             // We're technically not catching up, but we may as well behave as if we are.
+            dbg!("sample doesn't exist");
             return true;
         };
         if current_sample.presentation_timestamp <= decoded_frame_pts {
