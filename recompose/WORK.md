@@ -1,10 +1,12 @@
 # NOW
 
-**P05a_flows complete!** Basic sequential flows are working.
+Working on: **P05b_declarative_flows** - Declarative flow execution with `.flow()` API.
 
-Next priorities:
-- **P05b_flows_subprocess** - Run tasks in subprocesses for isolation
-- **P06_gha_generation** - GitHub Actions workflow generation from flows
+See: `proj/P05b_declarative_flows_IN_PROGRESS.md`
+
+Key insight: Separate direct execution from flow graph building:
+- `task(arg=val)` → executes immediately, returns `Result[T]`
+- `task.flow(arg=val)` → builds graph, returns `TaskNode[T]`
 
 # COMPLETED
 
@@ -16,8 +18,8 @@ Next priorities:
 
 # UPCOMING
 
-1. **P05b_flows_subprocess** - Subprocess isolation for flow tasks
-2. **P05c_flows_dag** - DAG support and parallel execution
+1. **P05c_flows_parallel** - Parallel execution of independent tasks
+2. **P05d_flows_subprocess** - Subprocess isolation for flow tasks
 3. **P06_gha_generation** - GitHub Actions workflow generation from flows
 
 # ARCHITECTURE DECISIONS
