@@ -1,0 +1,95 @@
+"""Execution context for recompose tasks."""
+
+from __future__ import annotations
+
+from contextvars import ContextVar
+from dataclasses import dataclass, field
+from typing import Literal
+
+from rich.console import Console
+
+# Global console for output
+_console = Console()
+
+# Debug mode flag
+_debug_mode: bool = False
+
+
+@dataclass
+class OutputLine:
+    """A captured line of output."""
+
+    level: Literal["out", "dbg"]
+    message: str
+
+
+@dataclass
+class Context:
+    """
+    Execution context for a task.
+
+    Tracks output and provides task metadata.
+    """
+
+    task_name: str
+    output: list[OutputLine] = field(default_factory=list)
+
+    def capture_out(self, message: str) -> None:
+        """Capture an output line."""
+        self.output.append(OutputLine(level="out", message=message))
+
+    def capture_dbg(self, message: str) -> None:
+        """Capture a debug line."""
+        self.output.append(OutputLine(level="dbg", message=message))
+
+
+# Context variable for the current task context
+_current_context: ContextVar[Context | None] = ContextVar("recompose_context", default=None)
+
+
+def get_context() -> Context | None:
+    """Get the current task context, or None if not in a task."""
+    return _current_context.get()
+
+
+def set_context(ctx: Context | None) -> None:
+    """Set the current task context."""
+    _current_context.set(ctx)
+
+
+def set_debug(enabled: bool) -> None:
+    """Enable or disable debug output."""
+    global _debug_mode
+    _debug_mode = enabled
+
+
+def is_debug() -> bool:
+    """Check if debug mode is enabled."""
+    return _debug_mode
+
+
+def out(message: str) -> None:
+    """
+    Output a message.
+
+    When running inside a task context, the message is captured.
+    Always prints to console.
+    """
+    ctx = _current_context.get()
+    if ctx is not None:
+        ctx.capture_out(message)
+    _console.print(message)
+
+
+def dbg(message: str) -> None:
+    """
+    Output a debug message.
+
+    When running inside a task context, the message is captured.
+    Only prints to console if debug mode is enabled.
+    """
+    ctx = _current_context.get()
+    if ctx is not None:
+        ctx.capture_dbg(message)
+    if _debug_mode:
+        _console.print(f"[dim]{message}[/dim]")
