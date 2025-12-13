@@ -92,20 +92,36 @@ def task(fn: Callable[P, Result[T]]) -> Callable[P, Result[T]]:
     # Regular function task - register immediately
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> Result[T]:
+        import time
+
+        from .flow import get_flow_context
+
         # Check if we're already in a context
         existing_ctx = get_context()
+
+        # Check if we're in a flow context
+        flow_ctx = get_flow_context()
+
+        start_time = time.perf_counter()
 
         if existing_ctx is None:
             # Create a new context for this task
             ctx = Context(task_name=info.name)
             set_context(ctx)
             try:
-                return _execute_task(fn, args, kwargs)
+                result = _execute_task(fn, args, kwargs)
             finally:
                 set_context(None)
         else:
             # Already in a context, just execute
-            return _execute_task(fn, args, kwargs)
+            result = _execute_task(fn, args, kwargs)
+
+        # Record in flow context if we're in a flow
+        if flow_ctx is not None:
+            duration = time.perf_counter() - start_time
+            flow_ctx.record_task(info.name, result, duration)
+
+        return result
 
     # Create task info with the wrapper
     info = TaskInfo(
@@ -185,9 +201,13 @@ def taskclass(cls: type[T]) -> type[T]:
         task_name = f"{class_name}.{attr_name}"
 
         # Create wrapper that constructs instance and calls method
-        def make_wrapper(cls: type, method_name: str, init_param_names: list[str]) -> Callable[..., Any]:
+        def make_wrapper(cls: type, method_name: str, init_param_names: list[str], full_task_name: str) -> Callable[..., Any]:
             """Create a wrapper for a specific method."""
             def wrapper(**kwargs: Any) -> Result[Any]:
+                import time
+
+                from .flow import get_flow_context
+
                 # Split kwargs into init args and method args
                 init_kwargs = {k: v for k, v in kwargs.items() if k in init_param_names}
                 method_kwargs = {k: v for k, v in kwargs.items() if k not in init_param_names}
@@ -201,20 +221,32 @@ def taskclass(cls: type[T]) -> type[T]:
                 # Check if we're already in a context
                 existing_ctx = get_context()
 
+                # Check if we're in a flow context
+                flow_ctx = get_flow_context()
+
+                start_time = time.perf_counter()
+
                 if existing_ctx is None:
                     ctx = Context(task_name=f"{cls.__name__.lower()}.{method_name}")
                     set_context(ctx)
                     try:
-                        return _execute_task(bound_method, (), method_kwargs)
+                        result = _execute_task(bound_method, (), method_kwargs)
                     finally:
                         set_context(None)
                 else:
-                    return _execute_task(bound_method, (), method_kwargs)
+                    result = _execute_task(bound_method, (), method_kwargs)
+
+                # Record in flow context if we're in a flow
+                if flow_ctx is not None:
+                    duration = time.perf_counter() - start_time
+                    flow_ctx.record_task(full_task_name, result, duration)
+
+                return result
 
             return wrapper
 
         init_param_names = [p.name for p in init_params]
-        wrapper = make_wrapper(cls, attr_name, init_param_names)
+        wrapper = make_wrapper(cls, attr_name, init_param_names, task_name)
         wrapper.__doc__ = method_doc
 
         # Create TaskInfo for this method task

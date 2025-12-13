@@ -21,6 +21,7 @@ Basic usage:
 
 from .cli import main
 from .context import dbg, get_context, is_debug, out, set_debug
+from .flow import FlowContext, FlowInfo, flow, get_flow, get_flow_context, get_flow_registry
 from .result import Err, Ok, Result
 from .subprocess import RunResult, SubprocessError, run
 from .task import TaskInfo, get_registry, get_task, task, taskclass
@@ -46,6 +47,13 @@ __all__ = [
     "run",
     "RunResult",
     "SubprocessError",
+    # Flow
+    "flow",
+    "FlowInfo",
+    "FlowContext",
+    "get_flow",
+    "get_flow_registry",
+    "get_flow_context",
     # CLI
     "main",
 ]

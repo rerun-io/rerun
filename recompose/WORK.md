@@ -1,11 +1,14 @@
 # NOW
 
-Working on: **P05_flows** - Task composition and dependency graphs.
+**P05a_flows complete!** Basic sequential flows are working.
 
-See: `proj/P05_flows_TODO.md` (to be created)
+Next priorities:
+- **P05b_flows_subprocess** - Run tasks in subprocesses for isolation
+- **P06_gha_generation** - GitHub Actions workflow generation from flows
 
 # COMPLETED
 
+- **P05a_flows** - Sequential flows with `@flow` decorator. Tasks tracked, results passed. See `proj/P05a_flows_DONE.md`
 - **P04_member_tasks** - Class-based tasks via `@taskclass`. CLI exposes as `classname.methodname`. See `proj/P04_member_tasks_DONE.md`
 - **P03_subprocess** - Subprocess helpers: `recompose.run()`, `RunResult`, streaming/capture modes. See `proj/P03_subprocess_DONE.md`
 - **P02_cli** - CLI generation with Click. `recompose.main()` exposes tasks as subcommands. See `proj/P02_cli_DONE.md`
@@ -13,7 +16,9 @@ See: `proj/P05_flows_TODO.md` (to be created)
 
 # UPCOMING
 
-1. **P06_gha_generation** - GitHub Actions workflow generation from flows
+1. **P05b_flows_subprocess** - Subprocess isolation for flow tasks
+2. **P05c_flows_dag** - DAG support and parallel execution
+3. **P06_gha_generation** - GitHub Actions workflow generation from flows
 
 # ARCHITECTURE DECISIONS
 

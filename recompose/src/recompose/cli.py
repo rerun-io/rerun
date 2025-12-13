@@ -12,6 +12,7 @@ import click
 from rich.console import Console
 
 from .context import set_debug
+from .flow import FlowInfo, get_flow_registry
 from .result import Result
 from .task import TaskInfo, get_registry
 
@@ -190,6 +191,138 @@ def _build_command(task_info: TaskInfo) -> click.Command:
     return cmd
 
 
+def _build_flow_command(flow_info: FlowInfo) -> click.Command:
+    """Build a Click command from a flow."""
+    sig = flow_info.signature
+    params: list[click.Parameter] = []
+
+    for param_name, param in sig.parameters.items():
+        if param_name == "self":
+            continue
+
+        # Get type annotation
+        annotation = param.annotation
+        if annotation is inspect.Parameter.empty:
+            annotation = str
+
+        click_type, type_required = _get_click_type(annotation)
+
+        has_default = param.default is not inspect.Parameter.empty
+        default_value = param.default if has_default else None
+        required = not has_default and type_required
+
+        if annotation is bool:
+            if has_default and default_value is True:
+                params.append(
+                    click.Option(
+                        [f"--{param_name}/--no-{param_name}"],
+                        default=True,
+                        help=f"(default: True)",
+                    )
+                )
+            elif has_default and default_value is False:
+                params.append(
+                    click.Option(
+                        [f"--{param_name}/--no-{param_name}"],
+                        default=False,
+                        help=f"(default: False)",
+                    )
+                )
+            else:
+                params.append(
+                    click.Option(
+                        [f"--{param_name}/--no-{param_name}"],
+                        default=False,
+                        required=required,
+                    )
+                )
+        else:
+            help_text = None
+            if has_default and default_value is not None:
+                help_text = f"(default: {default_value})"
+
+            option_kwargs: dict[str, Any] = {
+                "type": click_type,
+                "required": required,
+                "help": help_text,
+            }
+            if has_default:
+                option_kwargs["default"] = default_value
+
+            params.append(
+                click.Option(
+                    [f"--{param_name}"],
+                    **option_kwargs,
+                )
+            )
+
+    def callback(**kwargs: Any) -> None:
+        """Execute the flow and display results."""
+        flow_name = flow_info.name
+
+        start_time = time.perf_counter()
+
+        # Print flow header
+        console.print(f"\n[bold magenta]▶[/bold magenta] [bold]flow:{flow_name}[/bold]")
+        console.print()
+
+        # Convert enum values back to enum if needed
+        for param_name, param in sig.parameters.items():
+            if param_name in kwargs:
+                annotation = param.annotation
+                if isinstance(annotation, type) and issubclass(annotation, Enum):
+                    value = kwargs[param_name]
+                    if value is not None:
+                        kwargs[param_name] = annotation(value)
+
+        # Execute the flow
+        result: Result = flow_info.fn(**kwargs)
+
+        # Get flow context from result (attached by the flow decorator)
+        flow_ctx = getattr(result, "_flow_context", None)
+
+        elapsed = time.perf_counter() - start_time
+
+        # Print sub-task summary if available
+        if flow_ctx and flow_ctx.executions:
+            console.print()
+            console.print("[dim]Tasks executed:[/dim]")
+            for ex in flow_ctx.executions:
+                status_icon = "[green]✓[/green]" if ex.result.ok else "[red]✗[/red]"
+                console.print(f"  {status_icon} {ex.task_name} ({ex.duration:.2f}s)")
+
+        # Print result
+        console.print()
+        if result.ok:
+            console.print(
+                f"[bold green]✓[/bold green] [bold]flow:{flow_name}[/bold] succeeded in {elapsed:.2f}s"
+            )
+            if result.value is not None:
+                console.print(f"[dim]→[/dim] {result.value}")
+        else:
+            console.print(
+                f"[bold red]✗[/bold red] [bold]flow:{flow_name}[/bold] failed in {elapsed:.2f}s"
+            )
+            if result.error:
+                console.print(f"[red]Error:[/red] {result.error}")
+            if result.traceback:
+                from .context import is_debug
+
+                if is_debug():
+                    console.print(f"[dim]{result.traceback}[/dim]")
+
+        console.print()
+
+    cmd = click.Command(
+        name=flow_info.name,
+        callback=callback,
+        params=params,
+        help=f"[flow] {flow_info.doc}" if flow_info.doc else "[flow]",
+    )
+
+    return cmd
+
+
 def main(name: str | None = None) -> None:
     """
     Build and run the CLI from registered tasks.
@@ -212,6 +345,12 @@ def main(name: str | None = None) -> None:
     registry = get_registry()
     for _task_key, task_info in registry.items():
         cmd = _build_command(task_info)
+        cli.add_command(cmd)
+
+    # Add a command for each registered flow
+    flow_registry = get_flow_registry()
+    for _flow_key, flow_info in flow_registry.items():
+        cmd = _build_flow_command(flow_info)
         cli.add_command(cmd)
 
     # Run the CLI
