@@ -56,9 +56,6 @@ from ._properties import (
 from ._send_columns import (
     TimeColumn as TimeColumn,
     TimeColumnLike as TimeColumnLike,
-    TimeNanosColumn as TimeNanosColumn,
-    TimeSecondsColumn as TimeSecondsColumn,
-    TimeSequenceColumn as TimeSequenceColumn,
     send_columns as send_columns,
 )
 from .any_batch_value import (
