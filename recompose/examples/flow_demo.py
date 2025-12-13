@@ -11,6 +11,8 @@ Run with:
     uv run python examples/flow_demo.py build_and_test --skip_tests
 """
 
+import time
+
 import recompose
 
 
@@ -31,6 +33,7 @@ def check_prerequisites() -> recompose.Result[None]:
         return recompose.Err("python not found")
     recompose.out(f"  Found {result.stdout.strip()}")
 
+    time.sleep(0.05)
     return recompose.Ok(None)
 
 
@@ -38,6 +41,7 @@ def check_prerequisites() -> recompose.Result[None]:
 def run_linter() -> recompose.Result[None]:
     """Run the linter (simulated)."""
     recompose.out("Running linter...")
+    time.sleep(0.08)
     recompose.out("  No lint errors found")
     return recompose.Ok(None)
 
@@ -46,6 +50,7 @@ def run_linter() -> recompose.Result[None]:
 def run_type_checker() -> recompose.Result[None]:
     """Run the type checker (simulated)."""
     recompose.out("Running type checker...")
+    time.sleep(0.12)
     recompose.out("  All types check out")
     return recompose.Ok(None)
 
@@ -54,6 +59,7 @@ def run_type_checker() -> recompose.Result[None]:
 def run_tests() -> recompose.Result[int]:
     """Run tests (simulated)."""
     recompose.out("Running tests...")
+    time.sleep(0.25)
     recompose.out("  10 tests passed")
     return recompose.Ok(10)
 
@@ -62,6 +68,7 @@ def run_tests() -> recompose.Result[int]:
 def build_artifact(*, output: str = "build/app") -> recompose.Result[str]:
     """Build the artifact (simulated)."""
     recompose.out(f"Building artifact to {output}...")
+    time.sleep(0.15)
     recompose.out("  Build complete")
     return recompose.Ok(output)
 
