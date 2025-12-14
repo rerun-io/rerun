@@ -289,6 +289,132 @@ class TestRenderFlowWorkflow:
         assert "jobs" in parsed
 
 
+class TestGHAActions:
+    """Tests for GHA virtual actions."""
+
+    def test_checkout_action_direct_call(self) -> None:
+        """Test calling checkout directly (no-op)."""
+        from recompose.gha import checkout
+
+        result = checkout()
+        assert result.ok
+        assert result.value is None
+
+    def test_checkout_flow_outside_flow_raises(self) -> None:
+        """Test that .flow() outside a flow raises."""
+        from recompose.gha import checkout
+
+        with pytest.raises(RuntimeError, match="can only be called inside"):
+            checkout.flow()
+
+    def test_setup_python_creates_action(self) -> None:
+        """Test setup_python creates an action with version."""
+        from recompose.gha import setup_python
+
+        action = setup_python(version="3.12")
+        assert action.uses == "actions/setup-python@v5"
+        assert action.default_with_params["python-version"] == "3.12"
+
+    def test_setup_uv_creates_action(self) -> None:
+        """Test setup_uv creates an action."""
+        from recompose.gha import setup_uv
+
+        action = setup_uv()
+        assert action.uses == "astral-sh/setup-uv@v4"
+
+    def test_setup_rust_creates_action(self) -> None:
+        """Test setup_rust creates an action with toolchain."""
+        from recompose.gha import setup_rust
+
+        action = setup_rust(toolchain="nightly")
+        assert action.uses == "dtolnay/rust-toolchain@master"
+        assert action.default_with_params["toolchain"] == "nightly"
+
+    def test_cache_creates_action(self) -> None:
+        """Test cache creates an action with path and key."""
+        from recompose.gha import cache
+
+        action = cache(path="~/.cache", key="cache-key-${{ hashFiles('**/lockfile') }}")
+        assert action.uses == "actions/cache@v4"
+        assert action.default_with_params["path"] == "~/.cache"
+        assert "cache-key" in action.default_with_params["key"]
+
+
+# Flow with GHA actions for testing
+@recompose.flow
+def flow_with_gha_actions() -> None:
+    """A flow that uses GHA actions."""
+    from recompose.gha import checkout, setup_python, setup_uv
+
+    checkout.flow()
+    setup_python(version="3.11").flow()
+    setup_uv().flow()
+    simple_task.flow()
+
+
+class TestFlowWithGHAActions:
+    """Tests for flows containing GHA actions."""
+
+    def test_flow_with_actions_runs_locally(self) -> None:
+        """Test that a flow with GHA actions runs (actions are no-ops)."""
+        result = flow_with_gha_actions()
+        assert result.ok
+
+    def test_flow_with_actions_generates_yaml(self) -> None:
+        """Test that a flow with GHA actions generates correct YAML."""
+        flow_info = recompose.get_flow("flow_with_gha_actions")
+        assert flow_info is not None
+
+        spec = render_flow_workflow(flow_info, script_path="app.py")
+
+        # Should have: checkout, setup-python, setup-uv, setup workspace, simple_task
+        job = spec.jobs["flow_with_gha_actions"]
+        assert len(job.steps) == 5
+
+        # First three should be uses: steps
+        assert job.steps[0].uses == "actions/checkout@v4"
+        assert job.steps[1].uses == "actions/setup-python@v5"
+        assert job.steps[1].with_ == {"python-version": "3.11"}
+        assert job.steps[2].uses == "astral-sh/setup-uv@v4"
+
+        # Fourth should be setup step
+        assert "Setup" in job.steps[3].name
+        assert job.steps[3].run is not None
+
+        # Fifth should be task step
+        assert "simple_task" in job.steps[4].name
+        assert job.steps[4].run is not None
+
+    def test_flow_without_actions_gets_auto_checkout(self) -> None:
+        """Test that flows without GHA actions get checkout added automatically."""
+        flow_info = recompose.get_flow("simple_flow")
+        assert flow_info is not None
+
+        spec = render_flow_workflow(flow_info, script_path="app.py")
+
+        job = spec.jobs["simple_flow"]
+        # First step should be auto-added checkout
+        assert job.steps[0].uses == "actions/checkout@v4"
+        assert job.steps[0].name == "Checkout"
+
+    def test_gha_action_yaml_is_valid(self) -> None:
+        """Test that generated YAML with GHA actions is valid."""
+        flow_info = recompose.get_flow("flow_with_gha_actions")
+        assert flow_info is not None
+
+        spec = render_flow_workflow(flow_info, script_path="app.py")
+        yaml_str = spec.to_yaml()
+
+        # Should be parseable
+        parsed = yaml.safe_load(yaml_str)
+        assert parsed["name"] == "flow_with_gha_actions"
+
+        # Check the uses steps
+        steps = parsed["jobs"]["flow_with_gha_actions"]["steps"]
+        uses_steps = [s for s in steps if "uses" in s]
+        assert len(uses_steps) == 3
+
+
 class TestValidateWorkflow:
     """Tests for actionlint validation."""
 
