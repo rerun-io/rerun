@@ -15,15 +15,31 @@ The final result should be:
 
 ## Phase breakdown:
 
-**P07a - Examples structure & basic tasks** ✅ DONE
-- Moved demo files to `examples/demos/` (preserved for reference/tutorials)
-- Created `examples/README.md` explaining the structure
-- Created `examples/dev_tasks.py` with real tasks:
-  - `lint` - ruff check
-  - `format_check` - ruff format --check
-  - `format` - ruff format (apply fixes, local only)
-  - `test` - pytest
-  - `check_all` - combined lint + format-check + test
+**P07a - Examples structure & basic tasks** (in progress)
+Restructure examples to be both instructional AND real:
+
+```
+examples/
+├── README.md                    # Concept introduction + walkthrough
+├── app.py                       # Unified entrypoint (imports all)
+├── tutorial/                    # Incremental tutorials
+│   ├── intro_tasks.py           # Basic tasks, Results, subprocess
+│   ├── intro_taskclass.py       # @taskclass
+│   └── intro_flows.py           # Flows (imports from intro_tasks.py)
+├── tasks/                       # Real tasks for recompose
+│   ├── __init__.py
+│   ├── lint.py                  # lint, format_check, format
+│   ├── test.py                  # test
+│   └── build.py                 # build_wheel, Venv taskclass
+└── flows/                       # Real flows
+    ├── __init__.py
+    └── ci.py                    # ci flow
+```
+
+Tutorial progression:
+- `intro_tasks.py` - @task, Result, Ok/Err, recompose.run(), recompose.out()
+- `intro_taskclass.py` - @taskclass, constructor args, member methods
+- `intro_flows.py` - @flow, .flow() API (imports tasks from intro_tasks.py)
 
 **P07b - Build & distribution tasks**
 - `build_wheel` task - create wheel with `uv build`
@@ -85,9 +101,23 @@ run from source. Important distinction for catching packaging issues.
 - Defer until we have more real usage to inform the design
 - Current `recompose.out` works fine for now
 
+**Result type serialization protocol** - Proper support for custom types in flows
+- Current: workspace.py has basic serialization, loses type info on deserialize
+- Problem: `Result[Path]` serializes to string, deserializes as string (not Path)
+- Solution: Protocol-based type handling with two approaches:
+  1. **Direct protocol**: Types implement `RecomposeSerializable` protocol
+     - `def __recompose_serialize__(self) -> dict`
+     - `@classmethod def __recompose_deserialize__(cls, data: dict) -> Self`
+  2. **Registered helpers**: External types register a helper class
+     - `recompose.register_type(Path, PathSerializer)`
+     - Helper handles ser/deser for types you don't control
+- Recompose registers built-in helpers for: `Path`, `datetime`, etc.
+- Recompose extension types (e.g., `Artifact`) implement protocol directly
+- Pydantic BaseModel subclasses work automatically via `.model_dump()` / `.model_validate()`
+- For now: use strings for paths in P07b, revisit when patterns are clearer
+
 # COMPLETED
 
-- **P07a** - Examples structure & basic tasks (dev_tasks.py with lint/format/test)
 - **P06_gha_generation** - All 3 phases complete. See `proj/P06_gha_generation_DONE.md`
   - Phase 1: Basic YAML generation (`generate-gha` CLI, workflow_dispatch inputs, actionlint)
   - Phase 2: GHA setup actions (`GHAAction` class, checkout/setup_python/setup_uv/setup_rust/cache)
