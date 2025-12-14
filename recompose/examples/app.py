@@ -6,32 +6,24 @@ This app combines all tasks and flows for the recompose project.
 It serves as THE way to run recompose tasks for both development and CI.
 
 Usage:
-    uv run python examples/app.py --help
-    uv run python examples/app.py lint
-    uv run python examples/app.py format
-    uv run python examples/app.py test
-    uv run python examples/app.py ci
+    ./run --help
+    ./run lint
+    ./run format
+    ./run test
+    ./run ci
 
 Inspect flows:
-    uv run python examples/app.py inspect ci
+    ./run inspect ci
 """
 
-import sys
-from pathlib import Path
+import recompose
 
-# Add examples directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+# Import tasks and flows - registers them with recompose
+from .flows import ci
+from .tasks import format, format_check, lint, test
 
-# isort: off
-import recompose  # noqa: E402
-
-# Local imports - register tasks and flows with recompose
-from flows import ci  # noqa: E402, F401
-from tasks import format, format_check, lint, test  # noqa: E402, F401
-# isort: on
-
-# All imported tasks and flows are automatically registered
-# when recompose.main() is called.
+# Suppress unused import warnings - these are used for registration
+_ = (ci, format, format_check, lint, test)
 
 if __name__ == "__main__":
     recompose.main()

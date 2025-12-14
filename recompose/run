@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Recompose task runner for the recompose project.
+#
+# Usage:
+#   ./run --help
+#   ./run lint
+#   ./run test
+#   ./run ci
+
+cd "$(dirname "$0")"
+exec uv run python -m examples.app "$@"

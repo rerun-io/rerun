@@ -14,8 +14,9 @@ _console = Console()
 # Debug mode flag
 _debug_mode: bool = False
 
-# Entry point script path (set by main())
-_entry_point: str | None = None
+# Entry point info (set by main())
+# Tuple of (type, value) where type is "module" or "script"
+_entry_point: tuple[str, str] | None = None
 
 
 @dataclass
@@ -71,14 +72,26 @@ def is_debug() -> bool:
     return _debug_mode
 
 
-def set_entry_point(path: str) -> None:
-    """Set the entry point script path (called by main())."""
+def set_entry_point(entry_type: str, value: str) -> None:
+    """
+    Set the entry point info (called by main()).
+
+    Args:
+        entry_type: "module" or "script"
+        value: Module name (e.g., "examples.app") or script path
+    """
     global _entry_point
-    _entry_point = path
+    _entry_point = (entry_type, value)
 
 
-def get_entry_point() -> str | None:
-    """Get the entry point script path, or None if not set."""
+def get_entry_point() -> tuple[str, str] | None:
+    """
+    Get the entry point info.
+
+    Returns:
+        Tuple of (type, value) where type is "module" or "script",
+        or None if not set.
+    """
     return _entry_point
 
 
