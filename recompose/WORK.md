@@ -15,8 +15,8 @@ The final result should be:
 
 ## Phase breakdown:
 
-**P07a - Examples structure & basic tasks** (in progress)
-Restructure examples to be both instructional AND real:
+**P07a - Examples structure & basic tasks** ✅ DONE
+Restructured examples to be both instructional AND real:
 
 ```
 examples/
@@ -29,17 +29,14 @@ examples/
 ├── tasks/                       # Real tasks for recompose
 │   ├── __init__.py
 │   ├── lint.py                  # lint, format_check, format
-│   ├── test.py                  # test
-│   └── build.py                 # build_wheel, Venv taskclass
+│   └── test.py                  # test
 └── flows/                       # Real flows
     ├── __init__.py
-    └── ci.py                    # ci flow
+    └── ci.py                    # ci flow (lint + format_check + test)
 ```
 
-Tutorial progression:
-- `intro_tasks.py` - @task, Result, Ok/Err, recompose.run(), recompose.out()
-- `intro_taskclass.py` - @taskclass, constructor args, member methods
-- `intro_flows.py` - @flow, .flow() API (imports tasks from intro_tasks.py)
+Also fixed `run_isolated` to use entry point from `main()` instead of
+`inspect.getfile(fn)`, eliminating path hackery in flow files.
 
 **P07b - Build & distribution tasks**
 - `build_wheel` task - create wheel with `uv build`
