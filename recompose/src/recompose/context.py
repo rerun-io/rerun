@@ -14,6 +14,9 @@ _console = Console()
 # Debug mode flag
 _debug_mode: bool = False
 
+# Entry point script path (set by main())
+_entry_point: str | None = None
+
 
 @dataclass
 class OutputLine:
@@ -66,6 +69,17 @@ def set_debug(enabled: bool) -> None:
 def is_debug() -> bool:
     """Check if debug mode is enabled."""
     return _debug_mode
+
+
+def set_entry_point(path: str) -> None:
+    """Set the entry point script path (called by main())."""
+    global _entry_point
+    _entry_point = path
+
+
+def get_entry_point() -> str | None:
+    """Get the entry point script path, or None if not set."""
+    return _entry_point
 
 
 def out(message: str) -> None:

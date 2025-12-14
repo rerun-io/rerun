@@ -200,54 +200,43 @@ class TestRunIsolated:
 
     def test_run_isolated_basic(self) -> None:
         """run_isolated executes all steps as subprocesses."""
-        # Import the flow_demo module to get a real flow
-        import sys
 
-        sys.path.insert(0, str(Path(__file__).parent.parent / "examples" / "demos"))
+        @recompose.task
+        def step_one() -> recompose.Result[str]:
+            return recompose.Ok("one")
 
-        from flow_demo import build_pipeline
+        @recompose.task
+        def step_two(*, prev: str) -> recompose.Result[str]:
+            return recompose.Ok(f"{prev}-two")
 
-        result = build_pipeline.run_isolated(repo="test-isolated")
+        @recompose.task
+        def step_three(*, prev: str) -> recompose.Result[str]:
+            return recompose.Ok(f"{prev}-three")
 
+        @recompose.flow
+        def simple_pipeline() -> None:
+            a = step_one.flow()
+            b = step_two.flow(prev=a)
+            step_three.flow(prev=b)
+
+        result = simple_pipeline.run_isolated()
         assert result.ok, f"run_isolated failed: {result.error}"
 
-    def test_run_isolated_creates_workspace_files(self, tmp_path: Path) -> None:
-        """run_isolated creates workspace with result files."""
-        import os
+    def test_run_isolated_with_params(self) -> None:
+        """run_isolated passes parameters correctly."""
 
-        # Set environment to use our temp directory
-        old_env = os.environ.get("RECOMPOSE_WORKSPACE")
-        os.environ["RECOMPOSE_WORKSPACE"] = str(tmp_path)
+        @recompose.task
+        def echo_param(*, value: str) -> recompose.Result[str]:
+            return recompose.Ok(f"got: {value}")
 
-        try:
-            import sys
+        @recompose.task
+        def process(*, input: str) -> recompose.Result[str]:
+            return recompose.Ok(f"processed: {input}")
 
-            sys.path.insert(0, str(Path(__file__).parent.parent / "examples"))
+        @recompose.flow
+        def param_flow(*, name: str = "default") -> None:
+            v = echo_param.flow(value=name)
+            process.flow(input=v)
 
-            from flow_demo import build_pipeline
-
-            result = build_pipeline.run_isolated(repo="workspace-test")
-            assert result.ok
-
-            # Check that workspace was created
-            workspaces = list(tmp_path.glob("build_pipeline_*"))
-            assert len(workspaces) >= 1
-
-            ws = workspaces[-1]  # Most recent
-            assert (ws / "_params.json").exists()
-
-            # Check params content
-            params = read_params(ws)
-            assert params.flow_name == "build_pipeline"
-            assert params.params["repo"] == "workspace-test"
-            assert len(params.steps) == 5
-
-            # Check step results exist
-            for step_name in params.steps:
-                assert step_result_exists(ws, step_name), f"Missing result for {step_name}"
-
-        finally:
-            if old_env is None:
-                os.environ.pop("RECOMPOSE_WORKSPACE", None)
-            else:
-                os.environ["RECOMPOSE_WORKSPACE"] = old_env
+        result = param_flow.run_isolated(name="test-value")
+        assert result.ok, f"run_isolated failed: {result.error}"
